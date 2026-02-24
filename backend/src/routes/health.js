@@ -1,17 +1,14 @@
 import { Router } from 'express';
-import db from '../config/database.js';
 
 const router = Router();
 
-router.get('/', async (req, res, next) => {
-  try {
-    await db.raw('SELECT 1');
-    res.json({ data: { status: 'ok', database: 'connected' } });
-  } catch (error) {
-    res.status(503).json({
-      error: { message: 'Service unhealthy', code: 'SERVICE_UNAVAILABLE' },
-    });
-  }
+/**
+ * GET /api/v1/health
+ * Liveness check. Returns { "status": "ok" }.
+ * Does NOT check DB connectivity (liveness only per contract).
+ */
+router.get('/', (req, res) => {
+  res.json({ status: 'ok' });
 });
 
 export default router;

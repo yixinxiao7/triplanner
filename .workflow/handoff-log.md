@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — Backend Engineer → Deploy Engineer (Migrations Ready to Run — T-009)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Backend Engineer |
+| To Agent | Deploy Engineer |
+| Status | Pending |
+| Related Task | T-009, T-020 |
+| Handoff Summary | All 6 Knex migration files are ready in `backend/src/migrations/`. Run `npm run migrate` (i.e., `knex migrate:latest --knexfile src/config/knexfile.js`) from the `backend/` directory after spinning up the PostgreSQL container. Rollback with `npm run migrate:rollback`. |
+| Notes | **Migration order (enforced by filename timestamps):** `20260224_001_create_users` → `20260224_002_create_refresh_tokens` → `20260224_003_create_trips` → `20260224_004_create_flights` → `20260224_005_create_stays` → `20260224_006_create_activities`. All migrations include `up()` and `down()`. The trips migration uses a raw `ALTER TABLE … ADD CONSTRAINT` for the CHECK constraint (status enum) — this is intentional. Migrations have not been run on staging yet — this must happen during T-020 deployment. **New env vars needed:** none beyond what is in `backend/.env.example` (`DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `CORS_ORIGIN`, `PORT`, `NODE_ENV`). |
+
+---
+
+### Sprint 1 — Backend Engineer → QA Engineer (Backend Implementation Complete — T-008 through T-012)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-008, T-009, T-010, T-011, T-012, T-018, T-019 |
+| Handoff Summary | All backend tasks T-008 through T-012 are complete and in review. The Express API implements all endpoints defined in `api-contracts.md`. All 60 unit tests pass (`npm test`). The backend is ready for security checklist review (T-018) and integration testing (T-019). |
+| Notes | **Security items to verify in T-018:** (1) **Password hashing:** `bcrypt.hash(password, 12)` — 12 rounds, raw password never logged or stored. File: `backend/src/routes/auth.js`. (2) **Timing-safe login:** `bcrypt.compare` always runs even if user not found (uses `DUMMY_HASH`) to prevent email enumeration. (3) **Refresh token storage:** raw token is never stored — only SHA-256 hash is persisted in `refresh_tokens.token_hash`. Raw token is sent as httpOnly cookie only. (4) **Refresh token rotation:** old token is revoked (`revoked_at = now()`) before new token is issued — no token reuse window. (5) **SQL injection:** all queries use Knex parameterized methods (`.where({})`, `.insert()`, `.update()`) — zero string concatenation in DB queries. (6) **Error responses:** `errorHandler.js` catches all errors and returns `{ error: { message, code } }` — never exposes stack traces. (7) **Auth middleware:** `authenticate` in `middleware/auth.js` rejects any request without a valid Bearer JWT. (8) **Trip ownership:** all trip-scoped endpoints check `trip.user_id === req.user.id` — returns 403 (not 404) for cross-user access. (9) **httpOnly cookie:** refresh token cookie has `httpOnly: true`, `sameSite: 'strict'`, `path: '/api/v1/auth'`, `secure: true` in production. (10) **CORS:** `credentials: true` set, origin restricted to `CORS_ORIGIN` env var. **Integration test flow for T-019:** POST /auth/register (201) → POST /auth/login (200, access_token) → POST /trips (201, get trip id) → GET /trips/:id (200) → GET /trips/:id/flights (200, []) → GET /trips/:id/stays (200, []) → GET /trips/:id/activities (200, []) → DELETE /trips/:id (204) → GET /trips/:id (404) → POST /auth/logout (204). |
+
+---
+
+### Sprint 1 — Backend Engineer → Frontend Engineer (Backend API Live — T-008 through T-012)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-008, T-010, T-011, T-012, T-013, T-014, T-015, T-016, T-017 |
+| Handoff Summary | The backend API is implemented exactly per the contracts in `api-contracts.md`. All endpoints are live (pending DB connectivity on staging). Frontend can now integrate against the real API. |
+| Notes | **Reminder of key integration points:** (1) `POST /api/v1/auth/register` and `POST /api/v1/auth/login` both return `{ data: { user, access_token } }` — store `access_token` in memory (React context), never localStorage. The `refresh_token` httpOnly cookie is set automatically. (2) `POST /api/v1/auth/refresh` — call this when any request returns 401, retry original request with new access_token. No body needed — cookie is sent automatically by browser. (3) `POST /api/v1/trips` accepts `destinations` as an array OR comma-separated string; returns `{ data: { id, ... } }` — navigate to `/trips/:id` on success. (4) Sub-resources: `GET /api/v1/trips/:tripId/[flights|stays|activities]` all return `{ data: [] }` when empty. (5) `DELETE /trips/:id` returns 204 (no body). (6) `POST /auth/logout` returns 204; clear the in-memory access_token and redirect to /login. (7) Backend runs on `http://localhost:3000` in development — axios base URL should be `http://localhost:3000/api/v1`. |
+
+---
+
 ### Sprint 1 — Frontend Engineer → QA Engineer (Frontend Implementation Complete — T-013 through T-017)
 
 | Field | Value |
