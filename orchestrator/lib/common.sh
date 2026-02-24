@@ -49,7 +49,7 @@ load_config() {
 state_set() {
     local key="$1" value="$2"
     if [[ -f "$STATE_FILE" ]] && grep -q "^${key}=" "$STATE_FILE" 2>/dev/null; then
-        sed -i "s|^${key}=.*|${key}=${value}|" "$STATE_FILE"
+        sed -i '' "s|^${key}=.*|${key}=${value}|" "$STATE_FILE"
     else
         echo "${key}=${value}" >> "$STATE_FILE"
     fi
@@ -74,7 +74,7 @@ state_clear() {
 sprint_state_set() {
     local key="$1" value="$2"
     if [[ -f "$SPRINT_STATE_FILE" ]] && grep -q "^${key}=" "$SPRINT_STATE_FILE" 2>/dev/null; then
-        sed -i "s|^${key}=.*|${key}=${value}|" "$SPRINT_STATE_FILE"
+        sed -i '' "s|^${key}=.*|${key}=${value}|" "$SPRINT_STATE_FILE"
     else
         echo "${key}=${value}" >> "$SPRINT_STATE_FILE"
     fi
@@ -98,7 +98,7 @@ sprint_state_clear() {
 # Get the current sprint number from active-sprint.md
 get_current_sprint() {
     local sprint_line
-    sprint_line=$(grep -oP 'Sprint #\K[0-9]+' "${WORKFLOW_DIR}/active-sprint.md" 2>/dev/null || echo "")
+    sprint_line=$(grep -oE 'Sprint #[0-9]+' "${WORKFLOW_DIR}/active-sprint.md" 2>/dev/null | grep -oE '[0-9]+' | head -1 || echo "")
     if [[ -z "$sprint_line" ]]; then
         echo "0"
     else
@@ -127,7 +127,7 @@ file_has_content() {
     fi
     # Check if file has content beyond templates and headers
     local content_lines
-    content_lines=$(grep -cvP '^\s*$|^\s*#|^\s*\|.*\|.*\||^\s*---|\[Template|^\s*\*' "$file" 2>/dev/null || echo "0")
+    content_lines=$(grep -cvE '^\s*$|^\s*#|^\s*\|.*\|.*\||^\s*---|\[Template|^\s*\*' "$file" 2>/dev/null || echo "0")
     [[ "$content_lines" -gt 2 ]]
 }
 

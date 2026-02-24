@@ -50,6 +50,7 @@ run_agent() {
     # --allowedTools: scoped to what the agent needs
     local exit_code=0
     claude --print \
+        --dangerously-skip-permissions \
         --system-prompt "$system_prompt" \
         --max-turns "$max_turns" \
         --verbose \

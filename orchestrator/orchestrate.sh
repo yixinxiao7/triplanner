@@ -167,7 +167,7 @@ print_final_summary() {
     local feedback="${WORKFLOW_DIR}/feedback-log.md"
     if [[ -f "$feedback" ]]; then
         local total_feedback bugs ux_issues gaps positive
-        total_feedback=$(grep -cP '^\|(?!\s*(Feedback|$))' "$feedback" 2>/dev/null || echo "0")
+        total_feedback=$(grep -c '^\|' "$feedback" 2>/dev/null | xargs || echo "0")
         bugs=$(grep -c 'Bug' "$feedback" 2>/dev/null || echo "0")
         ux_issues=$(grep -c 'UX Issue' "$feedback" 2>/dev/null || echo "0")
         gaps=$(grep -c 'Feature Gap' "$feedback" 2>/dev/null || echo "0")

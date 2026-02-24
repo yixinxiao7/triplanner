@@ -45,7 +45,7 @@ phase_planning_complete() {
     # Sprint is planned if active-sprint has a real sprint number and tasks exist
     if grep -q 'Sprint #[0-9]' "$active" 2>/dev/null; then
         local total
-        total=$(grep -cP '^\| T-' "$tracker" 2>/dev/null || echo "0")
+        total=$(grep -c '^\| T-' "$tracker" 2>/dev/null || echo "0")
         [[ $total -gt 0 ]]
     else
         return 1
@@ -66,7 +66,7 @@ phase_contracts_complete() {
     local handoff="${WORKFLOW_DIR}/handoff-log.md"
 
     # Contracts are complete if api-contracts.md has real endpoint entries
-    grep -qP '(GET|POST|PUT|PATCH|DELETE)\s+/api/' "$contracts" 2>/dev/null && \
+    grep -qE '(GET|POST|PUT|PATCH|DELETE)\s+/api/' "$contracts" 2>/dev/null && \
     grep -q 'Backend Engineer.*Frontend Engineer\|From Agent.*Backend' "$handoff" 2>/dev/null
 }
 

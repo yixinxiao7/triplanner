@@ -18,11 +18,19 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
-## Sprint [N] Feedback
+## Sprint 1 Feedback
+
+*Populated by User Agent (T-022) and Monitor Agent (T-021) after staging deployment. Manager Agent triages all entries before sprint closeout.*
 
 | Feedback | Category | Severity | Status | Details | Related Task |
 |----------|----------|----------|--------|---------|-------------|
 | | | | | | |
+
+---
+
+## Sprint 0 Feedback
+
+*No Sprint 0 — this is the first sprint.*
 
 ---
 
