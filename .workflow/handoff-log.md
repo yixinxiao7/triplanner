@@ -17,6 +17,34 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — Frontend Engineer → QA Engineer (Frontend Implementation Complete — T-013 through T-017)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Frontend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-013, T-014, T-015, T-016, T-017, T-018, T-019 |
+| Handoff Summary | All Sprint 1 frontend tasks are complete and moved to "In Review". The full React application has been implemented including: auth context with JWT in-memory storage + refresh token flow, axios instance with 401 interceptor, Login and Register pages, Navbar, Home page, and Trip Details page. Render tests written for all major components. |
+| Notes | **What to test:** (1) Auth flow: register with name/email/password → auto-login + redirect to `/`. Login with email/password → redirect to `/`. Logout → redirect to `/login`. Protected routes redirect unauthenticated users. (2) Home page: trip list loads from `GET /api/v1/trips`, skeleton shown during load, empty state shown when no trips, error state shown on API failure with retry. Create trip modal: opens on button click, validates required fields, calls `POST /api/v1/trips`, navigates to `/trips/:id` on success. Delete trip: inline confirmation replaces card content, calls `DELETE /api/v1/trips/:id`, card fades out. (3) Trip details page: all three sub-resources fetched in parallel (`GET /trips/:id/flights`, stays, activities). Each section shows empty state (dashed border) if no data. Calendar placeholder renders. Flight cards show two-column layout on desktop. Activities grouped by date. All "add" buttons are disabled with tooltip. (4) Known limitations: Backend API not yet implemented (T-008–T-012 are backlog). Tests use mock data. Axios interceptor will call `POST /api/v1/auth/refresh` on 401 — this will fail until backend is live. Recommend testing with a running backend or mocking the API. **Render tests:** Located in `frontend/src/**/__tests__/` and `frontend/src/**/*.test.jsx`. Run with `npm test` from the `frontend/` directory. |
+
+---
+
+### Sprint 1 — Frontend Engineer — API Contract Acknowledgment (T-004, T-005, T-006)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Frontend Engineer |
+| To Agent | Backend Engineer |
+| Status | Acknowledged |
+| Related Task | T-004, T-005, T-006, T-013, T-014, T-015, T-016, T-017 |
+| Handoff Summary | API contracts for T-004 (Auth), T-005 (Trips CRUD), and T-006 (Flights, Stays, Activities) have been reviewed and acknowledged. Implementation is proceeding against the agreed contract shapes. |
+| Notes | Confirmed integration decisions: (1) Auth — `access_token` stored in React context (in-memory). Refresh token handled via httpOnly cookie (browser sends automatically). Axios interceptor calls `POST /api/v1/auth/refresh` on 401, retries original request. (2) Trips — destinations sent as array `["Tokyo", "Osaka"]` to POST /trips. After create, navigate to `/trips/:id` using returned `id`. (3) Sub-resources — all fetched in parallel on trip details mount. Empty array returned if no items. (4) Timestamps — `departure_at`/`arrival_at`/`check_in_at`/`check_out_at` displayed using companion `*_tz` IANA string with `Intl.DateTimeFormat` for local time display. (5) DELETE returns 204 (no body) — handled accordingly. (6) Error codes mapped: `EMAIL_TAKEN` (409) → email field error. `INVALID_CREDENTIALS` (401 on login) → banner inside card. `UNAUTHORIZED` (401 on protected route) → redirect to /login. `NOT_FOUND` (404 on trip) → full-page error state. |
+
+---
+
 ### Sprint 1 — Backend Engineer → QA Engineer (API Contracts Ready for Testing Reference — T-004, T-005, T-006, T-007)
 
 | Field | Value |

@@ -1,0 +1,192 @@
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  cursor: pointer;
+  transition: border-color 150ms ease, opacity 300ms ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.card:hover {
+  border-color: var(--accent);
+}
+
+.cardFading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Top row */
+.topRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+/* Trip name */
+.tripName {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+}
+
+/* Destinations */
+.destinations {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Divider */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin-bottom: 16px;
+}
+
+/* Timeline row */
+.timeline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Delete button */
+.deleteBtn {
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: color 150ms ease;
+  border-radius: var(--radius-sm);
+}
+
+.deleteBtn:hover {
+  color: rgba(220, 80, 80, 0.8);
+}
+
+/* Inline delete confirmation */
+.deleteConfirm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.deleteText {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.deleteActions {
+  display: flex;
+  gap: 8px;
+}
+
+.deleteDangerBtn {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(252, 252, 252, 0.7);
+  background: transparent;
+  border: 1px solid rgba(252, 252, 252, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  font-family: var(--font-mono);
+  min-width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deleteDangerBtn:hover:not(:disabled) {
+  background: rgba(220, 50, 50, 0.15);
+  color: var(--text-primary);
+  border-color: rgba(220, 50, 50, 0.5);
+}
+
+.deleteDangerBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.deleteCancelBtn {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid rgba(93, 115, 126, 0.5);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  font-family: var(--font-mono);
+}
+
+.deleteCancelBtn:hover:not(:disabled) {
+  background: rgba(252, 252, 252, 0.05);
+}
+
+.deleteCancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Skeleton ── */
+.cardSkeleton {
+  cursor: default;
+  pointer-events: none;
+}
+
+.skeletonBadge {
+  display: block;
+  width: 60px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+}
+
+.skeletonName {
+  display: block;
+  width: 80%;
+  height: 16px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.skeletonDestinations {
+  display: block;
+  width: 50%;
+  height: 12px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-sm);
+}
+
+.skeletonTimeline {
+  display: block;
+  width: 40%;
+  height: 11px;
+  border-radius: var(--radius-sm);
+}

@@ -1,0 +1,25 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.planning {
+  background: rgba(93, 115, 126, 0.2);
+  color: #5D737E;
+}
+
+.ongoing {
+  background: rgba(100, 180, 100, 0.15);
+  color: rgba(100, 200, 100, 0.9);
+}
+
+.completed {
+  background: rgba(252, 252, 252, 0.1);
+  color: rgba(252, 252, 252, 0.5);
+}

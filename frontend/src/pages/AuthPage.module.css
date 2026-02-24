@@ -1,0 +1,175 @@
+/* ============================================================
+   Auth Page — Login & Register
+   Shared styles via CSS Module
+   ============================================================ */
+
+.authPageWrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  padding: 24px 16px;
+}
+
+.authCard {
+  width: 400px;
+  max-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 40px 40px;
+}
+
+.brand {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 32px;
+}
+
+.pageTitle {
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.subtitleLink {
+  color: var(--accent);
+  text-decoration: none;
+  transition: all 150ms ease;
+}
+
+.subtitleLink:hover {
+  text-decoration: underline;
+}
+
+/* Error Banner — above the form */
+.errorBanner {
+  margin-top: 20px;
+  background: rgba(220, 80, 80, 0.1);
+  border: 1px solid rgba(220, 80, 80, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* Form */
+.form {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.fieldHint {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.input {
+  width: 100%;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 10px 14px;
+  transition: border-color 150ms ease;
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus {
+  border-color: var(--border-accent);
+}
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.inputError {
+  border-color: rgba(220, 80, 80, 0.7) !important;
+}
+
+.fieldError {
+  font-size: 12px;
+  color: rgba(220, 80, 80, 0.9);
+  display: block;
+}
+
+/* Submit Button */
+.submitBtn {
+  width: 100%;
+  background: var(--accent);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 24px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all 150ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  margin-top: 4px;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: rgba(93, 115, 126, 0.8);
+}
+
+.submitBtn:disabled {
+  background: rgba(93, 115, 126, 0.4);
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   Responsive — Mobile
+   ============================================================ */
+@media (max-width: 767px) {
+  .authPageWrapper {
+    align-items: flex-start;
+    padding-top: 48px;
+  }
+
+  .authCard {
+    padding: 24px;
+  }
+}
