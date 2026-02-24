@@ -15,9 +15,9 @@ The operational reference for the current development cycle. Refreshed at the st
 *All tasks below are in `dev-cycle-tracker.md`. Dependency order is enforced — no task starts before its Blocked By items are Done.*
 
 ### Phase 1 — Design Specs (start immediately)
-- [ ] T-001 — Design spec: Auth screens (login, register)
-- [ ] T-002 — Design spec: Home page (trip list, create-trip modal, empty state, navbar)
-- [ ] T-003 — Design spec: Trip details page (view mode, all sections, empty states)
+- [x] T-001 — Design spec: Auth screens (login, register)
+- [x] T-002 — Design spec: Home page (trip list, create-trip modal, empty state, navbar)
+- [x] T-003 — Design spec: Trip details page (view mode, all sections, empty states)
 
 ### Phase 2 — API Contracts & Schema (start immediately, parallel to Design)
 - [ ] T-004 — API contracts: Auth endpoints

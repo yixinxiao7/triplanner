@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — Design Agent → Frontend Engineer (UI Spec: Trip Details Page — T-003)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-003, T-017 |
+| Handoff Summary | UI spec for the Trip Details page (`/trips/:id`) is complete and approved. Published to `.workflow/ui-spec.md` under "Spec 3: Trip Details Page (View Mode)". This is a read-only view for Sprint 1. Key implementation notes: (1) Page fetches trip + flights + stays + activities in parallel on mount. (2) Activities section groups entries by date, sorted chronologically within each day. (3) Calendar section is a placeholder — render the dashed container with "calendar coming in Sprint 2" text only. (4) "Add" action buttons for all three sections are visible but disabled (aria-disabled, opacity 0.4, tooltip "editing coming soon"). (5) Each section has its own empty state (dashed border container). (6) Flight cards use a two-column departure/arrival layout on desktop, stacking to single-column on mobile. (7) No edit functionality this sprint. |
+| Notes | Timezone display: show the stored local time + timezone abbreviation as a label (e.g., "6:00 AM ET") — do NOT convert timezones in the browser. Trip name and destinations on the header are read-only text for this sprint. See Section 3.15 for full accessibility requirements. See Section 3.13 for responsive breakpoints. |
+
+---
+
+### Sprint 1 — Design Agent → Frontend Engineer (UI Spec: Home Page + Navbar — T-002)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-002, T-015, T-016 |
+| Handoff Summary | UI spec for the Home page (`/`) and Navbar component is complete and approved. Published to `.workflow/ui-spec.md` under "Spec 2: Home Page + Navbar". Key implementation notes: (1) Navbar is a sticky 56px bar shown on all authenticated pages (/  and /trips/:id) but NOT on /login or /register. (2) Trip cards are arranged in a 3-column CSS Grid (desktop) / 2-column (tablet) / 1-column (mobile). (3) Clicking a trip card navigates to /trips/:id. (4) The delete flow uses an inline card replacement confirmation (card content swaps to "delete this trip?" + confirm/cancel buttons) — no separate modal needed. (5) After creating a trip, navigate directly to /trips/:id (the new trip), not back to the list. (6) Empty state shows a centered block with CTA button that also opens the create modal. (7) Loading state: skeleton cards with shimmer animation. |
+| Notes | Create Trip modal requires focus trap (tab cycles within modal). Escape key closes modal. Clicking the overlay backdrop closes modal. The modal's success flow navigates to the newly created trip's detail page using the ID returned by the API. See Section 2.9 for responsive breakpoints. |
+
+---
+
+### Sprint 1 — Design Agent → Frontend Engineer (UI Spec: Auth Screens — T-001)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-001, T-014 |
+| Handoff Summary | UI spec for the Auth screens (Login at `/login`, Register at `/register`) is complete and approved. Published to `.workflow/ui-spec.md` under "Spec 1: Auth Screens (Login + Register)". Key implementation notes: (1) Both pages use a centered 400px card layout on the dark background — no navbar rendered on auth pages. (2) If an authenticated user visits /login or /register, redirect to /. (3) Login: email + password fields. Register: name + email + password (8-char minimum). (4) Field-level inline error messages (red text below field, red border). (5) API error banner inside the card above the form for 401 (bad credentials) or 500 errors. (6) Loading state: button text replaced with inline spinner, all inputs disabled. (7) On successful register: auto-login + redirect to /. On successful login: redirect to /. |
+| Notes | autocomplete attributes are required (see spec 1.2 and 1.3 for field-level autocomplete values). Password field on register shows "8 characters minimum" as persistent helper text below the label. Duplicate email on register returns 409 — show this as a field-level error on the email input. See Section 1.4 for responsive behavior on mobile. |
+
+---
+
 ### Sprint 1 — Manager → Backend Engineer (Schema ADR Supplement — Read Before T-007)
 
 | Field | Value |
