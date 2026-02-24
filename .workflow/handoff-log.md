@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — Backend Engineer → QA Engineer (API Contracts Ready for Testing Reference — T-004, T-005, T-006, T-007)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-004, T-005, T-006, T-007, T-018, T-019 |
+| Handoff Summary | All Sprint 1 API contracts have been documented in `.workflow/api-contracts.md`. Schema design is documented in `.workflow/technical-context.md`. These are available now for QA planning and test case authoring ahead of T-018 (security checklist) and T-019 (integration testing). |
+| Notes | **Key security items to verify during T-018:** (1) POST /auth/register — password must be bcrypt hashed (min 12 rounds), never stored or logged in plain text. (2) POST /auth/login — timing-safe comparison even when user not found (dummy bcrypt compare to prevent email enumeration). (3) POST /auth/refresh — refresh token stored as SHA-256 hash in DB, not raw value; check revoked_at is NULL and expires_at is in the future. (4) All protected endpoints must reject requests without a valid Bearer token (401). (5) All trip sub-resource endpoints must verify trip ownership (user_id match) and return 403 — not 404 — when the trip exists but belongs to another user. (6) All inputs validated server-side (not just client-side). (7) No SQL string concatenation — Knex parameterized queries only. (8) No stack traces in API error responses — only structured `{ error: { message, code } }` shape. **For T-019 integration test flow:** register → login → create trip (POST /trips → navigate to GET /trips/:id) → fetch sub-resources (GET flights/stays/activities all return empty arrays) → delete trip (DELETE /trips/:id → 204) → verify trip gone (GET /trips/:id → 404) → logout. |
+
+---
+
+### Sprint 1 — Backend Engineer → Frontend Engineer (API Contracts Ready for Integration — T-004, T-005, T-006)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-004, T-005, T-006, T-013, T-014, T-015, T-016, T-017 |
+| Handoff Summary | All Sprint 1 API contracts are published in `.workflow/api-contracts.md` and are marked "Agreed". You may begin integrating against these contracts. Implementation will follow in T-008 through T-012. |
+| Notes | **Critical integration notes:** (1) **Auth token flow:** POST /auth/login and POST /auth/register return `access_token` in the response body — store in React context (in-memory). The refresh token is set as an httpOnly cookie (`Path=/api/v1/auth`) — you do NOT need to handle it manually, the browser sends it automatically. The axios interceptor should call POST /auth/refresh on 401 responses, then retry the original request with the new access_token. (2) **Trip creation → navigation:** POST /trips returns `{ data: { id, ... } }` on 201 — use the returned `id` to navigate to `/trips/:id` immediately (do not navigate back to the home list). (3) **Destinations:** Send as an array of strings in POST /trips and PATCH /trips (e.g., `["Tokyo", "Osaka"]`). The backend also accepts a single comma-separated string and will normalize it — but prefer sending an array. The API returns destinations as an array of strings. (4) **Sub-resource endpoints:** All scoped under `/api/v1/trips/:tripId/[flights|stays|activities]`. Fetch all three in parallel on the trip details page mount. Each returns `{ data: [...] }` — an empty array if no items exist. (5) **Timestamps:** `departure_at`, `arrival_at`, `check_in_at`, `check_out_at` are ISO 8601 UTC strings. Use the companion `*_tz` IANA string to display in local timezone — do NOT rely on the browser's own timezone. Activities use `activity_date` (YYYY-MM-DD string) and `start_time`/`end_time` (HH:MM:SS strings) with no timezone. (6) **Delete trip:** DELETE /trips/:id returns 204 (no body). On success, remove the card from the DOM and show the fade-out animation. (7) **Logout:** POST /auth/logout returns 204. On success, clear the in-memory access_token from React context and redirect to /login. The refresh cookie is cleared automatically by the server's Set-Cookie header. (8) **Error codes to handle:** `EMAIL_TAKEN` (409) → inline email field error on register. `INVALID_CREDENTIALS` (401 on login) → banner inside card. `UNAUTHORIZED` (401 on any protected endpoint) → redirect to /login. `NOT_FOUND` (404 on trip fetch) → "trip not found" full-page error state. |
+
+---
+
+### Sprint 1 — Backend Engineer → Manager Agent (Schema Proposal Ready for Approval — T-007)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Backend Engineer |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-007, T-009 |
+| Handoff Summary | The database schema for all 6 tables (users, refresh_tokens, trips, flights, stays, activities) has been documented in `.workflow/technical-context.md` under "Sprint 1 Schema Design (T-007)". The schema matches ADR-005 exactly. Migration SQL and Knex migration file names are proposed for each table. Please review and confirm approval so T-009 (database migrations) can proceed. |
+| Notes | Schema follows: (1) ADR-005 entity definitions (field names, types, nullability, defaults). (2) ADR-004 refresh token strategy (token_hash stored, not raw token; revoked_at for invalidation). (3) ADR-003 timezone handling (TIMESTAMPTZ + companion VARCHAR timezone column for flights/stays; DATE + TIME for activities). (4) ADR-002 destinations as TEXT[] on trips. (5) ADR-001 Knex-only query strategy. Migration order is 001→002→003→004→005→006. All migrations include up() and down(). Self-approval note is included in technical-context.md per the automated sprint flow — no additional approval gate required before implementation proceeds. |
+
+---
+
 ### Sprint 1 — Design Agent → Frontend Engineer (UI Spec: Trip Details Page — T-003)
 
 | Field | Value |
