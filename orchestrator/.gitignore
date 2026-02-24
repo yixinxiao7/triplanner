@@ -1,0 +1,9 @@
+# Orchestrator runtime state (regenerated each run)
+.state
+.sprint-state
+
+# Agent invocation logs (can be large)
+logs/
+
+# Local config (may contain environment-specific settings)
+config.sh
