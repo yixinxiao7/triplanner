@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — Monitor Agent → User Agent (T-021 Re-Run Health Checks Complete — Staging Ready for T-022)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Monitor Agent |
+| To Agent | User Agent |
+| Status | Pending |
+| Related Task | T-021 Re-Run, T-022 |
+| Handoff Summary | Post-deploy health check re-run is complete (2026-02-25). All 18 checks PASSED on the re-deployed staging environment (backend port 3001, frontend port 4173). Deploy Verified = YES. Full report in `.workflow/qa-build-log.md` under "Sprint 1 — Post-Deploy Health Check Report (T-021 Re-Run) — 2026-02-25". User Agent may proceed with T-022 (product testing and structured feedback). |
+| Notes | **Updated Staging Environment URLs:** (1) Frontend: `http://localhost:4173` — Vite preview serving production build. (2) Backend API: `http://localhost:3001` — Express on Node.js (port changed from 3000 due to conflict). (3) Database: `localhost:5432` — PostgreSQL 15, database `appdb`, all 6 tables present. **Health Check Results (18/18 PASS):** ✅ `GET /api/v1/health` → 200 `{"status":"ok"}` + helmet headers + CORS for localhost:4173. ✅ All 6 DB tables confirmed via psql (users, refresh_tokens, trips, flights, stays, activities). ✅ `POST /api/v1/auth/register` → 201, user UUID `7ac84d01-...` + access_token + httpOnly SameSite=Strict refresh_token cookie (DB round-trip confirmed). ✅ `POST /api/v1/auth/login` → 200 with access_token + httpOnly cookie. ✅ `POST /api/v1/auth/logout` → 204, refresh_token cookie cleared (Max-Age=0). ✅ `GET /api/v1/trips` (JWT) → 200 `{data:[],pagination:{page:1,limit:20,total:0}}`. ✅ `POST /api/v1/trips` → 201, full trip object (destinations as array, status=PLANNING). ✅ `GET /api/v1/trips/:id` → 200, full trip object. ✅ `GET /api/v1/trips/:id/flights` → 200 `{data:[]}`. ✅ `GET /api/v1/trips/:id/stays` → 200 `{data:[]}`. ✅ `GET /api/v1/trips/:id/activities` → 200 `{data:[]}`. ✅ `DELETE /api/v1/trips/:id` → 204 empty. ✅ `GET /api/v1/trips/:id` (after delete) → 404 NOT_FOUND. ✅ 401 UNAUTHORIZED shape exact match. ✅ 401 INVALID_CREDENTIALS shape exact match. ✅ 409 EMAIL_TAKEN shape exact match. ✅ 401 INVALID_REFRESH_TOKEN shape exact match. ✅ Frontend at localhost:4173 → 200 text/html SPA shell, `http://localhost:3001/api/v1` baked into bundle, CORS preflight correct. ✅ 0 × 5xx errors observed. **Known accepted limitations (non-blocking for T-022):** (1) Rate limiting not applied to /auth/login and /auth/register (Sprint 2 backlog). (2) HTTPS not configured (local staging — refresh token cookie is `secure: false`). (3) Processes not managed by pm2. |
+
+---
+
 ### Sprint 1 — Deploy Engineer → Monitor Agent (Re-Deployment Complete — Run Health Checks, New Port 3001)
 
 | Field | Value |
@@ -24,7 +38,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 1 |
 | From Agent | Deploy Engineer |
 | To Agent | Monitor Agent |
-| Status | Pending |
+| Status | Done |
 | Related Task | T-020, T-021 |
 | Handoff Summary | Staging re-deployment for Sprint 1 is complete (2026-02-25). Backend is now on **port 3001** (port 3000 was occupied by another local application). Frontend rebuilt with correct `VITE_API_URL=http://localhost:3001/api/v1` and CORS updated to `http://localhost:4173`. All smoke tests passed. Monitor Agent should re-run health checks confirming the new port. Full re-deployment report in `.workflow/qa-build-log.md` under "Sprint 1 — Staging Re-Deployment Report (T-020 Re-Run) — 2026-02-25". |
 | Notes | **Updated Staging Environment URLs:** (1) Backend API: `http://localhost:3001` (changed from 3000 — port conflict). (2) Frontend: `http://localhost:4173` — Vite preview serving new production build. (3) Database: `localhost:5432` — PostgreSQL 15, database `appdb` (unchanged, all 6 tables present). **Key changes from original T-020 deploy:** (1) Backend port: 3000 → **3001** — port 3000 was occupied by `i-wish-spotify-could` Next.js dev server. (2) CORS_ORIGIN: `http://localhost:5173` → **`http://localhost:4173`** — now correctly allows requests from the Vite preview frontend. (3) Frontend rebuilt with `VITE_API_URL=http://localhost:3001/api/v1` baked in — previous build used relative `/api/v1` which would have caused API calls to fail in preview mode (no proxy). **Smoke Tests Passed:** ✅ `GET /api/v1/health` → `{"status":"ok"}`. ✅ `POST /api/v1/auth/register` → 200 with user UUID + access_token (DB round-trip confirmed). ✅ `GET /api/v1/trips` (with JWT) → `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}`. ✅ `GET http://localhost:4173/` → 200 HTML. ✅ CORS headers: `Access-Control-Allow-Origin: http://localhost:4173` + `Access-Control-Allow-Credentials: true`. ✅ API URL in bundle verified: `"http://localhost:3001/api/v1"`. **For Monitor Agent — recommended health checks (use port 3001):** (1) `GET http://localhost:3001/api/v1/health` — verify `{"status":"ok"}`. (2) DB connectivity — register a new user and confirm DB round-trip. (3) Auth flow — register → login → get trips → logout. (4) Frontend — verify SPA loads at `http://localhost:4173/`, CORS works for cross-origin API calls. (5) Verify all 6 tables still exist in DB. (6) Verify frontend API calls reach backend correctly (check VITE_API_URL is `http://localhost:3001/api/v1`). **Restart commands (if services go down):** Backend: `cd /Users/yixinxiao/CLAUDE/triplanner/backend && node src/index.js &`. Frontend: `cd /Users/yixinxiao/CLAUDE/triplanner/frontend && npx vite preview --port 4173 &`. PostgreSQL: `/opt/homebrew/bin/brew services start postgresql@15`. |

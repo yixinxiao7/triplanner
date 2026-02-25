@@ -26,6 +26,7 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 | Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
 |----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Monitor Agent re-deployment health check — T-021 Re-Run (port 3001, full API + DB + frontend) | Post-Deploy Health Check | Pass | Success | Staging | **Yes** | Monitor Agent | None — all 18 checks PASSED. 0 × 5xx errors. Full report below. |
 | Re-deploy — Backend + Frontend restart (2026-02-25) | Post-Deploy Health Check | Pass | Success | Staging | Pending | Deploy Engineer | None — all smoke tests passed. Port change: 3000→3001 (port conflict). CORS and API URL corrected. |
 | Re-deploy — Frontend production rebuild with VITE_API_URL | Build | Pass | Success | Staging | Pending | Deploy Engineer | None — 103 modules, 243.65kB JS, 20.76kB CSS. API URL: http://localhost:3001/api/v1 baked in. |
 | QA Third-Pass — Backend unit tests (60 tests, 5 files) | Unit Test | Pass | Success | Local | No | QA Engineer | None — 60/60 PASS, 466ms |
@@ -51,6 +52,316 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 | npm audit — backend + frontend dependencies | Security Scan | Pass | Success | Local | No | QA Engineer | 5 moderate vulns in dev deps only (esbuild/vite/vitest) — no production impact |
 
 ---
+
+---
+
+## Sprint 1 — Post-Deploy Health Check Report (T-021 Re-Run) — 2026-02-25
+
+**Monitor Agent:** Monitor Agent
+**Sprint:** 1
+**Date:** 2026-02-25T04:12:00Z — 2026-02-25T04:14:00Z
+**Task:** T-021 Re-Run — Post-deploy health check following Deploy Engineer's re-deployment to port 3001
+**Reference:** Deploy Engineer handoff "Sprint 1 — Deploy Engineer → Monitor Agent (Re-Deployment Complete — Run Health Checks, New Port 3001)"
+
+---
+
+### Environment
+
+| Component | URL | Status |
+|-----------|-----|--------|
+| Backend API | `http://localhost:3001` | ✅ Running |
+| Frontend (Vite preview) | `http://localhost:4173` | ✅ Running |
+| Database | `localhost:5432` / `appdb` (PostgreSQL 15) | ✅ Running |
+
+---
+
+### Health Check Results
+
+#### Check 1 — App Responds (GET /api/v1/health → 200)
+
+| Field | Value |
+|-------|-------|
+| Request | `GET http://localhost:3001/api/v1/health` |
+| Expected | HTTP 200, `{"status":"ok"}` |
+| Actual HTTP Status | **200 OK** |
+| Actual Body | `{"status":"ok"}` |
+| Helmet Security Headers | `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security` — all present ✅ |
+| CORS Header | `Access-Control-Allow-Origin: http://localhost:4173` ✅ |
+| CORS Credentials | `Access-Control-Allow-Credentials: true` ✅ |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 2 — Database Connectivity (All 6 Tables Present)
+
+| Field | Value |
+|-------|-------|
+| Method | Direct psql query (`\dt` on `appdb`) |
+| Expected | 6 application tables: users, refresh_tokens, trips, flights, stays, activities |
+| Actual | `activities`, `flights`, `refresh_tokens`, `stays`, `trips`, `users` + 2 Knex internal tables (`knex_migrations`, `knex_migrations_lock`) — 8 tables total ✅ |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 3 — Auth: Register (POST /api/v1/auth/register → 201)
+
+| Field | Value |
+|-------|-------|
+| Request | `POST http://localhost:3001/api/v1/auth/register` `{"name":"Monitor Health User","email":"monitor_hc_2@example.com","password":"..."}` |
+| Expected | HTTP 201, `{data:{user:{id,name,email,created_at},access_token}}`, Set-Cookie refresh_token (HttpOnly, SameSite=Strict) |
+| Actual HTTP Status | **201 Created** |
+| Actual Body | `{"data":{"user":{"id":"7ac84d01-1dfd-45eb-b11c-19305477d5fa","name":"Monitor Health User","email":"monitor_hc_2@example.com","created_at":"2026-02-25T04:12:36.089Z"},"access_token":"eyJ..."}}` |
+| Cookie | `Set-Cookie: refresh_token=...; Max-Age=604800; Path=/api/v1/auth; Expires=Wed, 04 Mar 2026 04:12:36 GMT; HttpOnly; SameSite=Strict` ✅ |
+| DB Round-Trip | User UUID `7ac84d01-...` confirmed via returned object — DB write verified ✅ |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 4 — Auth: Login (POST /api/v1/auth/login → 200)
+
+| Field | Value |
+|-------|-------|
+| Request | `POST http://localhost:3001/api/v1/auth/login` `{"email":"monitor_hc_main@example.com","password":"TestPassword99"}` |
+| Expected | HTTP 200, `{data:{user:{...},access_token}}`, Set-Cookie refresh_token |
+| Actual HTTP Status | **200 OK** |
+| Actual Body | `{"data":{"user":{"id":"4697a22f-98a8-4981-a17e-9c96fd7e5e82","name":"Monitor HC User","email":"monitor_hc_main@example.com","created_at":"2026-02-25T04:12:53.414Z"},"access_token":"eyJ..."}}` |
+| Cookie | `Set-Cookie: refresh_token=...; Max-Age=604800; HttpOnly; SameSite=Strict` ✅ |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 5 — Auth: Logout (POST /api/v1/auth/logout → 204)
+
+| Field | Value |
+|-------|-------|
+| Request | `POST http://localhost:3001/api/v1/auth/logout` with Bearer token + refresh cookie |
+| Expected | HTTP 204, empty body, Set-Cookie clears refresh_token (Max-Age=0) |
+| Actual HTTP Status | **204 No Content** |
+| Actual Body | *(empty)* |
+| Cookie Cleared | `Set-Cookie: refresh_token=; Max-Age=0; Path=/api/v1/auth; Expires=Wed, 25 Feb 2026 04:13:39 GMT; HttpOnly; SameSite=Strict` ✅ |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 6 — Trips: List (GET /api/v1/trips → 200 with pagination)
+
+| Field | Value |
+|-------|-------|
+| Request | `GET http://localhost:3001/api/v1/trips` with `Authorization: Bearer <token>` |
+| Expected | HTTP 200, `{data:[],pagination:{page:1,limit:20,total:0}}` |
+| Actual HTTP Status | **200 OK** |
+| Actual Body | `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}` |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 7 — Trips: Create (POST /api/v1/trips → 201)
+
+| Field | Value |
+|-------|-------|
+| Request | `POST http://localhost:3001/api/v1/trips` `{"name":"Monitor HC Test Trip","destinations":["Tokyo","Osaka"]}` |
+| Expected | HTTP 201, `{data:{id,user_id,name,destinations:[...],status:"PLANNING",created_at,updated_at}}` |
+| Actual HTTP Status | **201 Created** |
+| Actual Body | `{"data":{"id":"c67a9541-62a8-4560-90df-2b2dd2bcabec","user_id":"4697a22f-...","name":"Monitor HC Test Trip","destinations":["Tokyo","Osaka"],"status":"PLANNING","created_at":"2026-02-25T04:13:20.378Z","updated_at":"2026-02-25T04:13:20.378Z"}}` |
+| Destinations | Returned as JSON array `["Tokyo","Osaka"]` ✅ |
+| Status | `PLANNING` (default) ✅ |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 8 — Trips: Get by ID (GET /api/v1/trips/:id → 200)
+
+| Field | Value |
+|-------|-------|
+| Request | `GET http://localhost:3001/api/v1/trips/c67a9541-62a8-4560-90df-2b2dd2bcabec` |
+| Expected | HTTP 200, full trip object `{data:{...}}` |
+| Actual HTTP Status | **200 OK** |
+| Actual Body | Full trip object matching created trip — id, user_id, name, destinations, status, timestamps all correct ✅ |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 9 — Flights: List (GET /api/v1/trips/:tripId/flights → 200)
+
+| Field | Value |
+|-------|-------|
+| Request | `GET http://localhost:3001/api/v1/trips/c67a9541-.../flights` |
+| Expected | HTTP 200, `{data:[]}` |
+| Actual HTTP Status | **200 OK** |
+| Actual Body | `{"data":[]}` |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 10 — Stays: List (GET /api/v1/trips/:tripId/stays → 200)
+
+| Field | Value |
+|-------|-------|
+| Request | `GET http://localhost:3001/api/v1/trips/c67a9541-.../stays` |
+| Expected | HTTP 200, `{data:[]}` |
+| Actual HTTP Status | **200 OK** |
+| Actual Body | `{"data":[]}` |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 11 — Activities: List (GET /api/v1/trips/:tripId/activities → 200)
+
+| Field | Value |
+|-------|-------|
+| Request | `GET http://localhost:3001/api/v1/trips/c67a9541-.../activities` |
+| Expected | HTTP 200, `{data:[]}` |
+| Actual HTTP Status | **200 OK** |
+| Actual Body | `{"data":[]}` |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 12 — Trips: Delete (DELETE /api/v1/trips/:id → 204)
+
+| Field | Value |
+|-------|-------|
+| Request | `DELETE http://localhost:3001/api/v1/trips/c67a9541-62a8-4560-90df-2b2dd2bcabec` |
+| Expected | HTTP 204, empty body |
+| Actual HTTP Status | **204 No Content** |
+| Actual Body | *(empty)* |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 13 — Trips: Get Deleted Trip (GET /api/v1/trips/:id → 404 NOT_FOUND)
+
+| Field | Value |
+|-------|-------|
+| Request | `GET http://localhost:3001/api/v1/trips/c67a9541-62a8-4560-90df-2b2dd2bcabec` (after delete) |
+| Expected | HTTP 404, `{error:{message:"Trip not found",code:"NOT_FOUND"}}` |
+| Actual HTTP Status | **404 Not Found** |
+| Actual Body | `{"error":{"message":"Trip not found","code":"NOT_FOUND"}}` |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 14 — Error Shape: 401 UNAUTHORIZED (no token)
+
+| Field | Value |
+|-------|-------|
+| Request | `GET http://localhost:3001/api/v1/trips` (no Authorization header) |
+| Expected | HTTP 401, `{error:{message:"Authentication required",code:"UNAUTHORIZED"}}` |
+| Actual HTTP Status | **401 Unauthorized** |
+| Actual Body | `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` ✅ exact match |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 15 — Error Shape: 401 INVALID_CREDENTIALS (wrong password)
+
+| Field | Value |
+|-------|-------|
+| Request | `POST /api/v1/auth/login` with wrong password |
+| Expected | HTTP 401, `{error:{message:"Incorrect email or password",code:"INVALID_CREDENTIALS"}}` |
+| Actual HTTP Status | **401 Unauthorized** |
+| Actual Body | `{"error":{"message":"Incorrect email or password","code":"INVALID_CREDENTIALS"}}` ✅ exact match |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 16 — Error Shape: 409 EMAIL_TAKEN (duplicate registration)
+
+| Field | Value |
+|-------|-------|
+| Request | `POST /api/v1/auth/register` with already-registered email |
+| Expected | HTTP 409, `{error:{message:"An account with this email already exists",code:"EMAIL_TAKEN"}}` |
+| Actual HTTP Status | **409 Conflict** |
+| Actual Body | `{"error":{"message":"An account with this email already exists","code":"EMAIL_TAKEN"}}` ✅ exact match |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 17 — Error Shape: 401 INVALID_REFRESH_TOKEN (bad cookie)
+
+| Field | Value |
+|-------|-------|
+| Request | `POST /api/v1/auth/refresh` with `Cookie: refresh_token=badtoken123` |
+| Expected | HTTP 401, `{error:{message:"Invalid or expired refresh token",code:"INVALID_REFRESH_TOKEN"}}` |
+| Actual HTTP Status | **401 Unauthorized** |
+| Actual Body | `{"error":{"message":"Invalid or expired refresh token","code":"INVALID_REFRESH_TOKEN"}}` ✅ exact match |
+| Result | ✅ **PASS** |
+
+---
+
+#### Check 18 — Frontend Accessible (GET http://localhost:4173/ → 200 HTML)
+
+| Field | Value |
+|-------|-------|
+| Request | `GET http://localhost:4173/` |
+| Expected | HTTP 200, Content-Type: text/html (SPA shell) |
+| Actual HTTP Status | **200 OK** |
+| Actual Content-Type | `text/html` ✅ |
+| API URL in Bundle | `"http://localhost:3001/api/v1"` confirmed via grep on `dist/assets/index-CL1WbiE8.js` ✅ |
+| CORS Preflight | `Access-Control-Allow-Origin: http://localhost:4173` + `Access-Control-Allow-Credentials: true` + `Access-Control-Allow-Methods: GET,HEAD,PUT,PATCH,POST,DELETE` ✅ |
+| Result | ✅ **PASS** |
+
+---
+
+### 5xx Error Scan
+
+| Period | 5xx Errors Observed |
+|--------|-------------------|
+| During all health check requests | **0** |
+
+✅ No 5xx errors observed across all 18 health check requests.
+
+---
+
+### Summary
+
+| Check # | Check Description | Result |
+|---------|------------------|--------|
+| 1 | `GET /api/v1/health` → 200 `{"status":"ok"}` | ✅ PASS |
+| 2 | All 6 DB tables present (users, refresh_tokens, trips, flights, stays, activities) | ✅ PASS |
+| 3 | `POST /api/v1/auth/register` → 201, user UUID + access_token + httpOnly cookie | ✅ PASS |
+| 4 | `POST /api/v1/auth/login` → 200, access_token + httpOnly cookie | ✅ PASS |
+| 5 | `POST /api/v1/auth/logout` → 204, cookie cleared (Max-Age=0) | ✅ PASS |
+| 6 | `GET /api/v1/trips` (authenticated) → 200, `{data:[],pagination:{...}}` | ✅ PASS |
+| 7 | `POST /api/v1/trips` → 201, full trip object, destinations as array, status=PLANNING | ✅ PASS |
+| 8 | `GET /api/v1/trips/:id` → 200, full trip object | ✅ PASS |
+| 9 | `GET /api/v1/trips/:tripId/flights` → 200, `{data:[]}` | ✅ PASS |
+| 10 | `GET /api/v1/trips/:tripId/stays` → 200, `{data:[]}` | ✅ PASS |
+| 11 | `GET /api/v1/trips/:tripId/activities` → 200, `{data:[]}` | ✅ PASS |
+| 12 | `DELETE /api/v1/trips/:id` → 204, empty body | ✅ PASS |
+| 13 | `GET /api/v1/trips/:id` (after delete) → 404 NOT_FOUND | ✅ PASS |
+| 14 | 401 UNAUTHORIZED shape (no token) | ✅ PASS |
+| 15 | 401 INVALID_CREDENTIALS shape (wrong password) | ✅ PASS |
+| 16 | 409 EMAIL_TAKEN shape (duplicate email) | ✅ PASS |
+| 17 | 401 INVALID_REFRESH_TOKEN shape (bad cookie) | ✅ PASS |
+| 18 | Frontend at `http://localhost:4173/` → 200 HTML, correct API URL baked in | ✅ PASS |
+
+**Total: 18/18 checks PASSED — 0 failures**
+
+---
+
+### Accepted Limitations (Non-Blocking — Carried from T-021 Original)
+
+| # | Limitation | Impact | Resolution |
+|---|------------|--------|------------|
+| 1 | Rate limiting not applied to `/auth/login` and `/auth/register` | Brute-force risk | Sprint 2 backlog — express-rate-limit installed but not wired |
+| 2 | HTTPS not configured on local staging — refresh token cookie `secure` flag is `false` | Token security over non-TLS | Required before production deploy |
+| 3 | Backend process not managed by pm2 — restart not automatic on machine reboot | Availability | Acceptable for local staging |
+
+---
+
+### Overall Result
+
+| Field | Value |
+|-------|-------|
+| Environment | Staging (local processes) |
+| Timestamp | 2026-02-25T04:12:00Z |
+| Backend URL | `http://localhost:3001` |
+| Frontend URL | `http://localhost:4173` |
+| Database | PostgreSQL 15 @ `localhost:5432` / `appdb` |
+| Checks Passed | 18/18 |
+| 5xx Errors | 0 |
+| **Deploy Verified** | **YES** |
 
 ---
 
