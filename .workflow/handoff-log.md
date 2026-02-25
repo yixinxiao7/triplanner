@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 2 — Deploy Engineer → Monitor Agent (Staging Deployment Complete — T-038 → T-039)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | Deploy Engineer |
+| To Agent | Monitor Agent |
+| Status | Pending |
+| Related Task | T-038, T-039 |
+| Handoff Summary | Deploy Engineer has completed T-038 (staging re-deployment) on 2026-02-25. All Sprint 2 changes are deployed to staging: migration 007 applied, frontend rebuilt, backend restarted with all bug fixes and new features. 8/8 smoke tests PASS. Monitor Agent should proceed with T-039 (staging health check). |
+| Notes | **Deployment Details:** (1) **Migration 007 applied:** `start_date DATE NULL` and `end_date DATE NULL` columns added to trips table. Batch 2 run. All 7 migrations (001–007) now applied. (2) **Frontend built:** Vite 6.4.1, 112 modules, 641ms build. Output: 293 kB JS (91 kB gzip), 50 kB CSS (8 kB gzip). Served via `vite preview` on port 4173. (3) **Backend restarted:** Node.js on port 3001, NODE_ENV=staging. Includes all Sprint 2 changes: UUID validation middleware (T-027), rate limiting on auth (T-028), trip date range (T-029), status auto-calc (T-030), INVALID_JSON error code (T-027). (4) **Env config verified:** PORT=3001, CORS_ORIGIN=http://localhost:4173, DATABASE_URL configured, JWT_SECRET configured, JWT_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d. **Service URLs for Monitor Agent:** Backend API: http://localhost:3001 (health: GET /api/v1/health). Frontend SPA: http://localhost:4173. PostgreSQL: localhost:5432/appdb (Homebrew PostgreSQL 15.16). **Smoke test results (8/8 PASS):** Health check ✅, Register ✅, Login ✅, Create trip with dates ✅, UUID validation → 400 ✅, Activity date YYYY-MM-DD ✅, Status auto-calc ✅, Frontend 200 + SPA root ✅, INVALID_JSON error code ✅. **Infrastructure note:** Docker not available — using local processes. No pm2 (B-013). No HTTPS (B-014). Rate limiting uses in-memory store. **Monitor should verify:** All 18 Sprint 1 health checks + 6 new Sprint 2 checks (date columns, UUID 400, rate limiting 429, activity_date format, edit page routes, trip date range). Full test plan in T-039 description in dev-cycle-tracker.md. |
+
+---
+
 ### Sprint 2 — QA Engineer → Deploy Engineer (RE-VERIFICATION PASS — Deploy Readiness Confirmed — T-038)
 
 | Field | Value |

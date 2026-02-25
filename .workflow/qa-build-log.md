@@ -39,6 +39,80 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 | Sprint 2 — RE-VERIFICATION: Frontend security deep review (8 items) — 2026-02-25 | Security Scan | Pass | Success | Local | No | QA Engineer | All 8 frontend security checks PASS: XSS(✅ 0 dangerouslySetInnerHTML), hardcoded secrets(✅ none), token storage(✅ useRef in-memory), API client(✅ withCredentials+401 interceptor), edit pages(✅ controlled components), route protection(✅ all behind ProtectedRoute), calendar(✅ custom, no ext lib), console logging(✅ zero statements). |
 | Sprint 2 — RE-VERIFICATION: Integration contract verification (38 checks) — 2026-02-25 | Integration Test | Pass | Success | Local | No | QA Engineer | RE-RUN: 38/38 PASS. Flights(4/4), Stays(4/4), Activities(3/3), Date Range(3/3), Calendar(4/4), UI States(16/16), Bug Fixes(4/4). All API contracts match. All UI states implemented. All bug fixes verified. |
 | Sprint 2 — RE-VERIFICATION: npm audit — 2026-02-25 | Security Scan | Pass | Success | Local | No | QA Engineer | Backend production: 0 vulnerabilities. Frontend production: 0 vulnerabilities. Dev deps: 5 moderate (esbuild via vitest/vite) — no production impact. |
+| Sprint 2 — Frontend production build — T-038 | Build | Pass | Success | Staging | No | Deploy Engineer | Vite build succeeded: 112 modules transformed, 641ms. Output: dist/index.html (0.39 kB), dist/assets/index.css (50.31 kB gzip 8.02 kB), dist/assets/index.js (293.17 kB gzip 90.98 kB). No errors, no warnings. |
+| Sprint 2 — Backend dependency install — T-038 | Build | Pass | Success | Staging | No | Deploy Engineer | npm install: 215 packages audited, 0 new. 5 moderate dev-only vulns (esbuild via vitest). 0 production vulnerabilities. |
+| Sprint 2 — Frontend dependency install — T-038 | Build | Pass | Success | Staging | No | Deploy Engineer | npm install: 283 packages audited, 0 new. 5 moderate dev-only vulns (esbuild via vitest). 0 production vulnerabilities. |
+| Sprint 2 — Migration 007 (add trip date range) — T-038 | Migration | Pass | Success | Staging | No | Deploy Engineer | Batch 2 run: 1 migration (20260225_007_add_trip_date_range.js). Verified: trips table now has start_date DATE NULL and end_date DATE NULL columns. All existing data preserved. |
+| Sprint 2 — Staging deployment — T-038 | Post-Deploy Health Check | Pass | Success | Staging | Pending Monitor | Deploy Engineer | Backend: http://localhost:3001 (Node.js, PORT=3001, NODE_ENV=staging). Frontend: http://localhost:4173 (Vite preview). PostgreSQL: localhost:5432/appdb (Homebrew PostgreSQL 15). Docker not available — using local processes instead. All env vars configured: PORT=3001, CORS_ORIGIN=http://localhost:4173, DATABASE_URL, JWT_SECRET, JWT_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d. |
+| Sprint 2 — Staging smoke tests — T-038 | E2E Test | Pass | Success | Staging | Pending Monitor | Deploy Engineer | 8/8 smoke tests PASS: (1) GET /api/v1/health → 200 ✅, (2) Register user → 200 ✅, (3) Login → 200 + token ✅, (4) Create trip with start_date/end_date → 201 + dates returned ✅, (5) UUID validation → 400 VALIDATION_ERROR ✅, (6) Add activity → activity_date YYYY-MM-DD format ✅, (7) Status auto-calc → PLANNING for future dates ✅, (8) Frontend → HTTP 200 + SPA root element ✅. INVALID_JSON error code also verified ✅. |
+
+---
+
+## Sprint 2 — Staging Deployment Report (T-038) — 2026-02-25
+
+**Deploy Engineer:** Deploy Engineer
+**Sprint:** 2
+**Date:** 2026-02-25
+**Task:** T-038 (Staging re-deployment)
+
+### Pre-Deploy Verification
+- QA confirmation: ✅ RE-VERIFICATION handoff received (2026-02-25). Backend 116/116, Frontend 180/180 tests pass. 0 P1 security failures. Deploy is GO.
+- Migration 007: ✅ Awaiting application (start_date + end_date on trips table).
+- All Sprint 2 implementation tasks (T-027–T-035): ✅ Done.
+- All QA tasks (T-036, T-037): ✅ Done.
+
+### Build Results
+| Component | Result | Details |
+|-----------|--------|---------|
+| Backend deps | ✅ Success | 215 packages, 0 production vulns |
+| Frontend deps | ✅ Success | 283 packages, 0 production vulns |
+| Frontend build | ✅ Success | Vite 6.4.1, 112 modules, 641ms, 293 kB JS + 50 kB CSS |
+
+### Migration
+| Migration | Result | Details |
+|-----------|--------|---------|
+| 007 — add_trip_date_range | ✅ Applied | Batch 2. start_date DATE NULL + end_date DATE NULL added to trips table. All 7 migrations now applied (001–007). |
+
+### Deployment Environment
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend API | http://localhost:3001 | ✅ Running |
+| Frontend SPA | http://localhost:4173 | ✅ Running |
+| PostgreSQL | localhost:5432/appdb | ✅ Connected |
+| Health endpoint | http://localhost:3001/api/v1/health | ✅ Returns {"status":"ok"} |
+
+### Environment Configuration
+```
+PORT=3001
+NODE_ENV=staging
+DATABASE_URL=postgres://user:password@localhost:5432/appdb
+JWT_SECRET=[configured]
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+CORS_ORIGIN=http://localhost:4173
+```
+
+### Smoke Test Results (8/8 PASS)
+1. ✅ Health check: GET /api/v1/health → 200 `{"status":"ok"}`
+2. ✅ Register: POST /auth/register → 200 with user data + access_token
+3. ✅ Login: POST /auth/login → 200 with access_token (283 chars)
+4. ✅ Trip with dates: POST /trips with start_date/end_date → 201, dates returned correctly (YYYY-MM-DD)
+5. ✅ UUID validation (T-027 fix): GET /trips/not-a-valid-uuid → 400 VALIDATION_ERROR
+6. ✅ Activity date format (T-027 fix): POST activity → activity_date = "2026-08-05" (YYYY-MM-DD)
+7. ✅ Status auto-calc (T-030): Future trip → status=PLANNING
+8. ✅ Frontend: HTTP 200, SPA root element present, text/html content-type
+- Bonus: ✅ INVALID_JSON error code (T-027 fix): Malformed JSON → 400 INVALID_JSON
+
+### Infrastructure Notes
+- Docker not available on this machine — using local processes (Homebrew PostgreSQL 15, Node.js direct).
+- Backend runs as a foreground Node.js process (not managed by pm2 — B-013 backlog item).
+- HTTPS not configured (B-014 backlog item for production).
+
+### Known Limitations (unchanged from Sprint 1)
+1. No Docker — processes run locally without container isolation
+2. No pm2 process management (B-013)
+3. No HTTPS (B-014)
+4. Rate limiting uses in-memory store (resets on backend restart)
 
 ---
 
