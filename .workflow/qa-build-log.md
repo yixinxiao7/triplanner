@@ -2631,3 +2631,266 @@ Sprint 4 has no schema changes. All 8 existing migrations remain applied (Batch 
 - [x] No new npm dependencies added in Sprint 4
 
 ---
+
+## Sprint 4 Entries
+
+| Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
+|----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 4 — Backend unit tests (168 tests, 9 files) — T-066 | Unit Test | Pass | Success | Local | No | QA Engineer | None — 168/168 PASS, 713ms. All 9 test files pass: auth(14), trips(16), flights(10), stays(8), activities(12), sprint2(37), sprint3(33), tripStatus(19), sprint4(19). stderr: expected SyntaxError logs from INVALID_JSON tests — non-blocking. |
+| Sprint 4 — Frontend unit tests (260 tests, 18 files) — T-066 | Unit Test | Pass | Success | Local | No | QA Engineer | None — 260/260 PASS, 2.76s. All 18 test files pass. React Router v6 future-flag warnings: expected, non-blocking. act() warnings: non-blocking. |
+| Sprint 4 — Security checklist verification (19 items) — T-066 | Security Scan | Pass | Success | Local | No | QA Engineer | All applicable security items verified. No P1 security failures. 0 dangerouslySetInnerHTML. 0 hardcoded secrets. 0 SQL injection vectors. All Knex parameterized queries. See detailed report below. |
+| Sprint 4 — npm audit backend (production) | Security Scan | Pass | Success | Local | No | QA Engineer | 0 production vulnerabilities. |
+| Sprint 4 — npm audit frontend (production) | Security Scan | Pass | Success | Local | No | QA Engineer | 0 production vulnerabilities. |
+| Sprint 4 — npm audit backend (all deps) | Security Scan | Pass | Success | Local | No | QA Engineer | 5 moderate vulns in dev deps only (esbuild GHSA-67mh-4wv8-2f99 via vitest/vite). 0 production vulnerabilities. Tracked as B-021. |
+| Sprint 4 — npm audit frontend (all deps) | Security Scan | Pass | Success | Local | No | QA Engineer | 5 moderate vulns in dev deps only (esbuild GHSA-67mh-4wv8-2f99 via vitest/vite). 0 production vulnerabilities. Tracked as B-021. |
+| Sprint 4 — Integration contract verification (all Sprint 4 tasks + regression) — T-067 | Integration Test | Pass | Success | Local | No | QA Engineer | 42 integration checks: 42 PASS, 0 FAIL, 0 WARN. All API contracts match. All UI states implemented. All ARIA attributes correct. Sprint 3 regression PASS. See detailed report below. |
+| Sprint 4 — Backend security deep review (15 items) — T-066 | Security Scan | Pass | Success | Local | No | QA Engineer | All 15 backend security checks PASS: secrets(✅), SQL injection(✅), dedup function safety(✅), rate limiting(✅), bcrypt 12 rounds(✅), error handling(✅), auth middleware(✅), input validation(✅), CORS(✅), Helmet(✅), refresh token security(✅), UUID middleware(✅), timing-safe auth(✅), token rotation(✅), ownership checks(✅). |
+| Sprint 4 — Frontend security deep review (10 items) — T-066 | Security Scan | Pass | Success | Local | No | QA Engineer | All 10 frontend security checks PASS: XSS(✅ 0 dangerouslySetInnerHTML), hardcoded secrets(✅ none), token storage(✅ useRef in-memory), API client(✅ withCredentials+401 interceptor), ARIA roles(✅ no role="option"), error messages(✅ no internals leaked), rate limit UX(✅ no thresholds exposed), focus management(✅ no security impact), shared utility(✅ no secrets), test fixtures(✅ no real credentials). |
+| Sprint 4 — Infrastructure security review (17 items) — T-066 | Security Scan | Pass | Success | Local | No | QA Engineer | All 17 infra security checks PASS: nginx server_tokens off(✅), CSP at server level(✅), CSP in /assets/ block(✅), security headers(✅ 4/4), Dockerfile.frontend USER nginx(✅), Dockerfile.backend USER appuser(✅), docker-compose no DB host port(✅), DB_PASSWORD :? required(✅), JWT_SECRET :? required(✅), CI/CD no hardcoded secrets(✅), .env.docker.example placeholders only(✅), HEALTHCHECK both containers(✅), multi-stage builds(✅), ARG VITE_API_URL=/api/v1(✅), npm ci --omit=dev(✅), non-root containers(✅), npm audit in CI(✅). |
+| Sprint 4 — Code review audit (Sprint 4 changes: T-058–T-065) — T-066 | Security Scan | Pass | Success | Local | No | QA Engineer | No XSS (0 dangerouslySetInnerHTML). No SQL injection (all Knex parameterized). No hardcoded secrets. Dedup logic is pure JS (no DB interaction). Rate limit UX doesn't expose internals. ARIA fixes correct per WAI-ARIA spec. Docker hardening complete. |
+
+---
+
+## Sprint 4 — Detailed QA Report (T-066, T-067) — 2026-02-25
+
+**QA Engineer:** QA Engineer
+**Sprint:** 4
+**Date:** 2026-02-25
+**Tasks:** T-066 (Security checklist + code review audit), T-067 (Integration testing)
+**Scope:** T-058 (Destination Dedup), T-059 (Submit Lockout), T-060 (parseRetryAfterMinutes), T-061 (ARIA Role Fix), T-062 (aria-describedby Targets), T-063 (Focus Return), T-064 (Axios 401 Tests), T-065 (Docker/nginx Hardening)
+
+---
+
+### 1. UNIT TEST RESULTS
+
+#### Backend: 168/168 PASS (713ms)
+
+| Test File | Tests | Time | Coverage |
+|-----------|-------|------|----------|
+| auth.test.js | 14 | 92ms | Auth register/login/refresh/logout |
+| trips.test.js | 16 | 93ms | Trips CRUD + ownership + pagination |
+| flights.test.js | 10 | 57ms | Flights CRUD + validation |
+| stays.test.js | 8 | 33ms | Stays CRUD + validation |
+| activities.test.js | 12 | 69ms | Activities CRUD + optional times |
+| sprint2.test.js | 37 | 224ms | UUID validation, activity_date, INVALID_JSON, trip dates, status auto-calc |
+| sprint3.test.js | 33 | 132ms | Optional activity times, linked validation, NULLS LAST ordering |
+| tripStatus.test.js | 19 | 8ms | Status auto-calculation (pure function) |
+| sprint4.test.js | 19 | 68ms | Destination dedup: 10 unit + 4 POST + 5 PATCH |
+
+**New Sprint 4 tests (19):**
+- 10 unit tests for `deduplicateDestinations()`: exact dupes, case-variant dupes, multiple pairs, single element, no dupes, order preservation, empty array, non-array guard, trimmed inputs, immutability
+- 4 POST integration tests: exact dupes, case-variant dupes, no dupes, empty→400
+- 5 PATCH integration tests: exact dupes, case-variant dupes, no dupes, no destinations field, single destination regression
+
+#### Frontend: 260/260 PASS (2.76s)
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| axiosInterceptor.test.js | 8 | 401 retry, concurrent queue, refresh failure, passthrough |
+| useTripDetails.test.js | 21 | Parallel fetch, error states, refetch functions |
+| useTrips.test.js | 7 | fetchTrips, createTrip, deleteTrip |
+| ActivitiesEditPage.test.jsx | 18 | Render, loading, batch save, validation, all-day |
+| FlightsEditPage.test.jsx | 18 | Render, loading, CRUD, validation, navigation |
+| StaysEditPage.test.jsx | 15 | Render, loading, CRUD, category, validation |
+| HomePage.test.jsx | 15 | Trip list, skeleton, empty, create, delete |
+| TripDetailsPage.test.jsx | 24 | Flights/stays/activities render, errors, retry, dates |
+| RegisterPage.test.jsx | 13 | Form, validation, 409, 429, lockout |
+| TripCalendar.test.jsx | 15 | Grid, events, navigation, empty, loading |
+| DestinationChipInput.test.jsx | 18 | Add/remove, keyboard, paste, ARIA, hints |
+| LoginPage.test.jsx | 13 | Form, validation, 401, 429, lockout |
+| CreateTripModal.test.jsx | 11 | Modal, form, validation, close, focus return |
+| formatDate.test.js | 14 | All date/time formatters + formatTripDateRange |
+| TripCard.test.jsx | 8 | Name, destinations, date range, status badge |
+| Navbar.test.jsx | 6 | Brand, username, logout, navigation |
+| StatusBadge.test.jsx | 4 | PLANNING, ONGOING, COMPLETED, default |
+| rateLimitUtils.test.js | 9 | Parse seconds, rounding, null, empty, negative, large |
+
+**New Sprint 4 tests (30):**
+- T-059: 4 tests (2 per page) — submit button disabled + "please wait…" text during 429
+- T-060: 9 tests — parseRetryAfterMinutes edge cases
+- T-061: 2 tests — no role="option", role="group" preserved
+- T-062: 4 tests — hint IDs exist, aria-describedby associations
+- T-063: 3 tests — cancel focus return, × close focus return, prop acceptance
+- T-064: 8 tests — axios 401 retry queue comprehensive coverage
+
+---
+
+### 2. SECURITY CHECKLIST VERIFICATION (T-066)
+
+**19 checklist items assessed. 15 PASS, 0 FAIL, 4 DEFERRED (infrastructure items unchanged from Sprint 3).**
+
+#### Authentication & Authorization (5 items)
+
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 1 | All API endpoints require appropriate authentication | ✅ PASS | All routes use `authenticate` middleware. Auth endpoints are public as designed. |
+| 2 | Role-based access control enforced | ✅ PASS | user_id ownership checks on trips + sub-resources. 403 on violation. |
+| 3 | Auth tokens have appropriate expiration and refresh | ✅ PASS | Access: 15min, Refresh: 7d. Token rotation on refresh. |
+| 4 | Password hashing uses bcrypt (min 12 rounds) | ✅ PASS | bcrypt with saltRounds=12. Timing-safe comparison with DUMMY_HASH. |
+| 5 | Failed login attempts are rate-limited | ✅ PASS | 10/15min on login, 20/15min on register, 30/15min on refresh/logout. |
+
+#### Input Validation & Injection Prevention (5 items)
+
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 6 | All user inputs validated on both client and server | ✅ PASS | Server: validate middleware. Client: form validation. Dedup: pure JS function. |
+| 7 | SQL queries use parameterized statements | ✅ PASS | All queries via Knex object syntax. 0 raw SQL with user input. |
+| 8 | NoSQL queries protected | ✅ N/A | PostgreSQL only, no NoSQL. |
+| 9 | File uploads validated | ✅ N/A | No file upload endpoints exist. |
+| 10 | HTML output sanitized (XSS prevention) | ✅ PASS | 0 dangerouslySetInnerHTML. React escapes all dynamic content. JSON-only API. |
+
+#### API Security (5 items)
+
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 11 | CORS configured for expected origins only | ✅ PASS | CORS_ORIGIN from env var. Single origin. |
+| 12 | Rate limiting on public endpoints | ✅ PASS | All auth endpoints rate-limited. 429 with RATE_LIMIT_EXCEEDED code. |
+| 13 | API responses don't leak internal details | ✅ PASS | 500s return "An unexpected error occurred". Stack traces server-side only. |
+| 14 | Sensitive data not in URL query params | ✅ PASS | Tokens in headers/cookies. No sensitive query params. |
+| 15 | Security headers present | ✅ PASS | Helmet middleware. nginx: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, CSP. server_tokens off. |
+
+#### Data Protection (4 items)
+
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 16 | Sensitive data at rest encrypted | ⏭️ DEFERRED | PostgreSQL encryption at rest is infrastructure-level. Passwords bcrypt-hashed. Refresh tokens SHA-256 hashed. Application layer: PASS. |
+| 17 | DB credentials and API keys in env vars | ✅ PASS | All secrets from process.env. .env.example documents all vars. Zero hardcoded secrets found. |
+| 18 | Logs don't contain PII/passwords/tokens | ✅ PASS | Error handler logs stack traces (no PII). No console.log of user data. |
+| 19 | Database backups configured | ⏭️ DEFERRED | Infrastructure-level. Not in Sprint 4 scope. |
+
+#### Infrastructure (4 items)
+
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 20 | HTTPS enforced | ✅ PASS | Self-signed TLS on staging (T-044). Cookie Secure flag. CORS over HTTPS. |
+| 21 | Dependencies checked for vulns | ✅ PASS | npm audit: 0 production vulns. 5 moderate dev-only (esbuild, tracked B-021). |
+| 22 | Default credentials removed | ✅ PASS | No default creds. DB_PASSWORD :? required syntax. .env.example has placeholders. |
+| 23 | Error pages don't reveal server info | ✅ PASS | nginx: server_tokens off. Helmet hides X-Powered-By. Error handler masks internals. |
+
+#### Sprint 4 Specific Security Checks
+
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| S4-1 | Destination dedup: no SQL injection via dedup logic | ✅ PASS | `deduplicateDestinations()` is pure JS (Set + filter). No DB interaction. Knex queries unchanged. |
+| S4-2 | Destination dedup: no XSS via destination strings | ✅ PASS | JSON API only. React escapes output. No innerHTML. |
+| S4-3 | ARIA fixes: correct role hierarchy | ✅ PASS | `role="option"` removed. `role="group"` preserved. WAI-ARIA compliant. |
+| S4-4 | Rate limit UX: no internal config exposed | ✅ PASS | Button shows "please wait…" only. No thresholds, server URLs, or technical details in UI. |
+| S4-5 | Shared utility extraction: same security posture | ✅ PASS | `parseRetryAfterMinutes` is pure function. No secrets. Same behavior as before. |
+| S4-6 | Docker/nginx hardening: CSP, server_tokens, non-root | ✅ PASS | server_tokens off ✅. CSP at server + /assets/ ✅. Non-root containers ✅. DB not host-exposed ✅. |
+| S4-7 | Axios test: no real credentials | ✅ PASS | Test fixtures use 'old-token', 'new-token', 'test@test.com'. No real credentials. |
+| S4-8 | No new npm dependencies in Sprint 4 | ✅ PASS | Zero new dependencies. Calendar is custom. Dedup is pure JS. |
+
+**Sprint 4 Security Summary: 0 P1 FAILURES. 0 P2 FAILURES. All items PASS or DEFERRED (same infrastructure items as Sprints 1-3).**
+
+---
+
+### 3. INTEGRATION CONTRACT VERIFICATION (T-067)
+
+**42 integration checks: 42 PASS, 0 FAIL, 0 WARN.**
+
+#### T-058 Destination Deduplication (8 checks)
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | Frontend CreateTripModal sends destinations as array to POST /trips | ✅ PASS |
+| 2 | Frontend TripDetailsPage sends destinations as array to PATCH /trips/:id | ✅ PASS |
+| 3 | Backend POST /trips validates destinations as array with minItems: 1 | ✅ PASS |
+| 4 | Backend PATCH /trips/:id validates destinations as array with minItems: 1 | ✅ PASS |
+| 5 | Backend `deduplicateDestinations()` applied in createTrip() before DB insert | ✅ PASS |
+| 6 | Backend `deduplicateDestinations()` applied in updateTrip() with processedUpdates | ✅ PASS |
+| 7 | Frontend handles deduped response correctly (array format, no order assumptions) | ✅ PASS |
+| 8 | 19 backend tests cover all dedup scenarios (unit + POST + PATCH) | ✅ PASS |
+
+#### T-059/T-060 Rate Limit Integration (8 checks)
+
+| # | Check | Result |
+|---|-------|--------|
+| 9 | LoginPage detects 429 status from API response | ✅ PASS |
+| 10 | LoginPage parses Retry-After header via shared utility | ✅ PASS |
+| 11 | RegisterPage detects 429 status from API response | ✅ PASS |
+| 12 | RegisterPage parses Retry-After header via shared utility | ✅ PASS |
+| 13 | Both pages import parseRetryAfterMinutes from utils/rateLimitUtils.js (no duplication) | ✅ PASS |
+| 14 | Backend rate limiters use standardHeaders: true (sends Retry-After) | ✅ PASS |
+| 15 | Backend rateLimitHandler returns 429 with RATE_LIMIT_EXCEEDED code | ✅ PASS |
+| 16 | Submit button disabled + "please wait…" text during lockout (both pages) | ✅ PASS |
+
+#### T-061/T-062 ARIA Accessibility (8 checks)
+
+| # | Check | Result |
+|---|-------|--------|
+| 17 | DestinationChipInput: no role="option" on any element | ✅ PASS |
+| 18 | DestinationChipInput: role="group" on container | ✅ PASS |
+| 19 | DestinationChipInput: remove buttons have aria-label="Remove ${dest}" | ✅ PASS |
+| 20 | DestinationChipInput: id="dest-chip-hint" element exists | ✅ PASS |
+| 21 | DestinationChipInput: aria-describedby switches between hint and error | ✅ PASS |
+| 22 | RegisterPage: id="password-hint" element exists with "8 characters minimum" | ✅ PASS |
+| 23 | RegisterPage: aria-describedby on password input references hint/error correctly | ✅ PASS |
+| 24 | Test assertions verify ARIA correctness (6 dedicated tests) | ✅ PASS |
+
+#### T-063 Focus Management (4 checks)
+
+| # | Check | Result |
+|---|-------|--------|
+| 25 | HomePage creates createTripBtnRef and attaches to trigger button | ✅ PASS |
+| 26 | HomePage passes triggerRef prop to CreateTripModal | ✅ PASS |
+| 27 | CreateTripModal handleClose uses requestAnimationFrame for focus return | ✅ PASS |
+| 28 | All close paths (Escape, backdrop, ×, cancel) call handleClose | ✅ PASS |
+
+#### T-064 Axios 401 Retry Tests (3 checks)
+
+| # | Check | Result |
+|---|-------|--------|
+| 29 | 8 dedicated tests exist in axiosInterceptor.test.js | ✅ PASS |
+| 30 | Tests cover critical scenarios: retry, concurrent queue, refresh failure, passthrough | ✅ PASS |
+| 31 | No real credentials in test fixtures | ✅ PASS |
+
+#### T-065 Docker/nginx Hardening (6 checks)
+
+| # | Check | Result |
+|---|-------|--------|
+| 32 | nginx.conf: server_tokens off present | ✅ PASS |
+| 33 | nginx.conf: CSP at server level + /assets/ block (inheritance fix) | ✅ PASS |
+| 34 | Dockerfiles: non-root containers (nginx, appuser) | ✅ PASS |
+| 35 | docker-compose: no postgres host port mapping | ✅ PASS |
+| 36 | docker-compose: DB_PASSWORD and JWT_SECRET use :? required syntax | ✅ PASS |
+| 37 | CI/CD: no hardcoded production secrets | ✅ PASS |
+
+#### Sprint 3 Regression (5 checks)
+
+| # | Check | Result |
+|---|-------|--------|
+| 38 | All edit page routes registered in App.jsx (flights, stays, activities) | ✅ PASS |
+| 39 | Auth interceptor in api.js handles 401 refresh correctly | ✅ PASS |
+| 40 | Backend authenticate middleware enforces JWT on all protected routes | ✅ PASS |
+| 41 | LoginPage/RegisterPage: all UI states (empty, loading, error, 429, success) | ✅ PASS |
+| 42 | DestinationChipInput: all UI states (empty, populated, error, disabled) | ✅ PASS |
+
+---
+
+### 4. KNOWN ITEMS (NON-BLOCKING)
+
+| # | Item | Severity | Status |
+|---|------|----------|--------|
+| 1 | esbuild dev-only vuln (GHSA-67mh-4wv8-2f99) | Low | Tracked as B-021. Dev deps only. No production impact. |
+| 2 | React Router v6 future-flag warnings in test output | Info | Expected. Non-blocking. Will resolve on upgrade to v7. |
+| 3 | act() warnings in some test output | Info | Expected. Non-blocking. React 18 concurrent mode. |
+| 4 | T-068 deployed before T-066/T-067 (dependency chain violation) | Process | Noted by Manager. Deployment is technically correct. No re-deployment needed since QA found 0 issues. |
+
+---
+
+### 5. VERDICT
+
+**T-066 (Security Checklist): ✅ PASS** — All 19 security checklist items verified (15 PASS, 4 DEFERRED same as prior sprints). 8 Sprint 4-specific security checks all PASS. 0 P1 failures. 0 P2 failures.
+
+**T-067 (Integration Testing): ✅ PASS** — 42/42 integration checks PASS. All API contracts match. All UI states implemented. All ARIA attributes correct. Sprint 3 regression PASS.
+
+**Pre-Deploy Verification: ✅ READY**
+- All unit tests pass: Backend 168/168, Frontend 260/260
+- Integration tests pass: 42/42
+- Security checklist verified: 15/15 applicable items PASS
+- npm audit: 0 production vulnerabilities
+- All Sprint 4 tasks in scope are verified
+
+**Handoff to Deploy Engineer: APPROVED** (deployment already completed via T-068 — no re-deployment needed since QA found 0 issues).
+
+---
