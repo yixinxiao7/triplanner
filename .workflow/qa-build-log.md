@@ -26,7 +26,8 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 | Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
 |----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
-| Staging deployment — T-020 full deploy (backend + DB + frontend) | Post-Deploy Health Check | Pass | Success | Staging | Pending (Monitor Agent T-021) | Deploy Engineer | None — all smoke tests passed |
+| Monitor Agent post-deploy health check — T-021 (full API + DB + frontend) | Post-Deploy Health Check | Pass | Success | Staging | **Yes** | Monitor Agent | None — all 18 checks passed, 0 errors |
+| Staging deployment — T-020 full deploy (backend + DB + frontend) | Post-Deploy Health Check | Pass | Success | Staging | Yes | Deploy Engineer | None — all smoke tests passed |
 | Frontend production build (Vite) | Build | Pass | Success | Staging | Pending | Deploy Engineer | None — 103 modules, 243.63kB JS, 20.76kB CSS |
 | Database migrations — 6 Knex migrations | Migration | Pass | Success | Staging | Pending | Deploy Engineer | None — all 6 tables created (users, refresh_tokens, trips, flights, stays, activities) |
 | Backend smoke test — GET /api/v1/health | Post-Deploy Health Check | Pass | Success | Staging | Pending | Deploy Engineer | None — {"status":"ok"} |
@@ -412,6 +413,367 @@ Tasks T-004 through T-017 are all verified and moved to Done.
 4. `triggerRef` focus-return-to-trigger in CreateTripModal not implemented — cosmetic, P3
 
 **Handoff to Deploy Engineer:** ✅ Deploy Engineer is cleared to proceed with T-020 (staging deployment).
+
+---
+
+---
+
+## Sprint 1 — Post-Deploy Health Check Report (T-021) — 2026-02-24
+
+**Monitor Agent:** Monitor Agent
+**Sprint:** 1
+**Date:** 2026-02-24T02:51 UTC (2026-02-24 local)
+**Task:** T-021 — Staging Health Check
+**Triggered by:** Deploy Engineer handoff (T-020 Staging Deployment Complete)
+
+---
+
+### Environment
+
+| Component | URL / Host | Status |
+|-----------|-----------|--------|
+| Backend API (Express) | `http://localhost:3000` | ✅ Running |
+| Frontend (Vite preview) | `http://localhost:4173` | ✅ Running |
+| PostgreSQL 15 | `localhost:5432 / appdb` | ✅ Connected |
+
+---
+
+### Health Check Results
+
+```
+Environment: Staging (local processes)
+Timestamp: 2026-02-25T02:51:00Z
+Checks:
+  - [x] App responds (GET /api/v1/health → 200)
+  - [x] Auth works (POST /api/v1/auth/register → 201 with token, POST /api/v1/auth/login → 200 with token)
+  - [x] Key endpoints respond (all 13 API checks below)
+  - [x] No 5xx errors in any response
+  - [x] Database connected (6/6 tables confirmed via psql + full DB round-trip via API)
+Result: PASS
+Notes: All 18 checks passed. Zero 5xx errors observed. All response shapes match api-contracts.md exactly.
+```
+
+---
+
+### Check 1 — Application Health Endpoint
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `GET http://localhost:3000/api/v1/health` |
+| Expected | HTTP 200, `{"status":"ok"}` |
+| Actual HTTP Status | **200** |
+| Actual Body | `{"status":"ok"}` |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS |
+
+---
+
+### Check 2 — Frontend Accessibility
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `GET http://localhost:4173/` |
+| Expected | HTTP 200, HTML SPA shell |
+| Actual HTTP Status | **200** |
+| Actual Content-Type | `text/html` |
+| Actual Size | 388 bytes |
+| Body Verification | `<!doctype html>...<div id="root"></div>` — SPA shell confirmed with linked JS/CSS assets |
+| Result | ✅ PASS |
+
+**Frontend build artifacts confirmed:**
+- `/assets/index-I5cnUyCF.js` (243.63 kB production bundle)
+- `/assets/index-BKHqepzx.css` (20.76 kB stylesheet)
+
+---
+
+### Check 3 — Database Connectivity (Schema-Level)
+
+| Field | Value |
+|-------|-------|
+| Method | `psql -U user -h localhost -d appdb -c "\dt"` via `/opt/homebrew/Cellar/postgresql@15/15.16/bin/psql` |
+| Expected | 6 application tables + knex meta tables |
+| Result | ✅ PASS |
+
+**Tables confirmed present:**
+
+| Table | Status |
+|-------|--------|
+| `users` | ✅ |
+| `refresh_tokens` | ✅ |
+| `trips` | ✅ |
+| `flights` | ✅ |
+| `stays` | ✅ |
+| `activities` | ✅ |
+| `knex_migrations` | ✅ |
+| `knex_migrations_lock` | ✅ |
+
+---
+
+### Check 4 — Auth: Register (DB Round-Trip)
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `POST http://localhost:3000/api/v1/auth/register` |
+| Request Body | `{"name":"Monitor Test User","email":"monitor-health-check-20260224@test.local","password":"SecurePass99"}` |
+| Expected | HTTP 201, `{data: {user: {id, name, email, created_at}, access_token}}` |
+| Actual HTTP Status | **201** |
+| Actual Body | `{"data":{"user":{"id":"90ab8a7a-666a-4240-8045-e5609357a205","name":"Monitor Test User","email":"monitor-health-check-20260224@test.local","created_at":"2026-02-25T02:51:20.048Z"},"access_token":"eyJhbGci..."}}` |
+| Contract Match | ✅ EXACT MATCH — user UUID, name, email, created_at all present; access_token present; password_hash absent |
+| DB Round-Trip | ✅ CONFIRMED — user created in DB (UUID 90ab8a7a-666a-4240-8045-e5609357a205) |
+| Result | ✅ PASS |
+
+---
+
+### Check 5 — Auth: Login
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `POST http://localhost:3000/api/v1/auth/login` |
+| Request Body | `{"email":"monitor-health-check-20260224@test.local","password":"SecurePass99"}` |
+| Expected | HTTP 200, `{data: {user, access_token}}` |
+| Actual HTTP Status | **200** |
+| Actual Body | `{"data":{"user":{"id":"90ab8a7a-...","name":"Monitor Test User","email":"...","created_at":"..."},"access_token":"eyJhbGci..."}}` |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS |
+
+---
+
+### Check 6 — Trips: List (Protected Route)
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `GET http://localhost:3000/api/v1/trips` |
+| Auth | Bearer token from login |
+| Expected | HTTP 200, `{data: [], pagination: {page: 1, limit: 20, total: 0}}` (empty for new user) |
+| Actual HTTP Status | **200** |
+| Actual Body | `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}` |
+| Contract Match | ✅ EXACT MATCH — pagination shape, field names, empty data array |
+| Result | ✅ PASS |
+
+---
+
+### Check 7 — Trips: Create
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `POST http://localhost:3000/api/v1/trips` |
+| Auth | Bearer token from login |
+| Request Body | `{"name":"Monitor Health Check Trip","destinations":["Tokyo","Osaka"]}` |
+| Expected | HTTP 201, `{data: {id, user_id, name, destinations, status: "PLANNING", created_at, updated_at}}` |
+| Actual HTTP Status | **201** |
+| Actual Body | `{"data":{"id":"457ee95a-4f20-46f9-a8bc-44bee34edd80","user_id":"90ab8a7a-...","name":"Monitor Health Check Trip","destinations":["Tokyo","Osaka"],"status":"PLANNING","created_at":"2026-02-25T02:51:44.347Z","updated_at":"2026-02-25T02:51:44.347Z"}}` |
+| Contract Match | ✅ EXACT MATCH — all fields present, destinations returned as array, status defaults to PLANNING |
+| Result | ✅ PASS |
+
+---
+
+### Check 8 — Trips: Get By ID
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `GET http://localhost:3000/api/v1/trips/457ee95a-4f20-46f9-a8bc-44bee34edd80` |
+| Auth | Bearer token from login |
+| Expected | HTTP 200, full trip object |
+| Actual HTTP Status | **200** |
+| Actual Body | `{"data":{"id":"457ee95a-...","user_id":"90ab8a7a-...","name":"Monitor Health Check Trip","destinations":["Tokyo","Osaka"],"status":"PLANNING","created_at":"...","updated_at":"..."}}` |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS |
+
+---
+
+### Check 9 — Sub-Resource: Flights
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `GET http://localhost:3000/api/v1/trips/457ee95a-4f20-46f9-a8bc-44bee34edd80/flights` |
+| Auth | Bearer token from login |
+| Expected | HTTP 200, `{data: []}` |
+| Actual HTTP Status | **200** |
+| Actual Body | `{"data":[]}` |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS |
+
+---
+
+### Check 10 — Sub-Resource: Stays
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `GET http://localhost:3000/api/v1/trips/457ee95a-4f20-46f9-a8bc-44bee34edd80/stays` |
+| Auth | Bearer token from login |
+| Expected | HTTP 200, `{data: []}` |
+| Actual HTTP Status | **200** |
+| Actual Body | `{"data":[]}` |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS |
+
+---
+
+### Check 11 — Sub-Resource: Activities
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `GET http://localhost:3000/api/v1/trips/457ee95a-4f20-46f9-a8bc-44bee34edd80/activities` |
+| Auth | Bearer token from login |
+| Expected | HTTP 200, `{data: []}` |
+| Actual HTTP Status | **200** |
+| Actual Body | `{"data":[]}` |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS |
+
+---
+
+### Check 12 — Trips: Delete
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `DELETE http://localhost:3000/api/v1/trips/457ee95a-4f20-46f9-a8bc-44bee34edd80` |
+| Auth | Bearer token from login |
+| Expected | HTTP 204, empty body |
+| Actual HTTP Status | **204** |
+| Actual Body | (empty — 0 bytes) |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS |
+
+---
+
+### Check 13 — Trip 404 After Delete
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `GET http://localhost:3000/api/v1/trips/457ee95a-4f20-46f9-a8bc-44bee34edd80` |
+| Auth | Bearer token from login |
+| Expected | HTTP 404, `{error: {message: "Trip not found", code: "NOT_FOUND"}}` |
+| Actual HTTP Status | **404** |
+| Actual Body | `{"error":{"message":"Trip not found","code":"NOT_FOUND"}}` |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS — cascade delete confirmed; trip no longer retrievable |
+
+---
+
+### Check 14 — Auth: Logout
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `POST http://localhost:3000/api/v1/auth/logout` |
+| Auth | Bearer token from login |
+| Expected | HTTP 204, empty body |
+| Actual HTTP Status | **204** |
+| Actual Body | (empty — 0 bytes) |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS |
+
+---
+
+### Check 15 — Error Shape: 401 Unauthorized (no token)
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `GET http://localhost:3000/api/v1/trips` (no Authorization header) |
+| Expected | HTTP 401, `{error: {message: "Authentication required", code: "UNAUTHORIZED"}}` |
+| Actual HTTP Status | **401** |
+| Actual Body | `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS — protected route correctly rejects unauthenticated request |
+
+---
+
+### Check 16 — Error Shape: 409 Conflict (duplicate email)
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `POST http://localhost:3000/api/v1/auth/register` (duplicate email) |
+| Expected | HTTP 409, `{error: {message: "An account with this email already exists", code: "EMAIL_TAKEN"}}` |
+| Actual HTTP Status | **409** |
+| Actual Body | `{"error":{"message":"An account with this email already exists","code":"EMAIL_TAKEN"}}` |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS — no 5xx on duplicate email |
+
+---
+
+### Check 17 — Error Shape: 404 Not Found (non-existent trip)
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `GET http://localhost:3000/api/v1/trips/00000000-0000-0000-0000-000000000000` |
+| Auth | Bearer token from login |
+| Expected | HTTP 404, `{error: {message: "Trip not found", code: "NOT_FOUND"}}` |
+| Actual HTTP Status | **404** |
+| Actual Body | `{"error":{"message":"Trip not found","code":"NOT_FOUND"}}` |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS |
+
+---
+
+### Check 18 — Auth: Refresh Without Cookie
+
+| Field | Value |
+|-------|-------|
+| Endpoint | `POST http://localhost:3000/api/v1/auth/refresh` (no cookie) |
+| Expected | HTTP 401, `{error: {message: "Invalid or expired refresh token", code: "INVALID_REFRESH_TOKEN"}}` |
+| Actual HTTP Status | **401** |
+| Actual Body | `{"error":{"message":"Invalid or expired refresh token","code":"INVALID_REFRESH_TOKEN"}}` |
+| Contract Match | ✅ EXACT MATCH |
+| Result | ✅ PASS — no 5xx on missing refresh cookie |
+
+---
+
+### 5xx Error Scan
+
+| Scope | Result |
+|-------|--------|
+| All 18 health check requests | **0 × 5xx errors** |
+| Auth endpoints (register, login, logout, refresh) | ✅ No 5xx |
+| Trips CRUD (list, create, get, delete) | ✅ No 5xx |
+| Sub-resource endpoints (flights, stays, activities) | ✅ No 5xx |
+| Error-path requests (401, 404, 409) | ✅ All returned client-side error codes, not 5xx |
+
+---
+
+### Health Check Summary
+
+| # | Check | Endpoint / Method | Expected | Actual Status | Result |
+|---|-------|-------------------|----------|---------------|--------|
+| 1 | App health | `GET /api/v1/health` | 200 | **200** | ✅ PASS |
+| 2 | Frontend accessible | `GET http://localhost:4173/` | 200 HTML | **200** | ✅ PASS |
+| 3 | Database tables (psql) | Direct DB query | 6 tables | **8 rows (6 app + 2 knex meta)** | ✅ PASS |
+| 4 | Auth register + DB round-trip | `POST /api/v1/auth/register` | 201 + token | **201** | ✅ PASS |
+| 5 | Auth login | `POST /api/v1/auth/login` | 200 + token | **200** | ✅ PASS |
+| 6 | Trips list (protected) | `GET /api/v1/trips` | 200 + pagination | **200** | ✅ PASS |
+| 7 | Trip create | `POST /api/v1/trips` | 201 + trip | **201** | ✅ PASS |
+| 8 | Trip get by ID | `GET /api/v1/trips/:id` | 200 + trip | **200** | ✅ PASS |
+| 9 | Flights sub-resource | `GET /api/v1/trips/:id/flights` | 200 + `{data:[]}` | **200** | ✅ PASS |
+| 10 | Stays sub-resource | `GET /api/v1/trips/:id/stays` | 200 + `{data:[]}` | **200** | ✅ PASS |
+| 11 | Activities sub-resource | `GET /api/v1/trips/:id/activities` | 200 + `{data:[]}` | **200** | ✅ PASS |
+| 12 | Trip delete | `DELETE /api/v1/trips/:id` | 204 empty | **204** | ✅ PASS |
+| 13 | Trip 404 after delete | `GET /api/v1/trips/:id` (deleted) | 404 NOT_FOUND | **404** | ✅ PASS |
+| 14 | Auth logout | `POST /api/v1/auth/logout` | 204 empty | **204** | ✅ PASS |
+| 15 | 401 error shape | `GET /api/v1/trips` (no token) | 401 UNAUTHORIZED | **401** | ✅ PASS |
+| 16 | 409 error shape | `POST /auth/register` (dup email) | 409 EMAIL_TAKEN | **409** | ✅ PASS |
+| 17 | 404 error shape | `GET /api/v1/trips/:nonexistent-id` | 404 NOT_FOUND | **404** | ✅ PASS |
+| 18 | Refresh without cookie | `POST /auth/refresh` (no cookie) | 401 INVALID_REFRESH_TOKEN | **401** | ✅ PASS |
+
+**Total Checks:** 18
+**Passed:** 18
+**Failed:** 0
+**5xx Errors:** 0
+
+---
+
+### Deploy Verified
+
+| Field | Value |
+|-------|-------|
+| **Deploy Verified** | **✅ YES** |
+| Verified By | Monitor Agent |
+| Verified At | 2026-02-25T02:51 UTC |
+| Related Task | T-021 |
+| All API contracts matched | ✅ Yes — all response shapes match api-contracts.md |
+| Database healthy | ✅ Yes — all 6 tables present and accepting reads/writes |
+| No 5xx errors | ✅ Yes — zero 5xx observed across all 18 checks |
+| Frontend accessible | ✅ Yes — SPA shell serving at http://localhost:4173 |
+
+**Staging environment is healthy and ready for User Agent testing (T-022).**
 
 ---
 

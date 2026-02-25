@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — Monitor Agent → User Agent (T-021 Health Checks Complete — Staging Ready for T-022)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Monitor Agent |
+| To Agent | User Agent |
+| Status | Pending |
+| Related Task | T-021, T-022 |
+| Handoff Summary | Post-deploy health check (T-021) is complete. All 18 checks PASSED. Staging environment is fully healthy. User Agent may proceed with T-022 (product testing and structured feedback). |
+| Notes | **Staging Environment URLs:** (1) Frontend: `http://localhost:4173` — Vite preview serving production build. (2) Backend API: `http://localhost:3000` — Express on Node 24.5.0. (3) Database: `localhost:5432` — PostgreSQL 15.16, database `appdb`. **Health Check Results (T-021):** ✅ `GET /api/v1/health` → 200 `{"status":"ok"}`. ✅ `POST /api/v1/auth/register` → 201 with user UUID + access_token (DB round-trip confirmed). ✅ `POST /api/v1/auth/login` → 200 with access_token. ✅ `GET /api/v1/trips` (with JWT) → 200 with `{data:[],pagination:{page:1,limit:20,total:0}}`. ✅ `POST /api/v1/trips` → 201 with full trip object (destinations as array, status=PLANNING). ✅ `GET /api/v1/trips/:id` → 200. ✅ `GET /api/v1/trips/:id/flights` → 200 `{data:[]}`. ✅ `GET /api/v1/trips/:id/stays` → 200 `{data:[]}`. ✅ `GET /api/v1/trips/:id/activities` → 200 `{data:[]}`. ✅ `DELETE /api/v1/trips/:id` → 204 empty. ✅ `POST /api/v1/auth/logout` → 204. ✅ All 6 DB tables present (users, refresh_tokens, trips, flights, stays, activities). ✅ Frontend at localhost:4173 → 200 text/html SPA shell. ✅ 0 × 5xx errors observed. ✅ All error shapes match api-contracts.md (401 UNAUTHORIZED, 404 NOT_FOUND, 409 EMAIL_TAKEN, 401 INVALID_REFRESH_TOKEN). **Known accepted limitations (non-blocking for T-022):** (1) Rate limiting not applied to /auth/login and /auth/register (Sprint 2 backlog). (2) HTTPS not configured (local staging — refresh token cookie is `secure: false`). (3) Processes not managed by pm2. **Deploy Verified:** YES — full report in `.workflow/qa-build-log.md` under "Sprint 1 — Post-Deploy Health Check Report (T-021)". **Test scenarios to cover in T-022:** (1) Register → auto-login → land on home (empty trips state). (2) Create trip → navigates directly to /trips/:id. (3) Home page trip grid renders. (4) Trip details: flights/stays/activities show empty states. (5) Delete trip with inline confirmation. (6) Logout → redirect to /login. (7) Unauth navigation → redirect to /login. |
+
+---
+
 ### Sprint 1 — Deploy Engineer → Monitor Agent (T-020 Staging Deployment Complete — Run Health Checks T-021)
 
 | Field | Value |
@@ -24,7 +38,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 1 |
 | From Agent | Deploy Engineer |
 | To Agent | Monitor Agent |
-| Status | Pending |
+| Status | Done |
 | Related Task | T-020, T-021 |
 | Handoff Summary | Staging deployment for Sprint 1 is complete. All services are running locally. Monitor Agent should proceed with T-021 (staging health checks). Full deployment report is in `.workflow/qa-build-log.md` under "Sprint 1 — Staging Deployment Report (T-020)". |
 | Notes | **Staging Environment URLs:** (1) Backend API: `http://localhost:3000` — Express.js on Node 24.5.0. (2) Frontend: `http://localhost:4173` — Vite preview server serving `frontend/dist/` production build. (3) Database: `localhost:5432` — PostgreSQL 15.16 (Homebrew), database `appdb`. **Infrastructure note:** Docker was not available on this machine. Staging uses local processes: PostgreSQL via Homebrew (`brew services start postgresql@15`), backend via `node src/index.js`, frontend via `npx vite preview --port 4173`. **Smoke Tests Already Passed (by Deploy Engineer):** ✅ `GET /api/v1/health` → `{"status":"ok"}`. ✅ `POST /api/v1/auth/register` → 200, user created in DB, JWT returned. ✅ `POST /api/v1/auth/login` → 200, access_token returned. ✅ `GET /api/v1/trips` (with valid JWT) → `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}`. ✅ `GET http://localhost:4173/` → 200 (frontend serving). ✅ All 6 DB migrations applied (Batch 1/1: 6 migrations). **For T-021 Monitor Agent — recommended health checks:** (1) `GET http://localhost:3000/api/v1/health` — verify `{"status":"ok"}`. (2) DB connectivity — register a new user and confirm DB round-trip. (3) Auth flow — register → login → get trips → logout. (4) Frontend — verify SPA loads at `http://localhost:4173/`, redirects to `/login` if unauthenticated. (5) Error log scan — check for unhandled errors or crash output. (6) Verify all 6 tables exist in DB: users, refresh_tokens, trips, flights, stays, activities. **Known accepted issues (non-blocking for T-021):** (1) Rate limiting not applied to auth endpoints (Sprint 2 backlog). (2) No HTTPS (local staging — cookie is `secure: false` in staging env). (3) Dev dep vulnerabilities (esbuild, dev-only, accepted by QA). (4) Processes not managed by pm2 (restart not automatic if machine reboots). **If services need to be restarted:** Backend: `cd /Users/yixinxiao/CLAUDE/triplanner/backend && node src/index.js &`. Frontend: `cd /Users/yixinxiao/CLAUDE/triplanner/frontend && npx vite preview --port 4173 &`. PostgreSQL: `/opt/homebrew/bin/brew services start postgresql@15`. |
