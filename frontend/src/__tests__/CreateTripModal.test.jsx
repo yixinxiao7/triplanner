@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { createRef } from 'react';
 import CreateTripModal from '../components/CreateTripModal';
 
 function renderModal(props = {}) {
@@ -89,5 +90,44 @@ describe('CreateTripModal', () => {
         destinations: ['Tokyo', 'Osaka'],
       });
     });
+  });
+
+  // ── Sprint 4 T-063: Focus return to trigger on close ──
+  it('calls onClose when cancel is clicked (focus return handled externally)', () => {
+    const onClose = vi.fn();
+    const triggerRef = createRef();
+    // Create a fake trigger button
+    const triggerButton = document.createElement('button');
+    triggerButton.textContent = '+ new trip';
+    document.body.appendChild(triggerButton);
+    triggerRef.current = triggerButton;
+
+    renderModal({ onClose, triggerRef });
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(onClose).toHaveBeenCalledOnce();
+
+    document.body.removeChild(triggerButton);
+  });
+
+  it('calls onClose when × close button is clicked with triggerRef', () => {
+    const onClose = vi.fn();
+    const triggerRef = createRef();
+    const triggerButton = document.createElement('button');
+    triggerButton.textContent = '+ new trip';
+    document.body.appendChild(triggerButton);
+    triggerRef.current = triggerButton;
+
+    renderModal({ onClose, triggerRef });
+    fireEvent.click(screen.getByRole('button', { name: /close modal/i }));
+    expect(onClose).toHaveBeenCalledOnce();
+
+    document.body.removeChild(triggerButton);
+  });
+
+  it('accepts triggerRef prop without error', () => {
+    const triggerRef = createRef();
+    expect(() => {
+      renderModal({ triggerRef });
+    }).not.toThrow();
   });
 });

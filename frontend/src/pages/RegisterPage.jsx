@@ -2,21 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
+import { parseRetryAfterMinutes } from '../utils/rateLimitUtils';
 import styles from './AuthPage.module.css';
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-/**
- * Parse Retry-After header and return wait time in minutes (rounded up).
- * Falls back to null if unparseable.
- */
-function parseRetryAfterMinutes(retryAfterHeader) {
-  if (!retryAfterHeader) return null;
-  const seconds = parseInt(retryAfterHeader, 10);
-  if (isNaN(seconds) || seconds <= 0) return null;
-  return Math.ceil(seconds / 60);
 }
 
 export default function RegisterPage() {
@@ -302,7 +292,7 @@ export default function RegisterPage() {
           <div className={styles.fieldGroup}>
             <label htmlFor="password" className={styles.label}>
               PASSWORD
-              <span className={styles.fieldHint}>8 characters minimum</span>
+              <span id="password-hint" className={styles.fieldHint}>8 characters minimum</span>
             </label>
             <input
               id="password"
@@ -337,11 +327,13 @@ export default function RegisterPage() {
           <button
             type="submit"
             className={styles.submitBtn}
-            disabled={isLoading}
-            aria-disabled={isLoading}
+            disabled={isLoading || rateLimitMinutes > 0}
+            aria-disabled={isLoading || rateLimitMinutes > 0 ? 'true' : undefined}
           >
             {isLoading ? (
               <span className="spinner" aria-label="Creating account" />
+            ) : rateLimitMinutes > 0 ? (
+              'please wait\u2026'
             ) : (
               'create account'
             )}

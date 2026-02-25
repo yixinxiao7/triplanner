@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import DestinationChipInput from './DestinationChipInput';
 import styles from './CreateTripModal.module.css';
 
@@ -6,8 +6,9 @@ import styles from './CreateTripModal.module.css';
  * CreateTripModal — modal for creating a new trip.
  * Implements focus trap, Escape to close, backdrop click to close.
  * Uses DestinationChipInput for tag/chip-based destination entry (Sprint 3 T-046).
+ * Returns focus to trigger element on close (Sprint 4 T-063).
  */
-export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
+export default function CreateTripModal({ isOpen, onClose, onSubmit, triggerRef }) {
   const [name, setName] = useState('');
   const [destinations, setDestinations] = useState([]);
   const [errors, setErrors] = useState({});
@@ -16,7 +17,18 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
 
   const nameInputRef = useRef(null);
   const modalRef = useRef(null);
-  const triggerRef = useRef(null);
+
+  /**
+   * Centralized close handler — calls onClose() and returns focus to the
+   * trigger element after the modal unmounts (via requestAnimationFrame
+   * to avoid focus-trap race condition).
+   */
+  const handleClose = useCallback(() => {
+    onClose();
+    requestAnimationFrame(() => {
+      triggerRef?.current?.focus();
+    });
+  }, [onClose, triggerRef]);
 
   // Focus first input when modal opens
   useEffect(() => {
@@ -37,12 +49,12 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
     function handleKeyDown(e) {
       if (!isOpen) return;
       if (e.key === 'Escape') {
-        onClose();
+        handleClose();
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
   // Focus trap within modal
   useEffect(() => {
@@ -129,7 +141,7 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
 
   function handleBackdropClick(e) {
     if (e.target === e.currentTarget) {
-      onClose();
+      handleClose();
     }
   }
 
@@ -155,7 +167,7 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
           </h2>
           <button
             className={styles.closeBtn}
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close modal"
             type="button"
           >
@@ -223,7 +235,7 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
             <button
               type="button"
               className={styles.cancelBtn}
-              onClick={onClose}
+              onClick={handleClose}
               disabled={isLoading}
             >
               cancel

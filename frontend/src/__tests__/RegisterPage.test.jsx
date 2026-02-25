@@ -127,4 +127,65 @@ describe('RegisterPage', () => {
 
     vi.restoreAllMocks();
   });
+
+  // ── Sprint 4 T-059: Submit button disabled during rate limit lockout ──
+  it('disables submit button when rate limit (429) is active', async () => {
+    vi.spyOn(api.auth, 'register').mockRejectedValueOnce({
+      response: {
+        status: 429,
+        headers: { 'retry-after': '600' },
+        data: { error: { message: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' } },
+      },
+    });
+
+    renderRegisterPage();
+    fireEvent.change(screen.getByLabelText(/NAME/i), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByLabelText(/EMAIL/i), { target: { value: 'jane@test.com' } });
+    fireEvent.change(screen.getByLabelText(/PASSWORD/i), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/too many registration attempts/i)).toBeDefined();
+    });
+
+    // Submit button should be disabled and show "please wait…"
+    const submitBtn = screen.getByRole('button', { name: /please wait/i });
+    expect(submitBtn.disabled).toBe(true);
+    expect(submitBtn.getAttribute('aria-disabled')).toBe('true');
+
+    vi.restoreAllMocks();
+  });
+
+  it('shows "please wait\u2026" text on submit button during rate limit lockout', async () => {
+    vi.spyOn(api.auth, 'register').mockRejectedValueOnce({
+      response: {
+        status: 429,
+        headers: { 'retry-after': '120' },
+        data: { error: { message: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' } },
+      },
+    });
+
+    renderRegisterPage();
+    fireEvent.change(screen.getByLabelText(/NAME/i), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByLabelText(/EMAIL/i), { target: { value: 'jane@test.com' } });
+    fireEvent.change(screen.getByLabelText(/PASSWORD/i), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('please wait\u2026')).toBeDefined();
+    });
+
+    // "create account" text should NOT be shown on the button
+    expect(screen.queryByRole('button', { name: /^create account$/i })).toBeNull();
+
+    vi.restoreAllMocks();
+  });
+
+  // ── Sprint 4 T-062: password-hint ID exists ──
+  it('has password-hint element with id for aria-describedby', () => {
+    const { container } = renderRegisterPage();
+    const hintEl = container.querySelector('#password-hint');
+    expect(hintEl).not.toBeNull();
+    expect(hintEl.textContent).toBe('8 characters minimum');
+  });
 });

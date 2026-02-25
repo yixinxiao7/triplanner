@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import TripCard, { TripCardSkeleton } from '../components/TripCard';
@@ -12,6 +12,7 @@ export default function HomePage() {
   const { trips, isLoading, error, fetchTrips, createTrip, deleteTrip } = useTrips();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const createTripBtnRef = useRef(null);
 
   useEffect(() => {
     fetchTrips();
@@ -50,6 +51,7 @@ export default function HomePage() {
           <div className={styles.pageHeader}>
             <h1 className={styles.pageTitle}>my trips</h1>
             <button
+              ref={createTripBtnRef}
               className={styles.newTripBtn}
               onClick={openModal}
             >
@@ -116,6 +118,7 @@ export default function HomePage() {
               <h2 className={styles.emptyTitle}>no trips yet</h2>
               <p className={styles.emptySubtext}>start planning your first adventure.</p>
               <button
+                ref={createTripBtnRef}
                 className={styles.newTripBtn}
                 onClick={openModal}
               >
@@ -142,6 +145,7 @@ export default function HomePage() {
         isOpen={isModalOpen}
         onClose={closeModal}
         onSubmit={handleCreateTrip}
+        triggerRef={createTripBtnRef}
       />
 
       {/* Toast notification */}

@@ -99,4 +99,37 @@ describe('DestinationChipInput', () => {
     renderChipInput({ destinations: ['Tokyo'] });
     expect(screen.getByRole('group', { name: /destinations/i })).toBeDefined();
   });
+
+  // ── Sprint 4 T-061: ARIA role hierarchy fix ──
+  it('chips do not have role="option" (T-061 ARIA fix)', () => {
+    const { container } = renderChipInput({ destinations: ['Tokyo', 'Osaka'] });
+    const options = container.querySelectorAll('[role="option"]');
+    expect(options.length).toBe(0);
+  });
+
+  it('container has role="group" (not role="listbox")', () => {
+    renderChipInput({ destinations: ['Tokyo'] });
+    const group = screen.getByRole('group', { name: /destinations/i });
+    expect(group).toBeDefined();
+  });
+
+  // ── Sprint 4 T-062: dest-chip-hint element exists ──
+  it('renders hint element with id="dest-chip-hint"', () => {
+    const { container } = renderChipInput();
+    const hint = container.querySelector('#dest-chip-hint');
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toBe('type a destination and press enter');
+  });
+
+  it('input has aria-describedby pointing to dest-chip-hint when no error', () => {
+    renderChipInput();
+    const input = screen.getByLabelText(/add destination/i);
+    expect(input.getAttribute('aria-describedby')).toBe('dest-chip-hint');
+  });
+
+  it('input has aria-describedby pointing to dest-chip-error when error is set', () => {
+    renderChipInput({ error: 'error message' });
+    const input = screen.getByLabelText(/add destination/i);
+    expect(input.getAttribute('aria-describedby')).toBe('dest-chip-error');
+  });
 });

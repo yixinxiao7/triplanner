@@ -103,7 +103,7 @@ export default function DestinationChipInput({
       >
         {/* Chips */}
         {destinations.map((dest, index) => (
-          <span key={`${dest}-${index}`} className={styles.chip} role="option">
+          <span key={`${dest}-${index}`} className={styles.chip}>
             <span className={styles.chipText} title={dest}>
               {dest}
             </span>
@@ -140,6 +140,11 @@ export default function DestinationChipInput({
           autoComplete="off"
         />
       </div>
+
+      {/* Hint text — always in DOM for aria-describedby */}
+      <span id="dest-chip-hint" className={styles.hintText}>
+        type a destination and press enter
+      </span>
 
       {/* Screen reader announcements */}
       <div

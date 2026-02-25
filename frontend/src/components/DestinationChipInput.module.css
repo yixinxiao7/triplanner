@@ -97,6 +97,15 @@
   cursor: not-allowed;
 }
 
+/* ── Hint Text ── */
+.hintText {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  letter-spacing: 0.02em;
+}
+
 /* ── Error Text ── */
 .errorText {
   display: block;

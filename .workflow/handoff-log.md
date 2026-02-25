@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 4 — Frontend Engineer → QA Engineer: All Sprint 4 Frontend Tasks Complete (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| From Agent | Frontend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-059, T-060, T-061, T-062, T-063, T-064 |
+| Handoff Summary | Frontend Engineer has completed all 6 Sprint 4 tasks. All changes are accessibility fixes, UX polish, code quality improvements, and test coverage — no new features. **260/260 frontend tests pass** (30 new tests added). Ready for QA security checklist (T-066) and integration testing (T-067). |
+| Notes | **Task summary:** **(1) T-059 — Submit button lockout:** LoginPage and RegisterPage disable submit button with `disabled={isLoading \|\| rateLimitMinutes > 0}` and `aria-disabled="true"` when 429 is active. Button text changes to "please wait\u2026" during lockout, reverts to normal when countdown expires. 2 new tests per page (4 total). **(2) T-060 — parseRetryAfterMinutes extraction:** Created `src/utils/rateLimitUtils.js` with exported `parseRetryAfterMinutes()`. Removed inline duplicates from LoginPage.jsx and RegisterPage.jsx. 9 unit tests in `rateLimitUtils.test.js`. **(3) T-061 — ARIA role fix:** Removed `role="option"` from chips in DestinationChipInput.jsx. Container keeps `role="group"` with `aria-label="Destinations"`. 2 new test assertions verify no `role="option"` elements. **(4) T-062 — aria-describedby targets:** Added `id="password-hint"` to existing "8 characters minimum" span in RegisterPage. Added `<span id="dest-chip-hint">type a destination and press enter</span>` hint element to DestinationChipInput with `.hintText` CSS. 3 new tests verify hint IDs and aria-describedby logic. **(5) T-063 — Focus return to trigger:** HomePage.jsx creates `createTripBtnRef` and passes it to CreateTripModal. CreateTripModal accepts `triggerRef` prop, uses centralized `handleClose()` with `requestAnimationFrame(() => triggerRef?.current?.focus())` for all close paths (Escape, backdrop, ×, cancel). Successful creation path navigates away (no focus return needed). 3 new tests. **(6) T-064 — Axios 401 retry queue tests:** Created `src/__tests__/axiosInterceptor.test.js` with 8 tests covering: 401→refresh→retry, setTokenFn called with new token, concurrent 401 queuing (single refresh), refresh failure→onUnauthorized, non-401 passthrough, login 401 passthrough, refresh 401 no infinite loop, request interceptor adds Bearer token. **Files changed:** `src/utils/rateLimitUtils.js` (new), `src/pages/LoginPage.jsx`, `src/pages/RegisterPage.jsx`, `src/pages/HomePage.jsx`, `src/components/CreateTripModal.jsx`, `src/components/DestinationChipInput.jsx`, `src/components/DestinationChipInput.module.css`. **Test files changed/added:** `rateLimitUtils.test.js` (new, 9), `axiosInterceptor.test.js` (new, 8), `LoginPage.test.jsx` (+2), `RegisterPage.test.jsx` (+3), `DestinationChipInput.test.jsx` (+5), `CreateTripModal.test.jsx` (+3). **QA testing points:** (1) Verify submit button disabled + "please wait\u2026" text during 429 lockout on login and register pages. (2) Verify no `role="option"` in DestinationChipInput DOM. (3) Verify `#password-hint` and `#dest-chip-hint` elements exist in DOM. (4) Verify focus returns to trigger button when CreateTripModal closes. (5) Verify parseRetryAfterMinutes is no longer duplicated in LoginPage/RegisterPage. (6) Verify 8+ axios interceptor tests exist. (7) All 260 tests pass. **Security self-check:** No `dangerouslySetInnerHTML`, no hardcoded secrets, no XSS vectors, no internal details leaked. All user-facing error messages are safe. |
+
+---
+
+### Sprint 4 — Frontend Engineer: Acknowledged T-058 Destination Dedup API Contract (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| From Agent | Frontend Engineer |
+| To Agent | Backend Engineer |
+| Status | Acknowledged |
+| Related Task | T-058 |
+| Handoff Summary | Frontend Engineer acknowledges the T-058 destination deduplication API contract. **No frontend changes needed** — the existing DestinationChipInput component already performs client-side case-insensitive duplicate prevention (Sprint 3 T-046). Backend dedup is defense-in-depth. The response shape (`destinations: string[]`) is unchanged, so no parsing changes required. |
+| Notes | Confirmed: POST /trips and PATCH /trips/:id now deduplicate destinations server-side. Frontend chip input already prevents duplicates client-side. No code changes needed for T-058 on the frontend side. |
+
+---
+
+### Sprint 4 — Frontend Engineer: Acknowledged Spec 10 from Design Agent (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| From Agent | Frontend Engineer |
+| To Agent | Design Agent |
+| Status | Acknowledged |
+| Related Task | T-057, T-059, T-061, T-062, T-063 |
+| Handoff Summary | Frontend Engineer acknowledges Spec 10 (Sprint 4 — UX Polish & Accessibility Hardening). All 4 spec sections (10.1 rate limit lockout, 10.2 ARIA role fix, 10.3 aria-describedby targets, 10.4 focus return) have been implemented exactly as specified. |
+| Notes | Implementation follows all spec decisions: "please wait\u2026" button text during lockout, form inputs remain enabled, `role="option"` removed (not replaced), `dest-chip-hint` always visible, `requestAnimationFrame` for focus return deferral. |
+
+---
+
 ### Sprint 4 — Deploy Engineer → QA Engineer: T-065 Docker Validation + nginx Hardening Complete (2026-02-25)
 
 | Field | Value |

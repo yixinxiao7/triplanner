@@ -140,4 +140,55 @@ describe('LoginPage', () => {
 
     vi.restoreAllMocks();
   });
+
+  // ── Sprint 4 T-059: Submit button disabled during rate limit lockout ──
+  it('disables submit button when rate limit (429) is active', async () => {
+    vi.spyOn(api.auth, 'login').mockRejectedValueOnce({
+      response: {
+        status: 429,
+        headers: { 'retry-after': '840' },
+        data: { error: { message: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' } },
+      },
+    });
+
+    renderLoginPage();
+    fireEvent.change(screen.getByLabelText(/EMAIL/i), { target: { value: 'test@test.com' } });
+    fireEvent.change(screen.getByLabelText(/PASSWORD/i), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/too many login attempts/i)).toBeDefined();
+    });
+
+    // Submit button should be disabled and show "please wait…"
+    const submitBtn = screen.getByRole('button', { name: /please wait/i });
+    expect(submitBtn.disabled).toBe(true);
+    expect(submitBtn.getAttribute('aria-disabled')).toBe('true');
+
+    vi.restoreAllMocks();
+  });
+
+  it('shows "please wait\u2026" text on submit button during rate limit lockout', async () => {
+    vi.spyOn(api.auth, 'login').mockRejectedValueOnce({
+      response: {
+        status: 429,
+        headers: { 'retry-after': '120' },
+        data: { error: { message: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' } },
+      },
+    });
+
+    renderLoginPage();
+    fireEvent.change(screen.getByLabelText(/EMAIL/i), { target: { value: 'test@test.com' } });
+    fireEvent.change(screen.getByLabelText(/PASSWORD/i), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('please wait\u2026')).toBeDefined();
+    });
+
+    // "sign in" text should NOT be shown
+    expect(screen.queryByRole('button', { name: /^sign in$/i })).toBeNull();
+
+    vi.restoreAllMocks();
+  });
 });
