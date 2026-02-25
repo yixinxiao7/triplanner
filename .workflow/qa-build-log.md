@@ -26,6 +26,11 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 | Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
 |----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| QA Third-Pass — Backend unit tests (60 tests, 5 files) | Unit Test | Pass | Success | Local | No | QA Engineer | None — 60/60 PASS, 466ms |
+| QA Third-Pass — Frontend unit tests (128 tests, 11 files) | Unit Test | Pass | Success | Local | No | QA Engineer | None — 128/128 PASS (React Router v6 future-flag warnings: expected, non-blocking) |
+| QA Third-Pass — Security code review (XSS, SQL injection, secrets, token storage) | Security Scan | Pass | Success | Local | No | QA Engineer | No new issues. All prior findings confirmed unchanged. 1 accepted risk: no rate limiting on auth endpoints. |
+| QA Third-Pass — npm audit backend + frontend | Security Scan | Pass | Success | Local | No | QA Engineer | 5 moderate vulns dev deps only (esbuild GHSA-67mh-4wv8-2f99) — 0 production vulnerabilities. Unchanged. |
+| QA Third-Pass — Integration contract verification (API calls + UI states) | Integration Test | Pass | Success | Local | No | QA Engineer | All API endpoint groups verified. All 4 UI states implemented per spec. No regressions. |
 | QA Second-Pass — Backend unit tests (60 tests, 5 files) | Unit Test | Pass | Success | Local | No | QA Engineer | None — 60/60 PASS, 569ms |
 | QA Second-Pass — Frontend unit tests (128 tests, 11 files) | Unit Test | Pass | Success | Local | No | QA Engineer | None — 128/128 PASS (React Router v6 future-flag warnings: expected, non-blocking) |
 | QA Second-Pass — Integration contract verification (all endpoint groups) | Integration Test | Pass | Success | Local | No | QA Engineer | None — all API call shapes match contracts, all UI states implemented |
@@ -982,4 +987,147 @@ Notes: All 18 checks passed. Zero 5xx errors observed. All response shapes match
 
 **T-022 (User Agent) is In Progress. All QA and deployment tasks are Done.**
 
+---
+
+## Sprint 1 — QA Third-Pass Report (2026-02-24)
+
+**QA Engineer:** QA Agent (Sprint #1 Orchestrator Third-Pass)
+**Sprint:** 1
+**Date:** 2026-02-24
+**Purpose:** Full third-pass QA confirmation — fresh test run + security re-verification after Manager fourth-pass code audit and ongoing T-022 (User Agent) work.
+**Prior QA passes:** First pass (QA initial), Second pass (post-deploy confirmation) — both confirmed PASS.
+
+---
+
+### Test Run I — Backend Unit Tests (Third Pass)
+
+**Command:** `cd /Users/yixinxiao/CLAUDE/triplanner/backend && npm test -- --run`
+**Duration:** 466ms
+**Result:** ✅ PASS — 60/60 tests
+
+| Test File | Tests | Result |
+|-----------|-------|--------|
+| `stays.test.js` | 8 | ✅ PASS |
+| `activities.test.js` | 12 | ✅ PASS |
+| `flights.test.js` | 10 | ✅ PASS |
+| `auth.test.js` | 14 | ✅ PASS |
+| `trips.test.js` | 16 | ✅ PASS |
+
+**Coverage confirmed (happy-path + error-path per endpoint group):**
+- Auth (register/login/refresh/logout): ✅ All error codes covered (400, 401, 409, 204)
+- Trips CRUD: ✅ All error codes covered (400, 401, 403, 404, 204)
+- Flights/Stays/Activities: ✅ All error codes covered (400, 401, 403, 404, 204)
+- **No regressions from prior passes.**
+
+---
+
+### Test Run II — Frontend Unit Tests (Third Pass)
+
+**Command:** `cd /Users/yixinxiao/CLAUDE/triplanner/frontend && npm test -- --run`
+**Duration:** 2.32s
+**Result:** ✅ PASS — 128/128 tests
+
+| Test File | Tests | Result |
+|-----------|-------|--------|
+| `useTripDetails.test.js` | 21 | ✅ PASS |
+| `useTrips.test.js` | 11 | ✅ PASS |
+| `CreateTripModal.test.jsx` | 8 | ✅ PASS |
+| `LoginPage.test.jsx` | 9 | ✅ PASS |
+| `RegisterPage.test.jsx` | 8 | ✅ PASS |
+| `TripDetailsPage.test.jsx` | 31 | ✅ PASS |
+| `HomePage.test.jsx` | 14 | ✅ PASS |
+| `formatDate.test.js` | 9 | ✅ PASS |
+| `TripCard.test.jsx` | 7 | ✅ PASS |
+| `StatusBadge.test.jsx` | 4 | ✅ PASS |
+| `Navbar.test.jsx` | 6 | ✅ PASS |
+
+**Warnings:** React Router v6 future-flag warnings (v7_startTransition, v7_relativeSplatPath) — expected, pre-existing, non-blocking.
+**No regressions from prior passes.**
+
+---
+
+### Test Run III — Security Code Review (Third Pass)
+
+**Method:** Targeted grep + code inspection of actual source files
+**Result:** ✅ PASS — No new issues found. All prior findings confirmed unchanged.
+
+| Security Check | Command/Method | Result | Evidence |
+|---------------|----------------|--------|---------|
+| Hardcoded secrets | grep -rn `JWT_SECRET =` in backend/src/ | ✅ CLEAN | Exit code 1 — no matches |
+| Rate limiting applied | grep -rn `rateLimit` in backend/src/ | ⚠️ NOT APPLIED | Exit code 1 — pre-existing known accepted risk |
+| SQL string concat (routes/models) | grep -rn `db.raw\|knex.raw` in backend/src/ | ✅ SAFE | Matches only in migrations (UUID defaults, CHECK constraints) and `LOWER(email)` function reference — no user input in raw SQL |
+| XSS vectors in frontend | grep -rn `dangerouslySetInnerHTML` in frontend/src/ | ✅ CLEAN | Exit code 1 — no matches |
+| Token in localStorage | grep -rn `localStorage.setItem\|sessionStorage.setItem` in frontend/src/ | ✅ CLEAN | Exit code 1 — no matches |
+| console.log in route handlers | grep -rn `console.log` in backend/src/routes/ | ✅ CLEAN | Exit code 1 — no matches |
+| bcrypt rounds | grep -n `bcrypt.hash` in auth.js | ✅ PASS | `bcrypt.hash(password, 12)` at line 104 |
+| Timing-safe login | grep -n `DUMMY_HASH` in auth.js | ✅ PASS | `DUMMY_HASH` defined at line 23, used at line 157 |
+| helmet + cors in app.js | grep -n `helmet\|cors` in app.js | ✅ PASS | Both applied — helmet() at line 15, cors with CORS_ORIGIN env var |
+| withCredentials in axios | grep -n `withCredentials` in api.js | ✅ PASS | `withCredentials: true` at line 19 |
+| API contract URLs in api.js | Read api.js | ✅ PASS | All endpoints match api-contracts.md exactly — auth, trips, flights, stays, activities |
+
+**Security Summary:**
+- **P0 (Critical):** 0
+- **P1 (High):** 0
+- **P2 (Medium):** 1 — rate limiting not applied (KNOWN ACCEPTED RISK, Sprint 2 backlog — unchanged)
+- **P3 (Low/Info):** 2 — dev-dep vulns (no prod impact); HTTPS pending production config
+
+---
+
+### Test Run IV — npm audit (Third Pass)
+
+**Backend:** `cd backend && npm audit` → 5 moderate vulns in dev dep chain only (vitest→vite→esbuild GHSA-67mh-4wv8-2f99). Production deps: **0 vulnerabilities**
+**Frontend:** `cd frontend && npm audit` → Same 5 moderate vulns in dev dep chain only. Production deps: **0 vulnerabilities**
+**Status:** ✅ PASS — unchanged from prior passes. No production risk.
+
+---
+
+### Test Run V — Integration Contract Verification (Third Pass)
+
+**Method:** Direct code review of api.js against api-contracts.md
+**Result:** ✅ PASS — All API method signatures and URLs match contracts exactly
+
+| Contract Group | Frontend Call | Contract Endpoint | Match |
+|----------------|--------------|-------------------|-------|
+| Auth register | `api.auth.register(body)` → POST /auth/register | ✅ | ✅ |
+| Auth login | `api.auth.login(body)` → POST /auth/login | ✅ | ✅ |
+| Auth refresh | `api.auth.refresh()` → POST /auth/refresh | ✅ | ✅ |
+| Auth logout | `api.auth.logout()` → POST /auth/logout | ✅ | ✅ |
+| Trips list | `api.trips.list(params)` → GET /trips | ✅ | ✅ |
+| Trips create | `api.trips.create(body)` → POST /trips | ✅ | ✅ |
+| Trips get | `api.trips.get(id)` → GET /trips/:id | ✅ | ✅ |
+| Trips update | `api.trips.update(id, body)` → PATCH /trips/:id | ✅ | ✅ |
+| Trips delete | `api.trips.delete(id)` → DELETE /trips/:id | ✅ | ✅ |
+| Flights list | `api.flights.list(tripId)` → GET /trips/:tripId/flights | ✅ | ✅ |
+| Stays list | `api.stays.list(tripId)` → GET /trips/:tripId/stays | ✅ | ✅ |
+| Activities list | `api.activities.list(tripId)` → GET /trips/:tripId/activities | ✅ | ✅ |
+
+**Interceptor verification:**
+- ✅ 401 interceptor: `isRefreshing` guard + subscriber queue — no infinite refresh loop
+- ✅ Skips retry for `/auth/refresh` and `/auth/login` URLs (lines 73–74 in api.js)
+- ✅ `withCredentials: true` for httpOnly cookie transport
+- ✅ Bearer token injected from in-memory `getTokenFn()` — never localStorage
+
+---
+
+### Sprint 1 QA Third-Pass Summary
+
+| Category | Tests | Result |
+|----------|-------|--------|
+| Backend Unit Tests | 60/60 (466ms) | ✅ PASS |
+| Frontend Unit Tests | 128/128 (2.32s) | ✅ PASS |
+| Security Code Review | All checks | ✅ PASS (1 accepted risk: no rate limiting) |
+| npm audit | Dev deps only | ✅ PASS (0 prod vulns) |
+| Integration Contract Verification | All 12 endpoint groups | ✅ PASS |
+
+**Overall Sprint 1 QA Status: ✅ CONFIRMED PASS — Third pass. No regressions. Zero new issues found.**
+
+**Active accepted risks (unchanged from all prior passes):**
+1. Rate limiting not applied to /auth/login + /auth/register — Sprint 2 backlog
+2. Dev-only esbuild vulnerability (GHSA-67mh-4wv8-2f99) — no production impact
+3. HTTPS: pending production configuration
+4. `triggerRef` focus-return-to-trigger in CreateTripModal — cosmetic, P3, Sprint 2
+
+**Sprint 1 deployment clearance: ✅ REMAINS VALID. T-022 (User Agent) may continue.**
+
+---
 ---
