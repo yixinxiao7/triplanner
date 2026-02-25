@@ -24,12 +24,18 @@ vi.mock('jsonwebtoken', () => ({
 import express from 'express';
 import staysRoutes from '../routes/stays.js';
 import { errorHandler } from '../middleware/errorHandler.js';
+import { uuidParamHandler } from '../middleware/validateUUID.js';
 import * as tripModel from '../models/tripModel.js';
 import * as stayModel from '../models/stayModel.js';
+
+const TRIP_UUID = '550e8400-e29b-41d4-a716-446655440001';
+const STAY_UUID = '550e8400-e29b-41d4-a716-446655440020';
+const NOTFOUND_UUID = '550e8400-e29b-41d4-a716-446655440099';
 
 function buildApp() {
   const app = express();
   app.use(express.json());
+  app.param('tripId', uuidParamHandler);
   app.use('/api/v1/trips/:tripId/stays', staysRoutes);
   app.use(errorHandler);
   return app;
@@ -57,10 +63,10 @@ async function request(app, method, path, body, headers = {}) {
 }
 
 const AUTH = { Authorization: 'Bearer valid-token' };
-const mockTrip = { id: 'trip-1', user_id: 'user-1', name: 'Test Trip' };
+const mockTrip = { id: '550e8400-e29b-41d4-a716-446655440001', user_id: 'user-1', name: 'Test Trip' };
 const mockStay = {
-  id: 'stay-1',
-  trip_id: 'trip-1',
+  id: '550e8400-e29b-41d4-a716-446655440020',
+  trip_id: '550e8400-e29b-41d4-a716-446655440001',
   category: 'HOTEL',
   name: 'Hyatt Regency',
   address: '5 Embarcadero Center',
@@ -81,7 +87,7 @@ describe('GET /api/v1/trips/:tripId/stays', () => {
   it('happy path: returns list of stays', async () => {
     stayModel.listStaysByTrip.mockResolvedValue([mockStay]);
 
-    const res = await request(buildApp(), 'GET', '/api/v1/trips/trip-1/stays', null, AUTH);
+    const res = await request(buildApp(), 'GET', `/api/v1/trips/${TRIP_UUID}/stays`, null, AUTH);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(1);
@@ -89,7 +95,7 @@ describe('GET /api/v1/trips/:tripId/stays', () => {
   });
 
   it('error path: returns 401 without auth', async () => {
-    const res = await request(buildApp(), 'GET', '/api/v1/trips/trip-1/stays', null);
+    const res = await request(buildApp(), 'GET', `/api/v1/trips/${TRIP_UUID}/stays`, null);
     expect(res.status).toBe(401);
   });
 });
@@ -102,7 +108,7 @@ describe('POST /api/v1/trips/:tripId/stays', () => {
   });
 
   it('happy path: creates stay and returns 201', async () => {
-    const res = await request(buildApp(), 'POST', '/api/v1/trips/trip-1/stays', {
+    const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/stays`, {
       category: 'HOTEL',
       name: 'Hyatt Regency',
       address: '5 Embarcadero Center',
@@ -117,7 +123,7 @@ describe('POST /api/v1/trips/:tripId/stays', () => {
   });
 
   it('happy path: address is optional (null)', async () => {
-    const res = await request(buildApp(), 'POST', '/api/v1/trips/trip-1/stays', {
+    const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/stays`, {
       category: 'AIRBNB',
       name: 'Nice Airbnb',
       check_in_at: '2026-08-07T20:00:00.000Z',
@@ -130,7 +136,7 @@ describe('POST /api/v1/trips/:tripId/stays', () => {
   });
 
   it('error path: returns 400 for invalid category', async () => {
-    const res = await request(buildApp(), 'POST', '/api/v1/trips/trip-1/stays', {
+    const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/stays`, {
       category: 'HOSTEL',
       name: 'Test',
       check_in_at: '2026-08-07T20:00:00.000Z',
@@ -144,7 +150,7 @@ describe('POST /api/v1/trips/:tripId/stays', () => {
   });
 
   it('error path: returns 400 when check_out is before check_in', async () => {
-    const res = await request(buildApp(), 'POST', '/api/v1/trips/trip-1/stays', {
+    const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/stays`, {
       category: 'HOTEL',
       name: 'Test Hotel',
       check_in_at: '2026-08-09T15:00:00.000Z',
@@ -168,7 +174,7 @@ describe('DELETE /api/v1/trips/:tripId/stays/:id', () => {
     stayModel.findStayById.mockResolvedValue(mockStay);
     stayModel.deleteStay.mockResolvedValue(1);
 
-    const res = await request(buildApp(), 'DELETE', '/api/v1/trips/trip-1/stays/stay-1', null, AUTH);
+    const res = await request(buildApp(), 'DELETE', `/api/v1/trips/${TRIP_UUID}/stays/${STAY_UUID}`, null, AUTH);
 
     expect(res.status).toBe(204);
   });
@@ -176,7 +182,7 @@ describe('DELETE /api/v1/trips/:tripId/stays/:id', () => {
   it('error path: returns 404 when stay not found', async () => {
     stayModel.findStayById.mockResolvedValue(null);
 
-    const res = await request(buildApp(), 'DELETE', '/api/v1/trips/trip-1/stays/nonexistent', null, AUTH);
+    const res = await request(buildApp(), 'DELETE', `/api/v1/trips/${TRIP_UUID}/stays/${NOTFOUND_UUID}`, null, AUTH);
 
     expect(res.status).toBe(404);
   });

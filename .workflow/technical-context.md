@@ -30,7 +30,7 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 004 | 1 | Create `flights` table | Create Table | `20260224_004_create_flights.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 | 005 | 1 | Create `stays` table | Create Table | `20260224_005_create_stays.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 | 006 | 1 | Create `activities` table | Create Table | `20260224_006_create_activities.js` | ✅ Applied on Staging (2026-02-24, T-020) |
-| 007 | 2 | Add `start_date` + `end_date` to `trips` table | Alter Table | `20260225_007_add_trip_date_range.js` | ⏳ Pending — awaiting implementation (T-029) |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` table | Alter Table | `20260225_007_add_trip_date_range.js` | ✅ Implemented — awaiting Deploy Engineer to apply on Staging (T-038) |
 
 ---
 

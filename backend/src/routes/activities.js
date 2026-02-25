@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { uuidParamHandler } from '../middleware/validateUUID.js';
 import { findTripById } from '../models/tripModel.js';
 import {
   listActivitiesByTrip,
@@ -13,6 +14,10 @@ import {
 const router = Router({ mergeParams: true });
 
 router.use(authenticate);
+
+// ---- UUID validation for path params (T-027 / B-009) ----
+router.param('tripId', uuidParamHandler);
+router.param('id', uuidParamHandler);
 
 async function requireTripOwnership(req, res) {
   const trip = await findTripById(req.params.tripId);

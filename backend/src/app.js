@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { errorHandler } from './middleware/errorHandler.js';
+import { uuidParamHandler } from './middleware/validateUUID.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import tripsRoutes from './routes/trips.js';
@@ -22,6 +23,12 @@ app.use(
 
 // ---- Body parsing ----
 app.use(express.json());
+
+// ---- Global UUID validation for :tripId param (T-027 / B-009) ----
+// :tripId appears in the app-level route paths for sub-resource mounts.
+// router.param() in child routers does NOT fire for params inherited from the parent,
+// so we register it at the app level here to cover all sub-resource routes.
+app.param('tripId', uuidParamHandler);
 
 // ---- Routes ----
 app.use('/api/v1/health', healthRoutes);

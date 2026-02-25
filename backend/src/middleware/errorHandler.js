@@ -2,6 +2,20 @@ export function errorHandler(err, req, res, next) {
   // Log the stack trace server-side but never expose it in the response
   console.error('[ErrorHandler]', err.stack || err.message);
 
+  // Handle JSON parse errors from express.json() body parser (B-012 / T-027)
+  // express.json() throws a SyntaxError with type='entity.parse.failed' on malformed bodies
+  if (
+    err.type === 'entity.parse.failed' ||
+    (err instanceof SyntaxError && err.status === 400 && 'body' in err)
+  ) {
+    return res.status(400).json({
+      error: {
+        message: 'Invalid JSON in request body',
+        code: 'INVALID_JSON',
+      },
+    });
+  }
+
   const status = err.status || 500;
 
   // Never leak internal error details to the client

@@ -17,6 +17,34 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 2 — Backend Engineer → Deploy Engineer (Migration 007 Ready — T-029 / T-038)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | Backend Engineer |
+| To Agent | Deploy Engineer |
+| Status | Pending |
+| Related Task | T-029, T-038 |
+| Handoff Summary | Migration 007 (`20260225_007_add_trip_date_range.js`) is committed and ready to be applied on staging. This migration adds `start_date DATE NULL` and `end_date DATE NULL` to the `trips` table. Must be applied before the Sprint 2 frontend goes live (trip cards will call `trip.start_date` / `trip.end_date`). |
+| Notes | **Migration file:** `backend/src/migrations/20260225_007_add_trip_date_range.js` **Command to apply:** `npm run migrate` (or `knex migrate:latest`) from the backend directory. **Verify after apply:** Confirm `trips` table has `start_date` and `end_date` DATE columns via `\d trips` in psql. **Rollback command:** `knex migrate:rollback` — runs `down()` which safely drops both columns (`DROP COLUMN IF EXISTS`). **Dependencies:** Must run AFTER all Sprint 1 migrations (001–006). Migration filename prefix `20260225_` ensures correct Knex ordering. **Staging note:** Do NOT apply to production without first verifying on staging per `technical-context.md` rules. |
+
+---
+
+### Sprint 2 — Backend Engineer → QA Engineer (Implementation Complete — T-027, T-028, T-029, T-030 In Review)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-027, T-028, T-029, T-030, T-036 |
+| Handoff Summary | All four Sprint 2 backend tasks (T-027, T-028, T-029, T-030) are fully implemented, tested (116/116 tests pass), and moved to "In Review". QA Engineer should proceed with T-036 (security checklist + code review audit) and prepare for T-037 (integration testing) after Deploy Engineer applies migration 007. |
+| Notes | **Summary of changes for QA verification:** **T-027 / B-009 (UUID validation):** New middleware `backend/src/middleware/validateUUID.js` — `uuidParamHandler` using UUID v4 regex. Applied via `router.param('id', uuidParamHandler)` in trips/flights/stays/activities route files, and `app.param('tripId', uuidParamHandler)` in `app.js` for sub-resource tripId params. Non-UUID IDs → HTTP 400 `VALIDATION_ERROR` "Invalid ID format". **T-027 / B-010 (activity_date format):** `backend/src/models/activityModel.js` — `TO_CHAR(activity_date, 'YYYY-MM-DD')` in all SELECT queries. Re-query pattern in create/update so response always uses formatted date. Verify: POST /activities response, GET list, GET single all return `"YYYY-MM-DD"` not ISO timestamp. **T-027 / B-012 (INVALID_JSON):** `backend/src/middleware/errorHandler.js` — added guard for `err.type === 'entity.parse.failed'` → HTTP 400 `{ error: { message: "Invalid JSON in request body", code: "INVALID_JSON" } }`. **T-028 (rate limiting):** `backend/src/routes/auth.js` — `loginRateLimiter` (max: 10), `registerRateLimiter` (max: 20), `generalAuthRateLimiter` (max: 30), all 15-minute windows. Custom handler returns structured JSON with `RATE_LIMIT_EXCEEDED` code. `standardHeaders: true` for `RateLimit-*` and `Retry-After` headers. **T-029 (trip date range):** Migration 007 adds `start_date` and `end_date` DATE columns (awaiting Deploy). `tripModel.js` — `TO_CHAR` for date SELECT, `start_date`/`end_date` accepted in insert/update. Route validates `dateString` format, cross-field `end_date >= start_date`, explicit null clearing. **T-030 (status auto-calc):** `tripModel.js` — exported `computeTripStatus(trip)` pure function. Applied in `findTripById` and `listTripsByUser` after DB query. Logic: both dates required, `end_date < today` → COMPLETED, today within range → ONGOING, future → PLANNING, else stored status. **Test files added/updated:** `sprint2.test.js` (37 tests, new), `tripStatus.test.js` (19 tests, new), plus existing trips/flights/stays/activities test files updated to use valid UUIDs. Total: 116 tests, all pass. |
+
+---
+
 ### Sprint 2 — Backend Engineer → QA Engineer (API Contracts Ready for Test Reference — T-027, T-028, T-029, T-030)
 
 | Field | Value |

@@ -23,6 +23,9 @@ import tripsRoutes from '../routes/trips.js';
 import { errorHandler } from '../middleware/errorHandler.js';
 import * as tripModel from '../models/tripModel.js';
 
+const TRIP_UUID = '550e8400-e29b-41d4-a716-446655440001';
+const NOTFOUND_UUID = '550e8400-e29b-41d4-a716-446655440099';
+
 function buildApp() {
   const app = express();
   app.use(express.json());
@@ -63,11 +66,13 @@ async function request(app, method, path, body, headers = {}) {
 const AUTH = { Authorization: 'Bearer valid-token' };
 
 const mockTrip = {
-  id: 'trip-1',
+  id: '550e8400-e29b-41d4-a716-446655440001',
   user_id: 'user-1',
   name: 'Japan 2026',
   destinations: ['Tokyo', 'Osaka'],
   status: 'PLANNING',
+  start_date: null,
+  end_date: null,
   created_at: '2026-02-24T12:00:00.000Z',
   updated_at: '2026-02-24T12:00:00.000Z',
 };
@@ -152,16 +157,16 @@ describe('GET /api/v1/trips/:id', () => {
   it('happy path: returns trip owned by user', async () => {
     tripModel.findTripById.mockResolvedValue(mockTrip);
 
-    const res = await request(buildApp(), 'GET', '/api/v1/trips/trip-1', null, AUTH);
+    const res = await request(buildApp(), 'GET', `/api/v1/trips/${TRIP_UUID}`, null, AUTH);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.id).toBe('trip-1');
+    expect(res.body.data.id).toBe(TRIP_UUID);
   });
 
   it('error path: returns 404 when trip not found', async () => {
     tripModel.findTripById.mockResolvedValue(null);
 
-    const res = await request(buildApp(), 'GET', '/api/v1/trips/nonexistent', null, AUTH);
+    const res = await request(buildApp(), 'GET', `/api/v1/trips/${NOTFOUND_UUID}`, null, AUTH);
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
@@ -170,7 +175,7 @@ describe('GET /api/v1/trips/:id', () => {
   it('error path: returns 403 when trip belongs to another user', async () => {
     tripModel.findTripById.mockResolvedValue({ ...mockTrip, user_id: 'other-user' });
 
-    const res = await request(buildApp(), 'GET', '/api/v1/trips/trip-1', null, AUTH);
+    const res = await request(buildApp(), 'GET', `/api/v1/trips/${TRIP_UUID}`, null, AUTH);
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -184,7 +189,7 @@ describe('PATCH /api/v1/trips/:id', () => {
     tripModel.findTripById.mockResolvedValue(mockTrip);
     tripModel.updateTrip.mockResolvedValue({ ...mockTrip, name: 'Japan Updated' });
 
-    const res = await request(buildApp(), 'PATCH', '/api/v1/trips/trip-1', {
+    const res = await request(buildApp(), 'PATCH', `/api/v1/trips/${TRIP_UUID}`, {
       name: 'Japan Updated',
     }, AUTH);
 
@@ -195,7 +200,7 @@ describe('PATCH /api/v1/trips/:id', () => {
   it('error path: returns 400 for invalid status value', async () => {
     tripModel.findTripById.mockResolvedValue(mockTrip);
 
-    const res = await request(buildApp(), 'PATCH', '/api/v1/trips/trip-1', {
+    const res = await request(buildApp(), 'PATCH', `/api/v1/trips/${TRIP_UUID}`, {
       status: 'INVALID_STATUS',
     }, AUTH);
 
@@ -206,7 +211,7 @@ describe('PATCH /api/v1/trips/:id', () => {
   it('error path: returns 400 when no updatable fields provided', async () => {
     tripModel.findTripById.mockResolvedValue(mockTrip);
 
-    const res = await request(buildApp(), 'PATCH', '/api/v1/trips/trip-1', {
+    const res = await request(buildApp(), 'PATCH', `/api/v1/trips/${TRIP_UUID}`, {
       unknownField: 'value',
     }, AUTH);
 
@@ -222,7 +227,7 @@ describe('DELETE /api/v1/trips/:id', () => {
     tripModel.findTripById.mockResolvedValue(mockTrip);
     tripModel.deleteTrip.mockResolvedValue(1);
 
-    const res = await request(buildApp(), 'DELETE', '/api/v1/trips/trip-1', null, AUTH);
+    const res = await request(buildApp(), 'DELETE', `/api/v1/trips/${TRIP_UUID}`, null, AUTH);
 
     expect(res.status).toBe(204);
   });
@@ -230,7 +235,7 @@ describe('DELETE /api/v1/trips/:id', () => {
   it('error path: returns 404 when trip not found', async () => {
     tripModel.findTripById.mockResolvedValue(null);
 
-    const res = await request(buildApp(), 'DELETE', '/api/v1/trips/nonexistent', null, AUTH);
+    const res = await request(buildApp(), 'DELETE', `/api/v1/trips/${NOTFOUND_UUID}`, null, AUTH);
 
     expect(res.status).toBe(404);
   });
@@ -238,7 +243,7 @@ describe('DELETE /api/v1/trips/:id', () => {
   it('error path: returns 403 when trip belongs to another user', async () => {
     tripModel.findTripById.mockResolvedValue({ ...mockTrip, user_id: 'other-user' });
 
-    const res = await request(buildApp(), 'DELETE', '/api/v1/trips/trip-1', null, AUTH);
+    const res = await request(buildApp(), 'DELETE', `/api/v1/trips/${TRIP_UUID}`, null, AUTH);
 
     expect(res.status).toBe(403);
   });

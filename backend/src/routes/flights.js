@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { uuidParamHandler } from '../middleware/validateUUID.js';
 import { findTripById } from '../models/tripModel.js';
 import {
   listFlightsByTrip,
@@ -14,6 +15,12 @@ import {
 const router = Router({ mergeParams: true });
 
 router.use(authenticate);
+
+// ---- UUID validation for path params (T-027 / B-009) ----
+// :tripId is inherited from the parent router via mergeParams
+// :id is defined on item-level routes within this router
+router.param('tripId', uuidParamHandler);
+router.param('id', uuidParamHandler);
 
 /**
  * Verify that the trip exists and belongs to the authenticated user.

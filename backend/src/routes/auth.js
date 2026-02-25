@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import { parse as parseCookies } from 'cookie';
 import { validate } from '../middleware/validate.js';
 import { authenticate } from '../middleware/auth.js';
@@ -24,6 +25,49 @@ const DUMMY_HASH = '$2a$12$KIXRypNYJWQXQVVjbmLiOuHm1Wm5H8F4c2G.x3kPZ9RZ1O8qb5Xm'
 
 /** 7 days in seconds */
 const REFRESH_TOKEN_SECONDS = 7 * 24 * 60 * 60;
+
+// ---- Rate limiters (T-028 / B-011) ----
+
+/**
+ * Shared rate limit handler — returns a structured JSON 429 matching the API error contract.
+ */
+function rateLimitHandler(req, res) {
+  res.status(429).json({
+    error: {
+      message: 'Too many requests, please try again later.',
+      code: 'RATE_LIMIT_EXCEEDED',
+    },
+  });
+}
+
+/** Strict limiter for login — 10 requests per 15 minutes per IP (brute-force protection) */
+const loginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  standardHeaders: true,   // Send standard RateLimit-* headers (includes Retry-After)
+  legacyHeaders: false,    // Do NOT send legacy X-RateLimit-* headers
+  handler: rateLimitHandler,
+});
+
+/** Looser limiter for register — 20 requests per 15 minutes per IP */
+const registerRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+});
+
+/** General limiter for refresh and logout — 30 requests per 15 minutes per IP */
+const generalAuthRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+});
+
+// ---- Helpers ----
 
 function setRefreshCookie(res, token) {
   res.cookie('refresh_token', token, {
@@ -57,6 +101,7 @@ function signAccessToken(user) {
 // ---- POST /api/v1/auth/register ----
 router.post(
   '/register',
+  registerRateLimiter,
   validate({
     name: {
       required: true,
@@ -135,6 +180,7 @@ router.post(
 // ---- POST /api/v1/auth/login ----
 router.post(
   '/login',
+  loginRateLimiter,
   validate({
     email: {
       required: true,
@@ -193,7 +239,7 @@ router.post(
 );
 
 // ---- POST /api/v1/auth/refresh ----
-router.post('/refresh', async (req, res, next) => {
+router.post('/refresh', generalAuthRateLimiter, async (req, res, next) => {
   try {
     const cookies = parseCookies(req.headers.cookie || '');
     const rawToken = cookies.refresh_token;
@@ -253,7 +299,7 @@ router.post('/refresh', async (req, res, next) => {
 });
 
 // ---- POST /api/v1/auth/logout ----
-router.post('/logout', authenticate, async (req, res, next) => {
+router.post('/logout', generalAuthRateLimiter, authenticate, async (req, res, next) => {
   try {
     const cookies = parseCookies(req.headers.cookie || '');
     const rawToken = cookies.refresh_token;
