@@ -31,7 +31,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 1 |
 | Category | Bug |
 | Severity | Major |
-| Status | New |
+| Status | Tasked |
 | Related Task | T-011 |
 
 **Steps to reproduce:**
@@ -55,7 +55,7 @@ curl -s http://localhost:3001/api/v1/trips/not-a-real-uuid \
 | Sprint | 1 |
 | Category | Bug |
 | Severity | Major |
-| Status | New |
+| Status | Tasked |
 | Related Task | T-012 |
 
 **Steps to reproduce:**
@@ -81,7 +81,7 @@ curl -s -X POST http://localhost:3001/api/v1/trips/$TRIP_ID/activities \
 | Sprint | 1 |
 | Category | Security |
 | Severity | Major |
-| Status | New |
+| Status | Tasked |
 | Related Task | T-010 |
 
 **Steps to reproduce:**
@@ -109,7 +109,7 @@ done
 | Sprint | 1 |
 | Category | Bug |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-010 |
 
 **Steps to reproduce:**
@@ -134,7 +134,7 @@ curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST http://localhost:3001/api/v1/aut
 | Sprint | 1 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-010, T-011, T-012, T-013, T-014, T-015, T-016, T-017 |
 
 **What was tested:** Complete new-user flow from registration through trip creation, viewing, and deletion.
@@ -163,7 +163,7 @@ All core flows work flawlessly. The backend is solid.
 | Sprint | 1 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-010, T-011, T-012 |
 
 **What was tested:** All validation edge cases across auth, trips, and sub-resource endpoints.
@@ -194,7 +194,7 @@ The validation is thorough and all error messages are descriptive and consistent
 | Sprint | 1 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-011, T-012 |
 
 **What was tested:** User B attempting to access, modify, and delete User A's resources.
@@ -215,7 +215,7 @@ The trip ownership check is applied consistently and returns 403 (not 404, which
 | Sprint | 1 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-010, T-013 |
 
 **What was tested:** All scenarios where a user should be rejected from protected endpoints.
@@ -238,7 +238,7 @@ Error messages are safe (no token details leaked). Response shape matches `api-c
 | Sprint | 1 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-013, T-014, T-015, T-016, T-017 |
 
 **What was tested:** Code review of all 5 major frontend components against ui-spec.md.
@@ -266,7 +266,7 @@ This is an exceptionally well-implemented frontend for Sprint 1.
 | Sprint | 1 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-013, T-020 |
 
 **What was tested:** Frontend build output existence, static serving, and SPA routing behavior.

@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 → Sprint 2 — Manager Agent (Sprint 1 Closeout Complete — Ready for Sprint 2 Planning)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 → 2 |
+| From Agent | Manager Agent |
+| To Agent | Orchestrator / Sprint 2 Planning Phase |
+| Status | Pending |
+| Related Task | Sprint 1 Closeout |
+| Handoff Summary | Sprint 1 closeout is complete as of 2026-02-24. All 10 feedback entries have been triaged. Sprint summary has been written to `.workflow/sprint-log.md`. Dev cycle tracker has been updated with 4 new backlog items (B-009 through B-012) derived from triaged feedback. Sprint 2 planning may begin. |
+| Notes | **Sprint 1 Closeout Checklist:** ✅ All 22 Sprint 1 tasks verified Done. ✅ All 10 feedback entries in feedback-log.md triaged (New → Tasked/Acknowledged). ✅ 3 Major issues set to Tasked (FB-001 → B-009, FB-002 → B-010, FB-003 → B-011). ✅ 1 Minor issue set to Acknowledged backlog (FB-004 → B-012). ✅ 6 Positive entries set to Acknowledged. ✅ Sprint summary written to sprint-log.md (Sprint #1 — 2026-02-24). ✅ New backlog tasks B-009, B-010, B-011, B-012 added to dev-cycle-tracker.md. **For Sprint 2 Planning — Key Inputs:** (1) **P0 bug fixes that must enter Sprint 2:** B-009 (UUID → 500 fix), B-010 (activity_date format fix), B-011 (rate limiting on auth routes). (2) **Core MVP edit flows:** B-001 (flights edit page), B-002 (stays edit page), B-003 (activities edit page) — these complete the core user journey from project brief. (3) **Calendar prerequisite:** B-006 (trip date range) should precede B-004 (calendar component) for data accuracy. (4) **Known accepted risks to address:** HTTPS required before production (B-008 planning); pm2 process management for staging stability. (5) **Backlog items deferred:** B-007 (multi-destination UI), B-008 (production deploy), B-012 (minor JSON parse error code) can stay in backlog. **Test gaps to close in Sprint 2:** Backend unit tests should add edge cases for (a) malformed UUID path params, (b) DATE field serialization assertions in activity response shapes. |
+
+---
+
 ### Sprint 1 — User Agent → Manager Agent (T-022 Complete — Product Testing Done, Feedback Submitted)
 
 | Field | Value |
