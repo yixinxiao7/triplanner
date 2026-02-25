@@ -1,6 +1,28 @@
 import db from '../config/database.js';
 
 /**
+ * Deduplicate a destinations array using case-insensitive comparison.
+ * Preserves the original casing of the first occurrence of each destination.
+ * Preserves the original order of first occurrences.
+ *
+ * T-058 / B-023 — Defense-in-depth measure ensuring data integrity regardless
+ * of which client sends the request (frontend already does client-side dedup).
+ *
+ * @param {string[]} destinations - Array of trimmed destination strings
+ * @returns {string[]} Deduplicated array with first-occurrence casing preserved
+ */
+export function deduplicateDestinations(destinations) {
+  if (!Array.isArray(destinations)) return destinations;
+  const seen = new Set();
+  return destinations.filter(dest => {
+    const lower = dest.toLowerCase();
+    if (seen.has(lower)) return false;
+    seen.add(lower);
+    return true;
+  });
+}
+
+/**
  * Trip column selection with date fields cast to YYYY-MM-DD strings via TO_CHAR.
  * Prevents PostgreSQL DATE columns from being serialized as ISO timestamps
  * (the same timezone-issue fix applied to activity_date in activityModel.js).
@@ -109,7 +131,7 @@ export async function createTrip(data) {
   const insertData = {
     user_id: data.user_id,
     name: data.name,
-    destinations: data.destinations,
+    destinations: deduplicateDestinations(data.destinations),
   };
 
   // start_date and end_date are optional nullable fields (T-029)
@@ -135,9 +157,15 @@ export async function createTrip(data) {
  * @returns {Promise<Object>}
  */
 export async function updateTrip(id, updates) {
+  // Apply destination deduplication when destinations are being updated (T-058)
+  const processedUpdates = { ...updates };
+  if (processedUpdates.destinations !== undefined && Array.isArray(processedUpdates.destinations)) {
+    processedUpdates.destinations = deduplicateDestinations(processedUpdates.destinations);
+  }
+
   await db('trips')
     .where({ id })
-    .update({ ...updates, updated_at: new Date() });
+    .update({ ...processedUpdates, updated_at: new Date() });
 
   // Re-query to get formatted date fields and computed status
   return findTripById(id);

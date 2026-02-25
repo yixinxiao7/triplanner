@@ -2553,3 +2553,81 @@ Notes: All 18 checks passed. Zero 5xx errors observed. All response shapes match
 **Known limitation:** Actual Docker image build validation is deferred to CI/CD pipeline execution. The `docker-build` job in ci.yml builds both images and validates docker-compose config — this will exercise the real Docker build on the next push/PR to main.
 
 ---
+
+## Sprint 4 Entries
+
+| Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
+|----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 4 — Backend unit tests (168 tests, 9 files) — T-058/T-068 | Unit Test | Pass | Success | Local | No | Deploy Engineer | None — 168/168 PASS, 769ms. All 9 test files pass: auth(14), trips(16), flights(10), stays(8), activities(12), sprint2(37), sprint3(33), sprint4(19), tripStatus(19). Sprint 4 adds 19 new tests for destination deduplication. |
+| Sprint 4 — Frontend unit tests (260 tests, 18 files) — T-068 | Unit Test | Pass | Success | Local | No | Deploy Engineer | None — 260/260 PASS, 3.19s. All 18 test files pass. React Router v6 future-flag warnings: expected, non-blocking. Sprint 4 adds 30 tests across 6 tasks (T-059–T-064). |
+| Sprint 4 — Frontend production build — T-068 | Build | Pass | Success | Staging | No | Deploy Engineer | Vite 6.4.1 build succeeded: 115 modules transformed, 674ms. Output: dist/index.html (0.39 kB), dist/assets/index.css (54.99 kB gzip 8.75 kB), dist/assets/index.js (301.29 kB gzip 93.27 kB). No errors, no warnings. VITE_API_URL=https://localhost:3001/api/v1. |
+| Sprint 4 — Backend restart under pm2 — T-068 | Build | Pass | Success | Staging | No | Deploy Engineer | pm2 restart triplanner-backend: PID changed to 87518. Status: online. Cluster mode. HTTPS operational on :3001. Includes T-058 destination deduplication. |
+| Sprint 4 — Staging deployment — T-068 | Post-Deploy Health Check | Pass | Success | Staging | Pending Monitor | Deploy Engineer | Backend: https://localhost:3001 (Node.js, PORT=3001, NODE_ENV=staging, HTTPS). Frontend: https://localhost:4173 (Vite preview, HTTPS). PostgreSQL: localhost:5432/appdb (Homebrew PostgreSQL 15). pm2: triplanner-backend (online, cluster mode). Docker not available — using local processes. No new migrations required for Sprint 4. |
+| Sprint 4 — Staging smoke tests (11 checks) — T-068 | E2E Test | Pass | Success | Staging | Pending Monitor | Deploy Engineer | 11/11 smoke tests PASS: (1) Backend health → 200 ✅, (2) Register user → 201 + token ✅, (3) Create trip with duplicate destinations ["Tokyo","Tokyo","tokyo"] → deduped to ["Tokyo"] (1 element) ✅ (T-058), (4) PATCH trip with ["Paris","paris","PARIS","Osaka"] → deduped to 2 destinations ✅ (T-058), (5) UUID validation → 400 ✅, (6) Create all-day activity (null times) → 201 ✅, (7) Cookie Secure flag → HttpOnly; Secure; SameSite=Strict ✅, (8) Trip status auto-calc (future) → PLANNING ✅, (9) pm2 status → online ✅, (10) Frontend SPA → root element present ✅, (11) Delete trip → 204 ✅. |
+
+---
+
+### Sprint 4 — Deployment Details (T-068) — 2026-02-25
+
+**Deploy Engineer:** Deploy Engineer
+**Sprint:** 4
+**Date:** 2026-02-25
+**Task:** T-068 (Staging re-deployment)
+**Scope:** All Sprint 4 changes — T-058 (Destination Dedup), T-059–T-064 (Frontend UX/accessibility), T-065 (Docker/nginx hardening)
+
+---
+
+#### 1. WHAT CHANGED
+
+**Backend changes (T-058):**
+- `backend/src/models/tripModel.js` — Added `deduplicateDestinations()` function. Called in `createTrip()` and `updateTrip()`. Case-insensitive dedup using Set, preserves first occurrence casing.
+- `backend/src/__tests__/sprint4.test.js` — 19 new tests: 10 unit tests for dedup pure function + 9 integration tests for POST/PATCH routes.
+
+**Frontend changes (T-059–T-064):**
+- T-059: Submit button disabled during 429 rate limit lockout (LoginPage, RegisterPage)
+- T-060: `parseRetryAfterMinutes` extracted to shared `utils/rateLimitUtils.js`
+- T-061: `role="option"` removed from DestinationChipInput chips (ARIA fix)
+- T-062: `id="dest-chip-hint"` and `id="password-hint"` elements added for aria-describedby targets
+- T-063: CreateTripModal returns focus to trigger button on close via `triggerRef`
+- T-064: 8 new tests for axios 401 retry queue interceptor
+
+**Infrastructure changes (T-065):**
+- `infra/nginx.conf` — `server_tokens off` + CSP header added at server level and `/assets/` block
+- `infra/Dockerfile.frontend` — ARG default fixed to `/api/v1`
+
+#### 2. NO NEW MIGRATIONS
+
+Sprint 4 has no schema changes. All 8 existing migrations remain applied (Batch 1: 001–006, Batch 2: 007, Batch 3: 008). Destination deduplication is application-layer only.
+
+#### 3. ENVIRONMENT
+
+| Component | URL | Status |
+|-----------|-----|--------|
+| Backend | https://localhost:3001 | Online (pm2 cluster, HTTPS) |
+| Frontend | https://localhost:4173 | Online (Vite preview, HTTPS) |
+| PostgreSQL | localhost:5432/appdb | Running (Homebrew PostgreSQL 15) |
+| pm2 | triplanner-backend | Online, cluster mode, PID 87518 |
+
+#### 4. TEST RESULTS
+
+| Test Suite | Tests | Result | Duration |
+|-----------|-------|--------|----------|
+| Backend | 168/168 | PASS | 769ms |
+| Frontend | 260/260 | PASS | 3.19s |
+| Smoke Tests | 11/11 | PASS | — |
+
+**Key Sprint 4 verification: Destination deduplication (T-058)**
+- POST /trips with `["Tokyo","Tokyo","tokyo"]` → response returns `["Tokyo"]` (1 element) ✅
+- PATCH /trips/:id with `["Paris","paris","PARIS","Osaka"]` → response returns 2 destinations ✅
+
+#### 5. SECURITY SELF-CHECK
+
+- [x] No hardcoded secrets in any deployed code
+- [x] Cookie flags: HttpOnly, Secure, SameSite=Strict ✅
+- [x] HTTPS operational on both backend and frontend
+- [x] nginx: `server_tokens off`, CSP header present
+- [x] All env vars loaded from environment (not hardcoded)
+- [x] Parameterized queries only (Knex)
+- [x] No new npm dependencies added in Sprint 4
+
+---
