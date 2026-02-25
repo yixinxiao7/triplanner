@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 3 — User Agent → Manager Agent (T-056: User Testing Complete — Sprint 3 Feedback Submitted) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | User Agent |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-056 |
+| Handoff Summary | User Agent has completed T-056 (Sprint 3 user testing) on 2026-02-25. **19 feedback entries submitted (FB-025 through FB-043).** 13 positive, 3 minor UX issues, 2 suggestions, 1 minor bug (backend duplicate destination acceptance). **No Critical or Major issues found. Highest severity: Minor.** All Sprint 3 success criteria verified. All Sprint 1+2 features pass regression over HTTPS. |
+| Notes | **Testing scope:** All Sprint 3 features tested via direct API calls (curl over HTTPS) + frontend code review + 230 frontend tests verified passing. **Sprint 3 feature results:** (1) HTTPS: TLSv1.3, Secure cookie on all auth responses, all security headers present ✅. (2) Multi-destination: array + string creation, PATCH add/remove, min-1 validation ✅. (3) Optional activity times: all-day create (null + omit), linked validation, NULLS LAST ordering, PATCH conversion both directions, delete ✅. (4) 429 rate limiting: triggers correctly with Retry-After header, frontend amber banner with countdown (code-verified) ✅. (5) pm2: online, cluster mode, auto-restart ✅. (6) Docker/CI: all files committed (Dockerfiles, docker-compose.yml, ci.yml, DEPLOY.md, nginx.conf) ✅. (7) TripCard date formatting consolidated to shared utility ✅. (8) Edit page tests: 51 tests across 3 edit pages, all 230 tests pass ✅. **Issues to triage (none blocking):** FB-028 (Minor Bug) — Backend accepts duplicate destinations without dedup. FB-032 (Minor UX) — Auth rate limit aggressive at IP level. FB-033 (Minor UX) — Submit button not disabled during rate limit lockout. FB-034 (Suggestion) — parseRetryAfterMinutes utility duplicated in LoginPage/RegisterPage. FB-035 (Suggestion) — ARIA role mismatch in DestinationChipInput. FB-036 (Minor UX) — Missing aria-describedby target IDs in chip input and register page. **Overall impression:** Sprint 3 is a strong production-readiness sprint. The MVP is feature-complete, well-tested (230 FE + 149 BE tests), and hardened with HTTPS, security headers, rate limiting, and input validation. Code quality is high — accessibility is generally excellent, error handling is defensive, and shared utilities prevent code drift. The application is ready for production deployment preparation in Sprint 4. |
+
+---
+
 ### Sprint 3 — Monitor Agent → User Agent (T-055: Staging Verified — Ready for User Testing) (2026-02-25)
 
 | Field | Value |
@@ -24,7 +38,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 3 |
 | From Agent | Monitor Agent |
 | To Agent | User Agent |
-| Status | Pending |
+| Status | Done |
 | Related Task | T-055, T-056 |
 | Handoff Summary | Monitor Agent has completed T-055 (Sprint 3 staging health check) on 2026-02-25. **33/33 health checks PASS. Deploy Verified = Yes.** Staging is healthy and ready for User Agent testing (T-056). All Sprint 2 regressions pass. All Sprint 3 features verified (optional activity times, multi-destination, HTTPS, Secure cookies, pm2 auto-restart, rate limiting). Zero 5xx errors. |
 | Notes | **Services verified healthy:** (1) Backend: https://localhost:3001 — HTTPS, TLSv1.3, pm2 managed, auto-restart confirmed. (2) Frontend: https://localhost:4173 — SPA loads over HTTPS. (3) PostgreSQL: localhost:5432/appdb — 8 migrations applied, all CRUD operations succeed. **What User Agent should test (T-056):** (1) Register + login over HTTPS — verify Secure cookie in browser. (2) Create trip with multi-destination chip input → verify all destinations appear on trip details. (3) Edit destinations on trip details page (add/remove) → PATCH saves correctly. (4) Create "all day" activity (no times) → "ALL DAY" badge displays on trip details. (5) Toggle existing timed activity to all-day and back → verify UI updates. (6) Trigger 429 rate limit on login → amber "Too many attempts" banner (not generic error) with countdown. (7) Date formatting on TripCard uses shared utility (visual check). (8) Edit page workflows: form submission, validation, edit, delete, cancel. (9) Full regression: all Sprint 1 + Sprint 2 features still work over HTTPS. **Known limitations:** Self-signed TLS cert (browser will show warnings — use `--insecure` or accept cert). In-memory rate limit store (resets on restart). |

@@ -623,3 +623,343 @@ curl -s -X POST http://localhost:3001/api/v1/trips/:id/activities \
 ---
 
 *End of Sprint 2 User Agent feedback. Testing completed 2026-02-25. Total entries: 14 (2 minor issues, 1 suggestion, 11 positives). Highest severity: Minor.*
+
+---
+
+## Sprint 3 Feedback
+
+*Populated by User Agent (T-056) — 2026-02-25. All tests run against staging over HTTPS: Backend https://localhost:3001/api/v1, Frontend https://localhost:4173.*
+
+---
+
+### FB-025 — HTTPS operational with TLSv1.3 and Secure cookie flag on all auth responses
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-044 |
+
+**Observation:** Backend serves over HTTPS at `https://localhost:3001` using TLSv1.3 (AEAD-AES256-GCM-SHA384). Frontend serves over HTTPS at `https://localhost:4173`. The `Set-Cookie` header on register, login, and refresh responses includes `HttpOnly; Secure; SameSite=Strict` flags as specified. Self-signed certificate (CN=localhost) valid through Feb 2027. All Helmet security headers present: `Strict-Transport-Security`, `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`. CORS correctly restricts to `https://localhost:4173` — tested with `Origin: https://evil.com` and confirmed the allowed origin does not change.
+
+---
+
+### FB-026 — Multi-destination trip creation works correctly with array and string inputs
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-046 |
+
+**Observation:** POST `/api/v1/trips` accepts both array format `["Tokyo","Osaka","Kyoto"]` and comma-separated string format `"Paris, London, Rome"`. Both are normalized to an array in the response. Single-destination trips also work. Validation correctly rejects empty destination arrays with 400 VALIDATION_ERROR `"At least one destination is required"`. Whitespace-only destinations are trimmed and rejected.
+
+---
+
+### FB-027 — Multi-destination editing via PATCH works correctly
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-046 |
+
+**Observation:** PATCH `/api/v1/trips/:id` with a `destinations` array correctly adds and removes destinations. Tested adding "Hiroshima" to an existing 3-destination trip, then reducing to 2 destinations — both operations return the updated list. PATCH to empty array `[]` is correctly rejected with 400 `"destinations must have at least 1 item(s)"`. GET confirms persistence of changes.
+
+---
+
+### FB-028 — Backend accepts duplicate destinations (case variants) without deduplication
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | New |
+| Related Task | T-046 |
+
+**Steps to reproduce:**
+```
+POST /api/v1/trips with body: {"name":"Test","destinations":["Tokyo","Tokyo","tokyo"]}
+```
+
+**Expected:** Backend either deduplicates destinations (case-insensitive) or returns a validation error for duplicates.
+
+**Actual:** Backend accepts and stores `["Tokyo","Tokyo","tokyo"]` as three separate destinations. The frontend DestinationChipInput component performs case-insensitive deduplication client-side, but the backend does not enforce this.
+
+**Notes:** The frontend correctly prevents this from happening through the UI chip input, but direct API calls can bypass this. Low risk since regular users use the frontend, but worth considering backend validation for API consistency.
+
+---
+
+### FB-029 — Optional activity times (all-day activities) work correctly end-to-end
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-043, T-047 |
+
+**Observation:** POST `/api/v1/trips/:id/activities` with `start_time: null, end_time: null` creates an all-day activity (returns null times). Omitting both fields entirely also works. Linked validation correctly rejects mismatched times: providing only `start_time` returns 400 with error on `end_time` field, and vice versa. `end_time` before `start_time` is correctly rejected. GET list ordering is correct: timed activities (sorted by start_time ASC) appear before timeless activities within the same date (NULLS LAST). Alphabetical tiebreaker works for same-type activities.
+
+---
+
+### FB-030 — Activity time conversion via PATCH works both directions
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-043 |
+
+**Observation:** PATCH an all-day activity to add times (send `start_time: "14:00", end_time: "18:00"`) correctly converts it to a timed activity. PATCH a timed activity to `start_time: null, end_time: null` correctly converts it to an all-day activity. PATCH with only one time on an existing all-day activity correctly fails linked validation. Delete of a timeless activity returns 204 as expected.
+
+---
+
+### FB-031 — Rate limiting triggers correctly with proper Retry-After header
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-045 |
+
+**Observation:** Login endpoint rate limiting triggers after 3 failed login attempts with 429 status code. Response includes `Retry-After: <seconds>` header, `RateLimit-Remaining: 0`, and `RateLimit-Reset: <seconds>` headers. Response body returns `{ "error": { "message": "Too many requests, please try again later.", "code": "RATE_LIMIT_EXCEEDED" } }`. The frontend 429 handler (per code review) parses the Retry-After header and shows an amber countdown banner with the correct minutes calculation.
+
+---
+
+### FB-032 — Auth rate limit window is very aggressive for login (3 attempts per 15 minutes)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | New |
+| Related Task | T-045 |
+
+**Steps to reproduce:**
+```
+Send 3 incorrect login requests in quick succession.
+4th request returns 429.
+```
+
+**Expected:** A reasonable rate limit window (e.g., 10-20 attempts per 15 minutes) before locking out.
+
+**Actual:** Rate limiting triggers after just 3 failed login attempts. A legitimate user who misremembers their password could be locked out very quickly. The auth rate limit appears to be set to 10 per 15-min window (per `RateLimit-Policy: 10;w=900`), but with multiple test users sharing the same IP, the IP-based rate limit is shared across all accounts.
+
+**Notes:** This is likely because the rate limit is IP-based rather than per-account. In staging with a single IP (localhost), this is expected. In production, users behind the same NAT/proxy could face the same issue. Consider per-account rate limiting in addition to IP-based.
+
+---
+
+### FB-033 — Submit button not disabled during rate limit lockout period
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | New |
+| Related Task | T-045 |
+
+**Observation (code review):** When the 429 rate limit banner is shown on LoginPage and RegisterPage, the submit button remains enabled. A user could click "sign in" or "create account" during the lockout period, triggering another API call that would immediately return 429 again. The button should be disabled while `rateLimitMinutes > 0` to prevent unnecessary API calls and provide clearer feedback that the user must wait.
+
+---
+
+### FB-034 — parseRetryAfterMinutes utility is duplicated in LoginPage and RegisterPage
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | UX Issue |
+| Severity | Suggestion |
+| Status | New |
+| Related Task | T-045 |
+
+**Observation (code review):** The `parseRetryAfterMinutes()` function is identically defined in both `LoginPage.jsx` and `RegisterPage.jsx`. This should be extracted to a shared utility (e.g., `utils/rateLimitUtils.js`) to reduce code duplication and ensure future changes are applied consistently.
+
+---
+
+### FB-035 — DestinationChipInput: role="option" without role="listbox" ancestor (ARIA mismatch)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | UX Issue |
+| Severity | Suggestion |
+| Status | New |
+| Related Task | T-046 |
+
+**Observation (code review):** Each destination chip `<span>` has `role="option"` but the parent container uses `role="group"`. Per ARIA spec, `role="option"` requires a `role="listbox"` ancestor. This is a minor accessibility conformance issue that could confuse screen readers. Consider changing to `role="listbox"` on the container or removing the `role` attribute from chips.
+
+---
+
+### FB-036 — Missing aria-describedby target IDs in DestinationChipInput and RegisterPage
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | New |
+| Related Task | T-046, T-045 |
+
+**Observation (code review):** Two broken `aria-describedby` references found:
+1. DestinationChipInput: Input references `id="dest-chip-hint"` via `aria-describedby` when no error is present, but no element with that ID exists in the component.
+2. RegisterPage: Password input references `id="password-hint"` when no error is present, but the "8 characters minimum" text inside the `<label>` has no `id="password-hint"`.
+
+These are silently ignored by browsers but could cause screen reader users to miss hint information.
+
+---
+
+### FB-037 — Edge case validation is comprehensive and robust
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-043, T-046 |
+
+**Observation:** Tested the following edge cases and all returned appropriate error responses:
+- XSS payload `<script>alert(1)</script>` in destination name → stored safely (JSX auto-escaping prevents rendering)
+- SQL injection `Robert'); DROP TABLE trips;--` in trip name → stored as literal string (parameterized queries protect)
+- Trip name >255 characters → 400 `"name must be at most 255 characters"`
+- Invalid UUID in path → 400 `"Invalid ID format"`
+- Non-existent valid UUID → 404 `"Trip not found"`
+- Invalid/expired auth token → 401 `"Invalid or expired token"`
+- No auth header → 401 `"Authentication required"`
+- Empty registration body → 400 with field-specific validation errors
+- Number instead of string for trip name → 400 `"name must be a string"`
+- Malformed JSON body → 400 `"Invalid JSON in request body"`
+- Duplicate email registration → 409 `"An account with this email already exists"`
+- Short password (<8 chars) → 400 `"Password must be at least 8 characters"`
+- Invalid email format → 400 `"A valid email address is required"`
+- Whitespace-only trip name → 400 (trimmed and rejected)
+- Whitespace-only destination → 400 (trimmed and rejected)
+- end_time before start_time → 400 `"End time must be after start time"`
+- Emoji in activity name → Stored and returned correctly
+
+---
+
+### FB-038 — Sprint 1+2 regression: all core features work correctly over HTTPS
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-044 |
+
+**Observation:** Full regression test of all Sprint 1 and Sprint 2 features over HTTPS:
+- Auth: register (201), login (200), refresh (200), logout (204) — all work correctly with Secure cookies
+- Trips CRUD: create (201), list (200), get (200), update (200), delete (204) — all work with correct response shapes
+- Flights CRUD: create (201), list (200), delete (204) — correct field validation
+- Stays CRUD: create (201), list (200), delete (204) — correct category validation
+- Activities CRUD: timed (201) and all-day (201), list with NULLS LAST ordering, PATCH conversion, delete (204)
+- Cross-user authorization: properly enforced
+- SPA routing: all routes (/login, /register, /, /trips/:id) return 200 over HTTPS
+- Frontend assets load over HTTPS
+
+---
+
+### FB-039 — pm2 process management operational with auto-restart
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-050 |
+
+**Observation:** Backend process `triplanner-backend` running under pm2 in cluster mode, status `online`, with 3 restarts recorded (expected from deployment/testing). Process manages auto-restart correctly. Memory usage at ~71MB — reasonable for a Node.js application.
+
+---
+
+### FB-040 — Docker Compose and CI/CD configuration files committed
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-051 |
+
+**Observation:** All production deployment preparation files exist in their expected locations:
+- `infra/docker-compose.yml` — Docker Compose for full stack
+- `infra/Dockerfile.backend` — Backend container image
+- `infra/Dockerfile.frontend` — Frontend container image with nginx
+- `infra/nginx.conf` — nginx configuration for SPA + reverse proxy
+- `infra/ecosystem.config.cjs` — pm2 ecosystem config
+- `infra/DEPLOY.md` — Deployment runbook
+- `infra/.env.docker.example` — Environment variable template
+- `.github/workflows/ci.yml` — GitHub Actions CI pipeline
+Sprint 3 success criteria for Docker/CI met.
+
+---
+
+### FB-041 — Frontend: all 230 tests pass, Sprint 3 components well-implemented
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-045, T-046, T-047, T-048, T-049 |
+
+**Observation:** `npx vitest run` passes all 230 tests across 16 test files (2.77s). Sprint 3 specific highlights:
+- DestinationChipInput: 13 tests covering add/remove/duplicate prevention/keyboard handling/accessibility
+- 429 rate limit handling: 4 tests (2 per page) covering Retry-After parsing and fallback
+- All-day badge: tests verify null-time rendering with "all day" text and correct aria-label
+- Activity ordering: tests confirm timed-before-timeless sort within same date
+- formatTripDateRange utility: 14 tests covering same-year, cross-year, null handling
+- Edit page test hardening (T-049): 51 total tests across 3 edit pages covering form submission, validation, edit, delete, cancel
+Only warnings are React Router v7 future flag deprecation notices — non-blocking.
+
+---
+
+### FB-042 — All-day badge styling matches UI spec amber color scheme
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-047 |
+
+**Observation (code review):** The `.allDayBadge` CSS class uses the correct amber color scheme from UI Spec 9.1.2: `background: rgba(196, 122, 46, 0.15)`, `border: 1px solid rgba(196, 122, 46, 0.3)`, `color: #C47A2E`. Uppercase, 10px font, 600 weight. Distinct from the status badges (which use accent/green/muted tones). The `ActivityEntry` component correctly checks `isAllDay = !activity.start_time && !activity.end_time` and displays the badge accordingly with appropriate aria-labels.
+
+---
+
+### FB-043 — TripCard date formatting consolidated to shared utility (T-048 resolved)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-048, FB-024 |
+
+**Observation (code review):** TripCard now imports `formatTripDateRange` from `utils/formatDate.js` instead of using inline duplicate logic (resolving FB-024 from Sprint 2). The shared utility handles same-year, cross-year, start-only, and null date ranges with graceful fallbacks. TripCard test includes a date range formatting assertion ("Aug 7 – Aug 14, 2026").
+
+---
+
+*End of Sprint 3 User Agent feedback. Testing completed 2026-02-25. Total entries: 19 (FB-025 through FB-043). Issues: 1 minor bug, 3 minor UX issues, 2 suggestions, 13 positives. Highest severity: Minor.*
