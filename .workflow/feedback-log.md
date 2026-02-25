@@ -681,8 +681,8 @@ curl -s -X POST http://localhost:3001/api/v1/trips/:id/activities \
 | Sprint | 3 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | Acknowledged |
-| Related Task | T-046 |
+| Status | Tasked |
+| Related Task | T-046, T-058 (Sprint 4) |
 
 **Steps to reproduce:**
 ```
@@ -770,8 +770,8 @@ Send 3 incorrect login requests in quick succession.
 | Sprint | 3 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | Acknowledged |
-| Related Task | T-045 |
+| Status | Tasked |
+| Related Task | T-045, T-057/T-059 (Sprint 4) |
 
 **Observation (code review):** When the 429 rate limit banner is shown on LoginPage and RegisterPage, the submit button remains enabled. A user could click "sign in" or "create account" during the lockout period, triggering another API call that would immediately return 429 again. The button should be disabled while `rateLimitMinutes > 0` to prevent unnecessary API calls and provide clearer feedback that the user must wait.
 
@@ -784,8 +784,8 @@ Send 3 incorrect login requests in quick succession.
 | Sprint | 3 |
 | Category | UX Issue |
 | Severity | Suggestion |
-| Status | Acknowledged |
-| Related Task | T-045 |
+| Status | Tasked |
+| Related Task | T-045, T-060 (Sprint 4) |
 
 **Observation (code review):** The `parseRetryAfterMinutes()` function is identically defined in both `LoginPage.jsx` and `RegisterPage.jsx`. This should be extracted to a shared utility (e.g., `utils/rateLimitUtils.js`) to reduce code duplication and ensure future changes are applied consistently.
 
@@ -798,8 +798,8 @@ Send 3 incorrect login requests in quick succession.
 | Sprint | 3 |
 | Category | UX Issue |
 | Severity | Suggestion |
-| Status | Acknowledged |
-| Related Task | T-046 |
+| Status | Tasked |
+| Related Task | T-046, T-061 (Sprint 4) |
 
 **Observation (code review):** Each destination chip `<span>` has `role="option"` but the parent container uses `role="group"`. Per ARIA spec, `role="option"` requires a `role="listbox"` ancestor. This is a minor accessibility conformance issue that could confuse screen readers. Consider changing to `role="listbox"` on the container or removing the `role` attribute from chips.
 
@@ -812,8 +812,8 @@ Send 3 incorrect login requests in quick succession.
 | Sprint | 3 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | Acknowledged |
-| Related Task | T-046, T-045 |
+| Status | Tasked |
+| Related Task | T-046, T-045, T-062 (Sprint 4) |
 
 **Observation (code review):** Two broken `aria-describedby` references found:
 1. DestinationChipInput: Input references `id="dest-chip-hint"` via `aria-describedby` when no error is present, but no element with that ID exists in the component.
