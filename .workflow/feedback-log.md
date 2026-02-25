@@ -639,7 +639,7 @@ curl -s -X POST http://localhost:3001/api/v1/trips/:id/activities \
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-044 |
 
 **Observation:** Backend serves over HTTPS at `https://localhost:3001` using TLSv1.3 (AEAD-AES256-GCM-SHA384). Frontend serves over HTTPS at `https://localhost:4173`. The `Set-Cookie` header on register, login, and refresh responses includes `HttpOnly; Secure; SameSite=Strict` flags as specified. Self-signed certificate (CN=localhost) valid through Feb 2027. All Helmet security headers present: `Strict-Transport-Security`, `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`. CORS correctly restricts to `https://localhost:4173` — tested with `Origin: https://evil.com` and confirmed the allowed origin does not change.
@@ -653,7 +653,7 @@ curl -s -X POST http://localhost:3001/api/v1/trips/:id/activities \
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-046 |
 
 **Observation:** POST `/api/v1/trips` accepts both array format `["Tokyo","Osaka","Kyoto"]` and comma-separated string format `"Paris, London, Rome"`. Both are normalized to an array in the response. Single-destination trips also work. Validation correctly rejects empty destination arrays with 400 VALIDATION_ERROR `"At least one destination is required"`. Whitespace-only destinations are trimmed and rejected.
@@ -667,7 +667,7 @@ curl -s -X POST http://localhost:3001/api/v1/trips/:id/activities \
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-046 |
 
 **Observation:** PATCH `/api/v1/trips/:id` with a `destinations` array correctly adds and removes destinations. Tested adding "Hiroshima" to an existing 3-destination trip, then reducing to 2 destinations — both operations return the updated list. PATCH to empty array `[]` is correctly rejected with 400 `"destinations must have at least 1 item(s)"`. GET confirms persistence of changes.
@@ -681,7 +681,7 @@ curl -s -X POST http://localhost:3001/api/v1/trips/:id/activities \
 | Sprint | 3 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-046 |
 
 **Steps to reproduce:**
@@ -704,7 +704,7 @@ POST /api/v1/trips with body: {"name":"Test","destinations":["Tokyo","Tokyo","to
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-043, T-047 |
 
 **Observation:** POST `/api/v1/trips/:id/activities` with `start_time: null, end_time: null` creates an all-day activity (returns null times). Omitting both fields entirely also works. Linked validation correctly rejects mismatched times: providing only `start_time` returns 400 with error on `end_time` field, and vice versa. `end_time` before `start_time` is correctly rejected. GET list ordering is correct: timed activities (sorted by start_time ASC) appear before timeless activities within the same date (NULLS LAST). Alphabetical tiebreaker works for same-type activities.
@@ -718,7 +718,7 @@ POST /api/v1/trips with body: {"name":"Test","destinations":["Tokyo","Tokyo","to
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-043 |
 
 **Observation:** PATCH an all-day activity to add times (send `start_time: "14:00", end_time: "18:00"`) correctly converts it to a timed activity. PATCH a timed activity to `start_time: null, end_time: null` correctly converts it to an all-day activity. PATCH with only one time on an existing all-day activity correctly fails linked validation. Delete of a timeless activity returns 204 as expected.
@@ -732,7 +732,7 @@ POST /api/v1/trips with body: {"name":"Test","destinations":["Tokyo","Tokyo","to
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-045 |
 
 **Observation:** Login endpoint rate limiting triggers after 3 failed login attempts with 429 status code. Response includes `Retry-After: <seconds>` header, `RateLimit-Remaining: 0`, and `RateLimit-Reset: <seconds>` headers. Response body returns `{ "error": { "message": "Too many requests, please try again later.", "code": "RATE_LIMIT_EXCEEDED" } }`. The frontend 429 handler (per code review) parses the Retry-After header and shows an amber countdown banner with the correct minutes calculation.
@@ -746,7 +746,7 @@ POST /api/v1/trips with body: {"name":"Test","destinations":["Tokyo","Tokyo","to
 | Sprint | 3 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-045 |
 
 **Steps to reproduce:**
@@ -770,7 +770,7 @@ Send 3 incorrect login requests in quick succession.
 | Sprint | 3 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-045 |
 
 **Observation (code review):** When the 429 rate limit banner is shown on LoginPage and RegisterPage, the submit button remains enabled. A user could click "sign in" or "create account" during the lockout period, triggering another API call that would immediately return 429 again. The button should be disabled while `rateLimitMinutes > 0` to prevent unnecessary API calls and provide clearer feedback that the user must wait.
@@ -784,7 +784,7 @@ Send 3 incorrect login requests in quick succession.
 | Sprint | 3 |
 | Category | UX Issue |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-045 |
 
 **Observation (code review):** The `parseRetryAfterMinutes()` function is identically defined in both `LoginPage.jsx` and `RegisterPage.jsx`. This should be extracted to a shared utility (e.g., `utils/rateLimitUtils.js`) to reduce code duplication and ensure future changes are applied consistently.
@@ -798,7 +798,7 @@ Send 3 incorrect login requests in quick succession.
 | Sprint | 3 |
 | Category | UX Issue |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-046 |
 
 **Observation (code review):** Each destination chip `<span>` has `role="option"` but the parent container uses `role="group"`. Per ARIA spec, `role="option"` requires a `role="listbox"` ancestor. This is a minor accessibility conformance issue that could confuse screen readers. Consider changing to `role="listbox"` on the container or removing the `role` attribute from chips.
@@ -812,7 +812,7 @@ Send 3 incorrect login requests in quick succession.
 | Sprint | 3 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-046, T-045 |
 
 **Observation (code review):** Two broken `aria-describedby` references found:
@@ -830,7 +830,7 @@ These are silently ignored by browsers but could cause screen reader users to mi
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-043, T-046 |
 
 **Observation:** Tested the following edge cases and all returned appropriate error responses:
@@ -861,7 +861,7 @@ These are silently ignored by browsers but could cause screen reader users to mi
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-044 |
 
 **Observation:** Full regression test of all Sprint 1 and Sprint 2 features over HTTPS:
@@ -883,7 +883,7 @@ These are silently ignored by browsers but could cause screen reader users to mi
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-050 |
 
 **Observation:** Backend process `triplanner-backend` running under pm2 in cluster mode, status `online`, with 3 restarts recorded (expected from deployment/testing). Process manages auto-restart correctly. Memory usage at ~71MB — reasonable for a Node.js application.
@@ -897,7 +897,7 @@ These are silently ignored by browsers but could cause screen reader users to mi
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-051 |
 
 **Observation:** All production deployment preparation files exist in their expected locations:
@@ -920,7 +920,7 @@ Sprint 3 success criteria for Docker/CI met.
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-045, T-046, T-047, T-048, T-049 |
 
 **Observation:** `npx vitest run` passes all 230 tests across 16 test files (2.77s). Sprint 3 specific highlights:
@@ -941,7 +941,7 @@ Only warnings are React Router v7 future flag deprecation notices — non-blocki
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-047 |
 
 **Observation (code review):** The `.allDayBadge` CSS class uses the correct amber color scheme from UI Spec 9.1.2: `background: rgba(196, 122, 46, 0.15)`, `border: 1px solid rgba(196, 122, 46, 0.3)`, `color: #C47A2E`. Uppercase, 10px font, 600 weight. Distinct from the status badges (which use accent/green/muted tones). The `ActivityEntry` component correctly checks `isAllDay = !activity.start_time && !activity.end_time` and displays the badge accordingly with appropriate aria-labels.
@@ -955,7 +955,7 @@ Only warnings are React Router v7 future flag deprecation notices — non-blocki
 | Sprint | 3 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-048, FB-024 |
 
 **Observation (code review):** TripCard now imports `formatTripDateRange` from `utils/formatDate.js` instead of using inline duplicate logic (resolving FB-024 from Sprint 2). The shared utility handles same-year, cross-year, start-only, and null date ranges with graceful fallbacks. TripCard test includes a date range formatting assertion ("Aug 7 – Aug 14, 2026").
