@@ -45,6 +45,7 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 | Sprint 2 — Migration 007 (add trip date range) — T-038 | Migration | Pass | Success | Staging | No | Deploy Engineer | Batch 2 run: 1 migration (20260225_007_add_trip_date_range.js). Verified: trips table now has start_date DATE NULL and end_date DATE NULL columns. All existing data preserved. |
 | Sprint 2 — Staging deployment — T-038 | Post-Deploy Health Check | Pass | Success | Staging | Pending Monitor | Deploy Engineer | Backend: http://localhost:3001 (Node.js, PORT=3001, NODE_ENV=staging). Frontend: http://localhost:4173 (Vite preview). PostgreSQL: localhost:5432/appdb (Homebrew PostgreSQL 15). Docker not available — using local processes instead. All env vars configured: PORT=3001, CORS_ORIGIN=http://localhost:4173, DATABASE_URL, JWT_SECRET, JWT_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d. |
 | Sprint 2 — Staging smoke tests — T-038 | E2E Test | Pass | Success | Staging | Pending Monitor | Deploy Engineer | 8/8 smoke tests PASS: (1) GET /api/v1/health → 200 ✅, (2) Register user → 200 ✅, (3) Login → 200 + token ✅, (4) Create trip with start_date/end_date → 201 + dates returned ✅, (5) UUID validation → 400 VALIDATION_ERROR ✅, (6) Add activity → activity_date YYYY-MM-DD format ✅, (7) Status auto-calc → PLANNING for future dates ✅, (8) Frontend → HTTP 200 + SPA root element ✅. INVALID_JSON error code also verified ✅. |
+| Sprint 2 — Monitor Agent post-deploy health check — T-039 (24 checks: 18 Sprint 1 regression + 6 Sprint 2 new) | Post-Deploy Health Check | Pass | Success | Staging | **Yes** | Monitor Agent | None — 24/24 checks PASS. Full end-to-end flow: register → login → create trip (with dates) → add flight/stay/activity → list all → PATCH dates → UUID validation → rate limiting → delete → logout. All Sprint 2 features verified (T-027 bug fixes, T-028 rate limiting, T-029 date range, T-030 status auto-calc). 0 × 5xx errors. Detailed report below. |
 
 ---
 
@@ -301,6 +302,93 @@ CORS_ORIGIN=http://localhost:4173
 **T-037 (Integration Testing):** ✅ PASS — All 9 Sprint 2 implementation tasks verified. API contracts match between frontend and backend. All UI states implemented. All bug fixes confirmed. Sprint 1 regression check passed.
 
 **Recommendation:** All 9 implementation tasks (T-027 through T-035) are cleared to move from "Integration Check" to "Done". Handoff to Deploy Engineer (T-038) is approved.
+
+---
+
+## Sprint 2 — Post-Deploy Health Check (T-039) — 2026-02-25
+
+**Monitor Agent:** Monitor Agent
+**Sprint:** 2
+**Date:** 2026-02-25
+**Task:** T-039 (Staging health check)
+**Timestamp:** 2026-02-25T15:30:10Z
+
+### Environment
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend API | http://localhost:3001 | ✅ Running |
+| Frontend SPA | http://localhost:4173 | ✅ Running |
+| PostgreSQL | localhost:5432/appdb | ✅ Connected (verified via health endpoint + full CRUD flow) |
+| Health endpoint | http://localhost:3001/api/v1/health | ✅ Returns `{"status":"ok"}` |
+
+### Health Check Results: 24/24 PASS
+
+#### Sprint 1 Regression Checks (18 checks)
+
+| # | Check | Endpoint | Expected | Actual | Result |
+|---|-------|----------|----------|--------|--------|
+| 1 | Health endpoint | GET /api/v1/health | HTTP 200, `{"status":"ok"}` | HTTP 200, `{"status":"ok"}`, 2.1ms | ✅ PASS |
+| 2 | Frontend SPA responds | GET http://localhost:4173 | HTTP 200, `<div id="root">` | HTTP 200, SPA root element present, 2.2ms | ✅ PASS |
+| 3 | Auth register | POST /api/v1/auth/register | HTTP 201, user + access_token | HTTP 201, user created with UUID + JWT (283+ chars) | ✅ PASS |
+| 4 | Auth login | POST /api/v1/auth/login | HTTP 200, access_token | HTTP 200, login successful with access_token | ✅ PASS |
+| 5 | Create trip | POST /api/v1/trips | HTTP 201, trip object | HTTP 201, trip created with UUID | ✅ PASS |
+| 6 | Get trip | GET /api/v1/trips/:id | HTTP 200, trip object | HTTP 200, full trip object returned | ✅ PASS |
+| 7 | List trips | GET /api/v1/trips | HTTP 200, array + pagination | HTTP 200, data array + pagination object | ✅ PASS |
+| 8 | Add flight | POST /trips/:tripId/flights | HTTP 201, flight object | HTTP 201, flight created with all fields | ✅ PASS |
+| 9 | List flights | GET /trips/:tripId/flights | HTTP 200, array | HTTP 200, 1 flight(s) returned | ✅ PASS |
+| 10 | Add stay | POST /trips/:tripId/stays | HTTP 201, stay object | HTTP 201, stay created (HOTEL category) | ✅ PASS |
+| 11 | List stays | GET /trips/:tripId/stays | HTTP 200, array | HTTP 200, 1 stay(s) returned | ✅ PASS |
+| 12 | Add activity | POST /trips/:tripId/activities | HTTP 201, activity object | HTTP 201, activity created | ✅ PASS |
+| 13 | List activities | GET /trips/:tripId/activities | HTTP 200, array | HTTP 200, 1 activity(ies), YYYY-MM-DD format | ✅ PASS |
+| 14 | Unauthenticated access | GET /api/v1/trips (no token) | HTTP 401 | HTTP 401, `{"error":{"code":"UNAUTHORIZED"}}` | ✅ PASS |
+| 15 | Delete trip | DELETE /api/v1/trips/:id | HTTP 204 | HTTP 204, trip deleted | ✅ PASS |
+| 16 | Deleted trip → 404 | GET /api/v1/trips/:id (deleted) | HTTP 404 | HTTP 404, trip correctly not found | ✅ PASS |
+| 17 | Logout | POST /api/v1/auth/logout | HTTP 204 | HTTP 204, logout successful | ✅ PASS |
+| 18 | Frontend build output | dist/ directory | index.html + JS + CSS | index.html (388B) + index.js (293KB) + index.css (50KB) present | ✅ PASS |
+
+#### Sprint 2 New Feature Checks (6 checks)
+
+| # | Check | Endpoint / Feature | Expected | Actual | Result |
+|---|-------|-------------------|----------|--------|--------|
+| 19 | Trip date range (T-029) | POST /trips with start_date/end_date | HTTP 201, dates in YYYY-MM-DD | HTTP 201, `"start_date":"2026-08-07","end_date":"2026-08-14"` | ✅ PASS |
+| 20 | Status auto-calc (T-030) | GET /trips/:id (future dates) | status=PLANNING | `"status":"PLANNING"` (Aug 7–14 2026 is future) | ✅ PASS |
+| 21 | UUID validation (T-027/B-009) | GET /trips/not-a-valid-uuid | HTTP 400, VALIDATION_ERROR | HTTP 400, `{"error":{"message":"Invalid ID format","code":"VALIDATION_ERROR"}}` | ✅ PASS |
+| 22 | UUID validation on sub-resources | GET /trips/:tripId/flights/not-a-uuid | HTTP 400 | HTTP 400 (VALIDATION_ERROR) | ✅ PASS |
+| 23 | INVALID_JSON error code (T-027/B-012) | POST /auth/login with `{bad json}` | HTTP 400, INVALID_JSON | HTTP 400, `{"error":{"message":"Invalid JSON in request body","code":"INVALID_JSON"}}` | ✅ PASS |
+| 24 | Rate limiting (T-028) | 12 rapid POST /auth/login | HTTP 429 by attempt 11 | HTTP 429 at attempt 8, `{"error":{"code":"RATE_LIMIT_EXCEEDED"}}` | ✅ PASS |
+
+#### Additional Verifications
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| activity_date format (T-027/B-010) | `"2026-08-09"` (YYYY-MM-DD) | `"activity_date":"2026-08-09"` in POST 201 response | ✅ PASS |
+| activity_date in list view | YYYY-MM-DD format in all items | All items match `^\d{4}-\d{2}-\d{2}$` regex | ✅ PASS |
+| PATCH trip date range (T-029) | HTTP 200, updated dates | HTTP 200, `start=2026-09-01,end=2026-09-10` | ✅ PASS |
+| Date range validation (end < start) | HTTP 400 | HTTP 400, `"End date must be on or after start date"` | ✅ PASS |
+| List trips has start_date/end_date fields | present in response | ✅ Both fields present in all trip objects | ✅ PASS |
+| List trips has pagination | pagination object | ✅ `pagination` object with page, limit, total | ✅ PASS |
+| No 5xx errors | 0 unhandled 500 errors | 0 × 5xx errors observed during entire health check | ✅ PASS |
+| DB connectivity | verified via CRUD operations | Full register → login → create trip → add flight/stay/activity → delete → 404 cycle completed successfully | ✅ PASS |
+
+### Deploy Verified: **Yes**
+
+### Summary
+
+All 24 primary health checks PASSED. All additional verifications PASSED. Zero 5xx errors observed during the entire health check cycle. The staging deployment is healthy and ready for User Agent testing.
+
+**Sprint 1 regression:** All Sprint 1 functionality verified — auth flow, trips CRUD, sub-resource CRUD, frontend SPA all working correctly on port 3001/4173.
+
+**Sprint 2 new features verified:**
+- ✅ T-027: UUID validation returns 400 (not 500), activity_date in YYYY-MM-DD format, INVALID_JSON error code
+- ✅ T-028: Rate limiting triggers HTTP 429 with RATE_LIMIT_EXCEEDED code after rapid login attempts
+- ✅ T-029: Trip date range (start_date/end_date) in create, get, list, and patch — YYYY-MM-DD format, cross-field validation works
+- ✅ T-030: Status auto-calculation returns PLANNING for future-dated trips
+
+**Known staging limitations (unchanged from Sprint 1):**
+1. No Docker — processes run locally without container isolation
+2. No pm2 process management (B-013)
+3. No HTTPS (B-014)
+4. Rate limiting uses in-memory store (resets on backend restart)
 
 ---
 
