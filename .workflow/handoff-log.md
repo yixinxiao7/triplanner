@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 2 — QA Engineer → Deploy Engineer (RE-VERIFICATION PASS — Deploy Readiness Confirmed — T-038)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | QA Engineer |
+| To Agent | Deploy Engineer |
+| Status | Pending |
+| Related Task | T-036, T-037, T-038 |
+| Handoff Summary | QA Engineer has completed a full RE-VERIFICATION of T-036 (security) and T-037 (integration) on 2026-02-25. All tests re-run from scratch. ALL PASS. Deploy Engineer is cleared to proceed with T-038 (staging re-deployment). |
+| Notes | **Re-verification Results (2026-02-25):** **UNIT TESTS:** Backend: 116/116 PASS (7 test files, 609ms). Frontend: 180/180 PASS (15 test files, 2.49s). **SECURITY DEEP REVIEW:** 12 backend security checks ALL PASS (hardcoded secrets ✅, SQL injection ✅, UUID middleware ✅, rate limiting ✅, bcrypt 12 rounds ✅, error handling ✅, auth middleware ✅, input validation ✅, migration reversibility ✅, CORS ✅, Helmet ✅, refresh token security ✅). 8 frontend security checks ALL PASS (XSS ✅, hardcoded secrets ✅, token storage ✅, API client ✅, edit pages ✅, route protection ✅, calendar ✅, console logging ✅). **INTEGRATION CONTRACT VERIFICATION:** 38/38 checks PASS (Flights 4/4, Stays 4/4, Activities 3/3, Date Range 3/3, Calendar 4/4, UI States 16/16, Bug Fixes 4/4). **NPM AUDIT:** Backend production: 0 vulnerabilities. Frontend production: 0 vulnerabilities. Dev deps: 5 moderate (esbuild via vitest) — no production impact. **DEPLOY INSTRUCTIONS (unchanged):** (1) Apply migration: `cd backend && npm run migrate`. (2) Rebuild frontend: `cd frontend && npm run build`. (3) Restart backend. (4) Verify env vars: PORT=3001, CORS_ORIGIN=http://localhost:4173, DATABASE_URL, JWT_SECRET. (5) Smoke tests: GET /api/v1/health → 200. **No blockers. No P1 security failures. Deploy is GO.** |
+
+---
+
+### Sprint 2 — QA Engineer → Deploy Engineer (All Tests PASS — Cleared for Staging Deployment — T-038)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | QA Engineer |
+| To Agent | Deploy Engineer |
+| Status | Pending |
+| Related Task | T-036, T-037, T-038 |
+| Handoff Summary | QA Engineer has completed T-036 (security checklist + code review audit) and T-037 (integration testing) for all 9 Sprint 2 implementation tasks (T-027 through T-035). ALL TESTS PASS. No P1 security failures. Deploy Engineer is cleared to begin T-038 (staging re-deployment). |
+| Notes | **QA Results Summary (2026-02-25):** **UNIT TESTS:** Backend: 116/116 PASS (7 test files, 587ms). Frontend: 180/180 PASS (15 test files, 2.30s). **SECURITY CHECKLIST (T-036):** 15 items PASS, 0 FAIL, 4 DEFERRED (infrastructure items for production — same as Sprint 1). Sprint 1 accepted risk (rate limiting) is now RESOLVED by T-028. No new security concerns. Specific verifications: UUID validation middleware correct ✅, rate limiters configured correctly (login 10/15min, register 20/15min) ✅, no XSS vectors (0 dangerouslySetInnerHTML) ✅, all SQL queries parameterized ✅, migration 007 reversible ✅, no new npm dependencies (custom calendar) ✅, npm audit: 0 production vulnerabilities ✅. **INTEGRATION TESTING (T-037):** 112 contract checks: 108 PASS, 4 WARN (non-blocking), 0 FAIL. All frontend API calls match backend contracts exactly (HTTP methods, URL patterns, request fields, response unwrapping, date formats). All UI states implemented (empty, loading, error, success) on all edit pages. Bug fixes verified (UUID→400, activity_date→YYYY-MM-DD, INVALID_JSON, rate limit→429). Features verified (trip date range, status auto-calc, calendar). Sprint 1 regression: PASS. **DEPLOY INSTRUCTIONS FOR T-038:** (1) Apply migration: `cd backend && npm run migrate` (migration 007 adds start_date, end_date columns to trips). (2) Rebuild frontend: `cd frontend && npm run build` (new routes: /trips/:id/edit/flights, /edit/stays, /edit/activities + calendar component). (3) Restart backend (includes UUID validation, rate limiting, activity_date fix, INVALID_JSON fix, trip date range, status auto-calc). (4) Verify env vars: PORT=3001, CORS_ORIGIN=http://localhost:4173, DATABASE_URL, JWT_SECRET all still valid. (5) Smoke tests: GET /api/v1/health → 200, register + login flow, new edit routes accessible. **WARNINGS (non-blocking, for awareness):** (1) Frontend does not explicitly handle 429 rate limit responses — generic error banner catches it. (2) Edit page tests cover render/loading/empty but not full form submission workflows — implementation code reviewed and correct. (3) npm audit shows 5 moderate vulns in dev deps only (esbuild via vitest) — no production impact. (4) HTTPS not configured (staging limitation, B-014 deferred to Sprint 3+). |
+
+---
+
+### Sprint 2 — QA Engineer → Manager Agent (T-036 + T-037 Complete — All 9 Implementation Tasks Moved to Done)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | QA Engineer |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-027, T-028, T-029, T-030, T-031, T-032, T-033, T-034, T-035, T-036, T-037 |
+| Handoff Summary | QA Engineer has completed all Sprint 2 QA responsibilities. T-036 (security checklist + code review) and T-037 (integration testing) are both Done. All 9 implementation tasks (T-027–T-035) have been moved from "Integration Check" to "Done" in dev-cycle-tracker.md. Handoff to Deploy Engineer (T-038) logged. No blockers. |
+| Notes | **Status update:** T-027 → Done, T-028 → Done, T-029 → Done, T-030 → Done, T-031 → Done, T-032 → Done, T-033 → Done, T-034 → Done, T-035 → Done, T-036 → Done, T-037 → Done. **Key findings:** (1) Backend: 116 tests all pass. UUID validation, rate limiting, activity_date fix, trip date range, status auto-calc all verified. (2) Frontend: 180 tests all pass. All edit pages behind ProtectedRoute. API contracts match. No XSS. Calendar renders correctly. (3) Security: All 15 applicable checklist items pass. Sprint 1 rate-limiting risk resolved. No P1 failures. (4) Integration: 112 checks, 108 PASS, 4 WARN (non-blocking). All contracts compliant. All UI states implemented. Sprint 1 regression passed. **Non-blocking warnings for Sprint 3 backlog consideration:** (a) Frontend 429 handling — add explicit "too many requests" message. (b) Edit page test depth — add form submission integration tests. (c) TripCard missing date-range-display test case. (d) Duplicate date formatting logic (TripCard inline vs formatDate.js). Full report in qa-build-log.md. |
+
+---
+
 ### Sprint 2 — Manager Agent → QA Engineer (Code Review APPROVED — All 9 Tasks Move to Integration Check)
 
 | Field | Value |
