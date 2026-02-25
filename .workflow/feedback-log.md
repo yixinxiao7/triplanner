@@ -565,8 +565,8 @@ All components are feature-complete and well-implemented.
 | Sprint | 2 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | Acknowledged |
-| Related Task | T-028 |
+| Status | Tasked |
+| Related Task | T-028, T-045 (Sprint 3) |
 
 **Steps to reproduce:**
 1. Trigger rate limiting on login endpoint (10+ rapid requests)
@@ -587,8 +587,8 @@ All components are feature-complete and well-implemented.
 | Sprint | 2 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | Acknowledged |
-| Related Task | T-033 |
+| Status | Tasked |
+| Related Task | T-033, T-043/T-047 (Sprint 3) |
 
 **Steps to reproduce:**
 ```bash
@@ -613,8 +613,8 @@ curl -s -X POST http://localhost:3001/api/v1/trips/:id/activities \
 | Sprint | 2 |
 | Category | UX Issue |
 | Severity | Suggestion |
-| Status | Acknowledged |
-| Related Task | T-034 |
+| Status | Tasked |
+| Related Task | T-034, T-048 (Sprint 3) |
 
 **Observation:** TripCard.jsx contains an inline `formatTripDateRange` function (lines 10-40) that duplicates logic already in `utils/formatDate.js` (`formatDateRange`). Both format date ranges but use slightly different logic paths.
 

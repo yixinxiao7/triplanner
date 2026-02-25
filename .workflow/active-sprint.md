@@ -4,9 +4,11 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #2 — 2026-02-25 to 2026-03-09
+## Sprint #3 — 2026-02-25 to 2026-03-11
 
-**Sprint Goal**: Deliver the core editing experience for trip sub-resources — users can add, edit, and delete flights, stays, and activities via dedicated edit pages. Introduce trip date range support (start/end dates), trip status auto-calculation (ONGOING/COMPLETED), and the integrated calendar view at the top of the trip details page. Ship Sprint 1 bug fixes (UUID validation, activity_date format, rate limiting) as P0 pre-requisites.
+**Sprint Goal**: Harden the MVP for production readiness and polish UX based on Sprint 2 feedback. Deliver HTTPS on staging with secure cookies, pm2 process management, multi-destination add/remove UI, optional activity times (timeless "all day" activities), explicit 429 rate limit error handling, and production deployment preparation (Docker Compose + CI/CD configs). Strengthen test coverage on edit pages.
+
+**Context:** The MVP is feature-complete after Sprint 2 (all 7 core features from the project brief are implemented and verified on staging). Sprint 3 shifts focus from feature delivery to production readiness, UX polish, and code quality.
 
 ---
 
@@ -15,45 +17,41 @@ The operational reference for the current development cycle. Refreshed at the st
 *All tasks below are in `dev-cycle-tracker.md`. Dependency order is enforced — no task starts before its Blocked By items are Done.*
 
 ### Phase 1 — Design Specs (start immediately)
-- [ ] T-023 — Design spec: Flights edit page
-- [ ] T-024 — Design spec: Stays edit page
-- [ ] T-025 — Design spec: Activities edit page (multi-row form)
-- [ ] T-026 — Design spec: Calendar component + trip date range UI
+- [ ] T-041 — Design spec: Multi-destination add/remove UI (B-007)
+- [ ] T-042 — Design spec: Optional activity times UX + 429 error message UX (B-015, B-016)
 
-### Phase 2 — Backend Fixes & Contract Updates (start immediately, parallel to Design)
-- [ ] T-027 — Backend bug fixes: UUID validation + activity_date format + JSON error code (P0 — B-009, B-010, B-012)
-- [ ] T-028 — Backend security: express-rate-limit on auth routes (P0 — B-011)
-- [ ] T-029 — Backend: Trip date range — schema migration + API update (B-006) *(Manager pre-approved schema change 2026-02-25)*
+### Phase 2 — Backend + Infrastructure (start immediately, parallel to Design)
+- [ ] T-043 — Backend: Make activity start_time/end_time optional (B-016)
+- [ ] T-044 — Backend + Infra: HTTPS configuration for staging (B-014)
 
-### Phase 3a — Backend Enhancements (after Phase 2 T-029 done)
-- [ ] T-030 — Backend: Trip status auto-calculation based on dates (B-005)
+### Phase 3 — Frontend (after Design specs + Backend changes)
+- [ ] T-045 — Frontend: 429 rate limit error handling (B-015) ← T-042
+- [ ] T-046 — Frontend: Multi-destination add/remove UI (B-007) ← T-041
+- [ ] T-047 — Frontend: Optional activity times UI (B-016 frontend) ← T-042, T-043
+- [ ] T-048 — Frontend: Consolidate date formatting + TripCard test gap (B-017) *(no blockers)*
+- [ ] T-049 — Frontend: Edit page test hardening ← T-045, T-046, T-047
 
-### Phase 3b — Frontend Edit Pages (after Phase 1 Design specs + T-027 backend fixes done)
-- [ ] T-031 — Frontend: Flights edit page (add/edit/delete flights)
-- [ ] T-032 — Frontend: Stays edit page (add/edit/delete stays)
-- [ ] T-033 — Frontend: Activities edit page (multi-row, add/delete rows, batch save)
-- [ ] T-034 — Frontend: Trip date range UI (date pickers in trip details + updated trip cards)
+### Phase 4 — Infrastructure (after HTTPS configured)
+- [ ] T-050 — Infra: pm2 process management for staging (B-013) ← T-044
+- [ ] T-051 — Infra: Production deployment preparation — Dockerfiles, Docker Compose, CI/CD, runbook (B-008 prep) ← T-044
 
-### Phase 4 — Calendar (after all edit pages + trip date range done) *(P2 stretch — may carry to Sprint 3 if capacity insufficient)*
-- [ ] T-035 — Frontend: Calendar component integrated with flights/stays/activities
-
-### Phase 5 — QA, Deploy, Monitor (sequential after all implementation tasks)
-- [ ] T-036 — QA: Security checklist + code review audit
-- [ ] T-037 — QA: Integration testing (full edit flow end-to-end)
-- [ ] T-038 — Deploy: Staging re-deployment (new migration + rebuilt frontend)
-- [ ] T-039 — Monitor: Staging health check
-- [ ] T-040 — User Agent: Feature walkthrough + feedback
+### Phase 5 — QA, Deploy, Monitor, User (sequential after all implementation)
+- [ ] T-052 — QA: Security checklist + code review audit
+- [ ] T-053 — QA: Integration testing
+- [ ] T-054 — Deploy: Staging re-deployment
+- [ ] T-055 — Monitor: Staging health check
+- [ ] T-056 — User Agent: Feature walkthrough + feedback
 
 ---
 
 ## Out of Scope
 
-*These items are explicitly deferred to Sprint #3 or later. Do not start them this sprint.*
+*These items are explicitly deferred to Sprint #4 or later. Do not start them this sprint.*
 
-- **Multi-destination structured UI (B-007)** — Sprint 3+. Destinations are stored as a text array; structured add/remove UI is deferred.
-- **Production deployment (B-008)** — Sprint 3+. Requires HTTPS, pm2/Docker, and full edit-flow stability first.
-- **HTTPS configuration (B-014)** — Sprint 3+. Required before production but not blocking staging work.
-- **pm2 process management for staging (B-013)** — Sprint 3+. Low priority infrastructure improvement.
+- **Actual production deployment to hosting provider (B-022)** — Sprint 4. Sprint 3 prepares Docker configs, CI/CD, and runbook. Actual deployment requires hosting provider selection + DNS + production database setup.
+- **Rate limiting persistence (B-020)** — Sprint 4+. In-memory store is acceptable for staging and initial production. Redis-backed store needed only for multi-process/multi-instance production scaling.
+- **CreateTripModal triggerRef focus fix (B-018)** — Sprint 4+. P3 cosmetic accessibility issue.
+- **Axios 401 retry queue unit test (B-019)** — Sprint 4+. Integration-covered, low risk.
 - **MFA login** — Explicitly out of scope per project brief.
 - **Home page summary calendar** — Explicitly out of scope per project brief.
 - **Auto-generated itinerary suggestions** — Explicitly out of scope per project brief.
@@ -64,103 +62,107 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Manager | Sprint planning (done), schema change pre-approval, code review, unblock agents | Review T-023–T-035 specs + implementations; approve before FE tasks start |
-| Design Agent | UI specs for all three edit page types + calendar + trip date range | T-023, T-024, T-025, T-026 |
-| Backend Engineer | Bug fixes (P0), rate limiting (P0), trip date range migration + API, status auto-calc | T-027, T-028, T-029, T-030 |
-| Frontend Engineer | All four edit pages + trip date range UI + calendar component | T-031, T-032, T-033, T-034, T-035 |
-| QA Engineer | Security checklist for all new features, integration testing end-to-end edit flows | T-036, T-037 |
-| Deploy Engineer | Apply new DB migration, rebuild + redeploy frontend and backend | T-038 |
-| Monitor Agent | Health checks (Sprint 1 regression + new Sprint 2 checks) | T-039 |
-| User Agent | Full walkthrough of edit flows, date range, calendar; submit structured feedback | T-040 |
+| Manager | Sprint planning (done), code review, schema change approval (if T-043 migration needed), unblock agents | Review T-041–T-051 specs + implementations; approve before downstream tasks start |
+| Design Agent | UI specs for multi-destination UI + optional activity times UX + 429 error UX | T-041, T-042 |
+| Backend Engineer | Make activity times optional (API contract + validation + possible migration) | T-043 |
+| Frontend Engineer | 429 handling, multi-destination UI, optional times UI, date formatting refactor, edit page test hardening | T-045, T-046, T-047, T-048, T-049 |
+| Deploy Engineer | HTTPS configuration, pm2 setup, production deployment preparation (Docker + CI/CD) | T-044, T-050, T-051 |
+| QA Engineer | Security checklist for HTTPS + new features, integration testing | T-052, T-053 |
+| Monitor Agent | Health checks (Sprint 2 regression + new Sprint 3 HTTPS + feature checks) | T-055 |
+| User Agent | Full walkthrough of multi-destination, optional times, 429 handling, HTTPS; regression testing | T-056 |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-T-023 (Design: Flights Edit)      ──────────────────────┐
-T-024 (Design: Stays Edit)        ──────────────────────┤
-T-025 (Design: Activities Edit)   ──────────────────────┤
-T-026 (Design: Calendar + Dates)  ──────────────────────┤
-                                                         ↓
-T-027 (BE Bug Fixes: UUID/date/JSON) ────────────────────┤
-T-028 (BE Security: Rate Limit)   ───────────────────────┤
-T-029 (BE: Trip Date Range Schema) ──────────────────────┤
-                                                         ↓
-T-030 (BE: Status Auto-calc) ← T-029 ──────────────────┤
-                                                         ↓
-T-031 (FE: Flights Edit)  ← T-023, T-027 ──────────────┤
-T-032 (FE: Stays Edit)    ← T-024, T-027 ──────────────┤
-T-033 (FE: Activities Edit) ← T-025, T-027 ────────────┤
-T-034 (FE: Trip Date Range UI) ← T-026, T-029 ─────────┤
-                                                         ↓
-T-035 (FE: Calendar) ← T-026, T-031–T-034 ─────────────┤
-                                                         ↓
-                              T-036 (QA: Security + Code Review)
-                                                         ↓
-                              T-037 (QA: Integration Tests)
-                                                         ↓
-                              T-038 (Deploy: Staging Re-deploy)
-                                                         ↓
-                              T-039 (Monitor: Health Check)
-                                                         ↓
-                              T-040 (User Agent: Testing)
+T-041 (Design: Multi-Destination UI)  ──────────────────────┐
+T-042 (Design: Optional Times + 429)  ──────────────────────┤
+                                                              │
+T-043 (BE: Optional Activity Times)  ───────────────────────┤  (parallel)
+T-044 (Infra: HTTPS Config)  ──────────────────────────────┤  (parallel)
+                                                              ↓
+T-045 (FE: 429 Error Handling)      ← T-042 ───────────────┤
+T-046 (FE: Multi-Destination UI)    ← T-041 ───────────────┤
+T-047 (FE: Optional Activity Times) ← T-042, T-043 ────────┤
+T-048 (FE: Date Formatting Refactor)  (no blocker) ────────┤
+                                                              ↓
+T-049 (FE: Edit Page Test Hardening) ← T-045, T-046, T-047 ┤
+                                                              ↓
+T-050 (Infra: pm2)     ← T-044 ────────────────────────────┤
+T-051 (Infra: Docker/CI Prep) ← T-044 ─────────────────────┤
+                                                              ↓
+                              T-052 (QA: Security + Code Review)
+                                                              ↓
+                              T-053 (QA: Integration Tests)
+                                                              ↓
+                              T-054 (Deploy: Staging Re-deploy)
+                                                              ↓
+                              T-055 (Monitor: Health Check)
+                                                              ↓
+                              T-056 (User Agent: Testing)
 ```
 
 ---
 
-## Schema Change Pre-Approval
+## Schema Change Pre-Approval (Conditional)
 
-**Approved by Manager Agent — 2026-02-25**
+**Conditionally approved by Manager Agent — 2026-02-25**
 
-As part of Sprint 2 planning, the following schema change is pre-approved for T-029:
+If T-043 requires a schema migration to change `start_time` and `end_time` column nullability on the `activities` table:
 
-- **Change:** Add `start_date DATE NULL` and `end_date DATE NULL` to the `trips` table.
-- **Rationale:** Required to display trip timeline on trip cards, enable status auto-calculation (ONGOING/COMPLETED), and populate the calendar component with an authoritative date range.
-- **Migration:** New Knex migration file (e.g., `20260225_007_add_trip_date_range.js`) with `up()` adding both columns and `down()` dropping them. Both columns default to NULL — existing trips unaffected.
-- **API Impact:** `POST /trips`, `PATCH /trips/:id`, `GET /trips`, `GET /trips/:id` — all must be updated to include `start_date` and `end_date` in request/response shapes. Backend Engineer must update `api-contracts.md` before implementation.
+- **Change:** ALTER `start_time TIME NOT NULL` and `end_time TIME NOT NULL` to `start_time TIME NULL` and `end_time TIME NULL` on the `activities` table.
+- **Rationale:** Required to support "all day" / timeless activities where users don't want to specify specific times (e.g., "Free Day", "Explore the city"). Feedback item FB-023.
+- **Migration:** New Knex migration file (e.g., `20260225_008_make_activity_times_optional.js`) with `up()` altering columns to nullable and `down()` setting them back to NOT NULL (with a default of '00:00:00' for any existing NULL values on rollback).
+- **API Impact:** POST/PATCH `/trips/:id/activities` — `start_time` and `end_time` become optional. Validation: if one is provided, the other is also required. Both null = "all day" activity.
 
-Backend Engineer should document the full updated API contract in `.workflow/api-contracts.md` before writing any code (Rule #11 + #22).
+Backend Engineer must update `api-contracts.md` before implementation (Rule #11 + #22).
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #2 is complete?*
+*How do we know Sprint #3 is complete?*
 
-- [ ] Design Agent has published UI specs for all four Sprint 2 design tasks (T-023–T-026) to `.workflow/ui-spec.md`
+- [ ] Design Agent has published UI specs for T-041 and T-042 to `.workflow/ui-spec.md`
 - [ ] Manager Agent has reviewed and approved the design specs before frontend work starts
-- [ ] Backend Engineer has updated API contracts in `.workflow/api-contracts.md` for T-029 before implementation
-- [ ] All Phase 2 backend bug fixes (T-027, T-028) are verified by QA to actually fix the reported issues (UUID → 400, activity_date → YYYY-MM-DD, rate limit → 429)
-- [ ] All Phase 3 tasks (T-029–T-034) are marked Done in dev-cycle-tracker.md
-- [ ] Frontend edit pages (T-031, T-032, T-033) each have unit tests covering: render, form submit, edit existing, delete, cancel routing
-- [ ] T-034 (trip date range UI) has unit tests for card display and PATCH integration
-- [ ] T-035 (calendar) — if complete: unit tests for event rendering and navigation. If not complete: carried to Sprint 3, placeholder remains.
+- [ ] Backend Engineer has updated API contracts in `.workflow/api-contracts.md` for T-043 before implementation
+- [ ] Activity start_time/end_time are optional — API accepts null times and returns them correctly (T-043)
+- [ ] HTTPS is operational on staging — backend and frontend serve over HTTPS, refresh token cookie has `secure: true` (T-044)
+- [ ] Frontend shows explicit "too many attempts" message on 429 (not generic error) (T-045)
+- [ ] Multi-destination add/remove UI works on CreateTripModal and TripDetailsPage (T-046)
+- [ ] Timeless activities ("All day") display correctly on trip details and calendar (T-047)
+- [ ] TripCard date formatting consolidated to shared utility, test gap filled (T-048)
+- [ ] Edit page tests expanded to cover form submission, validation, edit, delete, cancel (T-049)
+- [ ] pm2 manages backend process with auto-restart on crash (T-050)
+- [ ] Docker Compose + CI/CD configs committed to infra/ directory with deployment runbook (T-051)
 - [ ] All task dependencies (Blocked By) are resolved before moving tasks to In Progress
 - [ ] Manager Agent has completed code review for all implementation tasks
-- [ ] QA Engineer has completed security checklist (T-036) and integration testing (T-037)
+- [ ] QA Engineer has completed security checklist (T-052) and integration testing (T-053)
 - [ ] QA Engineer has logged all results in `.workflow/qa-build-log.md`
-- [ ] Deploy Engineer has applied T-029 migration and redeployed to staging (T-038)
-- [ ] Monitor Agent has verified staging health (T-039) — all Sprint 1 checks pass + all Sprint 2 new checks pass
-- [ ] User Agent has tested all new edit flows and submitted feedback to `.workflow/feedback-log.md` (T-040)
-- [ ] Manager Agent has triaged all Sprint 2 feedback entries (New → Tasked/Acknowledged/Won't Fix)
+- [ ] Deploy Engineer has applied migrations and redeployed to staging over HTTPS (T-054)
+- [ ] Monitor Agent has verified staging health — all Sprint 2 checks pass + all Sprint 3 new checks pass (T-055)
+- [ ] User Agent has tested all new features and submitted feedback to `.workflow/feedback-log.md` (T-056)
+- [ ] Manager Agent has triaged all Sprint 3 feedback entries (New → Tasked/Acknowledged/Won't Fix)
 - [ ] Sprint summary added to `.workflow/sprint-log.md`
 
 ---
 
-## Success Criteria (from Project Brief — Sprint 2 Additions)
+## Success Criteria (from Project Brief — Sprint 3 Additions)
 
-By the end of Sprint #2, the following must be verifiable on staging (in addition to all Sprint 1 criteria):
+By the end of Sprint #3, the following must be verifiable on staging (in addition to all Sprint 1 + Sprint 2 criteria):
 
-- [ ] A user can navigate to the flights edit page and add a new flight — the flight appears on the trip details page with correct timezone display
-- [ ] A user can add, edit, and delete stays — changes persist and appear correctly on trip details
-- [ ] A user can add multiple activities via the activities edit page, click "+", and have them all saved and grouped by date on the trip details page
-- [ ] A user can cancel any edit page and be returned to trip details with no data changed
-- [ ] A user can set a start and end date on a trip — the date range appears on the home page trip card
-- [ ] Invalid UUID path parameters return HTTP 400 (not 500) — no PostgreSQL error codes leak to the client
-- [ ] The `/auth/login` endpoint throttles after 10 rapid requests and returns HTTP 429
-- [ ] The `activity_date` field in API responses is a YYYY-MM-DD string (not an ISO timestamp)
-- [ ] *(Stretch)* The calendar component shows all flights, stays, and activities on their correct dates
+- [ ] Staging serves over HTTPS — `https://localhost:...` loads without mixed-content warnings
+- [ ] Refresh token cookie has `Secure` flag set
+- [ ] Backend process runs under pm2 and auto-restarts after a crash
+- [ ] A user can add multiple destinations via chip/tag input when creating a trip — all destinations appear on the trip details page
+- [ ] A user can edit destinations on the trip details page (add/remove) and save via PATCH
+- [ ] A user can create a "Free Day" activity with no start_time or end_time — it appears with an "All day" indicator on trip details
+- [ ] A user who triggers the rate limit on login sees "Too many attempts. Please wait X minutes." (not a generic error)
+- [ ] Docker Compose config exists in `infra/` and can build the full stack (backend + PostgreSQL + frontend)
+- [ ] CI/CD pipeline config exists in `infra/` (GitHub Actions) for test + build
+- [ ] TripCard date formatting uses the shared utility (no duplicate logic)
+- [ ] Edit page tests cover form submission, validation, edit, delete, and cancel workflows
 
 ---
 
@@ -172,4 +174,4 @@ By the end of Sprint #2, the following must be verifiable on staging (in additio
 
 ---
 
-*Previous sprint (Sprint #1) archived to `.workflow/sprint-log.md` on 2026-02-24. Sprint #2 begins 2026-02-25.*
+*Previous sprint (Sprint #2) archived to `.workflow/sprint-log.md` on 2026-02-25. Sprint #3 begins 2026-02-25.*

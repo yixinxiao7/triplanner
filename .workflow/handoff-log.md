@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 3 Plan Verified & Priority Adjustment — Manager Agent → All Agents (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Manager Agent |
+| To Agent | All Agents |
+| Status | Pending |
+| Related Task | T-041 through T-056 |
+| Handoff Summary | Manager Agent has re-verified the Sprint 3 plan at orchestrator invocation on 2026-02-25. All 14 Sprint 2 feedback entries (FB-011–FB-024) confirmed triaged — no "New" entries remain. All 16 Sprint 3 tasks (T-041–T-056) verified with correct assignments, complexity, and Blocked By chains. **One priority adjustment made:** T-042 promoted from P2 → P1 because it sits on the critical path blocking T-045 (P1: 429 error handling) and T-047 (P1: optional activity times UI). All other task attributes unchanged. Sprint 3 is confirmed GO. |
+| Notes | **Immediate start items (no blockers):** (1) Design Agent → T-041 + T-042 (both P1, no blockers). (2) Backend Engineer → T-043 (P1, no blockers — update api-contracts.md FIRST per Rule #11). (3) Deploy Engineer → T-044 (P1, no blockers). (4) Frontend Engineer → T-048 (P2, no blockers — date formatting refactor). **Blocked items — do not start yet:** T-045 (←T-042), T-046 (←T-041), T-047 (←T-042, T-043), T-049 (←T-045, T-046, T-047), T-050 (←T-044), T-051 (←T-044), T-052–T-056 (sequential pipeline after all implementation). **Critical path:** T-042 → T-047 → T-049 → T-052 → T-053 → T-054 → T-055 → T-056. |
+
+---
+
+### Sprint 3 Kickoff Confirmed — Manager Agent → All Agents (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Manager Agent |
+| To Agent | All Agents |
+| Status | Pending |
+| Related Task | T-041 through T-056 |
+| Handoff Summary | Manager Agent has verified Sprint 3 plan and confirmed kickoff on 2026-02-25. All 14 Sprint 2 feedback entries (FB-011–FB-024) have been triaged — 11 Acknowledged (positive), 3 Tasked (FB-022 → T-045, FB-023 → T-043/T-047, FB-024 → T-048). No "New" entries remain. All 16 Sprint 3 tasks (T-041–T-056) verified with correct priorities, complexity estimates, agent assignments, and Blocked By chains. Schema change pre-approval for T-043 (activities.start_time/end_time nullable) is in place. Sprint 3 is GO. |
+| Notes | **Immediate action items:** (1) **Design Agent:** Begin T-041 (multi-destination UI spec) and T-042 (optional times UX + 429 UX spec) immediately — no blockers. (2) **Backend Engineer:** Begin T-043 (make activity times optional) immediately — update api-contracts.md FIRST per Rule #11, then implement. Schema change pre-approved. (3) **Deploy Engineer:** Begin T-044 (HTTPS configuration) immediately — no blockers. (4) **Frontend Engineer:** T-048 (date formatting refactor) has no blockers and can start now. T-045, T-046, T-047 are blocked by design specs + backend. (5) All Phase 3–5 tasks remain blocked per dependency chains documented in active-sprint.md. **Critical path:** T-042 → T-047 → T-049 → T-052 → T-053 → T-054 → T-055 → T-056. **Rules reminder:** API contracts before implementation (Rule #11). UI specs before frontend work (Rule #12). Security checklist before Done (Rule #13). Branch per task (Rule #16). Commits reference task ID (Rule #17). |
+
+---
+
+### Sprint 3 Planning — Manager Agent → All Agents (Sprint 3 Kickoff — Tasks Assigned)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Manager Agent |
+| To Agent | All Agents |
+| Status | Pending |
+| Related Task | T-041 through T-056 |
+| Handoff Summary | Manager Agent has completed Sprint 3 planning on 2026-02-25. 16 tasks created (T-041–T-056) across 5 phases. Sprint goal: production readiness (HTTPS, pm2, Docker/CI prep), UX polish (multi-destination UI, optional activity times, 429 error handling), and code quality (date formatting refactor, edit page test hardening). All Sprint 2 feedback triaged: FB-022 → Tasked (T-045), FB-023 → Tasked (T-043/T-047), FB-024 → Tasked (T-048), all positives Acknowledged. All 7 previous backlog items promoted to Sprint 3 tasks. |
+| Notes | **Sprint 3 Priorities:** (1) **P1 — Production Readiness:** HTTPS on staging (T-044), pm2 process management (T-050), production deployment prep with Docker Compose + CI/CD (T-051). (2) **P1 — UX Polish (from feedback):** Multi-destination add/remove UI (T-041/T-046), optional activity times (T-043/T-047), 429 error handling (T-045). (3) **P2 — Code Quality:** Date formatting consolidation (T-048), edit page test hardening (T-049). **Schema Change Pre-Approval:** If T-043 requires a migration to make activities.start_time and activities.end_time nullable, it is pre-approved. Backend Engineer must update api-contracts.md first. **Agent Focus Areas:** Design Agent → T-041, T-042 (start immediately). Backend Engineer → T-043 (start immediately, update contracts first). Deploy Engineer → T-044 (start immediately), then T-050, T-051. Frontend Engineer → T-045, T-046, T-047, T-048, T-049 (after design specs + backend). QA → T-052, T-053. Deploy → T-054. Monitor → T-055. User Agent → T-056. **Critical Path:** Design + Backend (parallel) → Frontend → Tests → QA → Deploy → Monitor → User. **New Backlog Items:** B-018 (modal focus fix, P3), B-019 (axios retry test, P3), B-020 (rate limit persistence, P2), B-021 (esbuild vuln, P3), B-022 (actual production deployment, P1). |
+
+---
+
 ### Sprint 2 Closeout — Manager Agent → All Agents (Sprint 2 Complete — Sprint 3 Planning Ready)
 
 | Field | Value |
@@ -24,7 +66,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 2 |
 | From Agent | Manager Agent |
 | To Agent | All Agents (Sprint 3 Planning) |
-| Status | Pending |
+| Status | Done |
 | Related Task | All Sprint 2 tasks (T-023–T-040) |
 | Handoff Summary | Manager Agent has completed Sprint 2 closeout on 2026-02-25. All 18 Sprint 2 tasks are Done. All 14 feedback entries (FB-011–FB-024) triaged: 11 Acknowledged (positive), 2 Acknowledged (minor UX → backlog B-015, B-016), 1 Acknowledged (suggestion → backlog B-017). Sprint summary written to sprint-log.md. No tasks carried over. Sprint 3 planning can begin. |
 | Notes | **Sprint 2 Results:** 18/18 tasks completed. 296 total tests (116 backend + 180 frontend) all passing. 24/24 health checks pass. Zero Critical/Major feedback. **New Backlog Items Added:** B-015 (429 error handling, P2), B-016 (optional activity times, P2), B-017 (date formatting consolidation, P3). **Sprint 3 Focus Areas:** (1) **Production readiness** — B-008 production deployment + B-014 HTTPS configuration are the top priorities. (2) **MVP polish** — B-015 (429 handling), B-016 (optional activity times), B-007 (multi-destination UI). (3) **Test hardening** — edit page form submission/validation/delete integration tests. (4) **Infrastructure** — B-013 pm2 or Docker Compose, rate limiting persistence store. **Existing Backlog (from Sprint 1):** B-007 (multi-destination UI, P3), B-008 (production deploy, P1), B-013 (pm2, P3), B-014 (HTTPS, P1). **MVP Status:** After Sprint 2, all 7 core features from the project brief are implemented: (1) ✅ Login/register, (2) ✅ Home page with trip list, (3) ✅ Create trip, (4) ✅ Trip details with flights/stays/activities + calendar, (5) ✅ Edit pages for flights/stays/activities, (6) ✅ Navbar, (7) ✅ Delete trips. The MVP is feature-complete on staging. Sprint 3 should focus on production deployment and UX polish. |
@@ -38,7 +80,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 2 |
 | From Agent | User Agent |
 | To Agent | Manager Agent |
-| Status | Pending |
+| Status | Done |
 | Related Task | T-040 |
 | Handoff Summary | User Agent has completed T-040 (feature walkthrough + feedback) on 2026-02-25. All Sprint 2 features tested end-to-end via direct API calls, frontend code review, and unit test verification. 14 feedback entries submitted to `.workflow/feedback-log.md` (FB-011 through FB-024). **11 Positive, 2 Minor issues, 1 Suggestion. Zero Critical or Major issues.** Sprint 2 is in excellent shape. |
 | Notes | **Testing Summary:** (1) **Environment:** Backend http://localhost:3001, Frontend http://localhost:4173. Fresh test user registered for isolated testing. (2) **Sprint 1 Bug Fix Verification (T-027):** All 3 P0 fixes verified — UUID → 400 VALIDATION_ERROR ✅, activity_date → YYYY-MM-DD ✅, INVALID_JSON error code ✅. (3) **Rate Limiting (T-028):** Login 10/15min and Register 20/15min both verified with correct 429 response and RateLimit-*/Retry-After headers ✅. (4) **Trip Date Range (T-029):** Full CRUD with YYYY-MM-DD format, null clearing, cross-field validation (end ≥ start) — all pass ✅. (5) **Status Auto-Calc (T-030):** PLANNING/ONGOING/COMPLETED computed correctly for future/current/past dates, boundary cases (today = start/end), and null fallback ✅. (6) **Flights CRUD (T-031):** Create/read/update/delete all work with comprehensive field validation ✅. (7) **Stays CRUD (T-032):** HOTEL/AIRBNB/VRBO categories, optional address, check-out > check-in validation ✅. (8) **Activities CRUD (T-033):** Create/list/update/delete with YYYY-MM-DD format ✅. (9) **Security:** Cross-user authorization tested (403 on all operations) ✅. SQL injection via name and URL both blocked ✅. XSS stored as literal text, no dangerouslySetInnerHTML ✅. (10) **Frontend:** Build exists (293kB JS, 50kB CSS). All edit routes protected. 180/180 unit tests pass. All components implement loading/empty/error/success states. Calendar component fully implemented with color-coded events ✅. 116/116 backend tests pass. (11) **Edge Cases:** Long text (>255 chars), empty/whitespace inputs, unicode, emoji, special characters, number-as-string, invalid tokens — all handled correctly ✅. **Issues Found (2 Minor, 1 Suggestion):** (a) FB-022: Frontend lacks explicit 429 "too many requests" user message — generic error shown instead (Minor). (b) FB-023: start_time/end_time required for activities — some timeless activities can't be created (Minor UX). (c) FB-024: Duplicate date formatting logic in TripCard vs formatDate.js (Suggestion). **Overall Impression:** Sprint 2 is a strong delivery. All 9 implementation tasks (T-027–T-035) are complete and working correctly. The P0 bug fixes from Sprint 1 are fully resolved. The edit pages, date range, status auto-calc, and calendar are all solid. The backend API is well-validated and secure. The frontend code is spec-compliant with comprehensive UI state handling. No blockers for Sprint 3. |

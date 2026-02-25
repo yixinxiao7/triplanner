@@ -131,37 +131,30 @@ phase_closeout_complete() {
     local sprint_num
     sprint_num=$(get_current_sprint)
 
-    # Closeout is complete if sprint summary exists
-    grep -q "Sprint.*${sprint_num}\|Sprint #${sprint_num}" "$sprint_log" 2>/dev/null
+    # Closeout is complete if sprint summary header exists (### Sprint #N —)
+    # Uses anchored pattern to avoid matching references like "Sprint 3 Recommendations"
+    grep -qE "^### Sprint #${sprint_num} " "$sprint_log" 2>/dev/null
 }
 
 # ── Determine Next Phase ─────────────────────────────────────────────
-# Returns the name of the next phase to run
+# Returns the name of the next phase to run.
+#
+# Uses sprint-state flags as the authoritative source. These flags are
+# set after each phase completes (orchestrate.sh) and cleared between
+# sprints (increment_sprint / manual reset). This prevents false
+# positives from accumulated workflow file data across sprint boundaries
+# (e.g., Sprint 2 "Approved" specs causing design to appear complete
+# for Sprint 3).
 
 determine_next_phase() {
-    if ! phase_planning_complete; then
-        echo "plan"
-    elif ! phase_design_complete; then
-        echo "design"
-    elif ! phase_contracts_complete; then
-        echo "contracts"
-    elif ! phase_build_complete; then
-        echo "build"
-    elif ! phase_review_complete; then
-        echo "review"
-    elif ! phase_qa_complete; then
-        echo "qa"
-    elif ! phase_deploy_complete; then
-        echo "deploy"
-    elif ! phase_verify_complete; then
-        echo "verify"
-    elif ! phase_testing_complete; then
-        echo "test"
-    elif ! phase_closeout_complete; then
-        echo "closeout"
-    else
-        echo "done"
-    fi
+    local phases=("plan" "design" "contracts" "build" "review" "qa" "deploy" "verify" "test" "closeout")
+    for phase in "${phases[@]}"; do
+        if [[ "$(sprint_state_get "${phase}_completed")" != "true" ]]; then
+            echo "$phase"
+            return
+        fi
+    done
+    echo "done"
 }
 
 # ── Summary Report ───────────────────────────────────────────────────
