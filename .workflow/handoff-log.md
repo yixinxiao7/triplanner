@@ -17,6 +17,34 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 3 — Design Agent → Frontend Engineer (T-042: Spec 9 — Optional Activity Times UX + 429 Rate Limit Error Message) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-042, T-045, T-047 |
+| Handoff Summary | Design Agent has completed T-042 (design spec for optional activity times UX + 429 rate limit error message) on 2026-02-25. Full spec published as "Spec 9: Optional Activity Times UX + 429 Rate Limit Error Message" in `.workflow/ui-spec.md` (Sprint 3 Specs section). Spec status: Approved. This spec unblocks T-045 (FE: 429 rate limit error handling) and T-047 (FE: optional activity times UI). |
+| Notes | **Part A — Optional Activity Times (for T-047):** (1) ActivitiesEditPage: Add "All day" checkbox column (70px width) per row. When checked, hide start_time/end_time inputs, show muted "all day" text. When unchecked, show time inputs. Linked validation: both times or neither. (2) TripDetailsPage: Timeless activities show amber-tinted "all day" badge in time column. Sort after timed activities within same date group. (3) Calendar: No visual change — chips already show name only. (4) Mobile: "All day" checkbox row added to card layout. **Part B — 429 Error (for T-045):** (1) Login/register pages: amber warning banner (not red error) with "too many login/registration attempts. please try again in X minutes." (2) Parse Retry-After header for countdown. (3) Banner persists (no auto-dismiss). (4) Handle at page level (not axios interceptor). (5) Submit button stays enabled. **Blocked By (before FE work):** T-042 (this spec) is done. T-045 can start immediately. T-047 is also blocked by T-043 (BE: optional activity times) — wait for Backend Engineer to complete T-043 and update api-contracts.md. |
+
+---
+
+### Sprint 3 — Design Agent → Frontend Engineer (T-041: Spec 8 — Multi-Destination Add/Remove UI) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-041, T-046 |
+| Handoff Summary | Design Agent has completed T-041 (design spec for multi-destination add/remove UI) on 2026-02-25. Full spec published as "Spec 8: Multi-Destination Add/Remove UI" in `.workflow/ui-spec.md` (Sprint 3 Specs section). Spec status: Approved. This spec unblocks T-046 (FE: multi-destination add/remove UI). |
+| Notes | **Key implementation details:** (1) **New shared component** `DestinationChipInput` in `frontend/src/components/DestinationChipInput.jsx` — controlled component (props: destinations[], onChange, disabled, error, placeholder, autoFocus). Handles chip rendering, add via Enter/comma, remove via × button or Backspace. (2) **CreateTripModal update:** Replace plain text destinations input with DestinationChipInput. Change form state from string to string[]. Min 1 destination validated on submit. Send destinations as array to POST /trips. Remove "separate with commas" helper text. (3) **TripDetailsPage header update:** Two modes — Display (read-only chips + "edit" link) and Edit (DestinationChipInput + Save/Cancel buttons). Save calls PATCH /trips/:id with destinations array. Cancel reverts without API call. (4) **Chip design:** accent-tinted background, 200px max-width with ellipsis truncation, × remove button. (5) **Keyboard support:** Enter/comma to add, Backspace on empty to remove last, Escape to clear input. (6) **No changes to TripCard** (Home page) — continues using dot-separated text display. **No backend changes required** — API already accepts destinations as string array. |
+
+---
+
 ### Sprint 3 Plan Verified & Priority Adjustment — Manager Agent → All Agents (2026-02-25)
 
 | Field | Value |

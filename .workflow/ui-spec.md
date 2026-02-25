@@ -1607,3 +1607,492 @@ Note: The Sprint 1 "Edit" buttons for flights, stays, and activities (previously
 ---
 
 *This document is maintained by the Design Agent. All Sprint 1 specs above are marked Approved.*
+
+---
+
+## Sprint 3 Specs
+
+---
+
+### Spec 8: Multi-Destination Add/Remove UI
+
+**Sprint:** #3
+**Related Task:** T-041
+**Status:** Approved
+
+**Description:**
+This spec upgrades the destinations input throughout the app from a plain comma-separated text field to an interactive tag/chip-based input. It affects two components: (1) the **CreateTripModal** on the Home page, where users enter destinations when creating a new trip, and (2) the **TripDetailsPage** header, where destinations are displayed and can now be edited inline. The destinations array is the API's existing `destinations` field (string array). Minimum one destination is required at all times.
+
+**Feedback source:** B-007 (backlog) — users need a clear, visual way to add multiple destinations rather than typing comma-separated text.
+
+---
+
+#### 8.1 DestinationChipInput Component (Shared)
+
+Create a reusable component `DestinationChipInput` (in `frontend/src/components/DestinationChipInput.jsx`) used by both CreateTripModal and TripDetailsPage.
+
+**Props:**
+- `destinations` — `string[]` — current list of destination strings
+- `onChange` — `(newDestinations: string[]) => void` — called on every add/remove
+- `disabled` — `boolean` (default false) — disables all interactions
+- `error` — `string | null` — error message to display below the input
+- `placeholder` — `string` (default `"Add a destination..."`)
+- `autoFocus` — `boolean` (default false)
+
+**Component Layout:**
+- **Outer container:** Background: `--surface-alt` (`#3F4045`), border: `1px solid var(--border-subtle)`, border-radius: 2px, padding: 8px 12px, min-height: 44px, display: flex, flex-wrap: wrap, align-items: center, gap: 8px. On focus-within: `border-color: var(--accent)`.
+- **Chips area:** Flex-wrap row of destination chips (inline with the text input). Each chip represents one destination.
+- **Text input (inline):** Sits after the last chip in the flex flow. No visible border (transparent background, no outline). Font: IBM Plex Mono, 13px, `--text-primary`. Placeholder: `--text-muted`. Flex: 1, min-width: 120px (ensures it doesn't get crushed by chips). The input grows with the available space.
+
+**Chip Design:**
+- **Container:** `display: inline-flex`, `align-items: center`, gap: 6px, background: `rgba(93, 115, 126, 0.2)`, border: `1px solid rgba(93, 115, 126, 0.4)`, border-radius: 2px, padding: 4px 8px 4px 10px, max-width: 200px.
+- **Text:** font-size 12px, font-weight 500, color `--text-primary`, white-space: nowrap, overflow: hidden, text-overflow: ellipsis.
+- **Remove button (×):** A small `×` icon/text, font-size 14px, font-weight 400, color `--text-muted`, cursor: pointer, line-height: 1, padding: 0 2px. Hover: color `rgba(220, 80, 80, 0.8)`. `aria-label="Remove [destination name]"`. On click: remove this destination from the array.
+- **Hover state (chip):** `border-color: var(--accent)` (subtle highlight).
+
+**Interaction — Adding a Destination:**
+1. User types a destination name in the text input
+2. User presses **Enter** or **comma (,)** to confirm
+3. The typed text is trimmed of whitespace. If non-empty and not a duplicate (case-insensitive comparison), it is added to the `destinations` array as a new chip
+4. The text input clears
+5. If the typed text is empty or a duplicate, nothing happens (no error shown for duplicates — silent ignore)
+6. Focus remains in the text input after adding
+
+**Interaction — Removing a Destination:**
+1. User clicks the `×` button on a chip
+2. The destination is removed from the array
+3. If this would leave zero destinations, the chip is removed and the `onChange` callback fires with an empty array. Validation is handled by the parent component (see 8.2 and 8.3).
+4. Focus moves to the text input after removal
+
+**Keyboard Support:**
+- **Backspace** (when text input is empty): Remove the last chip in the list (most recently added). This is a common pattern in tag inputs for quick correction.
+- **Enter**: Add the current text as a chip
+- **Comma (,)**: Add the current text as a chip (comma is stripped, not included in destination name)
+- **Escape**: Clear the text input (do not remove chips)
+- **Tab**: Move focus out of the component (standard tab behavior)
+
+**Accessibility:**
+- Outer container: `role="group"`, `aria-label="Destinations"`
+- Text input: `aria-label="Add destination"`, `aria-describedby` pointing to hint text and/or error message
+- Each chip: `role="option"` within the group. Remove button has explicit `aria-label="Remove [destination]"`.
+- Error message (if shown): `role="alert"`, `aria-live="polite"`, rendered below the outer container
+
+**Error Display:**
+- When `error` prop is set: show error text below the outer container. Style: 12px, `rgba(220, 80, 80, 0.9)`. Outer container border changes to `rgba(220, 80, 80, 0.7)`.
+
+---
+
+#### 8.2 CreateTripModal — Destinations Upgrade
+
+**Current Implementation:** The CreateTripModal has a single text input for destinations with a "separate multiple destinations with commas" hint. This is replaced with the `DestinationChipInput` component.
+
+**Changes:**
+
+**Form State:**
+- Change `destinations` from `string` to `string[]` (initially `[]`)
+- Remove the "separate multiple destinations with commas" helper text
+
+**Form Layout (updated fields):**
+
+| Row | Field | Notes |
+|-----|-------|-------|
+| 1 | TRIP NAME | Unchanged — text input, required |
+| 2 | DESTINATIONS | Replaced with `DestinationChipInput` |
+
+**Destinations Field:**
+- Label: `DESTINATIONS` — same 11px uppercase label style as all other fields (per Design System Form Pattern)
+- Below label: `DestinationChipInput` component
+- Placeholder: `"Type a destination and press Enter"`
+- Below the chip input: Helper text: `"press enter or comma to add"` — 11px, `--text-muted`
+- Minimum 1 destination required on submit
+
+**Validation (on submit):**
+- If `destinations.length === 0`: show error `"at least one destination is required"` below the chip input (via the `error` prop). Outer container border turns red.
+- Trip name validation unchanged (required, non-empty)
+
+**Submit Behavior:**
+- Sends `destinations` as a string array to `POST /trips`: `{ name: "...", destinations: ["San Francisco", "Los Angeles"] }`
+- This matches the existing API contract (backend already accepts array format)
+
+**No other changes to the modal** — the modal title, layout, submit button, cancel button, loading state, error banner, and accessibility all remain the same as Spec 2.5.
+
+---
+
+#### 8.3 TripDetailsPage Header — Editable Destinations
+
+**Current Implementation:** The TripDetailsPage header shows destinations as a static dot-separated string (e.g., "Tokyo · Osaka · Kyoto"). This is upgraded to support inline editing.
+
+**Two Modes:**
+
+##### 8.3.1 Display Mode (default)
+
+**Layout:** Same position as current destinations row (below trip name, above date range section).
+
+- **Container:** `display: flex`, `align-items: center`, `gap: 12px`, `flex-wrap: wrap`, margin-bottom: 8px (reduced from original 40px — the date range section now provides spacing below)
+- **Destination chips (read-only):** Each destination rendered as a read-only chip. Same visual style as the editable chips in 8.1 **but without the `×` button**. Chips are purely display in this mode.
+  - Background: `rgba(93, 115, 126, 0.15)` (slightly more transparent than editable chips)
+  - Border: `1px solid rgba(93, 115, 126, 0.3)`
+  - Text: 12px, font-weight 500, `--text-primary`
+  - Padding: 4px 10px
+  - No hover effect (not interactive)
+- **"Edit" link:** After all chips, a small link: `"edit"` — font-size 11px, color `--accent`, no underline, underline on hover. `aria-label="Edit destinations"`.
+- On click of "edit": switch to Edit Mode.
+
+##### 8.3.2 Edit Mode
+
+**Layout:** Replaces the display chips + edit link.
+
+- **Container:** Background: `--surface`, border: `1px solid var(--border-subtle)`, border-radius: 4px, padding: 16px 20px, margin-bottom: 8px.
+- **Label row:** `DESTINATIONS` — standard 11px uppercase label. Margin-bottom: 8px.
+- **DestinationChipInput:** Rendered with current destinations pre-populated as chips. Full editing capability (add/remove).
+- **Helper text below input:** `"press enter or comma to add · backspace to remove last"` — 11px, `--text-muted`. Margin-top: 4px.
+- **Action buttons row:** Flex, justify-content: flex-end, gap: 8px, margin-top: 12px.
+  - `"Save"` — primary button, font-size 12px, padding: 8px 20px. On click: validate (at least 1 destination), then call `PATCH /trips/:id` with `{ destinations: [...] }`.
+  - `"Cancel"` — secondary button, font-size 12px. On click: discard edits, revert to Display Mode with original destinations. No API call.
+
+**Validation:**
+- On Save: if destinations array is empty, show error `"at least one destination is required"` below the chip input. Do not call API.
+- On Save: if destinations haven't changed from original, skip API call, just switch to Display Mode.
+
+**Save Loading State:**
+- "Save" button shows inline spinner (16px), both buttons disabled.
+- DestinationChipInput receives `disabled={true}`.
+
+**Save Success:**
+- Destinations updated in the parent trip state.
+- Switch to Display Mode showing the new chips.
+- All destination displays on the page reflect the new data immediately (destinations row, etc.).
+
+**Save Error:**
+- Error text below the action buttons: `"could not save destinations. please try again."` — 12px, `rgba(220, 80, 80, 0.9)`.
+- Buttons re-enabled. Chip input remains in edit state with user's current input preserved.
+
+**Accessibility (Edit Mode):**
+- Container: `role="region"`, `aria-label="Edit trip destinations"`
+- Focus moves to the text input within `DestinationChipInput` when entering edit mode
+- "Save" button: `aria-label="Save destination changes"`
+- "Cancel" button: `aria-label="Cancel destination editing"`
+
+---
+
+#### 8.4 TripDetailsPage Header — Updated Skeleton
+
+When trip data is loading, the destinations row skeleton remains the same (150px × 13px shimmer bar). Edit capability is not shown during loading.
+
+---
+
+#### 8.5 Home Page TripCard — Destinations Display
+
+**No changes required.** The TripCard on the Home page continues to show destinations as a dot-separated string using the existing `formatDestinations()` utility. The API returns destinations as a string array, and the formatter handles both arrays and comma-separated strings. The chip UI is only for the Trip Details page header and the Create Modal.
+
+---
+
+#### 8.6 Responsive Behavior — Multi-Destination UI
+
+| Breakpoint | CreateTripModal | TripDetailsPage Destinations |
+|------------|----------------|------------------------------|
+| Desktop (≥768px) | Modal width 400px, chips wrap within container, text input has ample space | Chips in display mode wrap naturally, edit mode has full-width chip input |
+| Mobile (<768px) | Modal stretches to full viewport width minus 32px padding, chip input container stretches to full width, chips wrap to multiple lines if many destinations | Chips wrap. Edit mode: container is full-width, action buttons stack if needed (flex-wrap: wrap) |
+
+**Many destinations (edge case):** If a user adds 10+ destinations, the chip container grows vertically to accommodate wrapping chips. No horizontal scroll — always wrap. The modal or edit container grow to fit. For the CreateTripModal, consider a max-height of 200px on the chip container with `overflow-y: auto` to prevent the modal from growing excessively. Show a subtle scrollbar if overflow occurs.
+
+---
+
+#### 8.7 Accessibility — Multi-Destination UI (Summary)
+
+- All interactive elements have explicit `aria-label` attributes
+- Chip removal buttons are keyboard-accessible (focusable via Tab, activate via Enter/Space)
+- `DestinationChipInput` announces additions and removals to screen readers via an `aria-live="polite"` region
+- Error messages use `role="alert"` for immediate announcement
+- Focus management: after adding a chip, focus stays in text input. After removing via `×`, focus moves to text input. After removing via Backspace, focus stays in text input.
+- Color contrast: chip text `#FCFCFC` on `rgba(93, 115, 126, 0.2)` background meets WCAG AA for large text at this size. The border provides additional distinction.
+
+---
+
+---
+
+### Spec 9: Optional Activity Times UX + 429 Rate Limit Error Message
+
+**Sprint:** #3
+**Related Task:** T-042
+**Status:** Approved
+
+**Description:**
+This spec covers two distinct UX improvements:
+- **Part A — Optional Activity Times (B-016):** Allow activities to have no start_time/end_time, displayed as "All day" events. Affects the Activities Edit page, Trip Details page activities section, and the Trip Calendar component.
+- **Part B — 429 Rate Limit Error Message (B-015):** Show a specific, user-friendly error message when the backend returns HTTP 429 (rate limit exceeded) on login or register pages, distinct from generic errors.
+
+**Feedback source:** FB-022 (Sprint 2 — frontend lacks explicit 429 message), FB-023 (Sprint 2 — activity start_time/end_time required, can't create timeless activities).
+
+---
+
+#### 9.1 Part A — Optional Activity Times UX
+
+##### 9.1.1 ActivitiesEditPage — Optional Time Fields
+
+**Current State:** The activities edit page (Spec 6) has `start_time` and `end_time` columns. Per Spec 6.5, `start_time` is `Required: Yes` and `end_time` is `Required: No`. However, the Sprint 3 backend change (T-043) makes both fields truly optional with a linked validation rule: both must be null/empty (timeless "all day" activity) OR both must be provided.
+
+**Changes to Spec 6.5 Column Header Row:**
+
+Update the column labels:
+
+| Column | Label | Width | Change |
+|--------|-------|-------|--------|
+| Date | DATE | 150px | Unchanged |
+| Name | ACTIVITY NAME | flex: 2 | Unchanged |
+| Location | LOCATION | flex: 1.5 | Unchanged |
+| Start time | START | 110px | **Now optional** |
+| End time | END | 110px | **Now optional** |
+| Delete | — | 40px | Unchanged |
+
+**Updated column header label for START and END:**
+- `START` and `END` labels get a small helper annotation: render them as `"START"` and `"END"` with no visual change to the header itself. The "optional" nature is communicated through the "All day" toggle (see below).
+
+**"All day" Toggle (per row):**
+
+Add an "All day" checkbox/toggle to each activity row, positioned **between the Location column and the Start column** (or as an overlay row element):
+
+**Implementation approach (recommended — inline checkbox):**
+- Add a new narrow column between LOCATION and START with label `ALL DAY` (width: 70px)
+- Each row has a small checkbox: `<input type="checkbox">` styled as a minimal toggle
+- **Checkbox unchecked (default for timed activities):** start_time and end_time inputs are visible and editable
+- **Checkbox checked (timeless activity):** start_time and end_time inputs are visually replaced with a muted label `"all day"` (12px, `--text-muted`, centered in the combined START+END column space). The time inputs are hidden (not just disabled — hidden to reduce visual noise).
+
+**Updated column layout:**
+
+| Column | Label | Width |
+|--------|-------|-------|
+| Date | DATE | 150px |
+| Name | ACTIVITY NAME | flex: 2 (min 160px) |
+| Location | LOCATION | flex: 1.5 (min 120px) |
+| All day | ALL DAY | 70px |
+| Start time | START | 100px |
+| End time | END | 100px |
+| Delete | — | 40px |
+
+**Checkbox Styling:**
+- Custom checkbox appearance: 16px × 16px square, border: `1px solid var(--border-subtle)`, border-radius: 2px, background: transparent.
+- Checked state: background: `var(--accent)`, border-color: `var(--accent)`, with a small white checkmark (SVG or CSS `::after` pseudo-element).
+- Hover: `border-color: var(--accent)`.
+- Focus: `outline: 2px solid var(--accent); outline-offset: 2px`.
+
+**Behavior when "All day" is toggled ON:**
+1. `start_time` and `end_time` values are cleared (set to `""`)
+2. The time input cells show `"all day"` muted text instead of inputs
+3. Focus remains on the checkbox
+
+**Behavior when "All day" is toggled OFF:**
+1. Time inputs re-appear (empty)
+2. Focus moves to the `start_time` input
+3. User can now enter times
+
+**Pre-population for existing activities:**
+- If an existing activity has `start_time: null` and `end_time: null`: the "All day" checkbox is checked, time inputs hidden
+- If an existing activity has both times set: checkbox unchecked, time inputs populated
+
+**Updated Validation (on "Save all"):**
+- `name` and `activity_date` remain required for every row (unchanged)
+- Time validation rule: if `start_time` is provided but `end_time` is not (or vice versa), show a row-level error: `"both start and end times are required, or check 'all day'"`. Row gets the error highlight (red left border, subtle red background).
+- If "All day" is checked, no time validation needed — both times submit as null.
+- If both times are provided: `end_time` must be ≥ `start_time`. Error: `"end time must be after start time"`.
+
+**API Payload Changes:**
+- When "All day" is checked: send `start_time: null, end_time: null` in POST/PATCH
+- When times are provided: send as `"HH:MM:SS"` format (unchanged)
+- The backend (T-043) validates the linked rule server-side as well
+
+---
+
+##### 9.1.2 TripDetailsPage — "All Day" Activity Display
+
+**Current State:** Activities on the Trip Details page are grouped by date and show time ranges in the Time Column (Spec 3.9). Timeless activities need a different display.
+
+**Changes to Activity Entry (Spec 3.9):**
+
+For activities where `start_time` and `end_time` are both `null`:
+
+**Time Column (80px wide):**
+- Instead of showing `"9:00 AM → 2:00 PM"`, show an "All day" badge:
+  - Badge: `display: inline-block`, background: `rgba(196, 122, 46, 0.15)` (amber-tinted, matching `--color-activity`), border: `1px solid rgba(196, 122, 46, 0.3)`, border-radius: 2px, padding: 2px 8px
+  - Text: `"all day"` — font-size 10px, font-weight 600, uppercase, letter-spacing: 0.08em, color: `var(--color-activity)` (`#C47A2E`)
+
+**Sorting within a day group:**
+- Timeless ("all day") activities sort **after** timed activities within the same date group
+- Among multiple timeless activities on the same date, sort alphabetically by name
+- This matches the backend ordering rule (T-043): timeless activities have `NULLS LAST` ordering
+
+**Activity Entry Layout (unchanged except time column):**
+- The vertical divider, activity name, and location columns remain the same
+- The `aria-label` for a timeless activity: `aria-label="[name], all day"` (instead of `"[name], [start] to [end]"`)
+
+---
+
+##### 9.1.3 TripCalendar — Timeless Activity Events
+
+**Current State:** Activities are rendered as amber chips on their `activity_date` in the calendar (Spec 7.2.3). Timeless activities should be visually indistinguishable from timed activities in the calendar — they are rendered the same way.
+
+**No visual change needed for calendar chips.** Timeless activities still appear on their `activity_date` as amber (`--color-activity`) chips with the activity name. The calendar does not show time information for any activity — it only shows the name chip. Therefore, timeless and timed activities look identical in the calendar view.
+
+**Sorting within a cell:** Timed activities before timeless activities (if stacking order within the "Activities" group matters). In practice, since the calendar only shows up to 3 events per cell with "+N more" overflow, the ordering is: flights first, stays second, activities third (per Spec 7.2.3 stacking rules). Within the activities group, timed before timeless.
+
+---
+
+##### 9.1.4 Mobile Layout — Activities Edit Page Update
+
+The mobile card layout for activity rows (Spec 6.8) is updated to include the "All day" toggle:
+
+**Mobile card layout (stacked vertically):**
+- Row 1: `activity_date` input (full width, labeled `DATE`)
+- Row 2: `name` input (full width, labeled `ACTIVITY NAME`)
+- Row 3: `location` input (full width, labeled `LOCATION (optional)`)
+- **Row 4 (new):** "All day" checkbox with label `"ALL DAY"` — flex row, align-items: center, gap: 8px. Checkbox on left, label on right.
+- Row 5: Flex row — `start_time` (flex: 1, labeled `START`) | `end_time` (flex: 1, labeled `END`). **Hidden if "All day" is checked** — replaced with `"all day"` muted text spanning the full width.
+- Row 6: Delete icon button (right-aligned)
+
+---
+
+#### 9.2 Part B — 429 Rate Limit Error Message
+
+##### 9.2.1 Login Page — 429 Error Handling
+
+**Current State:** The LoginPage shows an error banner for API errors (Spec 1.2). HTTP 401 shows "incorrect email or password." Other errors show "something went wrong. please try again." HTTP 429 currently falls into the generic catch-all.
+
+**Change:** Add an explicit 429 handler.
+
+**When the login API returns HTTP 429:**
+
+1. **Parse the `Retry-After` header** from the response. The backend sends `Retry-After: <seconds>` (integer). Convert seconds to minutes (round up). Example: `Retry-After: 840` → `14 minutes`.
+
+2. **Show a rate limit banner** inside the auth card, in the same position as the existing API error banner (above the form fields). This banner uses a **distinct warning style** (not the red error style used for 401/500):
+   - Background: `rgba(196, 122, 46, 0.1)` (warm amber tint, matching `--color-activity` palette — distinguishes from red error banners)
+   - Border: `1px solid rgba(196, 122, 46, 0.3)`
+   - Border-radius: 2px
+   - Padding: 12px 16px
+   - Icon (optional): A small clock/timer SVG (14px, `rgba(196, 122, 46, 0.8)`) on the left
+   - Text: `"too many login attempts. please try again in X minutes."` — font-size 13px, color: `#FCFCFC`
+   - The `X minutes` value is derived from the `Retry-After` header. If the header is missing or unparseable, default to `"a few minutes"`.
+
+3. **Countdown behavior (optional but recommended):**
+   - Start a client-side countdown timer from the `Retry-After` seconds
+   - Update the banner text every 60 seconds: `"please try again in X minutes."` → `"please try again in (X-1) minutes."` → ... → `"please try again in 1 minute."` → `"you can try again now."`
+   - When the countdown reaches 0: the banner text changes to `"you can try again now."` and auto-dismisses after 3 seconds. Submit button is re-enabled.
+
+4. **Submit button behavior during rate limit:**
+   - Button remains **enabled** (user can attempt again — the backend will return another 429 if the window hasn't expired)
+   - The banner persists until: (a) the user successfully logs in, (b) the countdown expires, or (c) the user navigates away
+   - Do NOT auto-dismiss on a timer like the generic error — the rate limit banner should persist to inform the user
+
+5. **Banner does NOT auto-dismiss** (unlike the 500/network error banner which auto-dismisses after 5s). It stays visible until the rate limit window expires or the user navigates away.
+
+6. **If user submits again while rate-limited:** The banner updates with a fresh `Retry-After` value from the new 429 response (the window may have shifted).
+
+**Banner HTML structure:**
+```
+<div class="rateLimitBanner" role="alert" aria-live="polite">
+  <svg class="clockIcon" aria-hidden="true">...</svg>
+  <span>too many login attempts. please try again in 14 minutes.</span>
+</div>
+```
+
+---
+
+##### 9.2.2 Register Page — 429 Error Handling
+
+**Same behavior as login page** (9.2.1), with the message text adjusted:
+- Text: `"too many registration attempts. please try again in X minutes."`
+- Same amber warning banner style
+- Same countdown behavior
+- Same submit button handling
+
+---
+
+##### 9.2.3 Axios Interceptor — 429 Detection
+
+**Current State:** The axios interceptor in `frontend/src/utils/api.js` handles 401 responses (token refresh + retry queue). It does not have a specific 429 handler.
+
+**Change:** The 429 response should NOT be intercepted/swallowed by the axios interceptor. Instead, it should be passed through to the calling code (the login/register page error handler) with the response status and headers intact. The page-level error handler then checks for `error.response.status === 429` and extracts `error.response.headers['retry-after']`.
+
+**Implementation guidance for Frontend Engineer:**
+- Do NOT add 429 handling to the axios interceptor — keep it at the page level
+- The page-level `catch` block in the login/register `handleSubmit` should check:
+  ```
+  if (error.response?.status === 429) {
+    const retryAfter = parseInt(error.response.headers['retry-after'], 10);
+    // Show rate limit banner with retryAfter seconds
+  } else if (error.response?.status === 401) {
+    // Show "incorrect email or password"
+  } else {
+    // Show generic error
+  }
+  ```
+- This keeps the 429 handling co-located with the UI that displays it, rather than in a global interceptor
+
+---
+
+##### 9.2.4 Rate Limit Banner — CSS Module
+
+Create styles in the LoginPage and RegisterPage CSS modules (or a shared auth CSS module):
+
+```css
+.rateLimitBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(196, 122, 46, 0.1);
+  border: 1px solid rgba(196, 122, 46, 0.3);
+  border-radius: 2px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.rateLimitBanner .clockIcon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  color: rgba(196, 122, 46, 0.8);
+}
+```
+
+---
+
+##### 9.2.5 Accessibility — 429 Error Handling
+
+- Rate limit banner: `role="alert"`, `aria-live="polite"` — screen reader announces immediately
+- Clock icon: `aria-hidden="true"` (decorative)
+- Countdown updates: use `aria-live="polite"` on the text span so screen readers announce countdown changes (not `aria-live="assertive"` — too intrusive for periodic updates)
+- Submit button: remains focusable and enabled during rate limit. Do NOT disable — users may want to retry. The banner message communicates the wait time.
+
+---
+
+##### 9.2.6 Responsive Behavior — 429 Banner
+
+The rate limit banner uses the same responsive behavior as the existing error banner:
+- On mobile (<768px): the auth card stretches to viewport width, and the banner stretches with it
+- Text wraps naturally on narrow screens
+- No layout changes needed
+
+---
+
+#### 9.3 Sprint 3 Design Notes & Decisions
+
+1. **"All day" as a checkbox, not removal of time fields:** Using an explicit "All day" checkbox is clearer than simply making time fields optional with no indicator. It communicates intent: the user deliberately chose "all day" rather than forgetting to fill in times. This also prevents accidental timeless activities from users who skip the time fields.
+
+2. **429 banner color distinct from error banner:** Using amber (matching the `--color-activity` palette) for the rate limit banner visually distinguishes it from the red error banners used for 401/500 errors. This signals "warning/wait" rather than "error/failure" — the user hasn't done anything wrong, they just need to wait.
+
+3. **Countdown is optional but recommended:** The countdown timer improves UX by telling users exactly when they can retry. Without it, users are left guessing. However, if implementation complexity is too high, the static message "please try again in X minutes" is acceptable for Sprint 3.
+
+4. **DestinationChipInput as a shared component:** Rather than implementing chip input logic separately in CreateTripModal and TripDetailsPage, a shared component reduces code duplication and ensures consistent UX. The component is stateless (controlled via props) so it's easy to test.
+
+5. **No "Backspace to remove" in CreateTripModal:** Although the DestinationChipInput supports Backspace-to-remove-last-chip, this behavior applies in both locations. Consider whether this is desirable in the modal context. Decision: keep it — it's a standard tag input pattern and users familiar with email-style "To" fields will expect it.
+
+6. **Calendar unchanged for timeless activities:** Since the calendar already shows activity names without time information, there's no visual difference between timed and timeless activities in the calendar view. No calendar spec changes are needed.
+
+7. **Destinations chip max-width:** Chips have a 200px max-width to prevent excessively long destination names from breaking the layout. Longer names are truncated with ellipsis.
+
+---
+
+*Sprint 3 specs above are all marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-25.*
