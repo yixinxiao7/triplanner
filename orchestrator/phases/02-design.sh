@@ -39,7 +39,8 @@ Write comprehensive specs. The Frontend Engineer will build exactly what you des
         log_warn "Design phase may be incomplete — checking if there are frontend tasks that need specs"
         # If there are no frontend tasks, design phase is optional
         local frontend_tasks
-        frontend_tasks=$(grep -c 'Frontend Engineer' "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null || echo "0")
+        frontend_tasks=$(grep -c 'Frontend Engineer' "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null || true)
+        frontend_tasks="${frontend_tasks:-0}"
         if [[ "$frontend_tasks" -eq 0 ]]; then
             log_info "No frontend tasks this sprint — skipping design"
             sprint_state_set "design_status" "skipped"

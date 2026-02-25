@@ -59,8 +59,10 @@ Bad feedback: 'Registration is broken.'"
     local feedback="${WORKFLOW_DIR}/feedback-log.md"
     if [[ -f "$feedback" ]]; then
         local bugs critical
-        bugs=$(grep -c 'Bug' "$feedback" 2>/dev/null || echo "0")
-        critical=$(grep -c 'Critical' "$feedback" 2>/dev/null || echo "0")
+        bugs=$(grep -c 'Bug' "$feedback" 2>/dev/null || true)
+        bugs="${bugs:-0}"
+        critical=$(grep -c 'Critical' "$feedback" 2>/dev/null || true)
+        critical="${critical:-0}"
         log_info "Feedback summary: $bugs bug(s), $critical critical issue(s)"
     fi
 }

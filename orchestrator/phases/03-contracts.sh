@@ -36,7 +36,8 @@ Do NOT write implementation code. Only contracts. Implementation happens in the 
     else
         # Check if there are backend tasks at all
         local backend_tasks
-        backend_tasks=$(grep -c 'Backend Engineer' "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null || echo "0")
+        backend_tasks=$(grep -c 'Backend Engineer' "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null || true)
+        backend_tasks="${backend_tasks:-0}"
         if [[ "$backend_tasks" -eq 0 ]]; then
             log_info "No backend tasks this sprint — skipping contracts"
             sprint_state_set "contracts_status" "skipped"

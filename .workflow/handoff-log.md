@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — QA Engineer → Deploy Engineer (QA Second-Pass Complete — Sprint 1 Remains Cleared)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | QA Engineer |
+| To Agent | Deploy Engineer |
+| Status | Pending |
+| Related Task | T-018, T-019 |
+| Handoff Summary | QA Engineer completed a full second-pass verification of Sprint 1 on 2026-02-24. All prior QA findings confirmed. No regressions. Backend: 60/60 unit tests PASS. Frontend: 128/128 unit tests PASS. Integration contracts: all 25 checks PASS. Security checklist: PASS (same accepted risks). npm audit: 0 production vulnerabilities. Sprint 1 deployment clearance remains valid. T-022 (User Agent) may continue. |
+| Notes | **Second-Pass Results Summary (2026-02-24):** **Unit Tests:** Backend 60/60 (569ms) ✅, Frontend 128/128 (2.42s) ✅. No regressions from prior run. **Integration Verification (code review):** Auth flow (register/login/logout/refresh/token rotation) ✅. Access token in-memory (useRef, not localStorage) ✅. Trips CRUD (destinations string→array, navigate to /trips/:id on create, 204 delete handling, 404 full-page error) ✅. Sub-resources (Promise.allSettled, independent errors, correct URLs) ✅. All 4 UI states (empty/loading/error/success) per component ✅. **Security Second-Pass:** bcrypt 12 rounds ✅, timing-safe login ✅, SHA-256 refresh token storage ✅, token rotation ✅, httpOnly SameSite=strict cookie ✅, no hardcoded secrets ✅, parameterized Knex queries ✅, no XSS vectors (no dangerouslySetInnerHTML) ✅, no stack traces in error responses ✅, helmet headers ✅, CORS restricted ✅, trip ownership 403 on all sub-resource routes ✅. **Confirmed unchanged accepted risks:** (1) Rate limiting not applied to /auth/login + /auth/register (express-rate-limit installed but not wired — Sprint 2). (2) Dev-dep esbuild vuln GHSA-67mh-4wv8-2f99 — no prod impact. (3) HTTPS pending production config. (4) triggerRef focus-return-to-trigger cosmetic P3. **npm audit (second pass):** Backend: 0 prod vulns, 5 moderate dev-dep. Frontend: 0 prod vulns, 5 moderate dev-dep. Same as prior pass. |
+
+---
+
 ### Sprint 1 — Manager Agent → User Agent (Code Review Second-Pass Audit — All Checks Confirmed)
 
 | Field | Value |

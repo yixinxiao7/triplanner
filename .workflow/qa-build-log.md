@@ -26,6 +26,11 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 | Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
 |----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| QA Second-Pass — Backend unit tests (60 tests, 5 files) | Unit Test | Pass | Success | Local | No | QA Engineer | None — 60/60 PASS, 569ms |
+| QA Second-Pass — Frontend unit tests (128 tests, 11 files) | Unit Test | Pass | Success | Local | No | QA Engineer | None — 128/128 PASS (React Router v6 future-flag warnings: expected, non-blocking) |
+| QA Second-Pass — Integration contract verification (all endpoint groups) | Integration Test | Pass | Success | Local | No | QA Engineer | None — all API call shapes match contracts, all UI states implemented |
+| QA Second-Pass — Security checklist re-verification (19 applicable items) | Security Scan | Pass | Success | Local | No | QA Engineer | 1 known accepted risk: rate limiting not applied; 2 accepted/deferred items (dev-dep vuln, HTTPS pending) |
+| QA Second-Pass — npm audit backend + frontend | Security Scan | Pass | Success | Local | No | QA Engineer | 5 moderate vulns in dev deps only (esbuild GHSA-67mh-4wv8-2f99) — 0 production vulnerabilities |
 | Monitor Agent post-deploy health check — T-021 (full API + DB + frontend) | Post-Deploy Health Check | Pass | Success | Staging | **Yes** | Monitor Agent | None — all 18 checks passed, 0 errors |
 | Staging deployment — T-020 full deploy (backend + DB + frontend) | Post-Deploy Health Check | Pass | Success | Staging | Yes | Deploy Engineer | None — all smoke tests passed |
 | Frontend production build (Vite) | Build | Pass | Success | Staging | Pending | Deploy Engineer | None — 103 modules, 243.63kB JS, 20.76kB CSS |
@@ -778,3 +783,203 @@ Notes: All 18 checks passed. Zero 5xx errors observed. All response shapes match
 ---
 
 *Add entries at the top (newest first) as tests are run and deployments are verified.*
+
+---
+
+## Sprint 1 — QA Second-Pass Report (2026-02-24)
+
+**QA Engineer:** QA Agent (Sprint #1 Orchestrator Re-Run)
+**Sprint:** 1
+**Date:** 2026-02-24
+**Purpose:** Full second-pass QA confirmation run — verifying all tests still pass and security holds after staging deployment, Monitor Agent verification, and prior Manager second-pass code audit.
+
+---
+
+### Test Run A — Backend Unit Tests (Second Pass)
+
+**Command:** `cd /Users/yixinxiao/CLAUDE/triplanner/backend && npm test -- --run`
+**Duration:** 569ms
+**Result:** ✅ PASS — 60/60 tests
+
+| Test File | Tests | Result |
+|-----------|-------|--------|
+| `auth.test.js` | 14 | ✅ PASS |
+| `stays.test.js` | 8 | ✅ PASS |
+| `activities.test.js` | 12 | ✅ PASS |
+| `flights.test.js` | 10 | ✅ PASS |
+| `trips.test.js` | 16 | ✅ PASS |
+
+**Coverage confirmed:** All endpoints covered with happy-path and error-path tests. No regressions.
+
+---
+
+### Test Run B — Frontend Unit Tests (Second Pass)
+
+**Command:** `cd /Users/yixinxiao/CLAUDE/triplanner/frontend && npm test -- --run`
+**Duration:** 2.42s
+**Result:** ✅ PASS — 128/128 tests
+
+| Test File | Tests | Result |
+|-----------|-------|--------|
+| `useTrips.test.js` | 11 | ✅ PASS |
+| `useTripDetails.test.js` | 21 | ✅ PASS |
+| `CreateTripModal.test.jsx` | 8 | ✅ PASS |
+| `RegisterPage.test.jsx` | 8 | ✅ PASS |
+| `LoginPage.test.jsx` | 9 | ✅ PASS |
+| `TripDetailsPage.test.jsx` | 31 | ✅ PASS |
+| `HomePage.test.jsx` | 14 | ✅ PASS |
+| `formatDate.test.js` | 9 | ✅ PASS |
+| `TripCard.test.jsx` | 7 | ✅ PASS |
+| `StatusBadge.test.jsx` | 4 | ✅ PASS |
+| `Navbar.test.jsx` | 6 | ✅ PASS |
+
+**Warnings:** React Router v6 future-flag warnings (v7_startTransition, v7_relativeSplatPath) in stderr — expected, non-blocking. Confirmed pre-existing from prior QA pass.
+
+---
+
+### Test Run C — Integration Contract Verification (Second Pass)
+
+**Method:** Direct source-code review of frontend API calls vs api-contracts.md + backend implementation
+
+**Auth Flow:**
+| Check | Status | Evidence |
+|-------|--------|---------|
+| POST /auth/register shape match | ✅ PASS | `api.auth.register({name, email, password})` → backend returns `{data:{user,access_token}}` — consumed correctly in RegisterPage |
+| POST /auth/login shape match | ✅ PASS | `api.auth.login({email, password})` → LoginPage extracts `response.data.data.{user, access_token}` |
+| Access token in-memory only | ✅ PASS | `accessTokenRef = useRef(null)` in AuthContext — grep of all frontend src confirms NO localStorage/sessionStorage writes |
+| httpOnly cookie transport | ✅ PASS | `withCredentials: true` on apiClient axios instance |
+| 401 interceptor with retry queue | ✅ PASS | `isRefreshing` guard + `refreshSubscribers` queue in api.js; skips retry for `/auth/refresh` and `/auth/login` |
+| 409 EMAIL_TAKEN → email field error | ✅ PASS | RegisterPage maps status 409 → setErrors({email: 'an account...'}) |
+| 401 INVALID_CREDENTIALS → banner | ✅ PASS | LoginPage maps status 401 → setApiError('incorrect email or password.') |
+| POST /auth/logout → 204 + clearAuth | ✅ PASS | Navbar best-effort logout calls api.auth.logout() then clearAuth() regardless of result |
+
+**Trips CRUD:**
+| Check | Status | Evidence |
+|-------|--------|---------|
+| GET /trips → list + pagination | ✅ PASS | useTrips.fetchTrips reads `response.data.data` (the array) |
+| POST /trips destinations: string→array | ✅ PASS | useTrips.createTrip splits comma-separated string → array before API call |
+| POST /trips → navigate to /trips/:id | ✅ PASS | HomePage.handleCreateTrip calls `navigate('/trips/${newTrip.id}')` with returned id |
+| DELETE /trips/:id → 204 (no body) | ✅ PASS | useTrips.deleteTrip calls `api.trips.delete(tripId)` then updates local state |
+| 404 on GET /trips/:id → full-page error | ✅ PASS | useTripDetails sets `tripError.type='not_found'` on HTTP 404 → TripDetailsPage renders full-page "trip not found." |
+
+**Sub-Resources:**
+| Check | Status | Evidence |
+|-------|--------|---------|
+| Correct URL structure | ✅ PASS | api.js: `apiClient.get('/trips/${tripId}/flights')` etc. — matches contracts |
+| Parallel fetch with Promise.allSettled | ✅ PASS | useTripDetails.fetchAll uses Promise.allSettled for flights/stays/activities |
+| Independent error states | ✅ PASS | Each sub-resource has its own error state; one failure doesn't block others |
+| Empty array → empty state (not error) | ✅ PASS | `|| []` fallback in all fulfilled result handlers |
+| Activity grouping + sort | ✅ PASS | TripDetailsPage groups by activity_date, sorts by start_time (lexicographic HH:MM:SS) |
+| Timezone display | ✅ PASS | formatDate.js uses Intl.DateTimeFormat with IANA timezone from `*_tz` fields |
+
+**UI Spec Adherence:**
+| Check | Status | Evidence |
+|-------|--------|---------|
+| All states: empty/loading/error/success | ✅ PASS | All 4 states implemented in HomePage and TripDetailsPage (per-section in details) |
+| Calendar placeholder | ✅ PASS | TripDetailsPage renders "calendar coming in sprint 2" text |
+| Disabled add buttons | ✅ PASS | All "add" action buttons have `disabled` + `aria-disabled="true"` |
+| Navbar: sticky, username, logout | ✅ PASS | Navbar component: sticky 56px, truncates username at 20 chars, best-effort logout |
+| Home: 3-column grid, skeleton, empty CTA | ✅ PASS | HomePage.module.css grid + TripCardSkeleton + empty state with CTA |
+| Inline delete confirmation | ✅ PASS | TripCard renders confirm/cancel overlay, re-throws on API error for parent to handle |
+
+---
+
+### Test Run D — Security Scan (Second Pass)
+
+**Method:** Code review + grep analysis of actual source files
+
+#### Authentication & Authorization
+
+| Item | Status | Evidence |
+|------|--------|---------|
+| All API endpoints require auth | ✅ PASS | `router.use(authenticate)` on trips, flights, stays, activities routers. Auth routes: logout requires Bearer; register/login/refresh are public by design |
+| Ownership / RBAC enforced | ✅ PASS | `trip.user_id !== req.user.id` → 403 in all trips.js CRUD routes. `requireTripOwnership()` helper called on every flight/stay/activity route operation |
+| Auth tokens: expiry + refresh | ✅ PASS | Access: 15m (JWT_EXPIRES_IN env var). Refresh: 7d (REFRESH_TOKEN_SECONDS = 604800). Token rotation confirmed in auth.js:222–228 |
+| Password hashing: bcrypt 12 rounds | ✅ PASS | `bcrypt.hash(password, 12)` at auth.js:104. Timing-safe: DUMMY_HASH used when user not found (auth.js:156–158) |
+| Failed login rate-limited | ⚠️ **KNOWN ACCEPTED RISK** | `express-rate-limit: ^7.4.0` in package.json dependencies, but NOT applied to any route (confirmed by grep: zero occurrences of `rateLimit` in backend/src/). Pre-identified in T-010 Manager review. Accepted for Sprint 1. **Sprint 2 action required.** |
+
+#### Input Validation & Injection Prevention
+
+| Item | Status | Evidence |
+|------|--------|---------|
+| Server-side input validation | ✅ PASS | validate() middleware covers: required, type (string/email/array/isoDate/dateString/isoTime), minLength, maxLength, enum, temporal ordering (arrival>departure, checkout>checkin, endTime>startTime). Applied to all POST and PATCH handlers |
+| Parameterized SQL queries | ✅ PASS | All models use Knex builder exclusively: `.where({})`, `.insert()`, `.update()`, `.first()`, `.returning()`. Zero string concatenation in DB queries |
+| XSS prevention | ✅ PASS | Grep confirms: 0 occurrences of `dangerouslySetInnerHTML`, `innerHTML`, or `eval(` in any frontend source file. React JSX auto-escaping for all user data |
+| File uploads | ✅ N/A | No file upload functionality in Sprint 1 scope |
+| NoSQL injection | ✅ N/A | No MongoDB/NoSQL usage — PostgreSQL via parameterized Knex |
+
+#### API Security
+
+| Item | Status | Evidence |
+|------|--------|---------|
+| CORS configured correctly | ✅ PASS | `cors({ origin: process.env.CORS_ORIGIN \|\| 'http://localhost:5173', credentials: true })` — specific origin only, not wildcard |
+| Rate limiting on public endpoints | ⚠️ KNOWN RISK | See above |
+| Error responses: no internal leakage | ✅ PASS | errorHandler.js: 500 → generic "An unexpected error occurred". Stack trace logged server-side only (console.error). Error shape always `{error:{message,code}}`. 0 console.log calls in route handlers (only startup log in index.js) |
+| Sensitive data not in URL params | ✅ PASS | Auth tokens in `Authorization: Bearer` header and httpOnly cookies. No tokens in URL paths or query strings |
+| Security headers | ✅ PASS | `helmet()` applied first in app.js before all routes. Sets: X-Content-Type-Options, X-Frame-Options, Referrer-Policy, removes X-Powered-By. HSTS in production |
+
+#### Data Protection
+
+| Item | Status | Evidence |
+|------|--------|---------|
+| Passwords stored as hashes only | ✅ PASS | `createUser()` returns `['id','name','email','created_at']` — password_hash excluded. No raw password ever logged |
+| Refresh token: hash stored, not raw | ✅ PASS | refreshTokenModel.js: `crypto.createHash('sha256').update(rawToken).digest('hex')`. Raw token is 40 random bytes sent via httpOnly cookie only |
+| Access token in-memory only | ✅ PASS | `accessTokenRef = useRef(null)` — grep confirms zero localStorage/sessionStorage writes in frontend |
+| DB credentials/secrets in env vars | ✅ PASS | `.env` is gitignored (root .gitignore). `.env.example` has placeholders only. Grep of backend/src: zero hardcoded secrets |
+| Logs: no PII/passwords/tokens | ✅ PASS | Zero console.log in route handlers. errorHandler.js logs `err.stack` (no user data). Access tokens never logged |
+
+#### Infrastructure
+
+| Item | Status | Evidence |
+|------|--------|---------|
+| HTTPS enforced | ⚠️ STAGING LIMITATION | Not configured on local staging. Cookie uses `secure: process.env.NODE_ENV === 'production'` — env-conditional. Will be secure in production. Pre-existing known limitation |
+| Dependency audit | ⚠️ DEV DEPS ONLY | 5 moderate vulns (GHSA-67mh-4wv8-2f99 — esbuild dev server). Affects vitest/vite dev deps only, not production build. `npm audit fix --force` would install vitest@4.x (breaking change) — defer to Sprint 2 |
+| Default credentials removed | ✅ PASS | .env.example: JWT_SECRET=change-me-to-a-random-string (placeholder, not deployed) |
+| Error pages: no server tech revealed | ✅ PASS | Helmet removes X-Powered-By. All error responses are structured JSON |
+
+**Security Scan Summary:**
+- **P0 (Critical):** 0
+- **P1 (High):** 0
+- **P2 (Medium):** 1 — rate limiting not applied (KNOWN ACCEPTED RISK, Sprint 2 backlog)
+- **P3 (Low/Info):** 2 — dev-dep vulns (no prod impact); HTTPS pending production config
+
+**Security Scan: ✅ PASS — no new issues found. All prior findings confirmed unchanged.**
+
+---
+
+### Test Run E — npm audit (Second Pass)
+
+**Backend:** `cd backend && npm audit`
+- 5 moderate vulns: `vitest → @vitest/mocker → vite → vite-node → esbuild ≤0.24.2`
+- GHSA-67mh-4wv8-2f99: esbuild dev server vulnerability
+- **Production dependencies:** express, knex, pg, bcryptjs, jsonwebtoken, cors, helmet, express-rate-limit, dotenv — **0 vulnerabilities**
+
+**Frontend:** `cd frontend && npm audit`
+- Same 5 moderate vulns in dev dep chain (vite/vitest/esbuild)
+- **Production dependencies:** react, react-dom, react-router-dom, axios — **0 vulnerabilities**
+
+**Decision: NOT blocking. No production risk.**
+
+---
+
+### Sprint 1 QA Second-Pass Summary
+
+| Category | Tests | Result |
+|----------|-------|--------|
+| Backend Unit Tests | 60/60 | ✅ PASS |
+| Frontend Unit Tests | 128/128 | ✅ PASS |
+| Integration Contract Verification | All 25 checks | ✅ PASS |
+| Security Checklist (19 items) | 16 pass, 1 accepted risk, 2 deferred | ✅ PASS |
+| npm audit | Dev deps only | ✅ PASS (0 prod vulns) |
+
+**Overall Sprint 1 QA Status: ✅ CONFIRMED PASS — No regressions. Sprint 1 deployment cleared.**
+
+**Active accepted risks (unchanged from first QA pass):**
+1. Rate limiting not applied to /auth/login + /auth/register — add in Sprint 2 backlog
+2. Dev-only esbuild vulnerability (GHSA-67mh-4wv8-2f99) — no production impact
+3. HTTPS: pending staging/production configuration
+4. `triggerRef` focus-return-to-trigger in CreateTripModal — cosmetic, P3, Sprint 2
+
+**T-022 (User Agent) is In Progress. All QA and deployment tasks are Done.**
+
+---

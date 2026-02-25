@@ -45,7 +45,7 @@ phase_planning_complete() {
     # Sprint is planned if active-sprint has a real sprint number and tasks exist
     if grep -q 'Sprint #[0-9]' "$active" 2>/dev/null; then
         local total
-        total=$(grep -c '^\| T-' "$tracker" 2>/dev/null || echo "0")
+        total=$(grep -c '^\| T-' "$tracker" 2>/dev/null || true)
         [[ $total -gt 0 ]]
     else
         return 1

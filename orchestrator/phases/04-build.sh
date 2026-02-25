@@ -55,8 +55,10 @@ Build according to the UI spec. Handle every state. Don't skip error or empty st
 
     # Check which agents have work
     local backend_tasks frontend_tasks
-    backend_tasks=$(grep -c 'Backend Engineer.*Backlog\|Backend Engineer.*In Progress' "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null || echo "0")
-    frontend_tasks=$(grep -c 'Frontend Engineer.*Backlog\|Frontend Engineer.*In Progress' "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null || echo "0")
+    backend_tasks=$(grep -cE 'Backend Engineer.*(Backlog|In Progress)' "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null || true)
+    backend_tasks="${backend_tasks:-0}"
+    frontend_tasks=$(grep -cE 'Frontend Engineer.*(Backlog|In Progress)' "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null || true)
+    frontend_tasks="${frontend_tasks:-0}"
 
     if [[ "$backend_tasks" -gt 0 && "$frontend_tasks" -gt 0 ]]; then
         log_info "Running Backend and Frontend engineers in parallel"

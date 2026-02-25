@@ -109,13 +109,13 @@ get_current_sprint() {
 # Count tasks in a given status in dev-cycle-tracker.md
 count_tasks_in_status() {
     local status="$1"
-    grep -c "| ${status} |" "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null || echo "0"
+    grep -c "| ${status} |" "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null || true
 }
 
 # Count pending handoffs for a specific agent
 count_pending_handoffs() {
     local agent="$1"
-    grep -c "To Agent.*${agent}" "${WORKFLOW_DIR}/handoff-log.md" 2>/dev/null || echo "0"
+    grep -c "To Agent.*${agent}" "${WORKFLOW_DIR}/handoff-log.md" 2>/dev/null || true
 }
 
 # Check if a file contains non-template content (i.e., has been filled in)
