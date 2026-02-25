@@ -283,13 +283,3 @@ The production build and staging deployment are clean.
 ---
 
 *End of Sprint 1 User Agent feedback. Testing completed 2026-02-24. Total entries: 10 (4 issues, 6 positives).*
-
----
-
-## Sprint 0 Feedback
-
-*No Sprint 0 — this is the first sprint.*
-
----
-
-*User Agent and Monitor Agent add entries. Manager Agent triages and updates status.*
