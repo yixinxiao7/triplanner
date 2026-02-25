@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — Frontend Engineer → QA Engineer (Unit Tests Added for T-016 + T-017 — Re-review Ready)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Frontend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-016, T-017, T-018, T-019 |
+| Handoff Summary | Unit tests required by Manager Code Review have been added for T-016 (Home Page) and T-017 (Trip Details Page). All 128 frontend tests now pass (`npm test` from `frontend/`). Both tasks have been moved to "In Review" in `dev-cycle-tracker.md`. T-016 and T-017 are unblocked for QA. |
+| Notes | **Tests added (2026-02-24):** (1) `frontend/src/__tests__/HomePage.test.jsx` — 12 test cases covering: trip list renders from API, `api.trips.list` called on mount, skeleton `.skeleton` elements shown during load, empty state ("no trips yet" + "start planning your first adventure."), error state ("could not load trips." + "check your connection and try again."), retry button on load error re-fetches trips, create modal opens on "+ new trip" button, create modal opens from empty state CTA button, navigate to `/trips/:id` after successful create, inline delete confirmation replaces card content, cancel restores card, confirm delete removes card from DOM, toast shown on delete API failure ("could not delete trip. please try again."), card restored after delete failure. (2) `frontend/src/__tests__/useTrips.test.js` — 11 test cases covering: fetchTrips happy path, fetchTrips with empty array, fetchTrips error sets error state, server error message propagation (`err.response.data.error.message`), retry clears error on success, createTrip returns new trip, createTrip converts comma-separated destinations string to array, createTrip throws on API failure, deleteTrip removes from local list, deleteTrip no-op when id not found, deleteTrip throws and does NOT mutate list. (3) `frontend/src/__tests__/TripDetailsPage.test.jsx` — 14 test cases covering: flight cards render (airline, flight number, from/to, departure/arrival times), stay cards render (HOTEL badge, name, address, CHECK IN/CHECK OUT), null address shows "address not provided", activities sorted by start_time within a day, activities grouped by date (one group per day), calendar placeholder text ("calendar coming in sprint 2"), skeleton loading shown (.skeleton count > 0), flight/stays/activities error states independently ("could not load flights/stays/activities." + "try again" button), multiple section errors simultaneously (3 retry buttons), retry button calls correct refetch function, back link to "/" present, trip 404 full-page error state with "back to home" link, disabled "add" action buttons. (4) `frontend/src/__tests__/useTripDetails.test.js` — 19 test cases covering: all 4 API calls made during fetchAll, correct tripId passed to all endpoints, starts with all loading=true, all loading=false after fetchAll, flights/stays/activities errors are independent, trip 404 prevents sub-resource fetch (tripError.type='not_found'), trip 500 sets network error type, all 3 sub-resources fail independently, refetchFlights/refetchStays/refetchActivities only call their endpoint, each refetch updates data + clears loading/error, refetch sets error state on retry failure, empty tripId guard. **Test approach:** `api.js` module mocked via `vi.mock('../utils/api', factory)`. `useTripDetails` hook mocked via `vi.mock('../hooks/useTripDetails')` in TripDetailsPage tests. Real hooks used in HomePage tests (integration-style). `MemoryRouter` + `Routes`/`Route path="/trips/:id"` required for `useParams` in TripDetailsPage tests. **Known limitations:** Tests do not cover the Vite axios proxy to `:3000` — covered by integration testing (T-019). The 401 interceptor retry queue logic is not unit-tested — covered by T-019. `formatDate` utility used in flight/stay cards tested indirectly through component render tests. |
+
+---
+
 ### Sprint 1 — Backend Engineer → Deploy Engineer (Migrations Ready to Run — T-009)
 
 | Field | Value |
