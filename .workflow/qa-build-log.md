@@ -49,6 +49,16 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint 3 Entries
+
+| Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
+|----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 3 — T-044: HTTPS configuration — TLS cert generation, backend HTTPS server, cookie Secure flag, CORS update, Vite HTTPS preview | Build | Pass | Success | Staging | Pending Monitor | Deploy Engineer | Self-signed TLS cert generated (OpenSSL RSA 2048, SHA-256, 365d, SAN: localhost+127.0.0.1). Backend serves HTTPS on :3001. `curl -sk https://localhost:3001/api/v1/health` → 200. Set-Cookie includes `Secure` flag. Frontend HTTPS preview on :4173. TLS handshake verified. CORS_ORIGIN=https://localhost:4173. |
+| Sprint 3 — T-050: pm2 process management — ecosystem config, auto-restart, log rotation | Build | Pass | Success | Staging | Pending Monitor | Deploy Engineer | pm2 6.0.14 installed. `ecosystem.config.cjs` created. Backend running as `triplanner-backend` (cluster mode, online). Auto-restart verified: killed PID 60924 → restarted to PID 60986 in <3s. Logs with timestamps. `pm2 save` persisted. |
+| Sprint 3 — T-051: Production deployment prep — Dockerfiles, Docker Compose, nginx, CI/CD, runbook | Build | Pass | Success | Local | No | Deploy Engineer | Multi-stage Dockerfiles (backend: node:18-alpine non-root + healthcheck; frontend: build→nginx:1.25-alpine). Docker Compose: postgres+migrate+backend+frontend, JWT_SECRET required. nginx: SPA fallback + /api reverse proxy + security headers + gzip. GitHub Actions CI: 4 jobs (backend-test, frontend-test, docker-build, deploy placeholder). DEPLOY.md runbook: setup, staging, production, migrations, rollback, troubleshooting. Docker not available locally — configs written but untested via docker build. |
+
+---
+
 ## Sprint 2 — Staging Deployment Report (T-038) — 2026-02-25
 
 **Deploy Engineer:** Deploy Engineer

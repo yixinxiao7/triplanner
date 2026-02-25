@@ -471,11 +471,14 @@ describe('TripDetailsPage', () => {
   });
 
   // ── 10. Header and general ────────────────────────────────────────────────
-  it('renders trip name and dot-separated destinations in header', () => {
+  it('renders trip name and destination chips in header', () => {
     renderTripDetailsPage();
 
     expect(screen.getByText('Japan 2026')).toBeDefined();
-    expect(screen.getByText('Tokyo · Osaka · Kyoto')).toBeDefined();
+    // Destinations now render as individual chips
+    expect(screen.getByText('Tokyo')).toBeDefined();
+    expect(screen.getByText('Osaka')).toBeDefined();
+    expect(screen.getByText('Kyoto')).toBeDefined();
   });
 
   it('shows flights empty state when no flights exist', () => {
@@ -538,5 +541,86 @@ describe('TripDetailsPage', () => {
     renderTripDetailsPage();
 
     expect(mockFetchAll).toHaveBeenCalledTimes(1);
+  });
+
+  // ── 11. Editable destinations (Sprint 3 T-046) ───────────────────────────
+  it('shows "edit" link next to destination chips', () => {
+    renderTripDetailsPage();
+    expect(screen.getByRole('button', { name: /edit destinations/i })).toBeDefined();
+  });
+
+  it('clicking "edit" shows DestinationChipInput for editing', () => {
+    renderTripDetailsPage();
+    const editBtn = screen.getByRole('button', { name: /edit destinations/i });
+    fireEvent.click(editBtn);
+    expect(screen.getByLabelText(/add destination/i)).toBeDefined();
+    expect(screen.getByText('DESTINATIONS')).toBeDefined();
+  });
+
+  // ── 12. All-day activity display (Sprint 3 T-047) ────────────────────────
+  it('shows "all day" badge for activities without start_time/end_time', () => {
+    const allDayActivity = {
+      id: 'act-allday',
+      trip_id: 'trip-001',
+      name: 'Free exploration',
+      location: 'Downtown',
+      activity_date: '2026-08-08',
+      start_time: null,
+      end_time: null,
+      created_at: '2026-02-24T12:00:00.000Z',
+      updated_at: '2026-02-24T12:00:00.000Z',
+    };
+
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      activities: [allDayActivity],
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByText('all day')).toBeDefined();
+    expect(screen.getByRole('article', { name: /Free exploration, all day/i })).toBeDefined();
+  });
+
+  it('timeless activities sort after timed activities within same day', () => {
+    const mixedActivities = [
+      {
+        id: 'act-timed',
+        trip_id: 'trip-001',
+        name: 'Morning Hike',
+        location: 'Trail',
+        activity_date: '2026-08-08',
+        start_time: '08:00:00',
+        end_time: '10:00:00',
+        created_at: '2026-02-24T12:00:00.000Z',
+        updated_at: '2026-02-24T12:00:00.000Z',
+      },
+      {
+        id: 'act-allday',
+        trip_id: 'trip-001',
+        name: 'Free Day',
+        location: null,
+        activity_date: '2026-08-08',
+        start_time: null,
+        end_time: null,
+        created_at: '2026-02-24T12:00:00.000Z',
+        updated_at: '2026-02-24T12:00:00.000Z',
+      },
+    ];
+
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      activities: mixedActivities,
+    });
+
+    renderTripDetailsPage();
+
+    const articles = screen.getAllByRole('article');
+    const texts = articles.map((el) => el.textContent);
+
+    const hikeIdx = texts.findIndex((t) => t.includes('Morning Hike'));
+    const freeDayIdx = texts.findIndex((t) => t.includes('Free Day'));
+
+    expect(hikeIdx).toBeLessThan(freeDayIdx);
   });
 });

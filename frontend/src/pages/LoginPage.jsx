@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
@@ -6,6 +6,17 @@ import styles from './AuthPage.module.css';
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/**
+ * Parse Retry-After header and return wait time in minutes (rounded up).
+ * Falls back to null if unparseable.
+ */
+function parseRetryAfterMinutes(retryAfterHeader) {
+  if (!retryAfterHeader) return null;
+  const seconds = parseInt(retryAfterHeader, 10);
+  if (isNaN(seconds) || seconds <= 0) return null;
+  return Math.ceil(seconds / 60);
 }
 
 export default function LoginPage() {
@@ -23,6 +34,35 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Rate limit state
+  const [rateLimitMinutes, setRateLimitMinutes] = useState(null);
+  const countdownRef = useRef(null);
+
+  // Cleanup countdown timer on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
+
+  const startCountdown = useCallback((minutes) => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    setRateLimitMinutes(minutes);
+
+    countdownRef.current = setInterval(() => {
+      setRateLimitMinutes((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(countdownRef.current);
+          countdownRef.current = null;
+          // Auto-dismiss after reaching 0
+          setTimeout(() => setRateLimitMinutes(null), 3000);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 60000);
+  }, []);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -70,11 +110,21 @@ export default function LoginPage() {
         password: form.password,
       });
       const { user, access_token } = response.data.data;
+      // Clear rate limit on success
+      setRateLimitMinutes(null);
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+      }
       handleAuthSuccess(user, access_token);
       navigate('/', { replace: true });
     } catch (err) {
       const status = err.response?.status;
-      if (status === 401) {
+      if (status === 429) {
+        const retryAfter = err.response?.headers?.['retry-after'];
+        const minutes = parseRetryAfterMinutes(retryAfter);
+        startCountdown(minutes || 15); // default to 15 min if no header
+      } else if (status === 401) {
         setApiError('incorrect email or password.');
       } else {
         setApiError('something went wrong. please try again.');
@@ -85,6 +135,13 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   }
+
+  // Build rate limit message
+  const rateLimitMessage = rateLimitMinutes !== null
+    ? rateLimitMinutes === 0
+      ? 'you can try again now.'
+      : `too many login attempts. please try again in ${rateLimitMinutes} minute${rateLimitMinutes !== 1 ? 's' : ''}.`
+    : null;
 
   return (
     <div className={styles.authPageWrapper}>
@@ -99,9 +156,31 @@ export default function LoginPage() {
         <p className={styles.subtitle}>
           don&apos;t have an account?{' '}
           <Link to="/register" className={styles.subtitleLink}>
-            register →
+            register &rarr;
           </Link>
         </p>
+
+        {/* Rate Limit Banner (429) */}
+        {rateLimitMessage && (
+          <div
+            className={styles.rateLimitBanner}
+            role="alert"
+            aria-live="polite"
+          >
+            <svg
+              className={styles.clockIcon}
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M7 4v3.5l2.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>{rateLimitMessage}</span>
+          </div>
+        )}
 
         {/* API Error Banner */}
         {apiError && (

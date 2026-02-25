@@ -17,6 +17,7 @@ function ColumnHeaders() {
       <div className={styles.colDate}>DATE</div>
       <div className={styles.colName}>ACTIVITY NAME</div>
       <div className={styles.colLocation}>LOCATION</div>
+      <div className={styles.colAllDay}>ALL DAY</div>
       <div className={styles.colStart}>START</div>
       <div className={styles.colEnd}>END</div>
       <div className={styles.colDelete} />
@@ -28,6 +29,9 @@ function ColumnHeaders() {
 function ActivityRow({ row, onChange, onDelete, rowIndex, showErrors }) {
   const isNew = row._tempId && !row.id;
   const dateRef = useRef(null);
+  const startTimeRef = useRef(null);
+
+  const isAllDay = Boolean(row._allDay);
 
   // Expose focus method for new rows
   useEffect(() => {
@@ -44,13 +48,34 @@ function ActivityRow({ row, onChange, onDelete, rowIndex, showErrors }) {
     };
   }
 
+  function handleAllDayToggle() {
+    const key = row._tempId || row.id;
+    if (!isAllDay) {
+      // Turning ON all-day: clear times
+      onChange(key, { _allDay: true, start_time: '', end_time: '' });
+    } else {
+      // Turning OFF all-day: restore empty time inputs, focus start_time
+      onChange(key, { _allDay: false });
+      // Focus the start_time input after state update
+      setTimeout(() => {
+        if (startTimeRef.current) startTimeRef.current.focus();
+      }, 0);
+    }
+  }
+
   const key = row._tempId || row.id;
   const hasNameError = showErrors && !row.name.trim();
   const hasDateError = showErrors && !row.activity_date;
+  // Time validation: if one time is set but not the other (and not all-day)
+  const hasTimeError = showErrors && !isAllDay && (
+    (row.start_time && !row.end_time) || (!row.start_time && row.end_time)
+  );
+  // End time must be >= start time
+  const hasTimeOrderError = showErrors && !isAllDay && row.start_time && row.end_time && row.end_time < row.start_time;
 
   return (
     <div
-      className={`${styles.activityRow} ${isNew ? styles.activityRowNew : ''} ${(hasNameError || hasDateError) ? styles.activityRowError : ''}`}
+      className={`${styles.activityRow} ${isNew ? styles.activityRowNew : ''} ${(hasNameError || hasDateError || hasTimeError || hasTimeOrderError) ? styles.activityRowError : ''}`}
       role="group"
       aria-label={row.name ? `Activity: ${row.name}` : `Activity row ${rowIndex + 1}`}
     >
@@ -92,27 +117,56 @@ function ActivityRow({ row, onChange, onDelete, rowIndex, showErrors }) {
         />
       </div>
 
+      {/* All Day checkbox */}
+      <div className={styles.colAllDay}>
+        <label className={styles.allDayCheckboxLabel}>
+          <input
+            type="checkbox"
+            className={styles.allDayCheckboxInput}
+            checked={isAllDay}
+            onChange={handleAllDayToggle}
+            aria-label="All day activity"
+          />
+          <span className={styles.allDayCheckbox} aria-hidden="true">
+            {isAllDay && (
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </span>
+        </label>
+      </div>
+
       {/* Start time */}
       <div className={styles.colStart}>
-        <input
-          type="time"
-          className={styles.rowInput}
-          value={row.start_time}
-          onChange={handleFieldChange('start_time')}
-          aria-label="Start time"
-        />
+        {isAllDay ? (
+          <span className={styles.allDayTimePlaceholder}>all day</span>
+        ) : (
+          <input
+            ref={startTimeRef}
+            type="time"
+            className={`${styles.rowInput} ${(hasTimeError || hasTimeOrderError) ? styles.rowInputError : ''}`}
+            value={row.start_time}
+            onChange={handleFieldChange('start_time')}
+            aria-label="Start time"
+          />
+        )}
       </div>
 
       {/* End time */}
       <div className={styles.colEnd}>
-        <input
-          type="time"
-          className={styles.rowInput}
-          placeholder="Optional"
-          value={row.end_time}
-          onChange={handleFieldChange('end_time')}
-          aria-label="End time"
-        />
+        {isAllDay ? (
+          <span className={styles.allDayTimePlaceholder}>all day</span>
+        ) : (
+          <input
+            type="time"
+            className={`${styles.rowInput} ${(hasTimeError || hasTimeOrderError) ? styles.rowInputError : ''}`}
+            placeholder="Optional"
+            value={row.end_time}
+            onChange={handleFieldChange('end_time')}
+            aria-label="End time"
+          />
+        )}
       </div>
 
       {/* Delete */}
@@ -180,6 +234,7 @@ export default function ActivitiesEditPage() {
         location: a.location || '',
         start_time: a.start_time || '',
         end_time: a.end_time || '',
+        _allDay: !a.start_time && !a.end_time,
       })));
     } catch {
       setLoadError('could not load activities.');
@@ -224,13 +279,22 @@ export default function ActivitiesEditPage() {
         location: '',
         start_time: '',
         end_time: '',
+        _allDay: false,
         _focusOnMount: true,
       },
     ]);
   }
 
   function validate() {
-    return rows.every((row) => row.name.trim() && row.activity_date);
+    return rows.every((row) => {
+      if (!row.name.trim() || !row.activity_date) return false;
+      if (row._allDay) return true; // all-day activities need no time validation
+      // If one time is set, both must be set
+      if ((row.start_time && !row.end_time) || (!row.start_time && row.end_time)) return false;
+      // end_time must be >= start_time if both set
+      if (row.start_time && row.end_time && row.end_time < row.start_time) return false;
+      return true;
+    });
   }
 
   async function handleSaveAll() {
@@ -238,7 +302,16 @@ export default function ActivitiesEditPage() {
 
     if (!validate()) {
       setShowErrors(true);
-      setSaveError('please fix the errors above before saving.');
+      // Provide a specific error message for time issues
+      const hasTimeMismatch = rows.some((r) => !r._allDay && ((r.start_time && !r.end_time) || (!r.start_time && r.end_time)));
+      const hasTimeOrder = rows.some((r) => !r._allDay && r.start_time && r.end_time && r.end_time < r.start_time);
+      if (hasTimeMismatch) {
+        setSaveError('both start and end times are required, or check "all day".');
+      } else if (hasTimeOrder) {
+        setSaveError('end time must be after start time.');
+      } else {
+        setSaveError('please fix the errors above before saving.');
+      }
       return;
     }
 
@@ -268,8 +341,8 @@ export default function ActivitiesEditPage() {
       name: row.name.trim(),
       activity_date: row.activity_date,
       location: row.location.trim() || null,
-      start_time: row.start_time || null,
-      end_time: row.end_time || null,
+      start_time: row._allDay ? null : (row.start_time || null),
+      end_time: row._allDay ? null : (row.end_time || null),
     });
 
     const promises = [

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import LoginPage from '../pages/LoginPage';
+import { api } from '../utils/api';
 
 function renderLoginPage(authContextOverrides = {}) {
   const mockContextValue = {
@@ -89,5 +90,54 @@ describe('LoginPage', () => {
   it('has aria-label on the form', () => {
     renderLoginPage();
     expect(screen.getByRole('form', { name: /sign in form/i })).toBeDefined();
+  });
+
+  it('shows rate limit banner with minutes on 429 response', async () => {
+    // Mock the login API to return 429 with Retry-After header
+    vi.spyOn(api.auth, 'login').mockRejectedValueOnce({
+      response: {
+        status: 429,
+        headers: { 'retry-after': '840' },
+        data: { error: { message: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' } },
+      },
+    });
+
+    renderLoginPage();
+    fireEvent.change(screen.getByLabelText(/EMAIL/i), { target: { value: 'test@test.com' } });
+    fireEvent.change(screen.getByLabelText(/PASSWORD/i), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/too many login attempts/i)).toBeDefined();
+      expect(screen.getByText(/14 minutes/i)).toBeDefined();
+    });
+
+    // Should NOT show generic error
+    expect(screen.queryByText('something went wrong')).toBeNull();
+    expect(screen.queryByText('incorrect email or password')).toBeNull();
+
+    vi.restoreAllMocks();
+  });
+
+  it('shows rate limit banner with fallback when no Retry-After header', async () => {
+    vi.spyOn(api.auth, 'login').mockRejectedValueOnce({
+      response: {
+        status: 429,
+        headers: {},
+        data: { error: { message: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' } },
+      },
+    });
+
+    renderLoginPage();
+    fireEvent.change(screen.getByLabelText(/EMAIL/i), { target: { value: 'test@test.com' } });
+    fireEvent.change(screen.getByLabelText(/PASSWORD/i), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/too many login attempts/i)).toBeDefined();
+      expect(screen.getByText(/15 minutes/i)).toBeDefined();
+    });
+
+    vi.restoreAllMocks();
   });
 });

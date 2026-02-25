@@ -59,6 +59,19 @@ describe('TripCard', () => {
     expect(screen.getByText('Japan 2026')).toBeDefined();
   });
 
+  it('renders formatted date range when start_date and end_date are set', () => {
+    const tripWithDates = {
+      ...mockTrip,
+      start_date: '2026-08-07',
+      end_date: '2026-08-14',
+    };
+    renderCard(tripWithDates);
+    // formatTripDateRange("2026-08-07", "2026-08-14") → "Aug 7 – Aug 14, 2026"
+    expect(screen.getByText(/Aug 7.*Aug 14.*2026/)).toBeDefined();
+    // Should NOT show "dates not set"
+    expect(screen.queryByText('dates not set')).toBeNull();
+  });
+
   it('renders skeleton correctly', () => {
     const { container } = render(<TripCardSkeleton />);
     const skeletonElements = container.querySelectorAll('.skeleton');

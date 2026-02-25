@@ -24,12 +24,10 @@ export function useTrips() {
   }, []);
 
   const createTrip = useCallback(async ({ name, destinations }) => {
-    // destinations is a comma-separated string from the form
-    // convert to array for the API
-    const destinationsArray = destinations
-      .split(',')
-      .map((d) => d.trim())
-      .filter(Boolean);
+    // destinations may be a string[] (chip input) or a comma-separated string (legacy)
+    const destinationsArray = Array.isArray(destinations)
+      ? destinations
+      : destinations.split(',').map((d) => d.trim()).filter(Boolean);
 
     const response = await api.trips.create({ name, destinations: destinationsArray });
     return response.data.data; // returns the new trip object (with id)

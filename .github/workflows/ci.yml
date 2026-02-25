@@ -1,0 +1,140 @@
+# TripPlanner CI/CD Pipeline
+# Runs on push to main and all pull requests.
+# Steps: lint → test (backend + frontend) → build → Docker build validation
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # ---- Backend Tests ----
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U testuser -d testdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://testuser:testpass@localhost:5432/testdb
+          JWT_SECRET: ci-test-secret-not-for-production
+          JWT_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+          NODE_ENV: test
+        run: npm test
+
+      - name: Check for security vulnerabilities (production deps)
+        working-directory: backend
+        run: npm audit --omit=dev --audit-level=high
+
+  # ---- Frontend Tests ----
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Build frontend (production)
+        working-directory: frontend
+        env:
+          VITE_API_URL: /api/v1
+        run: npm run build
+
+      - name: Check for security vulnerabilities (production deps)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  # ---- Docker Build Validation ----
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend Docker image
+        run: docker build -f infra/Dockerfile.backend -t triplanner-backend:ci .
+
+      - name: Build frontend Docker image
+        run: docker build -f infra/Dockerfile.frontend -t triplanner-frontend:ci .
+
+      - name: Verify Docker Compose config
+        run: docker compose -f infra/docker-compose.yml config
+        env:
+          JWT_SECRET: ci-validation-only
+
+  # ---- Deploy (placeholder — runs only on main push) ----
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy placeholder
+        run: |
+          echo "=== Deploy to Staging ==="
+          echo "This step is a placeholder."
+          echo "Replace with actual deployment commands once a hosting provider is selected."
+          echo ""
+          echo "Example deployment steps:"
+          echo "  1. Push Docker images to a container registry (ECR, GCR, Docker Hub)"
+          echo "  2. SSH into staging server or use a managed container service"
+          echo "  3. Pull new images and restart services"
+          echo "  4. Run database migrations"
+          echo "  5. Verify health check endpoint"
+          echo ""
+          echo "See infra/DEPLOY.md for the full deployment runbook."

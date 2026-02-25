@@ -104,11 +104,12 @@ describe('ActivitiesEditPage', () => {
     expect(cancelButtons.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders column headers: DATE, ACTIVITY NAME, LOCATION, START, END', () => {
+  it('renders column headers: DATE, ACTIVITY NAME, LOCATION, ALL DAY, START, END', () => {
     renderPage();
     expect(screen.getByText('DATE')).toBeDefined();
     expect(screen.getByText('ACTIVITY NAME')).toBeDefined();
     expect(screen.getByText('LOCATION')).toBeDefined();
+    expect(screen.getByText('ALL DAY')).toBeDefined();
     expect(screen.getByText('START')).toBeDefined();
     expect(screen.getByText('END')).toBeDefined();
   });
@@ -156,5 +157,55 @@ describe('ActivitiesEditPage', () => {
     // Should now have an input row for activity name
     const nameInputs = screen.getAllByLabelText(/activity name/i);
     expect(nameInputs.length).toBeGreaterThan(0);
+  });
+
+  // ── All Day checkbox (Sprint 3 T-047) ──────────────────────────────────
+  it('renders "All day" checkboxes for loaded activity rows', async () => {
+    api.activities.list.mockResolvedValue({ data: { data: mockActivities } });
+    renderPage();
+    await screen.findByDisplayValue('Tokyo Skytree');
+
+    const allDayCheckboxes = screen.getAllByLabelText(/all day activity/i);
+    expect(allDayCheckboxes.length).toBe(2);
+    // Timed activities should NOT be checked
+    allDayCheckboxes.forEach((cb) => {
+      expect(cb.checked).toBe(false);
+    });
+  });
+
+  it('pre-checks "All day" for activities with null start_time and end_time', async () => {
+    const allDayActivities = [
+      {
+        id: 'act-ad',
+        trip_id: 'trip-001',
+        name: 'Free Exploration',
+        location: '',
+        activity_date: '2026-08-09',
+        start_time: null,
+        end_time: null,
+        created_at: '2026-02-24T12:00:00.000Z',
+        updated_at: '2026-02-24T12:00:00.000Z',
+      },
+    ];
+    api.activities.list.mockResolvedValue({ data: { data: allDayActivities } });
+    renderPage();
+    await screen.findByDisplayValue('Free Exploration');
+
+    const allDayCheckbox = screen.getByLabelText(/all day activity/i);
+    expect(allDayCheckbox.checked).toBe(true);
+  });
+
+  it('hides time inputs and shows "all day" placeholder when checkbox is checked', async () => {
+    api.activities.list.mockResolvedValue({ data: { data: mockActivities } });
+    renderPage();
+    await screen.findByDisplayValue('Tokyo Skytree');
+
+    const allDayCheckboxes = screen.getAllByLabelText(/all day activity/i);
+    // Check the first activity's "All day" checkbox
+    fireEvent.click(allDayCheckboxes[0]);
+
+    // Should now show "all day" placeholders instead of time inputs for this row
+    const allDayPlaceholders = screen.getAllByText('all day');
+    expect(allDayPlaceholders.length).toBeGreaterThanOrEqual(2); // start + end columns
   });
 });

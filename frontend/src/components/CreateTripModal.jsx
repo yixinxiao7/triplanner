@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
+import DestinationChipInput from './DestinationChipInput';
 import styles from './CreateTripModal.module.css';
 
 /**
  * CreateTripModal — modal for creating a new trip.
  * Implements focus trap, Escape to close, backdrop click to close.
+ * Uses DestinationChipInput for tag/chip-based destination entry (Sprint 3 T-046).
  */
 export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
-  const [form, setForm] = useState({ name: '', destinations: '' });
+  const [name, setName] = useState('');
+  const [destinations, setDestinations] = useState([]);
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,7 +24,8 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
       setTimeout(() => nameInputRef.current?.focus(), 50);
     } else {
       // Reset form when closed
-      setForm({ name: '', destinations: '' });
+      setName('');
+      setDestinations([]);
       setErrors({});
       setApiError('');
       setIsLoading(false);
@@ -75,21 +79,27 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
     return () => document.removeEventListener('keydown', handleTab);
   }, [isOpen]);
 
-  function handleChange(e) {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
+  function handleNameChange(e) {
+    setName(e.target.value);
+    if (errors.name) {
+      setErrors((prev) => ({ ...prev, name: '' }));
+    }
+  }
+
+  function handleDestinationsChange(newDestinations) {
+    setDestinations(newDestinations);
+    if (errors.destinations) {
+      setErrors((prev) => ({ ...prev, destinations: '' }));
     }
   }
 
   function validate() {
     const newErrors = {};
-    if (!form.name.trim()) {
+    if (!name.trim()) {
       newErrors.name = 'trip name is required';
     }
-    if (!form.destinations.trim()) {
-      newErrors.destinations = 'please enter at least one destination';
+    if (destinations.length === 0) {
+      newErrors.destinations = 'at least one destination is required';
     }
     return newErrors;
   }
@@ -107,8 +117,8 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
     setIsLoading(true);
     try {
       await onSubmit({
-        name: form.name.trim(),
-        destinations: form.destinations,
+        name: name.trim(),
+        destinations: destinations,
       });
       // onSubmit handles navigation — no need to close here (modal unmounts)
     } catch (err) {
@@ -149,7 +159,7 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
             aria-label="Close modal"
             type="button"
           >
-            ×
+            &times;
           </button>
         </div>
 
@@ -173,8 +183,8 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
               name="name"
               type="text"
               placeholder="e.g. California road trip"
-              value={form.name}
-              onChange={handleChange}
+              value={name}
+              onChange={handleNameChange}
               disabled={isLoading}
               className={`${styles.input} ${errors.name ? styles.inputError : ''}`}
               aria-describedby={errors.name ? 'modal-name-error' : undefined}
@@ -191,39 +201,21 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit }) {
             )}
           </div>
 
-          {/* Destinations */}
+          {/* Destinations — Chip Input */}
           <div className={styles.fieldGroup}>
-            <label htmlFor="modal-destinations" className={styles.label}>
+            <label className={styles.label}>
               DESTINATIONS
             </label>
-            <input
-              id="modal-destinations"
-              name="destinations"
-              type="text"
-              placeholder="e.g. San Francisco, Los Angeles"
-              value={form.destinations}
-              onChange={handleChange}
+            <DestinationChipInput
+              destinations={destinations}
+              onChange={handleDestinationsChange}
               disabled={isLoading}
-              className={`${styles.input} ${errors.destinations ? styles.inputError : ''}`}
-              aria-describedby={
-                errors.destinations
-                  ? 'modal-dest-error'
-                  : 'modal-dest-hint'
-              }
+              error={errors.destinations || null}
+              placeholder="Type a destination and press Enter"
             />
             <span id="modal-dest-hint" className={styles.fieldHint}>
-              separate multiple destinations with commas
+              press enter or comma to add
             </span>
-            {errors.destinations && (
-              <span
-                id="modal-dest-error"
-                className={styles.fieldError}
-                role="alert"
-                aria-live="polite"
-              >
-                {errors.destinations}
-              </span>
-            )}
           </div>
 
           {/* Actions */}

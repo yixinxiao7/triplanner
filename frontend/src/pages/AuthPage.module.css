@@ -160,6 +160,27 @@
   cursor: not-allowed;
 }
 
+/* Rate Limit Banner (429) — amber/warning distinct from red error */
+.rateLimitBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 20px;
+  background: rgba(196, 122, 46, 0.1);
+  border: 1px solid rgba(196, 122, 46, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.clockIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: rgba(196, 122, 46, 0.8);
+}
+
 /* ============================================================
    Responsive — Mobile
    ============================================================ */

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
@@ -6,6 +6,17 @@ import styles from './AuthPage.module.css';
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/**
+ * Parse Retry-After header and return wait time in minutes (rounded up).
+ * Falls back to null if unparseable.
+ */
+function parseRetryAfterMinutes(retryAfterHeader) {
+  if (!retryAfterHeader) return null;
+  const seconds = parseInt(retryAfterHeader, 10);
+  if (isNaN(seconds) || seconds <= 0) return null;
+  return Math.ceil(seconds / 60);
 }
 
 export default function RegisterPage() {
@@ -23,6 +34,34 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Rate limit state
+  const [rateLimitMinutes, setRateLimitMinutes] = useState(null);
+  const countdownRef = useRef(null);
+
+  // Cleanup countdown timer on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
+
+  const startCountdown = useCallback((minutes) => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    setRateLimitMinutes(minutes);
+
+    countdownRef.current = setInterval(() => {
+      setRateLimitMinutes((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(countdownRef.current);
+          countdownRef.current = null;
+          setTimeout(() => setRateLimitMinutes(null), 3000);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 60000);
+  }, []);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -97,13 +136,23 @@ export default function RegisterPage() {
         password: form.password,
       });
       const { user, access_token } = response.data.data;
+      // Clear rate limit on success
+      setRateLimitMinutes(null);
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+      }
       handleAuthSuccess(user, access_token);
       navigate('/', { replace: true });
     } catch (err) {
       const status = err.response?.status;
       const code = err.response?.data?.error?.code;
 
-      if (status === 409 || code === 'EMAIL_TAKEN') {
+      if (status === 429) {
+        const retryAfter = err.response?.headers?.['retry-after'];
+        const minutes = parseRetryAfterMinutes(retryAfter);
+        startCountdown(minutes || 15);
+      } else if (status === 409 || code === 'EMAIL_TAKEN') {
         setErrors((prev) => ({
           ...prev,
           email: 'an account with this email already exists.',
@@ -125,6 +174,13 @@ export default function RegisterPage() {
     }
   }
 
+  // Build rate limit message
+  const rateLimitMessage = rateLimitMinutes !== null
+    ? rateLimitMinutes === 0
+      ? 'you can try again now.'
+      : `too many registration attempts. please try again in ${rateLimitMinutes} minute${rateLimitMinutes !== 1 ? 's' : ''}.`
+    : null;
+
   return (
     <div className={styles.authPageWrapper}>
       <div className={styles.authCard}>
@@ -138,9 +194,31 @@ export default function RegisterPage() {
         <p className={styles.subtitle}>
           already have an account?{' '}
           <Link to="/login" className={styles.subtitleLink}>
-            sign in →
+            sign in &rarr;
           </Link>
         </p>
+
+        {/* Rate Limit Banner (429) */}
+        {rateLimitMessage && (
+          <div
+            className={styles.rateLimitBanner}
+            role="alert"
+            aria-live="polite"
+          >
+            <svg
+              className={styles.clockIcon}
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M7 4v3.5l2.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>{rateLimitMessage}</span>
+          </div>
+        )}
 
         {/* API Error Banner */}
         {apiError && (
@@ -231,7 +309,7 @@ export default function RegisterPage() {
               name="password"
               type="password"
               autoComplete="new-password"
-              placeholder="•••••••••••"
+              placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
               value={form.password}
               onChange={handleChange}
               onBlur={handleBlur}

@@ -48,7 +48,7 @@ describe('CreateTripModal', () => {
     const submitBtn = screen.getByRole('button', { name: /create trip/i });
     fireEvent.click(submitBtn);
     await waitFor(() => {
-      expect(screen.getByText('please enter at least one destination')).toBeDefined();
+      expect(screen.getByText('at least one destination is required')).toBeDefined();
     });
   });
 
@@ -68,21 +68,25 @@ describe('CreateTripModal', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it('calls onSubmit with form data when valid', async () => {
+  it('calls onSubmit with form data when valid (chip input)', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     renderModal({ onSubmit });
     fireEvent.change(screen.getByLabelText(/TRIP NAME/i), {
       target: { value: 'Japan 2026' },
     });
-    fireEvent.change(screen.getByLabelText(/DESTINATIONS/i), {
-      target: { value: 'Tokyo, Osaka' },
-    });
+    // Add destinations via the chip input (type then Enter)
+    const destInput = screen.getByLabelText(/add destination/i);
+    fireEvent.change(destInput, { target: { value: 'Tokyo' } });
+    fireEvent.keyDown(destInput, { key: 'Enter' });
+    fireEvent.change(destInput, { target: { value: 'Osaka' } });
+    fireEvent.keyDown(destInput, { key: 'Enter' });
+
     const submitBtn = screen.getByRole('button', { name: /create trip/i });
     fireEvent.click(submitBtn);
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
         name: 'Japan 2026',
-        destinations: 'Tokyo, Osaka',
+        destinations: ['Tokyo', 'Osaka'],
       });
     });
   });

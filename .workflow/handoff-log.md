@@ -17,6 +17,34 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 3 — Deploy Engineer → QA Engineer (T-044, T-050, T-051: Infrastructure Tasks Complete — Ready for QA Review) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Deploy Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-044, T-050, T-051, T-052, T-053 |
+| Handoff Summary | Deploy Engineer has completed all three Sprint 3 infrastructure tasks (T-044, T-050, T-051) on 2026-02-25. All tasks moved to In Review in dev-cycle-tracker.md. QA Engineer should verify these in T-052 (security checklist) and T-053 (integration testing). |
+| Notes | **T-044 — HTTPS Configuration (what to test):** (1) Backend serves over HTTPS at https://localhost:3001 — verify TLS handshake completes. (2) `curl -sk https://localhost:3001/api/v1/health` → 200 `{"status":"ok"}`. (3) Register/login → Set-Cookie header includes `Secure` flag. (4) Frontend serves over HTTPS at https://localhost:4173 — no mixed-content warnings. (5) CORS_ORIGIN is `https://localhost:4173` — verify cross-origin requests work. (6) Self-signed cert → browser warning expected for local staging. (7) No hardcoded secrets in index.js or auth.js — all config via env vars. (8) Cert files in `infra/certs/` are `.gitignored`. **Security-specific:** `COOKIE_SECURE` env var controls cookie Secure flag (not just NODE_ENV). Backend falls back to HTTP gracefully when no certs present (dev mode). No private keys committed. **T-050 — pm2 Process Management (what to test):** (1) `pm2 status` shows `triplanner-backend` as online. (2) Kill process → pm2 auto-restarts within seconds. (3) `pm2 logs triplanner-backend` shows timestamped output. (4) `ecosystem.config.cjs` contains NO secrets — env vars come from `.env` file. (5) Logs directory is `.gitignored`. **T-051 — Production Deployment Prep (what to test):** (1) `Dockerfile.backend` — multi-stage build, runs as non-root user, no hardcoded secrets, uses `npm ci --omit=dev`. (2) `Dockerfile.frontend` — multi-stage build, VITE_API_URL is a build arg (not hardcoded). (3) `docker-compose.yml` — JWT_SECRET is required (`:?` syntax), DB password via env var, no secrets in the compose file. (4) `nginx.conf` — security headers present, no server version exposed. (5) `.env.docker.example` has placeholder values only. (6) `ci.yml` — test secrets are CI-only (not production values), no secrets in workflow file. (7) `DEPLOY.md` — rollback procedure documented, no secrets in runbook. **Files changed:** `backend/src/index.js`, `backend/src/routes/auth.js`, `backend/.env`, `backend/.env.example`, `frontend/vite.config.js`, `.gitignore`, `infra/Dockerfile.backend`, `infra/Dockerfile.frontend`, `infra/nginx.conf`, `infra/docker-compose.yml`, `infra/ecosystem.config.cjs`, `infra/.env.docker.example`, `infra/scripts/generate-certs.sh`, `infra/scripts/pm2-setup.sh`, `infra/DEPLOY.md`, `.github/workflows/ci.yml`. |
+
+---
+
+### Sprint 3 — Deploy Engineer → Manager Agent (T-044, T-050, T-051: Infrastructure Implementation Complete — Ready for Code Review) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Deploy Engineer |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-044, T-050, T-051 |
+| Handoff Summary | Deploy Engineer has completed all three Sprint 3 infrastructure tasks on 2026-02-25. All are moved to In Review status in dev-cycle-tracker.md. Ready for Manager Agent code review. |
+| Notes | **Summary of changes:** (1) **T-044 HTTPS:** Self-signed TLS cert (OpenSSL), backend `https.createServer()` conditional on SSL env vars, cookie `Secure` flag via `COOKIE_SECURE` env var, CORS updated to HTTPS, Vite preview HTTPS configured. Verified: health endpoint, TLS handshake, cookie Secure flag, frontend HTTPS. (2) **T-050 pm2:** pm2 6.0.14 installed, `ecosystem.config.cjs` with autorestart/memory limits/log config, auto-restart verified (killed → restarted in <3s), `pm2 save` for persistence. (3) **T-051 Docker/CI/CD:** Multi-stage Dockerfiles (backend + frontend/nginx), full Docker Compose (postgres + migrate + backend + frontend), nginx reverse proxy config, GitHub Actions CI pipeline (test → build → docker build → deploy placeholder), deployment runbook (`infra/DEPLOY.md`). Docker not available locally — configs follow best practices but untested via `docker build`. **Security self-check:** No hardcoded secrets in any config file. All secrets via env vars. Certs and logs `.gitignored`. Docker runs as non-root. nginx has security headers. CI workflow uses test-only secrets. **Pre-existing test note:** Backend has 1 test failure in `activities.test.js` from T-043 changes (Backend Engineer, not Deploy Engineer scope). Frontend has 3 test failures in `HomePage.test.jsx` from T-046 changes (Frontend Engineer scope). Neither is caused by infrastructure changes. |
+
+---
+
 ### Sprint 3 — Backend Engineer → Deploy Engineer (T-043: Migration 008 Ready for Staging) (2026-02-25)
 
 | Field | Value |

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import RegisterPage from '../pages/RegisterPage';
+import { api } from '../utils/api';
 
 function renderRegisterPage(authContextOverrides = {}) {
   const mockContextValue = {
@@ -75,5 +76,55 @@ describe('RegisterPage', () => {
   it('has aria-label on the form', () => {
     renderRegisterPage();
     expect(screen.getByRole('form', { name: /create account form/i })).toBeDefined();
+  });
+
+  // ── 429 Rate Limit (Sprint 3 T-045) ────────────────────────────────────
+  it('shows rate limit banner with minutes on 429 response', async () => {
+    vi.spyOn(api.auth, 'register').mockRejectedValueOnce({
+      response: {
+        status: 429,
+        headers: { 'retry-after': '600' },
+        data: { error: { message: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' } },
+      },
+    });
+
+    renderRegisterPage();
+    fireEvent.change(screen.getByLabelText(/NAME/i), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByLabelText(/EMAIL/i), { target: { value: 'jane@test.com' } });
+    fireEvent.change(screen.getByLabelText(/PASSWORD/i), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/too many registration attempts/i)).toBeDefined();
+      expect(screen.getByText(/10 minutes/i)).toBeDefined();
+    });
+
+    // Should NOT show generic error
+    expect(screen.queryByText('something went wrong')).toBeNull();
+
+    vi.restoreAllMocks();
+  });
+
+  it('shows rate limit banner with fallback when no Retry-After header', async () => {
+    vi.spyOn(api.auth, 'register').mockRejectedValueOnce({
+      response: {
+        status: 429,
+        headers: {},
+        data: { error: { message: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' } },
+      },
+    });
+
+    renderRegisterPage();
+    fireEvent.change(screen.getByLabelText(/NAME/i), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByLabelText(/EMAIL/i), { target: { value: 'jane@test.com' } });
+    fireEvent.change(screen.getByLabelText(/PASSWORD/i), { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/too many registration attempts/i)).toBeDefined();
+      expect(screen.getByText(/15 minutes/i)).toBeDefined();
+    });
+
+    vi.restoreAllMocks();
   });
 });

@@ -1,32 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import DestinationChipInput from '../components/DestinationChipInput';
 import { useTripDetails } from '../hooks/useTripDetails';
-import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime } from '../utils/formatDate';
+import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatTripDateRange } from '../utils/formatDate';
 import TripCalendar from '../components/TripCalendar';
 import { api } from '../utils/api';
 import styles from './TripDetailsPage.module.css';
-
-// ── Date helpers ─────────────────────────────────────────────
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function formatDateRangeDisplay(startDate, endDate) {
-  if (!startDate) return null;
-  function parse(s) {
-    const [y, m, d] = s.split('-').map(Number);
-    return { year: y, month: m - 1, day: d };
-  }
-  const s = parse(startDate);
-  if (startDate && endDate) {
-    const e = parse(endDate);
-    if (s.year === e.year) {
-      return `${MONTHS_SHORT[s.month]} ${s.day} \u2014 ${MONTHS_SHORT[e.month]} ${e.day}, ${s.year}`;
-    }
-    return `${MONTHS_SHORT[s.month]} ${s.day}, ${s.year} \u2014 ${MONTHS_SHORT[e.month]} ${e.day}, ${e.year}`;
-  }
-  return `From ${MONTHS_SHORT[s.month]} ${s.day}, ${s.year}`;
-}
 
 // ── Small Calendar Icon ───────────────────────────────────────
 function CalendarIconSmall() {
@@ -123,22 +103,17 @@ function FlightCard({ flight }) {
       aria-label={`Flight ${flight.flight_number}: ${flight.from_location} to ${flight.to_location}`}
     >
       <div className={styles.flightColumns}>
-        {/* Departure */}
         <div className={styles.flightCol}>
           <div className={styles.airportCode}>{flight.from_location}</div>
           <div className={styles.flightDateTime}>
             {depDisplay}{depTz ? ` ${depTz}` : ''}
           </div>
         </div>
-
-        {/* Center — airline + flight number */}
         <div className={styles.flightCenter}>
           <div className={styles.airlineName}>{flight.airline}</div>
           <div className={styles.flightNumber}>{flight.flight_number}</div>
-          <div className={styles.flightArrow} aria-hidden="true">→</div>
+          <div className={styles.flightArrow} aria-hidden="true">&rarr;</div>
         </div>
-
-        {/* Arrival */}
         <div className={`${styles.flightCol} ${styles.flightColRight}`}>
           <div className={styles.airportCode}>{flight.to_location}</div>
           <div className={styles.flightDateTime}>
@@ -156,26 +131,16 @@ function StayCard({ stay }) {
   const checkOutDisplay = formatDateTime(stay.check_out_at, stay.check_out_tz);
 
   return (
-    <article
-      className={styles.stayCard}
-      aria-label={`Stay: ${stay.name}`}
-    >
-      {/* Top row: name + category badge */}
+    <article className={styles.stayCard} aria-label={`Stay: ${stay.name}`}>
       <div className={styles.stayTopRow}>
         <div className={styles.stayName}>{stay.name}</div>
         <span className={styles.categoryBadge}>{stay.category}</span>
       </div>
-
-      {/* Address */}
       <div className={styles.stayAddress}>
         {stay.address ? (
           <>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path
-                d="M6 1a3.5 3.5 0 013.5 3.5C9.5 7.5 6 11 6 11S2.5 7.5 2.5 4.5A3.5 3.5 0 016 1z"
-                stroke="currentColor"
-                strokeWidth="1.2"
-              />
+              <path d="M6 1a3.5 3.5 0 013.5 3.5C9.5 7.5 6 11 6 11S2.5 7.5 2.5 4.5A3.5 3.5 0 016 1z" stroke="currentColor" strokeWidth="1.2" />
               <circle cx="6" cy="4.5" r="1" fill="currentColor" />
             </svg>
             {stay.address}
@@ -184,8 +149,6 @@ function StayCard({ stay }) {
           <span style={{ color: 'rgba(252,252,252,0.3)' }}>address not provided</span>
         )}
       </div>
-
-      {/* Dates */}
       <div className={styles.stayDates}>
         <div className={styles.stayDateBlock}>
           <div className={styles.stayDateLabel}>CHECK IN</div>
@@ -200,20 +163,27 @@ function StayCard({ stay }) {
   );
 }
 
-// ── Activity Entry ───────────────────────────────────────────
+// ── Activity Entry (supports "all day" timeless activities) ──
 function ActivityEntry({ activity }) {
+  const isAllDay = !activity.start_time && !activity.end_time;
   const startDisplay = formatTime(activity.start_time);
   const endDisplay = formatTime(activity.end_time);
 
   return (
     <article
       className={styles.activityEntry}
-      aria-label={`${activity.name}, ${startDisplay} to ${endDisplay}`}
+      aria-label={isAllDay ? `${activity.name}, all day` : `${activity.name}, ${startDisplay} to ${endDisplay}`}
     >
       {/* Time column */}
       <div className={styles.activityTime}>
-        <div className={styles.activityStartTime}>{startDisplay}</div>
-        <div className={styles.activityEndTime}>→ {endDisplay}</div>
+        {isAllDay ? (
+          <span className={styles.allDayBadge}>all day</span>
+        ) : (
+          <>
+            <div className={styles.activityStartTime}>{startDisplay}</div>
+            <div className={styles.activityEndTime}>&rarr; {endDisplay}</div>
+          </>
+        )}
       </div>
 
       {/* Vertical divider */}
@@ -225,11 +195,7 @@ function ActivityEntry({ activity }) {
         {activity.location && (
           <div className={styles.activityLocation}>
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-              <path
-                d="M5 .833A2.917 2.917 0 017.917 3.75C7.917 6.25 5 9.167 5 9.167S2.083 6.25 2.083 3.75A2.917 2.917 0 015 .833z"
-                stroke="currentColor"
-                strokeWidth="1"
-              />
+              <path d="M5 .833A2.917 2.917 0 017.917 3.75C7.917 6.25 5 9.167 5 9.167S2.083 6.25 2.083 3.75A2.917 2.917 0 015 .833z" stroke="currentColor" strokeWidth="1" />
               <circle cx="5" cy="3.75" r=".833" fill="currentColor" />
             </svg>
             {activity.location}
@@ -240,20 +206,24 @@ function ActivityEntry({ activity }) {
   );
 }
 
-// ── Activity Day Group ───────────────────────────────────────
+// ── Activity Day Group (timeless activities sort after timed) ─
 function ActivityDayGroup({ date, activities }) {
   const dateDisplay = formatActivityDate(date);
   const sortedActivities = [...activities].sort((a, b) => {
-    if (a.start_time < b.start_time) return -1;
-    if (a.start_time > b.start_time) return 1;
+    // Timed activities first, then timeless; within same group sort by start_time/name
+    const aIsAllDay = !a.start_time && !a.end_time;
+    const bIsAllDay = !b.start_time && !b.end_time;
+    if (aIsAllDay && !bIsAllDay) return 1;
+    if (!aIsAllDay && bIsAllDay) return -1;
+    if (aIsAllDay && bIsAllDay) return a.name.localeCompare(b.name);
+    // Both timed
+    if ((a.start_time || '') < (b.start_time || '')) return -1;
+    if ((a.start_time || '') > (b.start_time || '')) return 1;
     return a.name.localeCompare(b.name);
   });
 
   return (
-    <section
-      className={styles.dayGroup}
-      aria-label={`Activities for ${dateDisplay}`}
-    >
+    <section className={styles.dayGroup} aria-label={`Activities for ${dateDisplay}`}>
       <div className={styles.dayHeader}>
         <span className={styles.dayDate}>{dateDisplay.toUpperCase()}</span>
         <hr className={styles.dayLine} aria-hidden="true" />
@@ -290,21 +260,26 @@ export default function TripDetailsPage() {
   } = useTripDetails(tripId);
 
   // ── Trip Date Range State ─────────────────────────────────
-  // 'loading' | 'null' | 'edit' | 'display'
   const [dateMode, setDateMode] = useState('loading');
   const [startDateInput, setStartDateInput] = useState('');
   const [endDateInput, setEndDateInput] = useState('');
   const [dateError, setDateError] = useState('');
   const [dateSaving, setDateSaving] = useState(false);
-  // Saved dates — updated locally after API saves to avoid full re-fetch
   const [savedStartDate, setSavedStartDate] = useState(null);
   const [savedEndDate, setSavedEndDate] = useState(null);
+
+  // ── Editable Destinations State (Sprint 3 T-046) ──────────
+  const [destMode, setDestMode] = useState('display'); // 'display' | 'edit'
+  const [editDestinations, setEditDestinations] = useState([]);
+  const [destSaving, setDestSaving] = useState(false);
+  const [destError, setDestError] = useState('');
+  const [savedDestinations, setSavedDestinations] = useState([]);
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
 
-  // Initialize date mode from trip data (runs once when trip loads)
+  // Initialize date mode from trip data
   useEffect(() => {
     if (!tripLoading && trip && dateMode === 'loading') {
       const s = trip.start_date || null;
@@ -321,13 +296,17 @@ export default function TripDetailsPage() {
     }
   }, [trip, tripLoading, dateMode]);
 
-  // Format destinations for display: array → dot-separated string
-  function formatDestinations(raw) {
-    if (!raw) return '';
-    if (Array.isArray(raw)) return raw.join(' · ');
-    // Comma-separated string → dot-separated
-    return raw.split(',').map((d) => d.trim()).join(' · ');
-  }
+  // Initialize destinations from trip data
+  useEffect(() => {
+    if (!tripLoading && trip) {
+      const dests = Array.isArray(trip.destinations)
+        ? trip.destinations
+        : trip.destinations
+          ? trip.destinations.split(',').map((d) => d.trim()).filter(Boolean)
+          : [];
+      setSavedDestinations(dests);
+    }
+  }, [trip, tripLoading]);
 
   // ── Date range handlers ───────────────────────────────────
   async function handleSaveDates() {
@@ -377,6 +356,43 @@ export default function TripDetailsPage() {
     }
   }
 
+  // ── Destination edit handlers ─────────────────────────────
+  function handleEditDestinations() {
+    setEditDestinations([...savedDestinations]);
+    setDestError('');
+    setDestMode('edit');
+  }
+
+  function handleCancelDestEdit() {
+    setDestMode('display');
+    setDestError('');
+  }
+
+  async function handleSaveDestinations() {
+    setDestError('');
+    if (editDestinations.length === 0) {
+      setDestError('at least one destination is required');
+      return;
+    }
+    // Skip API call if nothing changed
+    const unchanged = editDestinations.length === savedDestinations.length &&
+      editDestinations.every((d, i) => d === savedDestinations[i]);
+    if (unchanged) {
+      setDestMode('display');
+      return;
+    }
+    setDestSaving(true);
+    try {
+      await api.trips.update(tripId, { destinations: editDestinations });
+      setSavedDestinations([...editDestinations]);
+      setDestMode('display');
+    } catch {
+      setDestError('could not save destinations. please try again.');
+    } finally {
+      setDestSaving(false);
+    }
+  }
+
   // Group activities by date
   const activitiesByDate = activities.reduce((acc, activity) => {
     const date = activity.activity_date;
@@ -422,12 +438,8 @@ export default function TripDetailsPage() {
 
           {/* ── Page Header ── */}
           <div className={styles.pageHeader}>
-            <Link
-              to="/"
-              className={styles.backLink}
-              aria-label="Back to my trips"
-            >
-              ← my trips
+            <Link to="/" className={styles.backLink} aria-label="Back to my trips">
+              &larr; my trips
             </Link>
 
             {tripLoading ? (
@@ -441,10 +453,60 @@ export default function TripDetailsPage() {
             ) : (
               <>
                 <h1 className={styles.tripName}>{trip?.name}</h1>
-                {trip?.destinations && (
-                  <p className={styles.destinations}>
-                    {formatDestinations(trip.destinations)}
-                  </p>
+
+                {/* ── Destinations (editable chips — Sprint 3 T-046) ── */}
+                {destMode === 'display' && (
+                  <div className={styles.destinationsRow}>
+                    {savedDestinations.map((dest, i) => (
+                      <span key={`${dest}-${i}`} className={styles.destChipReadonly}>
+                        {dest}
+                      </span>
+                    ))}
+                    <button
+                      className={styles.editDestLink}
+                      onClick={handleEditDestinations}
+                      aria-label="Edit destinations"
+                    >
+                      edit
+                    </button>
+                  </div>
+                )}
+
+                {destMode === 'edit' && (
+                  <div className={styles.destEditContainer} role="region" aria-label="Edit trip destinations">
+                    <label className={styles.destEditLabel}>DESTINATIONS</label>
+                    <DestinationChipInput
+                      destinations={editDestinations}
+                      onChange={setEditDestinations}
+                      disabled={destSaving}
+                      error={destError || null}
+                      autoFocus
+                    />
+                    <span className={styles.destEditHint}>
+                      press enter or comma to add &middot; backspace to remove last
+                    </span>
+                    <div className={styles.destEditActions}>
+                      <button
+                        className={styles.saveDatesBtn}
+                        onClick={handleSaveDestinations}
+                        disabled={destSaving}
+                        aria-label="Save destination changes"
+                      >
+                        {destSaving ? <span className="spinner" /> : 'Save'}
+                      </button>
+                      <button
+                        className={styles.cancelDatesLink}
+                        onClick={handleCancelDestEdit}
+                        disabled={destSaving}
+                        aria-label="Cancel destination editing"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {destError && (
+                      <span className={styles.dateError} role="alert">{destError}</span>
+                    )}
+                  </div>
                 )}
               </>
             )}
@@ -453,7 +515,6 @@ export default function TripDetailsPage() {
           {/* ── Trip Date Range Section ── */}
           {!tripLoading && dateMode !== 'loading' && (
             <div className={styles.dateRangeSection}>
-              {/* Null state — no dates set */}
               {dateMode === 'null' && (
                 <div className={styles.dateRangeNull}>
                   <CalendarIconSmall />
@@ -468,7 +529,6 @@ export default function TripDetailsPage() {
                 </div>
               )}
 
-              {/* Edit mode — inputs */}
               {dateMode === 'edit' && (
                 <div className={styles.dateRangeEdit}>
                   <div className={styles.dateRangeInputRow}>
@@ -501,20 +561,10 @@ export default function TripDetailsPage() {
                       />
                     </div>
                     <div className={styles.dateRangeActions}>
-                      <button
-                        className={styles.saveDatesBtn}
-                        onClick={handleSaveDates}
-                        disabled={dateSaving}
-                        aria-label="Save trip dates"
-                      >
+                      <button className={styles.saveDatesBtn} onClick={handleSaveDates} disabled={dateSaving} aria-label="Save trip dates">
                         {dateSaving ? <span className="spinner" /> : 'Save'}
                       </button>
-                      <button
-                        className={styles.clearDatesBtn}
-                        onClick={handleClearDates}
-                        disabled={dateSaving}
-                        aria-label="Clear trip dates"
-                      >
+                      <button className={styles.clearDatesBtn} onClick={handleClearDates} disabled={dateSaving} aria-label="Clear trip dates">
                         Clear dates
                       </button>
                       <button
@@ -539,12 +589,11 @@ export default function TripDetailsPage() {
                 </div>
               )}
 
-              {/* Display mode — dates are set */}
               {dateMode === 'display' && (
                 <div className={styles.dateRangeDisplay}>
                   <CalendarIconSmall />
                   <span className={styles.dateRangeText}>
-                    {formatDateRangeDisplay(savedStartDate, savedEndDate)}
+                    {formatTripDateRange(savedStartDate, savedEndDate)}
                   </span>
                   <button
                     className={styles.editDatesLink}
@@ -575,121 +624,65 @@ export default function TripDetailsPage() {
 
           {/* ── Flights Section ── */}
           <section className={styles.section}>
-            <SectionHeader
-              title="flights"
-              actionLabel="edit flights"
-              actionHref={`/trips/${tripId}/edit/flights`}
-            />
-
+            <SectionHeader title="flights" actionLabel="edit flights" actionHref={`/trips/${tripId}/edit/flights`} />
             {flightsLoading ? (
               <SkeletonBar width="100%" height="80px" />
             ) : flightsError ? (
               <SectionError resourceName="flights" onRetry={refetchFlights} />
             ) : flights.length === 0 ? (
               <EmptyState
-                icon={
-                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ color: 'var(--accent)', opacity: 0.3 }}>
-                    <path
-                      d="M4 17l2-8 8 3 5-9 2 1-4 8 4 2-1 2-4-2-2 4-2-1 1-4-8-3 1-2z"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                }
+                icon={<svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ color: 'var(--accent)', opacity: 0.3 }}><path d="M4 17l2-8 8 3 5-9 2 1-4 8 4 2-1 2-4-2-2 4-2-1 1-4-8-3 1-2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" /></svg>}
                 text="no flights added yet."
                 subtext="add your flight details to see them here."
               />
             ) : (
               <div className={styles.cardList}>
-                {flights.map((flight) => (
-                  <FlightCard key={flight.id} flight={flight} />
-                ))}
+                {flights.map((flight) => <FlightCard key={flight.id} flight={flight} />)}
               </div>
             )}
           </section>
 
           {/* ── Stays Section ── */}
           <section className={styles.section}>
-            <SectionHeader
-              title="stays"
-              actionLabel="edit stays"
-              actionHref={`/trips/${tripId}/edit/stays`}
-            />
-
+            <SectionHeader title="stays" actionLabel="edit stays" actionHref={`/trips/${tripId}/edit/stays`} />
             {staysLoading ? (
               <SkeletonBar width="100%" height="80px" />
             ) : staysError ? (
               <SectionError resourceName="stays" onRetry={refetchStays} />
             ) : stays.length === 0 ? (
               <EmptyState
-                icon={
-                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ color: 'var(--accent)', opacity: 0.3 }}>
-                    <rect x="2" y="12" width="24" height="14" rx="1" stroke="currentColor" strokeWidth="1.2" />
-                    <path
-                      d="M2 16h24M6 16v10M22 16v10M8 12V8a6 6 0 0112 0v4"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                }
+                icon={<svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ color: 'var(--accent)', opacity: 0.3 }}><rect x="2" y="12" width="24" height="14" rx="1" stroke="currentColor" strokeWidth="1.2" /><path d="M2 16h24M6 16v10M22 16v10M8 12V8a6 6 0 0112 0v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>}
                 text="no stays added yet."
                 subtext="add your accommodation details to see them here."
               />
             ) : (
               <div className={styles.cardList}>
-                {stays.map((stay) => (
-                  <StayCard key={stay.id} stay={stay} />
-                ))}
+                {stays.map((stay) => <StayCard key={stay.id} stay={stay} />)}
               </div>
             )}
           </section>
 
           {/* ── Activities Section ── */}
           <section className={`${styles.section} ${styles.sectionLast}`}>
-            <SectionHeader
-              title="activities"
-              actionLabel="edit activities"
-              actionHref={`/trips/${tripId}/edit/activities`}
-            />
-
+            <SectionHeader title="activities" actionLabel="edit activities" actionHref={`/trips/${tripId}/edit/activities`} />
             {activitiesLoading ? (
               <div>
                 <SkeletonBar width="150px" height="12px" />
-                <div style={{ marginTop: 12 }}>
-                  <SkeletonBar width="100%" height="52px" />
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <SkeletonBar width="100%" height="52px" />
-                </div>
+                <div style={{ marginTop: 12 }}><SkeletonBar width="100%" height="52px" /></div>
+                <div style={{ marginTop: 8 }}><SkeletonBar width="100%" height="52px" /></div>
               </div>
             ) : activitiesError ? (
               <SectionError resourceName="activities" onRetry={refetchActivities} />
             ) : activities.length === 0 ? (
               <EmptyState
-                icon={
-                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ color: 'var(--accent)', opacity: 0.3 }}>
-                    <rect x="2" y="3" width="24" height="22" rx="2" stroke="currentColor" strokeWidth="1.2" />
-                    <path
-                      d="M2 9h24M8 2v4M20 2v4M7 14h6M7 19h10"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                }
+                icon={<svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ color: 'var(--accent)', opacity: 0.3 }}><rect x="2" y="3" width="24" height="22" rx="2" stroke="currentColor" strokeWidth="1.2" /><path d="M2 9h24M8 2v4M20 2v4M7 14h6M7 19h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>}
                 text="no activities planned yet."
                 subtext="add your daily itinerary to see it here, grouped by day."
               />
             ) : (
               <div className={styles.activityGroups}>
                 {sortedDates.map((date) => (
-                  <ActivityDayGroup
-                    key={date}
-                    date={date}
-                    activities={activitiesByDate[date]}
-                  />
+                  <ActivityDayGroup key={date} date={date} activities={activitiesByDate[date]} />
                 ))}
               </div>
             )}

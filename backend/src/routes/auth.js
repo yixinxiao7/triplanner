@@ -69,10 +69,14 @@ const generalAuthRateLimiter = rateLimit({
 
 // ---- Helpers ----
 
+function isSecureCookie() {
+  return process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
+}
+
 function setRefreshCookie(res, token) {
   res.cookie('refresh_token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureCookie(),
     sameSite: 'strict',
     path: '/api/v1/auth',
     maxAge: REFRESH_TOKEN_SECONDS * 1000, // ms
@@ -82,7 +86,7 @@ function setRefreshCookie(res, token) {
 function clearRefreshCookie(res) {
   res.cookie('refresh_token', '', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecureCookie(),
     sameSite: 'strict',
     path: '/api/v1/auth',
     maxAge: 0,

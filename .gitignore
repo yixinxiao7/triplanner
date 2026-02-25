@@ -24,3 +24,9 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+
+# TLS certificates (T-044 — never commit private keys)
+infra/certs/
+
+# Application logs (T-050 — pm2 logs)
+logs/
