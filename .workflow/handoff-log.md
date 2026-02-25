@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — Deploy Engineer → Monitor Agent (Re-Deployment Complete — Run Health Checks, New Port 3001)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Deploy Engineer |
+| To Agent | Monitor Agent |
+| Status | Pending |
+| Related Task | T-020, T-021 |
+| Handoff Summary | Staging re-deployment for Sprint 1 is complete (2026-02-25). Backend is now on **port 3001** (port 3000 was occupied by another local application). Frontend rebuilt with correct `VITE_API_URL=http://localhost:3001/api/v1` and CORS updated to `http://localhost:4173`. All smoke tests passed. Monitor Agent should re-run health checks confirming the new port. Full re-deployment report in `.workflow/qa-build-log.md` under "Sprint 1 — Staging Re-Deployment Report (T-020 Re-Run) — 2026-02-25". |
+| Notes | **Updated Staging Environment URLs:** (1) Backend API: `http://localhost:3001` (changed from 3000 — port conflict). (2) Frontend: `http://localhost:4173` — Vite preview serving new production build. (3) Database: `localhost:5432` — PostgreSQL 15, database `appdb` (unchanged, all 6 tables present). **Key changes from original T-020 deploy:** (1) Backend port: 3000 → **3001** — port 3000 was occupied by `i-wish-spotify-could` Next.js dev server. (2) CORS_ORIGIN: `http://localhost:5173` → **`http://localhost:4173`** — now correctly allows requests from the Vite preview frontend. (3) Frontend rebuilt with `VITE_API_URL=http://localhost:3001/api/v1` baked in — previous build used relative `/api/v1` which would have caused API calls to fail in preview mode (no proxy). **Smoke Tests Passed:** ✅ `GET /api/v1/health` → `{"status":"ok"}`. ✅ `POST /api/v1/auth/register` → 200 with user UUID + access_token (DB round-trip confirmed). ✅ `GET /api/v1/trips` (with JWT) → `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}`. ✅ `GET http://localhost:4173/` → 200 HTML. ✅ CORS headers: `Access-Control-Allow-Origin: http://localhost:4173` + `Access-Control-Allow-Credentials: true`. ✅ API URL in bundle verified: `"http://localhost:3001/api/v1"`. **For Monitor Agent — recommended health checks (use port 3001):** (1) `GET http://localhost:3001/api/v1/health` — verify `{"status":"ok"}`. (2) DB connectivity — register a new user and confirm DB round-trip. (3) Auth flow — register → login → get trips → logout. (4) Frontend — verify SPA loads at `http://localhost:4173/`, CORS works for cross-origin API calls. (5) Verify all 6 tables still exist in DB. (6) Verify frontend API calls reach backend correctly (check VITE_API_URL is `http://localhost:3001/api/v1`). **Restart commands (if services go down):** Backend: `cd /Users/yixinxiao/CLAUDE/triplanner/backend && node src/index.js &`. Frontend: `cd /Users/yixinxiao/CLAUDE/triplanner/frontend && npx vite preview --port 4173 &`. PostgreSQL: `/opt/homebrew/bin/brew services start postgresql@15`. |
+
+---
+
 ### Sprint 1 — QA Engineer → Deploy Engineer (QA Third-Pass Complete — Sprint 1 Remains Cleared)
 
 | Field | Value |
@@ -24,7 +38,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 1 |
 | From Agent | QA Engineer |
 | To Agent | Deploy Engineer |
-| Status | Pending |
+| Status | Acknowledged |
 | Related Task | T-018, T-019 |
 | Handoff Summary | QA Engineer completed a full third-pass verification of Sprint 1 on 2026-02-24. All prior QA findings confirmed. No regressions found. Backend: 60/60 unit tests PASS (466ms). Frontend: 128/128 unit tests PASS (2.32s). Security: all checks clean, 1 pre-existing accepted risk (rate limiting). npm audit: 0 production vulnerabilities. Sprint 1 deployment clearance remains valid. T-022 (User Agent) may continue. |
 | Notes | **Third-Pass Results (2026-02-24):** **Unit Tests:** Backend 60/60 (466ms) ✅, Frontend 128/128 (2.32s) ✅. No regressions from prior runs. **Security Re-Verification:** No hardcoded secrets ✅. No rateLimit applied (known accepted risk — Sprint 2) ⚠️. No SQL string concatenation in routes/models (knex.raw in migrations only — safe) ✅. No dangerouslySetInnerHTML ✅. No localStorage token writes ✅. No console.log in route handlers ✅. bcrypt 12 rounds confirmed ✅. DUMMY_HASH timing-safe login confirmed ✅. helmet + cors confirmed in app.js ✅. withCredentials: true in axios ✅. **Integration Contract Verification:** All 12 API endpoint groups match api-contracts.md exactly. 401 interceptor retry queue confirmed functional with isRefreshing guard and /auth/refresh + /auth/login skip guards. **npm audit (third pass):** Backend: 0 prod vulns, 5 moderate dev-dep (esbuild GHSA-67mh-4wv8-2f99). Frontend: 0 prod vulns, 5 moderate dev-dep. Unchanged from prior passes. **Confirmed accepted risks (unchanged):** (1) Rate limiting not applied to /auth/login + /auth/register — Sprint 2 backlog. (2) Dev-dep esbuild GHSA-67mh-4wv8-2f99 — no prod impact. (3) HTTPS pending production config. (4) triggerRef focus-return-to-trigger cosmetic P3. **Full report in `.workflow/qa-build-log.md` under "Sprint 1 — QA Third-Pass Report (2026-02-24)".** |

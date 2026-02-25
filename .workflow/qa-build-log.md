@@ -26,6 +26,8 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 | Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
 |----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Re-deploy — Backend + Frontend restart (2026-02-25) | Post-Deploy Health Check | Pass | Success | Staging | Pending | Deploy Engineer | None — all smoke tests passed. Port change: 3000→3001 (port conflict). CORS and API URL corrected. |
+| Re-deploy — Frontend production rebuild with VITE_API_URL | Build | Pass | Success | Staging | Pending | Deploy Engineer | None — 103 modules, 243.65kB JS, 20.76kB CSS. API URL: http://localhost:3001/api/v1 baked in. |
 | QA Third-Pass — Backend unit tests (60 tests, 5 files) | Unit Test | Pass | Success | Local | No | QA Engineer | None — 60/60 PASS, 466ms |
 | QA Third-Pass — Frontend unit tests (128 tests, 11 files) | Unit Test | Pass | Success | Local | No | QA Engineer | None — 128/128 PASS (React Router v6 future-flag warnings: expected, non-blocking) |
 | QA Third-Pass — Security code review (XSS, SQL injection, secrets, token storage) | Security Scan | Pass | Success | Local | No | QA Engineer | No new issues. All prior findings confirmed unchanged. 1 accepted risk: no rate limiting on auth endpoints. |
@@ -49,6 +51,150 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 | npm audit — backend + frontend dependencies | Security Scan | Pass | Success | Local | No | QA Engineer | 5 moderate vulns in dev deps only (esbuild/vite/vitest) — no production impact |
 
 ---
+
+---
+
+## Sprint 1 — Staging Re-Deployment Report (T-020 Re-Run) — 2026-02-25
+
+**Deploy Engineer:** Deploy Agent
+**Sprint:** 1
+**Date:** 2026-02-25
+**Task:** T-020 — Staging Re-Deployment (backend restart + frontend rebuild)
+
+---
+
+### Context
+
+The original T-020 deployment (2026-02-24) successfully ran all services. Since then:
+- Port 3000 became occupied by a different project (`i-wish-spotify-could` Next.js dev server at `http://localhost:3000`)
+- The Vite preview frontend (PID 93586) was still running on port 4173 ✅
+- PostgreSQL with all 6 tables was still running ✅
+- The backend (Express) was not running (port conflict) ❌
+- The original `.env` had `CORS_ORIGIN=http://localhost:5173` — incorrect for preview serving from `:4173`
+- The original frontend dist used `/api/v1` (relative URL) — no proxy in Vite preview mode would have caused API calls to fail
+
+This re-deployment fixes all three issues.
+
+---
+
+### Pre-Deploy Verification
+
+| Check | Result |
+|-------|--------|
+| QA Engineer third-pass handoff confirmed in handoff-log.md | ✅ CONFIRMED — "QA Engineer completed a full third-pass verification of Sprint 1 on 2026-02-24. No regressions found." |
+| All Sprint 1 tasks (T-001 to T-021) marked Done | ✅ CONFIRMED — T-022 (User Agent) In Progress (expected — post-deploy) |
+| 6 database migrations status | ✅ CONFIRMED — all 6 already applied (technical-context.md + \dt confirmed 8 tables in appdb) |
+| Database connectivity | ✅ CONFIRMED — PostgreSQL 15 running, `appdb` has all tables |
+
+---
+
+### Build Step 1 — Dependency Installation
+
+**Command:** `cd backend && npm install` + `cd frontend && npm install`
+**Result:** ✅ SUCCESS
+**Notes:** Both `node_modules/` directories were present and up-to-date. npm install ran without installing new packages. 5 moderate dev-dep vulnerabilities (esbuild GHSA-67mh-4wv8-2f99) — pre-existing, accepted by QA in T-018.
+
+---
+
+### Build Step 2 — Environment Configuration Update
+
+**Problem:** Port 3000 occupied by another application. Original `.env` used `PORT=3000` and `CORS_ORIGIN=http://localhost:5173`.
+
+**Changes made to `backend/.env`:**
+- `PORT`: 3000 → **3001** (port 3000 occupied by unrelated project)
+- `CORS_ORIGIN`: `http://localhost:5173` → **`http://localhost:4173`** (matches actual Vite preview URL)
+
+All other env vars unchanged (JWT_SECRET, DATABASE_URL, JWT_EXPIRES_IN, JWT_REFRESH_EXPIRES_IN).
+
+---
+
+### Build Step 3 — Frontend Production Rebuild
+
+**Command:** `VITE_API_URL=http://localhost:3001/api/v1 npm run build` (from `frontend/`)
+**Build Tool:** Vite 6.4.1
+**Result:** ✅ SUCCESS
+**Duration:** 611ms
+**Output:**
+- `dist/index.html` — 0.39 kB (gzip: 0.26 kB)
+- `dist/assets/index-BKHqepzx.css` — 20.76 kB (gzip: 4.24 kB)
+- `dist/assets/index-CL1WbiE8.js` — 243.65 kB (gzip: 79.60 kB)
+- 103 modules transformed
+**Build errors:** 0
+**Key change:** `VITE_API_URL=http://localhost:3001/api/v1` baked into bundle — verified via grep on built asset.
+**Why:** The previous dist used `/api/v1` (relative URL). In `vite preview` mode there is no proxy, so relative calls would have gone to `http://localhost:4173/api/v1` (nonexistent). Now the correct absolute URL is hardcoded.
+
+---
+
+### Build Step 4 — Database Migrations
+
+**Status:** ✅ NO ACTION REQUIRED — all 6 migrations already applied from T-020 (2026-02-24)
+**Verification:** `\dt` on `appdb` confirmed: users, refresh_tokens, trips, flights, stays, activities, knex_migrations, knex_migrations_lock — 8 tables present.
+
+---
+
+### Build Step 5 — Backend Server Start
+
+**Command:** `cd backend && node src/index.js &` (background process)
+**Result:** ✅ SUCCESS — "Server running on port 3001"
+**Port:** `3001`
+**URL:** `http://localhost:3001`
+**PID:** 18213
+**Log:** `/tmp/triplanner-backend.log`
+
+---
+
+### Build Step 6 — Frontend Static Server
+
+**Command:** `cd frontend && npx vite preview --port 4173 &` (background process)
+**Result:** ✅ SUCCESS — Frontend served on port 4173
+**Port:** `4173`
+**URL:** `http://localhost:4173`
+**PID:** 18234
+**Log:** `/tmp/triplanner-frontend.log`
+**Serving from:** `frontend/dist/` (new production Vite build)
+
+---
+
+### Smoke Tests (Post-Deploy)
+
+| Test | Endpoint | Expected | Actual | Result |
+|------|----------|----------|--------|--------|
+| Health check | `GET http://localhost:3001/api/v1/health` | `{"status":"ok"}` | `{"status":"ok"}` | ✅ PASS |
+| User registration | `POST http://localhost:3001/api/v1/auth/register` | 201/200 + user + JWT | 200 + user object + access_token (new user UUID: 5b4228f7-...) | ✅ PASS |
+| Protected route | `GET http://localhost:3001/api/v1/trips` (with JWT) | 200 + `{"data":[],"pagination":{...}}` | `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}` | ✅ PASS |
+| Frontend served | `GET http://localhost:4173/` | 200 HTML | 200 | ✅ PASS |
+| CORS header | `GET` with `Origin: http://localhost:4173` | `Access-Control-Allow-Origin: http://localhost:4173` | Confirmed ✅ | ✅ PASS |
+| CORS credentials | — | `Access-Control-Allow-Credentials: true` | Confirmed ✅ | ✅ PASS |
+| API URL in bundle | `grep` dist/assets/*.js | `"http://localhost:3001/api/v1"` | Confirmed ✅ | ✅ PASS |
+
+---
+
+### Staging Deployment Summary
+
+| Component | Status | URL |
+|-----------|--------|-----|
+| Backend API (Express) | ✅ Running | `http://localhost:3001` |
+| Frontend (Static/Vite preview) | ✅ Running | `http://localhost:4173` |
+| PostgreSQL 15 | ✅ Running | `localhost:5432` / `appdb` |
+| Database Migrations | ✅ Applied (6/6) | — |
+| Health Endpoint | ✅ Responding | `http://localhost:3001/api/v1/health` |
+| CORS | ✅ Correct | `http://localhost:4173` → `http://localhost:3001` ✅ |
+| API URL in Frontend | ✅ Correct | `http://localhost:3001/api/v1` baked in |
+
+**Overall Build Status: ✅ SUCCESS**
+**Environment: Staging (local processes)**
+**Deploy Verified: Pending Monitor Agent health check**
+
+---
+
+### Notes for Monitor Agent
+
+The backend port has changed from 3000 to **3001** due to a port conflict with another local application. All health checks must use the new port. Frontend remains at port 4173. The database is unchanged — all 6 tables are present with existing data.
+
+**Restart commands (if services go down):**
+- Backend: `cd /Users/yixinxiao/CLAUDE/triplanner/backend && node src/index.js &`
+- Frontend: `cd /Users/yixinxiao/CLAUDE/triplanner/frontend && npx vite preview --port 4173 &`
+- PostgreSQL: `/opt/homebrew/bin/brew services start postgresql@15`
 
 ---
 
