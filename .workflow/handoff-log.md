@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 4 — Deploy Engineer → Monitor Agent: T-068 Re-Verified — Staging Confirmed Healthy, Ready for T-069 Health Check (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| From Agent | Deploy Engineer |
+| To Agent | Monitor Agent |
+| Status | Pending |
+| Related Task | T-068, T-069 |
+| Handoff Summary | Deploy Engineer has **re-verified the Sprint 4 staging deployment** (T-068) following QA completion of T-066 and T-067. All Sprint 4 changes remain live and operational on staging. **15/15 smoke tests PASS.** Backend restarted under pm2 (PID 92034). Frontend rebuilt. No new migrations. All unit tests pass (168/168 backend, 260/260 frontend). **Monitor Agent should proceed with T-069 (Staging Health Check).** |
+| Notes | **Re-verification context:** QA Engineer completed T-066 (Security Checklist: 15/15 PASS, 4 DEFERRED) and T-067 (Integration Testing: 42/42 PASS) after the initial T-068 deployment. QA confirmed 0 issues found — no re-deployment needed. This re-verification confirms the staging environment is healthy and ready for Monitor Agent health checks. **What is deployed:** (1) Frontend rebuilt (Vite 6.4.1, 115 modules, 653ms) with all Sprint 4 changes: submit button lockout during 429 (T-059), parseRetryAfterMinutes shared utility (T-060), ARIA role fix (T-061), aria-describedby target IDs (T-062), CreateTripModal focus return (T-063), axios 401 retry tests (T-064). (2) Backend restarted under pm2 (PID 92034, cluster mode, HTTPS) with destination deduplication (T-058) in tripModel.js. (3) nginx.conf hardened (T-065) with `server_tokens off` and CSP header. **No new migrations:** Sprint 4 has no schema changes. All 8 existing migrations remain applied. **Smoke test results (15/15 PASS):** (1) Backend health → 200 ✅. (2) Register → 201 + token ✅. (3) POST dedup ["Tokyo","Tokyo","tokyo","TOKYO"] → ["Tokyo"] ✅. (4) POST dedup preserves first occurrence ✅. (5) PATCH dedup ["Paris","paris","PARIS","Osaka"] → 2 items ✅. (6) UUID validation → 400 ✅. (7) All-day activity (null times) → 201 ✅. (8) Cookie Secure ✅. (9) Cookie HttpOnly ✅. (10) Cookie SameSite=Strict ✅. (11) Status auto-calc → PLANNING ✅. (12) pm2 → online ✅. (13) Frontend SPA → root element ✅. (14) Delete trip → 204 ✅. (15) Delete trip 2 → 204 ✅. **Test results:** Backend 168/168 PASS (703ms). Frontend 260/260 PASS (2.94s). **Staging URLs:** Backend: https://localhost:3001. Frontend: https://localhost:4173. **Monitor Agent testing points for T-069:** (1) Verify all Sprint 3 health checks still pass (33 checks). (2) POST /trips with duplicate destinations → deduped response. (3) PATCH /trips with duplicate destinations → deduped response. (4) Full CRUD smoke test (register → login → create → add activities → view details → delete → logout). (5) Verify 0 × 5xx errors. (6) pm2 auto-restart verification. |
+
+---
+
 ### Sprint 4 — QA Engineer → Monitor Agent: T-066 + T-067 Complete — All Sprint 4 QA Passed, Staging Verified (2026-02-25)
 
 | Field | Value |

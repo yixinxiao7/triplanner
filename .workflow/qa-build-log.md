@@ -2894,3 +2894,61 @@ Sprint 4 has no schema changes. All 8 existing migrations remain applied (Batch 
 **Handoff to Deploy Engineer: APPROVED** (deployment already completed via T-068 — no re-deployment needed since QA found 0 issues).
 
 ---
+
+## Sprint 4 — Deploy Engineer Re-Verification & Staging Confirmation (T-068) — 2026-02-25
+
+**Deploy Engineer:** Deploy Engineer
+**Sprint:** 4
+**Date:** 2026-02-25
+**Task:** T-068 (Staging Re-Verification)
+**Scope:** Post-QA verification of Sprint 4 staging deployment — all changes from T-058–T-065
+
+---
+
+### Sprint 4 Re-Verification Entries
+
+| Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
+|----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 4 — Backend dependency install (re-verify) | Build | Pass | Success | Staging | No | Deploy Engineer | npm install: 215 packages audited, up to date. 5 moderate dev-only vulns (esbuild via vitest). 0 production vulnerabilities. |
+| Sprint 4 — Frontend dependency install (re-verify) | Build | Pass | Success | Staging | No | Deploy Engineer | npm install: 283 packages audited, up to date. 5 moderate dev-only vulns (esbuild via vitest). 0 production vulnerabilities. |
+| Sprint 4 — Frontend production build (re-verify) | Build | Pass | Success | Staging | No | Deploy Engineer | Vite 6.4.1 build succeeded: 115 modules transformed, 653ms. Output: dist/index.html (0.39 kB), dist/assets/index.css (54.99 kB gzip 8.75 kB), dist/assets/index.js (301.29 kB gzip 93.27 kB). No errors, no warnings. VITE_API_URL=https://localhost:3001/api/v1. |
+| Sprint 4 — Backend unit tests (168 tests, 9 files) — re-verify | Unit Test | Pass | Success | Local | No | Deploy Engineer | 168/168 PASS, 703ms. All 9 test files pass: auth(14), trips(16), flights(10), stays(8), activities(12), sprint2(37), sprint3(33), sprint4(19), tripStatus(19). stderr: expected SyntaxError logs from INVALID_JSON tests — non-blocking. |
+| Sprint 4 — Frontend unit tests (260 tests, 18 files) — re-verify | Unit Test | Pass | Success | Local | No | Deploy Engineer | 260/260 PASS, 2.94s. All 18 test files pass. React Router v6 future-flag warnings: expected, non-blocking. act() warnings: non-blocking. |
+| Sprint 4 — Database migration status (re-verify) | Migration | Pass | Success | Staging | No | Deploy Engineer | "Already up to date" — all 8 migrations applied (Batch 1: 001–006, Batch 2: 007, Batch 3: 008). No new migrations for Sprint 4. |
+| Sprint 4 — Backend restart under pm2 (re-verify) | Build | Pass | Success | Staging | No | Deploy Engineer | pm2 restart triplanner-backend: PID changed to 92034. Status: online. Cluster mode. HTTPS operational on :3001. |
+| Sprint 4 — Staging deployment (re-verify) | Post-Deploy Health Check | Pass | Success | Staging | Pending Monitor | Deploy Engineer | Backend: https://localhost:3001 (Node.js, PORT=3001, NODE_ENV=staging, HTTPS). Frontend: https://localhost:4173 (Vite preview, HTTPS). PostgreSQL: localhost:5432/appdb (Homebrew PostgreSQL 15). pm2: triplanner-backend (online, cluster mode). Docker not available — using local processes. All env vars configured. |
+| Sprint 4 — Staging smoke tests (15 checks) — re-verify | E2E Test | Pass | Success | Staging | Pending Monitor | Deploy Engineer | 15/15 smoke tests PASS: (1) Backend health → 200 ✅. (2) Register user → 201 + token ✅. (3) POST dedup [Tokyo,Tokyo,tokyo,TOKYO] → 1 destination ✅ (T-058). (4) POST dedup preserves first occurrence "Tokyo" ✅ (T-058). (5) PATCH dedup [Paris,paris,PARIS,Osaka] → 2 destinations ✅ (T-058). (6) UUID validation → 400 ✅. (7) All-day activity (null times) → 201 ✅. (8) Cookie Secure flag ✅. (9) Cookie HttpOnly flag ✅. (10) Cookie SameSite=Strict ✅. (11) Trip status auto-calc (future) → PLANNING ✅. (12) pm2 online ✅. (13) Frontend SPA root element ✅. (14) Delete trip → 204 ✅. (15) Delete trip 2 → 204 ✅. |
+
+---
+
+### Re-Verification Summary
+
+**Context:** QA Engineer completed T-066 (Security Checklist) and T-067 (Integration Testing) after the initial T-068 deployment. QA confirmed 0 issues and no re-deployment needed. This re-verification confirms the staging environment remains healthy and all Sprint 4 features are operational.
+
+**Pre-Deploy Checks (all confirmed):**
+- [x] QA confirmation received: T-066 (19 security items, 15 PASS, 4 DEFERRED) + T-067 (42/42 integration checks PASS)
+- [x] No pending migrations (Sprint 4 is application-layer only)
+- [x] All Sprint 4 implementation tasks (T-057–T-065) are Done
+- [x] Manager code review approved for all tasks
+
+**Build Verification:**
+- [x] Backend: 215 packages, 0 production vulnerabilities
+- [x] Frontend: 283 packages, 0 production vulnerabilities
+- [x] Frontend build: 115 modules, 653ms, no errors/warnings
+- [x] Backend tests: 168/168 PASS (703ms)
+- [x] Frontend tests: 260/260 PASS (2.94s)
+
+**Staging Environment:**
+- [x] Backend: https://localhost:3001 (pm2, cluster mode, HTTPS, PID 92034)
+- [x] Frontend: https://localhost:4173 (Vite preview, HTTPS)
+- [x] PostgreSQL: localhost:5432/appdb (all 8 migrations applied)
+- [x] Docker: Not available — using local processes (documented limitation)
+
+**Smoke Tests: 15/15 PASS**
+- Sprint 4 feature verification: destination dedup POST + PATCH ✅
+- Sprint 3 regression: HTTPS, cookies, UUID validation, all-day activities, status auto-calc ✅
+- Infrastructure: pm2 online, frontend SPA serving ✅
+
+**Handoff to Monitor Agent: APPROVED** — Monitor Agent should proceed with T-069 (Staging Health Check).
+
+---
