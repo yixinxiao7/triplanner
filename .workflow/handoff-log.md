@@ -17,6 +17,34 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 3 — Monitor Agent → User Agent (T-055: Staging Verified — Ready for User Testing) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Monitor Agent |
+| To Agent | User Agent |
+| Status | Pending |
+| Related Task | T-055, T-056 |
+| Handoff Summary | Monitor Agent has completed T-055 (Sprint 3 staging health check) on 2026-02-25. **33/33 health checks PASS. Deploy Verified = Yes.** Staging is healthy and ready for User Agent testing (T-056). All Sprint 2 regressions pass. All Sprint 3 features verified (optional activity times, multi-destination, HTTPS, Secure cookies, pm2 auto-restart, rate limiting). Zero 5xx errors. |
+| Notes | **Services verified healthy:** (1) Backend: https://localhost:3001 — HTTPS, TLSv1.3, pm2 managed, auto-restart confirmed. (2) Frontend: https://localhost:4173 — SPA loads over HTTPS. (3) PostgreSQL: localhost:5432/appdb — 8 migrations applied, all CRUD operations succeed. **What User Agent should test (T-056):** (1) Register + login over HTTPS — verify Secure cookie in browser. (2) Create trip with multi-destination chip input → verify all destinations appear on trip details. (3) Edit destinations on trip details page (add/remove) → PATCH saves correctly. (4) Create "all day" activity (no times) → "ALL DAY" badge displays on trip details. (5) Toggle existing timed activity to all-day and back → verify UI updates. (6) Trigger 429 rate limit on login → amber "Too many attempts" banner (not generic error) with countdown. (7) Date formatting on TripCard uses shared utility (visual check). (8) Edit page workflows: form submission, validation, edit, delete, cancel. (9) Full regression: all Sprint 1 + Sprint 2 features still work over HTTPS. **Known limitations:** Self-signed TLS cert (browser will show warnings — use `--insecure` or accept cert). In-memory rate limit store (resets on restart). |
+
+---
+
+### Sprint 3 — Monitor Agent → Manager Agent (T-055: Staging Health Check Complete — Deploy Verified) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Monitor Agent |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-055 |
+| Handoff Summary | Monitor Agent has completed T-055 (Sprint 3 staging health check). **33/33 checks PASS. Deploy Verified = Yes.** Full report logged in qa-build-log.md. T-055 marked Done. Handoff to User Agent (T-056) logged. No blockers. No issues found. |
+| Notes | **Summary:** (1) Infrastructure: HTTPS health 200 (35ms), TLSv1.3 verified, pm2 online + auto-restart confirmed. (2) Auth: register 201, login 200, logout 204, Secure cookie flag confirmed on all auth responses. (3) Sprint 3 features: optional activity times CRUD + linked validation + NULLS LAST ordering all pass. Multi-destination create + PATCH verified. PATCH time conversion (all-day ↔ timed) works. (4) Sprint 2 regression: 24/24 checks pass (trips CRUD, sub-resources, UUID validation, rate limiting, malformed JSON, status auto-calc). (5) Security: Helmet headers present, CORS correct, rate limiting active. (6) Zero 5xx errors across 33+ API calls. **Detailed report:** qa-build-log.md, Sprint 3 Monitor Agent section. |
+
+---
+
 ### Sprint 3 — Deploy Engineer → Monitor Agent (T-054: Staging Deployed — Ready for Health Checks) (2026-02-25)
 
 | Field | Value |
@@ -24,7 +52,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 3 |
 | From Agent | Deploy Engineer |
 | To Agent | Monitor Agent |
-| Status | Pending |
+| Status | Done |
 | Related Task | T-054, T-055 |
 | Handoff Summary | Deploy Engineer has completed T-054 (Sprint 3 staging re-deployment) on 2026-02-25. Migration 008 applied. Frontend rebuilt with all Sprint 3 components. Backend restarted under pm2 with HTTPS. 14/14 smoke tests PASS. Monitor Agent is cleared to begin T-055 (staging health checks). |
 | Notes | **Services running:** (1) Backend: https://localhost:3001 — Node.js under pm2, HTTPS, PID 68090. (2) Frontend: https://localhost:4173 — Vite preview serving new build over HTTPS. (3) PostgreSQL: localhost:5432/appdb — Homebrew PostgreSQL 15, 8 migrations applied (001–008). (4) pm2: triplanner-backend, cluster mode, online, auto-restart enabled. **What Monitor Agent should verify (T-055):** (1) All Sprint 2 health checks (24/24) still pass over HTTPS. (2) HTTPS health check: `curl -sk https://localhost:3001/api/v1/health` → 200. (3) pm2 status: `pm2 list` → triplanner-backend online. Auto-restart test: kill process → verify pm2 restarts. (4) Optional activity times: POST /trips/:id/activities with null start_time/end_time → 201. Linked validation (one time without other) → 400. GET list ordering: timed before timeless (NULLS LAST). (5) Multi-destination: POST /trips with destinations array → 201, all destinations returned. (6) Cookie Secure flag: login response Set-Cookie includes `Secure`. (7) TLS handshake: verify certificate valid (self-signed expected). (8) UUID validation → 400 (regression from Sprint 2). (9) Rate limiting → 429 on excessive requests (regression from Sprint 2). (10) Frontend SPA loads over HTTPS with root element. **Docker:** Not available — staging uses local processes. **Known limitations:** Self-signed TLS cert (browser warnings expected), Vite preview (not nginx), in-memory rate limit store (resets on restart). |

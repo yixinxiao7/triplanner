@@ -72,6 +72,7 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 | Sprint 3 — Backend restart under pm2 — T-054 | Build | Pass | Success | Staging | No | Deploy Engineer | pm2 restart triplanner-backend: PID changed from 60986 → 68090. Status: online. Cluster mode. Memory: 86.1MB. HTTPS operational on :3001. |
 | Sprint 3 — Staging deployment — T-054 | Post-Deploy Health Check | Pass | Success | Staging | Pending Monitor | Deploy Engineer | Backend: https://localhost:3001 (Node.js, PORT=3001, NODE_ENV=staging, HTTPS). Frontend: https://localhost:4173 (Vite preview, HTTPS). PostgreSQL: localhost:5432/appdb (Homebrew PostgreSQL 15). pm2: triplanner-backend (online, cluster mode). Docker not available — using local processes. All env vars configured. |
 | Sprint 3 — Staging smoke tests (14 checks) — T-054 | E2E Test | Pass | Success | Staging | Pending Monitor | Deploy Engineer | 14/14 smoke tests PASS: (1) HTTPS health → 200 ✅, (2) Register → 201 ✅, (3) Login → 200 + token ✅, (4) Create trip with multi-destination array → 201 + 3 destinations ✅, (5) Create all-day activity (null times) → 201 + null times ✅, (6) Create timed activity → 201 + times ✅, (7) Linked validation (start_time only) → 400 ✅, (8) Activity ordering (timed before timeless) → NULLS LAST ✅, (9) UUID validation → 400 VALIDATION_ERROR ✅, (10) Cookie Secure flag → HttpOnly; Secure; SameSite=Strict ✅, (11) Trip status auto-calc (future) → PLANNING ✅, (12) pm2 status → online ✅, (13) Frontend HTTPS → SPA root ✅, (14) Delete trip → 204 ✅. |
+| Sprint 3 — Monitor Agent post-deploy health check — T-055 (33 checks: 24 Sprint 2 regression + 9 Sprint 3 new) | Post-Deploy Health Check | Pass | Success | Staging | **Yes** | Monitor Agent | None — 33/33 checks PASS. Full end-to-end HTTPS flow: register → login → create trip (multi-destination array) → add flight/stay/activity → create all-day activity (null times) → linked validation → list ordering (NULLS LAST) → PATCH flight/stay/activity (convert all-day↔timed) → UUID validation → rate limiting (429) → pm2 auto-restart → delete all → logout. All Sprint 2 regressions pass. All Sprint 3 features verified (T-043 optional times, T-044 HTTPS+Secure cookies, T-050 pm2). TLS v1.3 handshake verified. 0 × 5xx errors. Detailed report below. |
 
 ---
 
@@ -430,6 +431,161 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
   - Frontend: https://localhost:4173
   - PostgreSQL: localhost:5432/appdb
   - pm2 process: triplanner-backend (online)
+
+---
+
+## Sprint 3 — Monitor Agent Post-Deploy Health Check Report (T-055) — 2026-02-25
+
+**Monitor Agent:** Monitor Agent
+**Sprint:** 3
+**Date:** 2026-02-25
+**Task:** T-055 (Staging health check)
+**Environment:** Staging
+**Deploy Verified:** Yes
+
+### Health Check Summary
+
+```
+Environment: Staging
+Timestamp: 2026-02-25T19:09:00Z
+Checks:
+  - [x] App responds (GET https://localhost:3001/api/v1/health → 200, {"status":"ok"}) — 35ms
+  - [x] TLS handshake (TLSv1.3 / AEAD-AES256-GCM-SHA384, CN=localhost self-signed cert, valid 2026-02-25 to 2027-02-25)
+  - [x] Auth works (POST /api/v1/auth/register → 201 with user + access_token)
+  - [x] Auth works (POST /api/v1/auth/login → 200 with user + access_token)
+  - [x] Cookie Secure flag (Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Strict)
+  - [x] pm2 process online (triplanner-backend, cluster mode, PID 68090)
+  - [x] pm2 auto-restart (killed PID 68090 → restarted to PID 69604 in <3s, health 200 after restart)
+  - [x] Key endpoints respond (all per api-contracts.md — see detailed list below)
+  - [x] No 5xx errors in any test
+  - [x] Database connected (all CRUD operations succeed, data persists correctly)
+  - [x] Frontend SPA loads (https://localhost:4173 → 200, <div id="root"></div>)
+Result: PASS
+Notes: 33/33 checks passed. Zero failures. Zero 5xx errors.
+```
+
+### Detailed Check Results (33/33 PASS)
+
+#### Infrastructure Checks (4/4 PASS)
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 1 | `GET https://localhost:3001/api/v1/health` | 200 `{"status":"ok"}` | 200 `{"status":"ok"}` (35ms) | ✅ PASS |
+| 2 | TLS handshake | TLSv1.3, valid certificate | TLSv1.3 / AEAD-AES256-GCM-SHA384, CN=localhost, self-signed, valid 2026-02-25 → 2027-02-25 | ✅ PASS |
+| 3 | pm2 status | triplanner-backend online | online, cluster mode, PID 68090 | ✅ PASS |
+| 4 | pm2 auto-restart | Process recovers after kill | Killed PID 68090 → restarted to PID 69604 in <3s, health 200 confirmed | ✅ PASS |
+
+#### Auth Flow Checks (5/5 PASS)
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 5 | `POST /auth/register` (new user) | 201 with `data.user` + `data.access_token` | 201, user object with UUID id, email, name, created_at + JWT access_token | ✅ PASS |
+| 6 | Register `Set-Cookie` | `refresh_token=...; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800` | Exact match. `Secure` flag confirmed. | ✅ PASS |
+| 7 | `POST /auth/login` (valid creds) | 200 with `data.user` + `data.access_token` | 200, matching user object + JWT token | ✅ PASS |
+| 8 | Login `Set-Cookie` | `HttpOnly; Secure; SameSite=Strict` | Exact match. `Secure` flag confirmed. | ✅ PASS |
+| 9 | `POST /auth/logout` | 204 No Content | 204 | ✅ PASS |
+
+#### Sprint 3 Feature: Optional Activity Times — T-043 (4/4 PASS)
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 10 | `POST /trips/:id/activities` with `start_time: null, end_time: null` | 201 with `start_time: null, end_time: null` | 201. `"start_time":null,"end_time":null` in response. | ✅ PASS |
+| 11 | `POST /trips/:id/activities` with `start_time: "09:00", end_time: "12:00"` | 201 with `start_time: "09:00:00", end_time: "12:00:00"` | 201. Times stored and returned as `HH:MM:SS`. | ✅ PASS |
+| 12 | Linked validation: `start_time: "10:00", end_time: null` | 400 VALIDATION_ERROR on `end_time` | 400 `{"error":{"message":"Validation failed","code":"VALIDATION_ERROR","fields":{"end_time":"Both start time and end time are required, or omit both for an all-day activity"}}}` | ✅ PASS |
+| 13 | Activity list ordering: NULLS LAST | Timed activities before timeless within same date | Timed ("Visit Temple", start_time 09:00:00) listed before timeless ("Free Day Explore", start_time null) on same date 2026-08-08. | ✅ PASS |
+
+#### Sprint 3 Feature: Multi-Destination Trips — T-046 (2/2 PASS)
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 14 | `POST /trips` with `destinations: ["Tokyo","Osaka","Kyoto"]` | 201 with 3-element array | 201. `"destinations":["Tokyo","Osaka","Kyoto"]` in response. | ✅ PASS |
+| 15 | `PATCH /trips/:id` with `destinations: ["Tokyo","Osaka","Kyoto","Nara"]` | 200 with 4-element array | 200. `"destinations":["Tokyo","Osaka","Kyoto","Nara"]` returned. | ✅ PASS |
+
+#### Sprint 3 Feature: HTTPS + Secure Cookies — T-044 (2/2 PASS)
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 16 | Backend serves HTTPS on :3001 | TLSv1.3 handshake succeeds | TLSv1.3 / AEAD-AES256-GCM-SHA384, ALPN http/1.1 | ✅ PASS |
+| 17 | Frontend serves HTTPS on :4173 | 200 with SPA HTML | 200, `<div id="root"></div>` present, JS/CSS assets linked | ✅ PASS |
+
+#### Sprint 3 Feature: PATCH Activity Time Conversions — T-043 (2/2 PASS)
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 18 | `PATCH` all-day → timed: `start_time: "14:00", end_time: "18:00"` | 200 with times set | 200. `"start_time":"14:00:00","end_time":"18:00:00"` | ✅ PASS |
+| 19 | `PATCH` timed → all-day: `start_time: null, end_time: null` | 200 with null times | 200. `"start_time":null,"end_time":null` | ✅ PASS |
+
+#### Sprint 2 Regression: Trips CRUD (5/5 PASS)
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 20 | `GET /trips` (list) | 200 with `data` array + `pagination` | 200. Array with trip, pagination `{page:1,limit:20,total:1}`. `start_date`/`end_date` present. | ✅ PASS |
+| 21 | `GET /trips/:id` | 200 with trip object | 200. Full trip object with destinations, dates, status. | ✅ PASS |
+| 22 | `PATCH /trips/:id` | 200 with updated fields | 200. `updated_at` changed, destinations updated to 4. | ✅ PASS |
+| 23 | `DELETE /trips/:id` (cascade) | 204 No Content | 204. | ✅ PASS |
+| 24 | Status auto-calculation (future dates) | PLANNING | `"status":"PLANNING"` (start_date 2026-08-07, today 2026-02-25) | ✅ PASS |
+
+#### Sprint 2 Regression: Sub-Resources (6/6 PASS)
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 25 | `POST /trips/:id/flights` | 201 with flight object | 201. All fields match (flight_number, airline, from/to, departure/arrival + tz). | ✅ PASS |
+| 26 | `GET /trips/:id/flights` | 200 with array | 200. Flight list returned. | ✅ PASS |
+| 27 | `PATCH /trips/:id/flights/:id` | 200 with updated airline | 200. `"airline":"All Nippon Airways"`, `updated_at` changed. | ✅ PASS |
+| 28 | `POST /trips/:id/stays` | 201 with stay object | 201. All fields match (category HOTEL, name, address, check_in/out + tz). | ✅ PASS |
+| 29 | `GET /trips/:id/stays` | 200 with array | 200. Stay list returned. | ✅ PASS |
+| 30 | `PATCH /trips/:id/stays/:id` | 200 with updated name | 200. `"name":"Park Hyatt Tokyo - Deluxe"`, `updated_at` changed. | ✅ PASS |
+
+#### Sprint 2 Regression: Error Handling + Security (3/3 PASS)
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 31 | UUID validation (`GET /trips/not-a-valid-uuid`) | 400 `VALIDATION_ERROR` | 400 `{"error":{"message":"Invalid ID format","code":"VALIDATION_ERROR"}}` | ✅ PASS |
+| 32 | Rate limiting (login endpoint, >10 requests) | 429 `RATE_LIMIT_EXCEEDED` with `Retry-After` header | 429 on 7th request (prior Sprint 2 monitor tests consumed quota). Response: `{"error":{"message":"Too many requests, please try again later.","code":"RATE_LIMIT_EXCEEDED"}}`. Headers: `Retry-After: 551`, `RateLimit-Remaining: 0`. | ✅ PASS |
+| 33 | Malformed JSON body | 400 `INVALID_JSON` | 400 `{"error":{"message":"Invalid JSON in request body","code":"INVALID_JSON"}}` | ✅ PASS |
+
+### Additional Checks
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| 401 Unauthorized (no token) | ✅ PASS | `GET /trips` without auth → 401 `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` |
+| 404 Not Found (valid UUID, no data) | ✅ PASS | `GET /trips/00000000-0000-4000-a000-000000000000` → 404 `{"error":{"message":"Trip not found","code":"NOT_FOUND"}}` |
+| `activity_date` format (B-010 regression) | ✅ PASS | All activity responses return `"YYYY-MM-DD"` format (e.g., `"2026-08-08"`), not ISO timestamp. |
+| DELETE flight/stay/activity | ✅ PASS | All return 204 No Content. |
+| Helmet security headers | ✅ PASS | All responses include: `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Content-Security-Policy`, `Cross-Origin-Opener-Policy`, `Referrer-Policy: no-referrer`. |
+| CORS configuration | ✅ PASS | `Access-Control-Allow-Origin: https://localhost:4173`, `Access-Control-Allow-Credentials: true`. |
+| RateLimit headers on normal requests | ✅ PASS | `RateLimit-Policy: 20;w=900` on register, `RateLimit-Policy: 10;w=900` on login. Standard headers present. |
+
+### Sprint 3 vs Sprint 2 Health Check Comparison
+
+| Metric | Sprint 2 | Sprint 3 | Change |
+|--------|----------|----------|--------|
+| Total checks | 24 | 33 | +9 (new Sprint 3 features) |
+| Protocol | HTTP | HTTPS | ✅ Upgraded |
+| TLS version | N/A | TLSv1.3 | ✅ New |
+| Cookie Secure flag | Not set | Set | ✅ Fixed |
+| Process management | None (manual Node) | pm2 cluster + auto-restart | ✅ New |
+| Optional activity times | N/A | Full CRUD + linked validation | ✅ New |
+| Multi-destination PATCH | Not tested | Verified | ✅ New |
+| PATCH time conversion | N/A | all-day ↔ timed verified | ✅ New |
+
+### Conclusion
+
+**Deploy Verified: Yes** — All 33 health checks pass. The Sprint 3 staging deployment is healthy and ready for User Agent testing (T-056).
+
+**Key confirmations:**
+1. HTTPS is operational end-to-end (TLSv1.3, self-signed cert, Secure cookies)
+2. pm2 auto-restart works within 3 seconds
+3. All Sprint 3 features work as documented in api-contracts.md (T-043 optional times, T-046 multi-destination)
+4. All Sprint 2 features pass regression (24/24 checks from prior health check)
+5. Zero 5xx errors across all 33+ API calls
+6. Security headers (Helmet) present on all responses
+7. Rate limiting active with standard headers
+
+**Known limitations (non-blocking, expected for staging):**
+1. Self-signed TLS certificate (browser warnings expected)
+2. In-memory rate limit store (resets on pm2 restart — acceptable for staging)
+3. Frontend via Vite preview (not nginx — acceptable for staging)
 
 ---
 
