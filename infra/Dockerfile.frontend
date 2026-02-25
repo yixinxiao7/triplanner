@@ -15,7 +15,7 @@ RUN npm ci && npm cache clean --force
 COPY frontend/ ./
 
 # Build argument for API URL (baked into the static bundle)
-ARG VITE_API_URL=https://localhost:3000/api/v1
+ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=$VITE_API_URL
 
 RUN npm run build

@@ -2497,4 +2497,59 @@ Notes: All 18 checks passed. Zero 5xx errors observed. All response shapes match
 **Sprint 1 deployment clearance: ✅ REMAINS VALID. T-022 (User Agent) may continue.**
 
 ---
+
+## Sprint 4 Entries
+
+| Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
+|----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 4 — T-065: nginx.conf hardening (server_tokens off + CSP header) | Security Scan | Pass | Success | Local | No | Deploy Engineer | nginx.conf updated: (1) `server_tokens off;` added in server block — hides nginx version. (2) `Content-Security-Policy` header added at server level and repeated in `/assets/` location block (prevents nginx header inheritance override). CSP policy: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'`. All blocks properly closed, all directives end with semicolons. |
+| Sprint 4 — T-065: Dockerfile.frontend ARG default fix | Security Scan | Pass | Success | Local | No | Deploy Engineer | Changed `ARG VITE_API_URL` default from `https://localhost:3000/api/v1` to `/api/v1` (relative path matching docker-compose default). The old HTTPS localhost default would fail without a TLS cert; the relative path is correct for production (nginx reverse proxy). |
+| Sprint 4 — T-065: Docker config syntactic validation (all files) | Integration Test | Pass | Success | Local | No | Deploy Engineer | Docker not available on staging machine — syntactic validation performed instead. **Dockerfile.backend:** Valid — multi-stage, non-root appuser, HEALTHCHECK, npm ci --omit=dev, no hardcoded secrets ✅. **Dockerfile.frontend:** Valid — multi-stage, non-root nginx user (USER nginx before CMD), HEALTHCHECK, ARG/ENV correct ✅. **docker-compose.yml:** Valid YAML — 4 services (postgres, migrate, backend, frontend), depends_on with conditions, DB_PASSWORD + JWT_SECRET use `${VAR:?}` required syntax, postgres has no host port mapping ✅. **ci.yml:** Valid GitHub Actions — 4 jobs (backend-test, frontend-test, docker-build, deploy), postgres service container, npm audit, Docker build validation ✅. **nginx.conf:** Valid — all blocks matched, all directives semicolon-terminated, security headers present on all locations with add_header, CSP + server_tokens off ✅. |
+| Sprint 4 — T-065: Test regression verification | Unit Test | Pass | Success | Local | No | Deploy Engineer | Backend 149/149 PASS (705ms). Frontend 230/230 PASS (2.78s). Infrastructure changes do not affect application code. No regressions. |
+
+---
+
+### T-065 Detailed Report — Docker Build Validation + nginx.conf Hardening
+
+**Date:** 2026-02-25
+**Tested By:** Deploy Engineer
+**Related Task:** T-065
+**Sprint:** 4
+
+#### nginx.conf Hardening
+
+**Changes made:**
+
+1. **`server_tokens off;`** — Added in server block (line 6). Prevents nginx from revealing its version number in error pages and the `Server` response header. This addresses the security checklist item "Error pages do not reveal server technology or version info."
+
+2. **`Content-Security-Policy` header** — Added at server level (line 16) and repeated in the `/assets/` location block (line 34) to prevent nginx's `add_header` inheritance override behavior. Policy directives:
+   - `default-src 'self'` — Only allow resources from same origin by default
+   - `script-src 'self'` — Only allow scripts from same origin
+   - `style-src 'self' 'unsafe-inline'` — Allow same-origin styles + inline styles (required by React CSS-in-JS patterns)
+   - `img-src 'self' data:` — Allow same-origin images + data URIs (for inline images/icons)
+   - `connect-src 'self'` — Only allow API connections to same origin (covers /api/ proxy)
+   - `font-src 'self'` — Only allow same-origin fonts
+   - `object-src 'none'` — Block all plugins (Flash, Java, etc.)
+   - `frame-ancestors 'self'` — Prevent embedding in external iframes (complements X-Frame-Options)
+   - `base-uri 'self'` — Prevent base tag hijacking
+   - `form-action 'self'` — Only allow form submissions to same origin
+
+3. **Dockerfile.frontend ARG fix** — Changed `VITE_API_URL` default from `https://localhost:3000/api/v1` to `/api/v1`. The relative path is correct for production (nginx reverse proxies to backend).
+
+#### Docker Build Validation
+
+**Docker availability:** Docker is NOT available on the staging machine. Syntactic validation was performed as a code review instead. The CI/CD pipeline (`.github/workflows/ci.yml`) performs actual Docker builds on GitHub Actions runners where Docker is available.
+
+**Validation results:**
+
+| Config File | Syntax Valid | Security Check | Notes |
+|------------|-------------|----------------|-------|
+| `Dockerfile.backend` | ✅ | ✅ Non-root, no secrets, minimal image | Multi-stage, npm ci --omit=dev, HEALTHCHECK |
+| `Dockerfile.frontend` | ✅ | ✅ Non-root nginx, USER before CMD | Multi-stage, ARG default fixed to /api/v1 |
+| `docker-compose.yml` | ✅ | ✅ No hardcoded passwords, no host DB port | 4 services, depends_on conditions, required vars |
+| `ci.yml` | ✅ | ✅ Ephemeral CI credentials only | 4 jobs, npm audit, Docker validation |
+| `nginx.conf` | ✅ | ✅ server_tokens off, CSP, security headers | All location blocks have consistent headers |
+
+**Known limitation:** Actual Docker image build validation is deferred to CI/CD pipeline execution. The `docker-build` job in ci.yml builds both images and validates docker-compose config — this will exercise the real Docker build on the next push/PR to main.
+
 ---

@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 4 — Deploy Engineer → QA Engineer: T-065 Docker Validation + nginx Hardening Complete (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| From Agent | Deploy Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-065, T-066, T-067 |
+| Handoff Summary | Deploy Engineer has completed **T-065 (Docker build validation + nginx.conf hardening)**. nginx.conf has been hardened with `server_tokens off` and a comprehensive `Content-Security-Policy` header. All Docker configuration files (Dockerfiles, docker-compose.yml, ci.yml, nginx.conf) have been syntactically validated. Dockerfile.frontend ARG default was fixed. Task moved to In Review. Full report in qa-build-log.md Sprint 4 section. |
+| Notes | **What changed (files modified):** (1) `infra/nginx.conf` — Added `server_tokens off;` in server block (line 6). Added `Content-Security-Policy` header at server level (line 16) and in `/assets/` location block (line 34) to prevent nginx header inheritance override. CSP policy: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'`. (2) `infra/Dockerfile.frontend` — Changed `ARG VITE_API_URL` default from `https://localhost:3000/api/v1` to `/api/v1` (line 18). **Key testing points for QA:** (1) Verify `server_tokens off` is present in nginx.conf. (2) Verify CSP header is present at server level AND in `/assets/` location block (no inheritance gap). (3) Verify CSP policy directives are appropriate (no overly permissive wildcards, `object-src 'none'`). (4) Verify no hardcoded secrets in any Docker config. (5) Verify non-root user in both Dockerfiles (appuser, nginx). (6) Verify postgres service has no host port mapping in docker-compose.yml. (7) Verify DB_PASSWORD + JWT_SECRET use `:?` required syntax. (8) Dockerfile.frontend ARG default matches docker-compose default (`/api/v1`). **Docker build limitation:** Docker is not available on staging machine. Actual Docker image builds deferred to CI/CD pipeline (ci.yml docker-build job). Syntactic validation completed instead. **Test results:** Backend 149/149 PASS, Frontend 230/230 PASS — no regressions. |
+
+---
+
 ### Sprint 4 — Backend Engineer → QA Engineer: T-058 API Contract Ready for Testing Reference (2026-02-25)
 
 | Field | Value |
