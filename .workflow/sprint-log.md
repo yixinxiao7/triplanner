@@ -154,4 +154,132 @@ Summary of each completed development cycle. Written by the Manager Agent at the
 
 ---
 
+### Sprint #2 — 2026-02-25 to 2026-02-25
+
+**Goal:** Deliver the core editing experience for trip sub-resources — users can add, edit, and delete flights, stays, and activities via dedicated edit pages. Introduce trip date range support (start/end dates), trip status auto-calculation (ONGOING/COMPLETED), and the integrated calendar view at the top of the trip details page. Ship Sprint 1 bug fixes (UUID validation, activity_date format, rate limiting) as P0 pre-requisites.
+
+**Goal Met:** ✅ YES — All 9 sprint success criteria verified on staging by User Agent, Monitor Agent, and QA Engineer. The stretch goal (calendar component) was also completed.
+
+---
+
+**Tasks Completed (18/18):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-023 | Design spec: Flights edit page | ✅ Done |
+| T-024 | Design spec: Stays edit page | ✅ Done |
+| T-025 | Design spec: Activities edit page (multi-row form) | ✅ Done |
+| T-026 | Design spec: Calendar component + trip date range UI | ✅ Done |
+| T-027 | Backend bug fixes: UUID validation + activity_date format + INVALID_JSON error code (P0) | ✅ Done |
+| T-028 | Backend security: Rate limiting on auth endpoints (P0) | ✅ Done |
+| T-029 | Backend: Trip date range — schema migration + API update | ✅ Done |
+| T-030 | Backend: Trip status auto-calculation based on dates | ✅ Done |
+| T-031 | Frontend: Flights edit page (add/edit/delete flights) | ✅ Done |
+| T-032 | Frontend: Stays edit page (add/edit/delete stays) | ✅ Done |
+| T-033 | Frontend: Activities edit page (multi-row, batch save) | ✅ Done |
+| T-034 | Frontend: Trip date range UI (date pickers + updated trip cards) | ✅ Done |
+| T-035 | Frontend: Calendar component (custom CSS grid, color-coded events) | ✅ Done |
+| T-036 | QA: Security checklist + code review audit (19 items verified) | ✅ Done |
+| T-037 | QA: Integration testing (112 checks, 108 PASS, 4 WARN non-blocking) | ✅ Done |
+| T-038 | Deploy: Staging re-deployment (migration 007 + rebuilt frontend + backend) | ✅ Done |
+| T-039 | Monitor: Staging health check (24/24 health checks passed) | ✅ Done |
+| T-040 | User Agent: Feature walkthrough + structured feedback (14 entries submitted) | ✅ Done |
+
+**Tasks Carried Over:** None. All 18 Sprint 2 tasks completed and verified Done, including the P2 stretch goal (T-035 calendar component).
+
+---
+
+**Key Decisions (ADRs / Approvals This Sprint):**
+- **Schema Change Pre-Approval:** Manager pre-approved adding `start_date DATE NULL` and `end_date DATE NULL` to the `trips` table as part of sprint planning, enabling T-029 to proceed without blocking on an approval handoff cycle.
+- **Custom Calendar Implementation:** Frontend Engineer built a custom CSS grid calendar (TripCalendar.jsx, 294 lines) instead of importing an external library. This avoided adding a new npm dependency and the associated security audit surface. Documented as zero new production dependencies this sprint.
+- **Status Auto-Calculation Design:** Trip status is computed at read-time from dates (not stored). `computeTripStatus()` is a pure function applied in the model layer after DB query. This preserves the ability for manual status override when no dates are set.
+
+---
+
+**Feedback Summary (from User Agent T-040, 2026-02-25):**
+
+*14 entries: 11 positive findings, 2 minor issues, 1 suggestion. Zero Critical or Major issues.*
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-011 | Positive | — | Acknowledged | Sprint 1 bug fixes (UUID, activity_date, INVALID_JSON) all verified resolved |
+| FB-012 | Positive | — | Acknowledged | Rate limiting on auth endpoints works correctly with proper headers |
+| FB-013 | Positive | — | Acknowledged | Trip date range CRUD works end-to-end with proper validation |
+| FB-014 | Positive | — | Acknowledged | Trip status auto-calculation works across all scenarios |
+| FB-015 | Positive | — | Acknowledged | Flights CRUD fully functional with comprehensive validation |
+| FB-016 | Positive | — | Acknowledged | Stays CRUD fully functional with category validation |
+| FB-017 | Positive | — | Acknowledged | Activities CRUD works with correct YYYY-MM-DD format |
+| FB-018 | Positive | — | Acknowledged | Cross-user authorization correctly enforced (403 on all sub-resources) |
+| FB-019 | Positive | — | Acknowledged | Edge cases handled: XSS, SQL injection, unicode, emoji all safe |
+| FB-020 | Positive | — | Acknowledged | Frontend build and SPA routing verified for all Sprint 2 routes |
+| FB-021 | Positive | — | Acknowledged | All Sprint 2 frontend components fully spec-compliant per code review |
+| FB-022 | UX Issue | Minor | Acknowledged (backlog → B-015) | Frontend lacks explicit 429 "too many requests" user message |
+| FB-023 | UX Issue | Minor | Acknowledged (backlog → B-016) | Activity start_time/end_time required — reduces flexibility for timeless activities |
+| FB-024 | UX Issue | Suggestion | Acknowledged (backlog → B-017) | Duplicate date formatting logic in TripCard vs formatDate.js utility |
+
+---
+
+**What Went Well:**
+- **Perfect delivery again:** 18/18 tasks completed in a single sprint with zero rework cycles, including the P2 stretch goal (calendar component)
+- **All Sprint 1 P0 bugs resolved:** The three critical bug fixes from Sprint 1 feedback (UUID validation, activity_date format, rate limiting) were shipped and verified as the first phase of the sprint
+- **Massive test coverage growth:** Backend grew from 60 → 116 tests (93% increase), frontend from 128 → 180 tests (41% increase). All 296 tests pass.
+- **Zero Critical/Major issues in User Agent feedback:** First sprint to receive no Major or Critical bugs — only 2 Minor UX observations and 1 Suggestion
+- **Security posture strengthened:** Sprint 1's accepted risk (no rate limiting) is now resolved. QA re-verified all 19 security checklist items with 15 PASS, 0 FAIL, 4 DEFERRED (infrastructure-only). npm audit: 0 production vulnerabilities.
+- **Calendar delivered as stretch:** The P2 calendar component was delivered with a custom CSS grid implementation, avoiding external dependencies. Color-coded events (flights blue, stays teal, activities amber), month navigation, responsive mobile dot view, and full accessibility.
+- **Agent orchestration ran smoothly:** Design → Backend (parallel) → Frontend → QA → Deploy → Monitor → User Agent pipeline executed cleanly with well-structured handoffs and no blockers.
+
+**What Could Improve:**
+- **Frontend 429 handling:** The axios interceptor does not have a specific handler for HTTP 429 responses. The generic error banner shows "something went wrong" which is misleading when the user is rate-limited. Adding an explicit 429 handler with a "try again later" message and Retry-After countdown would improve UX.
+- **Edit page test depth:** Edit page unit tests cover render/loading/empty states but not full form submission, validation, and delete workflows. The code was verified correct through code review, but deeper tests would catch regressions.
+- **Activity time flexibility:** The API requires `start_time` and `end_time` for activities, which prevents creating timeless activities like "Free Day" or "Explore the city." Making these optional would improve usability.
+- **Code deduplication:** TripCard contains an inline `formatTripDateRange` function that duplicates logic in `utils/formatDate.js`. Should be consolidated.
+- **TripCard test gap:** Missing a test case for formatted date range display when dates ARE set (null case is tested, populated case is not).
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 3+):**
+
+*From Sprint 1 (still outstanding):*
+- ⚠️ `CreateTripModal` `triggerRef` focus-return-to-trigger not attached (P3 cosmetic)
+- ⚠️ Axios 401 retry queue has no dedicated unit test (integration-covered only)
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (no production impact)
+- ⚠️ HTTPS not configured on local staging — refresh token cookie `secure: false` (B-014, required before production)
+- ⚠️ Staging processes not managed by pm2 — no automatic restart on crash (B-013)
+
+*New from Sprint 2:*
+- ⚠️ Frontend lacks explicit HTTP 429 handler — generic error displayed on rate limit (FB-022 → B-015)
+- ⚠️ Edit page tests cover render states but not form submission/validation/delete workflows
+- ⚠️ Activity start_time/end_time are required, limiting flexibility for timeless activities (FB-023 → B-016)
+- ⚠️ Duplicate date formatting logic: TripCard inline vs formatDate.js (FB-024 → B-017)
+- ⚠️ TripCard test missing date-range-display test case when dates are set
+- ⚠️ Rate limiting uses in-memory store — will not persist across server restarts or scale across multiple processes
+
+---
+
+**Next Sprint Focus (Sprint 3 Recommendations):**
+
+*Priority order: production readiness → remaining MVP polish → UX improvements → infrastructure.*
+
+**P0 — Sprint 3 Must-Have (Production Readiness):**
+1. **B-008** — Production deployment: Deploy to production hosting with frontend static serving, backend containerized (or pm2-managed), proper HTTPS, and production-grade PostgreSQL
+2. **B-014** — HTTPS configuration: Required for `secure: true` on refresh token cookie. Must be resolved before production deployment.
+
+**P1 — MVP Polish (Core Experience Enhancements):**
+3. **B-015 (FB-022)** — Frontend: Add explicit 429 "too many requests" error handling in axios interceptor / auth pages
+4. **B-016 (FB-023)** — Backend + Frontend: Make activity `start_time` and `end_time` optional to support timeless activities
+5. **B-007** — Multi-destination structured UI: Replace text array input with add/remove destination UI on trip creation and details
+6. Edit page test hardening: Add integration tests for form submission, validation, and delete workflows on flights/stays/activities edit pages
+
+**P2 — Enhancements (if capacity allows):**
+7. **B-017 (FB-024)** — Refactor: Consolidate duplicate date formatting logic in TripCard
+8. **B-013** — pm2 process management for staging (or Docker Compose)
+9. Rate limiting persistence: Move from in-memory store to Redis or a persistent backend for production scalability
+
+**Deferred to Sprint 4+:**
+- Auto-generated itinerary suggestions (out of scope per project brief)
+- Home page summary calendar (out of scope per project brief)
+- MFA login (out of scope per project brief)
+
+---
+
 *Add new sprint summaries above this line, newest first.*

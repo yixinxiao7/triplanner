@@ -299,7 +299,7 @@ The production build and staging deployment are clean.
 | Sprint | 2 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-027 |
 
 **What was tested:** All three Sprint 1 bugs reported in FB-001, FB-002, FB-004 were retested on the Sprint 2 staging deployment.
@@ -320,7 +320,7 @@ All three P0 fixes verified. Excellent work by the Backend Engineer.
 | Sprint | 2 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-028 |
 
 **What was tested:** Rate limiting on `/auth/login` (limit: 10/15min) and `/auth/register` (limit: 20/15min).
@@ -342,7 +342,7 @@ This resolves FB-003 (Sprint 1 security finding). Rate limiting is properly impl
 | Sprint | 2 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-029, T-034 |
 
 **What was tested:** Full lifecycle of trip date range: create with dates, GET, PATCH update, PATCH clear to null, validation.
@@ -368,7 +368,7 @@ Date range feature is complete and robust.
 | Sprint | 2 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-030 |
 
 **What was tested:** Status auto-calculation based on trip dates across 5 scenarios.
@@ -392,7 +392,7 @@ Auto-calculation is accurate with proper boundary handling.
 | Sprint | 2 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-031 |
 
 **What was tested:** Complete CRUD for flights: create, read (single + list), update, delete.
@@ -418,7 +418,7 @@ Flights API is solid.
 | Sprint | 2 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-032 |
 
 **What was tested:** Complete CRUD for stays: create (HOTEL, AIRBNB), read, update, delete, validation.
@@ -442,7 +442,7 @@ Flights API is solid.
 | Sprint | 2 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-033 |
 
 **What was tested:** Create, list, update, delete activities; verify date format.
@@ -466,7 +466,7 @@ Flights API is solid.
 | Sprint | 2 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-027, T-031, T-032, T-033 |
 
 **What was tested:** Created second user and attempted to access/modify/delete first user's trip and sub-resources.
@@ -489,7 +489,7 @@ Trip ownership validation is applied consistently and correctly across all Sprin
 | Sprint | 2 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-027, T-036 |
 
 **What was tested:** Intentional attack vectors and boundary inputs.
@@ -516,7 +516,7 @@ Excellent input validation and security hardening.
 | Sprint | 2 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-031, T-032, T-033, T-034, T-035, T-038 |
 
 **What was tested:** Frontend build output, SPA routing, unit tests.
@@ -541,7 +541,7 @@ Excellent input validation and security hardening.
 | Sprint | 2 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-031, T-032, T-033, T-034, T-035 |
 
 **What was tested:** Comprehensive code review of all new Sprint 2 frontend components against ui-spec.md.
@@ -565,7 +565,7 @@ All components are feature-complete and well-implemented.
 | Sprint | 2 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-028 |
 
 **Steps to reproduce:**
@@ -587,7 +587,7 @@ All components are feature-complete and well-implemented.
 | Sprint | 2 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-033 |
 
 **Steps to reproduce:**
@@ -613,7 +613,7 @@ curl -s -X POST http://localhost:3001/api/v1/trips/:id/activities \
 | Sprint | 2 |
 | Category | UX Issue |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-034 |
 
 **Observation:** TripCard.jsx contains an inline `formatTripDateRange` function (lines 10-40) that duplicates logic already in `utils/formatDate.js` (`formatDateRange`). Both format date ranges but use slightly different logic paths.

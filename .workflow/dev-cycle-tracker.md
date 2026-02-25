@@ -162,5 +162,8 @@ Each task is a row in the table below. Agents update their assigned tasks as the
 | B-008 | Production deployment: Deploy to production hosting (frontend static, backend containerized with proper HTTPS) | Infrastructure | P1 | M | After staging is stable, edit flows are complete, and HTTPS is configured. Sprint 3+ target. |
 | B-013 | pm2 process management for staging: Automatic restart on crash + machine reboot | Infrastructure | P3 | S | Noted in Sprint 1 retrospective. Improves staging stability. Docker Compose would also address this. |
 | B-014 | HTTPS configuration for staging/production: Required for `secure: true` on refresh token cookie | Infrastructure | P1 | S | Must be resolved before any production deployment. |
+| B-015 | Frontend: Add explicit HTTP 429 "too many requests" error handling in axios interceptor and auth pages | Bug Fix | P2 | S | FB-022 (Sprint 2). Generic error shown instead of specific rate-limit message. Add 429 handler with Retry-After countdown. |
+| B-016 | Backend + Frontend: Make activity start_time and end_time optional | Feature | P2 | S | FB-023 (Sprint 2). Some activities ("Free Day", "Explore the city") don't have specific times. API contract + validation + frontend form need update. |
+| B-017 | Refactor: Consolidate duplicate date formatting logic in TripCard vs formatDate.js | Refactor | P3 | S | FB-024 (Sprint 2). TripCard.jsx contains inline formatTripDateRange that duplicates logic in utils/formatDate.js. Consolidate to prevent drift. |
 
 *Promoted to Sprint 2: B-001 → T-031, B-002 → T-032, B-003 → T-033, B-004 → T-035, B-005 → T-030, B-006 → T-029+T-034, B-009 → T-027, B-010 → T-027, B-011 → T-028, B-012 → T-027.*
