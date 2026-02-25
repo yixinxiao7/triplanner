@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 2 — Manager Agent → QA Engineer (Code Review APPROVED — All 9 Tasks Move to Integration Check)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | Manager Agent |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-027, T-028, T-029, T-030, T-031, T-032, T-033, T-034, T-035, T-036, T-037 |
+| Handoff Summary | Manager Agent has completed code review for all 9 Sprint 2 implementation tasks. All 9 tasks APPROVED and moved from "In Review" to "Integration Check" in dev-cycle-tracker.md. QA Engineer should begin T-036 (security checklist + code review audit) and T-037 (integration testing). |
+| Notes | **Code Review Summary (2026-02-25):** **BACKEND (4 tasks — all APPROVED):** **T-027 (Bug Fixes):** UUID v4 validation middleware (validateUUID.js) with correct regex, applied via router.param on all route files + global app.param('tripId'). TO_CHAR fix for activity_date format. SyntaxError → INVALID_JSON handling in errorHandler.js. 37 new tests in sprint2.test.js. No security issues. **T-028 (Rate Limiting):** Three rate limiters on auth routes (login 10/15min, register 20/15min, general 30/15min). Structured 429 response with RATE_LIMIT_EXCEEDED code. standardHeaders: true, legacyHeaders: false. **T-029 (Trip Date Range):** Migration 007 adds nullable DATE columns. TO_CHAR formatting ensures YYYY-MM-DD response. POST/PATCH validation with cross-field end ≥ start check. Clearing dates with null supported. **T-030 (Status Auto-Calc):** Pure computeTripStatus() function applied at read-time only. 19 dedicated unit tests cover all branches + boundary dates. Stored status used as fallback when dates null. **FRONTEND (5 tasks — all APPROVED):** **T-031 (Flights Edit):** Full CRUD, 2-column form grid, 28-timezone dropdown, inline delete confirmation, edit mode with accent border. Tests cover render/loading/empty/existing. **T-032 (Stays Edit):** Same skeleton as flights, category dropdown (HOTEL/AIRBNB/VRBO), optional address, checkout > checkin validation. **T-033 (Activities Edit):** Row-based batch form, Promise.allSettled for batch save, "+" adds rows, cancel without API calls, row-level validation. **T-034 (Trip Date Range UI):** TripCard updated with date range display. TripDetailsPage has display/edit/null modes. PATCH integration correct. **T-035 (Calendar):** Custom CSS grid (no external lib), monthly view, color-coded events (flights blue, stays teal, activities amber), 259 lines of tests. **TEST RESULTS:** Backend: 116/116 pass (7 test files). Frontend: 180/180 pass (15 test files). **SECURITY CHECKS:** No hardcoded secrets ✅. All Knex parameterized queries (no SQL injection) ✅. No dangerouslySetInnerHTML in frontend ✅. Error messages don't leak internals ✅. Auth middleware on all protected routes ✅. Trip ownership validated on every operation ✅. **FYI ITEMS FOR QA (non-blocking):** (1) Frontend edit page tests (T-031/T-032/T-033) cover render + loading + empty + existing data states but do NOT deeply test form submission/validation error/delete workflows via automated tests — QA should verify these flows manually or via integration tests (T-037). (2) TripCard.test.jsx missing one test case: formatted date range display when dates exist (only tests "dates not set" fallback). Implementation is correct. (3) Activities edit page global temp ID counter could use useRef for purity, but works correctly as-is. (4) Duplicate date formatting logic between TripCard (inline formatTripDateRange) and utils/formatDate.js (formatDateRange) — cosmetic, not a bug. |
+
+---
+
 ### Sprint 2 — Frontend Engineer → QA Engineer (All Sprint 2 Frontend Tasks In Review — T-031, T-032, T-033, T-034, T-035)
 
 | Field | Value |
