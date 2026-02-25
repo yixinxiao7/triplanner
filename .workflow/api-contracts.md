@@ -2173,3 +2173,217 @@ The following Sprint 3 tasks require **no new or changed API contracts** from th
 ---
 
 *Sprint 3 contracts above are marked Agreed and approved for implementation. The T-043 contract documents the only backend API change this sprint. Frontend Engineer and QA Engineer should reference these contracts for integration and testing.*
+
+---
+
+## Sprint 4 Contracts
+
+---
+
+## T-058 — Destination Deduplication (Case-Insensitive)
+
+**Status:** Agreed — Sprint 4 / T-058
+**Feedback Source:** FB-028 (Sprint 3 — Backend accepts duplicate destinations without dedup), B-023
+
+**Summary of Changes:**
+- **POST /api/v1/trips** and **PATCH /api/v1/trips/:id** now deduplicate the `destinations` array using case-insensitive comparison before storing
+- Deduplication preserves the original casing of the **first occurrence** of each destination
+- The minimum 1 destination rule is enforced **after** deduplication (not before)
+- No database schema changes — this is purely an application-layer normalization applied in the model functions before database insert/update
+- All other validation rules (name, status, start_date, end_date) are unchanged
+
+---
+
+### POST /api/v1/trips — Updated Behavior (Sprint 4)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Task | T-058 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change from Sprint 1 | `destinations` array is now deduplicated (case-insensitive) before storage. First occurrence's casing is preserved. |
+
+**Description:** Create a new trip for the authenticated user. The `destinations` array is deduplicated using case-insensitive comparison — duplicate entries (e.g., `"Tokyo"` and `"tokyo"`) are collapsed to a single entry, preserving the casing of the first occurrence.
+
+**Deduplication Rules:**
+
+| Input | Output | Rationale |
+|-------|--------|-----------|
+| `["Tokyo", "Tokyo", "tokyo"]` | `["Tokyo"]` | Exact and case-variant duplicates removed; first occurrence `"Tokyo"` preserved |
+| `["Paris", "paris", "PARIS"]` | `["Paris"]` | All three are duplicates (case-insensitive); first occurrence `"Paris"` preserved |
+| `["Tokyo", "Osaka"]` | `["Tokyo", "Osaka"]` | No duplicates — unchanged |
+| `["Tokyo", "Osaka", "tokyo", "osaka"]` | `["Tokyo", "Osaka"]` | Two pairs of duplicates; first occurrence of each preserved |
+| `[" Tokyo ", "tokyo"]` | `["Tokyo"]` | Trimming happens before dedup; `" Tokyo "` trims to `"Tokyo"`, then dedup removes `"tokyo"` |
+| `["Tokyo"]` | `["Tokyo"]` | Single element — no dedup needed |
+
+**Deduplication Algorithm:**
+1. Trim whitespace from each destination string (already done by existing validation middleware)
+2. Filter out empty strings (already done by existing validation middleware)
+3. Iterate through the trimmed array in order; for each element, compare its lowercased form against previously seen lowercased values
+4. If the lowercased form has not been seen → keep the element (with its original casing) and record the lowercased form
+5. If the lowercased form has been seen → skip the element (it's a duplicate)
+6. The result is an array of unique destinations with original casing preserved, in the order of first appearance
+
+**Post-Dedup Validation:**
+- The minimum 1 destination rule is enforced **after** deduplication. If the input array contains only duplicates of one destination (e.g., `["Tokyo", "tokyo"]`), the result is `["Tokyo"]` (1 element) — this is valid.
+- If the input array is empty or contains only empty strings after trim+filter (before dedup), the existing 400 validation error is returned as before.
+
+**Updated Field Validation Rules (Sprint 4):**
+| Field | Rules |
+|-------|-------|
+| `destinations` | Required. Array of strings (or comma-separated string). Each element trimmed. Empty strings filtered. **Case-insensitive deduplication applied (first occurrence preserved).** Min 1 element after dedup. Max 50 destinations after dedup. |
+
+All other fields (`name`, `start_date`, `end_date`) — validation rules unchanged from Sprint 1 + Sprint 2.
+
+**Request Body — unchanged shape:**
+```json
+{
+  "name": "string",
+  "destinations": ["string"],
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD"
+}
+```
+
+**Response (Success — 201 Created — with dedup applied):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-14",
+    "created_at": "2026-02-25T12:00:00.000Z",
+    "updated_at": "2026-02-25T12:00:00.000Z"
+  }
+}
+```
+*If the request sent `["Tokyo", "Osaka", "tokyo"]`, the response returns `["Tokyo", "Osaka"]` (deduped).*
+
+**Response (Error — 400 Bad Request — Validation failure):** Unchanged from Sprint 1. The `"At least one destination is required"` error still applies if the array is empty after trim+filter (before dedup even runs).
+
+**All other error responses (401, 500):** Unchanged from Sprint 1.
+
+**Notes:**
+- Deduplication is a **silent normalization** — no error or warning is returned to the client when duplicates are removed. The response simply contains the deduped array.
+- The frontend DestinationChipInput component (added in Sprint 3, T-046) already performs client-side case-insensitive duplicate prevention. This backend dedup is a **defense-in-depth** measure that ensures data integrity regardless of which client sends the request.
+- The dedup logic is applied in the model layer (`tripModel.js`) before database insert, keeping route handlers clean.
+- Comma-separated string inputs are still accepted: `"Tokyo, Osaka, tokyo"` → split → `["Tokyo", "Osaka", "tokyo"]` → dedup → `["Tokyo", "Osaka"]`.
+
+---
+
+### PATCH /api/v1/trips/:id — Updated Behavior (Sprint 4)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Task | T-058 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change from Sprint 1 | `destinations` array (when provided) is now deduplicated (case-insensitive) before storage. First occurrence's casing is preserved. |
+
+**Description:** Partially update a trip. When `destinations` is included in the PATCH body, the array is deduplicated using the same case-insensitive algorithm as POST before being stored.
+
+**Updated Field Validation Rules (Sprint 4 — applies only when `destinations` is provided):**
+| Field | Rules |
+|-------|-------|
+| `destinations` | Optional. Array of strings (or comma-separated string). Each element trimmed. Empty strings filtered. **Case-insensitive deduplication applied (first occurrence preserved).** Min 1 element after dedup. |
+
+All other fields (`name`, `status`, `start_date`, `end_date`) — validation rules unchanged from Sprint 1 + Sprint 2.
+
+**Request Body — unchanged shape (all fields optional):**
+```json
+{
+  "name": "string",
+  "destinations": ["string"],
+  "status": "PLANNING | ONGOING | COMPLETED",
+  "start_date": "YYYY-MM-DD | null",
+  "end_date": "YYYY-MM-DD | null"
+}
+```
+
+**Response (Success — 200 OK — with dedup applied):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-14",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-25T13:00:00.000Z"
+  }
+}
+```
+*If the PATCH sent `{ "destinations": ["Tokyo", "tokyo", "TOKYO"] }`, the response returns `["Tokyo"]` (deduped, first occurrence preserved).*
+
+**All error responses (400, 401, 403, 404):** Unchanged from Sprint 1 + Sprint 2.
+
+**Notes:**
+- PATCH with `destinations` omitted does not trigger dedup — existing destinations in the DB are not retroactively deduped. Only new values sent via PATCH are deduped before storage.
+- The `NO_UPDATABLE_FIELDS` check is unaffected — `destinations` remains a recognized updatable field.
+- The same dedup algorithm (lowercase comparison, first-occurrence preservation) is used in both POST and PATCH for consistency.
+
+---
+
+### Implementation Location
+
+**No new files.** Deduplication logic is added to the existing model layer:
+
+| File | Function | Change |
+|------|----------|--------|
+| `backend/src/models/tripModel.js` | `createTrip()` | Apply dedup to `data.destinations` before insert |
+| `backend/src/models/tripModel.js` | `updateTrip()` | Apply dedup to `updates.destinations` (when present) before update |
+
+A shared helper function (e.g., `deduplicateDestinations(destinations)`) should be defined once and used in both locations. This function:
+1. Takes an array of trimmed strings
+2. Returns a new array with case-insensitive duplicates removed
+3. Preserves original casing of the first occurrence
+4. Preserves original order of first occurrences
+
+**Example implementation sketch (for test reference, not prescriptive):**
+```javascript
+function deduplicateDestinations(destinations) {
+  const seen = new Set();
+  return destinations.filter(dest => {
+    const lower = dest.toLowerCase();
+    if (seen.has(lower)) return false;
+    seen.add(lower);
+    return true;
+  });
+}
+```
+
+---
+
+### T-058 — No Database Schema Changes Required
+
+T-058 (destination deduplication) requires **no database schema changes**. The `destinations TEXT[]` column type and constraints are unchanged. Deduplication is purely an application-layer normalization applied in the model functions before the database insert/update query. No migration file is needed.
+
+---
+
+## Sprint 4 — No Backend Contract Changes Required for Other Tasks
+
+The following Sprint 4 tasks require **no new or changed API contracts** from the Backend Engineer:
+
+| Task | Reason |
+|------|--------|
+| T-057 (Design: Rate limit lockout UX) | Design spec only. No backend changes. |
+| T-059 (FE: Disable submit during lockout) | Frontend-only. Backend 429 behavior (T-028, Sprint 2) unchanged. |
+| T-060 (FE: parseRetryAfterMinutes extraction) | Frontend-only refactor. No API changes. |
+| T-061 (FE: ARIA role fix) | Frontend-only accessibility fix. No API changes. |
+| T-062 (FE: aria-describedby fix) | Frontend-only accessibility fix. No API changes. |
+| T-063 (FE: CreateTripModal focus return) | Frontend-only UX fix. No API changes. |
+| T-064 (FE: Axios 401 retry test) | Frontend test-only. No API changes. |
+| T-065 (Infra: Docker validation + nginx) | Infrastructure/Deploy Engineer scope. No API changes. |
+
+---
+
+*Sprint 4 contracts above are marked Agreed and approved for implementation. The T-058 contract documents the only backend API change this sprint. Frontend Engineer and QA Engineer should reference this contract for integration and testing.*

@@ -17,6 +17,34 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 4 — Backend Engineer → QA Engineer: T-058 API Contract Ready for Testing Reference (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-058, T-066, T-067 |
+| Handoff Summary | Backend Engineer has published the **T-058 destination deduplication API contract** to `.workflow/api-contracts.md` (Sprint 4 Contracts section). This contract documents the only backend API behavioral change in Sprint 4. QA should reference this contract for security checklist (T-066) and integration testing (T-067). |
+| Notes | **Key testing points for QA:** (1) **POST /api/v1/trips** with `destinations: ["Tokyo","Tokyo","tokyo"]` → response returns `["Tokyo"]` (deduped, first occurrence preserved). (2) **PATCH /api/v1/trips/:id** with `destinations: ["Paris","paris","PARIS"]` → response returns `["Paris"]`. (3) **No duplicates** — `["Tokyo","Osaka"]` → unchanged `["Tokyo","Osaka"]`. (4) **Minimum 1 destination after dedup** still enforced — empty array after trim/filter returns 400. (5) **Comma-separated string input** still accepted: `"Tokyo, Osaka, tokyo"` → deduped to `["Tokyo", "Osaka"]`. (6) **No SQL injection** — dedup uses Set-based comparison in application layer, no raw SQL involved. (7) **No schema changes** — no migration required. (8) **Existing non-duplicate flows unaffected** — no regression expected. **Security focus:** Verify parameterized queries maintained, no injection via destination strings, error responses don't leak internals. |
+
+---
+
+### Sprint 4 — Backend Engineer → Frontend Engineer: T-058 Destination Dedup API Contract Published (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-058 |
+| Handoff Summary | Backend Engineer has published the **T-058 destination deduplication API contract** to `.workflow/api-contracts.md` (Sprint 4 Contracts section). This documents how POST /trips and PATCH /trips/:id now deduplicate the `destinations` array using case-insensitive comparison, preserving the casing of the first occurrence. |
+| Notes | **What this means for the Frontend Engineer:** The backend will now silently deduplicate destinations on POST and PATCH. The response `destinations` array may be shorter than what was sent if duplicates were present. **No frontend action required this sprint** — the DestinationChipInput component (T-046, Sprint 3) already performs client-side case-insensitive duplicate prevention. This backend dedup is a defense-in-depth measure. The frontend should not need any changes to handle the deduped response, since the data shape (`destinations: string[]`) is unchanged. **Frontend Engineer: please acknowledge this handoff when you start Sprint 4 work.** If you notice any issues with the dedup contract (e.g., edge cases that affect the chip input display), log a handoff back to Backend Engineer. |
+
+---
+
 ### Sprint 4 — Design Agent → Frontend Engineer: Spec 10 Published — All Sprint 4 UI Specs Ready (2026-02-25)
 
 | Field | Value |
