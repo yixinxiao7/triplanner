@@ -31,6 +31,7 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 005 | 1 | Create `stays` table | Create Table | `20260224_005_create_stays.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 | 006 | 1 | Create `activities` table | Create Table | `20260224_006_create_activities.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 | 007 | 2 | Add `start_date` + `end_date` to `trips` table | Alter Table | `20260225_007_add_trip_date_range.js` | ✅ Applied on Staging (2026-02-25, T-038) |
+| 008 | 3 | Make `start_time` + `end_time` nullable on `activities` | Alter Table | `20260225_008_make_activity_times_optional.js` | Proposed — awaiting implementation |
 
 ---
 
@@ -326,6 +327,63 @@ ALTER TABLE trips
 ### Manager Approval Note
 
 *Schema change pre-approved by Manager Agent on 2026-02-25 as part of Sprint 2 planning. Documented in `active-sprint.md` under "Schema Change Pre-Approval". No additional approval gate required before Backend Engineer creates the migration file in T-029 implementation phase.*
+
+---
+
+## Sprint 3 Schema Changes (T-043)
+
+**Proposed by:** Backend Engineer — 2026-02-25
+**Pre-Approved by:** Manager Agent — 2026-02-25 (see `active-sprint.md` Schema Change Pre-Approval section — conditional approval for this exact change)
+
+### Migration 008 — Make `start_time` and `end_time` nullable on `activities` table
+
+**File:** `backend/src/migrations/20260225_008_make_activity_times_optional.js`
+
+**Motivation:** Required to support "all day" / timeless activities where users don't want to specify specific times (e.g., "Free Day", "Explore the city"). Part of feedback item FB-023 (Sprint 2) → B-016 → T-043.
+
+**up():**
+```sql
+ALTER TABLE activities
+  ALTER COLUMN start_time DROP NOT NULL;
+
+ALTER TABLE activities
+  ALTER COLUMN end_time DROP NOT NULL;
+```
+
+**down():**
+```sql
+-- Set any NULL values to a safe default before re-adding NOT NULL constraint
+UPDATE activities SET start_time = '00:00:00' WHERE start_time IS NULL;
+UPDATE activities SET end_time = '00:00:00' WHERE end_time IS NULL;
+
+ALTER TABLE activities
+  ALTER COLUMN start_time SET NOT NULL;
+
+ALTER TABLE activities
+  ALTER COLUMN end_time SET NOT NULL;
+```
+
+**Notes:**
+- Only changes nullability — no column type change, no new columns, no index changes.
+- Existing activities (all currently have non-null times) are completely unaffected by the `up()` migration.
+- The `down()` rollback handles any NULL values inserted after `up()` by defaulting them to `'00:00:00'` before re-adding the NOT NULL constraint. This is a lossy rollback (timeless activities become midnight-to-midnight), which is acceptable since rollback is a recovery scenario.
+- The existing composite index `activities_trip_id_date_idx ON (trip_id, activity_date)` continues to work correctly — it does not include time columns.
+- The existing index `activities_trip_id_idx` is also unaffected.
+- No new indexes needed — the NULLS LAST ordering is applied at query time via ORDER BY, not via index.
+- API contract updates documented in `.workflow/api-contracts.md` (T-043 section).
+- **Migration must run BEFORE the updated backend code is deployed**, since the new validation allows null times and the INSERT/UPDATE queries will send NULL values.
+
+**Migration order note:** This migration (`008`) must run after migration `007` (Sprint 2). Knex handles ordering by filename prefix timestamp.
+
+### Manager Approval Note
+
+*Schema change pre-approved by Manager Agent on 2026-02-25 as part of Sprint 3 planning. Documented in `active-sprint.md` under "Schema Change Pre-Approval (Conditional)" — this is the exact change described there. The migration file name matches the convention (`20260225_008_make_activity_times_optional.js`). No additional approval gate required before Backend Engineer creates the migration file in T-043 implementation phase.*
+
+### Migration Log Update
+
+| # | Sprint | Description | Type | File | Status |
+|---|--------|-------------|------|------|--------|
+| 008 | 3 | Make `start_time` + `end_time` nullable on `activities` table | Alter Table | `20260225_008_make_activity_times_optional.js` | Proposed — awaiting implementation |
 
 ---
 

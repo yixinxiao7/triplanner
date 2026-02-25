@@ -1770,3 +1770,406 @@ ALTER TABLE trips
 ---
 
 *Sprint 2 contracts above are marked Agreed and approved for implementation once the Backend Engineer's implementation phase begins. Frontend Engineer and QA Engineer should reference these contracts for integration and testing.*
+
+---
+
+## Sprint 3 Contracts
+
+---
+
+## T-043 — Optional Activity Times (start_time / end_time Nullable)
+
+**Status:** Agreed — Sprint 3 / T-043
+**Schema Change:** Pre-approved by Manager Agent 2026-02-25 (see `active-sprint.md` Schema Change Pre-Approval section).
+**Feedback Source:** FB-023 (Sprint 2 — users can't create timeless "all day" activities).
+
+**Summary of Changes:**
+- Database migration makes `start_time` and `end_time` columns nullable on the `activities` table
+- POST and PATCH validation is updated: both fields are optional; linked rule (both null OR both provided)
+- GET responses return `null` for timeless activities' `start_time` and `end_time`
+- List ordering updated: timeless activities sort after timed activities within the same date group (NULLS LAST)
+
+---
+
+### POST /api/v1/trips/:tripId/activities — Updated (Sprint 3)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Task | T-043 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change from Sprint 1 | `start_time` and `end_time` changed from required to optional (nullable). Linked validation added. |
+
+**Description:** Add a new activity to a trip. Activities can now be "all day" (timeless) by omitting both `start_time` and `end_time`.
+
+**Request Body:**
+```json
+{
+  "name": "string",
+  "location": "string | null",
+  "activity_date": "YYYY-MM-DD",
+  "start_time": "HH:MM | HH:MM:SS | null",
+  "end_time": "HH:MM | HH:MM:SS | null"
+}
+```
+
+**Field Validation Rules (Sprint 3 updates):**
+| Field | Rules |
+|-------|-------|
+| `name` | Required. String. Trimmed. Min 1 char. Max 255 chars. *(Unchanged)* |
+| `location` | Optional. String or null. Max 500 chars. *(Unchanged)* |
+| `activity_date` | Required. String in `YYYY-MM-DD` format. Must be a valid calendar date. *(Unchanged)* |
+| `start_time` | **Optional (was Required).** String in `HH:MM` or `HH:MM:SS` format (24-hour), or `null`/omitted. **Linked rule:** if `start_time` is provided (non-null), `end_time` must also be provided (non-null). |
+| `end_time` | **Optional (was Required).** String in `HH:MM` or `HH:MM:SS` format (24-hour), or `null`/omitted. **Linked rule:** if `end_time` is provided (non-null), `start_time` must also be provided (non-null). If both provided, `end_time` must be after `start_time`. |
+
+**Linked Validation Rule (new):**
+- **Both null/omitted** → valid ("all day" activity). Activity is stored with `start_time = NULL, end_time = NULL`.
+- **Both provided** → valid (timed activity). Standard `end_time > start_time` validation applies.
+- **Only one provided** → invalid. Return 400 validation error.
+
+**Response (Success — 201 Created — Timed activity):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440030",
+    "trip_id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Fisherman's Wharf",
+    "location": "Fisherman's Wharf, San Francisco, CA",
+    "activity_date": "2026-08-08",
+    "start_time": "09:00:00",
+    "end_time": "14:00:00",
+    "created_at": "2026-02-25T12:00:00.000Z",
+    "updated_at": "2026-02-25T12:00:00.000Z"
+  }
+}
+```
+
+**Response (Success — 201 Created — Timeless "all day" activity):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440031",
+    "trip_id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Free Day — Explore the City",
+    "location": null,
+    "activity_date": "2026-08-09",
+    "start_time": null,
+    "end_time": null,
+    "created_at": "2026-02-25T12:00:00.000Z",
+    "updated_at": "2026-02-25T12:00:00.000Z"
+  }
+}
+```
+
+**Response (Error — 400 Bad Request — Only one time provided):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "end_time": "Both start time and end time are required, or omit both for an all-day activity"
+    }
+  }
+}
+```
+*Note: The error is placed on the missing field. If `start_time` is provided but `end_time` is missing, the error goes on `end_time`. If `end_time` is provided but `start_time` is missing, the error goes on `start_time`.*
+
+**Response (Error — 400 Bad Request — end_time before start_time):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "end_time": "End time must be after start time"
+    }
+  }
+}
+```
+*(Unchanged from Sprint 1 — still applies when both times are provided.)*
+
+**Response (Error — 400 / 401 / 403 / 404):** All other error shapes unchanged from Sprint 1.
+
+**Notes:**
+- `start_time` and `end_time` are returned as `"HH:MM:SS"` strings when set, or `null` when the activity is timeless.
+- The frontend sends `start_time: null, end_time: null` (or omits both) when the "All day" checkbox is checked.
+- All Sprint 1 error response shapes (401, 403, 404) are unchanged.
+- `activity_date` remains required — every activity must have a date, even if it has no specific time.
+
+---
+
+### GET /api/v1/trips/:tripId/activities — Updated Ordering (Sprint 3)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Task | T-043 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change from Sprint 1 | Ordering updated to sort timeless activities after timed activities within same date. Response includes null-valued start_time/end_time. |
+
+**Description:** List all activities for a trip. Timeless ("all day") activities are sorted after timed activities within the same date group.
+
+**Updated Ordering:**
+```
+ORDER BY activity_date ASC, start_time ASC NULLS LAST, name ASC
+```
+
+**Ordering rationale:**
+1. Primary: `activity_date` ascending (earliest dates first) — unchanged
+2. Secondary: `start_time` ascending with **NULLS LAST** — timed activities appear before timeless activities within the same date. Among timed activities, earlier start times come first.
+3. Tertiary: `name` ascending — alphabetical tiebreaker for activities with the same start_time (or among multiple timeless activities on the same date).
+
+**Response (Success — 200 OK — mixed timed and timeless activities):**
+```json
+{
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440030",
+      "trip_id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Fisherman's Wharf",
+      "location": "Fisherman's Wharf, San Francisco, CA",
+      "activity_date": "2026-08-08",
+      "start_time": "09:00:00",
+      "end_time": "14:00:00",
+      "created_at": "2026-02-25T12:00:00.000Z",
+      "updated_at": "2026-02-25T12:00:00.000Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440032",
+      "trip_id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Golden Gate Bridge Visit",
+      "location": "Golden Gate Bridge, San Francisco",
+      "activity_date": "2026-08-08",
+      "start_time": "15:00:00",
+      "end_time": "17:00:00",
+      "created_at": "2026-02-25T12:00:00.000Z",
+      "updated_at": "2026-02-25T12:00:00.000Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440031",
+      "trip_id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Free Day — Explore the City",
+      "location": null,
+      "activity_date": "2026-08-08",
+      "start_time": null,
+      "end_time": null,
+      "created_at": "2026-02-25T12:00:00.000Z",
+      "updated_at": "2026-02-25T12:00:00.000Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440033",
+      "trip_id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Museum Visit",
+      "location": "National Museum, Osaka",
+      "activity_date": "2026-08-09",
+      "start_time": null,
+      "end_time": null,
+      "created_at": "2026-02-25T12:00:00.000Z",
+      "updated_at": "2026-02-25T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+*(In the example above, "2026-08-08" has two timed activities sorted by start_time, followed by one timeless activity. "2026-08-09" has one timeless activity.)*
+
+**Notes:**
+- All other GET behavior (auth, ownership check, error responses) unchanged from Sprint 1.
+- Frontend groups activities by `activity_date` and now checks for `null` start_time/end_time to display the "All day" badge.
+
+---
+
+### GET /api/v1/trips/:tripId/activities/:id — Updated Response (Sprint 3)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Task | T-043 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change from Sprint 1 | `start_time` and `end_time` may now be `null` in the response |
+
+**Response (Success — 200 OK — Timeless activity):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440031",
+    "trip_id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Free Day — Explore the City",
+    "location": null,
+    "activity_date": "2026-08-09",
+    "start_time": null,
+    "end_time": null,
+    "created_at": "2026-02-25T12:00:00.000Z",
+    "updated_at": "2026-02-25T12:00:00.000Z"
+  }
+}
+```
+
+**Notes:**
+- For timed activities, response shape is identical to Sprint 1.
+- All error responses (401, 403, 404) unchanged.
+
+---
+
+### PATCH /api/v1/trips/:tripId/activities/:id — Updated (Sprint 3)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| Task | T-043 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change from Sprint 1 | `start_time` and `end_time` can be explicitly set to `null`. Linked validation uses merged values. |
+
+**Description:** Partially update an activity. `start_time` and `end_time` can now be set to `null` to convert a timed activity to an "all day" activity, or set to time strings to convert an "all day" activity to a timed one.
+
+**Request Body (all fields optional — Sprint 3 updates highlighted):**
+```json
+{
+  "name": "string",
+  "location": "string | null",
+  "activity_date": "YYYY-MM-DD",
+  "start_time": "HH:MM | HH:MM:SS | null",
+  "end_time": "HH:MM | HH:MM:SS | null"
+}
+```
+
+**Field Validation Rules (Sprint 3 updates):**
+| Field | Rules |
+|-------|-------|
+| `name` | Optional. String. Trimmed. Min 1 char. Max 255 chars. *(Unchanged)* |
+| `location` | Optional. String or null. Max 500 chars. *(Unchanged)* |
+| `activity_date` | Optional. String in `YYYY-MM-DD` format. *(Unchanged)* |
+| `start_time` | **Optional. String in `HH:MM` or `HH:MM:SS` format, or explicitly `null` to clear.** |
+| `end_time` | **Optional. String in `HH:MM` or `HH:MM:SS` format, or explicitly `null` to clear.** |
+
+**Linked Validation on PATCH (using merged values):**
+
+When `start_time` or `end_time` is included in the PATCH body, the backend merges the new value with the existing DB value to determine the final state:
+
+- `mergedStart = req.body.start_time !== undefined ? req.body.start_time : existing.start_time`
+- `mergedEnd = req.body.end_time !== undefined ? req.body.end_time : existing.end_time`
+
+Then the linked rule is applied on the merged values:
+- **Both merged values are null** → valid (converting to "all day" activity)
+- **Both merged values are non-null** → valid (timed activity). `mergedEnd > mergedStart` required.
+- **One is null, one is non-null** → invalid. Return 400 validation error.
+
+**Converting a timed activity to "all day":**
+```json
+{
+  "start_time": null,
+  "end_time": null
+}
+```
+Both must be explicitly set to `null` in the same request to avoid the linked validation error.
+
+**Converting an "all day" activity to timed:**
+```json
+{
+  "start_time": "09:00",
+  "end_time": "14:00"
+}
+```
+Both must be provided in the same request.
+
+**Response (Error — 400 Bad Request — Mismatched times after merge):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "start_time": "Both start time and end time are required, or set both to null for an all-day activity"
+    }
+  }
+}
+```
+*Example trigger: PATCH with `{ "start_time": "09:00" }` on an activity that has `end_time = null`. The merged state is `start_time = "09:00", end_time = null` — mismatched.*
+
+**Response (Error — 400 Bad Request — end_time before start_time):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "end_time": "End time must be after start time"
+    }
+  }
+}
+```
+*(Unchanged — still applies when both merged times are non-null.)*
+
+**Response (Success — 200 OK):** Full updated activity object (same shape as GET, with `start_time`/`end_time` either as time strings or `null`).
+
+**Notes:**
+- To change only the `start_time` or `end_time` of a timed activity: send the updated field alone. The backend merges with the existing value and validates accordingly.
+- PATCH with `{ "start_time": null }` alone on a timed activity (which has `end_time` set) will fail because the merged state is `start_time = null, end_time = "14:00:00"` — mismatched. Send `{ "start_time": null, "end_time": null }` instead.
+- All Sprint 1 error responses (401, 403, 404) are unchanged.
+- The `NO_UPDATABLE_FIELDS` check still applies — `start_time` and `end_time` remain recognized updatable fields even when set to `null`.
+
+---
+
+### DELETE /api/v1/trips/:tripId/activities/:id — No Changes (Sprint 3)
+
+No changes to the DELETE endpoint. Deleting a timeless activity works identically to deleting a timed activity.
+
+---
+
+## T-043 — Database Schema Change
+
+**Migration:** `20260225_008_make_activity_times_optional.js`
+
+**up():**
+```sql
+ALTER TABLE activities
+  ALTER COLUMN start_time DROP NOT NULL;
+
+ALTER TABLE activities
+  ALTER COLUMN end_time DROP NOT NULL;
+```
+
+**down():**
+```sql
+-- Set any NULL values to '00:00:00' before re-adding NOT NULL constraint
+UPDATE activities SET start_time = '00:00:00' WHERE start_time IS NULL;
+UPDATE activities SET end_time = '00:00:00' WHERE end_time IS NULL;
+
+ALTER TABLE activities
+  ALTER COLUMN start_time SET NOT NULL;
+
+ALTER TABLE activities
+  ALTER COLUMN end_time SET NOT NULL;
+```
+
+**Notes:**
+- The migration only changes nullability — no column type change, no new columns, no index changes.
+- Existing activities (all with non-null times) are completely unaffected by the `up()` migration.
+- The `down()` rollback must handle any NULL values that were inserted after `up()` by setting them to a default `'00:00:00'` before re-adding the NOT NULL constraint.
+- The existing composite index `activities_trip_id_date_idx ON (trip_id, activity_date)` continues to work correctly with nullable time columns — no index changes needed.
+- This migration is pre-approved by Manager Agent on 2026-02-25 per `active-sprint.md` Schema Change Pre-Approval section.
+
+---
+
+## Sprint 3 — No Backend Contract Changes Required for Other Tasks
+
+The following Sprint 3 tasks require **no new or changed API contracts** from the Backend Engineer:
+
+| Task | Reason |
+|------|--------|
+| T-045 (FE: 429 rate limit error handling) | Frontend-only. Backend already returns 429 with `RATE_LIMIT_EXCEEDED` code and `Retry-After` header (T-028, Sprint 2). No backend changes needed. |
+| T-046 (FE: Multi-destination add/remove UI) | Frontend-only. Backend already accepts `destinations` as a string array on POST/PATCH trips (T-005, Sprint 1). No backend changes needed. |
+| T-048 (FE: Date formatting consolidation) | Frontend-only refactor. No API changes. |
+| T-049 (FE: Edit page test hardening) | Frontend test-only. No API changes. |
+| T-044 (Infra: HTTPS configuration) | Infrastructure/Deploy Engineer scope. Backend cookie `secure` flag is already configurable via environment. |
+| T-050 (Infra: pm2 process management) | Infrastructure/Deploy Engineer scope. No API changes. |
+| T-051 (Infra: Docker/CI/CD preparation) | Infrastructure/Deploy Engineer scope. No API changes. |
+
+---
+
+*Sprint 3 contracts above are marked Agreed and approved for implementation. The T-043 contract documents the only backend API change this sprint. Frontend Engineer and QA Engineer should reference these contracts for integration and testing.*

@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 3 — Backend Engineer → QA Engineer (T-043: API Contracts for Optional Activity Times — Testing Reference) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-043, T-052, T-053 |
+| Handoff Summary | Backend Engineer has completed API contract documentation for T-043 (make activity start_time/end_time optional) on 2026-02-25. Contracts published in `.workflow/api-contracts.md` (Sprint 3 Contracts section). Schema migration 008 proposed in `.workflow/technical-context.md`. QA Engineer should reference these contracts for T-052 (security checklist) and T-053 (integration testing). |
+| Notes | **Contract summary for QA reference:** (1) **POST /trips/:tripId/activities:** `start_time` and `end_time` are now optional. Linked validation: both null (all-day) or both provided. If both provided, end_time > start_time. If only one provided → 400 VALIDATION_ERROR. (2) **GET /trips/:tripId/activities:** Ordering updated to `NULLS LAST` on start_time — timeless activities sort after timed activities within same date. Response includes `null` for timeless activity times. (3) **PATCH /trips/:tripId/activities/:id:** Times can be explicitly set to `null`. Linked validation uses merged values (new + existing). Converting timed↔timeless requires sending both fields. (4) **Migration 008:** `start_time` and `end_time` columns change from NOT NULL to NULL on activities table. Rollback sets NULLs to '00:00:00'. **QA test scenarios:** Create all-day activity (no times) → 201 with null times. Create with only start_time → 400. Create timed activity → 201 (regression). GET ordering: timed before timeless within same date. PATCH to convert timed→timeless and back. PATCH with mismatched times → 400. All existing activity tests still pass (regression). |
+
+---
+
+### Sprint 3 — Backend Engineer → Frontend Engineer (T-043: API Contracts for Optional Activity Times) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-043, T-047 |
+| Handoff Summary | Backend Engineer has completed API contract documentation for T-043 (make activity start_time/end_time optional) on 2026-02-25. Full contracts published in `.workflow/api-contracts.md` (Sprint 3 Contracts → T-043 section). This unblocks T-047 (FE: Optional activity times UI) — Frontend Engineer can now build against the documented contract. |
+| Notes | **Key contract details for Frontend Engineer:** (1) **POST /trips/:tripId/activities:** `start_time` and `end_time` are now optional. Send `null` or omit both for "all day" activities. **Linked validation:** both must be null/omitted or both must be provided. Sending only one returns 400. (2) **GET response changes:** `start_time` and `end_time` may be `null` in activity objects. Timeless activities sort after timed activities within the same date group (NULLS LAST). Frontend should check for `null` and display "All day" badge per Spec 9.1.2. (3) **PATCH /trips/:tripId/activities/:id:** To convert a timed activity to "all day", send `{ start_time: null, end_time: null }`. To convert "all day" to timed, send both time values. Sending only one causes a 400 linked validation error. (4) **Error shape for linked validation:** `{ error: { message: "Validation failed", code: "VALIDATION_ERROR", fields: { end_time: "Both start time and end time are required, or omit both for an all-day activity" } } }`. **No changes needed for T-045 (429 handling) or T-046 (multi-destination UI)** — those tasks use existing Sprint 1/2 contracts unchanged. |
+
+---
+
+### Sprint 3 — Backend Engineer → Manager Agent (T-043: Schema Migration 008 Proposed — Pre-Approved) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Backend Engineer |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-043 |
+| Handoff Summary | Backend Engineer has proposed schema migration 008 (make `start_time` and `end_time` nullable on `activities` table) in `.workflow/technical-context.md`. This migration matches the conditional pre-approval in `active-sprint.md` (Schema Change Pre-Approval section) exactly. API contracts for T-043 are complete in `.workflow/api-contracts.md`. Backend Engineer will proceed to implementation phase after this contract phase completes. |
+| Notes | **Migration details:** File `20260225_008_make_activity_times_optional.js`. up(): ALTER COLUMN start_time/end_time DROP NOT NULL. down(): UPDATE NULLs to '00:00:00', then ALTER COLUMN SET NOT NULL. No new indexes. No column type changes. Existing data unaffected. Pre-approved per active-sprint.md conditional approval. **Manager approval note:** Per the automated sprint flow, the Manager Agent pre-approved this exact schema change in `active-sprint.md`. The Backend Engineer self-approves per the conditional approval and will proceed to implementation. |
+
+---
+
 ### Sprint 3 — Design Agent → Frontend Engineer (T-042: Spec 9 — Optional Activity Times UX + 429 Rate Limit Error Message) (2026-02-25)
 
 | Field | Value |
