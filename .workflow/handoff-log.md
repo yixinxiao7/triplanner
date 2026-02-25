@@ -17,6 +17,62 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 2 — Design Agent → Frontend Engineer (UI Spec: Calendar Component + Trip Date Range — T-026)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-026, T-034, T-035 |
+| Handoff Summary | UI spec for the Calendar Component and Trip Date Range UI is complete and approved. Published to `.workflow/ui-spec.md` under "Spec 7: Calendar Component + Trip Date Range UI" (Sprint 2 section). This spec covers two P-priority items: (1) **T-034 (P1)** — Trip date range UI: date picker inputs in the trip details page header, trip card date range display on the home page. (2) **T-035 (P2 stretch)** — Calendar component replacing the Sprint 1 placeholder: monthly grid view, prev/next navigation, color-coded events for flights/stays/activities. |
+| Notes | **Critical implementation notes:** (1) **T-034 first (P1):** Implement the trip date range section in the trip details header and the trip card display update before attempting the calendar. These are simpler and higher priority. (2) **Trip details header date range:** Collapses to display mode ("Aug 7, 2026 — Aug 14, 2026") when dates are set; shows "set dates" link when null. Calls `PATCH /trips/:id` with `{ start_date, end_date }` in YYYY-MM-DD format. (3) **Trip card update (Home page):** TripCard component reads `trip.start_date` and `trip.end_date` from the API response (Sprint 2 T-029 adds these fields). Replace the "dates not set" placeholder with the formatted date range when both are set. (4) **Calendar component (T-035):** Build as a custom component (no external library) using a 7-column CSS Grid. See Spec 7.2 for full grid layout, event rendering rules, and color coding. New CSS variables: `--color-flight: #5D737E`, `--color-stay: #3D8F82`, `--color-activity: #C47A2E` — add to `:root`. (5) **Calendar initial month:** Default to `trip.start_date`'s month if set, else current month. (6) **Calendar events data:** Use existing `flights`, `stays`, `activities` arrays already fetched by `useTripDetails` — no new API calls. (7) **Edit button activation:** Update the Trip Details page "add flight" / "add stay" / "add activities" buttons (currently disabled) to be active navigation links to `/trips/:id/edit/flights`, `/trips/:id/edit/stays`, `/trips/:id/edit/activities`. Update labels to "edit flights" / "edit stays" / "edit activities". Remove `disabled` and `aria-disabled="true"`. (8) **Responsive calendar (mobile):** On <640px, show colored dots instead of text chips. (9) **If calendar scope is too large for Sprint 2:** T-034 (date range UI) is required. T-035 (calendar) can carry to Sprint 3 — leave the Sprint 1 placeholder in place. |
+
+---
+
+### Sprint 2 — Design Agent → Frontend Engineer (UI Spec: Activities Edit Page — T-025)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-025, T-033 |
+| Handoff Summary | UI spec for the Activities Edit page is complete and approved. Published to `.workflow/ui-spec.md` under "Spec 6: Activities Edit Page" (Sprint 2 section). This page uses a **row-based batch-edit form** (different from flights/stays). All changes are batched and saved together with a single "Save all" action. |
+| Notes | **Critical implementation notes:** (1) **Route:** `/trips/:id/edit/activities` — add to React Router in `App.jsx`, protected route, renders `ActivitiesEditPage.jsx`. (2) **Row-based layout:** Each activity is a row with inline `<input>` elements. On desktop: table-like flex row with columns (date 150px, name flex:2, location flex:1.5, start 110px, end 110px, delete 40px). On mobile: each row becomes a stacked card. See Spec 6.5 for full column layout. (3) **Sticky column headers:** The column header row (`DATE | ACTIVITY NAME | LOCATION | START | END`) sticks below the navbar (top: 56px) when scrolling on long lists. (4) **Batch save logic:** On "Save all" — POST new rows (no ID), PATCH edited rows (existing ID, fields changed), DELETE removed row IDs. Use `Promise.allSettled`. See Spec 6.9 for full save logic. Navigate to `/trips/:id` only after all promises settle. (5) **Cancel = hard navigate:** "Cancel" button navigates to `/trips/:id` immediately, no API calls. No unsaved-changes confirmation needed. (6) **Row deletion:** Clicking trash icon immediately removes row from the DOM/state. For existing activity rows (with an ID), track the ID in a "pending deletes" list; DELETE is only called on "Save all." (7) **Empty state:** When no existing activities and no new rows added yet, show a dashed empty message above the "+" button. (8) **Input focus on "+":** When "+" add activity button is clicked, focus moves to the `activity_date` input of the newly appended row. (9) **Pre-population of existing rows:** Fetch `GET /trips/:id/activities` on mount. Map each activity to a row object `{ id, activity_date, name, location, start_time, end_time }`. Sort by activity_date then start_time before rendering. (10) **Validation before save:** All rows must have `name` and `activity_date` filled. Show row-level errors (red underline on empty required field, banner at top if any rows invalid). (11) **Tests required:** render existing activities as rows, "+" adds new empty row and focuses it, delete removes row from DOM, "Save all" POSTs new rows + PATCHes edited + DELETEs removed, "Cancel" navigates without API calls, validation error shown for missing required fields. |
+
+---
+
+### Sprint 2 — Design Agent → Frontend Engineer (UI Spec: Stays Edit Page — T-024)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-024, T-032 |
+| Handoff Summary | UI spec for the Stays Edit page is complete and approved. Published to `.workflow/ui-spec.md` under "Spec 5: Stays Edit Page" (Sprint 2 section). This page follows the same list-then-form pattern as the Flights Edit page (T-023), with stays-specific fields and behavior. |
+| Notes | **Critical implementation notes:** (1) **Route:** `/trips/:id/edit/stays` — add to React Router in `App.jsx`, protected route, renders `StaysEditPage.jsx`. (2) **Page pattern:** Identical skeleton to FlightsEditPage. Reuse the same header/footer/empty-state/loading/error/delete-confirmation patterns. (3) **Form fields:** category (HOTEL/AIRBNB/VRBO `<select>`, required), name (text, required), address (text, optional — show `"leave blank if unknown"` helper), check_in_at (datetime-local, required), check_in_tz (timezone select, required), check_out_at (datetime-local, required), check_out_tz (timezone select, required). See Spec 5.3 for full field grid layout. (4) **ADDRESS full-width:** The address field spans both columns in the 2-column grid (`grid-column: 1 / -1`). (5) **Category select:** Styled same as timezone dropdown (Spec 4.5). Default disabled option: "Select category". Values: HOTEL, AIRBNB, VRBO. (6) **Check-out validation:** `check_out_at` must be after `check_in_at`. Error: `"check-out must be after check-in"`. (7) **Stay card compact view:** Each existing stay shows category badge (pill), name, address (or "address not provided"), check-in/out datetimes with timezone. See Spec 5.2 for exact card layout. (8) **Pre-population on edit:** Category select pre-selects the matching value. Address can be empty string. Datetime-local format: `YYYY-MM-DDTHH:MM` (strip seconds and timezone from stored UTC ISO string — display the stored local time directly). (9) **Timezone dropdown:** Reuse the same `timezones.js` constant defined for flights (Spec 4.5). (10) **API calls:** `POST /trips/:id/stays` (add), `PATCH /trips/:id/stays/:stayId` (edit), `DELETE /trips/:id/stays/:stayId` (delete). (11) **Tests required:** render empty state, render existing stay cards with category badges, optional address shows/hides, add new stay form submit, category select validation, edit pre-populates all fields, delete inline confirmation, cancel edit returns form to blank, navigation to trip details. |
+
+---
+
+### Sprint 2 — Design Agent → Frontend Engineer (UI Spec: Flights Edit Page — T-023)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-023, T-031 |
+| Handoff Summary | UI spec for the Flights Edit page is complete and approved. Published to `.workflow/ui-spec.md` under "Spec 4: Flights Edit Page" (Sprint 2 section). This is the first of four Sprint 2 design specs. Frontend Engineer may begin T-031 implementation once T-027 (backend bug fixes) is also Done. |
+| Notes | **Critical implementation notes:** (1) **Route:** `/trips/:id/edit/flights` — add to React Router in `App.jsx` behind `ProtectedRoute`. Component: `FlightsEditPage.jsx` in `frontend/src/pages/`. (2) **Page pattern — list then form:** Existing flights listed as compact cards at top. Add/Edit form section below. Edit a flight: clicking pencil icon populates form (edit mode). Delete: inline card replacement confirmation. "Done editing" button navigates to `/trips/:id`. (3) **Incremental save (NOT batch):** Each "Save flight" / "Save changes" calls the API immediately — no global "Save all." List refreshes after each save. (4) **Form field grid:** 2 columns on desktop, 1 column on mobile. Fields: flight_number (col 1, row 1), airline (col 2, row 1), from_location (col 1, row 2), to_location (col 2, row 2), departure_at (col 1, row 3), departure_tz (col 2, row 3), arrival_at (col 1, row 4), arrival_tz (col 2, row 4). (5) **Timezone dropdown:** Define constant in `frontend/src/utils/timezones.js` — array of `{ label, value }` for ~28 IANA timezones (see Spec 4.5 for full list). Reuse for stays. Styled as `<select>` matching the design system input style. (6) **datetime-local pre-population:** For editing existing flights, format `departure_at` / `arrival_at` as `YYYY-MM-DDTHH:MM` for the datetime-local input — use the stored UTC time as-is (it represents the local wall-clock time; do NOT apply any timezone conversion). (7) **Edit mode indicator on card:** The card being edited gets a left accent border (`border-left: 3px solid --accent`) while in edit mode. Section header changes to `"editing flight"` + `"cancel edit"` link. (8) **Success highlight:** After save, the new/updated card briefly gets `border-color: --accent` for 1.5s. (9) **Error banner:** API failure shows a red-tinted banner below the form actions. Form inputs retain their values on error. (10) **API calls:** `GET /trips/:id/flights` (on mount), `POST /trips/:id/flights` (add), `PATCH /trips/:id/flights/:flightId` (edit), `DELETE /trips/:id/flights/:flightId` (delete). (11) **Tests required (per T-031 test plan):** render page with existing flights (airline, flight number, from/to route, datetime), render empty state, form submit POST new flight, edit existing → form pre-populated, delete inline confirmation → DELETE call, cancel edit → form resets, "Done editing" navigates to `/trips/:id`, arrival-before-departure validation error. |
+
+---
+
 ### Sprint 2 — Manager Agent → All Agents (Sprint 2 Plan Published — Begin Phase 1 + Phase 2)
 
 | Field | Value |
