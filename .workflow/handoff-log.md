@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — User Agent → Manager Agent (T-022 Complete — Product Testing Done, Feedback Submitted)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | User Agent |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-022 |
+| Handoff Summary | User Agent has completed T-022 (product testing and structured feedback) on 2026-02-24. Full testing was performed against the staging environment (Backend: http://localhost:3001/api/v1, Frontend: http://localhost:4173). 10 feedback entries have been submitted to `.workflow/feedback-log.md` — 4 issues found and 6 positive findings. The highest severity issue is Major (2 bugs + 1 known security gap). Overall impression: Sprint 1 deliverables are high quality and production-ready in all core flows. Manager Agent should triage feedback entries and close out the sprint. |
+| Notes | **Testing Scope (T-022):** All Sprint 1 in-scope features tested. **Test Methods:** (1) Live API calls via curl against http://localhost:3001/api/v1 — happy paths, edge cases, security scenarios, rapid repeated requests. (2) Frontend build output verification and SPA serving check. (3) Code review of all 5 frontend components against ui-spec.md. **Test Results Summary:** **PASS (core flows):** Register → login → empty home page → create trip → view trip details (flights/stays/activities all empty states) → delete trip → logout. All API responses match api-contracts.md exactly. **PASS (input validation):** All 15+ validation edge cases return correct 400 errors with per-field detail. No validation gaps found. **PASS (security):** Cross-user access protection (403 FORBIDDEN), auth middleware (401 on all invalid token scenarios), no stack traces in error responses, no token in localStorage, httpOnly cookie behavior. **PASS (sub-resources):** Flights, stays, activities POST correctly with validation (temporal ordering, enum values), and GET returns correct shapes. **PASS (frontend):** Build exists at frontend/dist/. All 5 components implement all spec states (loading skeletons, error states, empty states, inline delete confirmation, disabled add buttons with aria-disabled, 404 full-page error, autocomplete on forms, etc.). **Issues Found (4 total, all in feedback-log.md):** (1) FB-001 — BUG Major: GET/PATCH/DELETE trip with invalid UUID path param returns HTTP 500 with raw PostgreSQL error code `22P02` leaking to client. Should be HTTP 400. Affects all routes with UUID path params. (2) FB-002 — BUG Major: `activity_date` returned as full ISO 8601 timestamp (`"2026-08-08T04:00:00.000Z"`) instead of plain YYYY-MM-DD string per contract. Causes API contract violation and may break frontend date grouping. (3) FB-003 — SECURITY Major (known): No rate limiting on /auth/login or /auth/register. 10 rapid requests all succeeded without throttling. `express-rate-limit` is installed but not wired. (4) FB-004 — BUG Minor: Malformed JSON body returns HTTP 400 with `code: "INTERNAL_ERROR"` (misleading — INTERNAL_ERROR implies 500). Should return a JSON parse error code. **Positive Findings (6 total):** FB-005: Happy path flows work flawlessly end-to-end. FB-006: Comprehensive input validation. FB-007: Cross-user access correctly returns 403. FB-008: Auth middleware correctly rejects all invalid token scenarios. FB-009: All 5 frontend components fully implement spec (loading/error/empty states, accessibility). FB-010: SPA routing and production build are clean. **Recommended Sprint 2 prioritization:** (1) Fix FB-001 (invalid UUID → 500) — easy fix, high polish value. (2) Fix FB-002 (activity_date format) — correctness issue, could cause date grouping bugs. (3) Wire up rate limiting (FB-003, already planned for Sprint 2). (4) Fix FB-004 (INTERNAL_ERROR code on bad JSON) — minor cleanup. |
+
+---
+
 ### Sprint 1 — Monitor Agent → User Agent (T-021 Re-Run Health Checks Complete — Staging Ready for T-022)
 
 | Field | Value |
