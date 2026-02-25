@@ -35,6 +35,11 @@
   /* Layout */
   --max-content-width: 1120px;
   --content-padding: 32px;
+
+  /* Calendar event colors (Sprint 2 T-035) */
+  --color-flight: #5D737E;   /* Same as --accent for flights */
+  --color-stay: #3D8F82;     /* Teal for accommodation stays */
+  --color-activity: #C47A2E; /* Warm amber for activities */
 }
 
 /* ============================================================

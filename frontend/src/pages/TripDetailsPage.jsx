@@ -1,24 +1,70 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useTripDetails } from '../hooks/useTripDetails';
 import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime } from '../utils/formatDate';
+import TripCalendar from '../components/TripCalendar';
+import { api } from '../utils/api';
 import styles from './TripDetailsPage.module.css';
 
+// ── Date helpers ─────────────────────────────────────────────
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatDateRangeDisplay(startDate, endDate) {
+  if (!startDate) return null;
+  function parse(s) {
+    const [y, m, d] = s.split('-').map(Number);
+    return { year: y, month: m - 1, day: d };
+  }
+  const s = parse(startDate);
+  if (startDate && endDate) {
+    const e = parse(endDate);
+    if (s.year === e.year) {
+      return `${MONTHS_SHORT[s.month]} ${s.day} \u2014 ${MONTHS_SHORT[e.month]} ${e.day}, ${s.year}`;
+    }
+    return `${MONTHS_SHORT[s.month]} ${s.day}, ${s.year} \u2014 ${MONTHS_SHORT[e.month]} ${e.day}, ${e.year}`;
+  }
+  return `From ${MONTHS_SHORT[s.month]} ${s.day}, ${s.year}`;
+}
+
+// ── Small Calendar Icon ───────────────────────────────────────
+function CalendarIconSmall() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden="true"
+      style={{ color: 'var(--text-muted)', flexShrink: 0 }}
+    >
+      <rect x="1" y="2" width="10" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M1 5h10M4 1v2M8 1v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // ── Section Header Component ─────────────────────────────────
-function SectionHeader({ title, actionLabel }) {
+function SectionHeader({ title, actionLabel, actionHref }) {
   return (
     <div className={styles.sectionHeader}>
       <h2 className={styles.sectionTitle}>{title}</h2>
       <hr className={styles.sectionLine} aria-hidden="true" />
-      <button
-        className={styles.sectionActionBtn}
-        disabled
-        aria-disabled="true"
-        title="Editing coming in Sprint 2"
-      >
-        {actionLabel}
-      </button>
+      {actionHref ? (
+        <Link to={actionHref} className={styles.sectionActionLink}>
+          {actionLabel}
+        </Link>
+      ) : (
+        <button
+          className={styles.sectionActionBtn}
+          disabled
+          aria-disabled="true"
+          title="Editing coming soon"
+        >
+          {actionLabel}
+        </button>
+      )}
     </div>
   );
 }
@@ -243,9 +289,37 @@ export default function TripDetailsPage() {
     refetchActivities,
   } = useTripDetails(tripId);
 
+  // ── Trip Date Range State ─────────────────────────────────
+  // 'loading' | 'null' | 'edit' | 'display'
+  const [dateMode, setDateMode] = useState('loading');
+  const [startDateInput, setStartDateInput] = useState('');
+  const [endDateInput, setEndDateInput] = useState('');
+  const [dateError, setDateError] = useState('');
+  const [dateSaving, setDateSaving] = useState(false);
+  // Saved dates — updated locally after API saves to avoid full re-fetch
+  const [savedStartDate, setSavedStartDate] = useState(null);
+  const [savedEndDate, setSavedEndDate] = useState(null);
+
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  // Initialize date mode from trip data (runs once when trip loads)
+  useEffect(() => {
+    if (!tripLoading && trip && dateMode === 'loading') {
+      const s = trip.start_date || null;
+      const e = trip.end_date || null;
+      setSavedStartDate(s);
+      setSavedEndDate(e);
+      if (s || e) {
+        setStartDateInput(s || '');
+        setEndDateInput(e || '');
+        setDateMode('display');
+      } else {
+        setDateMode('null');
+      }
+    }
+  }, [trip, tripLoading, dateMode]);
 
   // Format destinations for display: array → dot-separated string
   function formatDestinations(raw) {
@@ -253,6 +327,54 @@ export default function TripDetailsPage() {
     if (Array.isArray(raw)) return raw.join(' · ');
     // Comma-separated string → dot-separated
     return raw.split(',').map((d) => d.trim()).join(' · ');
+  }
+
+  // ── Date range handlers ───────────────────────────────────
+  async function handleSaveDates() {
+    setDateError('');
+    if (!startDateInput && !endDateInput) {
+      setDateError('both start and end dates are required');
+      return;
+    }
+    if (startDateInput && !endDateInput) {
+      setDateError('both start and end dates are required');
+      return;
+    }
+    if (!startDateInput && endDateInput) {
+      setDateError('start date is required when setting an end date');
+      return;
+    }
+    if (startDateInput > endDateInput) {
+      setDateError('end date must be on or after start date');
+      return;
+    }
+    setDateSaving(true);
+    try {
+      await api.trips.update(tripId, { start_date: startDateInput, end_date: endDateInput });
+      setSavedStartDate(startDateInput);
+      setSavedEndDate(endDateInput);
+      setDateMode('display');
+    } catch {
+      setDateError('failed to save dates. please try again.');
+    } finally {
+      setDateSaving(false);
+    }
+  }
+
+  async function handleClearDates() {
+    setDateSaving(true);
+    try {
+      await api.trips.update(tripId, { start_date: null, end_date: null });
+      setSavedStartDate(null);
+      setSavedEndDate(null);
+      setStartDateInput('');
+      setEndDateInput('');
+      setDateMode('null');
+    } catch {
+      setDateError('failed to clear dates. please try again.');
+    } finally {
+      setDateSaving(false);
+    }
   }
 
   // Group activities by date
@@ -328,33 +450,136 @@ export default function TripDetailsPage() {
             )}
           </div>
 
-          {/* ── Calendar Placeholder ── */}
-          <div className={styles.calendarPlaceholder}>
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 32 32"
-              fill="none"
-              aria-hidden="true"
-              style={{ color: 'var(--accent)', opacity: 0.4 }}
-            >
-              <rect x="2" y="4" width="28" height="25" rx="2" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M2 11h28M10 2v4M22 2v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              <rect x="6" y="15" width="4" height="4" rx="0.5" fill="currentColor" />
-              <rect x="14" y="15" width="4" height="4" rx="0.5" fill="currentColor" />
-              <rect x="22" y="15" width="4" height="4" rx="0.5" fill="currentColor" />
-              <rect x="6" y="23" width="4" height="4" rx="0.5" fill="currentColor" />
-              <rect x="14" y="23" width="4" height="4" rx="0.5" fill="currentColor" />
-            </svg>
-            <p className={styles.calendarText}>calendar coming in sprint 2</p>
-            <p className={styles.calendarSubtext}>
-              flights, stays, and activities will appear here once the calendar is built.
-            </p>
+          {/* ── Trip Date Range Section ── */}
+          {!tripLoading && dateMode !== 'loading' && (
+            <div className={styles.dateRangeSection}>
+              {/* Null state — no dates set */}
+              {dateMode === 'null' && (
+                <div className={styles.dateRangeNull}>
+                  <CalendarIconSmall />
+                  <span className={styles.dateRangeNullText}>trip dates not set</span>
+                  <button
+                    className={styles.setDatesLink}
+                    onClick={() => setDateMode('edit')}
+                    aria-label="Set trip dates"
+                  >
+                    set dates
+                  </button>
+                </div>
+              )}
+
+              {/* Edit mode — inputs */}
+              {dateMode === 'edit' && (
+                <div className={styles.dateRangeEdit}>
+                  <div className={styles.dateRangeInputRow}>
+                    <div className={styles.dateInputGroup}>
+                      <label htmlFor="trip-start-date" className={styles.dateInputLabel}>
+                        TRIP START
+                      </label>
+                      <input
+                        id="trip-start-date"
+                        type="date"
+                        value={startDateInput}
+                        onChange={(e) => { setStartDateInput(e.target.value); setDateError(''); }}
+                        className={`${styles.dateInput} ${dateError ? styles.dateInputError : ''}`}
+                        disabled={dateSaving}
+                        aria-describedby={dateError ? 'date-range-error' : undefined}
+                      />
+                    </div>
+                    <div className={styles.dateInputGroup}>
+                      <label htmlFor="trip-end-date" className={styles.dateInputLabel}>
+                        TRIP END
+                      </label>
+                      <input
+                        id="trip-end-date"
+                        type="date"
+                        value={endDateInput}
+                        onChange={(e) => { setEndDateInput(e.target.value); setDateError(''); }}
+                        className={`${styles.dateInput} ${dateError ? styles.dateInputError : ''}`}
+                        disabled={dateSaving}
+                        aria-describedby={dateError ? 'date-range-error' : undefined}
+                      />
+                    </div>
+                    <div className={styles.dateRangeActions}>
+                      <button
+                        className={styles.saveDatesBtn}
+                        onClick={handleSaveDates}
+                        disabled={dateSaving}
+                        aria-label="Save trip dates"
+                      >
+                        {dateSaving ? <span className="spinner" /> : 'Save'}
+                      </button>
+                      <button
+                        className={styles.clearDatesBtn}
+                        onClick={handleClearDates}
+                        disabled={dateSaving}
+                        aria-label="Clear trip dates"
+                      >
+                        Clear dates
+                      </button>
+                      <button
+                        className={styles.cancelDatesLink}
+                        onClick={() => {
+                          setDateError('');
+                          setStartDateInput(savedStartDate || '');
+                          setEndDateInput(savedEndDate || '');
+                          setDateMode(savedStartDate || savedEndDate ? 'display' : 'null');
+                        }}
+                        disabled={dateSaving}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                  {dateError && (
+                    <span id="date-range-error" className={styles.dateError} role="alert">
+                      {dateError}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Display mode — dates are set */}
+              {dateMode === 'display' && (
+                <div className={styles.dateRangeDisplay}>
+                  <CalendarIconSmall />
+                  <span className={styles.dateRangeText}>
+                    {formatDateRangeDisplay(savedStartDate, savedEndDate)}
+                  </span>
+                  <button
+                    className={styles.editDatesLink}
+                    onClick={() => {
+                      setStartDateInput(savedStartDate || '');
+                      setEndDateInput(savedEndDate || '');
+                      setDateMode('edit');
+                    }}
+                    aria-label="Edit trip dates"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Calendar ── */}
+          <div className={styles.calendarWrapper}>
+            <TripCalendar
+              trip={trip || {}}
+              flights={flights}
+              stays={stays}
+              activities={activities}
+              isLoading={flightsLoading || staysLoading || activitiesLoading}
+            />
           </div>
 
           {/* ── Flights Section ── */}
           <section className={styles.section}>
-            <SectionHeader title="flights" actionLabel="add flight" />
+            <SectionHeader
+              title="flights"
+              actionLabel="edit flights"
+              actionHref={`/trips/${tripId}/edit/flights`}
+            />
 
             {flightsLoading ? (
               <SkeletonBar width="100%" height="80px" />
@@ -386,7 +611,11 @@ export default function TripDetailsPage() {
 
           {/* ── Stays Section ── */}
           <section className={styles.section}>
-            <SectionHeader title="stays" actionLabel="add stay" />
+            <SectionHeader
+              title="stays"
+              actionLabel="edit stays"
+              actionHref={`/trips/${tripId}/edit/stays`}
+            />
 
             {staysLoading ? (
               <SkeletonBar width="100%" height="80px" />
@@ -419,7 +648,11 @@ export default function TripDetailsPage() {
 
           {/* ── Activities Section ── */}
           <section className={`${styles.section} ${styles.sectionLast}`}>
-            <SectionHeader title="activities" actionLabel="add activities" />
+            <SectionHeader
+              title="activities"
+              actionLabel="edit activities"
+              actionHref={`/trips/${tripId}/edit/activities`}
+            />
 
             {activitiesLoading ? (
               <div>

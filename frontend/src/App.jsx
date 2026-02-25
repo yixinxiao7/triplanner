@@ -7,6 +7,9 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
 import TripDetailsPage from './pages/TripDetailsPage';
+import FlightsEditPage from './pages/FlightsEditPage';
+import StaysEditPage from './pages/StaysEditPage';
+import ActivitiesEditPage from './pages/ActivitiesEditPage';
 import { useNavigate } from 'react-router-dom';
 
 /**
@@ -51,6 +54,30 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <TripDetailsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trips/:id/edit/flights"
+        element={
+          <ProtectedRoute>
+            <FlightsEditPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trips/:id/edit/stays"
+        element={
+          <ProtectedRoute>
+            <StaysEditPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trips/:id/edit/activities"
+        element={
+          <ProtectedRoute>
+            <ActivitiesEditPage />
           </ProtectedRoute>
         }
       />

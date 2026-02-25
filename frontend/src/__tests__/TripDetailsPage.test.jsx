@@ -4,13 +4,21 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import TripDetailsPage from '../pages/TripDetailsPage';
 
-// ── Mock the api module (Navbar calls api.auth.logout) ──────────────────────
+// ── Mock TripCalendar (avoid full calendar render in unit tests) ───────────
+vi.mock('../components/TripCalendar', () => ({
+  default: () => <div data-testid="trip-calendar" />,
+}));
+
+// ── Mock the api module ──────────────────────────────────────────────────────
 vi.mock('../utils/api', () => ({
   api: {
     auth: {
       logout: vi.fn().mockResolvedValue({}),
     },
-    trips: { get: vi.fn() },
+    trips: {
+      get: vi.fn(),
+      update: vi.fn().mockResolvedValue({ data: { data: { id: 'trip-001', start_date: '2026-08-07', end_date: '2026-08-14' } } }),
+    },
     flights: { list: vi.fn() },
     stays: { list: vi.fn() },
     activities: { list: vi.fn() },
@@ -37,6 +45,8 @@ const mockTrip = {
   name: 'Japan 2026',
   destinations: ['Tokyo', 'Osaka', 'Kyoto'],
   status: 'PLANNING',
+  start_date: null,
+  end_date: null,
   created_at: '2026-02-24T12:00:00.000Z',
   updated_at: '2026-02-24T12:00:00.000Z',
 };
@@ -74,7 +84,6 @@ const mockStays = [
   },
 ];
 
-// Two activities on the same day (to test sorting) and one on another day
 const mockActivities = [
   {
     id: 'act-001',
@@ -122,7 +131,6 @@ const mockAuthContext = {
   initializeAuth: vi.fn(),
 };
 
-// Default hook return value: all data loaded, all sections empty
 const defaultHookValue = {
   trip: mockTrip,
   tripLoading: false,
@@ -154,7 +162,6 @@ function renderTripDetailsPage() {
   );
 }
 
-// ── Tests ────────────────────────────────────────────────────────────────────
 describe('TripDetailsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -170,10 +177,8 @@ describe('TripDetailsPage', () => {
 
     renderTripDetailsPage();
 
-    // Airline and flight number
     expect(screen.getByText('American Airlines')).toBeDefined();
     expect(screen.getByText('AA100')).toBeDefined();
-    // Airport codes (departure and arrival)
     expect(screen.getByText('JFK')).toBeDefined();
     expect(screen.getByText('LAX')).toBeDefined();
   });
@@ -200,8 +205,6 @@ describe('TripDetailsPage', () => {
 
     renderTripDetailsPage();
 
-    // formatDateTime formats: "Aug 7, 2026 · 6:00 AM" (America/New_York is UTC-4 in August)
-    // Exact output depends on Intl implementation; just check date parts are present
     const flightCard = screen.getByRole('article', {
       name: /Flight AA100: JFK to LAX/i,
     });
@@ -209,7 +212,7 @@ describe('TripDetailsPage', () => {
     expect(flightCard.textContent).toContain('2026');
   });
 
-  // ── 2. Stay cards render with category badge, name, address, check-in/out ───
+  // ── 2. Stay cards ─────────────────────────────────────────────────────────
   it('renders stay card with category badge, name, address, and check-in/out labels', () => {
     useTripDetails.mockReturnValue({
       ...defaultHookValue,
@@ -218,13 +221,9 @@ describe('TripDetailsPage', () => {
 
     renderTripDetailsPage();
 
-    // Name
     expect(screen.getByText('Hyatt Regency Tokyo')).toBeDefined();
-    // Category badge
     expect(screen.getByText('HOTEL')).toBeDefined();
-    // Address
     expect(screen.getByText('2-7-2 Nishi-Shinjuku, Shinjuku-ku, Tokyo')).toBeDefined();
-    // Date labels
     expect(screen.getByText('CHECK IN')).toBeDefined();
     expect(screen.getByText('CHECK OUT')).toBeDefined();
   });
@@ -252,7 +251,7 @@ describe('TripDetailsPage', () => {
     expect(screen.getByRole('article', { name: /Stay: Hyatt Regency Tokyo/i })).toBeDefined();
   });
 
-  // ── 3. Activities grouped by activity_date and sorted by start_time ──────────
+  // ── 3. Activities ─────────────────────────────────────────────────────────
   it('renders all activity names', () => {
     useTripDetails.mockReturnValue({
       ...defaultHookValue,
@@ -274,7 +273,6 @@ describe('TripDetailsPage', () => {
 
     renderTripDetailsPage();
 
-    // Get all article elements (flight cards are articles too, but activities are also articles)
     const articles = screen.getAllByRole('article');
     const texts = articles.map((el) => el.textContent);
 
@@ -282,9 +280,7 @@ describe('TripDetailsPage', () => {
     const goldenGateIdx = texts.findIndex((t) => t.includes('Golden Gate Bridge'));
     const alcatrazIdx = texts.findIndex((t) => t.includes('Alcatraz Island Tour'));
 
-    // Fisherman's Wharf (9:00 AM) before Golden Gate Bridge (3:00 PM) on the same day
     expect(fishermansIdx).toBeLessThan(goldenGateIdx);
-    // Aug 8 activities before Aug 9 activity
     expect(goldenGateIdx).toBeLessThan(alcatrazIdx);
   });
 
@@ -296,29 +292,89 @@ describe('TripDetailsPage', () => {
 
     renderTripDetailsPage();
 
-    // Two day groups: Aug 8 and Aug 9 — each wrapped in a <section>
     const dayGroups = screen.getAllByRole('region', {
       name: /Activities for/i,
     });
     expect(dayGroups).toHaveLength(2);
   });
 
-  // ── 4. Calendar placeholder text shown ──────────────────────────────────────
-  it('shows calendar placeholder text', () => {
+  // ── 4. Trip Calendar rendered ─────────────────────────────────────────────
+  it('renders the TripCalendar component', () => {
     renderTripDetailsPage();
-    expect(screen.getByText('calendar coming in sprint 2')).toBeDefined();
+    expect(screen.getByTestId('trip-calendar')).toBeDefined();
   });
 
-  it('shows calendar placeholder subtext about future feature', () => {
+  // ── 5. Trip date range section ────────────────────────────────────────────
+  it('shows "trip dates not set" when trip has no start_date or end_date', () => {
     renderTripDetailsPage();
-    expect(
-      screen.getByText(
-        'flights, stays, and activities will appear here once the calendar is built.'
-      )
-    ).toBeDefined();
+    expect(screen.getByText('trip dates not set')).toBeDefined();
   });
 
-  // ── 5. Skeleton loading rendered per section ─────────────────────────────────
+  it('shows "set dates" button when trip has no dates', () => {
+    renderTripDetailsPage();
+    expect(screen.getByRole('button', { name: /set trip dates/i })).toBeDefined();
+  });
+
+  it('shows date range in display mode when trip has start and end dates', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      trip: { ...mockTrip, start_date: '2026-08-07', end_date: '2026-08-14' },
+    });
+
+    renderTripDetailsPage();
+
+    // Should show formatted date range (Aug 7 — Aug 14, 2026)
+    expect(screen.getByText(/Aug 7/)).toBeDefined();
+    expect(screen.getByText(/Aug 14/)).toBeDefined();
+  });
+
+  it('shows edit dates button in display mode', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      trip: { ...mockTrip, start_date: '2026-08-07', end_date: '2026-08-14' },
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByRole('button', { name: /edit trip dates/i })).toBeDefined();
+  });
+
+  it('clicking set dates reveals date inputs', () => {
+    renderTripDetailsPage();
+
+    const setDatesBtn = screen.getByRole('button', { name: /set trip dates/i });
+    fireEvent.click(setDatesBtn);
+
+    expect(screen.getByLabelText('TRIP START')).toBeDefined();
+    expect(screen.getByLabelText('TRIP END')).toBeDefined();
+  });
+
+  // ── 6. Section edit links (Sprint 2 — activated) ──────────────────────────
+  it('renders "edit flights" as an active link (not disabled button)', () => {
+    renderTripDetailsPage();
+
+    const editFlightsLink = screen.getByRole('link', { name: /edit flights/i });
+    expect(editFlightsLink).toBeDefined();
+    expect(editFlightsLink.getAttribute('href')).toBe('/trips/trip-001/edit/flights');
+  });
+
+  it('renders "edit stays" as an active link', () => {
+    renderTripDetailsPage();
+
+    const editStaysLink = screen.getByRole('link', { name: /edit stays/i });
+    expect(editStaysLink).toBeDefined();
+    expect(editStaysLink.getAttribute('href')).toBe('/trips/trip-001/edit/stays');
+  });
+
+  it('renders "edit activities" as an active link', () => {
+    renderTripDetailsPage();
+
+    const editActivitiesLink = screen.getByRole('link', { name: /edit activities/i });
+    expect(editActivitiesLink).toBeDefined();
+    expect(editActivitiesLink.getAttribute('href')).toBe('/trips/trip-001/edit/activities');
+  });
+
+  // ── 7. Skeleton loading ───────────────────────────────────────────────────
   it('shows skeleton elements when all sections are loading', () => {
     useTripDetails.mockReturnValue({
       ...defaultHookValue,
@@ -356,7 +412,7 @@ describe('TripDetailsPage', () => {
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
-  // ── 6. Error state per section shown with retry button ───────────────────────
+  // ── 8. Error states ───────────────────────────────────────────────────────
   it('shows error state for flights section with retry button', () => {
     useTripDetails.mockReturnValue({
       ...defaultHookValue,
@@ -366,7 +422,6 @@ describe('TripDetailsPage', () => {
     renderTripDetailsPage();
 
     expect(screen.getByText('could not load flights.')).toBeDefined();
-    // Retry button available — may be multiple on page (one per section error)
     expect(screen.getAllByText('try again').length).toBeGreaterThan(0);
   });
 
@@ -384,30 +439,6 @@ describe('TripDetailsPage', () => {
     expect(mockRefetchFlights).toHaveBeenCalledTimes(1);
   });
 
-  it('shows error state for stays section with retry button', () => {
-    useTripDetails.mockReturnValue({
-      ...defaultHookValue,
-      staysError: 'could not load stays.',
-    });
-
-    renderTripDetailsPage();
-
-    expect(screen.getByText('could not load stays.')).toBeDefined();
-    expect(screen.getAllByText('try again').length).toBeGreaterThan(0);
-  });
-
-  it('shows error state for activities section with retry button', () => {
-    useTripDetails.mockReturnValue({
-      ...defaultHookValue,
-      activitiesError: 'could not load activities.',
-    });
-
-    renderTripDetailsPage();
-
-    expect(screen.getByText('could not load activities.')).toBeDefined();
-    expect(screen.getAllByText('try again').length).toBeGreaterThan(0);
-  });
-
   it('shows errors in multiple sections independently', () => {
     useTripDetails.mockReturnValue({
       ...defaultHookValue,
@@ -421,11 +452,10 @@ describe('TripDetailsPage', () => {
     expect(screen.getByText('could not load flights.')).toBeDefined();
     expect(screen.getByText('could not load stays.')).toBeDefined();
     expect(screen.getByText('could not load activities.')).toBeDefined();
-    // Three retry buttons
     expect(screen.getAllByText('try again')).toHaveLength(3);
   });
 
-  // ── 7. Back navigation link present ─────────────────────────────────────────
+  // ── 9. Navigation ─────────────────────────────────────────────────────────
   it('renders back navigation link to home', () => {
     renderTripDetailsPage();
 
@@ -440,12 +470,7 @@ describe('TripDetailsPage', () => {
     expect(backLink.getAttribute('href')).toBe('/');
   });
 
-  it('renders the back link text', () => {
-    renderTripDetailsPage();
-    expect(screen.getByText(/← my trips/i)).toBeDefined();
-  });
-
-  // ── Additional: trip name, destinations, empty states ────────────────────────
+  // ── 10. Header and general ────────────────────────────────────────────────
   it('renders trip name and dot-separated destinations in header', () => {
     renderTripDetailsPage();
 
@@ -501,18 +526,6 @@ describe('TripDetailsPage', () => {
     expect(screen.getByText('flights')).toBeDefined();
     expect(screen.getByText('stays')).toBeDefined();
     expect(screen.getByText('activities')).toBeDefined();
-  });
-
-  it('renders disabled action buttons with aria-disabled for Sprint 2 features', () => {
-    renderTripDetailsPage();
-
-    const addFlightBtn = screen.getByRole('button', { name: /add flight/i });
-    const addStayBtn = screen.getByRole('button', { name: /add stay/i });
-    const addActivitiesBtn = screen.getByRole('button', { name: /add activities/i });
-
-    expect(addFlightBtn.disabled).toBe(true);
-    expect(addStayBtn.disabled).toBe(true);
-    expect(addActivitiesBtn.disabled).toBe(true);
   });
 
   it('calls fetchAll on mount', () => {

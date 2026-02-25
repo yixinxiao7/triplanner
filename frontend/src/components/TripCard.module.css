@@ -155,6 +155,11 @@
   cursor: not-allowed;
 }
 
+/* Dates not set — dimmer muted style */
+.datesNotSet {
+  color: rgba(252, 252, 252, 0.3);
+}
+
 /* ── Skeleton ── */
 .cardSkeleton {
   cursor: default;

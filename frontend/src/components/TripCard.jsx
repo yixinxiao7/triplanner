@@ -4,6 +4,42 @@ import StatusBadge from './StatusBadge';
 import styles from './TripCard.module.css';
 
 /**
+ * Format trip date range from start_date / end_date (Sprint 2 T-029 + T-034).
+ * Returns formatted string or null if no dates.
+ */
+function formatTripDateRange(startDate, endDate) {
+  if (!startDate && !endDate) return null;
+
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  function parseDate(dateStr) {
+    // Parse YYYY-MM-DD as local date (not UTC)
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return { year: y, month: m - 1, day: d };
+  }
+
+  if (startDate && endDate) {
+    const s = parseDate(startDate);
+    const e = parseDate(endDate);
+    if (s.year === e.year) {
+      // Same year: "Aug 7 – Aug 14, 2026"
+      return `${MONTHS[s.month]} ${s.day} – ${MONTHS[e.month]} ${e.day}, ${s.year}`;
+    } else {
+      // Different years
+      return `${MONTHS[s.month]} ${s.day}, ${s.year} – ${MONTHS[e.month]} ${e.day}, ${e.year}`;
+    }
+  }
+
+  if (startDate && !endDate) {
+    const s = parseDate(startDate);
+    return `From ${MONTHS[s.month]} ${s.day}, ${s.year}`;
+  }
+
+  return null;
+}
+
+/**
  * TripCard — displays a single trip as a clickable card.
  * Includes inline delete confirmation flow.
  */
@@ -18,9 +54,8 @@ export default function TripCard({ trip, onDelete }) {
     ? trip.destinations.join(', ')
     : trip.destinations || '';
 
-  // Derive date range from flight data if available — trips don't have explicit dates in Sprint 1
-  // The trip object itself doesn't have date fields, so we show "dates not set"
-  const dateRange = null; // Will be set if we have flight data
+  // Format date range from trip.start_date / trip.end_date (Sprint 2 T-029)
+  const dateRange = formatTripDateRange(trip.start_date, trip.end_date);
 
   function handleCardClick(e) {
     if (confirmDelete) return; // Don't navigate if in confirmation state
@@ -153,7 +188,11 @@ export default function TripCard({ trip, onDelete }) {
                 strokeLinecap="round"
               />
             </svg>
-            <span>{dateRange || 'dates not set'}</span>
+            {dateRange ? (
+              <span>{dateRange}</span>
+            ) : (
+              <span className={styles.datesNotSet}>dates not set</span>
+            )}
           </div>
         </>
       )}
