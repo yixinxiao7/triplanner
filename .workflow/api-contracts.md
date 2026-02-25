@@ -1296,3 +1296,477 @@ Activities use `DATE` + `TIME` (no timezone) — local-time entries per ADR-005.
 ---
 
 *This file is maintained by the Backend Engineer. All Sprint 1 contracts above are marked Agreed and are approved for implementation.*
+
+---
+
+## Sprint 2 Contracts
+
+---
+
+## T-027 — Bug Fix Contract Updates
+
+These are not new endpoints but **behavioral changes** to existing endpoints. All Sprint 1 contracts remain in effect; the sections below document the corrected/updated behavior. Any implementation that conflicts with Sprint 1 contracts should prefer these Sprint 2 updates.
+
+---
+
+### Global: UUID Path Parameter Validation (B-009)
+
+**Status:** Agreed — Sprint 2 / T-027
+
+**Change:** A new validation middleware (`validateUUID`) is applied to **all route segments that accept a UUID** path parameter: `:id` on `/trips`, `:tripId` on sub-resource routes, and `:id` on sub-resource item routes. The middleware runs **before** any database query.
+
+**Affected path params:**
+- `/api/v1/trips/:id` (GET, PATCH, DELETE)
+- `/api/v1/trips/:tripId/flights` (GET, POST)
+- `/api/v1/trips/:tripId/flights/:id` (GET, PATCH, DELETE)
+- `/api/v1/trips/:tripId/stays` (GET, POST)
+- `/api/v1/trips/:tripId/stays/:id` (GET, PATCH, DELETE)
+- `/api/v1/trips/:tripId/activities` (GET, POST)
+- `/api/v1/trips/:tripId/activities/:id` (GET, PATCH, DELETE)
+
+**Validation rule:** The value must match the UUID v4 format regex: `/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i`
+
+**Response (Error — 400 Bad Request — Non-UUID path param):**
+```json
+{
+  "error": {
+    "message": "Invalid ID format",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+
+**Notes:**
+- Previously, non-UUID strings (e.g., `GET /api/v1/trips/not-a-valid-uuid`) propagated to the database and caused a PostgreSQL `22P02` error, which leaked as a 500 `INTERNAL_ERROR`. This is now caught at the middleware layer and returned as a 400 before any DB query executes.
+- Valid UUID strings continue to pass through normally — no regression on existing flows.
+- The middleware is a single reusable function (`validateUUID(paramName)`) applied via `router.param()` or inline on each route.
+
+---
+
+### Global: Malformed JSON Body (B-012)
+
+**Status:** Agreed — Sprint 2 / T-027
+
+**Change:** When Express's `express.json()` body parser encounters a malformed JSON body, the error handler now returns a structured 400 response with a distinct `INVALID_JSON` error code instead of the previous `INTERNAL_ERROR` fallthrough.
+
+**Response (Error — 400 Bad Request — Invalid JSON body):**
+```json
+{
+  "error": {
+    "message": "Invalid JSON in request body",
+    "code": "INVALID_JSON"
+  }
+}
+```
+
+**Notes:**
+- The error handler middleware catches `SyntaxError` thrown by `express.json()` and maps it to this response.
+- Applies to all endpoints that accept a request body (POST, PATCH).
+- No change to any success response shapes.
+
+---
+
+### Activities: `activity_date` Field Format (B-010)
+
+**Status:** Agreed — Sprint 2 / T-027
+
+**Change:** The `activity_date` field in **all activities responses** is now guaranteed to be a `YYYY-MM-DD` string. Previously, PostgreSQL returned this as an ISO 8601 timestamp (e.g., `"2026-08-08T04:00:00.000Z"`), which was incorrect.
+
+**Correct format (Sprint 2+):**
+```json
+{
+  "activity_date": "2026-08-08"
+}
+```
+
+**Incorrect format (Sprint 1 bug — no longer acceptable):**
+```json
+{
+  "activity_date": "2026-08-08T04:00:00.000Z"
+}
+```
+
+**Affected endpoints:**
+- `POST /api/v1/trips/:tripId/activities` → 201 response
+- `GET /api/v1/trips/:tripId/activities` → 200 response (all items)
+- `GET /api/v1/trips/:tripId/activities/:id` → 200 response
+- `PATCH /api/v1/trips/:tripId/activities/:id` → 200 response
+
+**Implementation:** The activities model must cast the `activity_date` DATE column to a `YYYY-MM-DD` string in all query results (e.g., Knex `raw("TO_CHAR(activity_date, 'YYYY-MM-DD') as activity_date")`).
+
+**No change to request body validation** — input is already expected to be `YYYY-MM-DD`.
+
+---
+
+## T-028 — Auth Rate Limiting
+
+**Status:** Agreed — Sprint 2 / T-028
+
+**Change:** `express-rate-limit` middleware is applied to **all routes under `/api/v1/auth/*`**. The middleware was installed in Sprint 1 but never wired up. This corrects that omission (B-011).
+
+### Rate Limit Configuration
+
+| Route | Window | Max Requests per IP | Notes |
+|-------|--------|---------------------|-------|
+| `POST /api/v1/auth/login` | 15 minutes | 10 | Strict — brute-force protection |
+| `POST /api/v1/auth/register` | 15 minutes | 20 | Looser — account creation spam protection |
+| All other `/api/v1/auth/*` (refresh, logout) | 15 minutes | 30 | Generous — normal session management |
+
+**Response (Error — 429 Too Many Requests — Rate limit exceeded):**
+```json
+{
+  "error": {
+    "message": "Too many requests, please try again later.",
+    "code": "RATE_LIMIT_EXCEEDED"
+  }
+}
+```
+
+**Response Headers (on 429):**
+```
+Retry-After: <seconds until window resets>
+X-RateLimit-Limit: <max requests>
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: <Unix timestamp when window resets>
+```
+
+**Notes:**
+- Rate limit is **per IP address** (using `req.ip`). The `trustProxy` setting must be correct for this to work behind a reverse proxy.
+- The rate limit counter resets after the sliding window expires.
+- Normal login/register flows (under the threshold) are completely unaffected.
+- The `Retry-After` header tells the client how long to wait before retrying.
+- If `express-rate-limit` is configured with `standardHeaders: true` and `legacyHeaders: false`, the standard `RateLimit-*` headers are sent instead of `X-RateLimit-*`.
+- The existing success and error responses for login/register are unchanged — only the 429 case is new.
+
+---
+
+## T-029 — Trip Date Range API Updates
+
+**Status:** Agreed — Sprint 2 / T-029
+**Schema Change:** Pre-approved by Manager Agent 2026-02-25 (see active-sprint.md Schema Change Pre-Approval section).
+
+**Summary of Changes:**
+- New columns `start_date DATE NULL` and `end_date DATE NULL` added to the `trips` table via migration `20260225_007_add_trip_date_range.js`
+- All four trips endpoints are updated to include `start_date` and `end_date` in their request/response shapes
+- Both fields are optional and nullable; existing trips are unaffected (fields return `null`)
+
+---
+
+### GET /api/v1/trips — Updated Response (Sprint 2)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| Task | T-029 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change from Sprint 1 | `start_date` and `end_date` added to each trip object in the response |
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Japan 2026",
+      "destinations": ["Tokyo", "Osaka", "Kyoto"],
+      "status": "PLANNING",
+      "start_date": "2026-08-07",
+      "end_date": "2026-08-14",
+      "created_at": "2026-02-24T12:00:00.000Z",
+      "updated_at": "2026-02-24T12:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1
+  }
+}
+```
+
+**Notes:**
+- `start_date` and `end_date` are returned as `"YYYY-MM-DD"` strings when set, or `null` when not set.
+- Trips without dates set return `"start_date": null, "end_date": null`.
+- All other query parameters and error responses remain unchanged from Sprint 1.
+
+---
+
+### POST /api/v1/trips — Updated Request + Response (Sprint 2)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| Task | T-029 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change from Sprint 1 | `start_date` and `end_date` added as optional request body fields; included in response |
+
+**Request Body:**
+```json
+{
+  "name": "string",
+  "destinations": ["string"],
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD"
+}
+```
+
+**Field Validation Rules (Sprint 2 additions):**
+| Field | Rules |
+|-------|-------|
+| `start_date` | Optional. String in `YYYY-MM-DD` format. Must be a valid calendar date if provided. |
+| `end_date` | Optional. String in `YYYY-MM-DD` format. Must be a valid calendar date if provided. If both `start_date` and `end_date` are provided, `end_date` must be on or after `start_date`. |
+
+**Validation error when `end_date` is before `start_date`:**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "end_date": "End date must be on or after start date"
+    }
+  }
+}
+```
+
+**Response (Success — 201 Created):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-14",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-24T12:00:00.000Z"
+  }
+}
+```
+
+**Notes:**
+- If `start_date` / `end_date` are not provided on creation, they are stored as `NULL` and returned as `null`.
+- All Sprint 1 validation rules for `name` and `destinations` are unchanged.
+- All Sprint 1 error responses (400 validation, 401) are unchanged.
+
+---
+
+### GET /api/v1/trips/:id — Updated Response (Sprint 2)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| Task | T-029 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change from Sprint 1 | `start_date` and `end_date` added to the trip object in the response |
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-14",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-24T12:00:00.000Z"
+  }
+}
+```
+
+**Notes:**
+- `start_date` and `end_date` are `"YYYY-MM-DD"` strings or `null`.
+- All Sprint 1 error responses (401, 403, 404) are unchanged.
+
+---
+
+### PATCH /api/v1/trips/:id — Updated Request + Response (Sprint 2)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| Task | T-029 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change from Sprint 1 | `start_date` and `end_date` added as optional updatable fields |
+
+**Request Body (all fields optional — Sprint 2 additions highlighted):**
+```json
+{
+  "name": "string",
+  "destinations": ["string"],
+  "status": "PLANNING | ONGOING | COMPLETED",
+  "start_date": "YYYY-MM-DD | null",
+  "end_date": "YYYY-MM-DD | null"
+}
+```
+
+**Field Validation Rules (Sprint 2 additions):**
+| Field | Rules |
+|-------|-------|
+| `start_date` | Optional. String in `YYYY-MM-DD` format, or explicitly `null` to clear. Must be a valid calendar date if a string. |
+| `end_date` | Optional. String in `YYYY-MM-DD` format, or explicitly `null` to clear. If both `start_date` and `end_date` are provided (non-null), `end_date` must be on or after `start_date`. Cross-field validation uses the merged value (the new value if provided, otherwise the existing DB value). |
+
+**Clearing dates (set to null):**
+```json
+{
+  "start_date": null,
+  "end_date": null
+}
+```
+This explicitly removes the date range from the trip. Response will return `"start_date": null, "end_date": null`.
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-14",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-24T13:00:00.000Z"
+  }
+}
+```
+
+**Notes:**
+- `start_date` and `end_date` are now recognized updatable fields. The Sprint 1 rule "if no recognized fields are provided, return 400 `NO_UPDATABLE_FIELDS`" still applies — but `start_date` and `end_date` count as recognized fields.
+- PATCH with only `start_date` (no `end_date`) is valid — it updates only that field.
+- PATCH with only `end_date` (no `start_date`) is valid — cross-field validation uses the existing `start_date` from the DB.
+- All Sprint 1 error responses (400 validation, 401, 403, 404) are unchanged.
+
+---
+
+## T-030 — Trip Status Auto-Calculation
+
+**Status:** Agreed — Sprint 2 / T-030
+**Blocked by:** T-029 (requires `start_date` / `end_date` columns to exist)
+
+**Summary:** Trip `status` is **computed at read time** in `GET /api/v1/trips` and `GET /api/v1/trips/:id` responses based on the trip's `start_date`, `end_date`, and the current server date. The stored `status` column remains as a manual override fallback (used when dates are not set).
+
+### Status Auto-Calculation Rules
+
+The following logic is applied when building each trip object in the response. "Today" is the current UTC date (`YYYY-MM-DD`).
+
+| Condition | Computed Status | Priority |
+|-----------|----------------|----------|
+| `end_date` is set AND `end_date` < today | `"COMPLETED"` | Highest |
+| `start_date` is set AND `end_date` is set AND `start_date` <= today <= `end_date` | `"ONGOING"` | Second |
+| `start_date` is set AND `start_date` > today (trip in the future) | `"PLANNING"` | Third |
+| `start_date` is null OR (`start_date` is not set / only one date is set) | Use stored `status` value | Fallback |
+
+**Additional rules:**
+- The stored `status` column in the database is NOT updated by auto-calculation — only the API response value is computed dynamically.
+- A manual `PATCH /trips/:id` with `status` still works and updates the stored value. If dates are not set, the stored status is what the GET response reflects.
+- If `end_date` is set but `start_date` is null, the end_date alone does not trigger auto-calculation — fall back to stored status.
+
+### Affected Endpoints
+
+**GET /api/v1/trips** and **GET /api/v1/trips/:id** — the `status` field in the response is the **computed** status (not necessarily what is stored in the DB).
+
+**Example — trip in progress:**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka"],
+    "status": "ONGOING",
+    "start_date": "2026-02-20",
+    "end_date": "2026-02-28",
+    "created_at": "2026-02-10T12:00:00.000Z",
+    "updated_at": "2026-02-10T12:00:00.000Z"
+  }
+}
+```
+*(Today is 2026-02-25, which is between start_date and end_date → ONGOING)*
+
+**Example — completed trip:**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440002",
+    "name": "Paris 2025",
+    "destinations": ["Paris"],
+    "status": "COMPLETED",
+    "start_date": "2025-11-01",
+    "end_date": "2025-11-07",
+    "created_at": "2025-10-01T12:00:00.000Z",
+    "updated_at": "2025-10-01T12:00:00.000Z"
+  }
+}
+```
+*(end_date is in the past → COMPLETED)*
+
+**Example — trip with no dates (fallback to stored status):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440003",
+    "name": "Someday Trip",
+    "destinations": ["Bali"],
+    "status": "PLANNING",
+    "start_date": null,
+    "end_date": null,
+    "created_at": "2026-01-01T12:00:00.000Z",
+    "updated_at": "2026-01-01T12:00:00.000Z"
+  }
+}
+```
+*(No dates → stored status "PLANNING" used as-is)*
+
+**Notes:**
+- Auto-calculation is a **read-time transform** applied in the trips model layer (`backend/src/models/trips.js`). No stored value is mutated.
+- `PATCH /api/v1/trips/:id` with `status` still accepts and stores any of: `"PLANNING"`, `"ONGOING"`, `"COMPLETED"`. This serves as an override when dates are not set.
+- The PATCH endpoint does **not** auto-calculate before saving — it saves what was sent. The auto-calculation only applies on GET.
+- All PATCH error responses and PATCH request/response shapes remain as documented in Sprint 1 (plus T-029 date field additions).
+
+---
+
+## T-027 / T-028 — Schema Summary (No DB Changes)
+
+T-027 (bug fixes) and T-028 (rate limiting) require **no database schema changes**. They are purely application-layer changes:
+- T-027: Express middleware additions (UUID validation, JSON error handler) + Knex query cast for `activity_date`
+- T-028: `express-rate-limit` middleware wired into the auth router
+
+---
+
+## Sprint 2 — Database Schema Changes (T-029)
+
+**Migration:** `20260225_007_add_trip_date_range.js`
+
+**up():**
+```sql
+ALTER TABLE trips
+  ADD COLUMN start_date DATE NULL,
+  ADD COLUMN end_date   DATE NULL;
+```
+
+**down():**
+```sql
+ALTER TABLE trips
+  DROP COLUMN IF EXISTS start_date,
+  DROP COLUMN IF EXISTS end_date;
+```
+
+**Notes:**
+- Both columns default to `NULL`. No existing rows are affected.
+- No new indexes needed — date range queries are expected to be infrequent and always scoped by `user_id` (already indexed).
+- This migration is pre-approved by Manager Agent (2026-02-25) per `active-sprint.md` Schema Change Pre-Approval section.
+
+---
+
+*Sprint 2 contracts above are marked Agreed and approved for implementation once the Backend Engineer's implementation phase begins. Frontend Engineer and QA Engineer should reference these contracts for integration and testing.*

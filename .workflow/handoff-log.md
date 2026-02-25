@@ -17,6 +17,34 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 2 — Backend Engineer → QA Engineer (API Contracts Ready for Test Reference — T-027, T-028, T-029, T-030)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-027, T-028, T-029, T-030, T-036, T-037 |
+| Handoff Summary | Sprint 2 API contracts are fully documented in `.workflow/api-contracts.md` (Sprint 2 section). QA should use these contracts as the authoritative specification when writing integration tests and performing the security checklist (T-036) and full integration testing (T-037). |
+| Notes | **What changed — key items for QA to test against:** (1) **UUID validation (T-027 / B-009):** Any non-UUID path param on trips or sub-resource routes must return HTTP 400 `VALIDATION_ERROR` with message "Invalid ID format" — NOT a 500. Valid UUIDs must continue to work. (2) **activity_date format (T-027 / B-010):** All activities responses must return `activity_date` as `"YYYY-MM-DD"` string — NOT an ISO timestamp. Applies to POST 201, GET list, GET single, PATCH response. (3) **JSON body error (T-027 / B-012):** A malformed JSON request body must return HTTP 400 `INVALID_JSON` code — NOT `INTERNAL_ERROR`. (4) **Rate limiting (T-028 / B-011):** `POST /auth/login` must return HTTP 429 `RATE_LIMIT_EXCEEDED` after 10 requests within 15 minutes from the same IP. `POST /auth/register` same after 20 requests. The 429 response body must include `message` and `code` fields. `Retry-After` header must be present on 429. (5) **Trip date range (T-029):** `GET /trips` and `GET /trips/:id` responses must include `start_date` and `end_date` fields (`"YYYY-MM-DD"` string or `null`). `POST /trips` must accept optional `start_date`/`end_date`. `PATCH /trips/:id` must accept `start_date`/`end_date` as updatable fields (including setting them to `null`). Cross-field validation: if both are provided and non-null, `end_date >= start_date`. (6) **Trip status auto-calculation (T-030):** `GET /trips` and `GET /trips/:id` must return `COMPLETED` when `end_date` < today, `ONGOING` when today is between `start_date` and `end_date`, `PLANNING` when `start_date` > today. Trips with no dates must return stored status unchanged. Manual `PATCH status` must still work for trips without dates. **Regression requirement:** All 60+ existing backend unit tests must still pass after all Sprint 2 changes. |
+
+---
+
+### Sprint 2 — Backend Engineer → Frontend Engineer (Sprint 2 API Contracts Published — T-027, T-028, T-029, T-030)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 2 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-027, T-029, T-030, T-031, T-032, T-033, T-034 |
+| Handoff Summary | Sprint 2 API contracts are published in `.workflow/api-contracts.md` (Sprint 2 section). Frontend Engineer should acknowledge these contracts before starting integration on T-031 through T-034. |
+| Notes | **Key changes affecting Frontend integration:** (1) **UUID validation (T-027):** Non-UUID IDs now return 400 instead of 500. The frontend should already handle 400 errors gracefully (from Sprint 1 validation patterns). No new frontend changes needed for this fix, but QA will verify it. (2) **activity_date format (T-027):** The `activity_date` field in activities responses is now correctly `"YYYY-MM-DD"`. The frontend `formatActivityDate` utility already parses this format (confirmed in Sprint 1 code review). This fix ensures the existing frontend code works correctly. (3) **Rate limiting (T-028):** Auth endpoints now return HTTP 429. The frontend's axios interceptor should handle 429 by displaying an error message to the user ("too many requests"). **Action required:** Check if the current interceptor handles 429 or if a new error case needs to be added. Display "Too many requests, please try again later." as a banner error on login/register pages. (4) **Trip date range (T-029 — critical for T-034):** `GET /trips` and `GET /trips/:id` now include `start_date` and `end_date` fields. `PATCH /trips/:id` now accepts `start_date` and `end_date`. Date format for all date fields: `"YYYY-MM-DD"` strings or `null`. **For T-034:** Use `trip.start_date` and `trip.end_date` from the GET response to populate the date inputs in the trip details header. Send `PATCH /trips/:id` with `{ start_date: "YYYY-MM-DD", end_date: "YYYY-MM-DD" }` to save. To clear dates, send `{ start_date: null, end_date: null }`. Display date range on trip cards when both are non-null. (5) **Trip status auto-calculation (T-030):** The `status` field in trip objects is now auto-computed by the server based on dates. The frontend does not need to compute status — just display `trip.status` as returned. Status badges work exactly the same — values remain `PLANNING`, `ONGOING`, `COMPLETED`. **Note:** Implementation of these contracts in code will begin in the next phase (implementation phase). Frontend should NOT start integration until T-027 bug fixes are implemented and the backend is re-deployed. |
+
+---
+
 ### Sprint 2 — Design Agent → Frontend Engineer (UI Spec: Calendar Component + Trip Date Range — T-026)
 
 | Field | Value |

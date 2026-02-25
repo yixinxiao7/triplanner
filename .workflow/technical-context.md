@@ -30,6 +30,7 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 004 | 1 | Create `flights` table | Create Table | `20260224_004_create_flights.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 | 005 | 1 | Create `stays` table | Create Table | `20260224_005_create_stays.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 | 006 | 1 | Create `activities` table | Create Table | `20260224_006_create_activities.js` | ✅ Applied on Staging (2026-02-24, T-020) |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` table | Alter Table | `20260225_007_add_trip_date_range.js` | ⏳ Pending — awaiting implementation (T-029) |
 
 ---
 
@@ -279,6 +280,52 @@ External services integrated into the app. Agents should not add new services wi
 | jsonwebtoken | JWT signing and verification (access tokens) | https://github.com/auth0/node-jsonwebtoken |
 | bcrypt | Password hashing (min 12 rounds) | https://github.com/kelektiv/node.bcrypt.js |
 | crypto (Node built-in) | SHA-256 hashing of refresh tokens before DB storage | Node.js built-in |
+
+---
+
+---
+
+## Sprint 2 Schema Changes (T-029)
+
+**Proposed by:** Backend Engineer — 2026-02-25
+**Pre-Approved by:** Manager Agent — 2026-02-25 (see `active-sprint.md` Schema Change Pre-Approval section)
+
+### Migration 007 — Add `start_date` + `end_date` to `trips` table
+
+**File:** `backend/src/migrations/20260225_007_add_trip_date_range.js`
+
+**Motivation:** Required to support trip date range display on home page trip cards (T-034), trip status auto-calculation (T-030), and the calendar component date context (T-035). Part of feedback item B-006 (Sprint 1 → Sprint 2).
+
+**up():**
+```sql
+ALTER TABLE trips
+  ADD COLUMN start_date DATE NULL,
+  ADD COLUMN end_date   DATE NULL;
+```
+
+**down():**
+```sql
+ALTER TABLE trips
+  DROP COLUMN IF EXISTS start_date,
+  DROP COLUMN IF EXISTS end_date;
+```
+
+**Notes:**
+- Both columns are `DATE NULL` — no default value, no `NOT NULL` constraint. Existing rows keep `NULL` for both fields and the app handles null gracefully everywhere.
+- `DATE` type (not `TIMESTAMPTZ`) — trip dates are calendar-level concepts (which day the trip starts/ends), not precise datetimes. No timezone column companion needed.
+- No new indexes — date filtering is always user-scoped, relying on the existing `trips_user_id_idx`. Adding a date index is premature optimization.
+- The `trips_status_check` constraint and all other `trips` columns are unaffected.
+- API contract updates documented in `.workflow/api-contracts.md` (T-029 section).
+
+**Migration order note:** This migration (`007`) must run after all six Sprint 1 migrations (`001`–`006`). Knex handles ordering by filename prefix timestamp — `20260225_` is after all `20260224_` files.
+
+**Rollback verification:** Running `down()` should drop both columns cleanly on a table that has `start_date` and `end_date`. The `IF EXISTS` guards against double-rollback errors.
+
+**Deploy note:** A handoff to the Deploy Engineer will be logged when T-029 implementation is complete and the migration file is committed. The migration must be applied on staging before the rebuilt frontend goes live (trip cards will call `trip.start_date` which would be `undefined` without the column).
+
+### Manager Approval Note
+
+*Schema change pre-approved by Manager Agent on 2026-02-25 as part of Sprint 2 planning. Documented in `active-sprint.md` under "Schema Change Pre-Approval". No additional approval gate required before Backend Engineer creates the migration file in T-029 implementation phase.*
 
 ---
 
