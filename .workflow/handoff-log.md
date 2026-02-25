@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — Manager Agent → QA Engineer (T-016 + T-017 Approved — Ready for Integration Check)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Manager Agent |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-016, T-017, T-018, T-019 |
+| Handoff Summary | Manager Agent code review for T-016 (Home Page) and T-017 (Trip Details Page) is complete. Both tasks have passed review and are now in "Integration Check" status. All 128 frontend unit tests pass. QA Engineer may proceed with T-018 (security checklist) and T-019 (integration testing). All Sprint 1 implementation tasks (T-008 through T-017) are now in Integration Check or Done. The full sprint is ready for QA. |
+| Notes | **T-016 review findings (all pass):** (1) API contract adherence confirmed: list/create/delete calls match T-005 contracts exactly. createTrip correctly converts comma-separated destinations form value to array before POST. (2) useTrips hook: state management is correct — deleteTrip removes from local list only on API success, error propagates to parent for toast display and TripCard state restoration. (3) TripCard inline delete flow: correct — confirmDelete state shows overlay, cancel restores, error from parent re-throw correctly caught, card state restored. (4) CreateTripModal: focus trap, Escape-to-close, backdrop-click-to-close all implemented. aria-modal + role=dialog + aria-labelledby present. (5) Minor non-blocking note: `triggerRef` in CreateTripModal is allocated but never attached — focus-return-to-trigger not implemented. Acceptable for Sprint 1. (6) "dates not set" shown on TripCard because trips have no date field — intentional; date range is Sprint 2 backlog item B-006. **T-017 review findings (all pass):** (1) API contract adherence confirmed: all four endpoints (trip, flights, stays, activities) called with correct paths and tripId. (2) useTripDetails: Promise.allSettled for sub-resource parallel fetch ✅. Trip 404 short-circuits sub-resource fetches ✅. tripError.type set from HTTP status (404→'not_found', other→'network') ✅. refetchX functions correctly scoped ✅. Empty tripId guard ✅. (3) Activity sorting: lexicographic HH:MM:SS comparison is correct for the stored format — sorts chronologically. Day grouping by activity_date string is correct. (4) formatDate.js: all Intl.DateTimeFormat-based functions have try/catch fallbacks. formatActivityDate correctly creates local Date object from YYYY-MM-DD components (not UTC, which would shift by one day in negative-offset timezones). (5) formatDestinations: handles both Array and comma-string destinations field. **For T-018 security checklist — frontend items to verify:** (1) No hardcoded secrets in any frontend source file. (2) No JWT or sensitive tokens stored in localStorage or sessionStorage (access token in AuthContext useRef, refresh token is httpOnly cookie). (3) Error messages in all components are user-safe strings, no stack traces. (4) XSS: all user data rendered via React JSX (auto-escaped). No `dangerouslySetInnerHTML` usage in T-016/T-017 code. (5) api.js: withCredentials: true set for cookie transport ✅. (6) Note from T-010 review: rate limiting for /auth/login and /auth/register is installed (`express-rate-limit`) but NOT applied. QA must verify or accept this as known staging risk. **For T-019 integration testing — key flows:** (1) Register → land on home with empty state. (2) Create trip → navigate directly to /trips/:id (NOT back to list). (3) Trip details: flights/stays/activities sections show empty states. (4) Delete trip: confirm → card animates out → no longer in list. (5) Section error simulation: verify each section shows independent retry. (6) Trip 404: navigate to /trips/nonexistent-id → full-page "trip not found." with "back to home" link. (7) Auth flow: logout → /login, unauth user → redirect to /login. React Router v6 future-flag warnings in test output are expected and non-blocking. |
+
+---
+
 ### Sprint 1 — Frontend Engineer → QA Engineer (Unit Tests Added for T-016 + T-017 — Re-review Ready)
 
 | Field | Value |
