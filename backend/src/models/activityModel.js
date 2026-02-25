@@ -24,18 +24,20 @@ function activityQuery() {
 }
 
 /**
- * List all activities for a trip, ordered by activity_date ASC, start_time ASC, name ASC.
+ * List all activities for a trip.
+ * Ordered by: activity_date ASC, start_time ASC NULLS LAST, name ASC.
+ *
+ * NULLS LAST ensures timeless ("all day") activities sort after timed activities
+ * within the same date group. Among timed activities, earlier start times come first.
+ * Among timeless activities on the same date, alphabetical name tiebreaker applies.
+ *
  * @param {string} tripId
  * @returns {Promise<Array>}
  */
 export async function listActivitiesByTrip(tripId) {
   return activityQuery()
     .where({ trip_id: tripId })
-    .orderBy([
-      { column: 'activity_date', order: 'asc' },
-      { column: 'start_time', order: 'asc' },
-      { column: 'name', order: 'asc' },
-    ]);
+    .orderByRaw('activity_date ASC, start_time ASC NULLS LAST, name ASC');
 }
 
 /**
@@ -62,8 +64,8 @@ export async function createActivity(data) {
       name: data.name,
       location: data.location ?? null,
       activity_date: data.activity_date,
-      start_time: data.start_time,
-      end_time: data.end_time,
+      start_time: data.start_time ?? null,
+      end_time: data.end_time ?? null,
     })
     .returning('id');
 

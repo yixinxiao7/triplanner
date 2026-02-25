@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 3 — Backend Engineer → Deploy Engineer (T-043: Migration 008 Ready for Staging) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Backend Engineer |
+| To Agent | Deploy Engineer |
+| Status | Pending |
+| Related Task | T-043, T-054 |
+| Handoff Summary | Migration 008 (`20260225_008_make_activity_times_optional.js`) is implemented and ready to run on staging. This migration makes `start_time` and `end_time` columns nullable on the `activities` table. **Must be applied BEFORE the updated backend code is deployed**, since the new validation allows null times and INSERT queries will send NULL values. Run `npx knex migrate:latest` to apply. The migration is reversible — `down()` sets any NULL values to '00:00:00' before re-adding NOT NULL. |
+| Notes | **Files changed in T-043:** `backend/src/migrations/20260225_008_make_activity_times_optional.js` (new), `backend/src/models/activityModel.js` (NULLS LAST ordering, null-safe insert), `backend/src/routes/activities.js` (validation updated, new `validateLinkedTimes` middleware, PATCH handler with merged-value linked validation), `backend/src/__tests__/sprint3.test.js` (new — 33 tests), `backend/src/__tests__/activities.test.js` (Sprint 1 test updated). All 149/149 backend tests pass. |
+
+---
+
+### Sprint 3 — Backend Engineer → QA Engineer (T-043: Implementation Complete — Ready for Review) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-043, T-052, T-053 |
+| Handoff Summary | T-043 implementation is complete. Optional activity times (start_time/end_time nullable) are fully implemented with migration, model updates, validation changes, and 33 new tests. All 149/149 backend tests pass. Ready for security checklist review (T-052) and integration testing (T-053). |
+| Notes | **What to test:** (1) **POST all-day activity** — send `{ name, activity_date }` with no times → 201, response has `start_time: null, end_time: null`. (2) **POST with explicit null times** — `{ name, activity_date, start_time: null, end_time: null }` → 201. (3) **POST with only start_time** → 400 with linked validation error on `end_time`. (4) **POST with only end_time** → 400 with linked validation error on `start_time`. (5) **POST timed activity** → 201 (regression, unchanged from Sprint 1). (6) **GET list ordering** — timed activities before timeless within same date (NULLS LAST). (7) **PATCH timed→timeless** — `{ start_time: null, end_time: null }` → 200. (8) **PATCH timeless→timed** — `{ start_time: "09:00", end_time: "14:00" }` → 200. (9) **PATCH only start_time on timeless** → 400 (merged mismatch). (10) **PATCH start_time null alone on timed** → 400 (merged mismatch). (11) **DELETE timeless activity** → 204. **Security notes:** All queries are parameterized Knex. `orderByRaw` uses hardcoded string (no user input). No new env vars. Migration reversible. No hardcoded secrets. Error responses don't leak internals. |
+
+---
+
+### Sprint 3 — Backend Engineer → Frontend Engineer (T-043: Activities API Updated — Optional Times Ready) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-043, T-047 |
+| Handoff Summary | Activities API now supports optional start_time/end_time per the T-043 contract in `.workflow/api-contracts.md`. Frontend can now implement T-047 (Optional Activity Times UI). Key API behavior: (1) POST with no times or explicit null times creates an "all day" activity. (2) GET responses return `null` for timeless activity times. (3) PATCH can convert between timed and timeless by sending `{ start_time: null, end_time: null }` or `{ start_time: "HH:MM", end_time: "HH:MM" }`. (4) List ordering: timed activities appear before timeless within the same date group. |
+| Notes | **Migration dependency:** Migration 008 must be applied on staging before the updated backend is deployed. This is tracked in T-054 (Deploy). **Frontend integration notes:** When implementing the "All day" checkbox in ActivitiesEditPage, send `start_time: null, end_time: null` (or omit both) when checked. When unchecked, both time fields are required. The existing `end_time > start_time` validation still applies for timed activities. Display "All day" badge for activities where `start_time === null`. |
+
+---
+
 ### Sprint 3 — Backend Engineer → QA Engineer (T-043: API Contracts for Optional Activity Times — Testing Reference) (2026-02-25)
 
 | Field | Value |

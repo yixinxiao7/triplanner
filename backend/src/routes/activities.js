@@ -55,18 +55,18 @@ const activityValidationSchema = {
     },
   },
   start_time: {
-    required: true,
+    required: false,
+    nullable: true,
     type: 'isoTime',
     messages: {
-      required: 'Start time is required',
       type: 'Start time must be in HH:MM or HH:MM:SS format',
     },
   },
   end_time: {
-    required: true,
+    required: false,
+    nullable: true,
     type: 'isoTime',
     messages: {
-      required: 'End time is required',
       type: 'End time must be in HH:MM or HH:MM:SS format',
     },
     custom: (value, body) => {
@@ -79,6 +79,45 @@ const activityValidationSchema = {
     },
   },
 };
+
+/**
+ * Validates the linked rule for start_time / end_time on POST:
+ *   - Both null/omitted → valid ("all day" activity)
+ *   - Both provided → valid (timed activity, end > start already checked by schema)
+ *   - Only one provided → 400 validation error on the missing field
+ *
+ * Returns a middleware function.
+ */
+function validateLinkedTimes(req, res, next) {
+  const startProvided = req.body.start_time !== undefined && req.body.start_time !== null;
+  const endProvided = req.body.end_time !== undefined && req.body.end_time !== null;
+
+  if (startProvided && !endProvided) {
+    return res.status(400).json({
+      error: {
+        message: 'Validation failed',
+        code: 'VALIDATION_ERROR',
+        fields: {
+          end_time: 'Both start time and end time are required, or omit both for an all-day activity',
+        },
+      },
+    });
+  }
+
+  if (!startProvided && endProvided) {
+    return res.status(400).json({
+      error: {
+        message: 'Validation failed',
+        code: 'VALIDATION_ERROR',
+        fields: {
+          start_time: 'Both start time and end time are required, or omit both for an all-day activity',
+        },
+      },
+    });
+  }
+
+  next();
+}
 
 // ---- GET /api/v1/trips/:tripId/activities ----
 router.get('/', async (req, res, next) => {
@@ -94,7 +133,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // ---- POST /api/v1/trips/:tripId/activities ----
-router.post('/', validate(activityValidationSchema), async (req, res, next) => {
+router.post('/', validate(activityValidationSchema), validateLinkedTimes, async (req, res, next) => {
   try {
     const trip = await requireTripOwnership(req, res);
     if (!trip) return;
@@ -106,8 +145,8 @@ router.post('/', validate(activityValidationSchema), async (req, res, next) => {
       name,
       location: location ?? null,
       activity_date,
-      start_time,
-      end_time,
+      start_time: start_time ?? null,
+      end_time: end_time ?? null,
     });
 
     return res.status(201).json({ data: activity });
@@ -147,7 +186,7 @@ router.patch('/:id', async (req, res, next) => {
     const UPDATABLE = ['name', 'location', 'activity_date', 'start_time', 'end_time'];
     const errors = {};
 
-    // Validate activity_date format if provided
+    // Validate activity_date format if provided (and not null)
     if (req.body.activity_date !== undefined) {
       const d = req.body.activity_date;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || isNaN(Date.parse(d))) {
@@ -155,22 +194,38 @@ router.patch('/:id', async (req, res, next) => {
       }
     }
 
-    // Validate time format if provided
+    // Validate time format if provided (and not null — null is valid to clear times)
     const timeRegex = /^\d{2}:\d{2}(:\d{2})?$/;
-    if (req.body.start_time !== undefined && !timeRegex.test(req.body.start_time)) {
+    if (req.body.start_time !== undefined && req.body.start_time !== null && !timeRegex.test(req.body.start_time)) {
       errors.start_time = 'Start time must be in HH:MM or HH:MM:SS format';
     }
-    if (req.body.end_time !== undefined && !timeRegex.test(req.body.end_time)) {
+    if (req.body.end_time !== undefined && req.body.end_time !== null && !timeRegex.test(req.body.end_time)) {
       errors.end_time = 'End time must be in HH:MM or HH:MM:SS format';
     }
 
-    // Validate end_time > start_time using merged values
-    const mergedStart = req.body.start_time ?? existing.start_time;
-    const mergedEnd = req.body.end_time ?? existing.end_time;
-    if (mergedStart && mergedEnd && !errors.start_time && !errors.end_time) {
-      if (mergedEnd <= mergedStart) {
-        errors.end_time = 'End time must be after start time';
+    // Compute merged values: use new value if provided (including explicit null), else existing
+    const mergedStart = req.body.start_time !== undefined ? req.body.start_time : existing.start_time;
+    const mergedEnd = req.body.end_time !== undefined ? req.body.end_time : existing.end_time;
+
+    // Linked validation on merged values (T-043):
+    //   - Both null → valid ("all day")
+    //   - Both non-null → valid (timed), check end > start
+    //   - One null, one non-null → invalid
+    if (!errors.start_time && !errors.end_time) {
+      const startIsNull = mergedStart === null || mergedStart === undefined;
+      const endIsNull = mergedEnd === null || mergedEnd === undefined;
+
+      if (startIsNull && !endIsNull) {
+        errors.start_time = 'Both start time and end time are required, or set both to null for an all-day activity';
+      } else if (!startIsNull && endIsNull) {
+        errors.end_time = 'Both start time and end time are required, or set both to null for an all-day activity';
+      } else if (!startIsNull && !endIsNull) {
+        // Both are non-null — validate end > start
+        if (mergedEnd <= mergedStart) {
+          errors.end_time = 'End time must be after start time';
+        }
       }
+      // Both null → valid, no error
     }
 
     if (Object.keys(errors).length > 0) {

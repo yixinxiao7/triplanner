@@ -31,7 +31,7 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 005 | 1 | Create `stays` table | Create Table | `20260224_005_create_stays.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 | 006 | 1 | Create `activities` table | Create Table | `20260224_006_create_activities.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 | 007 | 2 | Add `start_date` + `end_date` to `trips` table | Alter Table | `20260225_007_add_trip_date_range.js` | ✅ Applied on Staging (2026-02-25, T-038) |
-| 008 | 3 | Make `start_time` + `end_time` nullable on `activities` | Alter Table | `20260225_008_make_activity_times_optional.js` | Proposed — awaiting implementation |
+| 008 | 3 | Make `start_time` + `end_time` nullable on `activities` | Alter Table | `20260225_008_make_activity_times_optional.js` | ✅ Implemented — awaiting staging deploy (T-054) |
 
 ---
 
@@ -383,7 +383,7 @@ ALTER TABLE activities
 
 | # | Sprint | Description | Type | File | Status |
 |---|--------|-------------|------|------|--------|
-| 008 | 3 | Make `start_time` + `end_time` nullable on `activities` table | Alter Table | `20260225_008_make_activity_times_optional.js` | Proposed — awaiting implementation |
+| 008 | 3 | Make `start_time` + `end_time` nullable on `activities` table | Alter Table | `20260225_008_make_activity_times_optional.js` | ✅ Implemented — awaiting staging deploy (T-054) |
 
 ---
 

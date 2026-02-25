@@ -171,14 +171,13 @@ describe('POST /api/v1/trips/:tripId/activities', () => {
   });
 
   it('error path: returns 400 when required fields missing', async () => {
-    const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/activities`, {
-      name: 'Test',
-    }, AUTH);
+    // name is provided, activity_date is still required.
+    // start_time and end_time are optional since T-043 (Sprint 3) — both omitted = "all day" activity.
+    const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/activities`, {}, AUTH);
 
     expect(res.status).toBe(400);
+    expect(res.body.error.fields.name).toBeDefined();
     expect(res.body.error.fields.activity_date).toBeDefined();
-    expect(res.body.error.fields.start_time).toBeDefined();
-    expect(res.body.error.fields.end_time).toBeDefined();
   });
 
   it('error path: returns 403 for wrong trip owner', async () => {
