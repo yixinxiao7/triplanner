@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import FlightsEditPage from '../pages/FlightsEditPage';
@@ -160,5 +160,167 @@ describe('FlightsEditPage', () => {
   it('renders a save flight submit button', () => {
     renderPage();
     expect(screen.getByRole('button', { name: /save flight/i })).toBeDefined();
+  });
+
+  // ── T-049: Hardened tests ─────────────────────────────────────
+
+  it('shows validation errors when submitting empty form', async () => {
+    renderPage();
+    await screen.findByText(/add a flight/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /save flight/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('flight number is required')).toBeDefined();
+      expect(screen.getByText('airline is required')).toBeDefined();
+      expect(screen.getByText('from location is required')).toBeDefined();
+      expect(screen.getByText('to location is required')).toBeDefined();
+    });
+  });
+
+  it('submits a new flight successfully via POST', async () => {
+    const newFlight = {
+      id: 'flight-new',
+      flight_number: 'DL100',
+      airline: 'Delta',
+      from_location: 'LAX',
+      to_location: 'JFK',
+      departure_at: '2026-08-10T08:00:00.000Z',
+      departure_tz: 'America/Los_Angeles',
+      arrival_at: '2026-08-10T16:00:00.000Z',
+      arrival_tz: 'America/New_York',
+    };
+    api.flights.create.mockResolvedValue({ data: { data: newFlight } });
+
+    renderPage();
+    await screen.findByText(/add a flight/i);
+
+    fireEvent.change(screen.getByLabelText(/flight number/i), { target: { value: 'DL100' } });
+    fireEvent.change(screen.getByLabelText(/airline/i), { target: { value: 'Delta' } });
+    fireEvent.change(screen.getByLabelText(/^from$/i), { target: { value: 'LAX' } });
+    fireEvent.change(screen.getByLabelText(/^to$/i), { target: { value: 'JFK' } });
+    fireEvent.change(screen.getByLabelText(/departure date/i), { target: { value: '2026-08-10T08:00' } });
+    fireEvent.change(screen.getByLabelText(/departure timezone/i), { target: { value: 'America/Los_Angeles' } });
+    fireEvent.change(screen.getByLabelText(/arrival date/i), { target: { value: '2026-08-10T16:00' } });
+    fireEvent.change(screen.getByLabelText(/arrival timezone/i), { target: { value: 'America/New_York' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /save flight/i }));
+
+    await waitFor(() => {
+      expect(api.flights.create).toHaveBeenCalledWith('trip-001', expect.objectContaining({
+        flight_number: 'DL100',
+        airline: 'Delta',
+        from_location: 'LAX',
+        to_location: 'JFK',
+      }));
+    });
+  });
+
+  it('pre-populates form when editing an existing flight', async () => {
+    api.flights.list.mockResolvedValue({ data: { data: mockFlights } });
+    renderPage();
+
+    await screen.findByText('UA200');
+
+    fireEvent.click(screen.getByRole('button', { name: /edit flight ua200/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/editing flight/i)).toBeDefined();
+      expect(screen.getByLabelText(/flight number/i).value).toBe('UA200');
+      expect(screen.getByLabelText(/airline/i).value).toBe('United Airlines');
+    });
+  });
+
+  it('saves edited flight via update API call', async () => {
+    api.flights.list.mockResolvedValue({ data: { data: mockFlights } });
+    const updatedFlight = { ...mockFlights[0], airline: 'United' };
+    api.flights.update.mockResolvedValue({ data: { data: updatedFlight } });
+
+    renderPage();
+    await screen.findByText('UA200');
+
+    // Enter edit mode
+    fireEvent.click(screen.getByRole('button', { name: /edit flight ua200/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/airline/i).value).toBe('United Airlines');
+    });
+
+    // Change airline
+    fireEvent.change(screen.getByLabelText(/airline/i), { target: { value: 'United' } });
+
+    // Submit
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => {
+      expect(api.flights.update).toHaveBeenCalledWith('trip-001', 'flight-001', expect.objectContaining({
+        airline: 'United',
+      }));
+    });
+  });
+
+  it('shows delete confirmation and deletes flight on confirm', async () => {
+    api.flights.list.mockResolvedValue({ data: { data: mockFlights } });
+    api.flights.delete.mockResolvedValue({});
+
+    renderPage();
+    await screen.findByText('UA200');
+
+    // Click delete icon
+    fireEvent.click(screen.getByRole('button', { name: /delete flight ua200/i }));
+
+    // Verify confirmation UI
+    expect(screen.getByText('delete this flight?')).toBeDefined();
+
+    // Confirm deletion
+    fireEvent.click(screen.getByText('yes, delete'));
+
+    await waitFor(() => {
+      expect(api.flights.delete).toHaveBeenCalledWith('trip-001', 'flight-001');
+    });
+  });
+
+  it('resets form to add mode when cancel edit is clicked', async () => {
+    api.flights.list.mockResolvedValue({ data: { data: mockFlights } });
+    renderPage();
+    await screen.findByText('UA200');
+
+    // Enter edit mode
+    fireEvent.click(screen.getByRole('button', { name: /edit flight ua200/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/editing flight/i)).toBeDefined();
+    });
+
+    // Cancel edit
+    fireEvent.click(screen.getByText('cancel edit'));
+
+    // Form should return to "add a flight" mode
+    await waitFor(() => {
+      expect(screen.getByText(/add a flight/i)).toBeDefined();
+    });
+  });
+
+  it('shows API error message when flight save fails', async () => {
+    api.flights.create.mockRejectedValue({
+      response: { data: { error: { message: 'server error occurred' } } },
+    });
+
+    renderPage();
+    await screen.findByText(/add a flight/i);
+
+    fireEvent.change(screen.getByLabelText(/flight number/i), { target: { value: 'DL100' } });
+    fireEvent.change(screen.getByLabelText(/airline/i), { target: { value: 'Delta' } });
+    fireEvent.change(screen.getByLabelText(/^from$/i), { target: { value: 'LAX' } });
+    fireEvent.change(screen.getByLabelText(/^to$/i), { target: { value: 'JFK' } });
+    fireEvent.change(screen.getByLabelText(/departure date/i), { target: { value: '2026-08-10T08:00' } });
+    fireEvent.change(screen.getByLabelText(/departure timezone/i), { target: { value: 'America/Los_Angeles' } });
+    fireEvent.change(screen.getByLabelText(/arrival date/i), { target: { value: '2026-08-10T16:00' } });
+    fireEvent.change(screen.getByLabelText(/arrival timezone/i), { target: { value: 'America/New_York' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /save flight/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('server error occurred')).toBeDefined();
+    });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import StaysEditPage from '../pages/StaysEditPage';
@@ -148,5 +148,151 @@ describe('StaysEditPage', () => {
   it('renders save stay submit button', () => {
     renderPage();
     expect(screen.getByRole('button', { name: /save stay/i })).toBeDefined();
+  });
+
+  // ── T-049: Hardened tests ─────────────────────────────────────
+
+  it('shows validation errors when submitting empty form', async () => {
+    renderPage();
+    await screen.findByText(/add a stay/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /save stay/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('please select a category')).toBeDefined();
+      expect(screen.getByText('name is required')).toBeDefined();
+    });
+  });
+
+  it('submits a new stay successfully via POST', async () => {
+    const newStay = {
+      id: 'stay-new',
+      category: 'HOTEL',
+      name: 'Grand Hyatt',
+      address: '123 Main St',
+      check_in_at: '2026-08-10T15:00:00.000Z',
+      check_in_tz: 'America/New_York',
+      check_out_at: '2026-08-12T11:00:00.000Z',
+      check_out_tz: 'America/New_York',
+    };
+    api.stays.create.mockResolvedValue({ data: { data: newStay } });
+
+    renderPage();
+    await screen.findByText(/add a stay/i);
+
+    fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'HOTEL' } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Grand Hyatt' } });
+    fireEvent.change(screen.getByLabelText(/^address$/i), { target: { value: '123 Main St' } });
+    fireEvent.change(screen.getByLabelText(/check-in date/i), { target: { value: '2026-08-10T15:00' } });
+    fireEvent.change(screen.getByLabelText(/check-in timezone/i), { target: { value: 'America/New_York' } });
+    fireEvent.change(screen.getByLabelText(/check-out date/i), { target: { value: '2026-08-12T11:00' } });
+    fireEvent.change(screen.getByLabelText(/check-out timezone/i), { target: { value: 'America/New_York' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /save stay/i }));
+
+    await waitFor(() => {
+      expect(api.stays.create).toHaveBeenCalledWith('trip-001', expect.objectContaining({
+        category: 'HOTEL',
+        name: 'Grand Hyatt',
+      }));
+    });
+  });
+
+  it('allows selecting a category from the dropdown', async () => {
+    renderPage();
+    await screen.findByText(/add a stay/i);
+
+    const categorySelect = screen.getByLabelText(/category/i);
+    expect(categorySelect.value).toBe('');
+
+    fireEvent.change(categorySelect, { target: { value: 'HOTEL' } });
+    expect(categorySelect.value).toBe('HOTEL');
+
+    fireEvent.change(categorySelect, { target: { value: 'AIRBNB' } });
+    expect(categorySelect.value).toBe('AIRBNB');
+  });
+
+  it('pre-populates form when editing an existing stay', async () => {
+    api.stays.list.mockResolvedValue({ data: { data: mockStays } });
+    renderPage();
+
+    await screen.findByText('Cozy Shibuya Apartment');
+
+    fireEvent.click(screen.getByRole('button', { name: /edit stay cozy shibuya apartment/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/editing stay/i)).toBeDefined();
+      expect(screen.getByLabelText(/^name$/i).value).toBe('Cozy Shibuya Apartment');
+      expect(screen.getByLabelText(/category/i).value).toBe('AIRBNB');
+    });
+  });
+
+  it('saves edited stay via update API call', async () => {
+    api.stays.list.mockResolvedValue({ data: { data: mockStays } });
+    const updatedStay = { ...mockStays[0], name: 'Updated Apartment' };
+    api.stays.update.mockResolvedValue({ data: { data: updatedStay } });
+
+    renderPage();
+    await screen.findByText('Cozy Shibuya Apartment');
+
+    // Enter edit mode
+    fireEvent.click(screen.getByRole('button', { name: /edit stay cozy shibuya apartment/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^name$/i).value).toBe('Cozy Shibuya Apartment');
+    });
+
+    // Change name
+    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Updated Apartment' } });
+
+    // Submit
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => {
+      expect(api.stays.update).toHaveBeenCalledWith('trip-001', 'stay-001', expect.objectContaining({
+        name: 'Updated Apartment',
+      }));
+    });
+  });
+
+  it('shows delete confirmation and deletes stay on confirm', async () => {
+    api.stays.list.mockResolvedValue({ data: { data: mockStays } });
+    api.stays.delete.mockResolvedValue({});
+
+    renderPage();
+    await screen.findByText('Cozy Shibuya Apartment');
+
+    // Click delete icon
+    fireEvent.click(screen.getByRole('button', { name: /delete stay cozy shibuya apartment/i }));
+
+    // Verify confirmation UI
+    expect(screen.getByText('delete this stay?')).toBeDefined();
+
+    // Confirm deletion
+    fireEvent.click(screen.getByText('yes, delete'));
+
+    await waitFor(() => {
+      expect(api.stays.delete).toHaveBeenCalledWith('trip-001', 'stay-001');
+    });
+  });
+
+  it('resets form to add mode when cancel edit is clicked', async () => {
+    api.stays.list.mockResolvedValue({ data: { data: mockStays } });
+    renderPage();
+    await screen.findByText('Cozy Shibuya Apartment');
+
+    // Enter edit mode
+    fireEvent.click(screen.getByRole('button', { name: /edit stay cozy shibuya apartment/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/editing stay/i)).toBeDefined();
+    });
+
+    // Cancel edit
+    fireEvent.click(screen.getByText('cancel edit'));
+
+    // Form should return to "add a stay" mode
+    await waitFor(() => {
+      expect(screen.getByText(/add a stay/i)).toBeDefined();
+    });
   });
 });

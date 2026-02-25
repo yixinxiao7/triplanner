@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import ActivitiesEditPage from '../pages/ActivitiesEditPage';
@@ -207,5 +207,122 @@ describe('ActivitiesEditPage', () => {
     // Should now show "all day" placeholders instead of time inputs for this row
     const allDayPlaceholders = screen.getAllByText('all day');
     expect(allDayPlaceholders.length).toBeGreaterThanOrEqual(2); // start + end columns
+  });
+
+  // ── T-049: Hardened tests ─────────────────────────────────────
+
+  it('shows empty state message when no activities exist', async () => {
+    api.activities.list.mockResolvedValue({ data: { data: [] } });
+    renderPage();
+
+    await screen.findByText('no activities planned yet.');
+    expect(screen.getByText(/click.*add activity.*below/i)).toBeDefined();
+  });
+
+  it('calls create API for new rows on Save all', async () => {
+    api.activities.list.mockResolvedValue({ data: { data: [] } });
+    api.activities.create.mockResolvedValue({
+      data: { data: { id: 'new-1', name: 'Visit Museum', activity_date: '2026-08-09' } },
+    });
+
+    renderPage();
+    await screen.findByText(/no activities planned/i);
+
+    // Add a row
+    fireEvent.click(screen.getByRole('button', { name: /add activity/i }));
+
+    // Fill in required fields
+    const nameInput = screen.getByLabelText(/activity name/i);
+    const dateInput = screen.getByLabelText(/activity date/i);
+    fireEvent.change(nameInput, { target: { value: 'Visit Museum' } });
+    fireEvent.change(dateInput, { target: { value: '2026-08-09' } });
+
+    // Save all
+    const saveBtn = screen.getAllByRole('button', { name: /save all/i })[0];
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(api.activities.create).toHaveBeenCalledWith('trip-001', expect.objectContaining({
+        name: 'Visit Museum',
+        activity_date: '2026-08-09',
+      }));
+    });
+  });
+
+  it('removes a row when the delete button is clicked', async () => {
+    api.activities.list.mockResolvedValue({ data: { data: mockActivities } });
+    renderPage();
+
+    await screen.findByDisplayValue('Tokyo Skytree');
+    expect(screen.getByDisplayValue('Senso-ji Temple')).toBeDefined();
+
+    // Delete the first activity row
+    fireEvent.click(screen.getByRole('button', { name: /remove activity tokyo skytree/i }));
+
+    // The row should be removed
+    expect(screen.queryByDisplayValue('Tokyo Skytree')).toBeNull();
+    // The other row should still be there
+    expect(screen.getByDisplayValue('Senso-ji Temple')).toBeDefined();
+  });
+
+  it('shows validation error when saving a row without a name', async () => {
+    api.activities.list.mockResolvedValue({ data: { data: [] } });
+    renderPage();
+
+    await screen.findByText(/no activities planned/i);
+
+    // Add a row
+    fireEvent.click(screen.getByRole('button', { name: /add activity/i }));
+
+    // Set date but not name
+    const dateInput = screen.getByLabelText(/activity date/i);
+    fireEvent.change(dateInput, { target: { value: '2026-08-09' } });
+
+    // Save all
+    fireEvent.click(screen.getAllByRole('button', { name: /save all/i })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/please fix the errors/i)).toBeDefined();
+    });
+
+    // API should NOT have been called
+    expect(api.activities.create).not.toHaveBeenCalled();
+  });
+
+  it('shows validation error when saving a row without a date', async () => {
+    api.activities.list.mockResolvedValue({ data: { data: [] } });
+    renderPage();
+
+    await screen.findByText(/no activities planned/i);
+
+    // Add a row
+    fireEvent.click(screen.getByRole('button', { name: /add activity/i }));
+
+    // Set name but not date
+    const nameInput = screen.getByLabelText(/activity name/i);
+    fireEvent.change(nameInput, { target: { value: 'Visit Museum' } });
+
+    // Save all
+    fireEvent.click(screen.getAllByRole('button', { name: /save all/i })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/please fix the errors/i)).toBeDefined();
+    });
+
+    // API should NOT have been called
+    expect(api.activities.create).not.toHaveBeenCalled();
+  });
+
+  it('does not call API when cancel is clicked', async () => {
+    api.activities.list.mockResolvedValue({ data: { data: mockActivities } });
+    renderPage();
+    await screen.findByDisplayValue('Tokyo Skytree');
+
+    const cancelBtns = screen.getAllByRole('button', { name: /cancel/i });
+    fireEvent.click(cancelBtns[0]);
+
+    expect(api.activities.create).not.toHaveBeenCalled();
+    expect(api.activities.update).not.toHaveBeenCalled();
+    expect(api.activities.delete).not.toHaveBeenCalled();
   });
 });

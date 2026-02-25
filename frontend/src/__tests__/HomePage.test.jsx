@@ -234,9 +234,14 @@ describe('HomePage', () => {
     fireEvent.change(screen.getByLabelText(/TRIP NAME/i), {
       target: { value: 'Europe 2026' },
     });
-    fireEvent.change(screen.getByLabelText(/DESTINATIONS/i), {
-      target: { value: 'Paris, Rome' },
-    });
+
+    // Destinations now uses DestinationChipInput (Sprint 3 T-046)
+    // Add destinations via the chip input: type + Enter
+    const destInput = screen.getByLabelText(/add destination/i);
+    fireEvent.change(destInput, { target: { value: 'Paris' } });
+    fireEvent.keyDown(destInput, { key: 'Enter' });
+    fireEvent.change(destInput, { target: { value: 'Rome' } });
+    fireEvent.keyDown(destInput, { key: 'Enter' });
 
     // Submit
     fireEvent.click(screen.getByRole('button', { name: /create trip/i }));

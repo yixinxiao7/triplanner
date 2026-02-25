@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 3 — Manager Agent → QA Engineer (T-045–T-049, T-051: All Sprint 3 In-Review Tasks Passed Code Review — Ready for QA) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Manager Agent |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-045, T-046, T-047, T-048, T-049, T-051, T-052, T-053 |
+| Handoff Summary | Manager Agent has completed code review on all 6 remaining Sprint 3 In-Review tasks. All 6 passed review and are now in Integration Check status in dev-cycle-tracker.md. Combined with the 3 previously approved tasks (T-043, T-044, T-050), all 9 Sprint 3 implementation tasks are now in Integration Check. QA Engineer is cleared to begin T-052 (security checklist) and T-053 (integration testing). All blockers for T-052 are resolved. |
+| Notes | **T-045 — Frontend: 429 Rate Limit Handling (APPROVED):** 429 detection via `err.response?.status` ✅. Retry-After header parsed → minutes with 15-min fallback ✅. Amber warning banner distinct from red error ✅. Countdown timer with cleanup on unmount ✅. No internals leaked ✅. 4 dedicated tests (2 per page) ✅. **What to verify:** Trigger 429 on login/register → amber banner with countdown, NOT generic error. Banner auto-dismisses at zero. **T-046 — Frontend: Multi-Destination UI (APPROVED):** DestinationChipInput component reused in CreateTripModal + TripDetailsPage ✅. Enter/comma add, X/Backspace remove, duplicate prevention ✅. Min 1 destination validated ✅. Array payload to POST/PATCH ✅. No XSS, comprehensive accessibility ✅. 33+ tests ✅. **What to verify:** Create trip with 3 chips → all stored. Edit destinations on trip details. Validate min 1. **T-047 — Frontend: Optional Activity Times (APPROVED):** "All day" checkbox hides time inputs, sends null ✅. Linked validation (both or neither) ✅. Amber "ALL DAY" badge on details page ✅. Sorting: timed before timeless ✅. Calendar handles timeless ✅. **What to verify:** Create all-day activity → badge shown. Toggle all-day on existing timed activity. Sort order within same date. **T-048 — Frontend: Date Formatting Consolidation (APPROVED):** `formatTripDateRange` in shared `utils/formatDate.js` ✅. TripCard imports from utility ✅. Tests for populated + null date ranges ✅. **What to verify:** TripCard with dates shows formatted range. No visual regression. **T-049 — Frontend: Edit Page Test Hardening (APPROVED):** 51 total tests (18+15+18) across 3 edit pages ✅. Form POST/PATCH, validation, edit pre-population, delete, cancel — all covered ✅. **What to verify:** All 230 frontend tests pass via `npx vitest run`. **T-051 — Infra: Production Deployment Prep (RE-REVIEW APPROVED):** All 2 required + 3 low-priority fixes verified: `USER nginx` in Dockerfile ✅, no Postgres host port ✅, security headers in /assets/ ✅, DB_PASSWORD required syntax ✅, ci.yml comment + DB_PASSWORD fix ✅. **What to verify:** No hardcoded secrets in Docker/CI configs. Non-root containers. DB not exposed to host. Security headers on all nginx locations. **Test counts verified:** Backend 149/149 PASS. Frontend 230/230 PASS. |
+
+---
+
+### Sprint 3 — Frontend Engineer → QA Engineer (T-045–T-049: All Frontend Sprint 3 Tasks Complete — Ready for QA) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Frontend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending (Manager review complete — all 5 tasks approved and moved to Integration Check) |
+| Related Task | T-045, T-046, T-047, T-048, T-049 |
+| Handoff Summary | All 5 Sprint 3 frontend tasks implemented and verified. 230 total frontend tests pass (20 new tests added for T-049). All tasks moved to In Review. |
+| Notes | **T-045 — 429 Rate Limit Handling (Bug Fix, P1):** LoginPage and RegisterPage both handle HTTP 429 responses with amber warning banners (distinct from red error styling). Retry-After header is parsed to show countdown in minutes ("too many login attempts. please try again in X minutes."). Countdown auto-dismisses at 0. Form inputs remain visible/enabled. 2 dedicated tests per page verify 429 behavior. **What to test:** Trigger 429 on login → amber banner with countdown shown, not generic error. Same for register. Banner disappears when countdown expires. **T-046 — Multi-Destination UI (Feature, P1):** DestinationChipInput component with Enter/comma to add, X/Backspace to remove, case-insensitive duplicate rejection, aria-live announcements. CreateTripModal sends destinations as string array via POST /trips. TripDetailsPage header has display/edit mode for destinations with PATCH /trips/:id save. 12 DestinationChipInput tests + 8 CreateTripModal tests + TripDetailsPage tests cover this. **What to test:** Create trip with 3 destinations via chip input → all 3 stored. Edit destinations on trip details → add/remove, PATCH saves correctly. Validation: at least 1 destination required. **T-047 — Optional Activity Times (Feature, P1):** ActivitiesEditPage has "ALL DAY" checkbox column (70px). When checked, time inputs hidden and "all day" placeholder shown. Toggling off restores time inputs and focuses start_time. Sends null for start_time/end_time when all-day. Linked validation: if one time is set, both required. TripDetailsPage shows amber "ALL DAY" badge (rgba(196, 122, 46, 0.15) bg, rgba(196, 122, 46, 0.3) border, #C47A2E text). 4 dedicated All Day tests in ActivitiesEditPage. **What to test:** Create activity with no times → saves as all-day. Edit all-day activity to add times → updates correctly. Badge displays on trip details. Calendar renders timeless activity. **T-048 — Date Formatting Consolidation (Refactor, P2):** `formatTripDateRange` lives in `utils/formatDate.js`. TripCard imports from shared utility. TripCard.test.jsx has test for populated date range ("Aug 7 – Aug 14, 2026"). 14 formatDate tests pass. **What to test:** TripCard with dates shows formatted range. No visual regression. **T-049 — Edit Page Test Hardening (Feature, P2):** 20 new tests added across FlightsEditPage (7), StaysEditPage (7), ActivitiesEditPage (6). Coverage: form submission POST/PATCH, validation errors on empty submit, edit mode pre-population + save, delete with inline confirmation, cancel edit, API error display, category dropdown, batch save, row deletion, cancel without API calls. Total test count: FlightsEditPage 19, StaysEditPage 20, ActivitiesEditPage 19. **What to test:** All 230 frontend tests pass via `npx vitest run`. **Known limitations:** (1) Navigation tests use MemoryRouter — actual browser navigation not verified. (2) TIMEZONES dropdown values in tests use direct value strings without verifying they exist in the TIMEZONES constant. (3) React Router v7 future flag warnings in stderr (non-blocking). **Files changed:** `frontend/src/__tests__/FlightsEditPage.test.jsx`, `frontend/src/__tests__/StaysEditPage.test.jsx`, `frontend/src/__tests__/ActivitiesEditPage.test.jsx`, `frontend/src/__tests__/HomePage.test.jsx` (T-046 chip input fix), `frontend/src/pages/TripDetailsPage.module.css` (allDayBadge amber colors per UI Spec 9.1.2). |
+
+---
+
+### Sprint 3 — Frontend Engineer → Backend Engineer (T-043: API Contract Acknowledged) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Frontend Engineer |
+| To Agent | Backend Engineer |
+| Status | Acknowledged |
+| Related Task | T-043 |
+| Handoff Summary | Frontend Engineer acknowledges the T-043 API contract for optional activity times. POST/PATCH /trips/:id/activities with nullable start_time/end_time, linked validation (both null or both provided), NULLS LAST ordering. Frontend implementation matches the contract: ActivitiesEditPage sends null for all-day activities, validates linked time fields client-side, and handles the API response correctly. |
+| Notes | Contract verified: POST /trips/:id/activities accepts `start_time: null, end_time: null` for all-day activities. PATCH sends merged values for linked validation per contract spec. Frontend `buildPayload` function correctly sends `null` (not empty string) when `_allDay` is true. Client-side validation mirrors backend linked validation: both times must be provided or both null. |
+
+---
+
 ### Sprint 3 — Deploy Engineer → Manager Agent (T-051: Fixes Applied — Ready for Re-Review) (2026-02-25)
 
 | Field | Value |
@@ -24,7 +66,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 3 |
 | From Agent | Deploy Engineer |
 | To Agent | Manager Agent |
-| Status | Pending |
+| Status | Done |
 | Related Task | T-051 |
 | Handoff Summary | Deploy Engineer has addressed all 2 required fixes and 3 low-priority fixes from Manager code review. T-051 moved back to In Review in dev-cycle-tracker.md. Ready for Manager re-review. |
 | Notes | **REQUIRED FIX 1 — Dockerfile.frontend: `USER nginx` added.** Added `USER nginx` directive before `CMD ["nginx", "-g", "daemon off;"]`. Container now runs as the non-root `nginx` user. All directory ownership (`chown -R nginx:nginx`) was already in place. **REQUIRED FIX 2 — docker-compose.yml: Postgres host port mapping removed.** Removed `ports: - '${DB_PORT:-5432}:5432'` from postgres service. Database is now only accessible from the internal Docker network. Backend connects via `postgres:5432` on the internal network. Comment added suggesting docker-compose.override.yml for local debugging. **LOW-PRIORITY FIX (a) — nginx.conf: Security headers in /assets/ block.** Added all 4 security headers (`X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`, `Referrer-Policy`) inside the `/assets/` location block to prevent nginx's `add_header` inheritance override. **LOW-PRIORITY FIX (b) — docker-compose.yml: DB_PASSWORD enforced.** Changed `${DB_PASSWORD:-password}` to `${DB_PASSWORD:?DB_PASSWORD is required}` in all 3 references (postgres, migrate, backend services). Users must now explicitly set DB_PASSWORD. **LOW-PRIORITY FIX (c) — ci.yml: Comment corrected.** Header comment changed from "lint → test → build → Docker build validation" to "test → build → Docker build validation". Also added `DB_PASSWORD: ci-validation-only` to the Docker Compose config validation step (required now that DB_PASSWORD uses `:?` syntax). **Additional:** `.env.docker.example` updated — removed `DB_PORT` line, added comment about DB not being host-mapped. **Security self-check:** No hardcoded secrets ✅. No host-exposed DB ✅. Non-root containers ✅. Security headers on all locations ✅. Certs and logs gitignored ✅. **Files changed:** `infra/Dockerfile.frontend` (1 line added), `infra/docker-compose.yml` (ports removed, DB_PASSWORD syntax updated x3), `infra/nginx.conf` (4 headers added to /assets/ block), `.github/workflows/ci.yml` (comment fixed, DB_PASSWORD added to env), `infra/.env.docker.example` (DB_PORT removed, comment added). |
