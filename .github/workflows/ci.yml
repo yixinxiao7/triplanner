@@ -1,6 +1,6 @@
 # TripPlanner CI/CD Pipeline
 # Runs on push to main and all pull requests.
-# Steps: lint → test (backend + frontend) → build → Docker build validation
+# Steps: test (backend + frontend) → build → Docker build validation
 
 name: CI
 
@@ -113,6 +113,7 @@ jobs:
         run: docker compose -f infra/docker-compose.yml config
         env:
           JWT_SECRET: ci-validation-only
+          DB_PASSWORD: ci-validation-only
 
   # ---- Deploy (placeholder — runs only on main push) ----
   deploy:
