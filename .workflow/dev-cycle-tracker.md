@@ -213,7 +213,7 @@ Each task is a row in the table below. Agents update their assigned tasks as the
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-057 | Design spec addendum: Rate limit lockout submit button UX — update Spec 9 (T-042) to specify disabled submit button + visual indicator while rateLimitMinutes > 0 on LoginPage and RegisterPage (B-025) | Feature | Design Agent | Backlog | P1 | S | 4 | — | UI spec addendum reviewed by Manager Agent. Covers: (1) Submit button disabled state during rate limit lockout — button appears grayed out with `aria-disabled="true"`, cursor not-allowed. (2) Button text changes to "please wait..." or similar during lockout. (3) Button re-enables when countdown reaches 0. (4) Published as update to Spec 9 in `.workflow/ui-spec.md`. |
+| T-057 | Design spec addendum: Rate limit lockout submit button UX — update Spec 9 (T-042) to specify disabled submit button + visual indicator while rateLimitMinutes > 0 on LoginPage and RegisterPage (B-025) | Feature | Design Agent | Done | P1 | S | 4 | — | UI spec addendum reviewed by Manager Agent. Covers: (1) Submit button disabled state during rate limit lockout — button appears grayed out with `aria-disabled="true"`, cursor not-allowed. (2) Button text changes to "please wait..." or similar during lockout. (3) Button re-enables when countdown reaches 0. (4) Published as Spec 10.1 in `.workflow/ui-spec.md`. Additionally, Spec 10 covers ARIA role fix (10.2, for T-061), aria-describedby targets (10.3, for T-062), and CreateTripModal focus return (10.4, for T-063). **[Design Agent Done 2026-02-25]** |
 
 ---
 

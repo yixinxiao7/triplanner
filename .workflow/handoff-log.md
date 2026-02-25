@@ -17,6 +17,34 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 4 — Design Agent → Frontend Engineer: Spec 10 Published — All Sprint 4 UI Specs Ready (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-057, T-059, T-061, T-062, T-063 |
+| Handoff Summary | Design Agent has published **Spec 10: Sprint 4 — UX Polish & Accessibility Hardening** to `.workflow/ui-spec.md`. This spec covers all UI-affecting Frontend tasks in Sprint 4. The spec is marked **Approved** (auto-approved per automated sprint cycle). T-057 is marked Done in dev-cycle-tracker.md. |
+| Notes | **Spec 10 sections and their corresponding Frontend tasks:** (1) **Spec 10.1 — Rate Limit Lockout Submit Button (T-059):** Disable submit button on LoginPage and RegisterPage when `rateLimitMinutes > 0`. Button text changes to `"please wait…"`. Re-enables when countdown reaches 0. Addendum to Spec 9.2 — **replaces step 4** which previously said button remains enabled. Form inputs stay editable during lockout. (2) **Spec 10.2 — ARIA Role Hierarchy Fix (T-061):** Remove `role="option"` from chips in DestinationChipInput. Keep `role="group"` on container. No replacement role needed — chips are removable tags, not selectable options. Update test assertions accordingly. (3) **Spec 10.3 — Missing aria-describedby Targets (T-062):** Add `id="dest-chip-hint"` element with hint text `"type a destination and press enter"` to DestinationChipInput. Add `id="password-hint"` to existing "8 characters minimum" span in RegisterPage. Both are minimal changes. (4) **Spec 10.4 — CreateTripModal Focus Return (T-063):** Pass `createTripBtnRef` from HomePage to CreateTripModal as `triggerRef` prop. On modal close (all paths except successful creation with navigation), call `triggerRef.current.focus()` with `requestAnimationFrame` deferral to avoid focus trap conflict. **Tasks T-060 (parseRetryAfterMinutes extraction) and T-064 (axios 401 retry tests) do not require UI specs — they are code refactor/test tasks with no visual changes.** Frontend Engineer: all 6 of your Sprint 4 tasks are now unblocked. T-059 was blocked on T-057 (this spec) — now cleared. |
+
+---
+
+### Sprint 4 — Design Agent → Manager Agent: T-057 Complete — Spec 10 Ready for Review (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| From Agent | Design Agent |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-057 |
+| Handoff Summary | Design Agent has completed T-057 (design spec addendum for rate limit lockout submit button UX). Published as **Spec 10** in `.workflow/ui-spec.md`. Additionally created spec addendums for T-061 (ARIA role fix), T-062 (aria-describedby targets), and T-063 (CreateTripModal focus return) — these were Frontend tasks that benefit from explicit UI guidance. Spec is marked Approved. T-057 status updated to Done in dev-cycle-tracker.md. Ready for Manager review. |
+| Notes | **Spec 10 coverage:** Spec 10.1 (rate limit lockout button — T-057/T-059), Spec 10.2 (ARIA role fix — T-061), Spec 10.3 (aria-describedby targets — T-062), Spec 10.4 (focus return — T-063). **Key design decisions:** (1) Button text changes to "please wait…" during lockout for clear communication. (2) Form inputs remain editable during lockout so users can prepare their next attempt. (3) Chips lose `role="option"` entirely (not replaced with `role="listitem"`) for simplicity. (4) `dest-chip-hint` element is always visible (not sr-only) as it helps sighted users too. (5) Focus return uses `requestAnimationFrame` deferral to avoid focus trap race conditions. **No specs needed for T-060 (refactor) and T-064 (test addition).** |
+
+---
+
 ### Sprint 4 — Manager Agent: Sprint 4 Kickoff — Planning Complete (2026-02-25)
 
 | Field | Value |

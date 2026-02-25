@@ -2096,3 +2096,454 @@ The rate limit banner uses the same responsive behavior as the existing error ba
 ---
 
 *Sprint 3 specs above are all marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-25.*
+
+---
+
+---
+
+### Spec 10: Sprint 4 — UX Polish & Accessibility Hardening
+
+**Sprint:** #4
+**Related Tasks:** T-057, T-059, T-061, T-062, T-063
+**Status:** Approved
+
+**Description:**
+Sprint 4 is a "polish and harden" sprint with no new features. This spec covers all UI-affecting changes: (1) disabling the submit button during rate limit lockout on auth pages, (2) fixing the ARIA role hierarchy mismatch in `DestinationChipInput`, (3) adding missing `aria-describedby` target IDs in `DestinationChipInput` and `RegisterPage`, and (4) implementing focus-return-to-trigger when `CreateTripModal` closes.
+
+**Feedback sources:** FB-033 (submit button not disabled during lockout), FB-035 (ARIA role mismatch), FB-036 (missing aria-describedby targets), B-018 (triggerRef focus return).
+
+**Note:** T-060 (parseRetryAfterMinutes utility extraction) and T-064 (axios 401 retry test) are pure code refactor/test tasks with no UI changes — they do not require design specs.
+
+---
+
+#### 10.1 Rate Limit Lockout — Disabled Submit Button (T-057 / T-059)
+
+**Addendum to: Spec 9.2 (429 Rate Limit Error Message)**
+
+**Problem:** When the 429 rate limit amber banner is active on LoginPage and RegisterPage, the submit button remains enabled. Users can click "sign in" or "create account" during the lockout, which triggers another API call that immediately returns 429 again. This wastes network requests and confuses users.
+
+**Change Summary:** Disable the submit button while `rateLimitMinutes > 0`. Re-enable it when the countdown expires.
+
+---
+
+##### 10.1.1 LoginPage — Submit Button During Lockout
+
+**Replaces Spec 9.2.1 Step 4** (which previously stated "Button remains **enabled**").
+
+**New behavior when `rateLimitMinutes > 0`:**
+
+1. **Button disabled state:**
+   - The submit button changes from:
+     ```
+     disabled={isLoading}
+     aria-disabled={isLoading}
+     ```
+     to:
+     ```
+     disabled={isLoading || rateLimitMinutes > 0}
+     aria-disabled={isLoading || rateLimitMinutes > 0 ? 'true' : undefined}
+     ```
+   - This means the button is disabled during both loading AND rate limit lockout.
+
+2. **Button text during lockout:**
+   - When `rateLimitMinutes > 0` and `!isLoading`:
+     - Button text changes from `"sign in"` to `"please wait…"`
+     - The ellipsis (…) is a single unicode character `\u2026`, not three dots
+   - When `isLoading`:
+     - Button still shows the spinner (loading takes precedence over lockout text)
+   - When neither loading nor rate-limited:
+     - Button shows normal text `"sign in"`
+
+3. **Button visual appearance during lockout:**
+   - `cursor: not-allowed` — communicates the button is not interactive
+   - `opacity: 0.4` — matches the Design System's disabled button opacity (`rgba(93,115,126,0.4)` maps to ~0.4 opacity on the accent background)
+   - The button uses the existing primary button disabled style from the Design System Conventions: `background: rgba(93, 115, 126, 0.4)`, `color: var(--text-primary)`, `cursor: not-allowed`
+   - No hover effect while disabled (hover styles should not apply)
+
+4. **Button text logic (complete):**
+   ```
+   if (isLoading) → show spinner
+   else if (rateLimitMinutes > 0) → "please wait…"
+   else → "sign in"
+   ```
+
+5. **Re-enabling the button:**
+   - When the existing countdown timer reaches 0 (i.e., `rateLimitMinutes` becomes `0` or `null`):
+     - The button text reverts to `"sign in"`
+     - The button becomes enabled again (`disabled={false}`)
+     - `aria-disabled` is removed
+     - The amber rate limit banner shows `"you can try again now."` (per existing Spec 9.2.1 step 3) and auto-dismisses after 3 seconds
+
+6. **Edge case — user submits while lockout is active:**
+   - Because the button has `disabled={true}`, the form's `onSubmit` will not fire
+   - No API call is made
+   - No additional error is shown (the amber banner already explains the situation)
+   - If the user somehow bypasses the disabled state (e.g., programmatic form submit), the backend will return another 429 — the existing 429 handler refreshes the countdown
+
+---
+
+##### 10.1.2 RegisterPage — Submit Button During Lockout
+
+**Same behavior as LoginPage** (10.1.1), with these text differences:
+
+- Locked-out button text: `"please wait…"` (same as LoginPage)
+- Normal button text: `"create account"` (unchanged)
+- Loading state: spinner with `aria-label="Creating account"` (unchanged)
+
+**Button text logic:**
+```
+if (isLoading) → show spinner
+else if (rateLimitMinutes > 0) → "please wait…"
+else → "create account"
+```
+
+All other behavior (disabled state, visual appearance, re-enabling, edge cases) is identical to 10.1.1.
+
+---
+
+##### 10.1.3 CSS Changes — Lockout Button State
+
+No new CSS is required. The existing primary button disabled styles from the Design System Conventions already cover this:
+
+```css
+/* Already defined in the Design System Conventions */
+.submitBtn:disabled {
+  background: rgba(93, 115, 126, 0.4);
+  cursor: not-allowed;
+}
+
+/* Ensure no hover effect when disabled */
+.submitBtn:disabled:hover {
+  background: rgba(93, 115, 126, 0.4); /* same as disabled, no change */
+}
+```
+
+If the CSS module doesn't already include the `:disabled:hover` override, add it. The goal is that hovering over the disabled button produces no visual change.
+
+---
+
+##### 10.1.4 Accessibility — Submit Button During Lockout
+
+- `aria-disabled="true"` is set on the button when rate-limited (already part of the disabled logic)
+- Screen readers will announce the button as disabled
+- The amber rate limit banner with `role="alert"` and `aria-live="polite"` already provides the reason for the disabled state — "too many login attempts. please try again in X minutes."
+- When the countdown expires and the button re-enables, the banner text updates to `"you can try again now."` which is announced by the `aria-live` region, signaling to screen reader users that they can act again
+- No additional `aria-label` change is needed on the button itself — `"please wait…"` as visible text is sufficient for screen readers
+
+---
+
+##### 10.1.5 Interaction Timeline (Full Scenario)
+
+1. User enters wrong password, clicks "sign in" — standard error flow
+2. User exceeds rate limit (e.g., 10 attempts in 15 minutes)
+3. API returns HTTP 429 with `Retry-After: 840`
+4. **Immediately:**
+   - Amber banner appears: `"too many login attempts. please try again in 14 minutes."`
+   - Submit button text changes to `"please wait…"`
+   - Submit button becomes disabled with `cursor: not-allowed` and reduced opacity
+   - All form inputs remain enabled (user can still correct their email/password in preparation)
+5. **Every 60 seconds:** Banner countdown updates (14 → 13 → … → 1)
+6. **When countdown reaches 0:**
+   - Banner text: `"you can try again now."` (auto-dismiss after 3s)
+   - Button text reverts to `"sign in"`
+   - Button re-enables — user can click to submit again
+7. User clicks "sign in" — normal submit flow resumes
+
+---
+
+##### 10.1.6 Responsive Behavior — Lockout Button
+
+No special responsive changes needed. The submit button is already full-width on all breakpoints per Spec 1.1. The `"please wait…"` text fits within the button at all sizes. The amber banner wraps naturally on narrow screens per Spec 9.2.6.
+
+---
+
+---
+
+#### 10.2 ARIA Role Hierarchy Fix — DestinationChipInput (T-061)
+
+**Addendum to: Spec 8.1 (DestinationChipInput Component)**
+
+**Problem:** The current implementation has `role="group"` on the outer container and `role="option"` on each chip. Per WAI-ARIA spec, `role="option"` requires an ancestor with `role="listbox"`. The current `role="group"` is not a valid owner for `role="option"`, which causes ARIA validation errors and can confuse screen readers.
+
+**Analysis of the interaction pattern:** Destination chips are removable items in a collection — the user adds and removes them, but does not "select" them from a predefined list (which is what `role="listbox"` + `role="option"` models). The correct semantic is a group of list items, not a selection listbox.
+
+**Change:** Switch from `role="option"` on chips to a semantically correct hierarchy.
+
+---
+
+##### 10.2.1 Updated ARIA Roles
+
+**Outer container:**
+- Keep `role="group"` (unchanged)
+- Keep `aria-label="Destinations"` (unchanged)
+
+**Individual chips:**
+- Change from `role="option"` to **no explicit role** (remove the `role` attribute)
+- Each chip is already an `<span>` containing text and a remove button — semantically it is a label + interactive button, which does not need a special ARIA role
+- The remove button `<button>` within each chip already has `aria-label="Remove [destination]"`, which provides sufficient screen reader context
+
+**Rationale:** Removing `role="option"` from chips eliminates the ARIA hierarchy violation. Since the chips are not selectable options (they are removable tags), `role="option"` was semantically incorrect. The `role="group"` on the container with `aria-label="Destinations"` groups the chips together. Each chip's remove button provides the interactive affordance.
+
+---
+
+##### 10.2.2 Alternative Considered (Rejected)
+
+An alternative was to change the container to `role="listbox"` and keep `role="option"` on chips. This was rejected because:
+- `role="listbox"` implies single/multi-selection from a list of choices
+- Chips are not selectable — they are tags that can be removed
+- A listbox expects keyboard navigation with arrow keys to move between options, which is not our interaction model
+- Our keyboard model is: type → Enter to add, Backspace to remove last, Tab to leave
+
+---
+
+##### 10.2.3 Test Assertions Update
+
+Existing DestinationChipInput tests that assert `role="option"` on chips must be updated to expect **no role attribute** on chip `<span>` elements. Verify:
+- Container still has `role="group"`
+- Container still has `aria-label="Destinations"`
+- Each chip's remove button still has the correct `aria-label="Remove [destination name]"`
+- Overall: no ARIA validation warnings when run through an accessibility checker
+
+---
+
+---
+
+#### 10.3 Missing aria-describedby Target IDs (T-062)
+
+**Addendum to: Spec 8.1 (DestinationChipInput) and Spec 1.3 (RegisterPage)**
+
+**Problem:** Two `aria-describedby` references point to IDs that don't exist in the DOM:
+1. `DestinationChipInput`: input has `aria-describedby="dest-chip-hint"` (when no error), but no element with `id="dest-chip-hint"` exists
+2. `RegisterPage`: password input has `aria-describedby="password-hint"` (when no error), but no element with `id="password-hint"` exists
+
+These broken references are silently ignored by browsers but mean screen readers never announce the hint text, which degrades the experience for visually impaired users.
+
+---
+
+##### 10.3.1 DestinationChipInput — Add Hint Element
+
+**Add a hint text element** below the chip input container (inside the component, before the error message):
+
+**HTML structure:**
+```html
+<div class="container" role="group" aria-label="Destinations">
+  <!-- chips + text input -->
+</div>
+<span id="dest-chip-hint" class="chipHint">
+  type a destination and press enter
+</span>
+<!-- error message (if any) rendered below hint -->
+```
+
+**Hint element styling:**
+- `id="dest-chip-hint"` — matches the existing `aria-describedby` reference on the text input
+- Text: `"type a destination and press enter"` — same text that was already used as the placeholder in some contexts
+- Style: `font-size: 11px`, `color: var(--text-muted)`, `margin-top: 4px`, `letter-spacing: 0.02em`
+- Always visible (not sr-only) — this serves as a visual hint for sighted users too
+
+**aria-describedby logic on the text input (updated):**
+```
+aria-describedby={hasError ? 'dest-chip-error' : 'dest-chip-hint'}
+```
+- When no error: points to `dest-chip-hint` → screen reader announces "type a destination and press enter" after the input label
+- When error: points to `dest-chip-error` → screen reader announces the error message instead
+
+**Visibility rules:**
+- The hint text is always rendered in the DOM (for `aria-describedby` to work)
+- When an error is active, the hint is visually hidden (display: none or sr-only) and the error message is shown instead — but since `aria-describedby` already switches to the error ID, the hint's visibility doesn't matter for screen readers
+- Simpler approach: keep the hint always visible. Error text appears below it. The `aria-describedby` switch ensures screen readers read the right thing.
+
+**Recommended approach (simplest):** Keep hint always visible. Show error below it when present. This avoids toggling visibility.
+
+---
+
+##### 10.3.2 RegisterPage — Add Password Hint ID
+
+**Change:** Add `id="password-hint"` to the existing "8 characters minimum" helper text in the password field's label.
+
+**Current HTML (approximate):**
+```html
+<label htmlFor="password" className={styles.label}>
+  PASSWORD
+  <span className={styles.fieldHint}>8 characters minimum</span>
+</label>
+```
+
+**Updated HTML:**
+```html
+<label htmlFor="password" className={styles.label}>
+  PASSWORD
+  <span id="password-hint" className={styles.fieldHint}>8 characters minimum</span>
+</label>
+```
+
+**That's it.** The `<span>` already exists with the correct text and styling. Adding the `id` attribute is the only change needed to make the existing `aria-describedby="password-hint"` reference valid.
+
+**aria-describedby logic on the password input (unchanged):**
+```
+aria-describedby={errors.password ? 'password-error' : 'password-hint'}
+```
+- When no error: points to `password-hint` → screen reader announces "8 characters minimum"
+- When error: points to `password-error` → screen reader announces the validation error
+
+**No visual changes.** No CSS changes. No layout changes.
+
+---
+
+##### 10.3.3 Verification Checklist
+
+After implementation, verify:
+- [ ] `document.getElementById('dest-chip-hint')` returns an element when DestinationChipInput is rendered
+- [ ] `document.getElementById('password-hint')` returns an element when RegisterPage is rendered
+- [ ] Screen reader (or accessibility tree inspector) correctly associates the hint text with the input when no error is present
+- [ ] When an error is present, the error message is associated instead
+- [ ] No duplicate IDs in the DOM (only one instance of each component renders at a time in normal flows)
+
+---
+
+---
+
+#### 10.4 CreateTripModal — Focus Return to Trigger (T-063)
+
+**Addendum to: Spec 2.5 (Create Trip Modal)**
+
+**Problem:** Spec 2.5 states: "On close: return focus to the button that opened the modal." However, the current implementation defines `triggerRef` in CreateTripModal but never assigns it to the trigger button element. When the modal closes, focus is lost (goes to `<body>`), which is a WCAG 2.1 violation (Success Criterion 2.4.3 — Focus Order).
+
+**Change Summary:** Pass a ref to the trigger button from HomePage and use it to return focus on modal close.
+
+---
+
+##### 10.4.1 Implementation Specification
+
+**HomePage.jsx changes:**
+
+1. Create a ref for the "new trip" button:
+   ```
+   const createTripBtnRef = useRef(null);
+   ```
+
+2. Attach the ref to the "new trip" button:
+   ```html
+   <button ref={createTripBtnRef} onClick={() => setShowModal(true)}>
+     + new trip
+   </button>
+   ```
+
+3. Also attach to the empty state CTA button (if different from the header button):
+   ```html
+   <button ref={createTripBtnRef} onClick={() => setShowModal(true)}>
+     + plan your first trip
+   </button>
+   ```
+   Note: if both the header "new trip" button and the empty state CTA exist simultaneously, only the header button needs the ref (the empty state CTA is the alternative when no trips exist, so only one is rendered at a time).
+
+4. Pass the ref as a prop to CreateTripModal:
+   ```html
+   <CreateTripModal
+     isOpen={showModal}
+     onClose={() => setShowModal(false)}
+     triggerRef={createTripBtnRef}
+     ...
+   />
+   ```
+
+**CreateTripModal.jsx changes:**
+
+1. Accept `triggerRef` as a prop (it may already be declared — currently unused):
+   ```
+   function CreateTripModal({ isOpen, onClose, triggerRef, ... })
+   ```
+
+2. On modal close (all close paths), return focus to the trigger:
+   - **Escape key handler:** After calling `onClose()`, call `triggerRef?.current?.focus()`
+   - **Backdrop click handler:** After calling `onClose()`, call `triggerRef?.current?.focus()`
+   - **Close button (×) click:** After calling `onClose()`, call `triggerRef?.current?.focus()`
+   - **Cancel button click:** After calling `onClose()`, call `triggerRef?.current?.focus()`
+   - **Successful creation:** The success flow navigates to `/trips/:id` via React Router. In this case, focus return is not needed because the page changes entirely — React Router will manage focus on the new page.
+
+3. Recommended implementation pattern — centralize focus return:
+   ```javascript
+   const handleClose = useCallback(() => {
+     onClose();
+     // Use requestAnimationFrame to ensure the modal is unmounted
+     // before moving focus, avoiding focus-trap conflicts
+     requestAnimationFrame(() => {
+       triggerRef?.current?.focus();
+     });
+   }, [onClose, triggerRef]);
+   ```
+   Then use `handleClose` for all close paths (Escape, backdrop, close button, cancel button).
+
+4. For the successful creation path:
+   ```javascript
+   const handleSuccess = (newTripId) => {
+     onClose();
+     navigate(`/trips/${newTripId}`);
+     // No focus return needed — page navigation handles focus
+   };
+   ```
+
+---
+
+##### 10.4.2 Focus Return Timing
+
+The focus return must happen **after** the modal is fully unmounted from the DOM. If the modal uses a focus trap (which it should, per Spec 2.5), returning focus while the trap is still active will cause the focus to snap back into the modal.
+
+**Recommended approach:**
+- Use `requestAnimationFrame()` or `setTimeout(() => { ... }, 0)` to defer the focus call until after React has committed the DOM update that removes the modal.
+- Alternatively, handle focus return in a `useEffect` that watches the `isOpen` prop transition from `true` to `false`.
+
+**useEffect approach (alternative):**
+```javascript
+const prevOpenRef = useRef(false);
+useEffect(() => {
+  if (prevOpenRef.current && !isOpen) {
+    // Modal just closed
+    triggerRef?.current?.focus();
+  }
+  prevOpenRef.current = isOpen;
+}, [isOpen, triggerRef]);
+```
+
+Either approach is acceptable. The Frontend Engineer should choose whichever integrates best with the existing modal open/close lifecycle.
+
+---
+
+##### 10.4.3 Accessibility Requirements
+
+- **WCAG 2.1 SC 2.4.3 (Focus Order):** When a modal dialog closes, focus must return to the element that triggered the modal. This ensures keyboard users maintain their position in the page.
+- **WCAG 2.1 SC 2.1.1 (Keyboard):** All modal close actions (Escape, backdrop, buttons) must return focus — not just the Cancel button.
+- Focus return should be **silent** — no additional `aria-live` announcement is needed. The focus moving back to the trigger button is sufficient context.
+
+---
+
+##### 10.4.4 Test Assertions
+
+Tests should verify:
+1. **Open → Cancel → Focus:** Open modal, press Cancel, verify the "new trip" button has focus (`document.activeElement === createTripBtnRef.current`)
+2. **Open → Escape → Focus:** Open modal, press Escape key, verify trigger button has focus
+3. **Open → Backdrop click → Focus:** Open modal, click backdrop overlay, verify trigger button has focus
+4. **Open → Close (×) → Focus:** Open modal, click × button, verify trigger button has focus
+5. **Open → Create success → Navigation:** Open modal, submit successfully, verify navigation to `/trips/:id` (focus return not applicable — page changed)
+
+---
+
+---
+
+#### 10.5 Sprint 4 Design Decisions & Notes
+
+1. **"please wait…" vs. disabling without text change:** We chose to change the button text to "please wait…" during lockout rather than keeping "sign in" on a disabled button. This communicates **why** the button is disabled. A disabled "sign in" button with no text change could confuse users who don't notice the amber banner. The text change draws attention to the fact that they need to wait.
+
+2. **Form inputs remain enabled during lockout:** Even though the submit button is disabled, the email and password inputs remain editable. This allows users to correct their credentials while waiting for the lockout to expire. There's no reason to prevent them from preparing their next attempt.
+
+3. **ARIA role removal vs. replacement:** For the DestinationChipInput chip ARIA fix, we chose to remove `role="option"` entirely rather than replacing it with `role="listitem"` (which would require `role="list"` on the parent). The rationale is simplicity: the chips are already visually and semantically clear (text + remove button), and adding list semantics adds complexity without meaningful benefit. The `role="group"` + `aria-label="Destinations"` on the container provides sufficient grouping context.
+
+4. **Hint text always visible:** For the `dest-chip-hint` element, we chose to keep it always visible rather than making it `sr-only`. The hint text "type a destination and press enter" is useful for sighted users too, especially those unfamiliar with chip/tag input patterns. This follows the principle of progressive disclosure — the hint helps first-time users without being intrusive.
+
+5. **Focus return via requestAnimationFrame:** The `requestAnimationFrame` approach for focus return ensures the modal's focus trap has fully released before attempting to move focus. Without this deferral, the focus trap may intercept the focus change and snap it back into the (now closing) modal, creating a race condition.
+
+6. **No spec needed for T-060 and T-064:** T-060 (extract parseRetryAfterMinutes to shared utility) is a pure refactor with zero UI changes — the function moves from two files to one shared file. T-064 (axios 401 retry queue tests) is a pure test addition. Neither task changes what the user sees or how they interact with the application.
+
+---
+
+*Sprint 4 specs above are all marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-25.*
