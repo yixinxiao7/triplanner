@@ -383,7 +383,7 @@ ALTER TABLE activities
 
 | # | Sprint | Description | Type | File | Status |
 |---|--------|-------------|------|------|--------|
-| 008 | 3 | Make `start_time` + `end_time` nullable on `activities` table | Alter Table | `20260225_008_make_activity_times_optional.js` | ✅ Implemented — awaiting staging deploy (T-054) |
+| 008 | 3 | Make `start_time` + `end_time` nullable on `activities` table | Alter Table | `20260225_008_make_activity_times_optional.js` | ✅ Applied on Staging (2026-02-25, T-054) |
 
 ---
 

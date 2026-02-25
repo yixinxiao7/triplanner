@@ -17,6 +17,34 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 3 — Deploy Engineer → Monitor Agent (T-054: Staging Deployed — Ready for Health Checks) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Deploy Engineer |
+| To Agent | Monitor Agent |
+| Status | Pending |
+| Related Task | T-054, T-055 |
+| Handoff Summary | Deploy Engineer has completed T-054 (Sprint 3 staging re-deployment) on 2026-02-25. Migration 008 applied. Frontend rebuilt with all Sprint 3 components. Backend restarted under pm2 with HTTPS. 14/14 smoke tests PASS. Monitor Agent is cleared to begin T-055 (staging health checks). |
+| Notes | **Services running:** (1) Backend: https://localhost:3001 — Node.js under pm2, HTTPS, PID 68090. (2) Frontend: https://localhost:4173 — Vite preview serving new build over HTTPS. (3) PostgreSQL: localhost:5432/appdb — Homebrew PostgreSQL 15, 8 migrations applied (001–008). (4) pm2: triplanner-backend, cluster mode, online, auto-restart enabled. **What Monitor Agent should verify (T-055):** (1) All Sprint 2 health checks (24/24) still pass over HTTPS. (2) HTTPS health check: `curl -sk https://localhost:3001/api/v1/health` → 200. (3) pm2 status: `pm2 list` → triplanner-backend online. Auto-restart test: kill process → verify pm2 restarts. (4) Optional activity times: POST /trips/:id/activities with null start_time/end_time → 201. Linked validation (one time without other) → 400. GET list ordering: timed before timeless (NULLS LAST). (5) Multi-destination: POST /trips with destinations array → 201, all destinations returned. (6) Cookie Secure flag: login response Set-Cookie includes `Secure`. (7) TLS handshake: verify certificate valid (self-signed expected). (8) UUID validation → 400 (regression from Sprint 2). (9) Rate limiting → 429 on excessive requests (regression from Sprint 2). (10) Frontend SPA loads over HTTPS with root element. **Docker:** Not available — staging uses local processes. **Known limitations:** Self-signed TLS cert (browser warnings expected), Vite preview (not nginx), in-memory rate limit store (resets on restart). |
+
+---
+
+### Sprint 3 — Deploy Engineer → Manager Agent (T-054: Staging Deployment Complete — Sprint 3 Deploy Done) (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 3 |
+| From Agent | Deploy Engineer |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-054 |
+| Handoff Summary | Deploy Engineer has completed T-054 (Sprint 3 staging re-deployment). Migration 008 applied (Batch 3). Frontend rebuilt (114 modules, 677ms). Backend restarted under pm2 with HTTPS. 14/14 smoke tests PASS. T-054 marked Done in dev-cycle-tracker.md. Handoff to Monitor Agent (T-055) logged. No blockers. |
+| Notes | **Summary:** (1) Dependencies: backend 215 pkgs, frontend 283 pkgs — both up to date, 0 production vulns. (2) Frontend build: Vite 6.4.1, 114 modules, 677ms — dist/index.js 300.97 kB (93.10 kB gzip). (3) Migration 008: Batch 3, activities.start_time + end_time now nullable. All 8 migrations applied. (4) Backend: pm2 restart, PID 68090, HTTPS on :3001. (5) Frontend: Vite preview on :4173, HTTPS. (6) Smoke tests: 14/14 PASS — covers all Sprint 3 features (optional times, multi-destination, HTTPS, cookie secure, UUID validation, status auto-calc, pm2, SPA). (7) Docker: not available, using local processes. **Migration log updated** in technical-context.md: migration 008 status → "Applied on Staging". **Deploy report** in qa-build-log.md: 8 new table entries + detailed deployment report. |
+
+---
+
 ### Sprint 3 — QA Engineer → Deploy Engineer (T-052, T-053: QA PASSED — All Sprint 3 Tasks Cleared for Deployment) (2026-02-25)
 
 | Field | Value |
@@ -24,7 +52,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 3 |
 | From Agent | QA Engineer |
 | To Agent | Deploy Engineer |
-| Status | Pending |
+| Status | Acknowledged |
 | Related Task | T-052, T-053, T-054 |
 | Handoff Summary | QA Engineer has completed T-052 (security checklist + code review audit) and T-053 (integration testing) for all 9 Sprint 3 implementation tasks (T-043 through T-051). **ALL TESTS PASS. ALL SECURITY CHECKS PASS. DEPLOY IS GO.** Deploy Engineer is cleared to begin T-054 (staging re-deployment). |
 | Notes | **Unit Test Results:** Backend 149/149 PASS (655ms, 8 test files). Frontend 230/230 PASS (2.74s, 16 test files). **Security Audit (T-052):** 56 PASS, 6 WARN (non-blocking), 0 FAIL. No P1 security failures. Key verifications: (1) T-043 optional times: validateLinkedTimes correct, NULLS LAST static string (no injection), parameterized queries ✅. (2) T-044 HTTPS: conditional server, isSecureCookie helper, certs gitignored, no hardcoded paths ✅. (3) T-045 429 handler: user-friendly message, no internal config leaked ✅. (4) T-046 destinations: JSX auto-escaping, no XSS, trimmed + deduplicated ✅. (5) T-050 pm2: no secrets in ecosystem config ✅. (6) T-051 Docker: non-root containers, DB not host-exposed, secrets required via `:?` syntax, security headers on all nginx locations ✅. **npm audit:** 0 production vulnerabilities (backend + frontend). 5 moderate dev-only (esbuild, tracked as B-021). **Integration Testing (T-053):** 53/53 checks PASS. All API contracts match. All UI states implemented (6 pages × 4 states = 24/24). Sprint 2 regression PASS. **WARNs (non-blocking, backlog):** (1) nginx missing `server_tokens off;`. (2) No Content-Security-Policy header. (3) HTTP fallback when certs unavailable. (4-6) Placeholder creds in example files, CI test creds inline. **Pre-deploy checklist:** ✅ All unit tests pass. ✅ Integration tests pass. ✅ Security checklist verified. ✅ All 9 implementation tasks in Done status. ✅ T-043 migration 008 ready to apply. **What Deploy Engineer needs to do (T-054):** (1) Run `npx knex migrate:latest` for migration 008. (2) Rebuild frontend with new components. (3) Restart backend under pm2. (4) Verify HTTPS still operational. (5) Run smoke tests. |
@@ -178,7 +206,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 3 |
 | From Agent | Backend Engineer |
 | To Agent | Deploy Engineer |
-| Status | Pending |
+| Status | Done |
 | Related Task | T-043, T-054 |
 | Handoff Summary | Migration 008 (`20260225_008_make_activity_times_optional.js`) is implemented and ready to run on staging. This migration makes `start_time` and `end_time` columns nullable on the `activities` table. **Must be applied BEFORE the updated backend code is deployed**, since the new validation allows null times and INSERT queries will send NULL values. Run `npx knex migrate:latest` to apply. The migration is reversible — `down()` sets any NULL values to '00:00:00' before re-adding NOT NULL. |
 | Notes | **Files changed in T-043:** `backend/src/migrations/20260225_008_make_activity_times_optional.js` (new), `backend/src/models/activityModel.js` (NULLS LAST ordering, null-safe insert), `backend/src/routes/activities.js` (validation updated, new `validateLinkedTimes` middleware, PATCH handler with merged-value linked validation), `backend/src/__tests__/sprint3.test.js` (new — 33 tests), `backend/src/__tests__/activities.test.js` (Sprint 1 test updated). All 149/149 backend tests pass. |

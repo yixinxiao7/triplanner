@@ -65,6 +65,13 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 | Sprint 3 — npm audit backend (all deps) | Security Scan | Pass | Success | Local | No | QA Engineer | 5 moderate vulns in dev deps only (esbuild GHSA-67mh-4wv8-2f99 via vitest/vite). 0 production vulnerabilities. Tracked as B-021. |
 | Sprint 3 — Integration contract verification (53 checks) — T-053 | Integration Test | Pass | Success | Local | No | QA Engineer | 53/53 PASS, 0 FAIL, 0 WARN. All API contracts match between frontend and backend. All UI states implemented (empty, loading, error, success) across all 6 pages verified. See detailed report below. |
 | Sprint 3 — Code review audit (Sprint 3 changes: 20 files) — T-052 | Security Scan | Pass | Success | Local | No | QA Engineer | No XSS (0 dangerouslySetInnerHTML). No SQL injection vectors. All Knex parameterized queries. No hardcoded secrets. Auth on all protected routes. Rate limiters correct. HTTPS configured. Docker non-root containers. DB not host-exposed. |
+| Sprint 3 — Backend dependency install — T-054 | Build | Pass | Success | Staging | No | Deploy Engineer | npm install: 215 packages audited, up to date. 5 moderate dev-only vulns (esbuild via vitest). 0 production vulnerabilities. |
+| Sprint 3 — Frontend dependency install — T-054 | Build | Pass | Success | Staging | No | Deploy Engineer | npm install: 283 packages audited, up to date. 5 moderate dev-only vulns (esbuild via vitest). 0 production vulnerabilities. |
+| Sprint 3 — Frontend production build — T-054 | Build | Pass | Success | Staging | No | Deploy Engineer | Vite 6.4.1 build succeeded: 114 modules transformed, 677ms. Output: dist/index.html (0.39 kB), dist/assets/index.css (54.88 kB gzip 8.73 kB), dist/assets/index.js (300.97 kB gzip 93.10 kB). No errors, no warnings. |
+| Sprint 3 — Migration 008 (make activity times optional) — T-054 | Migration | Pass | Success | Staging | No | Deploy Engineer | Batch 3 run: 1 migration (20260225_008_make_activity_times_optional.js). All 8 migrations confirmed applied. Activities table start_time and end_time columns now nullable. Existing data preserved. |
+| Sprint 3 — Backend restart under pm2 — T-054 | Build | Pass | Success | Staging | No | Deploy Engineer | pm2 restart triplanner-backend: PID changed from 60986 → 68090. Status: online. Cluster mode. Memory: 86.1MB. HTTPS operational on :3001. |
+| Sprint 3 — Staging deployment — T-054 | Post-Deploy Health Check | Pass | Success | Staging | Pending Monitor | Deploy Engineer | Backend: https://localhost:3001 (Node.js, PORT=3001, NODE_ENV=staging, HTTPS). Frontend: https://localhost:4173 (Vite preview, HTTPS). PostgreSQL: localhost:5432/appdb (Homebrew PostgreSQL 15). pm2: triplanner-backend (online, cluster mode). Docker not available — using local processes. All env vars configured. |
+| Sprint 3 — Staging smoke tests (14 checks) — T-054 | E2E Test | Pass | Success | Staging | Pending Monitor | Deploy Engineer | 14/14 smoke tests PASS: (1) HTTPS health → 200 ✅, (2) Register → 201 ✅, (3) Login → 200 + token ✅, (4) Create trip with multi-destination array → 201 + 3 destinations ✅, (5) Create all-day activity (null times) → 201 + null times ✅, (6) Create timed activity → 201 + times ✅, (7) Linked validation (start_time only) → 400 ✅, (8) Activity ordering (timed before timeless) → NULLS LAST ✅, (9) UUID validation → 400 VALIDATION_ERROR ✅, (10) Cookie Secure flag → HttpOnly; Secure; SameSite=Strict ✅, (11) Trip status auto-calc (future) → PLANNING ✅, (12) pm2 status → online ✅, (13) Frontend HTTPS → SPA root ✅, (14) Delete trip → 204 ✅. |
 
 ---
 
@@ -322,6 +329,107 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 **T-053 (Integration Testing):** ✅ PASS — 53/53 integration contract checks passed. All API contracts match between frontend and backend. All 6 pages handle empty/loading/error/success states. All Sprint 3 features verified. Sprint 2 regression: PASS.
 
 **Recommendation:** All 9 Sprint 3 implementation tasks (T-043 through T-051) are cleared to move from "Integration Check" to "Done". Handoff to Deploy Engineer (T-054) is approved.
+
+---
+
+## Sprint 3 — Staging Deployment Report (T-054) — 2026-02-25
+
+**Deploy Engineer:** Deploy Engineer
+**Sprint:** 3
+**Date:** 2026-02-25
+**Task:** T-054 (Staging re-deployment)
+
+### Pre-Deploy Verification
+- QA confirmation: ✅ Handoff received from QA Engineer (2026-02-25). Backend 149/149, Frontend 230/230 tests pass. Security: 56 PASS, 6 WARN, 0 FAIL. Integration: 53/53 PASS. Deploy is GO.
+- Migration 008: ✅ Awaiting application (make start_time + end_time nullable on activities table).
+- All Sprint 3 implementation tasks (T-043–T-051): ✅ Done.
+- All QA tasks (T-052, T-053): ✅ Done.
+
+### Build Results
+| Component | Result | Details |
+|-----------|--------|---------|
+| Backend npm install | ✅ Success | 215 packages, up to date. 0 production vulns. |
+| Frontend npm install | ✅ Success | 283 packages, up to date. 0 production vulns. |
+| Frontend Vite build | ✅ Success | 114 modules, 677ms. dist/index.html (0.39 kB), dist/assets/index.css (54.88 kB / 8.73 kB gzip), dist/assets/index.js (300.97 kB / 93.10 kB gzip). |
+
+### Migration Results
+| Migration | Result | Details |
+|-----------|--------|---------|
+| 008 — make_activity_times_optional | ✅ Success (Batch 3) | `ALTER TABLE activities ALTER COLUMN start_time DROP NOT NULL; ALTER TABLE activities ALTER COLUMN end_time DROP NOT NULL;`. All 8 migrations confirmed applied (001–008). Existing data preserved. |
+
+### Deployment Details
+| Component | URL/Port | Status | Details |
+|-----------|----------|--------|---------|
+| Backend (Node.js) | https://localhost:3001 | ✅ Online | pm2 managed, cluster mode, PID 68090. HTTPS via self-signed TLS cert. |
+| Frontend (Vite preview) | https://localhost:4173 | ✅ Online | Serving new build with Sprint 3 components (multi-destination, optional times, 429 handler, date formatting). |
+| PostgreSQL | localhost:5432/appdb | ✅ Online | Homebrew PostgreSQL 15. 8 migrations applied. |
+| pm2 | triplanner-backend | ✅ Online | Cluster mode, auto-restart enabled, 86.1 MB memory. |
+
+**Docker:** Not available on this machine — using local processes (same as Sprint 1 and Sprint 2).
+
+### Environment Configuration
+| Variable | Value | Notes |
+|----------|-------|-------|
+| PORT | 3001 | Backend API port |
+| NODE_ENV | staging | |
+| CORS_ORIGIN | https://localhost:4173 | HTTPS URL |
+| DATABASE_URL | postgres://user:password@localhost:5432/appdb | Local PostgreSQL |
+| JWT_SECRET | [configured] | Not logged for security |
+| JWT_EXPIRES_IN | 15m | Access token lifetime |
+| JWT_REFRESH_EXPIRES_IN | 7d | Refresh token lifetime |
+| SSL_KEY_PATH | ../infra/certs/localhost-key.pem | Self-signed TLS key |
+| SSL_CERT_PATH | ../infra/certs/localhost.pem | Self-signed TLS cert |
+| COOKIE_SECURE | true | Secure cookie flag enabled |
+
+### Smoke Test Results (14/14 PASS)
+
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 1 | HTTPS health check | ✅ PASS | `curl -sk https://localhost:3001/api/v1/health` → `{"status":"ok"}` |
+| 2 | Register user | ✅ PASS | POST /auth/register → 201, user created with UUID |
+| 3 | Login | ✅ PASS | POST /auth/login → 200, access_token returned |
+| 4 | Create trip with multi-destination array | ✅ PASS | POST /trips with `["Tokyo","Osaka","Kyoto"]` → 201, all 3 destinations stored + returned |
+| 5 | Create ALL DAY activity (null times) | ✅ PASS | POST /activities with `start_time: null, end_time: null` → 201, null times in response |
+| 6 | Create TIMED activity | ✅ PASS | POST /activities with start/end times → 201, times returned correctly |
+| 7 | Linked validation (start_time only) | ✅ PASS | POST with only start_time → 400 VALIDATION_ERROR, `end_time` field error |
+| 8 | Activity ordering (NULLS LAST) | ✅ PASS | GET activities → timed activity listed before timeless activity (same date) |
+| 9 | UUID validation | ✅ PASS | GET /trips/not-a-uuid → 400 VALIDATION_ERROR "Invalid ID format" |
+| 10 | Cookie Secure flag | ✅ PASS | Set-Cookie includes `HttpOnly; Secure; SameSite=Strict` |
+| 11 | Trip status auto-calc | ✅ PASS | Future trip → status: "PLANNING" |
+| 12 | pm2 process health | ✅ PASS | `pm2 list` → triplanner-backend online, cluster mode |
+| 13 | Frontend HTTPS SPA | ✅ PASS | `curl -sk https://localhost:4173` → HTML with `<div id="root">` |
+| 14 | Delete trip | ✅ PASS | DELETE /trips/:id → 204 No Content |
+
+### Sprint 3 Feature Verification Summary
+- ✅ **T-043 Optional Activity Times (Backend):** Migration 008 applied. All-day activities (null times) create and return correctly. Linked validation enforced. NULLS LAST ordering works.
+- ✅ **T-044 HTTPS:** Backend serves over HTTPS. Cookie Secure flag set. TLS handshake completes.
+- ✅ **T-045 429 Rate Limit Handler:** Backend returns 429 for excessive requests (verified in QA). Frontend shows amber banner (verified in unit tests).
+- ✅ **T-046 Multi-Destination UI:** Trip created with 3 destinations as array — all stored and returned correctly.
+- ✅ **T-047 Optional Activity Times (Frontend):** All-day badge, checkbox, and sorting verified via unit tests. Backend integration confirmed.
+- ✅ **T-048 Date Formatting:** formatTripDateRange in shared utility. TripCard imports correctly.
+- ✅ **T-049 Edit Page Test Hardening:** 51 tests across 3 edit pages. All 230 frontend tests pass.
+- ✅ **T-050 pm2:** Backend running under pm2 with auto-restart. Online and healthy.
+- ✅ **T-051 Production Deployment Prep:** Docker configs, CI/CD pipeline, runbook — all written and reviewed.
+
+### Sprint 2 Regression
+- ✅ Auth flow (register, login) works over HTTPS
+- ✅ Trip CRUD with dates and status auto-calc works
+- ✅ UUID validation returns 400 (not 500)
+- ✅ Cookie Secure flag set on all auth responses
+
+### Known Limitations
+1. Docker not available — staging runs as local processes managed by pm2
+2. Self-signed TLS certificate — browser warnings expected
+3. Frontend served via Vite preview (not nginx) — acceptable for staging
+4. Rate limiting uses in-memory store — resets on backend restart (acceptable for staging)
+
+### Handoff
+- **Next:** Monitor Agent (T-055) to run post-deploy health checks
+- **Services running at:**
+  - Backend: https://localhost:3001
+  - Frontend: https://localhost:4173
+  - PostgreSQL: localhost:5432/appdb
+  - pm2 process: triplanner-backend (online)
 
 ---
 
