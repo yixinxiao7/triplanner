@@ -24,12 +24,12 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 
 | # | Sprint | Description | Type | File | Status |
 |---|--------|-------------|------|------|--------|
-| 001 | 1 | Create `users` table | Create Table | `20260224_001_create_users.js` | Implemented — awaiting staging run (T-020) |
-| 002 | 1 | Create `refresh_tokens` table | Create Table | `20260224_002_create_refresh_tokens.js` | Implemented — awaiting staging run (T-020) |
-| 003 | 1 | Create `trips` table | Create Table | `20260224_003_create_trips.js` | Implemented — awaiting staging run (T-020) |
-| 004 | 1 | Create `flights` table | Create Table | `20260224_004_create_flights.js` | Implemented — awaiting staging run (T-020) |
-| 005 | 1 | Create `stays` table | Create Table | `20260224_005_create_stays.js` | Implemented — awaiting staging run (T-020) |
-| 006 | 1 | Create `activities` table | Create Table | `20260224_006_create_activities.js` | Implemented — awaiting staging run (T-020) |
+| 001 | 1 | Create `users` table | Create Table | `20260224_001_create_users.js` | ✅ Applied on Staging (2026-02-24, T-020) |
+| 002 | 1 | Create `refresh_tokens` table | Create Table | `20260224_002_create_refresh_tokens.js` | ✅ Applied on Staging (2026-02-24, T-020) |
+| 003 | 1 | Create `trips` table | Create Table | `20260224_003_create_trips.js` | ✅ Applied on Staging (2026-02-24, T-020) |
+| 004 | 1 | Create `flights` table | Create Table | `20260224_004_create_flights.js` | ✅ Applied on Staging (2026-02-24, T-020) |
+| 005 | 1 | Create `stays` table | Create Table | `20260224_005_create_stays.js` | ✅ Applied on Staging (2026-02-24, T-020) |
+| 006 | 1 | Create `activities` table | Create Table | `20260224_006_create_activities.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 
 ---
 

@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 1 — Deploy Engineer → Monitor Agent (T-020 Staging Deployment Complete — Run Health Checks T-021)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 |
+| From Agent | Deploy Engineer |
+| To Agent | Monitor Agent |
+| Status | Pending |
+| Related Task | T-020, T-021 |
+| Handoff Summary | Staging deployment for Sprint 1 is complete. All services are running locally. Monitor Agent should proceed with T-021 (staging health checks). Full deployment report is in `.workflow/qa-build-log.md` under "Sprint 1 — Staging Deployment Report (T-020)". |
+| Notes | **Staging Environment URLs:** (1) Backend API: `http://localhost:3000` — Express.js on Node 24.5.0. (2) Frontend: `http://localhost:4173` — Vite preview server serving `frontend/dist/` production build. (3) Database: `localhost:5432` — PostgreSQL 15.16 (Homebrew), database `appdb`. **Infrastructure note:** Docker was not available on this machine. Staging uses local processes: PostgreSQL via Homebrew (`brew services start postgresql@15`), backend via `node src/index.js`, frontend via `npx vite preview --port 4173`. **Smoke Tests Already Passed (by Deploy Engineer):** ✅ `GET /api/v1/health` → `{"status":"ok"}`. ✅ `POST /api/v1/auth/register` → 200, user created in DB, JWT returned. ✅ `POST /api/v1/auth/login` → 200, access_token returned. ✅ `GET /api/v1/trips` (with valid JWT) → `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}`. ✅ `GET http://localhost:4173/` → 200 (frontend serving). ✅ All 6 DB migrations applied (Batch 1/1: 6 migrations). **For T-021 Monitor Agent — recommended health checks:** (1) `GET http://localhost:3000/api/v1/health` — verify `{"status":"ok"}`. (2) DB connectivity — register a new user and confirm DB round-trip. (3) Auth flow — register → login → get trips → logout. (4) Frontend — verify SPA loads at `http://localhost:4173/`, redirects to `/login` if unauthenticated. (5) Error log scan — check for unhandled errors or crash output. (6) Verify all 6 tables exist in DB: users, refresh_tokens, trips, flights, stays, activities. **Known accepted issues (non-blocking for T-021):** (1) Rate limiting not applied to auth endpoints (Sprint 2 backlog). (2) No HTTPS (local staging — cookie is `secure: false` in staging env). (3) Dev dep vulnerabilities (esbuild, dev-only, accepted by QA). (4) Processes not managed by pm2 (restart not automatic if machine reboots). **If services need to be restarted:** Backend: `cd /Users/yixinxiao/CLAUDE/triplanner/backend && node src/index.js &`. Frontend: `cd /Users/yixinxiao/CLAUDE/triplanner/frontend && npx vite preview --port 4173 &`. PostgreSQL: `/opt/homebrew/bin/brew services start postgresql@15`. |
+
+---
+
 ### Sprint 1 — QA Engineer → Deploy Engineer (QA Complete — Sprint 1 Cleared for Staging Deployment)
 
 | Field | Value |
@@ -24,7 +38,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 1 |
 | From Agent | QA Engineer |
 | To Agent | Deploy Engineer |
-| Status | Pending |
+| Status | Done |
 | Related Task | T-018, T-019, T-020 |
 | Handoff Summary | Sprint 1 QA is complete. All tasks T-004 through T-019 have passed quality verification and are now in Done status. Deploy Engineer is cleared to proceed with T-020 (staging deployment). Full QA report in `.workflow/qa-build-log.md`. |
 | Notes | **QA Results Summary:** ✅ Backend unit tests: 60/60 PASS (auth, trips, flights, stays, activities — 5 test files, 493ms). ✅ Frontend unit tests: 128/128 PASS (all pages, hooks, components — 11 test files, 2.04s). ✅ Integration contract verification: all API endpoint groups verified — frontend API calls match backend contracts exactly (auth flow, trips CRUD, flights/stays/activities sub-resources). ✅ Security checklist: all applicable items verified — bcrypt 12 rounds, JWT in env vars, parameterized Knex queries (no SQL injection), no XSS (no dangerouslySetInnerHTML), no stack traces in error responses, helmet security headers applied, CORS restricted to CORS_ORIGIN env var, refresh token stored as SHA-256 hash only. ✅ npm audit: 0 production dependency vulnerabilities. 5 moderate vulns in dev deps (esbuild/vitest/vite chain — GHSA-67mh-4wv8-2f99) — dev-only, no production build impact. **Accepted staging risks (non-blocking for T-020):** (1) Rate limiting NOT applied to /auth/login and /auth/register — `express-rate-limit` is installed but not wired up. Known from T-010 Manager review. Add in Sprint 2 backlog. (2) HTTPS pending — cookie is `secure: true` in production env, pending T-020 setup. (3) `triggerRef` focus-return-to-trigger in CreateTripModal not implemented — cosmetic, P3. **For T-020 Deploy Engineer:** (1) Docker Compose: backend (Node/Express, port 3000) + PostgreSQL. (2) After DB is up: `cd backend && npm run migrate` (runs `knex migrate:latest`). All 6 migration files are in `backend/src/migrations/`. (3) Required env vars (see `backend/.env.example`): DATABASE_URL, JWT_SECRET (use a cryptographically random string in staging), JWT_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d, CORS_ORIGIN=<staging frontend URL>, PORT=3000, NODE_ENV=production. (4) Frontend: `cd frontend && npm run build` → serve `frontend/dist/` with nginx or static server. (5) Smoke test after deploy: `GET /api/v1/health` → `{"status":"ok"}`. (6) Provide staging URLs to Monitor Agent (T-021). |
@@ -66,7 +80,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 1 |
 | From Agent | Backend Engineer |
 | To Agent | Deploy Engineer |
-| Status | Pending |
+| Status | Done |
 | Related Task | T-009, T-020 |
 | Handoff Summary | All 6 Knex migration files are ready in `backend/src/migrations/`. Run `npm run migrate` (i.e., `knex migrate:latest --knexfile src/config/knexfile.js`) from the `backend/` directory after spinning up the PostgreSQL container. Rollback with `npm run migrate:rollback`. |
 | Notes | **Migration order (enforced by filename timestamps):** `20260224_001_create_users` → `20260224_002_create_refresh_tokens` → `20260224_003_create_trips` → `20260224_004_create_flights` → `20260224_005_create_stays` → `20260224_006_create_activities`. All migrations include `up()` and `down()`. The trips migration uses a raw `ALTER TABLE … ADD CONSTRAINT` for the CHECK constraint (status enum) — this is intentional. Migrations have not been run on staging yet — this must happen during T-020 deployment. **New env vars needed:** none beyond what is in `backend/.env.example` (`DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `CORS_ORIGIN`, `PORT`, `NODE_ENV`). |
