@@ -277,6 +277,9 @@ Each task is a row in the table below. Agents update their assigned tasks as the
 
 *Promoted to Sprint 4: B-018 → T-063, B-019 → T-064, B-023 → T-058, B-025 → T-059, B-026 → T-060, B-027 → T-061, B-028 → T-062.*
 
+| B-033 | Escape ILIKE wildcard characters (%, _) in search parameter before constructing ILIKE pattern — prevents `%` from matching all trips | Bug Fix | P3 | S | FB-062 (Sprint 5). No cross-user security impact (results are user-scoped), but correctness issue. Fix: `search.trim().replace(/%/g, '\\%').replace(/_/g, '\\_')` in tripModel.js. |
+| B-034 | Fix FilterToolbar refetch flicker — remove `!isLoading` from `showToolbar` condition in HomePage.jsx so toolbar stays visible during API refetch (Spec 11.7.4 violation) | Bug Fix | P1 | S | FB-067 (Sprint 5). Tasked for Sprint 6. One-line fix. Toolbar briefly unmounts during refetch, violating spec requirement that toolbar remains visible and interactive during loading. |
+
 *Promoted to Sprint 5: B-029 (trip search) → T-072+T-073.*
 
 ---

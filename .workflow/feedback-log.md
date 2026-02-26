@@ -1280,7 +1280,7 @@ Additionally, 3 long-standing tech debt items were resolved:
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-072 |
 
 **What was tested:** 6 search scenarios via GET /api/v1/trips?search=<term>:
@@ -1302,7 +1302,7 @@ All search scenarios produce correct results per the API contract.
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-072 |
 
 **What was tested:** Status filter with 5 trips spanning all three computed statuses:
@@ -1323,7 +1323,7 @@ All search scenarios produce correct results per the API contract.
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-072 |
 
 **What was tested:** 8 sort scenarios:
@@ -1347,7 +1347,7 @@ All search scenarios produce correct results per the API contract.
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-072 |
 
 **What was tested:** 7 combined parameter scenarios:
@@ -1370,7 +1370,7 @@ Pagination correctly reflects filtered count, not total trips in database. All p
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-072 |
 
 **What was tested:** 5 attack vector scenarios:
@@ -1391,7 +1391,7 @@ Pagination correctly reflects filtered count, not total trips in database. All p
 | Sprint | 5 |
 | Category | Security |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-072 |
 
 **Steps to reproduce:**
@@ -1419,7 +1419,7 @@ GET /api/v1/trips?search=%25 (URL-encoded %)
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-072 |
 
 **What was tested:** `GET /api/v1/trips?sort_by=invalid&sort_order=invalid&status=invalid` with valid auth token.
@@ -1450,7 +1450,7 @@ All three invalid fields reported in a single response. Error messages are descr
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-073 |
 
 **What was reviewed (code review):** `FilterToolbar.jsx` + `FilterToolbar.module.css`
@@ -1474,7 +1474,7 @@ All three invalid fields reported in a single response. Error messages are descr
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-073 |
 
 **What was reviewed (code review):** `EmptySearchResults.jsx` + `EmptySearchResults.module.css`
@@ -1498,7 +1498,7 @@ All three invalid fields reported in a single response. Error messages are descr
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-073 |
 
 **What was reviewed (code review):** `HomePage.jsx`
@@ -1523,7 +1523,7 @@ All three invalid fields reported in a single response. Error messages are descr
 | Sprint | 5 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Tasked |
 | Related Task | T-073 |
 
 **Observation (code review):** In `HomePage.jsx` line 162:
@@ -1550,7 +1550,7 @@ This keeps toolbar visible during refetch while still hiding it during initial p
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-074 |
 
 **What was verified (code review):** `main.jsx` line 10:
@@ -1569,7 +1569,7 @@ Both `v7_startTransition` and `v7_relativeSplatPath` flags are set. All 296 fron
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-075 |
 
 **What was tested:** `npx playwright test` from project root.
@@ -1594,7 +1594,7 @@ All 4 E2E tests pass against the staging environment. Test 3 specifically valida
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-072, T-073, T-074, T-075 |
 
 **What was tested:** Full test suites for backend, frontend, and E2E:
@@ -1614,7 +1614,7 @@ Sprint 5 added 68 new tests (28 backend Sprint 5 tests + 36 frontend search/filt
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-080 |
 
 **What was tested:** Complete end-to-end regression of all Sprint 1-4 features over HTTPS with fresh user:
@@ -1661,7 +1661,7 @@ Sprint 5 added 68 new tests (28 backend Sprint 5 tests + 36 frontend search/filt
 | Sprint | 5 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-078 |
 
 **What was verified:** `frontend/dist/` directory exists with:
