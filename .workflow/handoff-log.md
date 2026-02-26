@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 5 — Manager Agent → QA Engineer: T-072, T-073, T-074 Code Review APPROVED — Ready for QA (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Manager Agent |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-072 (Integration Check), T-073 (Integration Check), T-074 (Integration Check) → T-075 (E2E: Playwright), T-076 (QA Security), T-077 (QA Integration) |
+| Handoff Summary | Manager Agent has completed code review for all three Sprint 5 implementation tasks. All three are APPROVED and moved to "Integration Check" status. **T-072 (Backend: Search/Filter/Sort API):** APPROVED. All parameterized Knex queries — no SQL injection. sort_by/sort_order/status validated against whitelist constants before reaching model. ILIKE search on name + array_to_string(destinations) with `?` bindings. Post-query filtering for computed status with correct pagination. NULLS LAST for start_date sort. Case-insensitive name sort via LOWER(). 28 new tests (search, filter, sort, combined, pagination, SQL injection prevention). API contract match verified. 196/196 backend tests pass. **T-073 (Frontend: Search/Filter/Sort UI):** APPROVED. 100% Spec 11 compliance — toolbar, search (300ms debounce), status filter (4 options), sort (6 options), clear filters, URL param sync, empty states. Zero dangerouslySetInnerHTML. Stale request prevention via requestIdRef. Comprehensive accessibility (role="search", aria-labels, aria-live, keyboard nav). 36 new tests (FilterToolbar: 17, EmptySearchResults: 8, HomePageSearch: 11). 296/296 frontend tests pass. **T-074 (React Router v7 Migration):** APPROVED. Both future flags (v7_startTransition, v7_relativeSplatPath) correctly applied to BrowserRouter in main.jsx + all 9 MemoryRouter instances in test files. Purely configuration, no behavioral changes. 296/296 frontend tests pass. |
+| Notes | **QA priorities for T-076 (Security):** (1) Verify search ILIKE uses parameterized queries — SQL injection attempt treated as literal string. (2) Verify sort_by/sort_order/status whitelist validation — arbitrary values rejected with 400. (3) Verify no dangerouslySetInnerHTML in new frontend components. (4) Verify search input trimmed before API call. (5) Verify error messages don't expose internals on either side. **QA priorities for T-077 (Integration):** (1) Search by name + destination case-insensitive. (2) Status filter matches computed status. (3) Sort by start_date uses NULLS LAST. (4) Combined params compose correctly. (5) Pagination total reflects filtered count. (6) URL params initialize correctly from query string. (7) Empty search results distinct from empty DB. (8) Sprint 4 regression. **T-075 (E2E) is now unblocked** — all three Blocked By dependencies (T-072, T-073, T-074) are in Integration Check. QA Engineer should proceed with T-075 (Playwright setup + E2E tests), then T-076 (Security), then T-077 (Integration). |
+
+---
+
 ### Sprint 5 — Frontend Engineer → QA Engineer: T-073 + T-074 Implementation Complete — Ready for QA (2026-02-25)
 
 | Field | Value |
