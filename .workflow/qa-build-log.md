@@ -3321,3 +3321,173 @@ Notes: All 45 checks pass. Deploy Verified = Yes. Zero failures. Zero 5xx errors
 All E2E tests run against the live staging environment over HTTPS. Staging backend and frontend were rebuilt with Sprint 5 code before test execution.
 
 ---
+
+| Sprint 5 — Backend dependency install — T-078 | Build | Pass | Success | Staging | No | Deploy Engineer | npm install: 215 packages audited, up to date. 5 moderate dev-only vulns (esbuild via vitest). 0 production vulnerabilities. |
+| Sprint 5 — Frontend dependency install — T-078 | Build | Pass | Success | Staging | No | Deploy Engineer | npm install: 283 packages audited, up to date. 5 moderate dev-only vulns (esbuild via vitest). 0 production vulnerabilities. |
+| Sprint 5 — Frontend production build — T-078 | Build | Pass | Success | Staging | No | Deploy Engineer | Vite 6.4.1 build succeeded: 119 modules transformed, 644ms. Output: dist/index.html (0.39 kB), dist/assets/index-Dos8FkO8.css (58.93 kB gzip 9.28 kB), dist/assets/index-CRLXvPX3.js (308.50 kB gzip 95.56 kB). No errors, no warnings. VITE_API_URL=https://localhost:3001/api/v1. |
+| Sprint 5 — Backend unit tests (196 tests, 10 files) — T-078 | Unit Test | Pass | Success | Local | No | Deploy Engineer | 196/196 PASS (828ms). auth(14), trips(16), flights(10), stays(8), activities(12), sprint2(37), sprint3(33), sprint4(19), sprint5(28), tripStatus(19). |
+| Sprint 5 — Frontend unit tests (296 tests, 21 files) — T-078 | Unit Test | Pass | Success | Local | No | Deploy Engineer | 296/296 PASS (3.27s). 21 test files. All Sprint 5 tests included: FilterToolbar(17), EmptySearchResults(8), HomePageSearch(11). |
+| Sprint 5 — Backend restart under pm2 — T-078 | Build | Pass | Success | Staging | No | Deploy Engineer | pm2 restart triplanner-backend: PID changed from 15428 → 17058. Status: online. Cluster mode. Memory: 45.6MB. HTTPS operational on :3001. |
+| Sprint 5 — Frontend preview restart — T-078 | Build | Pass | Success | Staging | No | Deploy Engineer | Old frontend preview (PID 15171) stopped. New preview started (PID 17195). HTTPS operational on :4173. Serving built assets (index-CRLXvPX3.js). |
+| Sprint 5 — Migration check — T-078 | Migration | Pass | Success | Staging | No | Deploy Engineer | No new migrations for Sprint 5 (confirmed). 0 pending migrations. All 8 migrations (001–008) remain applied through Batch 3. |
+| Sprint 5 — Staging deployment — T-078 | Post-Deploy Health Check | Pass | Success | Staging | Pending Monitor | Deploy Engineer | Backend: https://localhost:3001 (Node.js, PORT=3001, NODE_ENV=staging, HTTPS, pm2 cluster). Frontend: https://localhost:4173 (Vite preview, HTTPS). PostgreSQL: localhost:5432/appdb. All env vars configured. All smoke tests pass. |
+| Sprint 5 — Staging smoke tests (28 checks) — T-078 | E2E Test | Pass | Success | Staging | Pending Monitor | Deploy Engineer | 28/28 smoke tests PASS. See detailed report below. |
+
+---
+
+### Sprint 5 — Deploy Engineer: Staging Deployment Report (T-078) — 2026-02-26
+
+**Related Task:** T-078 (Deploy: Staging re-deployment)
+**Sprint:** 5
+**Date:** 2026-02-26
+**Deployed By:** Deploy Engineer
+
+---
+
+#### Pre-Deployment Checklist
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 1 | QA confirmation in handoff-log.md | ✅ VERIFIED | QA Engineer handoff (2026-02-25): "All tests pass. Deploy readiness confirmed." 496 tests (196 backend + 296 frontend + 4 E2E). T-075, T-076, T-077 all Done. |
+| 2 | All Sprint 5 implementation tasks Done | ✅ VERIFIED | T-071 (Design) Done, T-072 (Backend) Done, T-073 (Frontend) Done, T-074 (Router v7) Done, T-075 (E2E) Done, T-076 (Security) Done, T-077 (Integration) Done. |
+| 3 | Pending migrations check | ✅ VERIFIED | No Sprint 5 schema changes. 0 pending migrations. All 8 migrations (001–008) applied through Batch 3. Confirmed via `knex.migrate.status()` → 0 pending. |
+| 4 | technical-context.md reviewed | ✅ VERIFIED | "Sprint 5 — No Schema Changes Required (T-072)" section confirms no DB changes needed. |
+
+---
+
+#### Build Results
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Backend npm install | ✅ Success | 215 packages, 0 production vulns, 5 moderate dev-only (esbuild via vitest) |
+| Frontend npm install | ✅ Success | 283 packages, 0 production vulns, 5 moderate dev-only (esbuild via vitest) |
+| Frontend production build | ✅ Success | Vite 6.4.1, 119 modules, 644ms. dist/index.html (0.39 kB), index.css (58.93 kB / 9.28 kB gzip), index.js (308.50 kB / 95.56 kB gzip). VITE_API_URL=https://localhost:3001/api/v1 |
+| Backend unit tests | ✅ 196/196 PASS | 10 test files, 828ms |
+| Frontend unit tests | ✅ 296/296 PASS | 21 test files, 3.27s |
+
+**Total tests: 492 unit tests passing (196 backend + 296 frontend)**
+
+---
+
+#### Deployment Steps Executed
+
+1. **Backend dependency install:** `cd backend && npm install` → 215 packages, up to date ✅
+2. **Frontend dependency install:** `cd frontend && npm install` → 283 packages, up to date ✅
+3. **Frontend production build:** `VITE_API_URL=https://localhost:3001/api/v1 npm run build` → 119 modules, 644ms ✅
+4. **Migration check:** 0 pending migrations, all 8 applied ✅
+5. **Backend restart:** `pm2 restart triplanner-backend` → PID 15428→17058, online, cluster mode ✅
+6. **Frontend preview restart:** Old preview (PID 15171) killed, new preview started (PID 17195), HTTPS on :4173 ✅
+7. **Smoke tests:** 28/28 checks PASS ✅
+
+---
+
+#### Staging Environment Configuration
+
+| Component | URL | Details |
+|-----------|-----|---------|
+| Backend | https://localhost:3001 | Node.js, Express, pm2 cluster mode, HTTPS |
+| Frontend | https://localhost:4173 | Vite preview server, HTTPS |
+| Database | localhost:5432/appdb | PostgreSQL (Homebrew), 8 migrations applied |
+
+**Environment Variables (verified):**
+- `PORT=3001`
+- `NODE_ENV=staging`
+- `CORS_ORIGIN=https://localhost:4173`
+- `DATABASE_URL=postgresql://...`
+- `JWT_SECRET=<configured>`
+- `JWT_EXPIRES_IN=15m`
+- `JWT_REFRESH_EXPIRES_IN=7d`
+- `VITE_API_URL=https://localhost:3001/api/v1`
+
+**Infrastructure:**
+- Docker: Not available (local processes used instead)
+- Process manager: pm2 6.0.14 (cluster mode, auto-restart verified from Sprint 3)
+- TLS: Self-signed certs (infra/certs/localhost.pem + localhost-key.pem)
+
+---
+
+#### Smoke Test Results (28/28 PASS)
+
+**Core Health (3 checks):**
+| # | Test | Result |
+|---|------|--------|
+| 1 | Backend health check → `{"status":"ok"}` | ✅ PASS |
+| 2 | Register new user | ✅ PASS |
+| 3 | Login → access_token (JWT) | ✅ PASS |
+
+**Trip CRUD (3 checks):**
+| # | Test | Result |
+|---|------|--------|
+| 4 | Create trip 1 (Tokyo Adventure, future dates → PLANNING) | ✅ PASS |
+| 5 | Create trip 2 (Paris Getaway, past dates → COMPLETED) | ✅ PASS |
+| 6 | Create trip 3 (Berlin Sprint, no dates → PLANNING) | ✅ PASS |
+
+**Sprint 5: Search API (5 checks):**
+| # | Test | Result |
+|---|------|--------|
+| 7 | Search by name "Tokyo" → Tokyo Adventure returned | ✅ PASS |
+| 8 | Search by name "Paris" → Paris Getaway returned | ✅ PASS |
+| 9 | Search by destination "Osaka" → Tokyo Adventure returned | ✅ PASS |
+| 10 | Search "nonexistent" → empty data array | ✅ PASS |
+| 11 | Search case-insensitive "tokyo" → Tokyo Adventure returned | ✅ PASS |
+
+**Sprint 5: Status Filter (2 checks):**
+| # | Test | Result |
+|---|------|--------|
+| 12 | Filter status=PLANNING → includes Tokyo+Berlin | ✅ PASS |
+| 13 | Filter status=COMPLETED → includes Paris | ✅ PASS |
+
+**Sprint 5: Sort API (3 checks):**
+| # | Test | Result |
+|---|------|--------|
+| 14 | Sort by name ascending → data returned | ✅ PASS |
+| 15 | Sort by start_date ascending → data returned | ✅ PASS |
+| 16 | Sort by created_at descending → data returned | ✅ PASS |
+
+**Sprint 5: Combined Params (2 checks):**
+| # | Test | Result |
+|---|------|--------|
+| 17 | Combined: search "Berlin" + sort by name asc → Berlin Sprint | ✅ PASS |
+| 18 | Combined: status PLANNING + sort by name asc → data returned | ✅ PASS |
+
+**Sprint 5: Validation (3 checks):**
+| # | Test | Result |
+|---|------|--------|
+| 19 | Invalid sort_by → 400 VALIDATION_ERROR | ✅ PASS |
+| 20 | Invalid sort_order → 400 VALIDATION_ERROR | ✅ PASS |
+| 21 | Invalid status → 400 VALIDATION_ERROR | ✅ PASS |
+
+**Security (4 checks):**
+| # | Test | Result |
+|---|------|--------|
+| 22 | SQL injection attempt → treated as literal (no crash) | ✅ PASS |
+| 23 | Cookie Secure flag | ✅ PASS |
+| 24 | Cookie HttpOnly flag | ✅ PASS |
+| 25 | Cookie SameSite=Strict | ✅ PASS |
+
+**Sprint 4 Regression (1 check):**
+| # | Test | Result |
+|---|------|--------|
+| 26 | Invalid UUID → 400 VALIDATION_ERROR | ✅ PASS |
+
+**Infrastructure (2 checks):**
+| # | Test | Result |
+|---|------|--------|
+| 27 | pm2 backend status: online | ✅ PASS |
+| 28 | Frontend HTTPS → SPA root + built assets (index-CRLXvPX3.js) | ✅ PASS |
+
+**Summary:** 28/28 smoke tests PASS. All Sprint 5 features (search, filter, sort, combined params, validation) verified. Security checks pass (SQL injection prevention, cookie flags). Sprint 4 regression pass. Infrastructure healthy.
+
+---
+
+#### Sprint 5 Build Size Comparison
+
+| Sprint | Frontend JS (gzip) | Frontend CSS (gzip) | Modules | Build Time |
+|--------|-------------------|--------------------|---------|-----------|
+| Sprint 3 | 93.10 kB | 8.73 kB | 114 | 677ms |
+| Sprint 4 | ~93 kB | ~8.7 kB | ~116 | ~650ms |
+| Sprint 5 | 95.56 kB | 9.28 kB | 119 | 644ms |
+
+**Delta from Sprint 4:** +~2.5 kB JS (gzip), +~0.6 kB CSS (gzip), +3 modules (FilterToolbar, EmptySearchResults, related CSS). Build time comparable.
+
+---

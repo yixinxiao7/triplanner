@@ -17,6 +17,33 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 5 — Deploy Engineer → Monitor Agent: T-078 Complete — Staging Deployment Ready for Health Check (2026-02-26)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Deploy Engineer |
+| To Agent | Monitor Agent |
+| Status | Pending |
+| Related Task | T-078 (Done) → T-079 (Monitor: Staging Health Check) |
+| Handoff Summary | Deploy Engineer has completed T-078 (Staging re-deployment). **All Sprint 5 changes are deployed to staging.** Frontend rebuilt with search/filter/sort UI (T-073) + React Router v7 migration (T-074). Backend restarted under pm2 with search/filter/sort API (T-072). Playwright E2E framework installed and configured (T-075). 28/28 staging smoke tests PASS. **T-079 is now unblocked.** |
+| Notes | **Staging URLs:** Backend: `https://localhost:3001` (HTTPS, pm2 cluster mode, PID 17058). Frontend: `https://localhost:4173` (HTTPS, Vite preview). Database: `localhost:5432/appdb` (PostgreSQL, 8 migrations applied, 0 pending). **Deployment details:** Frontend build: Vite 6.4.1, 119 modules, 644ms, `VITE_API_URL=https://localhost:3001/api/v1`. Asset hashes: `index-CRLXvPX3.js` (308.50 kB / 95.56 kB gzip), `index-Dos8FkO8.css` (58.93 kB / 9.28 kB gzip). Backend: pm2 restart, cluster mode, 45.6MB. **Test status:** 196/196 backend tests PASS, 296/296 frontend tests PASS, 28/28 staging smoke tests PASS. QA confirmed: 496 total tests (196 backend + 296 frontend + 4 E2E). **Smoke tests verified:** (1) Health check ✅, (2) Auth flow (register+login) ✅, (3) Trip CRUD ✅, (4) Search by name ✅, (5) Search by destination ✅, (6) Case-insensitive search ✅, (7) Empty search results ✅, (8) Status filter (PLANNING/COMPLETED) ✅, (9) Sort (name/start_date/created_at) ✅, (10) Combined params ✅, (11) Validation errors (invalid sort_by/sort_order/status → 400) ✅, (12) SQL injection prevention ✅, (13) Cookie security (Secure, HttpOnly, SameSite=Strict) ✅, (14) UUID validation ✅, (15) pm2 online ✅, (16) Frontend HTTPS SPA ✅. **Monitor Agent T-079 priorities:** (1) Full Sprint 4 regression (45+ checks), (2) Sprint 5 search/filter/sort API end-to-end, (3) Playwright E2E tests (`npx playwright test` from project root), (4) 0 × 5xx error verification, (5) TLS/HTTPS operational check. Full deployment report in `.workflow/qa-build-log.md`. |
+
+---
+
+### Sprint 5 — Deploy Engineer: Acknowledging QA Handoff for T-078 (2026-02-26)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Deploy Engineer |
+| To Agent | QA Engineer |
+| Status | Acknowledged |
+| Related Task | T-075, T-076, T-077 → T-078 |
+| Handoff Summary | Deploy Engineer acknowledges the QA Engineer handoff confirming deploy readiness. All tests pass (496 total). T-078 staging deployment has been completed successfully. 28/28 smoke tests PASS. |
+
+---
+
 ### Sprint 5 — QA Engineer → Deploy Engineer: T-075, T-076, T-077 Complete — Deploy Readiness Confirmed (2026-02-25)
 
 | Field | Value |
@@ -24,7 +51,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 5 |
 | From Agent | QA Engineer |
 | To Agent | Deploy Engineer |
-| Status | Pending |
+| Status | Done |
 | Related Task | T-075 (Done), T-076 (Done), T-077 (Done) → T-078 (Deploy: Staging Re-deployment) |
 | Handoff Summary | QA Engineer has completed all Sprint 5 QA tasks. **All tests pass. Deploy readiness confirmed.** |
 | Notes | **T-075 (E2E: Playwright):** Playwright @playwright/test installed at project root. 4 E2E test scenarios written and passing (8.8s total): (1) Core user flow: register→create→details→delete→logout ✅, (2) Sub-resource CRUD: flights+stays ✅, (3) Search/filter/sort ✅, (4) Rate limit lockout ✅. Config: `playwright.config.js` (Chromium, ignoreHTTPSErrors, https://localhost:4173). Tests: `e2e/critical-flows.spec.js`. **T-076 (Security):** All 19 security checklist items verified (15 PASS, 4 DEFERRED infrastructure items). 10 backend + 7 frontend deep security checks all PASS. No P1 security failures. SQL injection prevention verified (parameterized Knex ILIKE queries). Whitelist validation for sort/status/sort_order. 0 dangerouslySetInnerHTML. npm audit: 0 production vulnerabilities (both packages). **T-077 (Integration):** 27/27 integration contract checks PASS. All API param names match (search, status, sort_by, sort_order). All 6 UI states implemented. Sprint 4 regression PASS. 4/4 E2E tests PASS. **Unit Tests:** Backend 196/196 PASS. Frontend 296/296 PASS. **Total test count: 496 tests (196 backend + 296 frontend + 4 E2E).** **IMPORTANT: Staging servers were rebuilt with Sprint 5 code during E2E test setup.** The frontend was rebuilt with `VITE_API_URL=https://localhost:3001/api/v1 npm run build` and the backend was restarted under pm2. Deploy Engineer should verify this matches their deployment plan and confirm the staging environment is in the expected state. **T-078 is now unblocked.** |
