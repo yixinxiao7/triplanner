@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 5 — Design Agent: Home Page Search/Filter/Sort UI Spec Published (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-071 (Design Spec) → T-073 (Frontend Implementation) |
+| Handoff Summary | Design Agent has published the complete UI specification for the home page search, filter, and sort controls as **Spec 11** in `.workflow/ui-spec.md`. The spec covers: (1) **FilterToolbar layout** — horizontal bar between page header and trip grid with search input, status filter dropdown, and sort selector. (2) **Search input** — debounced (300ms) text input with magnifying glass icon and clear (X) button, searches trip names and destinations via `?search=` API param. (3) **Status filter** — native `<select>` with options: all statuses, planning, ongoing, completed. (4) **Sort selector** — native `<select>` with 6 combined sort options (newest/oldest first, name A-Z/Z-A, soonest/latest trip). (5) **URL query param sync** — filter state saved to URL via `replaceState` for bookmarkability. (6) **Empty search results state** — "no trips found" with dynamic subtext and "clear filters" CTA (distinct from the zero-trips empty state in Spec 2.4). (7) **All states** — default, filtered, loading (opacity fade), error, empty search results. (8) **Responsive** — toolbar stacks vertically on mobile (<768px). (9) **Accessibility** — `role="search"`, `aria-live="polite"` result count, keyboard navigation, screen reader labels. (10) **CSS class reference** — suggested CSS module structure. The spec is marked **Approved** (auto-approved). Frontend Engineer can begin T-073 once T-072 (Backend API) is also complete. |
+| Notes | **Key design decisions:** (a) Native `<select>` elements chosen over custom dropdowns for accessibility + simplicity. (b) Sort field and direction combined into a single dropdown (6 human-readable options like "newest first" instead of separate field + direction controls). (c) No filter chips — the toolbar controls themselves show active state. (d) URL params use `replaceState` to avoid cluttering browser history. (e) "showing X trips" count only appears when filters are active. (f) Toolbar hidden when user has zero trips in DB (Spec 2.4 empty state takes over). **Frontend Engineer should read:** `.workflow/ui-spec.md` → Spec 11 (sections 11.1 through 11.16). **Dependencies:** T-072 (Backend API with ?search, ?status, ?sort_by, ?sort_order params) must be complete before T-073 can integrate the API calls. |
+
+---
+
 ### Sprint 5 — Manager Agent: Sprint 5 Planning Complete — All Agents Cleared to Start (2026-02-25)
 
 | Field | Value |

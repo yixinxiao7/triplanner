@@ -2547,3 +2547,686 @@ Tests should verify:
 ---
 
 *Sprint 4 specs above are all marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-25.*
+
+---
+
+---
+
+### Spec 11: Home Page Search, Filter & Sort Controls
+
+**Sprint:** #5
+**Related Task:** T-071 (Design), T-073 (Frontend Implementation)
+**Status:** Approved
+
+**Description:**
+The home page (`/`) is enhanced with a search/filter/sort toolbar that allows users to quickly find trips as their collection grows. The toolbar sits between the existing page header ("my trips" + "+ new trip" button) and the trip card grid. It provides three controls: a text search input (searches trip names and destinations), a status filter dropdown (ALL / PLANNING / ONGOING / COMPLETED), and a sort selector (by name, date created, or trip start date with ascending/descending direction). All three controls compose together — search + filter + sort are applied simultaneously via query parameters to the GET /trips API. When no trips match the active filters, a dedicated empty search results state is shown with a "clear filters" action. Filter state is synchronized with URL query parameters for bookmarkability.
+
+This spec does NOT change the existing page header, trip card component, create trip modal, delete trip confirmation, or navbar. It only adds the filter toolbar and its associated behaviors.
+
+---
+
+#### 11.1 Filter Toolbar — Layout & Position
+
+The filter toolbar is a new horizontal bar inserted between the page header and the trip grid.
+
+**Page Structure (updated, top to bottom):**
+1. Navbar (56px, sticky) — unchanged
+2. Page header area (padding-top: 48px, padding-bottom: 32px) — unchanged ("my trips" + "+ new trip")
+3. **Filter toolbar** (new) — search + status filter + sort controls
+4. Trip grid or empty state (adjusted — see 11.7 for empty search state)
+
+**Toolbar Container:**
+- Max-width: 1120px, centered, horizontal padding 32px (same as page header and grid)
+- Display: `flex`, `align-items: center`, `gap: 12px`
+- Margin-bottom: 24px (space between toolbar and trip grid)
+- `flex-wrap: wrap` — allows wrapping on narrow viewports
+
+**Toolbar Children (left to right on desktop):**
+1. Search input — takes available space (`flex: 1`, `min-width: 200px`)
+2. Status filter dropdown — fixed width (`width: 180px`)
+3. Sort selector — fixed width (`width: 220px`)
+
+**Visibility Rule:**
+- The toolbar is ALWAYS visible when the user has ≥1 trip (even if current filters produce zero results)
+- The toolbar is NOT shown in the initial empty state (zero trips in database — the "no trips yet" empty state from Spec 2.4 still appears without the toolbar)
+- The toolbar is NOT shown during the initial page loading skeleton state (it appears after trips are loaded and there is at least one trip)
+- Rationale: Showing search/filter on a page with zero trips is confusing. Once the user has at least one trip, the toolbar appears and persists even when filtered results are empty.
+
+---
+
+#### 11.2 Search Input Component
+
+A text input that searches across trip names and destination lists using the API's `?search=` parameter.
+
+**Visual Design:**
+- Container: `position: relative` (for icon positioning)
+- Input: Full design system form pattern with modifications:
+  - Background: `var(--surface-alt)` (`#3F4045`)
+  - Border: `1px solid var(--border-subtle)`
+  - Border-radius: `var(--radius-sm)` (2px)
+  - Padding: `10px 14px 10px 38px` (left padding accommodates the search icon)
+  - Font: IBM Plex Mono, 13px, font-weight 400
+  - Color: `var(--text-primary)` (`#FCFCFC`)
+  - Placeholder text: `"search trips..."` in `var(--text-muted)`
+  - Height: 40px (explicit, to match dropdown heights)
+  - `flex: 1`, `min-width: 200px`
+  - Focus: border `var(--border-accent)` (`#5D737E`), outline none (border is sufficient)
+  - Transition: `border-color 150ms ease`
+
+**Search Icon (magnifying glass):**
+- Position: `absolute`, left 12px, top 50%, `transform: translateY(-50%)`
+- Size: 16px × 16px
+- Color: `var(--text-muted)`
+- SVG: Simple magnifying glass (circle + diagonal line)
+- The icon is decorative — `aria-hidden="true"`
+
+**Clear Button (X):**
+- Position: `absolute`, right 10px, top 50%, `transform: translateY(-50%)`
+- Visible ONLY when the input has text (non-empty value)
+- Size: 16px × 16px clickable area (with 4px padding making tap target 24px)
+- Icon: `×` symbol or thin X SVG, 12px
+- Color: `var(--text-muted)`, hover: `var(--text-primary)`
+- On click: clear the search input, immediately trigger an API call with empty search, return focus to the search input
+- `aria-label="Clear search"`
+- Transition: `opacity 150ms ease` (fade in/out when text appears/disappears)
+
+**Debounce Behavior:**
+- The search input is debounced with a **300ms** delay
+- As the user types, a timer resets on each keystroke. After 300ms of inactivity, the API call is triggered with the current input value
+- If the user clears the input (via the X button or selecting all + delete), the debounce fires immediately (no delay) to restore the full list
+- While the debounced API call is in flight, no loading indicator is shown on the search input itself — the trip grid shows its loading state (see 11.6)
+
+**Character Handling:**
+- Search is case-insensitive (handled server-side via ILIKE)
+- Leading/trailing whitespace is trimmed before sending to the API
+- Empty string or whitespace-only input is treated as "no search filter" (omit `?search=` param)
+- No minimum character requirement — even a single character triggers a search after debounce
+
+---
+
+#### 11.3 Status Filter Dropdown
+
+A native `<select>` dropdown that filters trips by their computed status.
+
+**Visual Design:**
+- Element: `<select>` (native HTML select for reliability and accessibility)
+- Width: 180px
+- Height: 40px
+- Background: `var(--surface-alt)` (`#3F4045`)
+- Border: `1px solid var(--border-subtle)`
+- Border-radius: `var(--radius-sm)` (2px)
+- Padding: `10px 32px 10px 14px` (right padding for the dropdown chevron)
+- Font: IBM Plex Mono, 13px, font-weight 400
+- Color: `var(--text-primary)`
+- Focus: border `var(--border-accent)`, outline none
+- Transition: `border-color 150ms ease`
+- Custom dropdown chevron: Use `appearance: none` and a CSS background-image SVG chevron (▾) on the right side, color `var(--text-muted)`, 10px
+- On macOS/Windows, the native dropdown picker appears when clicking — this is intentional for accessibility
+
+**Options:**
+
+| Value | Label | API Param |
+|-------|-------|-----------|
+| `""` (empty string) | `all statuses` | Omit `?status=` param entirely |
+| `"PLANNING"` | `planning` | `?status=PLANNING` |
+| `"ONGOING"` | `ongoing` | `?status=ONGOING` |
+| `"COMPLETED"` | `completed` | `?status=COMPLETED` |
+
+- Default selected: `all statuses` (empty value)
+- Labels are lowercase to match the Japandi/minimal aesthetic
+- On change: immediately trigger an API call with the selected status (no debounce — selects are a discrete action)
+
+**Label:**
+- An `aria-label="Filter by status"` on the `<select>` element
+- No visible label text — the first option ("all statuses") serves as the contextual label
+- Rationale: Adding a visible "STATUS" label above or beside the dropdown would add visual clutter to the toolbar. The option text is self-explanatory.
+
+---
+
+#### 11.4 Sort Selector
+
+A native `<select>` dropdown that controls the sort order of the trip list. It combines `sort_by` and `sort_order` into a single dropdown for simplicity.
+
+**Visual Design:**
+- Same styling as the status filter dropdown (11.3)
+- Width: 220px
+- Height: 40px
+- All other visual properties identical to 11.3
+
+**Options:**
+
+| Value | Label | API Params |
+|-------|-------|------------|
+| `"created_at:desc"` | `newest first` | `?sort_by=created_at&sort_order=desc` |
+| `"created_at:asc"` | `oldest first` | `?sort_by=created_at&sort_order=asc` |
+| `"name:asc"` | `name A — Z` | `?sort_by=name&sort_order=asc` |
+| `"name:desc"` | `name Z — A` | `?sort_by=name&sort_order=desc` |
+| `"start_date:asc"` | `soonest trip first` | `?sort_by=start_date&sort_order=asc` |
+| `"start_date:desc"` | `latest trip first` | `?sort_by=start_date&sort_order=desc` |
+
+- Default selected: `newest first` (matches current behavior — `created_at desc`)
+- Labels are lowercase, human-readable
+- On change: immediately trigger an API call with the selected sort params (no debounce)
+- The value format `"field:direction"` is a frontend convention for composing the two API params from a single select value
+
+**Label:**
+- `aria-label="Sort trips"` on the `<select>` element
+- No visible label text (same rationale as status filter)
+
+---
+
+#### 11.5 Active Filter Indicator + Clear All
+
+When any filter is active (search text is non-empty, status is not "all statuses", or sort is not the default "newest first"), show a subtle "clear filters" link/button below or at the end of the toolbar.
+
+**Visual Design:**
+- Position: At the right end of the toolbar (on desktop) or below the toolbar row (on mobile when wrapped)
+- Element: `<button>` styled as a text link
+- Text: `"clear filters"` (lowercase)
+- Font: IBM Plex Mono, 11px, font-weight 400
+- Color: `var(--text-muted)`
+- Hover: color `var(--accent)`, text-decoration underline
+- Transition: `color 150ms ease`
+- `aria-label="Clear all filters and sort"`
+
+**Visibility:**
+- Hidden when all filters are at their default values (search empty, status = all, sort = newest first)
+- Visible when ANY filter is non-default
+- Transition: `opacity 150ms ease` on show/hide
+
+**Behavior:**
+- On click: Reset search input to empty, status dropdown to "all statuses", sort dropdown to "newest first"
+- Trigger a single API call with no filter params (restoring the default view)
+- Return focus to the search input after clearing
+
+**Active Filter Count (optional enhancement):**
+- If desired, display a small count badge next to "clear filters" showing how many filters are active (e.g., "clear filters (2)")
+- Badge: inline, font-size 11px, color `var(--accent)`, within parentheses
+- This is optional — the Frontend Engineer may omit this if it adds clutter
+
+---
+
+#### 11.6 URL Query Parameter Synchronization
+
+Filter state is synced with the browser URL for bookmarkability and shareability.
+
+**URL Format:**
+```
+/?search=tokyo&status=PLANNING&sort=name:asc
+```
+
+**Parameter Mapping:**
+
+| URL Param | State | Default (omitted from URL) |
+|-----------|-------|---------------------------|
+| `search` | Search input text | Empty string |
+| `status` | Status filter value | Empty (all statuses) |
+| `sort` | Sort value (`field:direction`) | `created_at:desc` |
+
+**Behavior:**
+- On page load: Read URL query params and initialize the filter state from them. If params are present, apply them to the initial API call.
+- On filter change: Update the URL using `useSearchParams` (React Router) or `history.replaceState`. Use `replaceState` (not `pushState`) to avoid polluting browser history with every keystroke.
+- Default values are omitted from the URL to keep it clean. `/?` with no params = default view.
+- If the URL contains invalid param values (e.g., `?status=INVALID`), silently ignore them and use defaults.
+
+**Back/Forward Navigation:**
+- If the user navigates away from the home page and comes back (via browser back), the URL params restore the filter state.
+- This is handled naturally by reading URL params on mount.
+
+---
+
+#### 11.7 States
+
+##### 11.7.1 Default State (No Filters Active)
+
+- Toolbar visible with search input empty, status set to "all statuses", sort set to "newest first"
+- Trip grid shows all trips in `created_at desc` order (same as current behavior)
+- "clear filters" button is hidden
+- This is identical to the current home page experience, plus the new toolbar
+
+##### 11.7.2 Filtered State (Results Found)
+
+- One or more filters are active
+- Trip grid shows filtered/sorted results
+- "clear filters" button is visible
+- Result count: Display a subtle text below the toolbar, above the grid: `"showing X trip(s)"` where X is the number of results
+  - Font: IBM Plex Mono, 11px, font-weight 400, color `var(--text-muted)`
+  - Margin-bottom: 16px
+  - This text is ONLY shown when filters are active (not in default state)
+  - Singular/plural: "showing 1 trip" vs. "showing 3 trips"
+  - When no filters are active, this line is hidden (the user can see all their trips — no need to count)
+
+##### 11.7.3 Empty Search Results State
+
+Shown when the API returns zero results for the active filter combination.
+
+**Layout:**
+- The toolbar remains visible and interactive (user can change filters)
+- Below the toolbar, instead of the trip grid, show a centered empty state block:
+
+**Content (vertically centered in available space):**
+- Icon: A simple SVG search icon with a slash/cross through it, or a magnifying glass with a question mark. Size: 40px. Color: `var(--accent)` at 30% opacity.
+- Heading: `"no trips found"` — font-size 16px, font-weight 400, color `var(--text-primary)`. Margin-top: 20px.
+- Subtext: Dynamic based on active filters:
+  - If search is active: `"no trips match "[search term]""` — font-size 13px, color `var(--text-muted)`. The search term is wrapped in quotes and truncated at 30 characters with ellipsis if longer.
+  - If status filter is active (no search): `"no [status] trips"` — e.g., "no planning trips", "no completed trips"
+  - If both search and status are active: `"no [status] trips match "[search term]""` — e.g., "no planning trips match "tokyo""
+  - Fallback (sort only, shouldn't produce empty): `"no trips found"`
+- Font-size 13px, color `var(--text-muted)`. Margin-top: 8px.
+- CTA Button: `"clear filters"` — secondary button style. Margin-top: 20px. On click: same behavior as the toolbar "clear filters" (reset all, refetch).
+
+**Note:** This empty state replaces the trip grid area ONLY. The page header ("my trips" + "+ new trip") remains visible. The user can still create a new trip while viewing empty search results.
+
+**Important distinction:** This is different from the existing "no trips yet" empty state (Spec 2.4). That state appears when the user has ZERO trips in the database. The empty SEARCH results state appears when the user has trips but none match the current filters. They must never be confused:
+- Zero trips in DB → Spec 2.4 empty state (no toolbar shown)
+- Trips exist but filters match none → Spec 11.7.3 empty search results (toolbar shown)
+
+##### 11.7.4 Loading State (Filter Change In Progress)
+
+When a filter changes and an API call is in flight:
+- The toolbar controls remain interactive (user can change filters while loading — each change cancels the previous request and starts a new one)
+- The trip grid area shows a subtle loading indicator:
+  - Option A (preferred): The trip cards fade to 50% opacity with `transition: opacity 200ms ease` while the new results load. When results arrive, cards snap back to full opacity with the new data. This is a lightweight "stale while revalidating" pattern.
+  - Option B (alternative): Show 3 skeleton cards (reuse existing skeleton from Spec 2.7). Use this if Option A feels jarring when the number of cards changes significantly.
+- The Frontend Engineer should choose Option A as the primary approach. Option B is the fallback if Option A introduces layout shift issues.
+- Loading state should be brief (API calls are fast for the expected data volume). Do NOT show a full-page spinner.
+
+##### 11.7.5 API Error State (Filter Fetch Failed)
+
+If a filtered API call fails:
+- The toolbar remains visible and interactive
+- Below the toolbar, show the existing error block from Spec 2.8:
+  - Warning icon, "could not load trips.", "check your connection and try again.", "try again" button
+- The "try again" button retries the API call with the CURRENT filter state (not default)
+- Previous trip cards are removed (do not show stale filtered data alongside an error)
+
+##### 11.7.6 Initial Page Load (First Visit)
+
+On first page load (no URL params):
+1. Show page header immediately
+2. Show loading skeleton (Spec 2.7) — toolbar is NOT shown yet
+3. API returns trips:
+   - If 0 trips: Show Spec 2.4 empty state ("no trips yet"), no toolbar
+   - If ≥1 trip: Show toolbar (default state) + trip grid with results
+4. If URL has filter params: Initialize toolbar state from params, fetch with those params, show toolbar + filtered results
+
+---
+
+#### 11.8 User Flow — Search
+
+1. User lands on home page, sees their trips in the default grid with the new toolbar above
+2. User clicks into the search input (focus ring appears)
+3. User types "tokyo" — after each keystroke, the 300ms debounce timer resets
+4. After 300ms of no typing, the API call fires: `GET /trips?search=tokyo`
+5. Trip grid fades to 50% opacity briefly (loading state)
+6. API returns filtered results — grid updates to show only trips matching "tokyo" in name or destinations
+7. URL updates to `/?search=tokyo`
+8. "showing 2 trips" text appears below the toolbar
+9. "clear filters" link appears in the toolbar
+10. User decides to narrow further — selects "planning" from the status dropdown
+11. API call fires immediately: `GET /trips?search=tokyo&status=PLANNING`
+12. Grid updates with combined filter results
+13. URL updates to `/?search=tokyo&status=PLANNING`
+14. "showing 1 trip" text updates
+15. User clicks "clear filters" — all controls reset, full trip list restored, URL cleaned
+
+---
+
+#### 11.9 User Flow — Filter by Status
+
+1. User clicks the status filter dropdown
+2. Native select picker opens showing: all statuses, planning, ongoing, completed
+3. User selects "completed"
+4. Dropdown closes, API call fires immediately: `GET /trips?status=COMPLETED`
+5. Grid updates to show only completed trips
+6. URL updates to `/?status=COMPLETED`
+7. "showing X trips" text appears
+8. "clear filters" becomes visible
+9. User selects "all statuses" — filter is removed, full list restored
+
+---
+
+#### 11.10 User Flow — Sort
+
+1. User clicks the sort dropdown (currently showing "newest first")
+2. User selects "name A — Z"
+3. API call fires: `GET /trips?sort_by=name&sort_order=asc`
+4. Trip grid re-renders with alphabetically sorted cards
+5. URL updates to `/?sort=name:asc`
+6. "clear filters" becomes visible (sort is non-default)
+7. Note: Changing sort alone does NOT show the "showing X trips" count (sort doesn't reduce results). The count text only appears when search or status filter is active.
+
+---
+
+#### 11.11 Component Breakdown
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| `FilterToolbar` | Container | Flex row containing SearchInput, StatusFilter, SortSelector, and ClearFilters. Manages filter state and composes API query params. |
+| `SearchInput` | Input | Debounced text input with magnifying glass icon and clear (X) button. |
+| `StatusFilter` | Select | Native `<select>` for status filtering. |
+| `SortSelector` | Select | Native `<select>` for sort field + direction. |
+| `ClearFiltersButton` | Button | Text button to reset all filters. Conditionally visible. |
+| `EmptySearchResults` | Presentational | Empty state shown when filters match zero trips. |
+| `ResultCount` | Text | "showing X trip(s)" text, shown only when filters are active. |
+
+**State Management:**
+- Filter state should be managed in the HomePage component (or a custom `useFilteredTrips` hook)
+- State shape:
+  ```
+  {
+    search: string          // current search text
+    status: string          // "" | "PLANNING" | "ONGOING" | "COMPLETED"
+    sortBy: string          // "created_at" | "name" | "start_date"
+    sortOrder: string       // "asc" | "desc"
+  }
+  ```
+- The hook composes the API query params from this state and passes them to the `GET /trips` call
+- The existing `useTrips` hook should be extended (or a new `useFilteredTrips` hook wraps it) to accept filter params
+
+---
+
+#### 11.12 Responsive Behavior
+
+| Breakpoint | Layout |
+|------------|--------|
+| **Desktop (≥1024px)** | Toolbar: single horizontal row. Search input takes flex space. Status filter 180px. Sort selector 220px. "clear filters" appears at the end of the row. Trip grid: 3 columns. |
+| **Tablet (768–1023px)** | Toolbar: single horizontal row (still fits). Search input: `min-width: 200px`, may shrink. Status filter: 160px. Sort selector: 200px. "clear filters" wraps to second row if needed. Trip grid: 2 columns. |
+| **Mobile (<768px)** | Toolbar: wraps to multiple rows via `flex-wrap: wrap`. Search input: `width: 100%` (full row). Status filter and sort selector: side by side on the second row, each `flex: 1`, `min-width: 0`. "clear filters": full width below, text-align left, margin-top 8px. Trip grid: 1 column. Gap between toolbar items: 8px (reduced from 12px for tighter mobile layout). |
+
+**Mobile-specific adjustments:**
+- Search input becomes full-width on its own row
+- Status filter and sort selector share the second row equally
+- The "showing X trips" count text sits below the toolbar, full-width, margin-top 12px
+- All touch targets remain ≥40px height (already met by 40px input/select height)
+
+---
+
+#### 11.13 Accessibility
+
+**Toolbar Container:**
+- Wrap the toolbar in a `<div role="search" aria-label="Filter trips">` to semantically mark it as a search region
+- This allows screen readers to announce "Filter trips, search" when entering the region
+
+**Search Input:**
+- `<input type="search">` (native search input type — provides clear button in some browsers, semantic)
+- `aria-label="Search trips by name or destination"`
+- `autocomplete="off"` (not an address or standard field)
+- `aria-describedby` pointing to an `sr-only` hint: "results update as you type" (ID: `search-hint`)
+- The sr-only hint: `<span id="search-hint" class="sr-only">results update as you type</span>`
+- Clear button: `aria-label="Clear search"`, `type="button"`
+
+**Status Filter:**
+- `<select aria-label="Filter by status">`
+- Each `<option>` has clear text labels
+
+**Sort Selector:**
+- `<select aria-label="Sort trips">`
+- Each `<option>` has clear text labels
+
+**Clear Filters Button:**
+- `aria-label="Clear all filters and sorting"`
+- `type="button"`
+
+**Result Count (Live Region):**
+- The "showing X trip(s)" text element should have `aria-live="polite"` and `role="status"`
+- This announces result count changes to screen readers without interrupting the user
+- Updates after each API response (debounced naturally by the search debounce + API latency)
+
+**Empty Search Results:**
+- The heading "no trips found" is announced to screen readers via the live region update
+- The "clear filters" CTA button is focusable and has `aria-label="Clear all filters"`
+
+**Keyboard Navigation:**
+- Tab order within toolbar: Search input → Clear search (if visible) → Status filter → Sort selector → Clear filters button (if visible)
+- Search input: Enter key does NOT submit a form (there is no form) — it's just a text input with debounce
+- Escape key while in search input: clears the search text (same as clicking the X button)
+- All dropdown selects are keyboard-navigable natively (arrow keys, space/enter to select)
+
+**Focus Management:**
+- On "clear filters" click: move focus to the search input
+- On search clear (X click): move focus to the search input
+- Tab focus ring: `outline: 2px solid var(--accent); outline-offset: 2px` on all toolbar controls (consistent with design system)
+
+---
+
+#### 11.14 Integration with Existing Components
+
+**What Changes:**
+
+| Component | Change |
+|-----------|--------|
+| `HomePage.jsx` | Add FilterToolbar between page header and trip grid. Manage filter state (or use a new hook). Pass filter params to trip fetch. Conditionally render EmptySearchResults vs. trip grid vs. Spec 2.4 empty state. |
+| `useTrips.js` (or new `useFilteredTrips.js`) | Accept optional filter params (search, status, sortBy, sortOrder). Pass as query params to `GET /trips`. Return results. Handle cancellation of in-flight requests when filters change. |
+| `HomePage.module.css` | Add styles for `.filterToolbar`, `.searchInput`, `.statusFilter`, `.sortSelector`, `.clearFilters`, `.resultCount`, `.emptySearchResults`. |
+
+**What Does NOT Change:**
+
+| Component | Unchanged |
+|-----------|-----------|
+| `TripCard.jsx` | No changes. Cards render the same regardless of how they were filtered. |
+| `Navbar.jsx` | No changes. |
+| `CreateTripModal` | No changes. After creating a trip, navigate to `/trips/:id` as before. |
+| Delete confirmation | No changes. After deletion, the list refetches (with current filters applied). |
+
+**Edge Case — Trip Created While Filters Active:**
+- If the user has active filters and creates a new trip via the modal, they navigate away to `/trips/:id`. When they return to the home page (via back button or nav), the URL params restore the filter state.
+- The new trip may or may not match the active filters — that's expected. If the user wants to see all trips, they click "clear filters."
+
+**Edge Case — Trip Deleted While Filters Active:**
+- After deleting a trip, the trip is removed from the current filtered view. The result count updates. If the deleted trip was the last matching trip, the empty search results state appears.
+
+**Edge Case — API Returns Fewer Results Than Expected:**
+- If the API returns 0 results for a filtered query but the user previously had results, show the empty search results state (11.7.3). Do not fall back to the "no trips yet" state (Spec 2.4) — that state is ONLY for users with zero trips in the database.
+- The Frontend Engineer should use the `pagination.total` field from the API response: if `total === 0` AND filters are active, show empty search results. If `total === 0` AND no filters are active, show the Spec 2.4 empty state.
+
+---
+
+#### 11.15 Design Decisions & Notes
+
+1. **Native `<select>` vs. custom dropdown:** We chose native `<select>` elements for the status filter and sort selector instead of custom dropdown components. Rationale: (a) Native selects are fully accessible out of the box — keyboard navigation, screen reader support, mobile pickers all work without custom ARIA. (b) They match the minimal Japandi aesthetic — no flashy custom dropdowns needed. (c) They can be styled sufficiently with CSS (`appearance: none` + custom chevron). (d) Custom dropdowns are a significant implementation effort with many accessibility pitfalls. The trade-off is less visual control over the dropdown picker itself, but the trigger element is fully styled.
+
+2. **Combined sort selector vs. separate field + direction:** We combined sort field and direction into a single dropdown (e.g., "name A — Z" instead of separate "sort by: name" + "direction: ascending" controls). Rationale: (a) Reduces the number of controls from 4 to 3, keeping the toolbar compact. (b) Users think in terms of "newest first" not "created_at descending." (c) The combined approach is used by many popular apps (Gmail, Notion, Airbnb). (d) 6 options in a single dropdown is easily scannable.
+
+3. **No filter chips/pills:** We chose not to show active filter chips below the toolbar (e.g., "[PLANNING ×] [Search: tokyo ×]"). Rationale: The toolbar itself shows the active state in each control. Filter chips would duplicate this information and add visual clutter. The "clear filters" button provides a single reset action. If users need to remove one specific filter, they can change that control directly.
+
+4. **URL sync via replaceState:** We use `replaceState` (not `pushState`) to update the URL as filters change. This means pressing browser Back does not step through every filter change — it goes back to the previous page. This is intentional: filter changes are refinements, not navigation steps. Stepping back through every search keystroke would be frustrating.
+
+5. **Search debounce 300ms:** This is the standard debounce interval used by most search-as-you-type implementations. It balances responsiveness (user sees results quickly) with efficiency (not hammering the API on every keystroke). Faster typists may trigger fewer API calls, slower typists see results sooner.
+
+6. **No search results animation:** Trip cards do not animate in/out when search results change. The grid simply re-renders with the new set of cards. Adding enter/exit animations for filtered cards would add significant complexity with minimal UX benefit for this use case.
+
+7. **"showing X trips" only when filtered:** The result count text is intentionally hidden in the default (unfiltered) view. When you can see all your trips, counting them adds no value. The count becomes useful when filters are active — it tells the user how many trips matched their query, providing feedback that the filter is working.
+
+---
+
+#### 11.16 CSS Class Reference
+
+For the Frontend Engineer's reference, suggested CSS module class names:
+
+```css
+/* FilterToolbar container */
+.filterToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+/* Search input wrapper */
+.searchWrapper {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 40px;
+  padding: 10px 38px 10px 38px; /* right padding for clear btn */
+  background: var(--surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  transition: border-color 150ms ease;
+}
+
+.searchInput:focus {
+  border-color: var(--border-accent);
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.clearSearch {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 150ms ease;
+}
+
+.clearSearch:hover {
+  color: var(--text-primary);
+}
+
+/* Shared select styling */
+.selectInput {
+  height: 40px;
+  padding: 10px 32px 10px 14px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  appearance: none;
+  background-image: url("data:image/svg+xml,..."); /* chevron SVG */
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px;
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.selectInput:focus {
+  border-color: var(--border-accent);
+  outline: none;
+}
+
+.statusFilter {
+  width: 180px;
+}
+
+.sortSelector {
+  width: 220px;
+}
+
+/* Clear filters */
+.clearFilters {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 150ms ease;
+}
+
+.clearFilters:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* Result count */
+.resultCount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* Empty search results */
+.emptySearchResults {
+  text-align: center;
+  padding-top: 64px;
+  padding-bottom: 64px;
+}
+
+.emptySearchIcon {
+  color: var(--accent);
+  opacity: 0.3;
+}
+
+.emptySearchHeading {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin-top: 20px;
+}
+
+.emptySearchSubtext {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .filterToolbar {
+    gap: 8px;
+  }
+
+  .searchWrapper {
+    width: 100%;
+    min-width: 0;
+    flex: none;
+  }
+
+  .statusFilter,
+  .sortSelector {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+  }
+
+  .clearFilters {
+    width: 100%;
+    text-align: left;
+    margin-top: 4px;
+  }
+}
+```
+
+*These are reference styles. The Frontend Engineer may adjust specifics to integrate with the existing CSS module patterns while maintaining the design intent.*
+
+---
+
+*Sprint 5 spec above is marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-25.*
