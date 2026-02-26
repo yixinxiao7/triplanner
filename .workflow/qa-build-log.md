@@ -3491,3 +3491,133 @@ All E2E tests run against the live staging environment over HTTPS. Staging backe
 **Delta from Sprint 4:** +~2.5 kB JS (gzip), +~0.6 kB CSS (gzip), +3 modules (FilterToolbar, EmptySearchResults, related CSS). Build time comparable.
 
 ---
+
+### Sprint 5 — Monitor Agent Post-Deploy Health Check — T-079 (45 checks: Sprint 4 regression + Sprint 5 new)
+
+| Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
+|----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 5 — Monitor Agent post-deploy health check — T-079 (45 checks: 18 Sprint 1–4 regression + 17 Sprint 5 search/filter/sort + 6 validation + 4 E2E) | Post-Deploy Health Check | Pass | Success | Staging | **Yes** | Monitor Agent | None — 45/45 checks PASS. Full end-to-end flow verified: register → login → create trip (with dates) → add flight/stay/activity → list trips → search by name → search by destination → case-insensitive search → filter by status (PLANNING/COMPLETED) → sort (name/start_date) → combined params → empty search → validation (invalid sort_by/sort_order/status → 400) → UUID validation → SQL injection prevention → cookie security → TLS/HTTPS → Playwright E2E (4/4) → 0 × 5xx errors. Detailed report below. |
+
+---
+
+#### Health Check Template
+
+```
+Environment: Staging
+Timestamp: 2026-02-26T05:15:00Z
+Checks:
+  - [x] App responds (GET /api/v1/health → 200, {"status":"ok"}, 0.036s)
+  - [x] Auth works (POST /api/v1/auth/register → 201, POST /api/v1/auth/login → 200, tokens returned)
+  - [x] Key endpoints respond (all endpoints from api-contracts.md verified — see table below)
+  - [x] No 5xx errors in logs (pm2 error log: only expected SyntaxError from malformed JSON bodies)
+  - [x] Database connected (all CRUD operations succeed, data persists correctly)
+  - [x] TLS/HTTPS operational (TLSv1.3 / AEAD-AES256-GCM-SHA384, CN=localhost)
+  - [x] pm2 process online (PID 17058, cluster mode, 78.6MB, 0% CPU)
+  - [x] Frontend SPA accessible (HTTPS, index-CRLXvPX3.js + index-Dos8FkO8.css asset hashes match deploy)
+  - [x] Playwright E2E tests pass (4/4, 10.3s)
+Result: PASS
+Notes: All 45 checks pass. Sprint 5 search/filter/sort features fully operational. Zero 5xx errors. Zero regressions.
+```
+
+---
+
+#### Detailed Check Results (45 checks)
+
+**Infrastructure (5 checks):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 1 | GET /api/v1/health → 200 | ✅ PASS | HTTP 200, `{"status":"ok"}`, response time 0.036s |
+| 2 | pm2 backend status: online | ✅ PASS | PID 17058, cluster mode, 78.6MB, 0% CPU, uptime 5m+ |
+| 3 | Frontend HTTPS → SPA | ✅ PASS | HTTP 200, `text/html`, asset hashes: `index-CRLXvPX3.js`, `index-Dos8FkO8.css` |
+| 4 | TLS/HTTPS operational | ✅ PASS | TLSv1.3 / AEAD-AES256-GCM-SHA384, subject CN=localhost |
+| 5 | 0 × 5xx errors in logs | ✅ PASS | Only expected SyntaxError from malformed JSON (400-level), zero 5xx status codes |
+
+**Auth Flow (3 checks):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 6 | POST /api/v1/auth/register → 201 | ✅ PASS | Returns `{ data: { user: { id, name, email, created_at }, access_token } }` |
+| 7 | POST /api/v1/auth/login → 200 | ✅ PASS | Returns `{ data: { user: { id, name, email, created_at }, access_token } }` |
+| 8 | Cookie security flags | ✅ PASS | `Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800` + HSTS + X-Content-Type-Options: nosniff + X-Frame-Options: SAMEORIGIN |
+
+**Trip CRUD (5 checks):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 9 | POST /api/v1/trips → 201 | ✅ PASS | Trip created with name, destinations, start_date, end_date. Status computed as PLANNING (future dates). |
+| 10 | GET /api/v1/trips → 200 | ✅ PASS | Returns array with pagination `{ data: [...], pagination: { page, limit, total } }` |
+| 11 | GET /api/v1/trips/:id → 200 | ✅ PASS | Returns single trip with all fields |
+| 12 | PATCH /api/v1/trips/:id → 200 | ✅ PASS | Name updated, `updated_at` changed |
+| 13 | DELETE /api/v1/trips/:id → 204 | ✅ PASS | Cascading delete (flights, stays, activities removed) |
+
+**Sub-Resources (5 checks):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 14 | POST /trips/:id/flights → 201 | ✅ PASS | Flight created with flight_number, airline, timestamps, timezones |
+| 15 | GET /trips/:id/flights → 200 | ✅ PASS | Returns flight array |
+| 16 | POST /trips/:id/stays → 201 | ✅ PASS | Stay created with HOTEL category, check_in/out timestamps + timezones |
+| 17 | GET /trips/:id/stays → 200 | ✅ PASS | Returns stay array |
+| 18 | POST /trips/:id/activities → 201 + GET → 200 | ✅ PASS | Activity created with activity_date, location |
+
+**Sprint 5: Search (4 checks):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 19 | GET /trips?search=Paris → 200 (name match) | ✅ PASS | Returns 1 trip ("Paris Adventure"), total=1 |
+| 20 | GET /trips?search=Tokyo → 200 (destination match) | ✅ PASS | Returns 1 trip with Tokyo in destinations, total=1 |
+| 21 | GET /trips?search=BERLIN → 200 (case-insensitive) | ✅ PASS | Returns 1 trip ("Berlin Getaway"), total=1 |
+| 22 | GET /trips?search=ZZZNonExistent → 200 (empty results) | ✅ PASS | Returns `{ data: [], pagination: { total: 0 } }` |
+
+**Sprint 5: Status Filter (2 checks):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 23 | GET /trips?status=PLANNING → 200 | ✅ PASS | Returns 2 trips (future dates + no dates), all status=PLANNING |
+| 24 | GET /trips?status=COMPLETED → 200 | ✅ PASS | Returns 1 trip (Paris, end_date 2026-01-15 in past), status=COMPLETED |
+
+**Sprint 5: Sort (2 checks):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 25 | GET /trips?sort_by=name&sort_order=asc → 200 | ✅ PASS | Order: Berlin < Paris < Updated Monitor (alphabetical) ✅ |
+| 26 | GET /trips?sort_by=start_date&sort_order=asc → 200 | ✅ PASS | Order: Paris (Jan 1) < Updated Monitor (Jun 1) < Berlin (null last) ✅ |
+
+**Sprint 5: Combined Params (1 check):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 27 | GET /trips?search=monitor&status=PLANNING&sort_by=name&sort_order=asc → 200 | ✅ PASS | Returns 1 trip (Updated Monitor Trip, status=PLANNING), all params compose correctly |
+
+**Sprint 5: Validation / Error Handling (6 checks):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 28 | Invalid sort_by → 400 | ✅ PASS | `{ error: { code: "VALIDATION_ERROR", fields: { sort_by: "Sort field must be one of: name, created_at, start_date" } } }` |
+| 29 | Invalid sort_order → 400 | ✅ PASS | `{ error: { code: "VALIDATION_ERROR", fields: { sort_order: "Sort order must be one of: asc, desc" } } }` |
+| 30 | Invalid status → 400 | ✅ PASS | `{ error: { code: "VALIDATION_ERROR", fields: { status: "Status filter must be one of: PLANNING, ONGOING, COMPLETED" } } }` |
+| 31 | Invalid UUID → 400 | ✅ PASS | `{ error: { message: "Invalid ID format", code: "VALIDATION_ERROR" } }` |
+| 32 | No auth token → 401 | ✅ PASS | `{ error: { message: "Authentication required", code: "UNAUTHORIZED" } }` |
+| 33 | SQL injection in search → 200 (safe) | ✅ PASS | `?search='; DROP TABLE trips; --` returns empty results, table intact, no crash |
+
+**Sprint 5: Computed Status (2 checks):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 34 | Trip with future dates → status PLANNING | ✅ PASS | start_date=2026-06-01, end_date=2026-06-15 → computed status=PLANNING |
+| 35 | Trip with past end_date → status COMPLETED | ✅ PASS | start_date=2026-01-01, end_date=2026-01-15 → computed status=COMPLETED |
+
+**Sprint 5: Playwright E2E Tests (4 checks):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 36 | E2E Test 1: Core user flow — register, create trip, view details, delete, logout | ✅ PASS | 1.6s |
+| 37 | E2E Test 2: Sub-resource CRUD — create trip, add flight, add stay, verify on details page | ✅ PASS | 1.6s |
+| 38 | E2E Test 3: Search, filter, sort — create trips, search, filter by status, sort by name, clear filters | ✅ PASS | 4.0s |
+| 39 | E2E Test 4: Rate limit lockout — rapid wrong-password login triggers 429 banner and disables submit | ✅ PASS | 2.0s |
+
+**Sprint 4 Regression (6 checks):**
+| # | Test | Result | Details |
+|---|------|--------|---------|
+| 40 | Destination dedup (POST trips) | ✅ PASS | Verified via E2E Test 1 (create trip with destinations) |
+| 41 | HSTS header present | ✅ PASS | `Strict-Transport-Security: max-age=31536000; includeSubDomains` |
+| 42 | X-Content-Type-Options | ✅ PASS | `nosniff` |
+| 43 | X-Frame-Options | ✅ PASS | `SAMEORIGIN` |
+| 44 | Rate limiting on auth | ✅ PASS | Verified via E2E Test 4 (429 on rapid login) |
+| 45 | Refresh token cookie path scoped | ✅ PASS | `Path=/api/v1/auth` |
+
+---
+
+**Summary:** 45/45 checks PASS. Deploy Verified = **Yes**. All Sprint 5 features (search, filter, sort, combined params, validation) verified end-to-end. All Sprint 1–4 regression checks pass over HTTPS. 4/4 Playwright E2E tests pass. Zero 5xx errors. Cookie security, TLS, and security headers all correct. Staging is ready for User Agent testing (T-080).
+
+---

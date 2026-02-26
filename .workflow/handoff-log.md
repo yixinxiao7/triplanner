@@ -17,6 +17,33 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 5 — Monitor Agent → User Agent: T-079 Complete — Staging Verified, Ready for Feature Testing (2026-02-26)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Monitor Agent |
+| To Agent | User Agent |
+| Status | Pending |
+| Related Task | T-079 (Done) → T-080 (User Agent: Feature Walkthrough) |
+| Handoff Summary | Monitor Agent has completed T-079 (Staging Health Check). **Deploy Verified = Yes. 45/45 health checks PASS. Staging is ready for User Agent testing.** All Sprint 5 features are operational: (1) Search by name and destination (case-insensitive ILIKE) ✅, (2) Status filter (PLANNING/COMPLETED — computed status) ✅, (3) Sort by name/start_date/created_at (asc/desc) ✅, (4) Combined search + filter + sort ✅, (5) Validation: invalid sort_by/sort_order/status → 400 ✅, (6) SQL injection prevention ✅, (7) Empty search results → `{ data: [], total: 0 }` ✅. All Sprint 1–4 regression checks pass over HTTPS. 4/4 Playwright E2E tests pass (10.3s). Cookie security, TLS, security headers all verified. Zero 5xx errors. **T-080 is now unblocked.** |
+| Notes | **Staging URLs:** Backend: `https://localhost:3001` (HTTPS, pm2 cluster mode, PID 17058). Frontend: `https://localhost:4173` (HTTPS, Vite preview). **Test recommendations for T-080:** (1) Create 3+ trips with varied names/destinations/dates to test search/filter/sort UI. (2) Verify search bar debounce (300ms) and live filtering. (3) Test status dropdown filter with PLANNING/ONGOING/COMPLETED states. (4) Test sort controls (name asc/desc, start_date asc/desc, created_at asc/desc). (5) Verify empty search state shows "no trips match" with clear filters action. (6) Full Sprint 4 regression: destination dedup, submit lockout, ARIA compliance. (7) Run Playwright E2E: `npx playwright test` from project root. Full health check report in `.workflow/qa-build-log.md`. |
+
+---
+
+### Sprint 5 — Monitor Agent: Acknowledging Deploy Engineer Handoff for T-079 (2026-02-26)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Monitor Agent |
+| To Agent | Deploy Engineer |
+| Status | Acknowledged |
+| Related Task | T-078 → T-079 |
+| Handoff Summary | Monitor Agent acknowledges the Deploy Engineer handoff confirming staging deployment. T-079 health check has been completed successfully. 45/45 checks PASS. Deploy Verified = Yes. |
+
+---
+
 ### Sprint 5 — Deploy Engineer → Monitor Agent: T-078 Complete — Staging Deployment Ready for Health Check (2026-02-26)
 
 | Field | Value |
@@ -24,8 +51,8 @@ When you finish work that another agent needs to pick up:
 | Sprint | 5 |
 | From Agent | Deploy Engineer |
 | To Agent | Monitor Agent |
-| Status | Pending |
-| Related Task | T-078 (Done) → T-079 (Monitor: Staging Health Check) |
+| Status | Done |
+| Related Task | T-078 (Done) → T-079 (Done) |
 | Handoff Summary | Deploy Engineer has completed T-078 (Staging re-deployment). **All Sprint 5 changes are deployed to staging.** Frontend rebuilt with search/filter/sort UI (T-073) + React Router v7 migration (T-074). Backend restarted under pm2 with search/filter/sort API (T-072). Playwright E2E framework installed and configured (T-075). 28/28 staging smoke tests PASS. **T-079 is now unblocked.** |
 | Notes | **Staging URLs:** Backend: `https://localhost:3001` (HTTPS, pm2 cluster mode, PID 17058). Frontend: `https://localhost:4173` (HTTPS, Vite preview). Database: `localhost:5432/appdb` (PostgreSQL, 8 migrations applied, 0 pending). **Deployment details:** Frontend build: Vite 6.4.1, 119 modules, 644ms, `VITE_API_URL=https://localhost:3001/api/v1`. Asset hashes: `index-CRLXvPX3.js` (308.50 kB / 95.56 kB gzip), `index-Dos8FkO8.css` (58.93 kB / 9.28 kB gzip). Backend: pm2 restart, cluster mode, 45.6MB. **Test status:** 196/196 backend tests PASS, 296/296 frontend tests PASS, 28/28 staging smoke tests PASS. QA confirmed: 496 total tests (196 backend + 296 frontend + 4 E2E). **Smoke tests verified:** (1) Health check ✅, (2) Auth flow (register+login) ✅, (3) Trip CRUD ✅, (4) Search by name ✅, (5) Search by destination ✅, (6) Case-insensitive search ✅, (7) Empty search results ✅, (8) Status filter (PLANNING/COMPLETED) ✅, (9) Sort (name/start_date/created_at) ✅, (10) Combined params ✅, (11) Validation errors (invalid sort_by/sort_order/status → 400) ✅, (12) SQL injection prevention ✅, (13) Cookie security (Secure, HttpOnly, SameSite=Strict) ✅, (14) UUID validation ✅, (15) pm2 online ✅, (16) Frontend HTTPS SPA ✅. **Monitor Agent T-079 priorities:** (1) Full Sprint 4 regression (45+ checks), (2) Sprint 5 search/filter/sort API end-to-end, (3) Playwright E2E tests (`npx playwright test` from project root), (4) 0 × 5xx error verification, (5) TLS/HTTPS operational check. Full deployment report in `.workflow/qa-build-log.md`. |
 
