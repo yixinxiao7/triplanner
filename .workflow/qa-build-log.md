@@ -3174,3 +3174,150 @@ Notes: All 45 checks pass. Deploy Verified = Yes. Zero failures. Zero 5xx errors
 **Blocker Status:** T-078 remains blocked by T-077 (QA Integration) ← T-076 (QA Security) ← T-073 (Frontend: Backlog), T-074 (Frontend: Backlog), T-075 (E2E: Backlog). T-072 (Backend) is implementation-complete but not yet marked Done in tracker.
 
 ---
+
+| Sprint 5 — Backend unit tests (196 tests, 10 files) — T-076 | Unit Test | Pass | Success | Local | No | QA Engineer | None — 196/196 PASS, 2.07s. All 10 test files pass: auth(14), trips(16), flights(10), stays(8), activities(12), sprint2(37), sprint3(33), sprint4(19), sprint5(28), tripStatus(19). No regressions from Sprint 4. |
+| Sprint 5 — Frontend unit tests (296 tests, 21 files) — T-076 | Unit Test | Pass | Success | Local | No | QA Engineer | None — 296/296 PASS, 8.86s. All 21 test files pass. 36 new Sprint 5 tests: FilterToolbar(17), EmptySearchResults(8), HomePageSearch(11). act() warnings: expected, non-blocking. |
+| Sprint 5 — Security checklist verification (19 items) — T-076 | Security Scan | Pass | Success | Local | No | QA Engineer | All 19 security checklist items verified. 15 PASS, 0 FAIL, 4 DEFERRED (same infrastructure items as Sprints 1-4). No P1 security failures. See detailed report below. |
+| Sprint 5 — npm audit backend | Security Scan | Pass | Success | Local | No | QA Engineer | 0 production vulnerabilities. `npm audit --omit=dev` clean. |
+| Sprint 5 — npm audit frontend | Security Scan | Pass | Success | Local | No | QA Engineer | 0 production vulnerabilities. `npm audit --omit=dev` clean. |
+| Sprint 5 — Backend security deep review (10 items) — T-076 | Security Scan | Pass | Success | Local | No | QA Engineer | All 10 checks PASS: SQL injection prevention (ILIKE parameterized) ✅, input validation (whitelist for sort/status/sort_order) ✅, auth enforcement (router.use(authenticate)) ✅, error response safety (no stack traces) ✅, no hardcoded secrets ✅, npm audit clean ✅, no eval/Function patterns ✅, listTripsByUser deep dive (no raw SQL concatenation) ✅, GET / route handler validation ✅, errorHandler.js safe ✅. |
+| Sprint 5 — Frontend security deep review (7 items) — T-076 | Security Scan | Pass | Success | Local | No | QA Engineer | All 7 checks PASS: XSS prevention (0 dangerouslySetInnerHTML in entire frontend) ✅, no hardcoded secrets ✅, search input sanitized (trimmed in FilterToolbar) ✅, URL param validation (whitelists with silent fallback) ✅, React Router v7 flags correct ✅, auth flow intact (useTrips uses authenticated api client) ✅, error messages safe (no internal details) ✅. |
+| Sprint 5 — Integration contract verification (27 checks) — T-077 | Integration Test | Pass | Success | Local | No | QA Engineer | 27/27 PASS, 0 FAIL, 0 WARN. See detailed report below. |
+| Sprint 5 — Playwright E2E tests (4 scenarios) — T-075 | E2E Test | Pass | Success | Staging | No | QA Engineer | 4/4 E2E tests PASS (8.8s). Test 1: Core user flow (register→create→details→delete→logout) 1.7s ✅. Test 2: Sub-resource CRUD (flights+stays) 1.6s ✅. Test 3: Search/filter/sort 3.9s ✅. Test 4: Rate limit lockout 574ms ✅. |
+
+---
+
+### Sprint 5 — QA Security Checklist Verification (T-076) — 2026-02-25
+
+**Related Tasks:** T-072, T-073, T-074, T-075
+
+#### Authentication & Authorization
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 1 | All API endpoints require appropriate authentication | **PASS** | `router.use(authenticate)` applied to entire trips router (trips.js line 19). GET /trips with search/filter/sort params requires valid Bearer token — 401 returned without auth (sprint5.test.js line 372). |
+| 2 | Role-based access control enforced | **PASS** | User-scoped queries: `query.where({ user_id: userId })` in tripModel.js. Users can only see their own trips. |
+| 3 | Auth tokens have appropriate expiration and refresh | **PASS** | JWT_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d. Refresh token rotation on use. Access token stored in-memory (useRef). |
+| 4 | Password hashing uses bcrypt (min 12 rounds) | **PASS** | bcrypt with 12 rounds in auth routes. No changes in Sprint 5. |
+| 5 | Failed login attempts are rate-limited | **PASS** | express-rate-limit: login 10/15min, register 20/15min, general auth 30/15min. Verified in E2E Test 4. |
+
+#### Input Validation & Injection Prevention
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 6 | All user inputs validated on both client and server | **PASS** | Backend: sort_by/sort_order/status validated against whitelists with 400 VALIDATION_ERROR on failure. Frontend: URL params validated against VALID_STATUSES and VALID_SORTS whitelists with silent fallback. Search trimmed before API call. |
+| 7 | SQL queries use parameterized statements | **PASS** | All ILIKE queries use Knex `whereRaw('name ILIKE ?', [searchTerm])` with `?` placeholder — no string concatenation. orderByRaw uses ternary guards that can only produce literal 'ASC'/'DESC'. SQL injection test in sprint5.test.js (lines 454-488) verifies injection attempt is treated as literal string. |
+| 8 | NoSQL injection protection | **DEFERRED** | N/A — project uses PostgreSQL only, no NoSQL. |
+| 9 | File uploads validated | **DEFERRED** | N/A — no file upload functionality exists. |
+| 10 | HTML output sanitized to prevent XSS | **PASS** | 0 instances of `dangerouslySetInnerHTML` in entire frontend source tree. All user-supplied data rendered via React JSX interpolation (automatic escaping). Search input in FilterToolbar uses controlled `<input>` component. EmptySearchResults truncates search term at 30 chars. |
+
+#### API Security
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 11 | CORS configured for expected origins only | **PASS** | CORS_ORIGIN env var controls allowed origin. No wildcards. |
+| 12 | Rate limiting on public-facing endpoints | **PASS** | Auth endpoints rate-limited. GET /trips requires auth (not public-facing). |
+| 13 | API responses do not leak internal error details | **PASS** | errorHandler.js suppresses err.message for 500s, returns generic "An unexpected error occurred". Validation errors return structured JSON with safe field-level messages. No stack traces in any error response. |
+| 14 | Sensitive data not in URL query parameters | **PASS** | Only search term, status filter, sort preferences in URL params. No tokens, passwords, or PII. |
+| 15 | HTTP security headers present | **PASS** | Helmet middleware active. nginx.conf includes X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, CSP, server_tokens off. |
+
+#### Data Protection
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 16 | Database credentials in env vars, not code | **PASS** | DATABASE_URL, JWT_SECRET from process.env. .env.example has placeholders only. |
+| 17 | Logs do not contain PII/passwords/tokens | **PASS** | Error handler logs error type only. No request body logging. No token logging. |
+| 18 | Backups configured | **DEFERRED** | Infrastructure item — staging is local PostgreSQL. Production deployment pending. |
+
+#### Infrastructure
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 19 | HTTPS enforced | **PASS** | Backend and frontend serve over HTTPS (self-signed TLS). Cookie secure flag set. All E2E tests run over HTTPS. |
+| 20 | Dependencies checked for vulnerabilities | **PASS** | `npm audit --omit=dev`: 0 vulnerabilities (backend), 0 vulnerabilities (frontend). |
+| 21 | Default credentials removed | **PASS** | .env.example uses placeholder values. No default passwords in code. |
+| 22 | Error pages don't reveal server technology | **DEFERRED** | nginx.conf has `server_tokens off`. Express error handler returns generic messages. |
+
+**Summary:** 15 PASS, 0 FAIL, 4 DEFERRED (same infrastructure items as Sprints 1-4). No P1 security failures. All Sprint 5-specific security concerns addressed: search ILIKE parameterized ✅, sort/status whitelist validated ✅, no XSS in new components ✅, URL params validated ✅, React Router flags correct ✅, auth flow intact ✅.
+
+---
+
+### Sprint 5 — Integration Contract Verification (T-077) — 2026-02-25
+
+**Related Tasks:** T-072, T-073, T-074
+
+#### API Contract Verification (Frontend ↔ Backend)
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 1 | useTrips sends `search` param matching backend contract | **PASS** | `params.search = filterParams.search` → backend reads `req.query.search` |
+| 2 | useTrips sends `status` param with uppercase values | **PASS** | PLANNING/ONGOING/COMPLETED sent → matches VALID_STATUS_FILTER |
+| 3 | useTrips sends `sort_by` param matching whitelist | **PASS** | name/created_at/start_date → matches VALID_SORT_BY |
+| 4 | useTrips sends `sort_order` param matching whitelist | **PASS** | asc/desc → matches VALID_SORT_ORDER |
+| 5 | Empty values omitted from API call | **PASS** | Conditional checks `if (filterParams.search)` prevent empty string params |
+| 6 | Default behavior (no params) backward compatible | **PASS** | No params → created_at desc, same as Sprint 4 |
+| 7 | pagination.total reflects filtered count | **PASS** | Frontend reads `response.data.pagination?.total` → backend returns filtered total |
+| 8 | Combined params compose correctly | **PASS** | search+status+sort_by+sort_order all passed simultaneously and handled |
+
+#### UI Component Integration
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 9 | FilterToolbar search debounce at 300ms | **PASS** | `setTimeout(..., 300)` with immediate clear for empty input |
+| 10 | FilterToolbar trims search input | **PASS** | `value.trim()` before dispatch |
+| 11 | FilterToolbar status options match backend | **PASS** | PLANNING/ONGOING/COMPLETED uppercase values |
+| 12 | FilterToolbar sort options split correctly | **PASS** | `splitSort('name:asc')` → `{sort_by:'name', sort_order:'asc'}` |
+| 13 | Default sort optimization (omit default params) | **PASS** | Skips sort params when created_at:desc |
+| 14 | URL search params synced with filters | **PASS** | useSearchParams with replaceState, validated on init |
+| 15 | Stale request prevention | **PASS** | requestIdRef counter discards outdated responses |
+
+#### UI States
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 16 | Default state (all trips shown) | **PASS** | Trip grid renders without filters |
+| 17 | Loading state (skeleton cards / opacity) | **PASS** | Skeleton on initial load, 50% opacity on refetch |
+| 18 | Error state (message + retry) | **PASS** | "could not load trips" + "try again" button |
+| 19 | Empty DB state ("no trips yet" + CTA) | **PASS** | Distinct from empty search results |
+| 20 | Empty search results ("no trips match" + clear) | **PASS** | hasTripsBefore + hasActiveFilters logic |
+| 21 | Filtered state (result count) | **PASS** | "showing X trips" with aria-live |
+| 22 | Clear filters resets all controls | **PASS** | Resets search, status, sort to defaults |
+
+#### Sprint 4 Regression
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 23 | Auth flow (ProtectedRoute + JWT interceptor) | **PASS** | All protected routes wrapped, interceptor intact |
+| 24 | Destination dedup (backend tripModel) | **PASS** | deduplicateDestinations in createTrip + updateTrip |
+| 25 | ARIA fixes (DestinationChipInput) | **PASS** | role="group", aria-labels, aria-live, no role="option" |
+| 26 | Rate limit 429 handling | **PASS** | Both LoginPage + RegisterPage handle 429 with countdown |
+| 27 | React Router v7 flags | **PASS** | BrowserRouter + all 10 MemoryRouter instances have both flags |
+
+**Summary:** 27/27 PASS, 0 FAIL, 0 WARN. All API contracts match between frontend and backend. All UI states implemented. All Sprint 4 features intact with no regressions.
+
+---
+
+### Sprint 5 — Playwright E2E Tests (T-075) — 2026-02-25
+
+**Related Tasks:** T-075
+
+**Setup:**
+- Playwright `@playwright/test` installed at project root
+- Chromium browser engine installed
+- Config: `playwright.config.js` — baseURL `https://localhost:4173`, ignoreHTTPSErrors: true, timeout 30s, Chromium only
+- Test file: `e2e/critical-flows.spec.js` — 4 test scenarios
+
+**Test Results:**
+
+| Test | Scenario | Duration | Result |
+|------|----------|----------|--------|
+| Test 1 | Core user flow: register → create trip → view details → delete → logout | 1.7s | **PASS** |
+| Test 2 | Sub-resource CRUD: create trip → add flight → add stay → verify on details | 1.6s | **PASS** |
+| Test 3 | Search/filter/sort: create 2 trips → search → filter → sort → clear | 3.9s | **PASS** |
+| Test 4 | Rate limit lockout: rapid wrong-password login → 429 banner → disabled button | 574ms | **PASS** |
+
+**Total: 4/4 PASS (8.8s)**
+
+All E2E tests run against the live staging environment over HTTPS. Staging backend and frontend were rebuilt with Sprint 5 code before test execution.
+
+---

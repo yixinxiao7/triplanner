@@ -25,6 +25,10 @@ npm-debug.log*
 # Test coverage
 coverage/
 
+# Playwright
+test-results/
+playwright-report/
+
 # TLS certificates (T-044 — never commit private keys)
 infra/certs/
 

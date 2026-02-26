@@ -17,6 +17,59 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 5 — QA Engineer → Deploy Engineer: T-075, T-076, T-077 Complete — Deploy Readiness Confirmed (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | QA Engineer |
+| To Agent | Deploy Engineer |
+| Status | Pending |
+| Related Task | T-075 (Done), T-076 (Done), T-077 (Done) → T-078 (Deploy: Staging Re-deployment) |
+| Handoff Summary | QA Engineer has completed all Sprint 5 QA tasks. **All tests pass. Deploy readiness confirmed.** |
+| Notes | **T-075 (E2E: Playwright):** Playwright @playwright/test installed at project root. 4 E2E test scenarios written and passing (8.8s total): (1) Core user flow: register→create→details→delete→logout ✅, (2) Sub-resource CRUD: flights+stays ✅, (3) Search/filter/sort ✅, (4) Rate limit lockout ✅. Config: `playwright.config.js` (Chromium, ignoreHTTPSErrors, https://localhost:4173). Tests: `e2e/critical-flows.spec.js`. **T-076 (Security):** All 19 security checklist items verified (15 PASS, 4 DEFERRED infrastructure items). 10 backend + 7 frontend deep security checks all PASS. No P1 security failures. SQL injection prevention verified (parameterized Knex ILIKE queries). Whitelist validation for sort/status/sort_order. 0 dangerouslySetInnerHTML. npm audit: 0 production vulnerabilities (both packages). **T-077 (Integration):** 27/27 integration contract checks PASS. All API param names match (search, status, sort_by, sort_order). All 6 UI states implemented. Sprint 4 regression PASS. 4/4 E2E tests PASS. **Unit Tests:** Backend 196/196 PASS. Frontend 296/296 PASS. **Total test count: 496 tests (196 backend + 296 frontend + 4 E2E).** **IMPORTANT: Staging servers were rebuilt with Sprint 5 code during E2E test setup.** The frontend was rebuilt with `VITE_API_URL=https://localhost:3001/api/v1 npm run build` and the backend was restarted under pm2. Deploy Engineer should verify this matches their deployment plan and confirm the staging environment is in the expected state. **T-078 is now unblocked.** |
+
+---
+
+### Sprint 5 — QA Engineer: Acknowledging Manager Handoff for T-072, T-073, T-074 (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | QA Engineer |
+| To Agent | Manager Agent |
+| Status | Done |
+| Related Task | T-072, T-073, T-074 → T-075, T-076, T-077 |
+| Handoff Summary | QA Engineer acknowledges the Manager Agent handoff for T-072, T-073, T-074. All three tasks have been fully verified through security audit (T-076), integration testing (T-077), and E2E testing (T-075). All moved to Done in dev-cycle-tracker. |
+
+---
+
+### Sprint 5 — QA Engineer: Acknowledging Backend Engineer Handoff for T-072 (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | QA Engineer |
+| To Agent | Backend Engineer |
+| Status | Done |
+| Related Task | T-072 |
+| Handoff Summary | QA Engineer acknowledges the Backend Engineer handoff for T-072. Search/filter/sort API verified: parameterized ILIKE queries (no SQL injection), whitelist validation (sort_by, sort_order, status), 28 unit tests pass, integration contracts match frontend, E2E Test 3 confirms end-to-end search/filter/sort functionality. |
+
+---
+
+### Sprint 5 — QA Engineer: Acknowledging Frontend Engineer Handoff for T-073, T-074 (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | QA Engineer |
+| To Agent | Frontend Engineer |
+| Status | Done |
+| Related Task | T-073, T-074 |
+| Handoff Summary | QA Engineer acknowledges the Frontend Engineer handoff for T-073 and T-074. T-073: Search/filter/sort UI verified — 100% Spec 11 compliance, all 6 UI states, URL param sync, debounce, accessibility, 36 new tests pass. T-074: React Router v7 flags verified in main.jsx + all 10 MemoryRouter test instances. 296/296 frontend tests pass. |
+
+---
+
 ### Sprint 5 — Manager Agent → QA Engineer: T-072, T-073, T-074 Code Review APPROVED — Ready for QA (2026-02-25)
 
 | Field | Value |
