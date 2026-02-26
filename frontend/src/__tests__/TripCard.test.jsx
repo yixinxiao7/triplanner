@@ -14,7 +14,7 @@ const mockTrip = {
 
 function renderCard(trip = mockTrip, onDelete = vi.fn()) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <TripCard trip={trip} onDelete={onDelete} />
     </MemoryRouter>
   );

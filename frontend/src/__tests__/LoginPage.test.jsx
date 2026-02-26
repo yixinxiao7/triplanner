@@ -19,7 +19,7 @@ function renderLoginPage(authContextOverrides = {}) {
   };
 
   return render(
-    <MemoryRouter initialEntries={['/login']}>
+    <MemoryRouter initialEntries={['/login']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthContext.Provider value={mockContextValue}>
         <LoginPage />
       </AuthContext.Provider>

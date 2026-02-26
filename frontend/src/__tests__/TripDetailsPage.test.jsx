@@ -152,7 +152,7 @@ const defaultHookValue = {
 
 function renderTripDetailsPage() {
   return render(
-    <MemoryRouter initialEntries={['/trips/trip-001']}>
+    <MemoryRouter initialEntries={['/trips/trip-001']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthContext.Provider value={mockAuthContext}>
         <Routes>
           <Route path="/trips/:id" element={<TripDetailsPage />} />

@@ -19,7 +19,7 @@ function renderRegisterPage(authContextOverrides = {}) {
   };
 
   return render(
-    <MemoryRouter initialEntries={['/register']}>
+    <MemoryRouter initialEntries={['/register']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthContext.Provider value={mockContextValue}>
         <RegisterPage />
       </AuthContext.Provider>

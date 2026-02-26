@@ -60,7 +60,7 @@ const mockFlights = [
 
 function renderPage() {
   return render(
-    <MemoryRouter initialEntries={['/trips/trip-001/edit/flights']}>
+    <MemoryRouter initialEntries={['/trips/trip-001/edit/flights']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthContext.Provider value={mockAuthContext}>
         <Routes>
           <Route path="/trips/:id/edit/flights" element={<FlightsEditPage />} />

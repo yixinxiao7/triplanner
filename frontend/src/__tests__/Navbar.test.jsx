@@ -20,7 +20,7 @@ function renderNavbar(user = { id: '1', name: 'Jane Doe', email: 'jane@example.c
   };
 
   return render(
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter initialEntries={['/']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthContext.Provider value={mockContextValue}>
         <Navbar />
       </AuthContext.Provider>
