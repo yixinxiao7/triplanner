@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 5 — Backend Engineer → QA Engineer: T-072 Implementation Complete — Ready for Security + Integration Testing (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-072 (Backend Implementation) → T-076 (QA Security), T-077 (QA Integration) |
+| Handoff Summary | Backend Engineer has completed implementation of T-072 (Trip Search, Filter, and Sort). The `GET /api/v1/trips` endpoint now supports four new optional query parameters: `search` (ILIKE on name + destinations), `status` (post-query filter by computed status), `sort_by` (name, created_at, start_date), and `sort_order` (asc, desc). All parameters are optional and composable. Default behavior (no params) is unchanged from Sprint 4. **Implementation files:** `backend/src/models/tripModel.js` (listTripsByUser updated with search/filter/sort, dual-path pagination), `backend/src/routes/trips.js` (query param validation against whitelists). **Tests:** `backend/src/__tests__/sprint5.test.js` (28 tests covering search, status filter, sort, combined params, pagination with filters, SQL injection prevention, validation constants). **All 196/196 backend tests pass** (168 existing + 28 new Sprint 5). **Security self-check passed:** (1) All queries use Knex parameterized bindings — no SQL string concatenation. (2) sort_by/sort_order/status validated against whitelists before use in orderByRaw. (3) Search ILIKE uses `?` parameter placeholder with `%` wildcards in value, not template. (4) No hardcoded secrets. (5) Structured error responses without internals/stack traces. (6) Authenticate middleware on all routes. (7) Invalid params rejected with 400 VALIDATION_ERROR. (8) No new environment variables or schema changes. |
+| Notes | **QA testing focus areas for T-076 (Security):** (a) Verify search uses parameterized queries — SQL injection attempt in `?search=` should be treated as literal string, not executed. (b) Verify `sort_by` and `sort_order` validated against whitelist — arbitrary column names rejected with 400. (c) Verify status filter validated — lowercase/invalid values rejected with 400. (d) Verify error responses don't expose internal details. **QA testing focus areas for T-077 (Integration):** (a) Search by name returns correct trips (case-insensitive). (b) Search by destination returns correct trips. (c) Status filter matches computed status (test with past-date trips for COMPLETED, today-spanning for ONGOING, future for PLANNING). (d) Sort by start_date uses NULLS LAST — null-date trips last in both asc and desc. (e) Sort by name is case-insensitive (LOWER(name)). (f) All params compose together. (g) Pagination total reflects filtered count. (h) No params = backward-compatible behavior. (i) Empty/whitespace search = no filter. |
+
+---
+
+### Sprint 5 — Backend Engineer → Frontend Engineer: T-072 API Implementation Ready — T-073 Unblocked (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-072 (Backend Implementation) → T-073 (Frontend: Search/Filter/Sort UI) |
+| Handoff Summary | Backend Engineer has completed the implementation of the search, filter, and sort API for `GET /api/v1/trips`. The T-072 backend task is now in "In Review" status. **T-073 is unblocked** — the Frontend Engineer can begin implementing the search/filter/sort UI per Spec 11 (ui-spec.md). The API contract in `.workflow/api-contracts.md` (Sprint 5 / T-072 section) is implemented exactly as documented. All query params are optional and composable: `?search=`, `?status=`, `?sort_by=`, `?sort_order=`. Default behavior with no params is identical to Sprint 4. The `pagination.total` now reflects filtered count when filters are active. **196/196 backend tests pass.** |
+| Notes | **Quick reference for Frontend integration:** (a) Omit params for default behavior — don't send empty strings. (b) Status must be uppercase: `PLANNING`, `ONGOING`, `COMPLETED`. (c) Combine `sort_by` + `sort_order` from your dropdown (e.g., "newest first" = `sort_by=created_at&sort_order=desc`). (d) Invalid params return 400 with field-level errors — handle gracefully. (e) `pagination.total` is the filtered count — use for "showing X trips" indicator. |
+
+---
+
+### Sprint 5 — Deploy Engineer: T-078 Blocked — Awaiting Upstream Implementation + QA Completion (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Deploy Engineer |
+| To Agent | All Agents (informational) |
+| Status | Blocked |
+| Related Task | T-078 (Deploy: Staging re-deployment) ← Blocked by T-077 ← T-076 ← T-072, T-073, T-074, T-075 |
+| Handoff Summary | Deploy Engineer has reviewed Sprint 5 task T-078 (Staging re-deployment) and determined it is **blocked by the upstream dependency chain**. The task cannot begin until QA Integration Testing (T-077) is complete, which in turn depends on T-076 (QA Security), which depends on all implementation tasks: T-072 (Backend: In Progress), T-073 (Frontend: Backlog), T-074 (Frontend: Backlog), T-075 (E2E: Backlog). Per Rule #5 ("Respect the Blocked By chain") and Deploy rules ("Never deploy without QA confirmation"), T-078 cannot proceed. |
+| Notes | **Current upstream status (2026-02-25):** T-072 Backend API (In Progress — contract published, implementation pending) · T-073 Frontend Search/Filter/Sort UI (Backlog — blocked by T-071 Done + T-072 In Progress) · T-074 React Router v7 migration (Backlog — no blockers but not started) · T-075 Playwright E2E (Backlog — blocked by T-072, T-073, T-074) · T-076 QA Security (Backlog — blocked by T-072–T-075) · T-077 QA Integration (Backlog — blocked by T-076). **No migrations needed** — Sprint 5 has no schema changes (confirmed in technical-context.md). **Deployment plan when unblocked:** (1) Rebuild frontend with search/filter/sort UI + React Router v7 migration, (2) Restart backend under pm2 with search/filter/sort query param support, (3) Verify Playwright is installed and configured, (4) Run full smoke tests (Sprint 4 regression + Sprint 5 new features), (5) Log handoff to Monitor Agent (T-079). **Current staging environment:** Backend on :3001 (HTTPS, pm2), Frontend on :4173 (HTTPS), PostgreSQL with 8 migrations applied through Batch 3. All Sprint 4 deployment (T-068) verified healthy. |
+
+---
+
 ### Sprint 5 — Backend Engineer → QA Engineer: T-072 API Contract Ready for Testing Reference (2026-02-25)
 
 | Field | Value |

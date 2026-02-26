@@ -82,28 +82,132 @@ export function computeTripStatus(trip) {
 }
 
 /**
- * List all trips for a user, ordered by created_at DESC.
+ * Valid sort fields and their SQL mapping for GET /trips query (T-072).
+ */
+const VALID_SORT_BY = ['name', 'created_at', 'start_date'];
+const VALID_SORT_ORDER = ['asc', 'desc'];
+const VALID_STATUS_FILTER = ['PLANNING', 'ONGOING', 'COMPLETED'];
+
+/**
+ * List all trips for a user, with optional search, status filter, and sort.
  * Status is computed dynamically via computeTripStatus (T-030).
+ *
+ * T-072 — Search, filter, and sort query parameters:
+ *   - search: case-insensitive partial match on name OR any destination (ILIKE)
+ *   - status: filter by computed trip status (post-query filtering)
+ *   - sort_by: name | created_at | start_date (default: created_at)
+ *   - sort_order: asc | desc (default: desc)
+ *
+ * When status filter is active, all matching rows are fetched, status computed,
+ * filtered, then paginated in JS. When status filter is NOT active, pagination
+ * is applied at the SQL level for efficiency.
+ *
  * @param {string} userId
- * @param {number} page - 1-indexed
- * @param {number} limit
+ * @param {Object} options
+ * @param {number} [options.page=1] - 1-indexed page number
+ * @param {number} [options.limit=20] - results per page
+ * @param {string} [options.search] - search term for name/destinations
+ * @param {string} [options.status] - computed status filter
+ * @param {string} [options.sortBy='created_at'] - sort field
+ * @param {string} [options.sortOrder='desc'] - sort direction
  * @returns {Promise<{ trips: Array, total: number }>}
  */
-export async function listTripsByUser(userId, page = 1, limit = 20) {
+export async function listTripsByUser(userId, options = {}) {
+  const {
+    page = 1,
+    limit = 20,
+    search,
+    status,
+    sortBy = 'created_at',
+    sortOrder = 'desc',
+  } = options;
+
   const offset = (page - 1) * limit;
 
-  const [{ count }] = await db('trips').where({ user_id: userId }).count('id as count');
+  // ---- Build sort clause ----
+  let orderByClause;
+  if (sortBy === 'name') {
+    // Case-insensitive alphabetical sort
+    orderByClause = { column: db.raw('LOWER(name)'), order: sortOrder };
+  } else if (sortBy === 'start_date') {
+    // NULLS LAST in both asc and desc directions
+    orderByClause = db.raw(`start_date ${sortOrder === 'asc' ? 'ASC' : 'DESC'} NULLS LAST`);
+  } else {
+    // Default: created_at
+    orderByClause = { column: 'created_at', order: sortOrder };
+  }
+
+  // ---- Build base query (user-scoped + optional search) ----
+  function applyBaseFilters(query) {
+    query.where({ user_id: userId });
+
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      query.where(function () {
+        this.whereRaw('name ILIKE ?', [searchTerm])
+          .orWhereRaw("array_to_string(destinations, ',') ILIKE ?", [searchTerm]);
+      });
+    }
+
+    return query;
+  }
+
+  // ---- When status filter is active: post-query filtering ----
+  if (status) {
+    // Fetch ALL matching rows (no LIMIT/OFFSET) for status post-filtering
+    let query = db('trips').select(TRIP_COLUMNS);
+    applyBaseFilters(query);
+
+    if (sortBy === 'start_date') {
+      query.orderByRaw(`start_date ${sortOrder === 'asc' ? 'ASC' : 'DESC'} NULLS LAST`);
+    } else if (sortBy === 'name') {
+      query.orderByRaw(`LOWER(name) ${sortOrder === 'asc' ? 'ASC' : 'DESC'}`);
+    } else {
+      query.orderBy(sortBy, sortOrder);
+    }
+
+    const allTrips = await query;
+
+    // Apply computed status and filter
+    const filtered = allTrips
+      .map(computeTripStatus)
+      .filter((trip) => trip.status === status);
+
+    const total = filtered.length;
+    const trips = filtered.slice(offset, offset + limit);
+
+    return { trips, total };
+  }
+
+  // ---- No status filter: SQL-level pagination (efficient) ----
+
+  // Count query
+  const countQuery = db('trips').count('id as count');
+  applyBaseFilters(countQuery);
+  const [{ count }] = await countQuery;
   const total = parseInt(count, 10);
 
-  const trips = await db('trips')
-    .where({ user_id: userId })
-    .orderBy('created_at', 'desc')
-    .limit(limit)
-    .offset(offset)
-    .select(TRIP_COLUMNS);
+  // Data query with sort + pagination
+  let dataQuery = db('trips').select(TRIP_COLUMNS);
+  applyBaseFilters(dataQuery);
+
+  if (sortBy === 'start_date') {
+    dataQuery.orderByRaw(`start_date ${sortOrder === 'asc' ? 'ASC' : 'DESC'} NULLS LAST`);
+  } else if (sortBy === 'name') {
+    dataQuery.orderByRaw(`LOWER(name) ${sortOrder === 'asc' ? 'ASC' : 'DESC'}`);
+  } else {
+    dataQuery.orderBy(sortBy, sortOrder);
+  }
+
+  dataQuery.limit(limit).offset(offset);
+
+  const trips = await dataQuery;
 
   return { trips: trips.map(computeTripStatus), total };
 }
+
+/** Exported for validation in route handler (T-072) */
+export { VALID_SORT_BY, VALID_SORT_ORDER, VALID_STATUS_FILTER };
 
 /**
  * Find a trip by ID.

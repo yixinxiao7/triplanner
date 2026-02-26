@@ -8,6 +8,9 @@ import {
   createTrip,
   updateTrip,
   deleteTrip,
+  VALID_SORT_BY,
+  VALID_SORT_ORDER,
+  VALID_STATUS_FILTER,
 } from '../models/tripModel.js';
 
 const router = Router();
@@ -20,12 +23,55 @@ router.use(authenticate);
 router.param('id', uuidParamHandler);
 
 // ---- GET /api/v1/trips ----
+// T-072: Added search, filter, and sort query parameters
 router.get('/', async (req, res, next) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
 
-    const { trips, total } = await listTripsByUser(req.user.id, page, limit);
+    // ---- Validate new query params (T-072) ----
+    const fieldErrors = {};
+
+    // search: any string is valid; empty/whitespace treated as "no search"
+    const search = req.query.search ? req.query.search.trim() : undefined;
+
+    // status: must be one of PLANNING, ONGOING, COMPLETED
+    const statusFilter = req.query.status || undefined;
+    if (statusFilter && !VALID_STATUS_FILTER.includes(statusFilter)) {
+      fieldErrors.status = 'Status filter must be one of: PLANNING, ONGOING, COMPLETED';
+    }
+
+    // sort_by: must be one of name, created_at, start_date
+    const sortBy = req.query.sort_by || 'created_at';
+    if (req.query.sort_by && !VALID_SORT_BY.includes(req.query.sort_by)) {
+      fieldErrors.sort_by = 'Sort field must be one of: name, created_at, start_date';
+    }
+
+    // sort_order: must be one of asc, desc
+    const sortOrder = req.query.sort_order || 'desc';
+    if (req.query.sort_order && !VALID_SORT_ORDER.includes(req.query.sort_order)) {
+      fieldErrors.sort_order = 'Sort order must be one of: asc, desc';
+    }
+
+    // Return validation errors if any
+    if (Object.keys(fieldErrors).length > 0) {
+      return res.status(400).json({
+        error: {
+          message: 'Validation failed',
+          code: 'VALIDATION_ERROR',
+          fields: fieldErrors,
+        },
+      });
+    }
+
+    const { trips, total } = await listTripsByUser(req.user.id, {
+      page,
+      limit,
+      search: search || undefined,
+      status: statusFilter,
+      sortBy,
+      sortOrder,
+    });
 
     return res.status(200).json({
       data: trips,
