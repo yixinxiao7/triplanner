@@ -979,7 +979,7 @@ Only warnings are React Router v7 future flag deprecation notices — non-blocki
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-058 |
 
 **What was tested:** 12 POST /trips requests with varying dedup scenarios:
@@ -1004,7 +1004,7 @@ All dedup scenarios produce correct results. First occurrence is preserved. Orde
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-058 |
 
 **What was tested:** PATCH /trips/:id with duplicate destinations and edge cases:
@@ -1023,7 +1023,7 @@ PATCH dedup behaves identically to POST dedup. Name-only updates do not affect e
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-058 |
 
 **Observation (code review):** `deduplicateDestinations()` in `backend/src/models/tripModel.js` is a clean, exported pure function using Set-based case-insensitive comparison. Non-array guard clause returns input unchanged. Applied in both `createTrip()` (before DB insert) and `updateTrip()` (when destinations field is present). All Knex queries remain parameterized — no SQL injection risk introduced. 19 new tests in `sprint4.test.js` covering: 10 unit tests for the pure function (exact, case-variant, multiple pairs, single element, no dupes, order preservation, empty array, non-array guard, trimmed inputs, immutability) + 4 POST integration tests + 5 PATCH integration tests. All 168/168 backend tests pass.
@@ -1037,7 +1037,7 @@ PATCH dedup behaves identically to POST dedup. Name-only updates do not affect e
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-059 |
 
 **Observation (code review):** Both LoginPage and RegisterPage implement identical lockout behavior:
@@ -1058,7 +1058,7 @@ This resolves FB-033 from Sprint 3.
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-060 |
 
 **Observation (code review):** `parseRetryAfterMinutes()` is defined once in `frontend/src/utils/rateLimitUtils.js`. Both LoginPage (line 5) and RegisterPage (line 5) import from this shared utility. No duplication exists. The utility has 9 dedicated tests in `rateLimitUtils.test.js`. This resolves FB-034 from Sprint 3.
@@ -1072,7 +1072,7 @@ This resolves FB-033 from Sprint 3.
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-061 |
 
 **Observation (code review):** Destination chip `<span>` elements no longer have `role="option"`. The container retains `role="group"` with `aria-label="Destinations"`, which is the correct ARIA pattern for a group of related elements that are not list items. This resolves FB-035 from Sprint 3.
@@ -1086,7 +1086,7 @@ This resolves FB-033 from Sprint 3.
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-062 |
 
 **Observation (code review):**
@@ -1104,7 +1104,7 @@ This resolves FB-036 from Sprint 3. Screen readers will now correctly announce h
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-063 |
 
 **Observation (code review):**
@@ -1125,7 +1125,7 @@ Implementation is clean. The `useCallback` with `[onClose, triggerRef]` dependen
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-064 |
 
 **Observation (code review):** `frontend/src/__tests__/axiosInterceptor.test.js` contains 8 dedicated tests in the `'Axios 401 Retry Queue Interceptor'` describe block:
@@ -1149,7 +1149,7 @@ Coverage exceeds the requirement (≥5 tests) and covers all critical scenarios 
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-065 |
 
 **Observation (code review):** `infra/nginx.conf` includes:
@@ -1167,7 +1167,7 @@ Coverage exceeds the requirement (≥5 tests) and covers all critical scenarios 
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-058, T-059, T-060, T-061, T-062, T-063, T-064 |
 
 **What was tested:** Full test suites for both backend and frontend.
@@ -1187,7 +1187,7 @@ Coverage exceeds the requirement (≥5 tests) and covers all critical scenarios 
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-044, T-070 |
 
 **What was tested:** Complete end-to-end regression of all Sprint 1, 2, and 3 features over HTTPS:
@@ -1246,7 +1246,7 @@ Coverage exceeds the requirement (≥5 tests) and covers all critical scenarios 
 | Sprint | 4 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-057, T-058, T-059, T-060, T-061, T-062 |
 
 **Observation:** All 5 Sprint 3 feedback items that were promoted to Sprint 4 tasks have been successfully implemented and verified:
