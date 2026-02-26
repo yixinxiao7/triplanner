@@ -17,6 +17,46 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 5 — Frontend Engineer → QA Engineer: T-073 + T-074 Implementation Complete — Ready for QA (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Frontend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-073 (Frontend: Search/Filter/Sort UI), T-074 (React Router v7 Migration) → T-076 (QA Security), T-077 (QA Integration) |
+| Handoff Summary | Frontend Engineer has completed implementation of both Sprint 5 frontend tasks. **T-073 (Search/Filter/Sort UI):** HomePage now renders a FilterToolbar with debounced search input (300ms), status filter dropdown (ALL/PLANNING/ONGOING/COMPLETED), sort selector (6 combined options), and "clear filters" button. All three controls compose together and send query params to GET /trips API. URL query param synchronization via `useSearchParams` + `replaceState`. Empty search results state (Spec 11.7.3) distinct from zero-trips-in-DB state (Spec 2.4). "showing X trip(s)" result count when search or status filter is active. Loading state with 50% opacity fade on trip grid during refetch. Error state with retry preserving current filter params. Request staleness tracking via requestIdRef counter. **T-074 (React Router v7 Migration):** Added `future={{ v7_startTransition: true, v7_relativeSplatPath: true }}` to BrowserRouter in main.jsx and all 9 MemoryRouter instances in test files. **New files:** `components/FilterToolbar.jsx` + `.module.css`, `components/EmptySearchResults.jsx` + `.module.css`. **Modified files:** `pages/HomePage.jsx`, `pages/HomePage.module.css`, `hooks/useTrips.js`, `main.jsx`, 9 test files. **New tests:** `FilterToolbar.test.jsx` (17 tests), `EmptySearchResults.test.jsx` (8 tests), `HomePageSearch.test.jsx` (11 tests). **All 296/296 frontend tests pass** (260 existing + 36 new). |
+| Notes | **QA focus areas for T-076 (Security):** (a) No `dangerouslySetInnerHTML` in any new component. (b) Search input trimmed before API call — no raw whitespace sent. (c) URL params validated (invalid status/sort silently ignored). (d) No hardcoded API URLs — uses existing api.trips.list(). (e) Error messages don't expose internals. **QA focus areas for T-077 (Integration):** (a) Search calls API with `?search=` param (debounced). (b) Status filter calls API with `?status=` param. (c) Sort calls API with `?sort_by=` + `?sort_order=` params. (d) All three compose together. (e) Empty results shows "no trips found" (not "no trips yet"). (f) URL params sync and restore on page revisit. (g) "showing X trips" appears only when search/status filter active. (h) "clear filters" resets all controls and refetches. (i) React Router v7 future flags — no deprecation warnings in test output. (j) All Sprint 4 features still work (no regressions). |
+
+---
+
+### Sprint 5 — Frontend Engineer: Acknowledging T-072 API Contract (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Frontend Engineer |
+| To Agent | Backend Engineer |
+| Status | Acknowledged |
+| Related Task | T-072 (API Contract) → T-073 (Frontend Implementation) |
+| Handoff Summary | Frontend Engineer acknowledges the T-072 API contract for GET /trips search, filter, and sort query parameters published in `.workflow/api-contracts.md`. The contract has been fully implemented in the frontend: (1) `?search=` — debounced 300ms, trimmed, omitted when empty. (2) `?status=PLANNING|ONGOING|COMPLETED` — omitted when "all statuses" selected. (3) `?sort_by=name|created_at|start_date` — split from combined dropdown value. (4) `?sort_order=asc|desc` — split from combined dropdown value. (5) Default behavior (no params) preserved. (6) `pagination.total` used for "showing X trips" indicator. All integration points match the contract exactly. |
+
+---
+
+### Sprint 5 — Frontend Engineer: Acknowledging T-071 Design Spec (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Frontend Engineer |
+| To Agent | Design Agent |
+| Status | Acknowledged |
+| Related Task | T-071 (Design Spec) → T-073 (Frontend Implementation) |
+| Handoff Summary | Frontend Engineer acknowledges Spec 11 (Home Page Search, Filter & Sort Controls) published in `.workflow/ui-spec.md`. The spec has been implemented according to all sections: toolbar layout (11.1), search input with debounce + clear button (11.2), status filter dropdown (11.3), sort selector with 6 combined options (11.4), active filter indicator + clear all (11.5), URL query param sync (11.6), all states — default, filtered, loading, error, empty search results, initial load (11.7), responsive behavior (11.12), accessibility — role="search", aria-labels, aria-live, keyboard navigation (11.13), integration with existing components (11.14). |
+
+---
+
 ### Sprint 5 — Backend Engineer → QA Engineer: T-072 Implementation Complete — Ready for Security + Integration Testing (2026-02-25)
 
 | Field | Value |
@@ -45,7 +85,21 @@ When you finish work that another agent needs to pick up:
 
 ---
 
-### Sprint 5 — Deploy Engineer: T-078 Blocked — Awaiting Upstream Implementation + QA Completion (2026-02-25)
+### Sprint 5 — Deploy Engineer: T-078 Blocked — Staging Health Verified, Awaiting T-073/T-074/T-075/T-076/T-077 (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Deploy Engineer |
+| To Agent | All Agents (informational) |
+| Status | Blocked |
+| Related Task | T-078 (Deploy: Staging re-deployment) ← Blocked by T-077 ← T-076 ← T-073, T-074, T-075 |
+| Handoff Summary | Deploy Engineer has performed a **comprehensive pre-deployment staging health verification**. The current staging environment (from Sprint 4 T-068 deployment) is fully healthy: backend on :3001 (HTTPS, pm2), frontend on :4173 (HTTPS), PostgreSQL with all 8 migrations applied, 456 tests passing (196 backend + 260 frontend). T-072 backend implementation is **code-complete** (28 search/filter/sort tests passing) but the frontend tasks T-073 and T-074, plus E2E setup T-075, and QA phases T-076 and T-077, remain in Backlog. **T-078 cannot proceed** until all upstream tasks are complete per Rule #5 and Deploy rules. |
+| Notes | **Updated upstream status (2026-02-25 latest assessment):** T-072 Backend API — **Implementation Complete** (28 new tests, 196/196 backend total, code in tripModel.js + trips.js + sprint5.test.js — handoff logged by Backend Engineer) but tracker still shows "In Progress" · T-073 Frontend Search/Filter/Sort UI — **Backlog** (no code written, HomePage.jsx unchanged, no FilterToolbar component) · T-074 React Router v7 migration — **Backlog** (no future flags in main.jsx or App.jsx, deprecation warnings still in test output) · T-075 Playwright E2E — **Backlog** (Playwright not installed, no playwright.config.ts, no e2e test files) · T-076 QA Security — **Backlog** · T-077 QA Integration — **Backlog**. **Staging health verified:** Backend health ✅, Frontend SPA ✅, HTTPS ✅, pm2 online ✅, DB connectivity ✅, all 456 tests pass ✅, 8 migrations current ✅, no Sprint 5 migrations needed ✅. **Pre-deployment preparation complete:** Full deployment plan documented in qa-build-log.md. Ready to execute immediately when T-077 completes. |
+
+---
+
+### Sprint 5 — Deploy Engineer: T-078 Blocked — Awaiting Upstream Implementation + QA Completion (2026-02-25) [SUPERSEDED]
 
 | Field | Value |
 |-------|-------|
