@@ -17,6 +17,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 5 — Manager Agent: Sprint 5 Planning Complete — All Agents Cleared to Start (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Manager Agent |
+| To Agent | All Agents |
+| Status | Pending |
+| Related Task | Sprint 5 Planning |
+| Handoff Summary | Manager Agent has completed Sprint 5 planning. Sprint 4 feedback triaged: all 13 entries are positive (zero issues). Sprint 5 introduces **trip search, filter, and sort** on the home page as the primary new feature, plus **Playwright E2E testing** for production confidence and **React Router v7 future flag migration**. 10 tasks created (T-071 through T-080). Sprint goal: "Enhance the home page with trip search, filter, and sort capabilities. Establish E2E test coverage with Playwright. Address React Router v7 deprecation warnings." |
+| Notes | **Immediate starts (parallel):** (1) **Design Agent → T-071:** Design spec for home page search/filter/sort UI. Publish to ui-spec.md. (2) **Backend Engineer → T-072:** API contract + implementation for GET /trips query params (?search, ?status, ?sort_by, ?sort_order). Publish contract to api-contracts.md first. (3) **Frontend Engineer → T-074:** React Router v7 future flag migration (unblocked, no dependencies). **Blocked until T-071 + T-072 done:** (4) **Frontend Engineer → T-073:** Home page search/filter/sort UI. **Blocked until T-072 + T-073 + T-074 done:** (5) **QA Engineer → T-075:** Playwright E2E setup + critical flow tests. **Sequential after implementation:** T-076 (QA security) → T-077 (QA integration) → T-078 (Deploy) → T-079 (Monitor) → T-080 (User Agent). **Key decisions made during planning:** (a) Trip search uses ILIKE on name + destinations array — parameterized Knex queries only. (b) Status filter requires post-query filtering since status is computed at read-time (not stored). (c) Playwright configured for HTTPS staging with `ignoreHTTPSErrors: true` for self-signed certs. (d) B-022 (production deployment) remains deferred — blocked on project owner hosting decision. (e) B-020 (Redis rate limiting) deferred to Sprint 6 — in-memory store acceptable for current scale. **New backlog items added:** B-029 (search/filter, promoted to Sprint 5), B-030 (trip notes), B-031 (activity location links), B-032 (trip export/print). |
+
+---
+
 ### Sprint 4 — Manager Agent: Sprint 4 Closeout Complete — Feedback Triaged, Summary Written (2026-02-25)
 
 | Field | Value |

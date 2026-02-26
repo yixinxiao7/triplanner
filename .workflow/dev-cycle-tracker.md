@@ -258,17 +258,70 @@ Each task is a row in the table below. Agents update their assigned tasks as the
 
 ---
 
-## Backlog (Sprint 5+ Candidates)
+## Backlog (Sprint 6+ Candidates)
 
 | ID | Task | Type | Priority | Complexity | Notes |
 |----|------|------|----------|------------|-------|
-| B-020 | Rate limiting persistence: Move from in-memory store to Redis or file-based store for production scalability | Infrastructure | P2 | M | Sprint 2 tech debt. In-memory rate limit store resets on server restart and doesn't scale across processes. Production needs Redis-backed store. |
+| B-020 | Rate limiting persistence: Move from in-memory store to Redis or file-based store for production scalability | Infrastructure | P2 | M | Sprint 2 tech debt. In-memory rate limit store resets on server restart and doesn't scale across processes. Needed for multi-process production deployment. Deferred until production hosting decision is made. |
 | B-021 | Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 — no production build impact, monitor for upstream fix | Infrastructure | P3 | S | Sprint 1 tech debt. 5 moderate vulns in dev deps (esbuild via vitest). No production impact. |
-| B-022 | Production deployment: Actual deployment to hosting provider (after Docker/CI prep and hosting provider selected) | Infrastructure | P0 | L | Depends on T-051 (Sprint 3 Docker/CI prep) + T-065 (Sprint 4 Docker validation). **Requires human decision:** hosting provider selection, DNS, budget. Escalated to project owner. |
-| B-024 | Per-account rate limiting: add account-based rate limiting in addition to IP-based to prevent shared-IP lockouts (NAT/proxy scenarios) | Feature | P2 | M | FB-032 (Sprint 3). Current IP-based rate limiting is aggressive on shared-IP environments. Consider per-email tracking alongside IP-based. |
+| B-022 | Production deployment: Actual deployment to hosting provider (after Docker/CI prep and hosting provider selected) | Infrastructure | P0 | L | Depends on T-051 (Sprint 3 Docker/CI prep) + T-065 (Sprint 4 Docker validation). **Requires human decision:** hosting provider selection, DNS, budget. Escalated to project owner. Blocked since Sprint 3. |
+| B-024 | Per-account rate limiting: add account-based rate limiting in addition to IP-based to prevent shared-IP lockouts (NAT/proxy scenarios) | Feature | P2 | M | FB-032 (Sprint 3). Current IP-based rate limiting is aggressive on shared-IP environments. Consider per-email tracking alongside IP-based. Depends on B-020 (Redis infrastructure). |
+| B-029 | Home page trip search, filter, and sort | Feature | P1 | M | New for Sprint 5. Users with many trips need to quickly find specific trips. Search by name/destination, filter by status, sort by name/date/start_date. Promoted to T-072 + T-073. |
+| B-030 | Trip notes/description field — allow users to add freeform notes to each trip | Feature | P2 | M | Enhancement. Target users want to store miscellaneous information (restaurant links, packing lists, travel tips) alongside their trip details. Requires schema migration + API update + frontend UI. |
+| B-031 | Activity location links — detect URLs in activity locations and make them clickable | Feature | P3 | S | Enhancement. Users often paste Google Maps links or addresses; making them clickable improves usability. |
+| B-032 | Trip export/print — generate a printable itinerary view of the trip details page | Feature | P2 | M | Enhancement. Target users want to print their itinerary for offline reference during travel. CSS print stylesheet or PDF generation. |
 
 *Promoted to Sprint 2: B-001 → T-031, B-002 → T-032, B-003 → T-033, B-004 → T-035, B-005 → T-030, B-006 → T-029+T-034, B-009 → T-027, B-010 → T-027, B-011 → T-028, B-012 → T-027.*
 
 *Promoted to Sprint 3: B-007 → T-046, B-008 → T-051 (prep), B-013 → T-050, B-014 → T-044, B-015 → T-045, B-016 → T-043+T-047, B-017 → T-048.*
 
 *Promoted to Sprint 4: B-018 → T-063, B-019 → T-064, B-023 → T-058, B-025 → T-059, B-026 → T-060, B-027 → T-061, B-028 → T-062.*
+
+*Promoted to Sprint 5: B-029 (trip search) → T-072+T-073.*
+
+---
+
+## Sprint 5 Tasks
+
+### Phase 1 — Design Specs (no dependencies, start immediately)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-071 | Design spec: Home page search, filter, and sort UI — search bar for trip name/destination, status filter dropdown (ALL/PLANNING/ONGOING/COMPLETED), sort controls (by name, date created, trip start date), responsive layout, empty search results state | Feature | Design Agent | Backlog | P1 | M | 5 | — | UI spec reviewed by Manager Agent. Covers: (1) Search bar with magnifying glass icon, debounced input, placeholder text "search trips…", clear button. (2) Status filter dropdown: ALL (default), PLANNING, ONGOING, COMPLETED. (3) Sort controls: sort by name (A-Z, Z-A), date created (newest, oldest), trip start date (soonest, latest). (4) Layout: search bar + filter + sort in a horizontal toolbar above the trip grid. (5) Empty search results state: "no trips match your search" with suggestion to clear filters. (6) Responsive: toolbar stacks vertically on mobile. Published to `.workflow/ui-spec.md`. |
+
+---
+
+### Phase 2 — Backend (start immediately, parallel with Design)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-072 | Backend: API contract + implementation — add search, filter, and sort query parameters to GET /trips. Query params: `?search=<string>` (ILIKE on name + destinations), `?status=<PLANNING|ONGOING|COMPLETED>` (filter by computed status), `?sort_by=<name|created_at|start_date>` (default: created_at), `?sort_order=<asc|desc>` (default: desc) | Feature | Backend Engineer | Backlog | P1 | M | 5 | — | **API contract update:** GET /trips accepts optional query params: `search` (case-insensitive partial match on trip name or any destination), `status` (filter by computed trip status — requires post-query filtering since status is computed at read-time), `sort_by` (name, created_at, start_date), `sort_order` (asc, desc). Default: sort by created_at desc. All params optional — omitting returns all trips (current behavior). Pagination still works with filters. **Tests:** GET /trips?search=Tokyo → returns only trips with "Tokyo" in name or destinations. GET /trips?status=PLANNING → returns only trips with computed status PLANNING. GET /trips?sort_by=name&sort_order=asc → trips sorted alphabetically. Combined params work. Empty search → returns all trips. No matches → empty data array with pagination. Existing GET /trips without params → unchanged (no regression). All backend tests pass. |
+
+---
+
+### Phase 3 — Frontend (T-073 waits on T-071; T-074 starts immediately)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-073 | Frontend: Home page search/filter/sort UI — search input with debounce (300ms), status filter dropdown, sort selector, wire up to GET /trips query params, empty search results state, preserve filter state across navigation, clear all filters button | Feature | Frontend Engineer | Backlog | P1 | M | 5 | T-071, T-072 | **Search:** Debounced text input (300ms) sends `?search=<value>` to GET /trips. Results update dynamically. Clear button (X) resets search. **Status filter:** Dropdown with ALL/PLANNING/ONGOING/COMPLETED options. Sends `?status=<value>` (omitted when ALL). **Sort:** Dropdown or toggle for sort_by + sort_order. Default: newest first. **Integration:** All three controls compose together — search + filter + sort applied simultaneously. URL params synced with filter state for bookmarkability. **Empty results:** "No trips match your search" message with "clear filters" button. **Tests:** Render search bar, type triggers API call with debounce, filter by status updates list, sort changes order, empty results shown, clear filters resets all, combined filter works, no regression on existing trip list behavior. All frontend tests pass. |
+| T-074 | Frontend: React Router v7 future flag migration — add v7_startTransition, v7_relativeSplatPath, and other required future flags to BrowserRouter configuration to suppress deprecation warnings in test output | Refactor | Frontend Engineer | Backlog | P2 | S | 5 | — | **Fix:** Add future flags to `<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>` in App.jsx and test setup files. Update any test utilities that create routers. **Tests:** All existing 260+ frontend tests pass without React Router deprecation warnings in output. No behavior changes — purely configuration. |
+
+---
+
+### Phase 4 — E2E Testing (after implementation tasks)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-075 | E2E: Install Playwright, configure for HTTPS staging environment, write critical user flow tests covering: (1) register → login → create trip → view trip details → delete trip → logout, (2) add flight + stay + activity → verify on trip details + calendar, (3) search/filter/sort trips on home page, (4) rate limit lockout UX | Feature | QA Engineer | Backlog | P1 | L | 5 | T-072, T-073, T-074 | **Setup:** `npm init playwright` in project root. Configure `playwright.config.ts` for HTTPS staging URLs (backend: https://localhost:3001, frontend: https://localhost:4173). Accept self-signed certs via `ignoreHTTPSErrors: true`. **Test 1 (core flow):** Register new user → navigate to home → create trip → view trip details → delete trip → logout. All assertions on UI state. **Test 2 (sub-resources):** Create trip → add flight via edit page → add stay → add activity → navigate to trip details → verify flight/stay/activity sections populated → verify calendar shows events. **Test 3 (search/filter):** Create 3 trips → search by name → verify filtered results → filter by status → verify → sort → verify order → clear filters → all trips shown. **Test 4 (rate limit):** Attempt rapid login with wrong password → verify 429 amber banner → verify submit button disabled → verify countdown text. **Target:** ≥4 E2E tests covering critical user journeys. All tests pass against staging. |
+
+---
+
+### Phase 5 — QA, Deploy, Monitor, User (sequential after all implementation)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-076 | QA: Security checklist + code review audit — verify Sprint 5 changes: search query params don't introduce SQL injection, filter/sort params validated server-side, no new XSS vectors in search UI, Playwright test fixtures don't contain real credentials, React Router migration doesn't break auth flows | Code Review | QA Engineer | Backlog | P0 | M | 5 | T-072, T-073, T-074, T-075 | All Sprint 5 implementation tasks pass security checklist items. Specific checks: (1) Search query: ILIKE uses parameterized Knex queries, no raw SQL concatenation. (2) Sort/filter params: validated against whitelist (no arbitrary column injection). (3) Frontend search input: no dangerouslySetInnerHTML, React JSX escaping. (4) Playwright fixtures: placeholder credentials only. (5) React Router future flags: auth flows still work correctly. All unit tests pass. QA report logged in `.workflow/qa-build-log.md`. |
+| T-077 | QA: Integration testing — search/filter/sort API contract verification, combined query params, empty results, pagination with filters, Playwright E2E green, Sprint 4 regression (destination dedup, ARIA fixes, submit lockout, all CRUD flows) | Feature | QA Engineer | Backlog | P0 | M | 5 | T-076 | **Search:** GET /trips?search=X returns correct subset. **Filter:** GET /trips?status=PLANNING returns only planning trips. **Sort:** GET /trips?sort_by=name&sort_order=asc returns alphabetically. **Combined:** search + filter + sort compose correctly. **Pagination:** Filters work with page/limit params. **E2E:** All Playwright tests pass. **Regression:** All Sprint 1–4 flows still work: auth, CRUD, edit pages, calendar, multi-destination, optional times, destination dedup, ARIA, accessibility. All unit tests pass. Results logged in `.workflow/qa-build-log.md`. |
+| T-078 | Deploy: Staging re-deployment — rebuild frontend with search/filter/sort UI + React Router migration, redeploy backend with search/filter/sort API, install Playwright on staging, verify all env config | Infrastructure | Deploy Engineer | Backlog | P1 | S | 5 | T-077 | Frontend rebuilt with new search/filter/sort controls. Backend redeployed with query param support. Playwright installed and configured. All env vars correct. Smoke tests pass. Deployment report logged in `.workflow/qa-build-log.md`. |
+| T-079 | Monitor: Staging health check — verify Sprint 4 checks still pass (45/45) + new Sprint 5 checks: search API returns results, filter by status works, sort works, E2E tests pass, no 5xx errors from search queries | Infrastructure | Monitor Agent | Backlog | P1 | S | 5 | T-078 | **Sprint 4 regression (45 checks):** All existing health checks pass over HTTPS. **New Sprint 5 checks:** (1) GET /trips?search=test → 200 with filtered results. (2) GET /trips?status=PLANNING → 200. (3) GET /trips?sort_by=name&sort_order=asc → 200. (4) Combined params → 200. (5) Invalid sort_by param → handled gracefully (400 or ignored). (6) E2E tests pass. Results logged in `.workflow/qa-build-log.md`. |
+| T-080 | User Agent: Feature walkthrough — test search/filter/sort on home page (create multiple trips, search by name, filter by status, sort, combined filters, empty results, clear filters), verify React Router migration causes no regressions, run E2E tests, Sprint 4 regression; submit structured feedback | Documentation | User Agent | Backlog | P1 | M | 5 | T-079 | User tests: (1) Create 3+ trips with different names/destinations/dates. (2) Search by name → correct results. (3) Search by destination → correct results. (4) Filter by PLANNING/ONGOING/COMPLETED → correct results. (5) Sort by name, created_at, start_date → correct order. (6) Combined search + filter + sort → correct results. (7) Empty search results → proper empty state. (8) Clear filters → all trips shown. (9) Full Sprint 4 regression over HTTPS. Structured feedback submitted to `.workflow/feedback-log.md`. |
