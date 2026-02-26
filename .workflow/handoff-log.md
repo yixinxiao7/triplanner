@@ -17,6 +17,34 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 5 — Backend Engineer → QA Engineer: T-072 API Contract Ready for Testing Reference (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-072 (API Contract) → T-076 (QA Security), T-077 (QA Integration) |
+| Handoff Summary | Backend Engineer has published the complete API contract for Sprint 5 task T-072 in `.workflow/api-contracts.md` (Sprint 5 section). The contract documents four new query parameters on `GET /api/v1/trips`: `search` (ILIKE on name + destinations), `status` (post-query filter on computed status), `sort_by` (name, created_at, start_date), and `sort_order` (asc, desc). All parameters are optional, composable, and include detailed validation rules. **No schema changes** — confirmed in `.workflow/technical-context.md`. QA should reference this contract for: (1) T-076 security review: verify search uses parameterized queries only (no SQL injection), sort_by/sort_order/status validated against whitelists. (2) T-077 integration testing: verify all query param combinations, empty results, pagination with filters, validation error responses for invalid params. |
+| Notes | **Key testing points:** (a) Search is case-insensitive (ILIKE) — test with mixed-case queries. (b) Status filter is post-query (computed status) — test with trips that have dates spanning today, in the past, and in the future. (c) Sort by start_date uses NULLS LAST in both directions — test with trips that have null start_date. (d) Pagination `total` reflects filtered count — verify when filters are active. (e) Invalid `status`, `sort_by`, `sort_order` values return 400 VALIDATION_ERROR. (f) Empty search string is treated as "no filter" (not an error). |
+
+---
+
+### Sprint 5 — Backend Engineer → Frontend Engineer: T-072 API Contract Published (2026-02-25)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-072 (API Contract) → T-073 (Frontend Implementation) |
+| Handoff Summary | Backend Engineer has published the complete API contract for `GET /api/v1/trips` search, filter, and sort query parameters in `.workflow/api-contracts.md` (Sprint 5 / T-072 section). The contract covers: (1) `?search=<string>` — case-insensitive partial match on trip `name` or any element of `destinations` array. Frontend should debounce 300ms per Spec 11, trim whitespace, omit param when empty. (2) `?status=PLANNING|ONGOING|COMPLETED` — filter by computed trip status. Omit when "all statuses" selected. (3) `?sort_by=name|created_at|start_date` — sort field. Default: `created_at`. (4) `?sort_order=asc|desc` — sort direction. Default: `desc`. All params are optional, composable, and the response shape is unchanged from Sprint 1–4. `pagination.total` reflects the filtered count (important for "showing X trips" indicator). **No schema changes.** The API will be implemented in the next phase — Frontend Engineer can begin T-073 once T-071 (Design, Done) and T-072 (Backend implementation) are both complete. |
+| Notes | **Frontend integration tips:** (a) Default behavior (no params) = existing behavior (`created_at desc`). (b) The sort dropdown in Spec 11.4 combines `sort_by` + `sort_order` into a single value like `"name:asc"` — split this client-side before sending as two separate API params. (c) Invalid params (e.g., `?status=INVALID`) return 400 — handle gracefully. (d) Empty search (`?search=`) or whitespace-only is treated as no filter by the API — Frontend should omit the param instead of sending empty string. (e) URL param sync per Spec 11.6: `search`, `status`, and `sort` (combined `field:direction`) stored in browser URL via `replaceState`. |
+
+---
+
 ### Sprint 5 — Design Agent: Home Page Search/Filter/Sort UI Spec Published (2026-02-25)
 
 | Field | Value |

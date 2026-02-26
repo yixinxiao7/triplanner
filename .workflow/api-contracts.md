@@ -2387,3 +2387,344 @@ The following Sprint 4 tasks require **no new or changed API contracts** from th
 ---
 
 *Sprint 4 contracts above are marked Agreed and approved for implementation. The T-058 contract documents the only backend API change this sprint. Frontend Engineer and QA Engineer should reference this contract for integration and testing.*
+
+---
+
+## Sprint 5 Contracts
+
+---
+
+## T-072 — Trip Search, Filter, and Sort (GET /trips Query Parameters)
+
+**Status:** Agreed — Sprint 5 / T-072
+**Schema Change:** None required. No new tables or columns. All changes are query-layer only.
+
+**Summary of Changes:**
+- The existing `GET /api/v1/trips` endpoint gains four new optional query parameters: `search`, `status`, `sort_by`, and `sort_order`
+- All four parameters are optional and composable — they work together when multiple are provided
+- Omitting all parameters preserves the existing behavior exactly (sort by `created_at` desc, no filtering)
+- No changes to POST, GET /:id, PATCH, or DELETE trip endpoints
+- Status filtering uses the **computed** status (from `computeTripStatus()` in T-030), not the stored status column
+
+---
+
+### GET /api/v1/trips — Updated with Search, Filter & Sort (Sprint 5)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| Task | T-072 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change from Sprint 4 | Four new optional query parameters: `search`, `status`, `sort_by`, `sort_order` |
+
+**Description:** List all trips belonging to the authenticated user, with optional search, filter, and sort capabilities. All query parameters are optional and composable. When no search/filter/sort params are provided, the endpoint behaves identically to the Sprint 1–4 implementation (all trips, sorted by `created_at` descending).
+
+**Request Query Parameters:**
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | 1 | Page number (1-indexed). Unchanged from Sprint 1. |
+| `limit` | integer | 20 | Results per page (max 100). Unchanged from Sprint 1. |
+| `search` | string | (none) | **New.** Case-insensitive partial match on trip `name` OR any element of `destinations` array. Trimmed. Whitespace-only or empty string treated as "no search" (same as omitting). |
+| `status` | string | (none) | **New.** Filter by **computed** trip status. Must be one of: `PLANNING`, `ONGOING`, `COMPLETED`. Invalid values return 400. Omitting returns trips of all statuses. |
+| `sort_by` | string | `created_at` | **New.** Sort field. Must be one of: `name`, `created_at`, `start_date`. Invalid values return 400. |
+| `sort_order` | string | `desc` | **New.** Sort direction. Must be one of: `asc`, `desc`. Invalid values return 400. |
+
+---
+
+#### Search Behavior (`?search=`)
+
+The `search` parameter performs a **case-insensitive partial match** (SQL `ILIKE`) on:
+1. The trip's `name` column
+2. Any element of the trip's `destinations` TEXT[] array
+
+**Implementation approach:**
+- Use Knex's `whereRaw` with parameterized queries to search both fields
+- Name search: `name ILIKE ?` with `%${search}%` as the parameter
+- Destinations search: Use PostgreSQL's `array_to_string()` function to convert the array to a searchable string, then `ILIKE` against it: `array_to_string(destinations, ',') ILIKE ?`
+- Combine with `OR`: match if name matches OR any destination matches
+- **All queries MUST be parameterized** — never concatenate user input into SQL
+
+**Examples:**
+- `?search=Tokyo` → Returns trips where name contains "tokyo" (case-insensitive) OR any destination contains "tokyo"
+- `?search=japan` → Returns trips named "Japan 2026" or with "Japan" in destinations
+- `?search=` → (empty) Treated as no search filter (returns all trips, same as omitting)
+- `?search=%20%20` → (whitespace only) Treated as no search filter after trimming
+
+---
+
+#### Status Filter Behavior (`?status=`)
+
+The `status` parameter filters trips by their **computed status** (T-030 auto-calculation based on `start_date`/`end_date` vs. current date). Because status is computed at read time (not stored), filtering must happen **after** the `computeTripStatus()` transform is applied.
+
+**Implementation approach (post-query filtering):**
+1. Fetch all trips matching the user + search criteria from the database
+2. Apply `computeTripStatus()` to each trip (as currently done in `listTripsByUser`)
+3. Filter the results where `trip.status === statusParam`
+4. Apply pagination to the **filtered** result set
+5. Return the `total` count as the number of **filtered** trips (not total in DB)
+
+**Why post-query filtering:**
+The computed status depends on the current date relative to `start_date`/`end_date`. A trip with `end_date = '2026-02-24'` has `status = 'COMPLETED'` today but `status = 'PLANNING'` yesterday. This runtime calculation cannot be expressed as a simple SQL WHERE clause without duplicating the `computeTripStatus()` logic in SQL. Post-query filtering is acceptable for the expected data volume (a single user's trips — typically <100 trips).
+
+**Performance note:**
+For status filtering, we must fetch ALL matching trips (ignoring pagination temporarily), apply status computation, filter, then paginate. This means the DB query fetches more rows than the page limit when status filter is active. This is acceptable for the current scale. If a user has 10,000+ trips, this approach should be revisited with a SQL-level optimization (e.g., a DB function or materialized status column).
+
+**Valid values:**
+- `PLANNING` — trips with computed status PLANNING
+- `ONGOING` — trips with computed status ONGOING
+- `COMPLETED` — trips with computed status COMPLETED
+
+**Invalid status value:**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "status": "Status filter must be one of: PLANNING, ONGOING, COMPLETED"
+    }
+  }
+}
+```
+
+---
+
+#### Sort Behavior (`?sort_by=` and `?sort_order=`)
+
+The `sort_by` and `sort_order` parameters control the ordering of results.
+
+**Valid `sort_by` values and their SQL column mapping:**
+
+| `sort_by` value | SQL Column | Notes |
+|-----------------|-----------|-------|
+| `name` | `name` | Alphabetical sort on trip name. Case-insensitive (use `LOWER(name)` in ORDER BY for consistent behavior). |
+| `created_at` | `created_at` | Sort by creation timestamp. This is the default (matches Sprint 1–4 behavior). |
+| `start_date` | `start_date` | Sort by trip start date. Trips with `NULL` start_date sort last when ascending (`NULLS LAST`) and last when descending (`NULLS LAST`). |
+
+**Valid `sort_order` values:**
+- `asc` — ascending (A→Z, oldest→newest, soonest→latest)
+- `desc` — descending (Z→A, newest→oldest, latest→soonest)
+
+**Default sort:** `sort_by=created_at`, `sort_order=desc` (matches Sprint 1–4 behavior exactly).
+
+**NULLS handling for `start_date` sort:**
+- `sort_by=start_date&sort_order=asc` → Trips with dates first (soonest date first), trips with `NULL start_date` at the end (`NULLS LAST`)
+- `sort_by=start_date&sort_order=desc` → Trips with dates first (latest date first), trips with `NULL start_date` at the end (`NULLS LAST`)
+- Rationale: Users want to see trips with dates before dateless trips, regardless of sort direction. `NULLS LAST` in both directions achieves this.
+
+**Invalid sort_by value:**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "sort_by": "Sort field must be one of: name, created_at, start_date"
+    }
+  }
+}
+```
+
+**Invalid sort_order value:**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "sort_order": "Sort order must be one of: asc, desc"
+    }
+  }
+}
+```
+
+---
+
+#### Composed Query Parameters (All Combined)
+
+All four new parameters compose together. When multiple are provided:
+1. **Search** narrows the candidate set (name or destination match)
+2. **Status** further filters by computed status
+3. **Sort** orders the filtered results
+4. **Pagination** pages over the final sorted, filtered result set
+
+**Example — combined query:**
+```
+GET /api/v1/trips?search=Tokyo&status=PLANNING&sort_by=name&sort_order=asc&page=1&limit=20
+```
+This returns:
+- Only trips where the name or a destination contains "Tokyo" (case-insensitive)
+- AND the computed status is "PLANNING"
+- Sorted alphabetically by name (A→Z)
+- Page 1, up to 20 results
+
+---
+
+#### Response (Success — 200 OK — with filters)
+
+The response shape is **unchanged** from Sprint 1–4. The `data` array contains the filtered, sorted, paginated trips. The `pagination` object reflects the **filtered** total (not the total trips in the database).
+
+```json
+{
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Japan 2026",
+      "destinations": ["Tokyo", "Osaka", "Kyoto"],
+      "status": "PLANNING",
+      "start_date": "2026-08-07",
+      "end_date": "2026-08-14",
+      "created_at": "2026-02-24T12:00:00.000Z",
+      "updated_at": "2026-02-24T12:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1
+  }
+}
+```
+
+**Key change in `pagination.total`:** When filters are active, `total` reflects the count of trips matching ALL active filters (search + status), not the total trips owned by the user. This is required for the frontend to correctly render pagination and "showing X trips" indicators.
+
+---
+
+#### Response (Success — 200 OK — no results)
+
+When filters produce zero results:
+
+```json
+{
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 0
+  }
+}
+```
+
+This is NOT an error. An empty result set with status 200 is the correct response when no trips match the filters.
+
+---
+
+#### Response (Error — 400 Bad Request — Invalid query parameters)
+
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "status": "Status filter must be one of: PLANNING, ONGOING, COMPLETED",
+      "sort_by": "Sort field must be one of: name, created_at, start_date",
+      "sort_order": "Sort order must be one of: asc, desc"
+    }
+  }
+}
+```
+
+**Notes:**
+- Only fields with invalid values are included in `fields`
+- The `search` parameter is never invalid (any string is accepted; empty/whitespace is silently ignored)
+- `page` and `limit` are coerced (NaN → default, out-of-range → clamped) rather than rejected, matching Sprint 1 behavior
+
+---
+
+#### Response (Error — 401 Unauthorized)
+
+```json
+{
+  "error": {
+    "message": "Authentication required",
+    "code": "UNAUTHORIZED"
+  }
+}
+```
+
+Unchanged from Sprint 1.
+
+---
+
+#### Implementation Notes for Backend Engineer
+
+1. **Query parameter validation** should be the first step in the route handler, before any database queries. Validate `status`, `sort_by`, and `sort_order` against their whitelists. Return 400 immediately if invalid.
+
+2. **Search query construction** must use Knex parameterized queries:
+   ```javascript
+   // Example approach (Knex)
+   if (search) {
+     query.where(function() {
+       this.whereRaw('name ILIKE ?', [`%${search}%`])
+           .orWhereRaw("array_to_string(destinations, ',') ILIKE ?", [`%${search}%`]);
+     });
+   }
+   ```
+   **Never** concatenate the search string into SQL. The `%` wildcards are part of the parameter value, not the query template.
+
+3. **Status filtering must happen post-query** because status is computed at read time. The model function should:
+   - Fetch all rows matching user_id + search (no LIMIT/OFFSET when status filter is active)
+   - Apply `computeTripStatus()` to each row
+   - Filter by status
+   - Slice for pagination
+   - Return both the paginated slice and the filtered total count
+
+4. **Sort implementation:**
+   - `name` sort: Use `LOWER(name)` in ORDER BY for case-insensitive alphabetical sorting
+   - `created_at` sort: Direct column sort (existing behavior)
+   - `start_date` sort: Use `NULLS LAST` to push trips without dates to the end in both asc and desc directions
+   - Sort is applied at the SQL level (before status post-filtering) for efficiency
+
+5. **When status filter is NOT active:** Pagination can be applied at the SQL level (LIMIT/OFFSET) as currently done — no need to fetch all rows.
+
+6. **When status filter IS active:** Must fetch all matching rows (user_id + search), apply computeTripStatus, filter by status, then manually paginate in JavaScript. This is a necessary trade-off for computed status.
+
+---
+
+#### Frontend Integration Notes
+
+The Frontend Engineer (T-073) should reference the UI spec (Spec 11 in ui-spec.md) for the visual design. Key API integration points:
+
+1. **Search debounce:** The frontend debounces search input by 300ms before calling the API. The `search` param should be trimmed before sending; empty/whitespace-only strings should be omitted from the query.
+
+2. **Status filter:** Sends `?status=PLANNING|ONGOING|COMPLETED` on change. When "all statuses" is selected, omit the `status` param entirely (don't send `?status=`).
+
+3. **Sort:** The frontend combines `sort_by` and `sort_order` into a single dropdown (e.g., "newest first" = `sort_by=created_at&sort_order=desc`). Both params are sent to the API.
+
+4. **Pagination:** The `pagination.total` now reflects filtered count. Use this for "showing X trips" indicator and pagination controls.
+
+5. **Default behavior:** When no filters are active, omit all new params — the API defaults to `created_at desc` with no search/status filter, matching Sprint 1–4 behavior exactly.
+
+6. **URL sync:** Filter state is stored in browser URL params (via `replaceState`) per Spec 11.6. On page load, read URL params and initialize the API call with them.
+
+---
+
+### T-072 — No Database Schema Changes Required
+
+T-072 (trip search, filter, and sort) requires **no database schema changes**. The existing `trips` table structure (with `name VARCHAR(255)`, `destinations TEXT[]`, `status VARCHAR(20)`, `start_date DATE NULL`, `end_date DATE NULL`, `created_at TIMESTAMPTZ`) already supports all the query functionality. No migration file is needed. No new indexes are needed at the current scale (all queries are user-scoped via the existing `trips_user_id_idx` index).
+
+---
+
+## Sprint 5 — No Backend Contract Changes Required for Other Tasks
+
+The following Sprint 5 tasks require **no new or changed API contracts** from the Backend Engineer:
+
+| Task | Reason |
+|------|--------|
+| T-071 (Design: Search/Filter/Sort UI) | Design spec only. No backend changes. |
+| T-073 (FE: Search/Filter/Sort UI) | Frontend-only. Consumes the T-072 API contract documented above. |
+| T-074 (FE: React Router v7 future flags) | Frontend-only refactor. No API changes. |
+| T-075 (E2E: Playwright tests) | Test setup only. No API changes. |
+| T-076 (QA: Security checklist) | QA review only. No API changes. |
+| T-077 (QA: Integration testing) | QA testing only. No API changes. |
+| T-078 (Deploy: Staging re-deployment) | Deploy scope. No API changes. |
+| T-079 (Monitor: Health check) | Monitor scope. No API changes. |
+| T-080 (User Agent: Walkthrough) | User testing only. No API changes. |
+
+---
+
+*Sprint 5 contracts above are marked Agreed and approved for implementation. The T-072 contract documents the only backend API change this sprint. The GET /trips endpoint gains search, filter, and sort query parameters — all other endpoints are unchanged. Frontend Engineer and QA Engineer should reference this contract for integration and testing.*

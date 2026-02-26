@@ -387,4 +387,19 @@ ALTER TABLE activities
 
 ---
 
+## Sprint 5 — No Schema Changes Required (T-072)
+
+**Confirmed by:** Backend Engineer — 2026-02-25
+
+Sprint 5 task T-072 (trip search, filter, and sort) adds query parameter support to the existing `GET /api/v1/trips` endpoint. This requires **no database schema changes**:
+
+- **Search** uses `ILIKE` on the existing `name VARCHAR(255)` column and `array_to_string(destinations, ',') ILIKE` on the existing `destinations TEXT[]` column
+- **Status filter** uses the existing computed status logic (`computeTripStatus()` from T-030) applied post-query — no stored status changes
+- **Sort** uses the existing columns: `name`, `created_at`, `start_date` (added in migration 007, Sprint 2)
+- **No new indexes** are needed at the current scale — all queries are user-scoped via the existing `trips_user_id_idx` index
+
+No migration file is needed for Sprint 5. The migration log remains at 8 entries (001–008).
+
+---
+
 *This document is maintained by the Manager Agent and Backend Engineer. Update it whenever the stack or conventions change.*
