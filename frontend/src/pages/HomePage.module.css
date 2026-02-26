@@ -45,6 +45,15 @@
   background: rgba(93, 115, 126, 0.8);
 }
 
+/* Result Count — "showing X trips" */
+.resultCount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
 /* Trip grid */
 .grid {
   display: grid;
