@@ -963,3 +963,304 @@ Only warnings are React Router v7 future flag deprecation notices — non-blocki
 ---
 
 *End of Sprint 3 User Agent feedback. Testing completed 2026-02-25. Total entries: 19 (FB-025 through FB-043). Issues: 1 minor bug, 3 minor UX issues, 2 suggestions, 13 positives. Highest severity: Minor.*
+
+---
+
+## Sprint 4 Feedback
+
+*Populated by User Agent (T-070) — 2026-02-25. All tests run against staging over HTTPS: Backend https://localhost:3001/api/v1, Frontend https://localhost:4173. Tokens obtained via fresh registration.*
+
+---
+
+### FB-044 — T-058: Destination deduplication works correctly on POST /trips (exact, case-variant, mixed, Unicode, whitespace)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-058 |
+
+**What was tested:** 12 POST /trips requests with varying dedup scenarios:
+- Exact duplicates `["Tokyo","Tokyo","Tokyo"]` → `["Tokyo"]` ✅
+- Case-variant duplicates `["Paris","paris","PARIS"]` → `["Paris"]` ✅
+- Mixed duplicates `["Tokyo","tokyo","Osaka","osaka","Kyoto"]` → `["Tokyo","Osaka","Kyoto"]` ✅
+- No duplicates passthrough `["London","Berlin","Rome"]` → unchanged ✅
+- Single destination `["Singapore"]` → unchanged ✅
+- First-occurrence preservation `["pArIs","PARIS","paris","Paris"]` → `["pArIs"]` ✅
+- Order preservation `["Berlin","tokyo","Berlin","Tokyo","Kyoto","kyoto"]` → `["Berlin","tokyo","Kyoto"]` ✅
+- Unicode duplicates `["東京","東京","大阪"]` → `["東京","大阪"]` ✅
+- Whitespace-padded duplicates `["Tokyo ","Tokyo","  Tokyo  "]` → `["Tokyo"]` ✅
+
+All dedup scenarios produce correct results. First occurrence is preserved. Order is maintained. This resolves FB-028 from Sprint 3.
+
+---
+
+### FB-045 — T-058: Destination deduplication works correctly on PATCH /trips/:id
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-058 |
+
+**What was tested:** PATCH /trips/:id with duplicate destinations and edge cases:
+- PATCH with case-variant duplicates `["London","london","LONDON","Berlin"]` → `["London","Berlin"]` ✅
+- PATCH with name only (no destinations field) → destinations unchanged ✅
+- PATCH with all unique destinations → passthrough, no dedup interference ✅
+
+PATCH dedup behaves identically to POST dedup. Name-only updates do not affect existing destinations.
+
+---
+
+### FB-046 — T-058: Backend dedup implementation is clean, safe, and well-tested (code review)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-058 |
+
+**Observation (code review):** `deduplicateDestinations()` in `backend/src/models/tripModel.js` is a clean, exported pure function using Set-based case-insensitive comparison. Non-array guard clause returns input unchanged. Applied in both `createTrip()` (before DB insert) and `updateTrip()` (when destinations field is present). All Knex queries remain parameterized — no SQL injection risk introduced. 19 new tests in `sprint4.test.js` covering: 10 unit tests for the pure function (exact, case-variant, multiple pairs, single element, no dupes, order preservation, empty array, non-array guard, trimmed inputs, immutability) + 4 POST integration tests + 5 PATCH integration tests. All 168/168 backend tests pass.
+
+---
+
+### FB-047 — T-059: Submit button correctly disabled during rate limit lockout with "please wait…" text
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-059 |
+
+**Observation (code review):** Both LoginPage and RegisterPage implement identical lockout behavior:
+- Submit button `disabled={isLoading || rateLimitMinutes > 0}` ✅
+- Button text changes to `"please wait…"` (Unicode ellipsis `\u2026`) during lockout ✅
+- `aria-disabled` set to `"true"` when loading or locked out ✅
+- Countdown timer uses `setInterval` with 3-point cleanup: unmount cleanup via `useEffect` return, pre-start cleanup before new countdown, countdown-end cleanup when reaching 0 ✅
+- Cleanup also runs on successful login/registration ✅
+
+This resolves FB-033 from Sprint 3.
+
+---
+
+### FB-048 — T-060: parseRetryAfterMinutes extracted to shared utility (no duplication)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-060 |
+
+**Observation (code review):** `parseRetryAfterMinutes()` is defined once in `frontend/src/utils/rateLimitUtils.js`. Both LoginPage (line 5) and RegisterPage (line 5) import from this shared utility. No duplication exists. The utility has 9 dedicated tests in `rateLimitUtils.test.js`. This resolves FB-034 from Sprint 3.
+
+---
+
+### FB-049 — T-061: ARIA role mismatch fixed — role="option" removed from DestinationChipInput chips
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-061 |
+
+**Observation (code review):** Destination chip `<span>` elements no longer have `role="option"`. The container retains `role="group"` with `aria-label="Destinations"`, which is the correct ARIA pattern for a group of related elements that are not list items. This resolves FB-035 from Sprint 3.
+
+---
+
+### FB-050 — T-062: aria-describedby target IDs now exist in DOM for both DestinationChipInput and RegisterPage
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-062 |
+
+**Observation (code review):**
+1. **DestinationChipInput:** Element with `id="dest-chip-hint"` is rendered unconditionally (not inside a conditional). Input's `aria-describedby` toggles between `"dest-chip-hint"` (no error) and `"dest-chip-error"` (error present) ✅
+2. **RegisterPage:** Element with `id="password-hint"` exists as a `<span>` with text "8 characters minimum" rendered inside the label. Password input's `aria-describedby` toggles between `"password-hint"` (no error) and `"password-error"` (error present) ✅
+
+This resolves FB-036 from Sprint 3. Screen readers will now correctly announce hint text for both inputs.
+
+---
+
+### FB-051 — T-063: CreateTripModal returns focus to trigger button on all close paths
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-063 |
+
+**Observation (code review):**
+- `createTripBtnRef` created in HomePage and attached to the "+ new trip" trigger button ✅
+- Ref passed to CreateTripModal as `triggerRef` prop ✅
+- Centralized `handleClose` function uses `requestAnimationFrame(() => triggerRef?.current?.focus())` for reliable focus timing ✅
+- All 4 close paths use `handleClose`: Escape key, backdrop click, X button, Cancel button ✅
+- After successful creation, user navigates to `/trips/:id` — focus return is not needed since the page changes entirely ✅
+
+Implementation is clean. The `useCallback` with `[onClose, triggerRef]` dependency list is correct.
+
+---
+
+### FB-052 — T-064: Axios 401 retry queue has 8 comprehensive dedicated unit tests
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-064 |
+
+**Observation (code review):** `frontend/src/__tests__/axiosInterceptor.test.js` contains 8 dedicated tests in the `'Axios 401 Retry Queue Interceptor'` describe block:
+1. Retries original request after successful token refresh on 401 ✅
+2. Calls setTokenFn with new access token after successful refresh ✅
+3. Queues concurrent 401 requests and retries all after single refresh ✅
+4. Clears auth and calls onUnauthorized when refresh fails ✅
+5. Does not intercept non-401 errors (500 passthrough) ✅
+6. Does not intercept 401 on /auth/login (prevents interference with login flow) ✅
+7. Does not intercept 401 on /auth/refresh (prevents infinite refresh loop) ✅
+8. Adds Authorization header with Bearer token to requests ✅
+
+Coverage exceeds the requirement (≥5 tests) and covers all critical scenarios including edge cases for infinite loop prevention and auth endpoint exclusion.
+
+---
+
+### FB-053 — T-065: nginx.conf hardened with server_tokens off and comprehensive CSP header
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-065 |
+
+**Observation (code review):** `infra/nginx.conf` includes:
+- `server_tokens off;` at server level — hides nginx version from error pages and Server header ✅
+- `Content-Security-Policy` header at server level and duplicated in `/assets/` location block (necessary because nginx's `add_header` in a location block overrides server-level headers) ✅
+- CSP policy: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'` — restrictive and appropriate ✅
+- Additional security headers present: X-Frame-Options, X-Content-Type-Options, Referrer-Policy ✅
+
+---
+
+### FB-054 — All 428 tests pass (168 backend + 260 frontend) with zero regressions
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-058, T-059, T-060, T-061, T-062, T-063, T-064 |
+
+**What was tested:** Full test suites for both backend and frontend.
+
+**Details:**
+- Backend: `npx vitest run` → 168/168 tests pass across 9 test files (728ms) ✅
+- Frontend: `npx vitest run` → 260/260 tests pass across 18 test files (3.01s) ✅
+- No regressions from Sprint 1/2/3 tests
+- Only warnings: React Router v7 future flag deprecation notices (non-blocking, known)
+
+---
+
+### FB-055 — Full Sprint 1+2+3 regression passes over HTTPS — all core features operational
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-044, T-070 |
+
+**What was tested:** Complete end-to-end regression of all Sprint 1, 2, and 3 features over HTTPS:
+
+**Auth flow:**
+- Register → 201 with access token + HttpOnly/Secure/SameSite=Strict cookie ✅
+- Login → 200 with access token ✅
+- Logout → 204 ✅
+
+**Trip CRUD:**
+- Create with destinations + dates → 201, status auto-calculated as PLANNING ✅
+- Get → 200 ✅
+- Patch → 200 ✅
+- List with pagination → 200 ✅
+- Delete → 204, subsequent GET → 404 ✅
+
+**Flight CRUD:**
+- Create (all 8 fields) → 201 ✅
+- List → 200 ✅
+- Delete → 204 ✅
+
+**Stay CRUD:**
+- Create (HOTEL category, with timezone fields) → 201 ✅
+- Delete → 204 ✅
+
+**Activity CRUD:**
+- Create timed activity → 201, activity_date as YYYY-MM-DD ✅
+- Create all-day activity (null times) → 201 ✅
+- PATCH all-day → timed conversion → 200 ✅
+- Activity ordering: timed before timeless (NULLS LAST) ✅
+
+**Validation & Security:**
+- UUID validation → 400 ✅
+- No auth → 401 ✅
+- Invalid token → 401 ✅
+- Malformed JSON → 400 INVALID_JSON ✅
+- Cross-user access → 403 FORBIDDEN (GET, PATCH, DELETE, POST sub-resources) ✅
+- User's trip list shows only own trips (no data leakage) ✅
+
+**Frontend SPA:**
+- `/` → 200 ✅
+- `/login` → 200 ✅
+- `/trips/:id` → 200 ✅
+
+**Infrastructure:**
+- TLS handshake successful ✅
+- pm2 process online (cluster mode) ✅
+- Frontend dist/ exists with index.html + hashed JS (301KB) + CSS (55KB) assets ✅
+
+---
+
+### FB-056 — All Sprint 3 feedback items addressed in Sprint 4
+
+| Field | Value |
+|-------|-------|
+| Sprint | 4 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-057, T-058, T-059, T-060, T-061, T-062 |
+
+**Observation:** All 5 Sprint 3 feedback items that were promoted to Sprint 4 tasks have been successfully implemented and verified:
+- FB-028 (destination dedup) → T-058: Backend dedup works on POST + PATCH ✅
+- FB-033 (submit button lockout) → T-059: Button disabled + "please wait…" during 429 ✅
+- FB-034 (parseRetryAfterMinutes duplication) → T-060: Extracted to shared utility ✅
+- FB-035 (ARIA role mismatch) → T-061: role="option" removed ✅
+- FB-036 (aria-describedby targets) → T-062: IDs added, references correct ✅
+
+Additionally, 3 long-standing tech debt items were resolved:
+- B-018 (triggerRef focus) → T-063: CreateTripModal returns focus to trigger ✅
+- B-019 (axios retry test) → T-064: 8 dedicated tests ✅
+- QA WARN items → T-065: nginx hardened with server_tokens off + CSP ✅
+
+---
+
+*End of Sprint 4 User Agent feedback. Testing completed 2026-02-25. Total entries: 13 (FB-044 through FB-056). Issues: 0. Positives: 13. Highest severity: None — zero issues found. This is the cleanest sprint to date.*
