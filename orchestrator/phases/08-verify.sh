@@ -15,31 +15,44 @@ Your task: Run post-deploy health checks on the staging environment.
 2. Read .workflow/api-contracts.md for the list of endpoints to check
 3. Read architecture.md for environment URLs
 
+CONFIG CONSISTENCY (run this FIRST):
+4. Read backend/.env and extract PORT, SSL_KEY_PATH, SSL_CERT_PATH, CORS_ORIGIN
+5. Read frontend/vite.config.js and extract the proxy target URL
+6. Validate:
+   - Backend PORT matches the port in the vite proxy target (e.g., both 3000)
+   - If SSL_KEY_PATH and SSL_CERT_PATH are set in .env, backend serves HTTPS — vite proxy must use https://, not http://
+   - CORS_ORIGIN includes the frontend dev server origin (http://localhost:<vite-dev-port>)
+   - If infra/docker-compose.yml exists, container port mappings are consistent
+7. Any mismatch is a FAIL — log it and create a handoff to the responsible engineer
+
 HEALTH CHECKS:
-4. Check if the backend is responding:
-   - curl http://localhost:3000/api/v1/health (or the configured port)
+8. Check if the backend is responding:
+   - Read PORT from backend/.env to know the correct port
+   - curl http://localhost:<PORT>/api/v1/health (or https:// if SSL is configured)
    - Verify it returns HTTP 200 with { data: { status: 'ok' } }
-5. Check database connectivity (the health endpoint should cover this)
-6. For each API endpoint documented in api-contracts.md:
-   - Test that it responds (may need auth token for protected routes)
-   - Verify response shape matches the contract
-   - Check for 5xx errors
-7. If the frontend was built, check if it's accessible:
-   - curl http://localhost:5173 (or check if the build output exists in frontend/dist/)
+9. Check database connectivity (the health endpoint should cover this)
+10. For each API endpoint documented in api-contracts.md:
+    - Test that it responds (may need auth token for protected routes)
+    - Verify response shape matches the contract
+    - Check for 5xx errors
+11. If the frontend was built, check if it's accessible:
+    - curl http://localhost:5173 (or check if the build output exists in frontend/dist/)
 
 LOGGING:
-8. Log all results in .workflow/qa-build-log.md using the Post-Deploy Health Check format:
+12. Log all results in .workflow/qa-build-log.md using the Post-Deploy Health Check format:
    - Environment: Staging
    - Each check: Pass or Fail with details
+   - Config Consistency: Pass or Fail with details
    - Deploy Verified: Yes or No
-9. If ALL checks pass:
-   - Set Deploy Verified = Yes
-   - Log a handoff to User Agent confirming staging is ready for testing
-10. If ANY check fails:
+13. If ALL checks pass (including config consistency):
+    - Set Deploy Verified = Yes
+    - Log a handoff to User Agent confirming staging is ready for testing
+14. If ANY check fails:
     - Set Deploy Verified = No
     - Log detailed error in qa-build-log.md
     - Create a Monitor Alert in .workflow/feedback-log.md (Severity: Critical or Major)
     - Log a handoff to Deploy Engineer recommending investigation
+    - For config mismatches: also handoff to Frontend Engineer if proxy/CORS is involved
 
 Be precise in your reports. Include actual HTTP status codes, response bodies, and error messages."
 

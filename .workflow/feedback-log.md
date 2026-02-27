@@ -1673,3 +1673,85 @@ Sprint 5 added 68 new tests (28 backend Sprint 5 tests + 36 frontend search/filt
 ---
 
 *End of Sprint 5 User Agent feedback. Testing completed 2026-02-26. Total entries: 16 (FB-057 through FB-072). Issues: 2 (1 minor security, 1 minor UX). Positives: 14. Highest severity: Minor. Overall impression: Excellent sprint — search/filter/sort works flawlessly end-to-end, E2E test coverage established, React Router migration clean.*
+
+---
+
+## Project Owner Feedback (Post-Sprint 5)
+
+### FB-073 — Feature request: Land travel sub-resource (rental cars, buses, trains, etc.)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| Category | Feature Request |
+| Severity | — |
+| Status | New |
+| Related Task | — |
+
+**Description:** Users should be able to add land travel to their trip schedule, similar to how flights and stays work today. Examples include rental car reservations, bus tickets, train rides, rideshares, and ferries. Each entry should capture at minimum: travel type/mode, origin, destination, date(s), and optional time. This would appear as a new section on the Trip Details page alongside Flights, Stays, and Activities.
+
+**Requested by:** Project owner (manual testing feedback)
+
+---
+
+### FB-074 — Feature request: Clickable "+X more" overflow on calendar days
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| Category | Feature Request |
+| Severity | Minor |
+| Status | New |
+| Related Task | — |
+
+**Description:** When a calendar day has too many events, it shows "+X more" but clicking it does nothing. Users should be able to click the "+X more" label to see a popover or expanded view listing all events for that day.
+
+**Requested by:** Project owner (manual testing feedback)
+
+---
+
+### FB-075 — Feature request: Show times for events on the calendar
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| Category | Feature Request |
+| Severity | Minor |
+| Status | New |
+| Related Task | — |
+
+**Description:** Calendar events currently don't display their associated times. Stays should show check-in and check-out times. Activities should show start and end times. Flights should show departure and arrival times. This gives users a quick at-a-glance schedule without needing to click into each event.
+
+**Requested by:** Project owner (manual testing feedback)
+
+---
+
+### FB-076 — Bug: AM/PM text cut off in activity start/end time columns
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| Category | Bug |
+| Severity | Minor |
+| Status | New |
+| Related Task | — |
+
+**Description:** On the activity edit page, the "AM" and "PM" portion of the start and end time columns is cut off / not fully visible. The column width or layout needs to be adjusted so the full time string (including AM/PM) is readable.
+
+**Requested by:** Project owner (manual testing feedback)
+
+---
+
+### FB-077 — Bug: Clock icon in activity time columns is black instead of white
+
+| Field | Value |
+|-------|-------|
+| Sprint | 5 |
+| Category | Bug |
+| Severity | Minor |
+| Status | New |
+| Related Task | — |
+
+**Description:** On the activity edit page, the clock icon in the start and end time input columns is black. Against the dark background this makes it nearly invisible. The icon color should be white for proper contrast and readability.
+
+**Requested by:** Project owner (manual testing feedback)

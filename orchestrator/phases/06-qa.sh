@@ -7,6 +7,11 @@ run_phase_qa() {
     local sprint_num
     sprint_num=$(get_current_sprint)
 
+    # Automated config consistency check before QA agent runs
+    if ! check_config_consistency; then
+        log_warn "Config inconsistencies detected — QA agent will be asked to flag these"
+    fi
+
     local task_prompt="You are the QA Engineer working on Sprint #${sprint_num}.
 
 Your task: Run all testing and verification for this sprint.
@@ -29,6 +34,14 @@ INTEGRATION TESTING:
 12. Verify all UI states are implemented (empty, loading, error, success)
 13. Check for: proper auth enforcement, input validation, error handling, edge cases
 14. Log results in .workflow/qa-build-log.md (Test Type: Integration Test)
+
+CONFIG CONSISTENCY CHECK:
+14b. Verify that backend/.env, frontend/vite.config.js, and infra/docker-compose.yml are consistent:
+    - Backend PORT must match the port in the vite proxy target
+    - If backend has SSL enabled, the vite proxy must use https:// (not http://)
+    - CORS_ORIGIN must include the frontend dev server origin (http://localhost:5173)
+    - Log any mismatches in .workflow/qa-build-log.md as Config Consistency issues
+    - Create a handoff to the responsible engineer (Deploy or Frontend) for any mismatch
 
 SECURITY VERIFICATION:
 15. Go through every applicable item in .workflow/security-checklist.md

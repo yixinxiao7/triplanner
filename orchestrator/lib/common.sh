@@ -127,7 +127,8 @@ file_has_content() {
     fi
     # Check if file has content beyond templates and headers
     local content_lines
-    content_lines=$(grep -cvE '^\s*$|^\s*#|^\s*\|.*\|.*\||^\s*---|\[Template|^\s*\*' "$file" 2>/dev/null || echo "0")
+    content_lines=$(grep -cvE '^\s*$|^\s*#|^\s*\|.*\|.*\||^\s*---|\[Template|^\s*\*' "$file" 2>/dev/null || true)
+    content_lines="${content_lines:-0}"
     [[ "$content_lines" -gt 2 ]]
 }
 
@@ -169,6 +170,82 @@ validate_platform() {
         exit 1
     fi
     log_success "Platform: $platform"
+}
+
+# -- Config Consistency Check --------------------------------------------------
+# Validates that backend .env, frontend vite.config, and docker-compose agree
+# on ports, protocols, and CORS origins. Runs before QA to catch wiring issues.
+
+check_config_consistency() {
+    local errors=0
+    local backend_env="${PROJECT_ROOT}/backend/.env"
+    local vite_config="${PROJECT_ROOT}/frontend/vite.config.js"
+    local docker_compose="${PROJECT_ROOT}/infra/docker-compose.yml"
+
+    log_info "Running config consistency check..."
+
+    # 1. Extract backend port from .env
+    local backend_port=""
+    if [[ -f "$backend_env" ]]; then
+        backend_port=$(grep -E '^PORT=' "$backend_env" 2>/dev/null | cut -d= -f2 | tr -d ' "'"'" || true)
+    fi
+
+    # 2. Extract proxy target from vite.config
+    local vite_proxy_target=""
+    if [[ -f "$vite_config" ]]; then
+        vite_proxy_target=$(grep -oE "target: ['\"]https?://[^'\"]+['\"]" "$vite_config" 2>/dev/null | head -1 | grep -oE "https?://[^'\"]+" || true)
+    fi
+
+    # 3. Check backend port matches vite proxy target
+    if [[ -n "$backend_port" && -n "$vite_proxy_target" ]]; then
+        local vite_port
+        vite_port=$(echo "$vite_proxy_target" | grep -oE ':[0-9]+$' | tr -d ':')
+        if [[ -n "$vite_port" && "$vite_port" != "$backend_port" ]]; then
+            log_error "Config mismatch: backend PORT=$backend_port but vite proxy targets port $vite_port"
+            log_error "  Fix: update backend/.env PORT or frontend/vite.config.js proxy target"
+            ((errors++))
+        fi
+    fi
+
+    # 4. Check protocol consistency (HTTP vs HTTPS)
+    local backend_has_ssl="false"
+    if [[ -f "$backend_env" ]]; then
+        local ssl_key ssl_cert
+        ssl_key=$(grep -E '^SSL_KEY_PATH=' "$backend_env" 2>/dev/null | cut -d= -f2 || true)
+        ssl_cert=$(grep -E '^SSL_CERT_PATH=' "$backend_env" 2>/dev/null | cut -d= -f2 || true)
+        if [[ -n "$ssl_key" && -n "$ssl_cert" ]]; then
+            backend_has_ssl="true"
+        fi
+    fi
+
+    if [[ "$backend_has_ssl" == "true" && -n "$vite_proxy_target" ]]; then
+        if echo "$vite_proxy_target" | grep -q '^http://'; then
+            log_error "Config mismatch: backend has SSL enabled but vite proxy uses http://"
+            log_error "  Fix: either disable SSL in backend/.env or change vite proxy to https://"
+            ((errors++))
+        fi
+    fi
+
+    # 5. Check CORS origin matches frontend dev server
+    if [[ -f "$backend_env" ]]; then
+        local cors_origin
+        cors_origin=$(grep -E '^CORS_ORIGIN=' "$backend_env" 2>/dev/null | cut -d= -f2 | tr -d ' "'"'" || true)
+        if [[ -n "$cors_origin" ]]; then
+            local vite_dev_port
+            vite_dev_port=$(grep -oE 'port:\s*[0-9]+' "$vite_config" 2>/dev/null | head -1 | grep -oE '[0-9]+' || true)
+            if [[ -n "$vite_dev_port" && ! "$cors_origin" =~ ":${vite_dev_port}" && "$cors_origin" != "*" ]]; then
+                log_warn "CORS mismatch: backend CORS_ORIGIN=$cors_origin may not match frontend dev server port $vite_dev_port"
+            fi
+        fi
+    fi
+
+    if [[ $errors -gt 0 ]]; then
+        log_error "Config consistency check found $errors error(s)"
+        return 1
+    else
+        log_success "Config consistency check passed"
+        return 0
+    fi
 }
 
 # -- Git Checkpoints -----------------------------------------------------------
