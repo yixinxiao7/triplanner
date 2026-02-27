@@ -17,6 +17,43 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 6 — Design Agent → Backend Engineer + Frontend Engineer: T-081 & T-082 Specs Complete — Land Travel & Calendar Enhancements Ready (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | Design Agent |
+| To Agent | Backend Engineer (T-086), Frontend Engineer (T-087, T-088, T-089) |
+| Status | Pending |
+| Related Task | T-081 (Done), T-082 (Done) |
+| Handoff Summary | Design Agent has published Sprint 6 UI specs to `.workflow/ui-spec.md`. Two complete specs are now available: **Spec 12 (T-081)** — Land Travel Sub-Resource (Part A: Trip Details Display section + Part B: Edit Page at `/trips/:id/land-travel/edit`). **Spec 12 Addendum / T-082** — Calendar Enhancements (event time display + "+X more" clickable popover). Both specs are marked **Approved** and unblock all downstream tasks. |
+| Notes | See detailed notes per spec below. |
+
+**T-081 → Spec 12: Land Travel Sub-Resource — Key Decisions for Backend Engineer (T-086) + Frontend Engineer (T-087, T-088):**
+
+- **New CSS variable:** `--color-land-travel: #7B6B8E` (muted purple) added to `:root` in `ui-spec.md` Sprint 6 Additions section. Frontend Engineer must add this to the CSS custom properties block.
+- **Mode display labels (for Frontend use):** `RENTAL_CAR → "rental car"`, `BUS → "bus"`, `TRAIN → "train"`, `RIDESHARE → "rideshare"`, `FERRY → "ferry"`, `OTHER → "other"`. All lowercase for display. Mode `<select>` in edit form uses human-readable `"Rental Car"`, `"Bus"`, etc.
+- **Part A (T-088 — Trip Details Section):** Land Travel section appears below Activities. Same section header pattern (11px uppercase, muted, flex + hr). Cards display: mode badge (purple), provider (optional, muted), from → to (route row), departure/arrival date+time (formatted), confirmation number (optional), notes (optional). Empty state with dashed border + CTA to edit page. Loading: 2 skeleton cards. Error: retry link.
+- **Part B (T-087 — Edit Page `/trips/:id/land-travel/edit`):** Multi-row card form (NOT a table — each entry is a self-contained card with labeled fields, matching ActivitiesEditPage pattern). Each row card: 2-column CSS grid with mode select, provider, from_location, to_location, departure_date, departure_time (optional), arrival_date (optional), arrival_time (optional), confirmation_number (optional), notes (full-width textarea). Delete button per card triggers inline confirmation (existing entries) or immediate removal (new unsaved rows). `"+ add entry"` button appends a new blank card. Save = batch `Promise.allSettled` (POST new + PATCH modified). Cancel = navigate without API call. Validation: mode, from_location, to_location, departure_date all required; arrival rules per spec. Full loading/error/empty states defined.
+- **Calendar integration (T-088):** Pass `landTravels` array to `TripCalendar`. Land travel chips appear on `departure_date` (and `arrival_date` if different). Color: `--color-land-travel`. Label: `"[mode] to [to_location]"` (e.g., `"train to Los Angeles"`).
+- **Clock icon color (time inputs):** Apply `color-scheme: dark` to time/date inputs to make browser-native icons visible on dark backgrounds. This resolves the same root cause as FB-077.
+- **Accessibility spec:** Full a11y defined in sections 12A.9, 12B.14 — including `role="group"` on each row card, `aria-label` per row, error `role="alert"`, focus management on `"+ add entry"` click, delete, and validation failure.
+
+**T-082 → Spec 12 Addendum: Calendar Enhancements — Key Decisions for Frontend Engineer (T-089):**
+
+- **Time display:** Add `formatCalendarTime(input)` to `frontend/src/utils/formatDate.js`. Compact 12h format: `"9a"`, `"2:30p"`, `"12p"`. Time sources: flights=`departure_at`+`departure_tz`, stays=`check_in_at`+`check_in_tz`, activities=`start_time`, land travel=`departure_time`. Render as `<span class="eventTime">` below event name in chip (10px, opacity 0.7). Only shown when time is non-null.
+- **Stay multi-day spans:** Show check-in time on first day chip only. Subsequent span chips: no time element.
+- **"+X more" button:** Change `<span>` → `<button>`. Same visual appearance. `aria-haspopup="dialog"`, `aria-expanded`, `aria-label` with total count + date.
+- **Popover state:** `useState(null)` for `openPopoverDay` (string key `"YYYY-MM-DD"` or null). Two `useRef`: `popoverRef` (the popover container), `triggerButtonRef` (the clicked button for focus return).
+- **Popover spec:** `role="dialog"`, `aria-modal="true"`. Width 240px. Background `var(--surface)`. Box-shadow `0 8px 24px rgba(0,0,0,0.4)` (sole element in design with shadow — elevation justified). Lists ALL events for day (not just overflow). Each item: 8px color dot + event name + compact time sub-label. Close: `×` button, Escape key, click outside. Focus goes to popover on open, returns to trigger button on close.
+- **Smart positioning:** Below cell by default; above if last 2 rows; right-aligned if last 2 columns. Mobile: fixed bottom sheet with backdrop.
+- **Event order in popover:** flights → stays → activities → land travel, each sorted by time within type.
+- **Time format in popover:** flights `"dep. 9a"`, stays check-in `"check-in 4p"` / check-out `"check-out 11a"`, activities `"9a – 2p"` (range), land travel `"dep. 10a"`.
+
+**Full spec reference:** `.workflow/ui-spec.md` → "Sprint 6 Design Specifications" → Spec 12 + Spec 12 Addendum.
+
+---
+
 ### Sprint 6 — Manager Agent: Sprint 6 Plan Complete — 14 Tasks Ready, Agents Cleared to Start (2026-02-27)
 
 | Field | Value |

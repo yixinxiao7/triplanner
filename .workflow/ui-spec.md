@@ -3230,3 +3230,818 @@ For the Frontend Engineer's reference, suggested CSS module class names:
 ---
 
 *Sprint 5 spec above is marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-25.*
+
+---
+
+## Sprint 6 Design Specifications
+
+---
+
+### Design System — Sprint 6 Additions
+
+The following CSS custom property is added to the `:root` block for land travel event coloring:
+
+```css
+:root {
+  /* ... existing variables ... */
+  --color-flight:       #5D737E;   /* existing — muted steel blue */
+  --color-stay:         #3D8F82;   /* existing — teal */
+  --color-activity:     #C47A2E;   /* existing — amber */
+  --color-land-travel:  #7B6B8E;   /* NEW Sprint 6 — muted purple */
+}
+```
+
+The land travel color (`#7B6B8E`) is a muted purple selected to be perceptually distinct from the existing three event colors while remaining within the Japandi minimal palette. It reads clearly against both `--bg-primary` and `--surface` backgrounds with white text (`--text-primary`).
+
+---
+
+### Spec 12: Land Travel Sub-Resource
+
+**Sprint:** #6
+**Related Tasks:** T-081 (Design), T-087 (Frontend: Edit Page), T-088 (Frontend: Trip Details Display)
+**Status:** Approved
+
+**Description:**
+Land travel is a new sub-resource (Sprint 6) that captures ground transportation: rental cars, buses, trains, rideshares, ferries, and other modes. This spec covers two related screens:
+- **Part A (12A): Land Travel Section on Trip Details Page** — Read-only display of all land travel entries below the Activities section (implemented in T-088).
+- **Part B (12B): Land Travel Edit Page** — `/trips/:id/land-travel/edit` for creating, editing, and deleting land travel entries (implemented in T-087).
+
+The data model for a land travel entry (per the pre-approved schema): `id`, `trip_id`, `mode` (RENTAL_CAR | BUS | TRAIN | RIDESHARE | FERRY | OTHER), `provider` (optional), `from_location`, `to_location`, `departure_date` (YYYY-MM-DD), `departure_time` (HH:MM, optional), `arrival_date` (optional), `arrival_time` (HH:MM, optional), `confirmation_number` (optional), `notes` (optional).
+
+---
+
+### Part A — 12A: Land Travel Section on Trip Details Page
+
+---
+
+#### 12A.1 Section Position & Header
+
+The Land Travel section appears on the Trip Details page (`/trips/:id`) **below the Activities section**, as the last sub-resource section before the page ends. It follows the exact same structural pattern as the Flights, Stays, and Activities sections.
+
+**Page section order (updated for Sprint 6):**
+1. Trip header (name, destinations, date range, edit icon)
+2. TripCalendar component
+3. Flights section
+4. Stays section
+5. Activities section
+6. **Land Travel section** ← new
+
+**Section Container:**
+- Margin-top: 40px (from Activities section's last element)
+- Same max-width and horizontal padding as other sections (1120px centered, 32px horizontal)
+
+**Section Header Row:**
+Follows the standard section header pattern used by Flights/Stays/Activities:
+- Font-size: 11px, font-weight: 600, letter-spacing: 0.12em, uppercase, color: `--text-muted`
+- Layout: `display: flex`, `align-items: center`, `gap: 16px`, margin-bottom: 16px
+- Label: `"land travel"`
+- Horizontal rule: `<hr>` or `flex: 1` div with `border-top: 1px solid var(--border-subtle)` extending to the right
+- Right side (after the rule): `"edit"` link
+  - Font-size: 12px, color: `--accent`, no underline by default, underline on hover
+  - Navigates to `/trips/:id/land-travel/edit`
+  - `aria-label="Edit land travel entries"`
+  - Matches the exact visual style of the "edit" links on Flights, Stays, and Activities section headers
+
+---
+
+#### 12A.2 Empty State
+
+When no land travel entries exist for the trip:
+
+**Empty placeholder container:**
+- `border: 1px dashed rgba(93,115,126,0.3)`, padding: 40px 24px, border-radius: 4px, text-align: center
+- Margin-bottom: 32px
+
+**Content (centered, stacked vertically, gap: 12px):**
+1. Primary text: `"no land travel added yet."` — 13px, `--text-muted`, font-weight: 400
+2. Secondary text: `"add rental cars, trains, buses, rideshares, ferries, and more."` — 11px, `rgba(252,252,252,0.3)`, margin-top: 4px
+3. CTA button: `"+ add land travel"` — secondary button style, small size (padding: 7px 16px, font-size: 12px), margin-top: 16px. On click → navigates to `/trips/:id/land-travel/edit`.
+
+---
+
+#### 12A.3 Loading State
+
+While the section is fetching entries (`GET /trips/:id/land-travel`):
+
+- Show **2 skeleton card placeholders** stacked vertically
+- Each skeleton: background `var(--surface)`, border `1px solid var(--border-subtle)`, border-radius: 4px, height: 84px, width: 100%, shimmer animation (left-to-right gradient sweep, same as existing skeleton patterns)
+- Margin-bottom: 10px between skeleton cards
+
+---
+
+#### 12A.4 Error State
+
+When the fetch fails:
+- Error container: `"could not load land travel."` (13px, `--text-muted`) followed by `"try again"` as an inline link/button (accent color, 13px, cursor: pointer)
+- On click: re-fetch via `GET /trips/:id/land-travel`
+- Error container has the same visual treatment as the flight/stay/activity section error states
+
+---
+
+#### 12A.5 Land Travel Entry Cards
+
+When entries exist, each entry is displayed as a card. Cards are sorted by `departure_date` ASC (matching the API's default sort order).
+
+**Card Container:**
+- Background: `var(--surface)` (`#30292F`)
+- Border: `1px solid var(--border-subtle)`
+- Border-radius: 4px
+- Padding: 16px 20px
+- Margin-bottom: 10px
+- Display: flex, flex-direction: column, gap: 8px
+- Transition: `border-color 150ms ease`
+
+**Card Layout — rows from top to bottom:**
+
+**Row 1 — Identity Row** (flex, align-items: center, gap: 12px, flex-wrap: wrap):
+
+- **Mode Badge** (flex-shrink: 0):
+  - Pill shape matching existing status badge style
+  - Background: `rgba(123, 107, 142, 0.2)` (i.e., `--color-land-travel` at 20% opacity)
+  - Text color: `var(--color-land-travel)` (`#7B6B8E`)
+  - Font-size: 10px, font-weight: 600, letter-spacing: 0.1em, uppercase, padding: 3px 10px, border-radius: 2px
+  - Display labels for each mode:
+    | API Value | Display |
+    |-----------|---------|
+    | `RENTAL_CAR` | `rental car` |
+    | `BUS` | `bus` |
+    | `TRAIN` | `train` |
+    | `RIDESHARE` | `rideshare` |
+    | `FERRY` | `ferry` |
+    | `OTHER` | `other` |
+
+- **Provider** (flex: 1, 12px, `--text-muted`): Display if `provider` is not null/empty (e.g., `"Hertz"`, `"Amtrak"`, `"Uber"`). If absent, omit this element entirely — do NOT show "n/a" or a dash.
+
+**Row 2 — Route Row** (flex, align-items: center, gap: 8px):
+- `from_location` — 14px, font-weight: 500, `--text-primary`
+- `→` arrow — 14px, `--accent`
+- `to_location` — 14px, font-weight: 500, `--text-primary`
+
+**Row 3 — Date/Time Row** (12px, `--text-muted`, flex, gap: 16px, flex-wrap: wrap):
+- **Departure** (always present): Format as `"Depart: Mon Aug 7"` (short weekday + month day from `departure_date`). If `departure_time` is set, append `"· 9:00 AM"` (12h format with AM/PM). Full example: `"Depart: Mon Aug 7 · 9:00 AM"`.
+- **Arrival** (only if `arrival_date` is set): Format as `"Arrive: Tue Aug 8"`. If `arrival_time` is set, append `"· 6:30 PM"`. Full example: `"Arrive: Tue Aug 8 · 6:30 PM"`.
+- Departure and Arrival separated by a vertical bar `"·"` or line separator if both appear on the same row. On narrow viewports, they can wrap to separate lines.
+
+**Row 4 — Details Row** (12px, `--text-muted`, flex, gap: 16px, flex-wrap: wrap):
+- **Confirmation Number** (if present): `"Conf: "` label (10px, `rgba(252,252,252,0.3)`, letter-spacing: 0.04em) followed by the confirmation number value in IBM Plex Mono, 12px, `--text-muted`. Example: `"Conf: XYZ-123456"`.
+- This row is **entirely omitted** if `confirmation_number` is null/empty.
+
+**Row 5 — Notes Row** (conditional):
+- Font-style: italic, 12px, `rgba(252,252,252,0.4)`, line-height: 1.5
+- Displays `notes` text if present
+- Max 2 lines, overflow: ellipsis (`-webkit-line-clamp: 2`, `display: -webkit-box`, `-webkit-box-orient: vertical`, `overflow: hidden`)
+- Omitted entirely if `notes` is null/empty
+
+---
+
+#### 12A.6 Multiple Entries
+
+When multiple land travel entries exist:
+- All cards are stacked vertically, sorted by `departure_date` ASC (oldest first), then by `departure_time` ASC NULLS LAST (entries without times after those with times on the same date)
+- No section sub-headers between entries (entries from different dates are not grouped — they are presented in a flat sorted list)
+- Margin-bottom: 10px between cards; last card has no bottom margin before the next page section
+
+---
+
+#### 12A.7 Calendar Integration
+
+The land travel section passes its data to `TripCalendar.jsx` for calendar display:
+- `landTravels` array is passed as a prop alongside `flights`, `stays`, `activities`
+- Calendar renders a land travel event chip on `departure_date` using `--color-land-travel` (`#7B6B8E`)
+- If `arrival_date` is set and differs from `departure_date`, also render a landing/arrival chip on `arrival_date`
+- Event label format: `"[mode label] to [to_location]"` (e.g., `"train to Los Angeles"`, `"rental car to Las Vegas"`)
+- Land travel event time display follows the calendar enhancement spec (see Spec 12 Calendar Addendum)
+
+---
+
+#### 12A.8 Responsive Behavior — Trip Details Land Travel Section
+
+| Breakpoint | Layout |
+|------------|--------|
+| Desktop (≥768px) | Cards full-width. Route row and date/time row on single lines. Provider and mode badge on same row. |
+| Mobile (<768px) | Cards full-width. All rows wrap as needed. Route arrow (`→`) stays inline. Provider may appear below mode badge if wrapping. Page padding: 16px horizontal. |
+
+---
+
+#### 12A.9 Accessibility — Trip Details Land Travel Section
+
+- Section header: `<h2>` or equivalent landmark for "land travel" (styled per spec, removes browser default styles)
+- Edit link: `aria-label="Edit land travel entries"`
+- Empty state CTA button: `aria-label="Add land travel entries"`
+- Error retry link/button: `role="button"` if implemented as `<a>`, or use `<button>` with matching styles
+- Mode badges: plain text — no aria annotation needed (badge text is readable)
+- Cards: each card as `<article>` or a `<div>` without special role — they are display-only (no interactions except the edit link which is in the section header)
+
+---
+
+### Part B — 12B: Land Travel Edit Page
+
+---
+
+#### 12B.1 Route & Navigation
+
+**Route:** `/trips/:id/land-travel/edit`
+- Registered in `App.jsx` behind `<ProtectedRoute>`
+- Reached via the "edit" link in the Land Travel section header on Trip Details page
+- Also reachable via the empty state CTA "add land travel" button
+
+**Page background:** `--bg-primary` (`#02111B`), same as all other edit pages.
+
+**Page Header Row** (flex, justify-content: space-between, align-items: flex-start, padding-top: 48px, padding-bottom: 32px, max-width: 1120px, 32px horizontal padding):
+- **Left:** Back link `"← trip details"` (12px, `--accent`, no underline, underline on hover). Navigates to `/trips/:id`. `aria-label="Back to trip details"`.
+- **Right:** Page title `"edit land travel"` (24px, font-weight: 400, `--text-primary`, IBM Plex Mono). No uppercase. No letter-spacing.
+
+---
+
+#### 12B.2 Page Structure (top to bottom)
+
+1. Navbar (56px, sticky — unchanged)
+2. Page header row (back link + title)
+3. **Entries section** — existing entries rendered as editable row-cards (fetched on mount)
+4. **Empty state placeholder** — shown when no entries exist yet, in place of entries section
+5. **"+ add entry" button row** — always visible below entries (or below empty state)
+6. **Action row** — "cancel" + "save" buttons
+7. **Bottom "done editing" convenience button** — repeated at page bottom
+
+---
+
+#### 12B.3 Entries: Multi-Row Card Form
+
+On page mount, fetch `GET /trips/:id/land-travel`. Each entry renders as an independent **editable card**. This follows the ActivitiesEditPage pattern — each row is a self-contained card with all fields labeled inline (not a table/header-row layout).
+
+**Row Card Container:**
+- Background: `var(--surface)` (`#30292F`)
+- Border: `1px solid var(--border-subtle)`
+- Border-radius: 4px
+- Padding: 20px
+- Margin-bottom: 12px
+- Display: flex, flex-direction: column, gap: 16px
+- `role="group"`, `aria-label="Land travel entry [n]"` (1-based index)
+
+**Row Card Internal Layout:**
+Within each row card, fields are arranged in a 2-column CSS grid on desktop:
+- `display: grid`
+- `grid-template-columns: 1fr 1fr`
+- `gap: 12px 24px`
+- On mobile (<768px): single column (`grid-template-columns: 1fr`)
+
+**Field Grid Layout (per row card):**
+
+| Grid Row | Column 1 | Column 2 |
+|----------|----------|----------|
+| 1 | MODE (select, required) | PROVIDER (text, optional) |
+| 2 | FROM (text, required) | TO (text, required) |
+| 3 | DEPARTURE DATE (date, required) | DEPARTURE TIME (time, optional) |
+| 4 | ARRIVAL DATE (date, optional) | ARRIVAL TIME (time, optional) |
+| 5 | CONFIRMATION # (text, optional) | *(Delete button area — see below)* |
+| 6 | NOTES (textarea, optional) — **spans full 2 columns** | |
+
+**Field Specifications:**
+
+| Field | Label | Input Type | Required | Placeholder | Notes |
+|-------|-------|-----------|----------|-------------|-------|
+| `mode` | `MODE` | `<select>` | Yes | — | See options below |
+| `provider` | `PROVIDER` | `text` | No | `e.g. Hertz, Amtrak, Uber` | Max 100 chars |
+| `from_location` | `FROM` | `text` | Yes | `e.g. San Francisco (SFO)` | Max 100 chars |
+| `to_location` | `TO` | `text` | Yes | `e.g. Los Angeles (LAX)` | Max 100 chars |
+| `departure_date` | `DEPARTURE DATE` | `date` | Yes | — | `YYYY-MM-DD` internally |
+| `departure_time` | `DEPARTURE TIME` | `time` | No | — | `HH:MM` internally |
+| `arrival_date` | `ARRIVAL DATE` | `date` | No | — | Must be ≥ departure_date if set |
+| `arrival_time` | `ARRIVAL TIME` | `time` | No | — | arrival_date must also be set if arrival_time is set |
+| `confirmation_number` | `CONFIRMATION #` | `text` | No | `e.g. RES-12345` | Max 50 chars |
+| `notes` | `NOTES` | `textarea` | No | `any additional notes...` | Max 500 chars, rows=2, resize: vertical |
+
+All fields follow the **Form Pattern** from the Design System:
+- Label: 11px, font-weight: 500, letter-spacing: 0.08em, uppercase, `--text-muted`, `margin-bottom: 6px`
+- Input/select: full-width, background `#3F4045`, border `1px solid rgba(93,115,126,0.3)`, focus border `#5D737E`, text `#FCFCFC`, padding: 10px 14px, border-radius: 2px, font: IBM Plex Mono 14px
+- Time/date inputs: same styling; on Chrome, the spinner/calendar icons should use `color-scheme: dark` to inherit the light text color
+
+**MODE Select Options (in order):**
+1. `"Select mode"` — value `""`, disabled, selected by default for new rows. Not shown for existing entries (they have a pre-selected mode).
+2. `"Rental Car"` — value `RENTAL_CAR`
+3. `"Bus"` — value `BUS`
+4. `"Train"` — value `TRAIN`
+5. `"Rideshare"` — value `RIDESHARE`
+6. `"Ferry"` — value `FERRY`
+7. `"Other"` — value `OTHER`
+
+**Delete Button (per row card):**
+- Position: Row 5, Column 2 area — bottom-right of the card, vertically aligned with the CONFIRMATION # field
+- Alternatively: top-right corner of the card (absolute positioned within the card, top: 12px, right: 12px) — Frontend Engineer's choice based on what works better with the grid layout
+- Icon: `×` (16px × 16px) or a small trash SVG icon
+- Color: `--text-muted`, hover: `rgba(220,80,80,0.8)`
+- Transition: `color 150ms ease`
+- `aria-label="Remove land travel entry [n]"` (1-based index)
+- **For new (unsaved) rows:** On click → immediately remove the card from form state. No confirmation required (no API call yet).
+- **For existing entries (loaded from API):** On click → replace card content with inline delete confirmation (see 12B.6 below).
+
+---
+
+#### 12B.4 Empty State (No Entries)
+
+When no land travel entries exist for the trip (fresh trip or all entries deleted before save):
+
+**Empty Placeholder** (shown above the "+ add entry" button):
+- `border: 1px dashed rgba(93,115,126,0.3)`, padding: 40px 24px, border-radius: 4px, text-align: center, margin-bottom: 16px
+- Primary text: `"no land travel entries yet."` — 13px, `--text-muted`
+- Secondary text: `"click + to add your first entry."` — 11px, `rgba(252,252,252,0.3)`, margin-top: 4px
+
+---
+
+#### 12B.5 "+ Add Entry" Button Row
+
+Positioned below the entries (or below the empty state placeholder):
+
+- Button: `<button>` styled as a link
+- Text: `"+ add entry"`
+- Font-size: 12px, color: `--accent`, background: transparent, border: none, cursor: pointer, padding: 8px 0
+- No underline default, underline on hover
+- `aria-label="Add a new land travel entry"`
+- Transition: `color 150ms ease`
+
+**On click:**
+1. Append a new blank row card below all existing entries
+2. The new row has no `id` (it is "new" — not yet saved to the API)
+3. Scroll the new row into view (smooth scroll)
+4. Focus the MODE `<select>` of the newly added row
+
+---
+
+#### 12B.6 Inline Delete Confirmation (Existing Entries Only)
+
+When the delete button is clicked on a row card that corresponds to an existing entry (has an API `id`):
+
+Replace the card's content with a confirmation row (maintain card background/border/padding):
+- Layout: flex, align-items: center, gap: 12px, justify-content: space-between
+- Text: `"delete this land travel entry?"` — 13px, `--text-primary`, flex: 1
+- Buttons (flex-shrink: 0, flex, gap: 8px):
+  - `"yes, delete"` — danger button style (padding: 6px 14px, font-size: 11px)
+  - `"cancel"` — secondary button style (padding: 6px 14px, font-size: 11px)
+
+**`"yes, delete"` behavior:**
+- Call `DELETE /trips/:id/land-travel/:entryId`
+- While waiting: show inline spinner (16px) in place of the "yes, delete" text, disable both buttons
+- **On success:** Remove card from DOM with fade-out animation (`opacity 0 → 0`, `height 0`, `margin 0` over 300ms), then remove from React state.
+- **On API failure:** Restore original card content (undo confirmation state) + show bottom-right toast: `"could not delete entry. please try again."` (auto-dismiss 4s)
+
+**`"cancel"` behavior:**
+- Immediately restore the original card content (all field values intact)
+
+---
+
+#### 12B.7 Save / Cancel Action Row
+
+**Action Row container** (flex, justify-content: flex-end, gap: 12px, margin-top: 32px, padding-top: 20px, border-top: `1px solid var(--border-subtle)`):
+
+**`"cancel"` button** (secondary button style):
+- On click: navigate to `/trips/:id` immediately, without any API calls
+- No confirmation required (consistent with other edit pages)
+
+**`"save"` button** (primary button style):
+- On click: trigger batch save (see 12B.8 below)
+- While saving: replace button label with inline spinner (16px, white, 1s rotation), button disabled
+- `aria-disabled="true"` during save (in addition to HTML `disabled`)
+
+---
+
+#### 12B.8 Batch Save Logic
+
+Triggered when the user clicks "save":
+
+**Step 1: Client-side validation (see 12B.9).**
+- If any errors → do NOT call API. Highlight invalid fields. Scroll to the first invalid row.
+
+**Step 2: Diff form state against loaded state.**
+- New rows (no `id`): must POST
+- Modified existing rows (any field changed): must PATCH
+- Deleted existing rows (confirmed via inline delete): already deleted via individual DELETE calls — do not need to be included in batch save. The batch save only handles new + modified.
+
+**Step 3: Issue API calls.**
+- `POST /api/v1/trips/:tripId/land-travel` for each new row (with all non-empty fields)
+- `PATCH /api/v1/trips/:tripId/land-travel/:entryId` for each modified row (with changed fields)
+- Use `Promise.allSettled()` to run all calls in parallel — tolerates partial failure
+
+**Step 4: Handle results.**
+- **All success:** navigate to `/trips/:id`
+- **Partial failure:** stay on edit page. Show error banner (see 12B.11). Rows that failed to save remain in the form with their data intact. Rows that succeeded remain in the form (now with server-assigned `id` for POSTs). User can correct and retry.
+- **Total failure (all calls failed):** same as partial failure.
+
+---
+
+#### 12B.9 Client-Side Validation
+
+Validation triggers on "save" attempt. Applied per row card:
+
+| Field | Rule | Error Message |
+|-------|------|---------------|
+| `mode` | Required (not empty string) | `"mode is required"` |
+| `from_location` | Required, non-empty after trim | `"from location is required"` |
+| `to_location` | Required, non-empty after trim | `"to location is required"` |
+| `departure_date` | Required, valid date | `"departure date is required"` |
+| `arrival_date` | If provided, must be ≥ `departure_date` | `"arrival date must be on or after departure date"` |
+| `arrival_time` | If provided, `arrival_date` must also be set | `"set an arrival date when using arrival time"` |
+
+**Error rendering (per field):**
+- Inline error text below the field: 12px, `rgba(220,80,80,0.9)`, appears immediately on failed save
+- Border of the offending input: changes to `1px solid rgba(220,80,80,0.7)`
+- Error clears on the first user input in that field (change event)
+- `role="alert"` on the error element
+
+**Row card with validation errors:**
+- Add `border-left: 3px solid rgba(220,80,80,0.5)` to the card's left border to draw attention to the entire invalid row
+
+**Scroll behavior on validation failure:**
+- After validation, `scrollIntoView({ behavior: 'smooth', block: 'start' })` on the first invalid row card
+
+---
+
+#### 12B.10 Page Loading State
+
+While fetching existing entries on mount (`GET /trips/:id/land-travel`):
+
+- Show **2 skeleton card placeholders** (shimmer animation):
+  - Each: background `var(--surface)`, border `1px solid var(--border-subtle)`, border-radius: 4px, height: 180px (tall, approximating a form card with multiple rows), width: 100%
+  - Margin-bottom: 12px between skeletons
+- `"save"` and `"cancel"` buttons: rendered but disabled (`opacity: 0.4`) during loading
+- `"+ add entry"` button: hidden during loading
+
+**If fetch fails (initial load error):**
+- Show error container: `"could not load your land travel entries."` (13px, `--text-muted`) + `"try again"` link/button (accent color)
+- On retry: re-fetch and render
+- `"save"` and `"cancel"` still accessible (user can still save without pre-loaded data if needed, though practically empty on error)
+
+---
+
+#### 12B.11 Save Error Banner
+
+When the batch save has one or more failures:
+
+- Banner appears between the entries section and the action row
+- Background: `rgba(220,80,80,0.08)`, border: `1px solid rgba(220,80,80,0.25)`, border-radius: 2px, padding: 12px 16px, margin-top: 16px
+- Text: `"some entries could not be saved. please try again."` — 13px, `--text-primary`
+- `role="alert"`, `aria-live="assertive"` — announced to screen readers immediately
+- Banner dismisses automatically if the user edits any field (or on next save attempt)
+
+---
+
+#### 12B.12 Bottom Convenience Footer
+
+Below the action row (margin-top: 40px, padding-top: 24px, border-top: `1px solid var(--border-subtle)`):
+- Repeat the `"done editing"` primary button:
+  - Same behavior: navigate to `/trips/:id` (this is the equivalent of "cancel" with a friendlier label — no API call)
+  - This is purely for UX convenience on pages that may become long with many entries
+- Secondary button style (not primary — to distinguish from "save" which is the real save action):
+  - Text: `"← back to trip details"`
+  - Background: transparent, border: `1px solid rgba(93,115,126,0.5)`, color: `--text-primary`, padding: 10px 24px, border-radius: 2px
+  - Hover: `rgba(252,252,252,0.05)` background
+
+---
+
+#### 12B.13 Responsive Behavior — Land Travel Edit Page
+
+| Breakpoint | Layout |
+|------------|--------|
+| Desktop (≥768px) | 2-column CSS grid within each row card. Page header: back link left, title right. Action row: right-aligned. |
+| Mobile (<768px) | Single-column form stack within each row card. All inputs full-width. Page header stacks: title on top, back link below (or both left-aligned, stacked). Action row: buttons full-width, stacked ("save" on top, "cancel" below). Horizontal page padding: 16px. |
+
+**Time/date inputs on mobile:**
+- `<input type="time">` and `<input type="date">` use native mobile pickers — acceptable for Sprint 6. Ensure they are full-width on mobile.
+- Clock icon (`::webkit-calendar-picker-indicator`) color: Set via `color-scheme: dark` on the input or `filter: invert(1)` on the picker icon. This resolves the same issue as FB-077 (activity edit clock icon).
+
+---
+
+#### 12B.14 Accessibility — Land Travel Edit Page
+
+- `<h1>` semantically for "edit land travel" (styled per spec, removes browser default h1 margin/size)
+- Back link: `aria-label="Back to trip details"`
+- Each row card: `role="group"`, `aria-label="Land travel entry [n]"` (1-based, e.g., "Land travel entry 1")
+- All inputs: explicit `<label htmlFor="[inputId]">` with matching `id` on input
+- Mode `<select>`: `<label>` explicitly associated via `htmlFor`
+- Error messages: `role="alert"` on each field-level error element
+- Save error banner: `role="alert"`, `aria-live="assertive"`
+- Delete button per row: `aria-label="Remove land travel entry [n]"`
+- `"+ add entry"` button: `aria-label="Add a new land travel entry"`
+- Save button during submit: `aria-disabled="true"` + HTML `disabled` attribute
+- Focus management:
+  - When `"+ add entry"` clicked → focus moves to the MODE `<select>` of the new row
+  - When a row is deleted → focus moves to the `"+ add entry"` button (or next row if available)
+  - After failed validation → focus moves to the first invalid field
+  - After successful save → navigation to `/trips/:id` (focus handled naturally by page load)
+- Keyboard: All interactive elements reachable via Tab. No focus traps (this is not a modal). The batch save can be submitted by pressing Enter within a text field.
+
+---
+
+### Spec 12 Addendum — Calendar Enhancements
+
+**Sprint:** #6
+**Related Tasks:** T-082 (Design), T-089 (Frontend Implementation)
+**Status:** Approved
+
+**Addendum to:** Spec 7 (Calendar Component + Trip Date Range UI, Sprint #2)
+
+**Description:**
+This addendum describes two enhancements to the existing `TripCalendar.jsx` component delivered in Sprint 2 (T-035). No structural changes to the calendar grid, month navigation, or event-to-date mapping logic are required — only the chip rendering and overflow handling are updated.
+
+Enhancement 1: **Event time display** — compact time indicator inside calendar event chips.
+Enhancement 2: **"+X more" clickable overflow popover** — overflow label becomes an interactive button that opens a day-detail popover.
+
+---
+
+#### CAL-1: Event Time Display
+
+---
+
+##### CAL-1.1 Overview
+
+Calendar event chips currently display only the event name/label. This enhancement adds a compact time indicator as a secondary element within the chip, giving users an at-a-glance schedule view without leaving the calendar.
+
+**Design principle:** Time display is secondary to the event name — it must not make chips taller or more cluttered on full-event days. If a chip is too narrow (compact mode), the time element may be omitted.
+
+---
+
+##### CAL-1.2 Compact Time Format
+
+**Helper function `formatCalendarTime(input)`** — add to `frontend/src/utils/formatDate.js`:
+
+- Accepts `HH:MM` or `HH:MM:SS` time strings (from activities and land travel `_time` fields)
+- Accepts a JS `Date` object or ISO string (for timezone-converted flights/stays)
+- Returns a compact 12-hour string: hours + abbreviated meridiem + minutes only if non-zero
+  - `"09:00"` → `"9a"`
+  - `"14:30"` → `"2:30p"`
+  - `"12:00"` → `"12p"`
+  - `"00:00"` → `"12a"` (midnight)
+  - `"10:00"` → `"10a"`
+  - `"09:45"` → `"9:45a"`
+- Returns `null` if input is `null`, `undefined`, or empty string
+
+---
+
+##### CAL-1.3 Time Sources Per Event Type
+
+| Event Type | Time Source | Timezone Handling | Fallback |
+|------------|-------------|-------------------|---------|
+| **Flight** | `departure_at` (UTC ISO string) | Convert via `departure_tz` using `Intl.DateTimeFormat` | No time shown if `departure_at` is null |
+| **Stay** | `check_in_at` (UTC ISO string) | Convert via `check_in_tz` using `Intl.DateTimeFormat` | No time shown if `check_in_at` is null |
+| **Activity** | `start_time` (`HH:MM:SS` string) | No conversion needed (local date + time, no timezone) | No time shown if `start_time` is null |
+| **Land Travel** | `departure_time` (`HH:MM` string) | No conversion needed | No time shown if `departure_time` is null |
+
+For timezone-aware events (flights/stays), use the existing `Intl.DateTimeFormat` approach already present in `TripCalendar.jsx`. Extract hours and minutes from the local time, then pass to `formatCalendarTime`.
+
+---
+
+##### CAL-1.4 Updated Event Chip Structure
+
+**Current chip structure (Sprint 2):**
+```
+[● EventName ]
+```
+
+**Updated chip structure (Sprint 6):**
+```
+[● EventName ]
+[  9a        ]   ← new time element (when time available)
+```
+
+**Time element spec:**
+```html
+<span className={styles.eventTime}>9a</span>
+```
+
+- Font-size: 10px (one size smaller than event name at 11px)
+- Color: inherit from chip (white text), at `opacity: 0.7`
+- Display: `block` (below event name, same left alignment)
+- Margin-top: 1px
+- **Only rendered when `formatCalendarTime()` returns a non-null value**
+- **Not rendered for stay multi-day span chips on day 2+** (show check-in time on first day chip only; subsequent span chips have no time)
+
+**Chip container height:** Increase by ~4px to accommodate the time element. Ensure this does not break day cell layout on months with 6 rows (verify no overflow clipping).
+
+---
+
+##### CAL-1.5 Stay Multi-Day Spans
+
+The existing calendar renders stay spans across multiple day cells. Sprint 6 behavior:
+- **First day of stay span** (check-in date): Show check-in time (e.g., `"4p"`)
+- **Subsequent days of same stay span**: Show no time element (chip height stays reduced)
+- The stay span chip label remains as-is (accommodation name, e.g., `"Hyatt Regency SF"`)
+
+---
+
+#### CAL-2: "+X more" Clickable Day Overflow Popover
+
+---
+
+##### CAL-2.1 Current Behavior
+
+When a day cell has more events than can be displayed (typically > 3), the calendar renders a `"+X more"` text element as a non-interactive `<span>`. Clicking it does nothing.
+
+---
+
+##### CAL-2.2 Updated Element: `<button>` Not `<span>`
+
+The `"+X more"` element must be changed from a `<span>` to a `<button>`:
+
+```html
+<!-- Before (Sprint 2) -->
+<span className={styles.moreLabel}>+2 more</span>
+
+<!-- After (Sprint 6) -->
+<button
+  className={styles.moreButton}
+  onClick={() => handleOpenPopover(dayKey, buttonRef)}
+  aria-label={`Show all ${totalEventsOnDay} events for ${formattedDate}`}
+  aria-expanded={openPopoverDay === dayKey}
+  aria-haspopup="dialog"
+  ref={buttonRef}
+>
+  +2 more
+</button>
+```
+
+**Button visual design** (same appearance as current `"+X more"` span):
+- Background: transparent
+- Border: none
+- Padding: 0
+- Cursor: pointer
+- Font: IBM Plex Mono, 11px, font-weight: 500, `--text-muted`
+- Hover: color transitions to `--accent` (`#5D737E`)
+- Transition: `color 150ms ease`
+- `outline: none` default; on `:focus-visible`: `outline: 2px solid var(--accent)`, `outline-offset: 2px`
+
+---
+
+##### CAL-2.3 State Management
+
+Add to `TripCalendar.jsx`:
+
+```javascript
+const [openPopoverDay, setOpenPopoverDay] = useState(null); // null | "YYYY-MM-DD"
+const popoverRef = useRef(null);        // ref to the popover container
+const triggerButtonRef = useRef(null);  // ref to the "+X more" button that was clicked
+```
+
+**Open popover:**
+```javascript
+function handleOpenPopover(dayKey, buttonElement) {
+  triggerButtonRef.current = buttonElement;
+  setOpenPopoverDay(dayKey);
+  // After state update + render, focus the popover (via useEffect)
+}
+```
+
+**Close popover:**
+```javascript
+function handleClosePopover() {
+  setOpenPopoverDay(null);
+  // Return focus to the trigger button
+  if (triggerButtonRef.current) {
+    triggerButtonRef.current.focus();
+  }
+}
+```
+
+**Keyboard Escape handler** (useEffect):
+```javascript
+useEffect(() => {
+  if (!openPopoverDay) return;
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      handleClosePopover();
+    }
+  };
+  document.addEventListener('keydown', handleKeyDown);
+  return () => document.removeEventListener('keydown', handleKeyDown);
+}, [openPopoverDay]);
+```
+
+**Click outside handler** (useEffect):
+```javascript
+useEffect(() => {
+  if (!openPopoverDay) return;
+  const handleMouseDown = (e) => {
+    if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+      handleClosePopover();
+    }
+  };
+  document.addEventListener('mousedown', handleMouseDown);
+  return () => document.removeEventListener('mousedown', handleMouseDown);
+}, [openPopoverDay]);
+```
+
+---
+
+##### CAL-2.4 Popover Container
+
+Rendered as a sibling to the day cells, or as a portal appended to `document.body`. Recommendation: render inline within the calendar grid as an absolutely-positioned element anchored to the day cell for simplicity. A React portal is also acceptable if the inline approach causes z-index issues.
+
+**Popover container element:**
+```html
+<div
+  role="dialog"
+  aria-modal="true"
+  aria-label={`Events for ${formattedDate}`}
+  tabIndex={-1}
+  ref={popoverRef}
+  className={styles.dayPopover}
+>
+  ...
+</div>
+```
+
+**Popover CSS (`.dayPopover`):**
+- Position: `absolute`
+- Z-index: 100 (above all calendar content, below navbar and modals)
+- Width: 240px
+- Background: `var(--surface)` (`#30292F`)
+- Border: `1px solid var(--border-subtle)`
+- Border-radius: 4px
+- Box-shadow: `0 8px 24px rgba(0, 0, 0, 0.4)` (the only element in the design that uses a box shadow — justified for overlay behavior; the shadow communicates elevation)
+- Padding: 16px
+- Max-height: 320px
+- Overflow-y: auto
+- `scrollbar-width: thin` (Firefox), `scrollbar-color: var(--accent) transparent`
+
+**Smart positioning:**
+- Default: renders **below** the day cell (`top: 100%`, `left: 0`)
+- If the day is in the **bottom 2 rows** of the calendar grid: render **above** (`bottom: 100%`, `top: auto`) to prevent viewport clipping
+- If the day is in the **rightmost 2 columns** (typically Fri/Sat positions): align to right edge of cell (`left: auto`, `right: 0`)
+- The Frontend Engineer may implement a simpler fixed positioning if the smart-positioning logic is complex — document the choice.
+
+**Focus on open:** After `setOpenPopoverDay` causes the popover to render, a `useEffect` with `openPopoverDay` dependency focuses `popoverRef.current`:
+```javascript
+useEffect(() => {
+  if (openPopoverDay && popoverRef.current) {
+    popoverRef.current.focus();
+  }
+}, [openPopoverDay]);
+```
+
+---
+
+##### CAL-2.5 Popover Content
+
+**Popover Header:**
+- Flex row, `justify-content: space-between`, `align-items: center`, margin-bottom: 8px
+- **Date label:** `"Wednesday, August 7"` — 12px, font-weight: 600, `--text-primary`, letter-spacing: 0.04em. Use `Intl.DateTimeFormat` with `{ weekday: 'long', month: 'long', day: 'numeric' }` for formatting.
+- **Close button:** `<button>` with `×` character or small X SVG. Font-size: 16px, `--text-muted`, hover: `--text-primary`. Background: transparent, border: none, cursor: pointer, padding: 2px 4px. `aria-label="Close events popover"`. Transition: `color 150ms ease`.
+
+**Divider:** `<hr>` styled as `border: none; border-top: 1px solid var(--border-subtle); margin: 8px 0 12px;`
+
+**Event List:**
+Shows **all events for that day** — including those already visible in the calendar cell (the popover is a full list, not just the overflow). Sorted in the same order as the calendar's event priority (flights first, then stays, then activities, then land travel — within each type sorted by time).
+
+Each event item:
+- Layout: flex, align-items: flex-start, gap: 8px, padding: 6px 0
+- Border-bottom: `1px solid rgba(93,115,126,0.08)` (last item: no border-bottom)
+
+- **Color dot** (flex-shrink: 0):
+  - Size: 8px × 8px circle (`border-radius: 50%`)
+  - Background: event type color (`--color-flight`, `--color-stay`, `--color-activity`, or `--color-land-travel`)
+  - Margin-top: 4px (align with first line of text block)
+  - `aria-hidden="true"` (decorative)
+
+- **Text block** (flex: 1, display: flex, flex-direction: column, gap: 2px):
+  - **Event name** (13px, font-weight: 400, `--text-primary`, line-height: 1.4): Full event name without truncation in the popover.
+    - Flight: `"[Airline] [FlightNumber]"` (e.g., `"Delta DL1234"`)
+    - Stay: accommodation name (e.g., `"Hyatt Regency SF"`)
+    - Activity: activity name (e.g., `"Fisherman's Wharf"`)
+    - Land Travel: `"[mode label] to [to_location]"` (e.g., `"Train to Los Angeles"`)
+  - **Time sub-label** (11px, `--text-muted`, margin-top: 2px): Format varies by type:
+    | Event Type | Time Format in Popover |
+    |------------|----------------------|
+    | Flight | `"dep. 9a"` or `"dep. 9a → arr. 11a"` if arrival is same day |
+    | Stay — check-in day | `"check-in 4p"` |
+    | Stay — multi-day span (not check-in) | `"stay"` (no time) |
+    | Stay — check-out day | `"check-out 11a"` |
+    | Activity | `"9a – 2p"` (if both start and end time) or `"9a"` (start only) |
+    | Land Travel | `"dep. 10a"` or no time if `departure_time` is null |
+    | Any — no time available | Omit time sub-label entirely |
+
+---
+
+##### CAL-2.6 Responsive Behavior — Popover
+
+| Breakpoint | Popover Behavior |
+|------------|-----------------|
+| Desktop (≥768px) | Inline absolute positioning as described above (anchored to day cell, smart repositioning for edge cases) |
+| Mobile (<768px) | Full-width bottom sheet. Position: fixed, bottom: 0, left: 0, right: 0. Background: `var(--surface)`. Border-radius: 4px 4px 0 0. Max-height: 70vh. Overflow-y: auto. Semi-transparent backdrop overlay: `rgba(0,0,0,0.5)` fixed behind the sheet. Slide-up animation: `transform: translateY(0)` with `transition: transform 250ms ease`. Close on backdrop click. |
+
+---
+
+##### CAL-2.7 Accessibility Summary — Calendar Enhancements
+
+| Requirement | Implementation |
+|-------------|---------------|
+| `"+X more"` keyboard accessible | Changed from `<span>` to `<button>` — Tab-reachable, Enter/Space activates |
+| Screen reader announcement | `aria-label` on button with total count + date |
+| Popover state | `aria-expanded` on button reflects open/closed state |
+| Popover semantics | `role="dialog"`, `aria-modal="true"`, `aria-label` with formatted date |
+| Close on Escape | `useEffect` keydown listener on document while popover open |
+| Focus management | Focus moves to popover on open; returns to trigger button on close |
+| Click outside closes | `mousedown` listener on document checks if click was outside popover |
+| Color dots | `aria-hidden="true"` (decorative, text already conveys event type) |
+| Time display | Compact format accessible as plain text in chip (no aria needed) |
+
+---
+
+*Sprint 6 specs above are marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-27.*
