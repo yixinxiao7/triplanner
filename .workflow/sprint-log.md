@@ -725,4 +725,147 @@ Summary of each completed development cycle. Written by the Manager Agent at the
 
 ---
 
+### Sprint #6 — 2026-02-27 to 2026-02-27
+
+**Goal:** Deliver the land travel sub-resource (rental cars, buses, trains, rideshares, ferries) as a full new section on the trip details page with a dedicated edit experience. Enhance the calendar with event time display and a clickable "+X more" day overflow popover. Fix two project-owner-reported activity edit page bugs (AM/PM cutoff, clock icon color). Close the spec compliance gap on the FilterToolbar refetch flicker. Ship the ILIKE wildcard search escaping fix.
+
+**Goal Met:** ✅ SUBSTANTIALLY MET — All 12 implementation, QA, deploy, and monitor tasks (T-081–T-093) completed and verified. Monitor Agent confirmed 16/16 staging health checks pass and Sprint 6 features are operational. One task carried to Sprint 7: T-094 (User Agent: Feature walkthrough + feedback). Sprint closeout was triggered before User Agent testing completed, so the feedback loop is incomplete but the implementation is fully deployed and verified.
+
+---
+
+**Tasks Completed (13/14):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-081 | Design spec: Land travel sub-resource (Spec 12 — edit page + trip details display + calendar integration) | ✅ Done |
+| T-082 | Design spec addendum: Calendar enhancements (event times + "+X more" popover spec) | ✅ Done |
+| T-083 | Frontend: Fix activity edit page bugs (AM/PM cutoff resolved; clock icon color set to white) | ✅ Done |
+| T-084 | Frontend: Fix FilterToolbar refetch flicker (remove `!isLoading` from `showToolbar` condition — Spec 11.7.4 compliance) | ✅ Done |
+| T-085 | Backend: ILIKE wildcard escaping — escape `%` and `_` with `!` escape character in search (required P1 fix + re-review) | ✅ Done |
+| T-086 | Backend: Land travel API + migration 009 (`land_travels` table, full CRUD, ownership checks, same-day time validation) | ✅ Done |
+| T-087 | Frontend: Land travel edit page (`/trips/:id/land-travel/edit`, multi-row form, batch save/delete) | ✅ Done |
+| T-088 | Frontend: Land travel section on trip details page + calendar integration (4th event type, `--color-land-travel: #7B6B8E`) | ✅ Done |
+| T-089 | Frontend: Calendar enhancements — event times on chips (compact 12h: "9a", "2:30p") + clickable "+X more" popover with `role="dialog"`, Escape-to-close | ✅ Done |
+| T-090 | QA: Security checklist + code review audit (18/19 items PASS, 1 deferred — in-memory rate limiting known risk) | ✅ Done |
+| T-091 | QA: Integration testing (247/247 backend + 332/332 frontend tests pass; all Sprint 5 regression checks pass) | ✅ Done |
+| T-092 | Deploy: Staging re-deployment (migration 009 applied, Sprint 6 code running, 16 smoke tests pass) | ✅ Done |
+| T-093 | Monitor: Staging health check (16/16 endpoint checks PASS, T-085 ILIKE fix + T-086 land travel CRUD verified on real PostgreSQL) | ✅ Done |
+| T-094 | User Agent: Feature walkthrough + feedback | ⏭ Carried to Sprint 7 |
+
+**Tasks Carried Over (1/14):**
+- **T-094** (User Agent: Feature walkthrough + structured feedback) — Not completed. Sprint closeout triggered before User Agent testing cycle ran. T-093 Monitor Agent confirmed staging is ready for User Agent testing. Carry to Sprint 7 as the **first action**: User Agent tests all Sprint 6 features and submits feedback before Sprint 7 planning finalizes scope.
+
+---
+
+**Key Decisions (ADRs / Approvals This Sprint):**
+
+- **Schema Change Pre-Approval (migration 009):** Manager pre-approved the `land_travels` table during sprint planning, specifying all 14 columns with types, nullability, and enum values (`RENTAL_CAR|BUS|TRAIN|RIDESHARE|FERRY|OTHER`). This enabled T-086 to start immediately after T-081 design spec was approved — no mid-sprint approval cycle needed.
+
+- **ILIKE Escape Character = `!` (not `\`):** Initial T-085 implementation used `\` as the ESCAPE character. QA caught a PostgreSQL `ERROR: invalid escape string` on staging — `standard_conforming_strings=on` (default since PG 9.1) treats `'\\'` as the 2-character literal `\\`, violating the single-character ESCAPE requirement. Fixed to `!` — a single safe literal character never present in normal trip names. Escaping order: `!→!!`, `%→!%`, `_→!_`. **Key learning:** ESCAPE clause behavior must be verified against real PostgreSQL, not just Knex mocks in unit tests.
+
+- **Same-Day Arrival Time Validation (Land Travel):** Manager code review of T-086 required adding: when `arrival_date == departure_date` and both times provided, `arrival_time > departure_time`. This was specified in the API contract but missing from the initial implementation. Fixed before QA.
+
+- **Land Travel Calendar Color:** Design Agent chose `--color-land-travel: #7B6B8E` (muted purple) to distinguish land travel from flights (blue `#5D737E`), stays (teal `#3D8F82`), and activities (amber `#C47A2E`) on the calendar event chips.
+
+- **Calendar "+X more" Accessibility Pattern:** Spec 12 addendum specified a full accessibility model for the overflow popover: `<button aria-haspopup="dialog">` trigger, `role="dialog" aria-modal="true"` popover, Escape-to-close via `keydown` listener, focus return to trigger button, fixed-bottom-sheet layout on mobile. Consistent with WAI-ARIA dialog pattern.
+
+- **Deployment Mode (pm2 gap):** Backend deployed as direct `node src/index.js` process (PID 16962) rather than under pm2 — pm2 process table was empty after system restart. Monitor confirmed all 16 health checks pass regardless. pm2 re-registration flagged for Sprint 7. Backend serves HTTP on port 3000 (not HTTPS) this sprint — CORS aligned to Vite dev server port 5173.
+
+---
+
+**Feedback Summary (Sprint 6):**
+
+*No Sprint 6 User Agent feedback — T-094 not completed before sprint closeout.*
+
+*All pre-sprint project owner feedback (FB-073–FB-077) was triaged to "Tasked" at Sprint 6 planning. All five items were implemented and verified this sprint.*
+
+| FB Entry | Category | Severity | Disposition | Description |
+|----------|----------|----------|-------------|-------------|
+| FB-073 | Feature Request | — | Implemented ✅ (T-081, T-086, T-087, T-088) | Land travel sub-resource — full stack delivery |
+| FB-074 | Feature Request | Minor | Implemented ✅ (T-089) | Clickable "+X more" calendar overflow popover |
+| FB-075 | Feature Request | Minor | Implemented ✅ (T-089) | Event times on calendar chips |
+| FB-076 | Bug | Minor | Implemented ✅ (T-083) | AM/PM cutoff on activity edit page |
+| FB-077 | Bug | Minor | Implemented ✅ (T-083) | Clock icon color on activity edit page |
+
+---
+
+**What Went Well:**
+- **Land travel delivered end-to-end in one sprint:** The largest feature addition since Sprint 1 — full backend (migration 009, full CRUD API with ownership checks, same-day time validation, 42 tests), full frontend (multi-row edit page, trip details section, calendar integration with distinct `--color-land-travel` color) — delivered, QA verified on code, and Monitor confirmed operational on staging against real PostgreSQL.
+- **Calendar enhancements shipped cleanly:** All four resource types (flights, stays, activities, land travel) now display times in compact 12h format on event chips. "+X more" is now a keyboard-navigable `<button>` opening an accessible `role="dialog"` popover — a significant UX improvement for days with many events.
+- **Three quick bug fixes delivered without rework (T-083, T-084, T-085 on second pass):** Activity edit AM/PM cutoff, clock icon color, and FilterToolbar spec violation all resolved. FilterToolbar fix was literally a one-line change (removing `!isLoading` from `showToolbar`) that closed a long-standing Spec 11.7.4 compliance gap.
+- **Code review caught real issues:** T-085 (ESCAPE clause `\` vs `!` bug) and T-086 (missing same-day time validation) both required fix cycles — and both were substantive improvements that prevented production bugs. Manager code review is functioning as intended.
+- **Test coverage grew substantially:** Backend grew from 196 → 247 tests (+51, +26%), frontend from 296 → 332 tests (+36, +12%). Total test count: 583 (247 backend + 332 frontend + 4 E2E) — up from 500 in Sprint 5.
+- **Monitor confirmed staging integrity:** 16/16 endpoint checks passed. T-085 ILIKE fix (`search=%` returns `{data:[]}`, not 500, not all trips) and T-086 land travel full CRUD (POST 201, GET 200 sorted, PATCH 200, DELETE 204, cross-user 403, invalid mode 400) both verified against real PostgreSQL on staging.
+- **Fifth consecutive sprint with zero Major/Critical bugs:** QA security audit: 18/19 items PASS, 1 deferred (in-memory rate limiting — known accepted risk since Sprint 2). Zero production npm vulnerabilities. Zero `dangerouslySetInnerHTML`. Zero SQL injection vectors.
+
+**What Could Improve:**
+- **ESCAPE clause not verified against real PostgreSQL before submission:** T-085's initial `\` escape character approach failed in real PostgreSQL even though unit tests passed (unit tests mock the Knex query layer, which does not exercise PostgreSQL's `standard_conforming_strings` behavior). Future tasks involving DB-level escaping, string functions, or non-standard SQL clauses should include an explicit note to verify against real PostgreSQL, not just mock-based unit tests.
+- **T-086 contract-to-code gap:** The same-day arrival_time > departure_time constraint was clearly specified in the API contract published before implementation, but was not included in the initial code submission. This required a Manager code review fix cycle. Backend Engineers should self-check implementation against all contract edge cases before moving a task to In Review.
+- **T-087 test assertion quality:** LandTravelEditPage.test.jsx had two failing assertions due to `getByDisplayValue` matching option `value` attributes (e.g., `"TRAIN"`) instead of option text content (e.g., `"Train"`), and ambiguous selectors returning multiple elements. These are avoidable with a pre-submit test run against real DOM output.
+- **pm2 gap in Sprint 6 deployment:** Backend ended up running as a direct `node` process rather than under pm2 (pm2 process table was empty after system restart). Monitor confirmed health, but pm2 provides crash recovery and timestamped log management. Sprint 7 should immediately re-register the backend under pm2.
+- **T-094 not completed:** Sprint closeout ran before User Agent testing finished. This is the second consecutive sprint where the User Agent is the trailing task. Sprint 7 must start with T-094 completion — no new implementation should be scoped until User Agent feedback is submitted and triaged.
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 7+):**
+
+*From Sprint 1 (still outstanding):*
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (no production impact, B-021)
+
+*From Sprint 2 (still outstanding):*
+- ⚠️ Rate limiting uses in-memory store — will not persist across restarts or scale across processes (B-020)
+
+*From Sprint 3 (still outstanding):*
+- ⚠️ Auth rate limit is IP-based only — aggressive on shared-IP environments (B-024)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+
+*From Sprint 5 (still outstanding):*
+- ⚠️ Sort logic duplicated across status-filter vs non-status-filter code paths in tripModel.js (minor DRY violation)
+
+*New from Sprint 6:*
+- ⚠️ Backend running as direct `node` process (not pm2) after Sprint 6 deployment — crash would require manual restart; no log rotation (must re-register under pm2 in Sprint 7)
+- ⚠️ HTTPS disabled for Sprint 6 staging run — backend serves HTTP on port 3000 (CORS configured for port 5173 dev server, not 4173 preview) — needs to be re-enabled for full HTTPS staging before User Agent T-094 testing
+- ⚠️ T-094 (User Agent testing) not completed — Sprint 7 has incomplete feedback loop from Sprint 6
+
+*Resolved this sprint (from prior debt):*
+- ✅ ILIKE wildcard characters (`%`, `_`) not escaped in search parameter → resolved by T-085 (Sprint 5 FB-062 / B-033)
+- ✅ FilterToolbar refetch flicker (toolbar unmounts during API refetch, violating Spec 11.7.4) → resolved by T-084 (Sprint 5 FB-067 / B-034)
+- ✅ Activity edit page AM/PM cutoff in time columns → resolved by T-083 (Project owner FB-076)
+- ✅ Activity edit page clock icon black on dark background → resolved by T-083 (Project owner FB-077)
+
+---
+
+**Next Sprint Focus (Sprint 7 Recommendations):**
+
+*Priority order: complete Sprint 6 unfinished business → triage T-094 feedback → feature enhancements → production deployment.*
+
+**P0 — Sprint 7 Must-Do First (Complete Sprint 6 Closeout):**
+1. **Run T-094 IMMEDIATELY** — User Agent tests all Sprint 6 features (land travel CRUD via UI, calendar enhancements, bug fix verification, Sprint 5 regression) and submits feedback to feedback-log.md. **No new implementation tasks should be scoped until T-094 feedback is triaged.**
+2. **Re-register backend under pm2** — Backend is running as a direct node process after Sprint 6. Register under pm2 (`pm2 start src/index.js --name triplanner-backend`) for crash recovery and log management.
+3. **Re-enable HTTPS** — Restore SSL cert paths in `backend/.env` and rebuild frontend with HTTPS VITE_API_URL. Required for full staging parity and before T-094 testing if running against staging.
+
+**P0 — Production Deployment (Blocked on Human Decision — Sprint 3+):**
+4. **B-022** — Production deployment to hosting provider: Blocked since Sprint 3 on the project owner selecting a hosting provider (Railway, Fly.io, Render, AWS), configuring DNS, approving budget, and provisioning production PostgreSQL. **All deployment preparation is complete: Docker Compose, CI/CD pipeline, deployment runbook, nginx config, Dockerfiles, E2E tests.** The application is fully production-ready. **Escalated to project owner since Sprint 3 — now entering Sprint 7 with no decision.**
+5. Production TLS: Replace self-signed certificates with proper certificates (Let's Encrypt or provider-managed).
+6. Docker runtime validation: Build and test all Docker images + Docker Compose stack on a real Docker environment.
+
+**P1 — Feature Enhancements (from project brief backlog, after T-094 feedback triaged):**
+7. **B-030** — Trip notes/description field: Freeform notes on each trip (schema migration + API + frontend UI). Useful enhancement deferred from Sprint 6.
+8. **B-032** — Trip export/print: Printable itinerary view of the trip details page.
+9. **B-031** — Activity location links: Detect URLs in activity locations and make them clickable.
+10. Expand E2E coverage: Add Playwright tests for land travel edit flows, calendar interactions, and mobile viewport.
+
+**P2 — Tech Debt (if capacity allows):**
+11. **B-020** — Rate limiting persistence: Move from in-memory store to Redis-backed store.
+12. **B-024** — Per-account rate limiting alongside IP-based.
+13. **B-021** — Resolve dev dependency esbuild vulnerability.
+14. Refactor sort logic duplication in `tripModel.js`.
+
+**Out of Scope (per project brief):**
+- MFA login
+- Home page summary calendar
+- Auto-generated itinerary suggestions
+
+---
+
 *Add new sprint summaries above this line, newest first.*

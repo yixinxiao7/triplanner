@@ -516,3 +516,25 @@ Sprint 5 added 68 new tests (28 backend Sprint 5 tests + 36 frontend search/filt
 **Requested by:** Project owner (manual testing feedback)
 
 **Sprint 6 Triage (2026-02-27):** Tasked. Bundled with FB-076 into T-083 (frontend bug fixes: activity edit page time column layout + icon color).
+
+---
+
+## Sprint 6 Feedback
+
+*Sprint 6 ran 2026-02-27. User Agent testing (T-094) was not completed before sprint closeout — the automated orchestrator triggered closeout while T-094 was still in Backlog status. No Sprint 6 User Agent feedback entries exist. T-094 is carried to Sprint 7 and must run before Sprint 7 planning finalizes scope.*
+
+*Pre-sprint project owner feedback (FB-073–FB-077) was submitted post-Sprint 5 and triaged to "Tasked" at Sprint 6 planning. All five items were implemented this sprint (T-081/T-086/T-087/T-088 for land travel, T-089 for calendar enhancements, T-083 for bug fixes). No items remain New.*
+
+**Sprint 6 Feedback Triage Summary (Manager Agent — 2026-02-27):**
+
+| FB Entry | Category | Severity | Sprint 6 Disposition | Notes |
+|----------|----------|----------|---------------------|-------|
+| FB-073 | Feature Request | — | Tasked (already) → Implemented ✅ | Land travel sub-resource: T-081 + T-086 + T-087 + T-088 all Done |
+| FB-074 | Feature Request | Minor | Tasked (already) → Implemented ✅ | Clickable "+X more" calendar overflow: T-089 Done |
+| FB-075 | Feature Request | Minor | Tasked (already) → Implemented ✅ | Event times on calendar: T-089 Done |
+| FB-076 | Bug | Minor | Tasked (already) → Implemented ✅ | AM/PM cutoff on activity edit page: T-083 Done |
+| FB-077 | Bug | Minor | Tasked (already) → Implemented ✅ | Clock icon color on activity edit page: T-083 Done |
+
+**No new Sprint 6 feedback entries. T-094 (User Agent) must complete at the start of Sprint 7.**
+
+---

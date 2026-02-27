@@ -17,6 +17,47 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 6 — Manager Agent → All Agents: Sprint #6 Closed — Begin Sprint #7 Prep (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | Manager Agent |
+| To Agent | All Agents (User Agent priority) |
+| Status | Pending |
+| Related Task | T-094 (Sprint 7 first action), Sprint #7 Planning |
+| Handoff Summary | Sprint #6 is officially closed. 13/14 tasks Done. Full sprint summary in `.workflow/sprint-log.md`. **Critical for Sprint 7: User Agent must complete T-094 (feature walkthrough) BEFORE Sprint 7 planning finalizes any new implementation scope.** |
+
+**Sprint #6 Outcome:**
+- T-081 through T-091: All Done ✅
+- T-092 (Deploy): Done ✅ — migration 009 applied, all Sprint 6 code running, backend on port 3000 (HTTP, direct node process)
+- T-093 (Monitor): Done ✅ — 16/16 health checks PASS, T-085 ILIKE fix + T-086 land travel CRUD verified on real PostgreSQL
+- T-094 (User Agent): **Backlog → Carried to Sprint 7** — must run as first Sprint 7 action
+
+**Test Counts at Sprint 6 Close:**
+- Backend: 247 tests (up from 196 in Sprint 5 — +51 tests, +26%)
+- Frontend: 332 tests (up from 296 in Sprint 5 — +36 tests, +12%)
+- E2E (Playwright): 4 tests (unchanged)
+- Total: 583 tests
+
+**What Sprint 7 Must Do First (before new features):**
+1. **User Agent runs T-094** — land travel CRUD via UI, calendar enhancements (times + "+X more" popover), toolbar no-flicker verification, activity AM/PM + clock icon, Sprint 5 regression, Playwright E2E. Submit feedback to feedback-log.md.
+2. **Manager triages T-094 feedback** — update Sprint 7 task scope accordingly.
+3. **Re-enable HTTPS** — backend/.env SSL certs commented out; re-enable before T-094 staging tests for full parity with Sprint 5 staging environment.
+4. **Re-register backend under pm2** — backend running as direct `node src/index.js` (PID 16962), not under pm2 after system restart. Register for crash recovery.
+
+**Key Sprint 6 Technical Context (for Sprint 7 agents):**
+- Migration 009 (`land_travels` table) is applied on staging. Schema: `id UUID PK`, `trip_id UUID FK CASCADE`, `mode CHECK(RENTAL_CAR|BUS|TRAIN|RIDESHARE|FERRY|OTHER)`, `from_location/to_location TEXT NOT NULL`, `departure_date DATE NOT NULL`, optional time/arrival fields, `confirmation_number`, `notes`.
+- Land travel API: `GET|POST /api/v1/trips/:tripId/land-travel`, `GET|PATCH|DELETE /api/v1/trips/:tripId/land-travel/:id`. Auth required, trip ownership enforced. Same-day arrival_time > departure_time validation.
+- ILIKE search now uses `!` as ESCAPE character: `%→!%`, `_→!_`, `!→!!`. Both `name` and `array_to_string(destinations, ',')` ILIKE targets updated.
+- Calendar now shows event times in compact 12h format ("9a", "2:30p") and has a clickable "+X more" `role="dialog"` popover.
+- FilterToolbar `showToolbar` condition: `initialLoadDone && (hasTripsBefore || trips.length > 0)` — `!isLoading` removed, toolbar stays visible during refetch.
+- Activity edit page: time column width increased (AM/PM no longer truncated), clock icon color set to `color-scheme: dark`.
+
+**Production deployment (B-022) still blocked on project owner hosting provider decision. All infra is ready (Docker, CI/CD, nginx, certs). Escalated since Sprint 3.**
+
+---
+
 ### Sprint 6 — QA Engineer → Deploy Engineer: T-091 Integration Testing PASSED — Proceed with T-092 (2026-02-27)
 
 | Field | Value |
