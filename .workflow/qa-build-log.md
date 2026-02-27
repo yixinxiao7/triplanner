@@ -898,3 +898,242 @@ Update the T-085 tests (sprint6.test.js) to verify the `!` escaping pattern inst
 - No security vulnerabilities in production dependencies ✅
 - Config consistency verified ✅
 
+---
+
+## Sprint 6 — T-091 Re-Verification: Integration Testing PASS (2026-02-27)
+
+**QA Engineer:** Sprint 6, Phase 5 — T-091 Integration Testing (Re-run after T-085 + T-087 fixes)
+**Date:** 2026-02-27
+**Triggered By:** Manager re-approval of T-085 (ESCAPE char fix) + Frontend Engineer T-087 test fix
+
+---
+
+### Unit Test Results (Re-Run)
+
+| Test Type | File | Tests | Status |
+|-----------|------|-------|--------|
+| Unit Test | backend: auth.test.js | 14/14 | ✅ Pass |
+| Unit Test | backend: trips.test.js | 16/16 | ✅ Pass |
+| Unit Test | backend: flights.test.js | 10/10 | ✅ Pass |
+| Unit Test | backend: stays.test.js | 8/8 | ✅ Pass |
+| Unit Test | backend: activities.test.js | 12/12 | ✅ Pass |
+| Unit Test | backend: tripStatus.test.js | 19/19 | ✅ Pass |
+| Unit Test | backend: sprint2.test.js | 37/37 | ✅ Pass |
+| Unit Test | backend: sprint3.test.js | 33/33 | ✅ Pass |
+| Unit Test | backend: sprint4.test.js | 19/19 | ✅ Pass |
+| Unit Test | backend: sprint5.test.js | 28/28 | ✅ Pass |
+| Unit Test | backend: sprint6.test.js | 51/51 | ✅ Pass |
+| **BACKEND TOTAL** | **11 files** | **247/247** | **✅ ALL PASS** |
+
+| Test Type | File | Tests | Status |
+|-----------|------|-------|--------|
+| Unit Test | frontend: LandTravelEditPage.test.jsx | 16/16 | ✅ Pass |
+| Unit Test | frontend: TripCalendar.test.jsx | 26/26 | ✅ Pass |
+| Unit Test | frontend: TripDetailsPage.test.jsx | 47/47 | ✅ Pass |
+| Unit Test | frontend: FilterToolbar.test.jsx | 17/17 | ✅ Pass |
+| Unit Test | frontend: HomePageSearch.test.jsx | 11/11 | ✅ Pass |
+| Unit Test | frontend: All other files | 215/215 | ✅ Pass |
+| **FRONTEND TOTAL** | **22 files** | **332/332** | **✅ ALL PASS** |
+
+**Sprint 6 Fixes Confirmed:**
+- T-085 fix: `sprint6.test.js` lines 163–275 (7 ILIKE escaping tests) — ALL PASS ✅
+- T-086 feature: `sprint6.test.js` lines 279–921 (42 land travel tests — confirmed 51 total for sprint6 file including T-085) — ALL PASS ✅
+- T-087 fix: `LandTravelEditPage.test.jsx` 16 tests — ALL PASS ✅ (test assertion bug fixed)
+
+---
+
+### Test Type: Unit Test — Sprint 6 Coverage Verification
+
+**T-085 (ILIKE Escaping Fix):**
+- [x] Happy path: normal search term `Japan` passes to model ✅
+- [x] Happy path: search `%` (URL-encoded as `%25`) returns 200, empty array ✅
+- [x] Happy path: search `_` returns 200, empty array ✅
+- [x] Happy path: search `100%` returns 200 ✅
+- [x] Model unit: escaping function — `!→!!`, `%→!%`, `_→!_` (correct order) ✅
+- [x] Error path: missing auth → 401 still enforced ✅
+
+**T-086 (Land Travel CRUD):**
+- [x] GET list: happy path empty array, sorted list with all fields ✅
+- [x] GET list: error paths — 401, 400 (bad UUID), 404, 403 ✅
+- [x] POST create: happy path full payload → 201 with full resource ✅
+- [x] POST create: happy path minimal payload (only required fields) → 201 ✅
+- [x] POST create: invalid mode → 400 VALIDATION_ERROR ✅
+- [x] POST create: missing required fields → 400 VALIDATION_ERROR ✅
+- [x] POST create: arrival_date < departure_date → 400 ✅
+- [x] POST create: arrival_time without arrival_date → 400 ✅
+- [x] POST create: same-day arrival_time <= departure_time → 400 ✅ (Manager-required fix)
+- [x] POST create: same-day with valid times (arrival > departure) → 201 ✅
+- [x] PATCH update: happy path partial update ✅
+- [x] PATCH update: no updatable fields → 400 ✅
+- [x] PATCH update: same-day time validation → 400 ✅ (Manager-required fix)
+- [x] DELETE: happy path → 204 ✅
+- [x] DELETE: 404 for unknown entry ✅
+- [x] Ownership: cross-user access → 403 on all endpoints ✅
+- [x] UUID validation: non-UUID tripId/ltId → 400 on all endpoints ✅
+
+---
+
+### Test Type: Integration Test — Sprint 6 Contract Verification
+
+**T-085 — ILIKE Escaping — API Contract Adherence:**
+
+| Check | Expected | Verified | Status |
+|-------|----------|----------|--------|
+| Escape character | `!` (single char, PG 9.1+ safe) | `! → !!`, `% → !%`, `_ → !_` in tripModel.js | ✅ Pass |
+| Escaping order | `!` first to prevent double-escape | Correct order in replace() chain | ✅ Pass |
+| ESCAPE clause | `ILIKE ? ESCAPE '!'` | Both name and array_to_string ILIKE calls updated | ✅ Pass |
+| Auth preserved | 401 without token | Confirmed via unit test | ✅ Pass |
+| Normal search works | Japan → passes to model correctly | Confirmed via unit test | ✅ Pass |
+| Live PostgreSQL check | `search=%` → 0 results (not 500) | **DEFERRED** — requires T-092 staging deployment | ⏳ Pending |
+
+**Note on live PostgreSQL check:** Unit tests confirm correct escaping logic. The critical live staging check (`GET /api/v1/trips?search=%` → `{data:[]}` not 500) is deferred to Monitor Agent (T-093) after T-092 staging deployment. Previous QA confirmed the original `\`-based ESCAPE failed on PostgreSQL; the fix (`!` escape char) is logically correct and safe per PostgreSQL 9.1+ `standard_conforming_strings=on` semantics.
+
+**T-086 — Land Travel API — Contract vs Implementation:**
+
+| Endpoint | Expected Status | Response Shape | Auth | Ownership | Status |
+|----------|----------------|----------------|------|-----------|--------|
+| GET /trips/:id/land-travel | 200 `{data: []}` | Array of land travel objects, sorted by departure_date ASC | 401 without token | 403 for other user | ✅ Pass |
+| POST /trips/:id/land-travel | 201 `{data: {...}}` | Full land travel resource with all fields | 401 without token | 403 for other user | ✅ Pass |
+| GET /trips/:id/land-travel/:ltId | 200 `{data: {...}}` | Single resource, 404 if not found | 401 | 403 | ✅ Pass |
+| PATCH /trips/:id/land-travel/:ltId | 200 `{data: {...}}` | Updated resource | 401 | 403 | ✅ Pass |
+| DELETE /trips/:id/land-travel/:ltId | 204 no body | — | 401 | 403 | ✅ Pass |
+
+**Field Contract Compliance:**
+- `mode`: enum `RENTAL_CAR|BUS|TRAIN|RIDESHARE|FERRY|OTHER` — enforced at app + DB layer ✅
+- `departure_date`: YYYY-MM-DD (TO_CHAR in model) ✅
+- `departure_time`: HH:MM:SS (TO_CHAR in model, api-contracts.md updated) ✅
+- `arrival_date`: YYYY-MM-DD or null ✅
+- `arrival_time`: HH:MM:SS or null ✅
+- Same-day validation (arrival_time > departure_time when same date) ✅
+- `provider`, `confirmation_number`, `notes`: optional nullable strings ✅
+
+**Frontend → Backend API Contract Adherence:**
+- `api.land_travel.list(tripId)` → `GET /trips/${tripId}/land-travel` ✅
+- `api.land_travel.create(tripId, body)` → `POST /trips/${tripId}/land-travel` ✅
+- `api.land_travel.get(tripId, id)` → `GET /trips/${tripId}/land-travel/${id}` ✅
+- `api.land_travel.update(tripId, id, body)` → `PATCH /trips/${tripId}/land-travel/${id}` ✅
+- `api.land_travel.delete(tripId, id)` → `DELETE /trips/${tripId}/land-travel/${id}` ✅
+
+**T-083 — Activity Edit Page Bug Fixes:**
+- `min-width` on time columns in ActivitiesEditPage.module.css: 110px (start/end_time) → full HH:MM AM/PM visible ✅
+- Clock icon color: `color-scheme: dark` applied — browser-native time picker icons are white on dark backgrounds ✅
+- Test coverage: included in 332/332 passing frontend tests ✅
+
+**T-084 — FilterToolbar Refetch Flicker Fix:**
+- `showToolbar` condition: `initialLoadDone && (hasTripsBefore || trips.length > 0)` — `!isLoading` removed ✅
+- Code comment in HomePage.jsx confirms intentional removal: "NOTE: !isLoading intentionally removed" ✅
+- Spec 11.7.4 compliance restored: toolbar stays mounted and interactive during API refetch ✅
+- Test coverage: included in 332/332 passing frontend tests ✅
+
+**T-087 — LandTravelEditPage:**
+- 16 tests all pass ✅
+- All form states: loading, empty, with entries, add row, delete row ✅
+- Save flow: POST (new), PATCH (modified), DELETE (removed) tested ✅
+- All 6 mode options in dropdown verified ✅
+- Required/optional field labels verified ✅
+- Cancel navigates without API calls ✅
+- Validation error handling verified ✅
+
+**T-088 — Land Travel Section on TripDetailsPage:**
+- Section header "land travel" renders ✅
+- LandTravelCard renders mode badge, provider, from→to route, dates/times ✅
+- Empty state "no land travel added yet." renders when array is empty ✅
+- Edit link to `/trips/:id/land-travel/edit` confirmed ✅
+- Loading skeleton renders during fetch ✅
+- Error state with retry renders on fetch failure ✅
+- `useTripDetails` fetches `api.land_travel.list(tripId)` via `Promise.allSettled` ✅
+- `refetchLandTravels` only calls land travel endpoint ✅
+- `landTravels` array passed to `TripCalendar` component ✅
+
+**T-089 — Calendar Enhancements:**
+- `formatCalendarTime()` helper: `"9a"`, `"2:30p"`, `"4p"` compact format ✅
+- Flight chips show departure time (converted to local via departure_tz) ✅
+- Activity chips show start_time ✅
+- Stay chips show check-in time ✅
+- Land travel chips show departure_time and mode label ✅
+- No time element when time field is null ✅
+- `+X more` renders as `<button>` (not plain text span) ✅
+- Clicking `+X more` opens day popover ✅
+- Popover lists all events for the day with name and time ✅
+- Escape key closes popover ✅
+- Close button closes popover ✅
+
+**UI State Completeness (all Sprint 6 UI):**
+- Land travel section: empty ✅, loading ✅, error ✅, populated ✅
+- Land travel edit page: loading ✅, empty (first add) ✅, with entries ✅, save error ✅, cancel ✅
+- FilterToolbar: stays visible during refetch ✅ (T-084)
+- Calendar: event times shown ✅, overflow popover ✅
+
+---
+
+### Test Type: Config Consistency Check
+
+| Config Item | backend/.env | frontend/vite.config.js | infra/docker-compose.yml | Status |
+|-------------|-------------|-------------------------|--------------------------|--------|
+| Backend PORT | 3000 | proxy target: http://localhost:3000 | PORT: 3000 (container) | ✅ MATCH |
+| SSL mode | SSL disabled (commented out) | Dev proxy uses http:// | Production uses HTTPS separately | ✅ CONSISTENT |
+| CORS_ORIGIN | http://localhost:5173 | Vite dev server port: 5173 | Defaults to http://localhost (prod) | ✅ MATCH (dev) |
+| Frontend dev port | — | 5173 | Not exposed (nginx at 80) | ✅ OK |
+
+**Config Consistency Result:** ✅ No mismatches found. All local dev config values are consistent.
+
+---
+
+### Test Type: Security Scan — Sprint 6
+
+**Security Checklist Items — Sprint 6 Scope:**
+
+| # | Item | Category | Status | Notes |
+|---|------|----------|--------|-------|
+| 1 | All land travel endpoints require auth | Auth & Authz | ✅ PASS | `router.use(authenticate)` before all routes |
+| 2 | Trip ownership enforced on all land travel routes | Auth & Authz | ✅ PASS | `requireTripOwnership()` called on all 5 routes |
+| 3 | Auth tokens have expiration + refresh | Auth & Authz | ✅ PASS | Unchanged from Sprint 1 (15m access, 7d refresh) |
+| 4 | bcrypt password hashing | Auth & Authz | ✅ PASS | Unchanged from Sprint 1 |
+| 5 | Rate limiting on auth endpoints | Auth & Authz | ⚠️ DEFERRED | Known accepted risk from Sprint 1. Not added in Sprint 6. |
+| 6 | ILIKE search uses parameterized queries with `!` escape | Injection Prevention | ✅ PASS | T-085: `? ESCAPE '!'` syntax, no concatenation |
+| 7 | Land travel queries use parameterized Knex | Injection Prevention | ✅ PASS | All model functions use Knex fluent API |
+| 8 | mode enum validated server-side (whitelist) | Input Validation | ✅ PASS | `VALID_LAND_TRAVEL_MODES` whitelist in route + DB CHECK constraint |
+| 9 | Land travel form: no dangerouslySetInnerHTML | XSS Prevention | ✅ PASS | grep found 0 occurrences in all frontend source |
+| 10 | Calendar popover: event names via JSX (no raw HTML) | XSS Prevention | ✅ PASS | All content via JSX interpolation |
+| 11 | CORS configured to expected origin | API Security | ✅ PASS | `CORS_ORIGIN=http://localhost:5173` from env |
+| 12 | Helmet security headers middleware | API Security | ✅ PASS | `app.use(helmet())` in app.js |
+| 13 | Error responses: no stack traces or internal details | API Security | ✅ PASS | Structured JSON `{error: {message, code, fields}}` |
+| 14 | JWT_SECRET + DATABASE_URL from env vars | Data Protection | ✅ PASS | No hardcoded secrets found in backend/src/ |
+| 15 | UUID validation on tripId + ltId params | Input Validation | ✅ PASS | `uuidParamHandler` registered at app + router level |
+| 16 | Migration 009 has rollback (`down()`) | Infrastructure | ✅ PASS | `dropTableIfExists('land_travels')` in down() |
+| 17 | npm audit: 0 production vulnerabilities (backend) | Infrastructure | ✅ PASS | `npm audit --production` → 0 vulnerabilities |
+| 18 | npm audit: 0 production vulnerabilities (frontend) | Infrastructure | ✅ PASS | `npm audit --production` → 0 vulnerabilities |
+| 19 | eval() / innerHTML / document.write absent | XSS Prevention | ✅ PASS | grep found 0 occurrences in frontend/src/ |
+
+**Security Scan Result:** ✅ 18 PASS, 0 FAIL, 1 DEFERRED (rate limiting — known accepted risk since Sprint 1)
+
+---
+
+### Summary — Sprint 6 T-091 Re-Verification
+
+| Task | Type | Status | Notes |
+|------|------|--------|-------|
+| T-083 | Bug Fix (FE) | ✅ Pass | Activity edit AM/PM visible + clock icon white ✅ |
+| T-084 | Bug Fix (FE) | ✅ Pass | FilterToolbar stays mounted during refetch ✅ |
+| T-085 | Bug Fix (BE) | ✅ Pass | ILIKE escape char changed to `!` — 247/247 backend tests pass ✅ |
+| T-086 | Feature (BE) | ✅ Pass | Full land travel CRUD — 42 tests pass, migration 009 verified ✅ |
+| T-087 | Feature (FE) | ✅ Pass | Test assertion fix applied — 332/332 frontend tests pass ✅ |
+| T-088 | Feature (FE) | ✅ Pass | Land travel section on trip details — all states implemented ✅ |
+| T-089 | Feature (FE) | ✅ Pass | Calendar enhancements — event times + popover ✅ |
+| T-090 | Security Audit | ✅ Done | Previously completed — no new security issues in re-check ✅ |
+| T-091 | Integration Test | ✅ **PASS** | All contracts verified — 247 BE + 332 FE tests pass ✅ |
+
+**Overall Sprint 6 QA Verdict: ✅ PASS — Deployment approved.**
+
+**All blocking issues resolved:**
+- T-085: ESCAPE char fixed to `!` — Manager approved, 247/247 backend tests pass ✅
+- T-087: Test assertion fixed — 332/332 frontend tests pass ✅
+
+**Notes for Deploy Engineer (T-092):**
+- Run `npx knex migrate:latest` to apply migration 009 (`land_travels` table)
+- Rebuild frontend with Vite (land travel pages, calendar enhancements, bug fixes)
+- Restart backend under pm2
+- Critical smoke test: `GET /api/v1/trips?search=%` must return `{data:[]}` (not 500) — confirm T-085 works with live PostgreSQL
+- All Sprint 5 smoke tests (45/45) should still pass
+- New Sprint 6 smoke tests: land travel CRUD, calendar with land travel events
+
