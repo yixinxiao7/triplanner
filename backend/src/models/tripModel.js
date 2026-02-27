@@ -36,6 +36,7 @@ const TRIP_COLUMNS = [
   'name',
   'destinations',
   'status',
+  'notes',   // T-103 — nullable trip notes/description field (max 2000 chars)
   db.raw("TO_CHAR(start_date, 'YYYY-MM-DD') AS start_date"),
   db.raw("TO_CHAR(end_date, 'YYYY-MM-DD') AS end_date"),
   'created_at',
@@ -259,6 +260,11 @@ export async function createTrip(data) {
   }
   if (data.end_date !== undefined) {
     insertData.end_date = data.end_date ?? null;
+  }
+
+  // notes is an optional nullable text field (T-103)
+  if (data.notes !== undefined) {
+    insertData.notes = data.notes ?? null;
   }
 
   const [{ id }] = await db('trips').insert(insertData).returning('id');
