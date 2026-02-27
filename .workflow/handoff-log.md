@@ -17,6 +17,133 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 7 — Design Agent → Frontend Engineer: Spec 13 Approved — Calendar Time Enhancements + Trip Notes UI Ready to Build (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Tasks | T-096 (Design — Done), T-101 (FE: Calendar), T-104 (FE: Trip Notes UI) |
+| Spec Reference | `.workflow/ui-spec.md` → **Spec 13** (appended at end of file) |
+
+**Summary:**
+Spec 13 is published and Approved. It covers two Sprint 7 deliverables for the Frontend Engineer:
+
+---
+
+**For T-101 — Calendar Time Display Enhancements (blocked by T-096 ✅, unblocked now):**
+
+Read **Spec 13, Part A (CAL-3)** for the full specification. Key points:
+
+1. **CAL-3.2 — Stay checkout time on checkout day:**
+   - Multi-day stay: add `"check-out [time]"` on the `check_out_date` chip (e.g., `"check-out 11a"`)
+   - Time source: `check_out_at` (UTC ISO) converted via `check_out_tz`
+   - CSS: use existing `.eventTime` class — constructed as `"check-out " + formatCalendarTime(checkoutLocalTime)`
+   - Single-day stay (check_in === check_out): show both on one chip as `"4p → check-out 11a"`
+
+2. **CAL-3.3 — Flight arrival time on arrival day:**
+   - Only when `arrival_date ≠ departure_date`
+   - Show `"arrives [time]"` on the `arrival_date` chip
+   - Time source: `arrival_at` (UTC ISO) converted via `arrival_tz`
+   - Constructed as: `"arrives " + formatCalendarTime(arrivalLocalTime)`
+
+3. **CAL-3.4 — Land travel arrival time on arrival day:**
+   - Only when `arrival_date ≠ departure_date` (and `arrival_date` is non-null)
+   - Show `"arrives [time]"` on the `arrival_date` chip
+   - Time source: `arrival_time` (HH:MM string, no timezone conversion)
+   - If `arrival_time` is null but `arrival_date` exists: render the chip without a time element
+
+4. **See CAL-3.5 for the complete updated time-source table** (authoritative reference replacing CAL-1.3)
+
+5. **Regression safety:** All Sprint 6 time behavior (check-in on first stay day, departure time on departure day, activity start_time) must remain unchanged. See CAL-3.6.
+
+6. **Note on arrival-day chip rendering:** If the current calendar implementation only maps flights to their departure date (not arrival date), you will need to extend the event-to-date mapping to also render a chip on the arrival date. Document this if you make the change.
+
+---
+
+**For T-104 — Trip Notes UI (blocked by T-096 ✅ AND T-103 backend; wait for T-103 before starting T-104):**
+
+Read **Spec 13, Part B (sections 13.1–13.9)** for the full specification. Key points:
+
+**TripDetailsPage:**
+- Notes section position: below trip title/destinations row, above the `TripCalendar` component (13.2.1)
+- Section header "NOTES" with a pencil edit icon on the right (standard section header row format)
+- **View mode (has notes):** Notes text in IBM Plex Mono 14px font-weight 300, white-space: pre-wrap (13.2.2)
+- **View mode (empty):** `"add trip notes…"` placeholder in `--text-muted`, clickable to enter edit mode — needs `role="button"` + `tabIndex={0}` (13.2.3)
+- **Edit mode:** `<textarea>` with `maxLength={2000}`, always-visible char count `"X / 2,000"` below textarea (right-aligned), color shifts to amber at 1800 chars and red at 2000 chars (13.2.4)
+- **Buttons:** "cancel" (secondary) + "save notes" (primary) below char count, gap 12px, flex-start
+- **Save:** PATCH /trips/:id with `{ notes: editValue.trim() }` — inline spinner on save button while loading; toast error on failure (remain in edit mode)
+- **Cancel:** Immediate revert, no API call
+
+**TripCard (home page):**
+- Show first 100 chars of notes + `"…"` (JS truncation, not CSS) if notes is non-null and non-empty (13.6.2)
+- Font: 12px, font-weight 300, `--text-muted`, margin-top: 8px, max 2 visual lines via `-webkit-line-clamp: 2`
+- Hidden entirely (`notes && notes.trim().length > 0` conditional render) when notes is null/empty (13.6.3)
+
+**API integration (13.7):**
+- GET /trips list and GET /trips/:id both include `notes` field (null when not set)
+- Treat empty string `""` same as null — show empty placeholder
+- PATCH /trips/:id with `{ notes: "..." }` to save; `{ notes: null }` to clear
+
+**Skeleton state during page load:** Notes section shows a shimmer rectangle (~80px tall, full-width) during initial trip data fetch.
+
+---
+
+**Accessibility checklist for both tasks:**
+- CAL-3 time chips: plain text, no additional ARIA needed (13.3.8)
+- Notes empty placeholder: `role="button"`, `tabIndex={0}`, `aria-label="Add trip notes"`, Enter/Space activates (13.5)
+- Notes textarea: `aria-label="Trip notes"`, `aria-describedby="notes-char-count"` (13.5)
+- Char count warning: supplemented with `aria-live="polite"` region (13.5)
+- Pencil button: `aria-label="Edit trip notes"` (13.5)
+- Focus management: textarea focused on edit entry; focus returns to pencil button (or placeholder) on exit (13.5)
+
+---
+
+**T-101 can start immediately (T-096 is now Done).**
+**T-104 must wait for T-103 (Backend: Trip Notes API) to complete before starting.**
+
+---
+
+### Sprint 7 — Design Agent → Backend Engineer: Spec 13 Approved — Trip Notes API Spec Ready (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Design Agent |
+| To Agent | Backend Engineer |
+| Status | Pending |
+| Related Tasks | T-096 (Design — Done), T-103 (Backend: Trip Notes API) |
+| Spec Reference | `.workflow/ui-spec.md` → **Spec 13, Part B, Section 13.7** |
+
+**Summary:**
+Spec 13 is published. The backend notes feature (T-103) can now start — the spec confirms the API surface the frontend will consume.
+
+**Key API requirements from Spec 13 (Section 13.7):**
+
+1. **Migration 010** (pre-approved by Manager): Add `notes TEXT NULL` to the `trips` table. Rollback must remove it cleanly.
+
+2. **GET /trips/:id response** must include `notes` field:
+   - `null` when not set
+   - String when set
+
+3. **GET /trips (list) response** — each trip object in `data[]` must include `notes` field (for TripCard preview on home page). This is important — the list endpoint needs to expose `notes` so the frontend doesn't have to make N+1 requests.
+
+4. **PATCH /trips/:id** — accept optional `notes` field:
+   - Any string up to 2000 characters → store as-is
+   - Empty string `""` → acceptable; frontend will send trimmed content; backend may optionally coerce `""` to `null` (either is acceptable — document in T-103 notes)
+   - `null` → clear notes (store NULL in DB)
+   - String > 2000 characters → `400 VALIDATION_ERROR` with field error: `"notes must be 2000 characters or fewer"`
+
+5. **No new endpoints.** Notes are part of the existing trip resource.
+
+**Frontend truncation note:** The frontend truncates notes to 100 chars for TripCard preview in JavaScript. The backend stores and returns the full notes text — do not truncate server-side.
+
+**T-103 can start immediately (T-096 is now Done). T-104 (Frontend Notes UI) is blocked on T-103.**
+
+---
+
 ### Sprint 7 — Manager Agent → All Agents: Sprint #7 Planning Complete — Begin Sprint Execution (2026-02-27)
 
 | Field | Value |

@@ -4045,3 +4045,639 @@ Each event item:
 ---
 
 *Sprint 6 specs above are marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-27.*
+
+---
+
+### Spec 13: Sprint 7 — Calendar Arrival/Checkout Time Display + Trip Notes Field
+
+**Sprint:** #7
+**Related Tasks:** T-096 (Design), T-101 (Frontend: Calendar), T-103 (Backend: Notes API), T-104 (Frontend: Notes UI)
+**Status:** Approved
+**Collapses:** T-102 (merged into T-096 per Manager pre-approval — scope was manageable in a single spec)
+
+**Description:**
+Spec 13 covers two Sprint 7 deliverables that were designed in parallel and are both unblocked:
+
+1. **CAL-3 — Calendar Time Display Enhancements:** Extends the existing calendar chip rendering (Spec 12 Addendum, CAL-1) to also show the checkout time on the last day of a multi-day stay and the arrival time on the arrival day for flights and land travel. These are additive changes to the chip structure — the existing check-in and departure time logic is preserved.
+
+2. **Trip Notes — New Feature:** Adds a freeform notes/description field to the trip resource. Notes are displayed on the `TripDetailsPage` with inline editing. A truncated preview appears on `TripCard` on the home page. The backend adds a `notes TEXT NULL` column to the `trips` table (migration 010) and exposes it through the existing trip CRUD API.
+
+---
+
+## Part A — CAL-3: Calendar Chip Time Display Enhancements
+
+**Addendum to:** Spec 12 Addendum (CAL-1 and CAL-1.5)
+**Implemented in:** `frontend/src/components/TripCalendar.jsx` + `frontend/src/utils/formatDate.js`
+
+---
+
+### CAL-3.1 Overview
+
+The Sprint 6 calendar spec (CAL-1) established that event chips show a compact time indicator below the event name. CAL-1.3 defined the time source for each event type, and CAL-1.5 described stay multi-day span behavior (check-in time on first day only; no time on subsequent days).
+
+**Sprint 7 adds three new display rules:**
+
+| Rule | Trigger | Display |
+|------|---------|---------|
+| CAL-3.2 | Stay chip on `check_out_date` (when `check_out_date ≠ check_in_date`) | `"check-out [time]"` e.g., `"check-out 11a"` |
+| CAL-3.3 | Flight chip on `arrival_date` (when `arrival_date ≠ departure_date`) | `"arrives [time]"` e.g., `"arrives 2:30p"` |
+| CAL-3.4 | Land travel chip on `arrival_date` (when `arrival_date ≠ departure_date`) | `"arrives [time]"` e.g., `"arrives 3p"` |
+| CAL-3.5 | Single-day stay (when `check_out_date === check_in_date`) | Both check-in and check-out shown on the same chip |
+
+The `formatCalendarTime()` helper (defined in CAL-1.2) is used for all time formatting. **No new helper function is required.** The label prefix (`"check-out "`, `"arrives "`) is a string concatenated before the formatted time.
+
+---
+
+### CAL-3.2 Stay Checkout Time on Last Day
+
+#### CAL-3.2.1 Trigger Condition
+
+A stay that spans multiple days (`check_out_date ≠ check_in_date`) renders chips across all days from `check_in_date` to `check_out_date` inclusive. Previously:
+- First day (`check_in_date`): shows check-in time (e.g., `"4p"`)
+- Middle days: no time
+- Last day (`check_out_date`): no time ← **this changes in Sprint 7**
+
+**Sprint 7:** The chip on `check_out_date` now shows the checkout time with a `"check-out "` prefix label.
+
+#### CAL-3.2.2 Time Source
+
+| Field | Source | Timezone Handling |
+|-------|--------|------------------|
+| Checkout time | `check_out_at` (UTC ISO string) | Convert via `check_out_tz` using `Intl.DateTimeFormat` (same pattern as `check_in_at` / `check_in_tz`) |
+
+If `check_out_at` is `null` or `undefined`, do not show a time element on the checkout day chip (same fallback as all other event types).
+
+#### CAL-3.2.3 Chip Display — Checkout Day
+
+The time element on the checkout day chip uses the existing `.eventTime` CSS class with one difference: the displayed string is prefixed with `"check-out "`:
+
+```
+[● Hyatt Regency SF ]
+[  check-out 11a    ]   ← prefixed label + time
+```
+
+**Full time element HTML:**
+```html
+<span className={styles.eventTime}>check-out 11a</span>
+```
+
+- The string is constructed as: `"check-out " + formatCalendarTime(checkoutLocalTime)`
+- Font-size: 10px (same as existing `.eventTime`)
+- Color: inherit (white), `opacity: 0.7` (same as existing)
+- Display: `block`, margin-top: 1px (same as existing)
+
+#### CAL-3.2.4 Updated Stay Multi-Day Span Behavior
+
+Complete updated behavior for stay chip time display across all days:
+
+| Day Position | Display |
+|-------------|---------|
+| `check_in_date` (first day) | Check-in time: e.g., `"4p"` (no prefix, same as Sprint 6) |
+| Middle days (between check-in and checkout) | No time element (same as Sprint 6) |
+| `check_out_date` (last day) | Checkout time with prefix: e.g., `"check-out 11a"` (NEW in Sprint 7) |
+
+**Note on middle days:** A stay spanning Monday → Thursday would have: Monday (`"4p"`), Tuesday (no time), Wednesday (no time), Thursday (`"check-out 11a"`). This is clean and minimal.
+
+#### CAL-3.2.5 Single-Day Stay (check_in_date === check_out_date)
+
+When a stay has the same check-in and checkout date (e.g., a day-use hotel reservation), both times appear on the single chip. There are no span chips — only one chip on that one day.
+
+**Display:**
+```
+[● Hyatt Regency SF ]
+[  4p → check-out 11a ]   ← both times inline, separated by " → "
+```
+
+**Implementation:** Construct the time string as:
+```javascript
+const checkInTime  = formatCalendarTime(checkInLocal);   // e.g., "4p"
+const checkOutTime = formatCalendarTime(checkOutLocal);  // e.g., "11a"
+
+// If both available:
+timeDisplay = `${checkInTime} → check-out ${checkOutTime}`;  // "4p → check-out 11a"
+
+// If only check-in available:
+timeDisplay = checkInTime;  // "4p"
+
+// If only check-out available:
+timeDisplay = `check-out ${checkOutTime}`;  // "check-out 11a"
+
+// If neither:
+timeDisplay = null;  // no time element rendered
+```
+
+**Note on chip length:** The single-day combined time string may be longer than a typical time display. The chip's `max-width` should handle this gracefully via `overflow: hidden; text-overflow: ellipsis` on the `.eventTime` span if needed. The Frontend Engineer may opt to abbreviate to `"4p / 11a"` for single-day stays if the combined string causes layout issues — document the choice if so.
+
+---
+
+### CAL-3.3 Flight Arrival Time on Arrival Day
+
+#### CAL-3.3.1 Trigger Condition
+
+A flight has both a `departure_date` (derived from `departure_at` in the departure timezone) and an `arrival_date` (derived from `arrival_at` in the arrival timezone). When `arrival_date ≠ departure_date`, the flight spans two calendar days:
+- Departure day: shows departure time (existing Sprint 6 behavior, no change)
+- Arrival day: shows arrival time with `"arrives "` prefix (NEW in Sprint 7)
+
+When `arrival_date === departure_date`, the flight is a same-day flight. The departure day chip already shows the departure time (Sprint 6). **No arrival time is added for same-day flights** — the chip is already sufficient.
+
+#### CAL-3.3.2 Time Source
+
+| Field | Source | Timezone Handling |
+|-------|--------|------------------|
+| Arrival time | `arrival_at` (UTC ISO string) | Convert via `arrival_tz` using `Intl.DateTimeFormat` — extract local hours/minutes, pass to `formatCalendarTime()` |
+
+If `arrival_at` is `null` or `undefined`, do not show a time element on the arrival day chip.
+
+#### CAL-3.3.3 Chip Display — Arrival Day
+
+```
+[● Delta DL1234 ]
+[  arrives 2:30p ]   ← prefixed arrival time
+```
+
+**Full time element HTML:**
+```html
+<span className={styles.eventTime}>arrives 2:30p</span>
+```
+
+- Constructed as: `"arrives " + formatCalendarTime(arrivalLocalTime)`
+- Same `.eventTime` styling as all other time elements
+
+#### CAL-3.3.4 Multi-Day Flight Calendar Representation
+
+For a flight departing on Aug 7 at 6:00 AM ET and arriving on Aug 8 at 11:00 AM PT:
+
+| Day | Chip Contents |
+|-----|--------------|
+| Aug 7 | `[● Delta DL1234]` + time: `"6a"` |
+| Aug 8 | `[● Delta DL1234]` + time: `"arrives 11a"` |
+
+Both chips exist in the calendar. The arrival-day chip was already generated by the existing flight-date-range mapping logic (if the current implementation maps flights across both departure and arrival dates). If the existing logic only maps a flight to its departure date, the Frontend Engineer must extend it to also render a chip on the arrival date — document this change.
+
+---
+
+### CAL-3.4 Land Travel Arrival Time on Arrival Day
+
+#### CAL-3.4.1 Trigger Condition
+
+Land travel (from Spec 12) has `departure_date`, `departure_time` (HH:MM), and optionally `arrival_date`, `arrival_time` (HH:MM). When `arrival_date` is provided and `arrival_date ≠ departure_date`, the land travel spans two calendar days:
+- Departure day: shows departure time (existing Sprint 6 behavior, no change)
+- Arrival day: shows arrival time with `"arrives "` prefix (NEW in Sprint 7)
+
+If `arrival_date` is `null` or `arrival_date === departure_date`, no arrival-day chip is needed.
+
+#### CAL-3.4.2 Time Source
+
+| Field | Source | Timezone Handling |
+|-------|--------|------------------|
+| Arrival time | `arrival_time` (HH:MM string) | No conversion needed — local time, same as `departure_time` (no timezone stored for land travel) |
+
+If `arrival_time` is `null` but `arrival_date` is non-null (and different from departure_date), render the arrival-day chip without a time element (just the event name).
+
+#### CAL-3.4.3 Chip Display — Arrival Day
+
+```
+[● Train to Los Angeles ]
+[  arrives 3p           ]   ← prefixed arrival time
+```
+
+**Full time element HTML:**
+```html
+<span className={styles.eventTime}>arrives 3p</span>
+```
+
+- Constructed as: `"arrives " + formatCalendarTime(arrival_time)` where `arrival_time` is the raw `HH:MM` string passed to `formatCalendarTime()`
+
+---
+
+### CAL-3.5 Updated CAL-1.3 Time Sources Reference (Complete Table)
+
+This replaces and extends the CAL-1.3 table from Spec 12 Addendum. The Frontend Engineer should treat this as the authoritative reference:
+
+| Event Type | Day | Time Source | Prefix | Timezone | Fallback |
+|------------|-----|-------------|--------|----------|---------|
+| **Flight** | Departure day | `departure_at` (UTC ISO) | none | Convert via `departure_tz` | No time shown |
+| **Flight** | Arrival day (if `arrival_date ≠ departure_date`) | `arrival_at` (UTC ISO) | `"arrives "` | Convert via `arrival_tz` | No time shown |
+| **Stay** | Check-in day (first day) | `check_in_at` (UTC ISO) | none | Convert via `check_in_tz` | No time shown |
+| **Stay** | Middle days | — | — | — | No time element |
+| **Stay** | Checkout day (last day, if `check_out_date ≠ check_in_date`) | `check_out_at` (UTC ISO) | `"check-out "` | Convert via `check_out_tz` | No time shown |
+| **Stay** | Single day (if `check_out_date === check_in_date`) | Both `check_in_at` + `check_out_at` | `" → check-out "` between | Convert each via its `_tz` field | Whichever is available |
+| **Activity** | Activity day | `start_time` (HH:MM:SS string) | none | No conversion | No time shown if null |
+| **Land Travel** | Departure day | `departure_time` (HH:MM string) | none | No conversion | No time shown if null |
+| **Land Travel** | Arrival day (if `arrival_date ≠ departure_date`, and `arrival_date` non-null) | `arrival_time` (HH:MM string) | `"arrives "` | No conversion | No time shown if null (but chip still renders with event name) |
+
+---
+
+### CAL-3.6 Regression Safety Rules
+
+The following existing behaviors from CAL-1 (Sprint 6) must be preserved exactly:
+
+1. **Check-in time on first day** — unchanged. Still shows compact time (e.g., `"4p"`) without any prefix.
+2. **Departure time on departure day** — unchanged for both flights and land travel.
+3. **Middle-day stay chips** — still show no time element.
+4. **Activity chips** — still show `start_time` when available.
+5. **"+X more" popover event list** — the popover's time sub-label format (defined in CAL-2.5) already included `"check-out 11a"` and `"arrives"` labels. These were specified in Sprint 6. Verify the popover implementation already handles these — if not, update the popover event list rendering for checkout and arrival cases (this is already in the spec at CAL-2.5; it should already be there from Sprint 6).
+
+---
+
+### CAL-3.7 States and Edge Cases
+
+| Scenario | Expected Behavior |
+|----------|------------------|
+| `check_out_at` is null (stay has no checkout time stored) | Checkout day chip shows no time element — just the stay name. Section header style unchanged. |
+| Flight arrival same as departure (same day) | No arrival-day chip added. Departure chip unchanged (only departure time shown, no `"arrives"` label). |
+| Land travel with `arrival_date` null | No arrival-day chip rendered. Departure day chip shows departure time only. |
+| Land travel with `arrival_date` same as `departure_date` | No arrival-day chip. Treat as same-day land travel — show departure time on departure day only. |
+| Two events on the same arrival day (e.g., a flight arriving + hotel check-in) | Both chips render normally; each chip only gets time based on its own rules. |
+| Calendar day has overflow ("+X more") and arrival chip is in overflow | Arrival chip appears in the popover list with `"arrives [time]"` sub-label — already handled by CAL-2.5 if implemented correctly. |
+| Stay with no `check_out_date` | No checkout-day chip rendered. This is a backend validation issue; front-end renders what it receives. |
+
+---
+
+### CAL-3.8 Accessibility — Calendar Time Enhancements
+
+No new ARIA requirements beyond what CAL-1.4 and CAL-2.7 already specify. The time label strings (`"check-out 11a"`, `"arrives 2:30p"`) are rendered as plain visible text within the chip, which screen readers will announce as part of the chip's text content. No additional `aria-label` overrides are needed for the chips — the text is self-descriptive.
+
+---
+
+## Part B — Trip Notes Feature
+
+---
+
+### 13.1 Overview
+
+The trip notes feature adds a freeform description field to every trip. It is the first "rich trip metadata" field beyond the existing name and destinations. The design follows the established Japandi minimalist aesthetic: the notes field is unobtrusive in view mode and activates cleanly when the user engages with it.
+
+**Scope:**
+- `TripDetailsPage` — view mode + inline edit mode for the notes field
+- `TripCard` (home page) — read-only truncated preview of notes
+
+**API Integration:** Notes are stored in the `notes` field of the trip resource (added via migration 010 — `notes TEXT NULL`). All trip GET and PATCH endpoints include this field. Max 2000 characters, enforced server-side (400 `VALIDATION_ERROR` if exceeded) and client-side (textarea maxLength + char count).
+
+---
+
+### 13.2 Trip Notes — TripDetailsPage
+
+#### 13.2.1 Placement
+
+The notes section is positioned **below the trip title and destinations row** and **above the calendar component**. This places it in the "trip overview header area" — information the user set up when creating the trip, not the detailed itinerary sections below the calendar.
+
+**TripDetailsPage vertical layout order (updated):**
+1. Back link (`← home`)
+2. Trip title + destinations row + edit/delete controls
+3. **Notes section** ← NEW in Sprint 7
+4. `TripCalendar` component
+5. Flights section
+6. Land Travel section
+7. Stays section
+8. Activities section
+
+#### 13.2.2 Notes Section — View Mode (has notes)
+
+```
+NOTES ─────────────────────────────────────────  ✏
+
+We fly into Narita on August 7th and spend 10 days
+exploring Tokyo, Kyoto, and Osaka. Main goals are
+food, temples, and at least one day trip to Nara.
+```
+
+**Container:**
+- Margin-top: 24px from the trip title/destinations row
+- Margin-bottom: 24px (space before the calendar)
+- No background, no border, no card — the notes section is "bare" on the page background, consistent with the section headers throughout the page
+
+**Section Header Row:**
+- Flex row, `justify-content: space-between`, `align-items: center`
+- **Left:** Section header label `"NOTES"` — standard section header styling: 11px, font-weight 600, letter-spacing 0.12em, uppercase, `--text-muted`. Followed by a `1px solid var(--border-subtle)` line that stretches to fill remaining space (flex + hr approach, same as Flights/Stays/Activities section headers).
+- **Right:** Edit pencil button (see 13.2.5) — visible in view mode
+- Margin-bottom: 12px
+
+**Notes Text:**
+- Font: IBM Plex Mono, 14px, font-weight 300 (light), `--text-primary`
+- Line-height: 1.7 (generous for readability of prose text)
+- White-space: `pre-wrap` (preserve line breaks the user entered)
+- Word-break: `break-word` (prevent overflow on long unbroken strings)
+- Max-width: inherits from content area (1120px max-content-width)
+- No background, no border — the text sits directly on the page
+
+#### 13.2.3 Notes Section — View Mode (empty / no notes)
+
+```
+NOTES ─────────────────────────────────────────  ✏
+
+  add trip notes…
+```
+
+**Empty placeholder:**
+- Text: `"add trip notes…"` (with Unicode ellipsis `…`)
+- Font: IBM Plex Mono, 14px, font-weight 300
+- Color: `--text-muted` (rgba 252,252,252,0.5)
+- Cursor: `pointer` (the entire placeholder area is clickable to enter edit mode)
+- On click: enters edit mode (same as clicking the pencil icon)
+- Padding: 8px 0 (a bit of breathing room)
+
+**Accessibility:** The empty placeholder should have `role="button"` and `tabIndex={0}` so it is keyboard-reachable, with `aria-label="Add trip notes"`. Press Enter or Space to enter edit mode.
+
+#### 13.2.4 Notes Section — Edit Mode
+
+```
+NOTES ──────────────────────────────────────────
+
+┌──────────────────────────────────────────────┐
+│ We fly into Narita on August 7th and spend 10│
+│ days exploring Tokyo, Kyoto, and Osaka. Main │
+│ goals are food, temples, and at least one day│
+│ trip to Nara.                                │
+│                                              │
+│                                              │
+└──────────────────────────────────────────────┘
+                                      142 / 2000
+
+[ cancel ]    [ save notes ]
+```
+
+**Transition into edit mode:**
+- The notes text (or empty placeholder) smoothly swaps to a textarea with no jarring layout shift
+- The pencil icon disappears from the section header in edit mode (no double-affordance)
+- Textarea is auto-focused on entering edit mode — cursor is placed at the end of existing text
+
+**Textarea element:**
+```html
+<textarea
+  className={styles.notesTextarea}
+  value={editValue}
+  onChange={handleChange}
+  maxLength={2000}
+  rows={6}
+  aria-label="Trip notes"
+  aria-describedby="notes-char-count"
+  autoFocus
+/>
+```
+
+**Textarea CSS (`.notesTextarea`):**
+- Width: 100%
+- Min-height: 144px (`rows={6}` × ~24px line-height)
+- Background: `var(--surface-alt)` (`#3F4045`)
+- Border: `1px solid var(--border-accent)` (`#5D737E`) — active/focus state from the moment it appears
+- Border-radius: `var(--radius-sm)` (2px)
+- Padding: 12px 14px
+- Font: IBM Plex Mono, 14px, font-weight 300, `--text-primary`
+- Line-height: 1.7
+- Color: `--text-primary`
+- Resize: `vertical` (user can drag to resize; min-height applies)
+- Outline: none (border serves as the focus indicator, already `--border-accent`)
+- Box-sizing: border-box
+
+**Character count (`#notes-char-count`):**
+- Positioned: right-aligned below the textarea
+- Text: `"[currentLength] / 2,000"` — e.g., `"142 / 2,000"` (use `toLocaleString()` for comma-separated number)
+- Always visible in edit mode (not conditional on being near the limit)
+- Font: IBM Plex Mono, 11px, font-weight 400, `--text-muted`
+- Margin-top: 4px
+- **Color transition near limit:**
+  - Default (0–1799 chars): `--text-muted`
+  - Warning zone (1800–1999 chars): `rgba(220, 160, 50, 0.8)` (muted amber — not alarming, just a nudge)
+  - At limit (2000 chars): `rgba(220, 80, 80, 0.9)` (error red — same as field error color in design system)
+
+**Action buttons row (below char count):**
+- Layout: flex, gap 12px, justify-content: flex-start, margin-top: 12px
+- **Cancel button:** Secondary button style (`transparent bg, #FCFCFC text, 1px solid rgba(93,115,126,0.5) border, padding 10px 24px, border-radius 2px, hover: rgba(252,252,252,0.05) bg`). Label: `"cancel"`. On click: discard `editValue`, revert to view mode, restore original notes text. No API call.
+- **Save button:** Primary button style (`#5D737E bg, #FCFCFC text, font-weight 500, padding 10px 24px, border-radius 2px, hover: rgba(93,115,126,0.8)`). Label: `"save notes"`. On click: submit PATCH /trips/:id with `{ notes: editValue }`. Disabled state while the API call is in progress.
+
+**Save behavior:**
+1. User clicks `"save notes"`
+2. Save button enters loading state: inline spinner (20px, accent color, 1s rotation), button text hidden or replaced with spinner, `disabled={true}`
+3. `PATCH /trips/:id` is called with `{ notes: editValue.trim() }` (trim whitespace from start and end before sending)
+4. On success (200): update the local notes state, exit edit mode, show updated notes text in view mode
+5. On error (network error or 400/500): show a toast error bottom-right: `"Failed to save notes. Please try again."` auto-dismisses after 4 seconds. Remain in edit mode so the user's text is not lost.
+
+**Cancel behavior:** Immediately returns to view mode without any API call. No confirmation dialog needed (changes are not yet submitted).
+
+#### 13.2.5 Edit Pencil Button
+
+The pencil/edit icon appears in the section header row, right-aligned, in view mode only.
+
+```html
+<button
+  className={styles.notesEditButton}
+  onClick={enterEditMode}
+  aria-label="Edit trip notes"
+>
+  {/* SVG pencil icon */}
+</button>
+```
+
+**Pencil icon:** SVG, 14×14px, stroke: `--text-muted`. On hover: stroke: `--text-primary`. Simple minimal pencil outline — consistent with the Japandi aesthetic (no filled icons).
+
+**Button CSS (`.notesEditButton`):**
+- Background: transparent
+- Border: none
+- Padding: 4px
+- Cursor: pointer
+- `border-radius: var(--radius-sm)` (2px)
+- Transition: `opacity 150ms ease`
+- On `:focus-visible`: `outline: 2px solid var(--accent)`, `outline-offset: 2px`
+
+---
+
+### 13.3 Notes Section — State Summary
+
+| State | User Sees |
+|-------|-----------|
+| **Empty / no notes (view)** | `"NOTES"` header + pencil icon + `"add trip notes…"` placeholder in muted color. Placeholder is clickable to enter edit mode. |
+| **Has notes (view)** | `"NOTES"` header + pencil icon + formatted notes text (white-space: pre-wrap). |
+| **Edit mode (any)** | `"NOTES"` header (no pencil icon) + textarea pre-filled with existing notes (or empty) + char count + cancel/save buttons. |
+| **Saving** | Save button shows inline spinner + `disabled`. Cancel button remains active (user can cancel a slow save before it completes — clicking cancel should abort the in-flight request and revert). |
+| **Save error** | Stays in edit mode. Toast error appears bottom-right. User's text is preserved in the textarea. |
+| **Trip loading (TripDetailsPage initial load)** | Notes section renders a skeleton: a rectangle shimmer block, ~80px tall, full-width, `background: var(--surface-alt)`, same shimmer animation as other skeleton elements. |
+
+---
+
+### 13.4 Notes Section — Responsive Behavior
+
+| Breakpoint | Notes Behavior |
+|------------|---------------|
+| **Desktop (≥1024px)** | Full-width within content area (max 1120px centered). Notes text and textarea span the full content width. |
+| **Tablet (768–1023px)** | Same as desktop — notes text wraps naturally. |
+| **Mobile (<768px)** | Full-width, padding: 0 16px (matches mobile content padding). Textarea `rows={5}`. Action buttons stack vertically if needed — flex-wrap. |
+
+---
+
+### 13.5 Notes Section — Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Empty placeholder keyboard-reachable | `role="button"`, `tabIndex={0}`, `aria-label="Add trip notes"`. Enter/Space triggers edit mode. |
+| Pencil button label | `aria-label="Edit trip notes"` on the `<button>` |
+| Textarea label | `aria-label="Trip notes"` on `<textarea>` |
+| Char count associated | `aria-describedby="notes-char-count"` on textarea; `id="notes-char-count"` on the count element |
+| Warning announced | When char count enters warning zone (1800+), `aria-live="polite"` region announces the count (e.g., `"142 of 2000 characters used"`) — update the live region on every change. This can be a visually-hidden `<span aria-live="polite">` that is updated along with the visible count. |
+| Save button state | `aria-disabled="true"` (plus `disabled` attribute) when submitting |
+| Focus management | On enter edit mode: textarea receives focus. On cancel or save success: focus returns to the pencil icon button (or empty placeholder if notes were cleared). |
+| Color-only warning | The amber/red char count color change is supplemented by the aria-live region — color alone does not convey the warning. |
+
+---
+
+### 13.6 TripCard Notes Preview
+
+#### 13.6.1 Placement
+
+The notes preview appears at the **bottom of the TripCard**, below the existing card content (destination chips, date range, status badge). It is only shown if `notes` is a non-null, non-empty string.
+
+**Current TripCard structure (no notes):**
+```
+┌─────────────────────────────────────────┐
+│ Japan Adventure 2026                    │
+│ Tokyo · Kyoto · Osaka                   │
+│ Aug 7, 2026 — Aug 21, 2026              │
+│ [PLANNING]                              │
+└─────────────────────────────────────────┘
+```
+
+**TripCard structure (with notes):**
+```
+┌─────────────────────────────────────────┐
+│ Japan Adventure 2026                    │
+│ Tokyo · Kyoto · Osaka                   │
+│ Aug 7, 2026 — Aug 21, 2026              │
+│ [PLANNING]                              │
+│                                         │
+│  We fly into Narita on August 7th and   │
+│  spend 10 days exploring Tokyo, Kyot…   │
+└─────────────────────────────────────────┘
+```
+
+#### 13.6.2 Notes Preview Element
+
+```html
+<p className={styles.notesPreview}>
+  {truncatedNotes}
+</p>
+```
+
+**Truncation logic (in component, not CSS):**
+```javascript
+const MAX_PREVIEW_LENGTH = 100;
+
+const truncatedNotes = notes && notes.length > MAX_PREVIEW_LENGTH
+  ? notes.slice(0, MAX_PREVIEW_LENGTH) + '\u2026'  // Unicode ellipsis character
+  : notes;
+```
+
+- Do not use CSS `text-overflow: ellipsis` for truncation — use JS string truncation so the character limit is precisely 100 chars of content + `"…"`
+- The 100 characters are sliced from the raw notes string (including any line breaks that might appear in the first 100 chars — these render as spaces in the card's single-line context)
+
+**CSS (`.notesPreview`):**
+- Font: IBM Plex Mono, 12px, font-weight 300
+- Color: `--text-muted` (rgba 252,252,252,0.5) — secondary information, clearly subordinate to trip name
+- Margin-top: 8px
+- Line-height: 1.5
+- Overflow: hidden
+- Display: `-webkit-box` with `-webkit-line-clamp: 2` and `-webkit-box-orient: vertical` — limits to 2 visible lines even if truncation doesn't kick in (safety net for long first lines)
+- Word-break: `break-word`
+
+**Conditional rendering:**
+```jsx
+{notes && notes.trim().length > 0 && (
+  <p className={styles.notesPreview}>{truncatedNotes}</p>
+)}
+```
+
+Do not render the element at all (not even an empty `<p>`) when notes is null or empty.
+
+#### 13.6.3 TripCard Notes Preview — Accessibility
+
+- The notes text is read by screen readers as part of the card's content flow (no special ARIA needed — it's plain descriptive text)
+- The card itself already has appropriate link semantics and aria-label from earlier specs
+- No additional ARIA is required for the notes preview
+
+---
+
+### 13.7 API Integration Reference (for Frontend Engineers)
+
+**GET /trips (list):**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Japan Adventure 2026",
+      "destinations": ["Tokyo", "Kyoto"],
+      "notes": "We fly into Narita on August 7th...",
+      ...
+    }
+  ]
+}
+```
+
+**GET /trips/:id:**
+```json
+{
+  "id": "uuid",
+  "name": "Japan Adventure 2026",
+  "notes": "We fly into Narita on August 7th...",
+  ...
+}
+```
+
+**PATCH /trips/:id — save notes:**
+```json
+// Request body
+{ "notes": "Updated trip notes content." }
+
+// Response: 200 with updated trip object (includes notes field)
+
+// To clear notes:
+{ "notes": null }
+
+// Validation error (notes > 2000 chars):
+// 400 VALIDATION_ERROR
+```
+
+**Notes field in API responses:**
+- `null` when no notes have been set
+- Empty string `""` should be treated same as `null` in display (show the empty placeholder)
+- Non-empty string: display as-is
+
+---
+
+### 13.8 Full Screen Flow — Trip Notes (User Journey)
+
+**First time adding notes:**
+1. User opens TripDetailsPage — notes section shows `"add trip notes…"` placeholder with pencil icon
+2. User clicks placeholder or pencil icon → edit mode activates, textarea focused (empty)
+3. User types notes — char count shows `"47 / 2,000"`
+4. User clicks `"save notes"` → spinner, API call
+5. On success: edit mode exits, notes text displays in view mode
+
+**Editing existing notes:**
+1. User is on TripDetailsPage — notes section shows existing notes text + pencil icon
+2. User clicks pencil icon → edit mode activates, textarea pre-filled with existing notes
+3. User modifies text
+4. User clicks `"save notes"` → API call
+5. On success: updated text displays
+
+**Cancelling an edit:**
+1. User enters edit mode
+2. User types some changes
+3. User clicks `"cancel"` → edit mode exits, original notes text restored (no API call)
+
+**Viewing notes on home page (TripCard):**
+1. User navigates to home page
+2. Trip cards with notes show the first 100 chars with `"…"` below the status badge
+3. Trip cards without notes show no notes element
+
+---
+
+### 13.9 Design Rationale Notes
+
+- **Inline edit over separate edit page:** The notes field is a short-form text field that benefits from in-context editing. A separate `/trips/:id/edit` page would feel heavyweight for a textarea. Inline edit is consistent with the quick-edit patterns users expect for note-taking.
+- **Position above calendar:** Notes are trip-level metadata (like a journal entry or planning memo), not itinerary data. Placing them above the calendar keeps the calendar as the primary itinerary overview — users look at the calendar for schedule, and at the notes for context/intent.
+- **Minimal card preview:** 100 chars on the TripCard is enough to recognize the note without overwhelming the card grid layout. The muted text color ensures it doesn't compete with the trip name.
+- **Always-visible char count in edit mode:** Showing `"X / 2,000"` at all times (not just near the limit) gives users a sense of how much they've written. The color transition to amber/red near the limit prevents surprises without alarming users unnecessarily.
+
+---
+
+*Sprint 7 Spec 13 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-27.*
