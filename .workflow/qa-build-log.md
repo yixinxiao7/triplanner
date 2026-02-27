@@ -26,7 +26,127 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 | Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
 |----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 6 — T-093 Post-Deploy Health Check + Config Consistency | Post-Deploy Health Check | Pass | Success | Staging | Yes | Monitor Agent | None — all 16 endpoint checks pass, all 4 config consistency checks pass, DB connected, Sprint 6 features verified (T-085, T-086 CRUD). |
+| Sprint 6 — T-093 Config Consistency Validation | Config Consistency | Pass | N/A | Staging | Yes | Monitor Agent | None — PORT, protocol, CORS, and Docker config all consistent. |
 | Sprint 6 — Pre-deployment staging environment audit (T-092 blocked) | Post-Deploy Health Check | Partial | Skipped | Staging | N/A | Deploy Engineer | Staging services not running (pm2 empty, backend/frontend down). PostgreSQL status unknown (pg_isready not on PATH). Unit tests PASS: 196/196 backend, 296/296 frontend. T-092 blocked — awaiting T-091 (QA Integration Testing). Full deployment deferred until QA confirms readiness. |
+
+---
+
+### Sprint 6 — Monitor Agent: T-093 Post-Deploy Health Check + Config Consistency — 2026-02-27
+
+**Related Tasks:** T-093 (Monitor: Staging health check)
+**Sprint:** 6
+**Date:** 2026-02-27T21:39:52Z
+**Checked By:** Monitor Agent
+**Deploy Verified: YES — All checks pass**
+
+---
+
+#### Config Consistency Validation
+
+**Files Checked:**
+- `backend/.env` — PORT, SSL_KEY_PATH, SSL_CERT_PATH, CORS_ORIGIN
+- `frontend/vite.config.js` — proxy target URL, dev server port
+- `backend/src/index.js` — HTTP vs HTTPS server selection logic
+- `infra/docker-compose.yml` — container port mappings
+
+**Config Values Extracted:**
+
+| Config Key | Value | Source |
+|-----------|-------|--------|
+| `PORT` | `3000` | `backend/.env` |
+| `SSL_KEY_PATH` | *(commented out — not set)* | `backend/.env` |
+| `SSL_CERT_PATH` | *(commented out — not set)* | `backend/.env` |
+| `CORS_ORIGIN` | `http://localhost:5173` | `backend/.env` |
+| Vite proxy target | `http://localhost:3000` | `frontend/vite.config.js` |
+| Vite dev server port | `5173` | `frontend/vite.config.js` |
+| Docker backend internal PORT | `3000` | `infra/docker-compose.yml` |
+
+**Validation Results:**
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| **Port match** | Vite proxy port = backend PORT (3000) | Vite target: `http://localhost:3000` → port 3000 ✓ | ✅ PASS |
+| **Protocol match** | If SSL set → Vite uses `https://`; If SSL not set → `http://` | SSL commented out → backend serves HTTP; Vite target uses `http://` ✓ | ✅ PASS |
+| **CORS match** | CORS_ORIGIN must include `http://localhost:<vite-port>` | `CORS_ORIGIN=http://localhost:5173`; Vite dev port=5173 ✓ | ✅ PASS |
+| **Docker port match** | Docker backend internal PORT = `.env` PORT | Docker `PORT: 3000` = `.env` `PORT=3000` ✓ (No host port mapping for backend — correct; nginx proxies internally) | ✅ PASS |
+
+**Config Consistency Result: PASS** — No mismatches detected across backend `.env`, Vite config, and Docker Compose.
+
+---
+
+#### Post-Deploy Health Checks
+
+**Environment:** Staging (local)
+**Backend:** `http://localhost:3000` (HTTP, running as `node src/index.js`, PID 16962)
+**Frontend build:** `frontend/dist/index.html` + `assets/index-C2dV6j3A.js` (331KB) + `assets/index-BG8U3CmL.css` (68KB) — built 2026-02-27 16:31
+
+```
+Environment: Staging
+Timestamp: 2026-02-27T21:39:52Z
+Checks:
+  - [x] App responds (GET /api/v1/health → 200)
+  - [x] Auth works (POST /api/v1/auth/register → 201 with token; POST /api/v1/auth/login → 200 with token)
+  - [x] Key endpoints respond (see detailed results below)
+  - [x] No 5xx errors in logs
+  - [x] Database connected (trip + land travel CRUD operations succeed)
+  - [x] Config consistency: backend PORT matches vite proxy target ✅
+  - [x] Config consistency: protocol (HTTP) matches across stack ✅
+  - [x] Config consistency: CORS_ORIGIN includes frontend dev server ✅
+Result: PASS
+Notes: Backend runs as direct node process (not pm2). All Sprint 6 features operational.
+```
+
+**Detailed Check Results:**
+
+| # | Check | HTTP Status | Response | Result |
+|---|-------|------------|----------|--------|
+| A | `GET /api/v1/health` | 200 | `{"status":"ok"}` | ✅ PASS |
+| B | `POST /api/v1/auth/register` | 201 | `{"data":{"user":{"id":"ea13292d...","name":"MonitorTest","email":"...","created_at":"2026-02-27T21:39:06.147Z"},"access_token":"<JWT>"}}` | ✅ PASS |
+| C | `POST /api/v1/auth/login` (valid creds) | 200 | `{"data":{"user":{...},"access_token":"<JWT>"}}` | ✅ PASS |
+| D | `POST /api/v1/auth/login` (wrong creds) | 401 | `{"error":{"message":"...","code":"INVALID_CREDENTIALS"}}` | ✅ PASS |
+| E | `GET /api/v1/trips` (no auth) | 401 | `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS |
+| F | `GET /api/v1/trips` (with auth) | 200 | `{"data":[...],"pagination":{"page":1,"limit":20,"total":0}}` | ✅ PASS |
+| G | `POST /api/v1/trips` | 201 | `{"data":{"id":"3483a63c...","name":"Monitor Health Check Trip","destinations":["Tokyo","Osaka"],"status":"PLANNING",...}}` | ✅ PASS |
+| H | `GET /api/v1/trips/:id` | 200 | `{"data":{"id":"3483a63c...",...}}` | ✅ PASS |
+| I | **T-085**: `GET /api/v1/trips?search=%` | 200 | `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}` — **NOT 500** | ✅ PASS |
+| J | **T-085**: `GET /api/v1/trips?search=_` | 200 | `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}` — **NOT 500** | ✅ PASS |
+| K | **T-086**: `POST /api/v1/trips/:id/land-travel` (mode=RENTAL_CAR) | 201 | `{"data":{"id":"71cac33e...","trip_id":"...","mode":"RENTAL_CAR","provider":"Hertz","from_location":"SFO","to_location":"Los Angeles","departure_date":"2026-08-07","departure_time":null,"arrival_date":null,"arrival_time":null,"confirmation_number":null,"notes":"Full-size SUV","created_at":"2026-02-27T21:39:53.655Z","updated_at":"2026-02-27T21:39:53.655Z"}}` | ✅ PASS |
+| L | **T-086**: `GET /api/v1/trips/:id/land-travel` | 200 | `{"data":[{...}]}` — entry present, all schema fields returned | ✅ PASS |
+| M | **T-086**: `PATCH /api/v1/trips/:id/land-travel/:ltId` | 200 | `{"data":{...,"provider":"Enterprise","notes":"Updated by Monitor Agent health check","updated_at":"2026-02-27T21:39:53.688Z"}}` | ✅ PASS |
+| N | **T-086**: `DELETE /api/v1/trips/:id/land-travel/:ltId` | 204 | *(empty body)* | ✅ PASS |
+| O | **T-086**: Cross-user `GET /api/v1/trips/:id/land-travel` | 403 | Trip ownership enforced — user 2 cannot access user 1's land travel | ✅ PASS |
+| P | **T-086**: `POST /api/v1/trips/:id/land-travel` (mode=SPACESHIP) | 400 | `{"error":{"message":"Validation failed","code":"VALIDATION_ERROR","fields":{"mode":"mode must be one of: RENTAL_CAR, BUS, TRAIN, RIDESHARE, FERRY, OTHER"}}}` | ✅ PASS |
+
+**Database Connectivity:** PASS — All read/write operations succeed. Migration 009 confirmed applied (land_travels table exists and operational). PostgreSQL at `postgres://localhost:5432/appdb`.
+
+**Frontend Build:** Present — `frontend/dist/index.html` (388 bytes) with `assets/index-C2dV6j3A.js` (331KB) and `assets/index-BG8U3CmL.css` (68KB), built 2026-02-27 16:31.
+
+---
+
+#### Observations (Non-Blocking)
+
+1. **Backend process manager:** Backend is running as a direct `node src/index.js` process (PID 16962), NOT under pm2. pm2 is installed but shows an empty process table. This is a deviation from the deployment plan (which called for pm2), but the service is fully operational. Flagging for Deploy Engineer awareness — recommend registering under pm2 for restart resilience if staging is long-running.
+
+2. **Health endpoint format:** `GET /api/v1/health` returns `{"status":"ok"}` (flat format) rather than `{"data":{"status":"ok"}}` (standard API wrapper). This is intentional per the route implementation comment ("Liveness check. Returns { status: ok }"). Not a contract violation — health endpoint is a liveness probe only.
+
+3. **HTTPS disabled for this sprint:** SSL certs commented out in `backend/.env`, backend serves HTTP on port 3000. This is consistent with the local dev environment. Vite proxy and CORS are correctly aligned.
+
+---
+
+#### Summary
+
+| Category | Result |
+|----------|--------|
+| Config Consistency (all 4 checks) | ✅ ALL PASS |
+| Endpoint Health (16 checks) | ✅ 16/16 PASS |
+| Database Connectivity | ✅ PASS |
+| T-085 ILIKE Escaping Fix | ✅ CONFIRMED WORKING |
+| T-086 Land Travel CRUD | ✅ CONFIRMED WORKING |
+| Frontend Build | ✅ PRESENT |
+| **Deploy Verified** | **YES** |
+
+**Staging is ready for User Agent testing (T-094).**
 
 ---
 
