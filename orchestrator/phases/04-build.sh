@@ -98,10 +98,20 @@ Write clean, production-quality configurations. Follow security best practices. 
     elif [[ $agent_count -eq 1 ]]; then
         local entry="${agents_to_run[0]}"
         local agent_name model turns task
-        agent_name=$(echo "$entry" | cut -d'|' -f1)
-        turns=$(echo "$entry" | cut -d'|' -f2)
-        model=$(echo "$entry" | cut -d'|' -f3)
-        task=$(echo "$entry" | cut -d'|' -f4-)
+        # Parse only the first line for metadata (prompts are multi-line)
+        local first_line="${entry%%$'\n'*}"
+        agent_name=$(echo "$first_line" | cut -d'|' -f1)
+        turns=$(echo "$first_line" | cut -d'|' -f2)
+        model=$(echo "$first_line" | cut -d'|' -f3)
+        local first_line_task
+        first_line_task=$(echo "$first_line" | cut -d'|' -f4-)
+        local rest="${entry#*$'\n'}"
+        if [[ "$rest" == "$entry" ]]; then
+            task="$first_line_task"
+        else
+            task="${first_line_task}
+${rest}"
+        fi
         log_info "Running ${agent_name} only"
         run_agent_with_retry "$agent_name" "$task" 2 "$turns" "$model"
     else

@@ -148,6 +148,13 @@ export const api = {
     update: (tripId, id, body) => apiClient.patch(`/trips/${tripId}/activities/${id}`, body),
     delete: (tripId, id) => apiClient.delete(`/trips/${tripId}/activities/${id}`),
   },
+  land_travel: {
+    list: (tripId) => apiClient.get(`/trips/${tripId}/land-travel`),
+    create: (tripId, body) => apiClient.post(`/trips/${tripId}/land-travel`, body),
+    get: (tripId, id) => apiClient.get(`/trips/${tripId}/land-travel/${id}`),
+    update: (tripId, id, body) => apiClient.patch(`/trips/${tripId}/land-travel/${id}`, body),
+    delete: (tripId, id) => apiClient.delete(`/trips/${tripId}/land-travel/${id}`),
+  },
 };
 
 export default api;

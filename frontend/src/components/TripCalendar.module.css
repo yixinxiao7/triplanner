@@ -132,8 +132,7 @@
 
 /* ── Event Chips ── */
 .eventChip {
-  height: 18px;
-  padding: 0 6px;
+  padding: 1px 6px 2px;
   border-radius: 2px;
   font-size: 10px;
   font-weight: 500;
@@ -141,9 +140,27 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 18px;
   width: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 18px;
+}
+
+.eventName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 16px;
+}
+
+/* Compact time shown below event name (T-089) */
+.eventTime {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.7;
+  line-height: 12px;
+  display: block;
 }
 
 .eventChipFlight {
@@ -167,11 +184,113 @@
   background: var(--color-activity, #C47A2E);
 }
 
-/* ── Overflow ── */
-.overflowIndicator {
+/* Land travel chip (T-088) */
+.eventChipLandTravel {
+  background: var(--color-land-travel, #7B6B8E);
+}
+
+/* ── Overflow button (T-089 — was div) ── */
+.overflowWrapper {
+  position: relative;
+}
+
+.overflowBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
   font-size: 10px;
   color: var(--accent);
-  padding-left: 6px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  text-align: left;
+  width: 100%;
+  line-height: 18px;
+  border-radius: 2px;
+  transition: opacity 150ms ease;
+}
+
+.overflowBtn:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* ── Day Events Popover (T-089) ── */
+.popover {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 100;
+  width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  outline: none;
+}
+
+.popoverHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.popoverDate {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.popoverCloseBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  font-family: var(--font-mono);
+  transition: color 150ms ease;
+}
+
+.popoverCloseBtn:hover {
+  color: var(--text-primary);
+}
+
+.popoverList {
+  padding: 8px 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.popoverItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 12px;
+}
+
+.popoverItemContent {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.popoverItemName {
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.popoverItemTime {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
 }
 
 /* ── Loading Overlay ── */
@@ -238,7 +357,11 @@
     margin-top: 4px;
   }
 
-  .overflowIndicator {
+  .overflowBtn {
+    display: none;
+  }
+
+  .eventTime {
     display: none;
   }
 }

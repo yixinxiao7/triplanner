@@ -10,6 +10,7 @@ import TripDetailsPage from './pages/TripDetailsPage';
 import FlightsEditPage from './pages/FlightsEditPage';
 import StaysEditPage from './pages/StaysEditPage';
 import ActivitiesEditPage from './pages/ActivitiesEditPage';
+import LandTravelEditPage from './pages/LandTravelEditPage';
 import { useNavigate } from 'react-router-dom';
 
 /**
@@ -78,6 +79,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ActivitiesEditPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/trips/:id/land-travel/edit"
+        element={
+          <ProtectedRoute>
+            <LandTravelEditPage />
           </ProtectedRoute>
         }
       />

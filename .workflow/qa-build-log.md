@@ -22,6 +22,119 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint 6 Entries
+
+| Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
+|----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 6 — Pre-deployment staging environment audit (T-092 blocked) | Post-Deploy Health Check | Partial | Skipped | Staging | N/A | Deploy Engineer | Staging services not running (pm2 empty, backend/frontend down). PostgreSQL status unknown (pg_isready not on PATH). Unit tests PASS: 196/196 backend, 296/296 frontend. T-092 blocked — awaiting T-091 (QA Integration Testing). Full deployment deferred until QA confirms readiness. |
+
+---
+
+### Sprint 6 — Deploy Engineer: Pre-Deployment Staging Audit (T-092 Blocked) — 2026-02-27
+
+**Related Task:** T-092 (Deploy: Staging re-deployment — BLOCKED)
+**Sprint:** 6
+**Date:** 2026-02-27
+**Checked By:** Deploy Engineer
+
+---
+
+#### Pre-Deployment Blocker Check
+
+**Status: BLOCKED — T-091 (QA Integration Testing) has not completed.**
+
+Per rules: *"Never deploy without QA confirmation in the handoff log."* No Sprint 6 QA Engineer handoff has been logged to Deploy Engineer. T-090 (Security Checklist) and T-091 (Integration Testing) are both still in Backlog status.
+
+**Upstream dependency chain that must complete before T-092 can proceed:**
+```
+T-083 (FE: Activity Edit Bugs)      — Status: Backlog
+T-084 (FE: FilterToolbar Flicker)   — Status: Backlog
+T-085 (BE: ILIKE Wildcard Fix)      — Status: In Progress
+T-086 (BE: Land Travel API)         — Status: In Progress
+T-087 (FE: Land Travel Edit Page)   — Status: Backlog
+T-088 (FE: Land Travel Section)     — Status: Backlog
+T-089 (FE: Calendar Enhancements)   — Status: Backlog
+        ↓
+T-090 (QA: Security Checklist)      — Status: Backlog
+        ↓
+T-091 (QA: Integration Testing)     — Status: Backlog
+        ↓
+T-092 (Deploy: Staging Re-deploy)   — Status: Blocked ← ME
+```
+
+---
+
+#### Staging Environment Status (2026-02-27)
+
+| Check | Result | Details |
+|-------|--------|---------|
+| PM2 processes | ❌ DOWN | pm2 daemon restarted fresh — no processes registered. Backend not managed. |
+| Backend health endpoint | ❌ DOWN | `curl -sk https://localhost:3001/api/v1/health` — connection refused. Server not running. |
+| Frontend preview server | ❌ DOWN | `curl -sk https://localhost:4173/` — HTTP 000 (connection refused). Not running. |
+| PostgreSQL status | ⚠️ UNKNOWN | `pg_isready` not found on PATH. Cannot confirm DB status without env vars configured. |
+| Migration status | ⚠️ UNKNOWN | Cannot run Knex migrate:status — DB env vars not set in current shell. |
+| Backend unit tests (local) | ✅ PASS | 196/196 tests pass (10 files, ~800ms). Sprint 5 level — no Sprint 6 test additions yet (T-085/T-086 in progress). |
+| Frontend unit tests (local) | ✅ PASS | 296/296 tests pass (21 files, ~3.3s). Sprint 5 level — no Sprint 6 test additions yet (T-083–T-089 in Backlog). |
+
+**Staging services are DOWN.** The Sprint 5 pm2/Vite preview processes are no longer running (system restart or process termination since Sprint 5 deployment on 2026-02-26). This does not block Sprint 6 deployment — staging will be brought up fresh as part of T-092 when QA clears.
+
+---
+
+#### Sprint 6 Deployment Plan (for when T-092 is unblocked)
+
+Once T-091 (QA Integration Testing) completes and QA logs a handoff to Deploy Engineer:
+
+**Pre-Deploy Checklist:**
+1. ✅ Confirm QA handoff in handoff-log.md (T-091 Done → Deploy Engineer)
+2. Check for pending migrations → Migration 009 (`20260227_009_create_land_travels.js`) is pending on staging
+3. Confirm all Sprint 6 code is committed on the working branch
+
+**Deploy Steps:**
+1. `cd /Users/yixinxiao/CLAUDE/triplanner/backend && npm install` — install any new dependencies
+2. `cd /Users/yixinxiao/CLAUDE/triplanner/frontend && npm install` — install any new frontend dependencies
+3. **Run migration 009 on staging DB:**
+   ```bash
+   cd /Users/yixinxiao/CLAUDE/triplanner/backend
+   NODE_ENV=staging npx knex migrate:latest --knexfile src/knexfile.js
+   ```
+   Expected: Creates `land_travels` table + `land_travels_trip_id_idx` index
+4. **Verify migration applied:** `npx knex migrate:status --knexfile src/knexfile.js` → all 9 migrations in Batch
+5. **Run backend tests:** `npm test` → must be 196+ tests passing (Sprint 6 adds new land travel + wildcard escape tests)
+6. **Restart backend under pm2:**
+   ```bash
+   pm2 restart triplanner-backend || pm2 start src/server.js --name triplanner-backend -i max
+   ```
+7. **Rebuild frontend with HTTPS config:**
+   ```bash
+   cd /Users/yixinxiao/CLAUDE/triplanner/frontend
+   VITE_API_URL=https://localhost:3001/api/v1 npm run build
+   ```
+8. **Run frontend tests:** `npm test -- --run` → must be 296+ tests passing
+9. **Restart frontend preview:**
+   ```bash
+   pm2 stop triplanner-frontend 2>/dev/null || true
+   pm2 start "npx vite preview --port 4173 --https" --name triplanner-frontend
+   ```
+10. **Run smoke tests** — verify all Sprint 5 regression checks + Sprint 6 new features
+11. **Log handoff to Monitor Agent (T-093)**
+
+**Migration 009 Details:**
+- File: `backend/src/migrations/20260227_009_create_land_travels.js`
+- Creates: `land_travels` table with UUID PK, trip_id FK (CASCADE DELETE), mode CHECK constraint, required/nullable fields
+- Creates: `land_travels_trip_id_idx` index on trip_id
+- Rollback: `DROP TABLE IF EXISTS land_travels` (clean, no data dependencies to worry about)
+- Zero risk to existing data — net-new table only
+
+**Sprint 6 Smoke Tests (when T-092 executes):**
+- Sprint 5 regression: all 45+ checks from T-079 must still pass
+- Sprint 6 new: land travel API (CRUD, auth, cascade delete), migration 009 table exists, ILIKE escaping (`search=%` returns `[]`), calendar with 4 event types, toolbar no-flicker, activity edit AM/PM visibility
+
+---
+
+*T-092 status: BLOCKED. Will re-attempt when T-091 handoff is received from QA Engineer.*
+
+---
+
 ## Sprint 5 Entries
 
 | Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |

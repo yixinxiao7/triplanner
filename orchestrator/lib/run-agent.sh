@@ -127,10 +127,21 @@ run_agents_parallel() {
     for entry in "$@"; do
         # Parse pipe-delimited fields: agent_name|max_turns|model|task_prompt
         local agent_name max_turns model task_prompt
-        agent_name=$(echo "$entry" | cut -d'|' -f1)
-        max_turns=$(echo "$entry" | cut -d'|' -f2)
-        model=$(echo "$entry" | cut -d'|' -f3)
-        task_prompt=$(echo "$entry" | cut -d'|' -f4-)
+        # Parse only the first line for metadata (prompts are multi-line)
+        local first_line="${entry%%$'\n'*}"
+        agent_name=$(echo "$first_line" | cut -d'|' -f1)
+        max_turns=$(echo "$first_line" | cut -d'|' -f2)
+        model=$(echo "$first_line" | cut -d'|' -f3)
+        local first_line_prompt
+        first_line_prompt=$(echo "$first_line" | cut -d'|' -f4-)
+        # Reconstruct full prompt: first line's prompt portion + remaining lines
+        local rest="${entry#*$'\n'}"
+        if [[ "$rest" == "$entry" ]]; then
+            task_prompt="$first_line_prompt"
+        else
+            task_prompt="${first_line_prompt}
+${rest}"
+        fi
         max_turns="${max_turns:-${AGENT_MAX_TURNS:-50}}"
         model="${model:-${MODEL_LIGHT:-sonnet}}"
 

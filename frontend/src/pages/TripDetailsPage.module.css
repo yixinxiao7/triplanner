@@ -775,3 +775,110 @@
     order: 3;
   }
 }
+
+/* ── Land Travel Card (T-088) ── */
+.landTravelCard {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.landTravelTopRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.landTravelModeBadge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(123, 107, 142, 0.15);
+  color: #a895c0;
+  border: 1px solid rgba(123, 107, 142, 0.3);
+}
+
+.landTravelProvider {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.landTravelRoute {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.landTravelLocation {
+  font-weight: 500;
+}
+
+.landTravelArrow {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.landTravelTimes {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.landTravelTimeBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.landTravelTimeLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.landTravelTimeValue {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.landTravelConfirmation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.landTravelConfLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.landTravelConfValue {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.landTravelNotes {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+}
