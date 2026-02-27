@@ -538,3 +538,143 @@ Sprint 5 added 68 new tests (28 backend Sprint 5 tests + 36 frontend search/filt
 **No new Sprint 6 feedback entries. T-094 (User Agent) must complete at the start of Sprint 7.**
 
 ---
+
+**Sprint 7 Triage — Sprint 6 Project Owner Feedback (Manager Agent — 2026-02-27):**
+
+| FB Entry | Category | Severity | Sprint 7 Disposition | Task |
+|----------|----------|----------|---------------------|------|
+| FB-078 | UX Issue | Minor | Tasked | T-099 — Reorder land travel between flights and stays |
+| FB-079 | UX Issue | Minor | Tasked | T-100 — Sort all-day activities to top of each day |
+| FB-080 | Bug | **Major** | Tasked (P0) | T-097 — Fix "+X more" calendar popover visual corruption |
+| FB-081 | Bug | **Major** | Tasked (P0) | T-098 — Fix stays check-in time UTC conversion offset bug |
+| FB-082 | Feature Gap | Minor | Tasked | T-101 — Calendar checkout time on last stay day |
+| FB-083 | Feature Gap | Minor | Tasked | T-101 — Calendar arrival times on arrival day for flights/land travel |
+| FB-084 | Feature Gap | Minor | Acknowledged (backlog) | Timezone abbreviation display — deferred to Sprint 8 |
+
+---
+
+### FB-078 — UX Issue: Land travel section should appear between flights and stays
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | Tasked |
+| Related Task | T-099 |
+
+**Description:** On the trip details page, the land travel section should be positioned between the flights section and the stays section. Currently the ordering does not reflect the logical travel flow (fly → drive/train → check in).
+
+**Requested by:** Project owner (manual testing feedback)
+
+**Sprint 7 Triage (2026-02-27):** Tasked → T-099 (Frontend: reorder trip details sections — move land travel between flights and stays).
+
+---
+
+### FB-079 — UX Issue: All-day activities should appear at the top of each day
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | Tasked |
+| Related Task | T-100 |
+
+**Description:** In the activities view, all-day events should always render at the top of their respective day, above any time-specific activities. Currently they do not sort to the top.
+
+**Requested by:** Project owner (manual testing feedback)
+
+**Sprint 7 Triage (2026-02-27):** Tasked → T-100 (Frontend: sort all-day activities to top of each day in activities section).
+
+---
+
+### FB-080 — Bug: Clicking "+X more" breaks the calendar day view
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| Category | Bug |
+| Severity | Major |
+| Status | Tasked |
+| Related Task | T-089, T-097 |
+
+**Description:** When clicking the "+X more" button on a calendar day that has overflow events, the expanded view for that day becomes visually broken/corrupted. See attached screenshot — the day cell layout is malformed after clicking the overflow indicator.
+
+**Requested by:** Project owner (manual testing feedback)
+
+**Sprint 7 Triage (2026-02-27):** Tasked → T-097 (Frontend: fix "+X more" calendar popover visual corruption bug). Major priority — calendar overflow popover is a user-visible regression from Sprint 6 T-089 delivery.
+
+---
+
+### FB-081 — Bug: Stays check-in time saved incorrectly (timezone offset issue)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| Category | Bug |
+| Severity | Major |
+| Status | Tasked |
+| Related Task | T-098 |
+
+**Description:** When saving a stay with a check-in time, the time is shifted incorrectly. For example, setting check-in to 4:00 PM ET results in it being saved/displayed as 12:00 PM. This is a 4-hour offset, suggesting the time is being converted from ET to UTC (or vice versa) when it should be stored and displayed as local time.
+
+**Requested by:** Project owner (manual testing feedback)
+
+**Sprint 7 Triage (2026-02-27):** Tasked → T-098 (Backend + Frontend: investigate and fix stays check-in/checkout time UTC conversion bug). Major priority — affects correctness of stay time display for all users.
+
+---
+
+### FB-082 — Feature Gap: Calendar should show checkout time on last day of stay
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| Category | Feature Gap |
+| Severity | Minor |
+| Status | Tasked |
+| Related Task | T-101 |
+
+**Description:** Currently only the check-in time is displayed on the calendar for stays. The checkout time should also be shown on the last day of the stay, so users can see both when they arrive and when they must leave.
+
+**Requested by:** Project owner (manual testing feedback)
+
+**Sprint 7 Triage (2026-02-27):** Tasked → T-101 (Frontend: calendar time display enhancements — checkout time on last stay day + arrival times on arrival day for flights/land travel). Bundled with FB-083 into one task.
+
+---
+
+### FB-083 — Feature Gap: Calendar should show departure and arrival times for travel
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| Category | Feature Gap |
+| Severity | Minor |
+| Status | Tasked |
+| Related Task | T-101 |
+
+**Description:** Flights and land travel entries on the calendar should display their departure time (on the departure day) and arrival time (on the arrival day). Currently these times are not visible on the calendar view.
+
+**Requested by:** Project owner (manual testing feedback)
+
+**Sprint 7 Triage (2026-02-27):** Tasked → T-101 (Frontend: calendar time display enhancements — checkout time on last stay day + arrival times on arrival day for flights/land travel). Bundled with FB-082 into one task.
+
+---
+
+### FB-084 — Feature Gap: Show timezone for calendar event timestamps
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| Category | Feature Gap |
+| Severity | Minor |
+| Status | Acknowledged |
+| Related Task | — |
+
+**Description:** All timestamps shown on the calendar (check-in/checkout times for stays, departure/arrival times for flights and land travel) should display the timezone abbreviation (e.g., "4:00 PM ET", "10:30 AM PST") so users know which timezone each event refers to.
+
+**Requested by:** Project owner (manual testing feedback)
+
+**Sprint 7 Triage (2026-02-27):** Acknowledged — deferred to backlog. Timezone abbreviation display (converting IANA timezone strings like "America/New_York" to "ET") is complex and browser-dependent. The existing compact time display on calendar chips is already small; adding a timezone label risks crowding. Deferred pending the timezone bug fix (FB-081 / T-098) and calendar display enhancements (T-101). Revisit in Sprint 8.
+
+---

@@ -17,6 +17,76 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 7 — Manager Agent → All Agents: Sprint #7 Planning Complete — Begin Sprint Execution (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Manager Agent |
+| To Agent | All Agents |
+| Status | Pending |
+| Related Task | T-095 through T-109; T-094 (carry-over) |
+| Handoff Summary | Sprint #7 is planned and ready to execute. Full sprint details in `.workflow/active-sprint.md`. Feedback triage complete — 7 Sprint 6 feedback entries triaged (FB-078–FB-084). Two Major bugs are P0 priorities this sprint. |
+
+**Sprint #7 Task Summary:**
+
+| Task | Agent | Priority | Description |
+|------|-------|----------|-------------|
+| T-095 | Deploy Engineer | **P0 — START IMMEDIATELY** | Re-enable HTTPS + re-register pm2 on staging. Must complete before T-094 runs. |
+| T-094 | User Agent | **P0 — after T-095** | Sprint 6 feature walkthrough (carry-over). Complete before QA finalizes Sprint 7 scope. |
+| T-096 | Design Agent | P1 — parallel | Spec 13: Calendar checkout/arrival times + trip notes field |
+| T-097 | Frontend Engineer | **P0 — parallel** | Fix "+X more" calendar popover visual corruption (FB-080, Major bug) |
+| T-098 | Backend Engineer | **P0 — parallel** | Fix stays check-in time UTC 4-hour offset bug (FB-081, Major bug) |
+| T-099 | Frontend Engineer | P1 — parallel | Reorder trip details: land travel between flights and stays (FB-078) |
+| T-100 | Frontend Engineer | P1 — parallel | Sort all-day activities to top of each day (FB-079) |
+| T-101 | Frontend Engineer | P2 — after T-096 | Calendar: checkout time on last stay day + arrival times for flights/land travel (FB-082, FB-083) |
+| T-103 | Backend Engineer | P2 — after T-096 | Trip notes backend: migration 010 + PATCH /trips/:id + GET responses |
+| T-104 | Frontend Engineer | P2 — after T-096, T-103 | Trip notes frontend: TripDetailsPage inline edit + TripCard preview |
+| T-105 | QA Engineer | P0 — after all impl | Security checklist + code review audit |
+| T-106 | QA Engineer | P0 — after T-105 | Integration testing |
+| T-107 | Deploy Engineer | P1 — after T-106 | Staging re-deployment (migration 010 + all Sprint 7) |
+| T-108 | Monitor Agent | P1 — after T-107 | Staging health check |
+| T-109 | User Agent | P1 — after T-108 | Sprint 7 feature walkthrough + feedback |
+
+**Critical Context for Sprint 7 Agents:**
+
+**Deploy Engineer (T-095 — IMMEDIATE):**
+- Backend is running as a direct `node src/index.js` process (not pm2). Register: `pm2 start src/index.js --name triplanner-backend && pm2 save`
+- HTTPS is disabled: SSL cert paths are commented out in `backend/.env`. Re-enable them (or re-generate self-signed cert if expired — OpenSSL command in Sprint 3 runbook).
+- CORS_ORIGIN in backend must include `https://localhost:4173` (the Vite preview port used by User Agent testing)
+- Frontend must be rebuilt with `VITE_API_URL=https://localhost:3001/api/v1`
+- Smoke test after: `curl -k https://localhost:3001/api/v1/health` → 200 | `pm2 list` → online
+
+**User Agent (T-094 — after T-095):**
+- Test against HTTPS staging (https://localhost:4173 frontend, https://localhost:3001/api/v1 backend)
+- Focus on Sprint 6 features: land travel CRUD via UI, "+X more" popover, event times on calendar chips, activity edit AM/PM, clock icon, FilterToolbar no-flicker on search
+- Note any issues with "+X more" popover (FB-080 already tasked as T-097 — if you confirm it's broken, note details of the corruption for T-097)
+- Note any timezone offset issues with stays (FB-081 already tasked as T-098)
+- Submit feedback to feedback-log.md. Manager will triage any Critical/Major new findings before QA (T-105) starts
+
+**Backend Engineer (T-098 — timezone bug, high priority):**
+- ADR-003: Stays use `check_in_at TIMESTAMPTZ` + `check_in_tz TEXT` (IANA string). The bug: setting 4:00 PM ET results in display of 12:00 PM (4-hour shift).
+- Investigate: (1) What value does `StaysEditPage.jsx` send in the POST body for `check_in_at`? Does it use `new Date()` which converts to UTC? (2) How does `formatDateTime()` in `formatDate.js` render the time — is it applying the `check_in_tz` correctly?
+- Likely fix location: frontend `StaysEditPage.jsx` construction of `check_in_at` ISO string, or `formatDate.js` timezone application. The backend stores whatever timestamp it receives, so check the frontend first.
+- After fix: verify `POST /stays` with check_in_at "2026-08-07T16:00:00-04:00" + check_in_tz "America/New_York" → GET /stays shows "4:00 PM" when formatted in that timezone
+
+**Frontend Engineer (multiple tasks):**
+- T-097 (+X more fix): The likely cause is the popover DOM element being rendered as a child of the day cell's CSS grid item, causing reflow. Solution: use `ReactDOM.createPortal(popoverJSX, document.body)` to render outside the grid, with absolute/fixed positioning anchored to the trigger button's `getBoundingClientRect()`. Keep all existing accessibility attributes.
+- T-099 (section reorder): In `TripDetailsPage.jsx`, change the JSX render order of the four sub-resource sections to: flights → land travel → stays → activities.
+- T-100 (all-day sort): In `TripDetailsPage.jsx`, the sort function for activities within a day group should put null `start_time` items first. Example: `activities.sort((a, b) => { if (!a.start_time && !b.start_time) return 0; if (!a.start_time) return -1; if (!b.start_time) return 1; return a.start_time.localeCompare(b.start_time); })`
+- T-101, T-104: Wait for T-096 design spec before starting
+
+**Feedback Triaged (FB-078–FB-084):**
+- FB-078 → T-099 (Tasked): Land travel section reorder
+- FB-079 → T-100 (Tasked): All-day activities sort
+- FB-080 → T-097 (Tasked, P0): "+X more" popover corruption
+- FB-081 → T-098 (Tasked, P0): Stays timezone offset
+- FB-082 → T-101 (Tasked): Calendar checkout time
+- FB-083 → T-101 (Tasked): Calendar arrival times
+- FB-084 → Acknowledged (backlog): Timezone abbreviations deferred to Sprint 8
+
+---
+
 ### Sprint 6 — Manager Agent → All Agents: Sprint #6 Closed — Begin Sprint #7 Prep (2026-02-27)
 
 | Field | Value |
