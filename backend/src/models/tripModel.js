@@ -142,10 +142,20 @@ export async function listTripsByUser(userId, options = {}) {
     query.where({ user_id: userId });
 
     if (search && search.trim()) {
-      const searchTerm = `%${search.trim()}%`;
+      // T-085 / B-033 / FB-062: Escape ILIKE special characters before interpolation.
+      // Without escaping, a user searching for "%" would match ALL trips (SQL wildcard),
+      // and "_" would match any single character. We escape \, %, and _ so they are
+      // treated as literal characters in the ILIKE pattern.
+      const escaped = search
+        .trim()
+        .replace(/\\/g, '\\\\') // Escape backslash first (it becomes the ESCAPE char)
+        .replace(/%/g, '\\%')   // Escape percent wildcard
+        .replace(/_/g, '\\_');  // Escape underscore single-char wildcard
+
+      const searchTerm = `%${escaped}%`;
       query.where(function () {
-        this.whereRaw('name ILIKE ?', [searchTerm])
-          .orWhereRaw("array_to_string(destinations, ',') ILIKE ?", [searchTerm]);
+        this.whereRaw("name ILIKE ? ESCAPE '\\\\'", [searchTerm])
+          .orWhereRaw("array_to_string(destinations, ',') ILIKE ? ESCAPE '\\\\'", [searchTerm]);
       });
     }
 

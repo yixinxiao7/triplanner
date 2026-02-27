@@ -32,7 +32,7 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 006 | 1 | Create `activities` table | Create Table | `20260224_006_create_activities.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 | 007 | 2 | Add `start_date` + `end_date` to `trips` table | Alter Table | `20260225_007_add_trip_date_range.js` | ✅ Applied on Staging (2026-02-25, T-038) |
 | 008 | 3 | Make `start_time` + `end_time` nullable on `activities` | Alter Table | `20260225_008_make_activity_times_optional.js` | ✅ Implemented — awaiting staging deploy (T-054) |
-| 009 | 6 | Create `land_travels` table | Create Table | `20260227_009_create_land_travels.js` | ⏳ Proposed — Pre-Approved by Manager (2026-02-27, Sprint 6 planning). Ready for Backend Engineer to implement (T-086). Requires Deploy Engineer to run on staging (T-092). |
+| 009 | 6 | Create `land_travels` table | Create Table | `20260227_009_create_land_travels.js` | ✅ Implemented (2026-02-27, T-086). Awaiting staging deploy by Deploy Engineer (T-092). |
 
 ---
 
@@ -40,7 +40,7 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 
 **Sprint:** 6
 **Task:** T-086
-**Status:** ⏳ Proposed — **Pre-Approved by Manager** (explicitly approved in `active-sprint.md`, Sprint 6 planning, 2026-02-27)
+**Status:** ✅ Implemented (2026-02-27) — **Pre-Approved by Manager** (explicitly approved in `active-sprint.md`, Sprint 6 planning, 2026-02-27). Awaiting staging deployment by Deploy Engineer (T-092).
 
 **Rationale:** Adds a new `land_travels` sub-resource table to track ground transportation (rental cars, buses, trains, rideshares, ferries, etc.) associated with a trip. This is a net-new table with no impact on existing tables or data. Schema pre-approved so T-086 can begin implementation immediately after T-081 design spec review.
 

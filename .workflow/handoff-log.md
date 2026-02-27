@@ -17,6 +17,71 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 6 — Backend Engineer → QA Engineer + Deploy Engineer: T-085 + T-086 Implementation Complete — In Review (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer (T-090, T-091); Deploy Engineer (T-092) |
+| Status | Pending |
+| Related Task | T-085, T-086 |
+| Handoff Summary | All Sprint 6 backend work is complete. T-085 (ILIKE wildcard escaping fix) and T-086 (land travel sub-resource: migration, model, routes, tests) are implemented. Both tasks moved to "In Review" in dev-cycle-tracker.md. 47 new tests added; all 243 backend tests pass. QA should start T-090 security audit. Deploy Engineer should note migration 009 is ready for staging deployment once QA completes T-091. |
+
+**T-085 — ILIKE Wildcard Escaping (`backend/src/models/tripModel.js`):**
+- Changed `applyBaseFilters()` to escape `%`, `_`, and `\` before interpolating into ILIKE patterns.
+- Added `ESCAPE '\\'` clause to both `name ILIKE` and `array_to_string(destinations,...) ILIKE` expressions.
+- No endpoint signature change — method, path, auth, response shape identical to T-072 contract.
+- **QA critical check:** `GET /api/v1/trips?search=%` must return `data: []`, not all trips.
+
+**T-086 — Land Travel Sub-Resource:**
+- **New files created:**
+  - `backend/src/migrations/20260227_009_create_land_travels.js` — Migration 009 (up + down). Table: `land_travels`. Columns: id, trip_id (FK → trips CASCADE), mode (CHECK enum), provider, from_location, to_location, departure_date, departure_time, arrival_date, arrival_time, confirmation_number, notes, created_at, updated_at. Index: `land_travels_trip_id_idx`.
+  - `backend/src/models/landTravelModel.js` — Full model layer with TO_CHAR date formatting.
+  - `backend/src/routes/landTravel.js` — GET list, POST, GET by ID, PATCH, DELETE. UUID validation on tripId + ltId, ownership check on every route, input validation with cross-field rules.
+  - `backend/src/__tests__/sprint6.test.js` — 47 new tests covering T-085 + T-086.
+- **Modified files:**
+  - `backend/src/app.js` — Registered land travel routes at `/api/v1/trips/:tripId/land-travel`.
+- **All 243 backend tests pass** (was 196).
+
+**Deploy Engineer — Migration 009 notes:**
+- Run `npx knex migrate:latest` from `backend/` directory BEFORE restarting the backend on staging.
+- `knex migrate:rollback` will cleanly drop `land_travels` table.
+
+---
+
+### Sprint 6 — Deploy Engineer: T-092 Blocked — Awaiting QA Completion (T-090 + T-091) (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | Deploy Engineer |
+| To Agent | All Agents (informational) |
+| Status | Blocked |
+| Related Task | T-092 (Deploy: Staging re-deployment) ← Blocked by T-091 ← T-090 ← T-083, T-084, T-085, T-086, T-087, T-088, T-089 |
+| Handoff Summary | Deploy Engineer has audited the current state and cannot proceed with T-092 (Staging Re-deployment). QA has not yet completed T-090 (Security Checklist) or T-091 (Integration Testing) for Sprint 6. Per rules, deployment cannot occur without QA confirmation in the handoff log. Additionally, the staging environment is currently DOWN (pm2 processes not running, backend/frontend not serving) — staging will need to be brought up fresh as part of T-092. Unit tests pass locally (196/196 backend, 296/296 frontend). Full pre-deployment plan documented in qa-build-log.md. **T-092 will begin immediately once QA Engineer logs a Sprint 6 handoff to Deploy Engineer confirming T-091 is Done.** |
+
+**Blocker chain:**
+- T-083 (FE: Activity Edit Bugs) — Backlog
+- T-084 (FE: FilterToolbar Flicker) — Backlog
+- T-085 (BE: ILIKE Fix) — In Progress
+- T-086 (BE: Land Travel API) — In Progress
+- T-087 (FE: Land Travel Edit Page) — Backlog
+- T-088 (FE: Land Travel Section) — Backlog
+- T-089 (FE: Calendar Enhancements) — Backlog
+- T-090 (QA: Security Checklist) — Backlog ← direct blocker
+- T-091 (QA: Integration Testing) — Backlog ← direct blocker
+
+**Staging environment state (2026-02-27):**
+- Backend (pm2 triplanner-backend): ❌ NOT RUNNING
+- Frontend (Vite preview :4173): ❌ NOT RUNNING
+- PostgreSQL: ⚠️ Status unknown (env vars not configured in current shell)
+- Migrations applied: 001–008 (Sprint 5 level); migration 009 (`land_travels`) is pending
+
+**Action required:** QA Engineer must complete T-090 (Security Checklist) and T-091 (Integration Testing), then log a "QA Engineer → Deploy Engineer" handoff with Status: Pending. Deploy Engineer will acknowledge and begin T-092 immediately.
+
+---
+
 ### Sprint 6 — Backend Engineer → QA Engineer: T-085 + T-086 API Contracts Ready for Test Reference (2026-02-27)
 
 | Field | Value |
@@ -67,7 +132,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 6 |
 | From Agent | Backend Engineer |
 | To Agent | Frontend Engineer (T-087, T-088) |
-| Status | Pending |
+| Status | Acknowledged (Frontend Engineer — 2026-02-27) |
 | Related Task | T-085 (ILIKE fix), T-086 (Land Travel API) |
 | Handoff Summary | Backend Engineer has published Sprint 6 API contracts to `.workflow/api-contracts.md`. The land travel API contract (T-086) is now defined and ready for Frontend Engineer to use in T-087 (Land Travel Edit Page) and T-088 (Land Travel Section on Trip Details). |
 
