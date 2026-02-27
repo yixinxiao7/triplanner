@@ -22,6 +22,7 @@ vi.mock('../utils/api', () => ({
     flights: { list: vi.fn() },
     stays: { list: vi.fn() },
     activities: { list: vi.fn() },
+    land_travel: { list: vi.fn().mockResolvedValue({ data: { data: [] } }) },
   },
   apiClient: {
     interceptors: {
@@ -144,10 +145,14 @@ const defaultHookValue = {
   activities: [],
   activitiesLoading: false,
   activitiesError: null,
+  landTravels: [],
+  landTravelsLoading: false,
+  landTravelsError: null,
   fetchAll: vi.fn(),
   refetchFlights: vi.fn(),
   refetchStays: vi.fn(),
   refetchActivities: vi.fn(),
+  refetchLandTravels: vi.fn(),
 };
 
 function renderTripDetailsPage() {
@@ -622,5 +627,153 @@ describe('TripDetailsPage', () => {
     const freeDayIdx = texts.findIndex((t) => t.includes('Free Day'));
 
     expect(hikeIdx).toBeLessThan(freeDayIdx);
+  });
+
+  // ── 13. Land Travel Section (Sprint 6 T-088) ─────────────────────────────
+  it('renders "land travel" section header', () => {
+    renderTripDetailsPage();
+    expect(screen.getByText('land travel')).toBeDefined();
+  });
+
+  it('shows "no land travel added yet." empty state when landTravels is empty', () => {
+    renderTripDetailsPage();
+    expect(screen.getByText('no land travel added yet.')).toBeDefined();
+  });
+
+  it('renders "edit land travel" link to the land travel edit route', () => {
+    renderTripDetailsPage();
+    const editLTLink = screen.getByRole('link', { name: /edit land travel/i });
+    expect(editLTLink).toBeDefined();
+    expect(editLTLink.getAttribute('href')).toBe('/trips/trip-001/land-travel/edit');
+  });
+
+  it('renders land travel cards with mode badge, provider, from → to route', () => {
+    const mockLandTravels = [
+      {
+        id: 'lt-001',
+        trip_id: 'trip-001',
+        mode: 'TRAIN',
+        provider: 'Amtrak',
+        from_location: 'New York',
+        to_location: 'Washington DC',
+        departure_date: '2026-08-07',
+        departure_time: '09:00:00',
+        arrival_date: '2026-08-07',
+        arrival_time: '12:30:00',
+        confirmation_number: 'AMT123',
+        notes: null,
+        created_at: '2026-02-27T12:00:00.000Z',
+        updated_at: '2026-02-27T12:00:00.000Z',
+      },
+    ];
+
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravels: mockLandTravels,
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByText('train')).toBeDefined();
+    expect(screen.getByText('Amtrak')).toBeDefined();
+    expect(screen.getByText('New York')).toBeDefined();
+    expect(screen.getByText('Washington DC')).toBeDefined();
+  });
+
+  it('land travel card has correct aria-label with mode and route', () => {
+    const mockLandTravels = [
+      {
+        id: 'lt-001',
+        trip_id: 'trip-001',
+        mode: 'TRAIN',
+        provider: 'Amtrak',
+        from_location: 'New York',
+        to_location: 'Washington DC',
+        departure_date: '2026-08-07',
+        departure_time: null,
+        arrival_date: null,
+        arrival_time: null,
+        confirmation_number: null,
+        notes: null,
+        created_at: '2026-02-27T12:00:00.000Z',
+        updated_at: '2026-02-27T12:00:00.000Z',
+      },
+    ];
+
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravels: mockLandTravels,
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByRole('article', { name: /train: New York to Washington DC/i })).toBeDefined();
+  });
+
+  it('shows loading skeleton for land travel section', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravelsLoading: true,
+    });
+
+    const { container } = renderTripDetailsPage();
+    // Skeleton bars present
+    const skeletons = container.querySelectorAll('.skeleton');
+    expect(skeletons.length).toBeGreaterThan(0);
+  });
+
+  it('shows error state for land travel section with retry button', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravelsError: 'could not load land travel.',
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByText('could not load land travel.')).toBeDefined();
+    expect(screen.getAllByText('try again').length).toBeGreaterThan(0);
+  });
+
+  it('retry button for land travel calls refetchLandTravels', () => {
+    const mockRefetchLandTravels = vi.fn();
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravelsError: 'could not load land travel.',
+      refetchLandTravels: mockRefetchLandTravels,
+    });
+
+    renderTripDetailsPage();
+
+    fireEvent.click(screen.getByText('try again'));
+    expect(mockRefetchLandTravels).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders confirmation number in land travel card when present', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravels: [
+        {
+          id: 'lt-001',
+          trip_id: 'trip-001',
+          mode: 'RENTAL_CAR',
+          provider: 'Enterprise',
+          from_location: 'Airport',
+          to_location: 'Hotel',
+          departure_date: '2026-08-07',
+          departure_time: null,
+          arrival_date: null,
+          arrival_time: null,
+          confirmation_number: 'ENT-XYZ99',
+          notes: null,
+          created_at: '2026-02-27T12:00:00.000Z',
+          updated_at: '2026-02-27T12:00:00.000Z',
+        },
+      ],
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByText('ENT-XYZ99')).toBeDefined();
+    expect(screen.getByText('CONF #')).toBeDefined();
   });
 });

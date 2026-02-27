@@ -17,6 +17,49 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 6 — Manager → QA Engineer: T-086 Code Review APPROVED → Integration Check (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | Manager Agent |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-086 |
+| Handoff Summary | T-086 (Land Travel CRUD API) has passed Manager code review (second pass) and is now in **Integration Check**. All Manager-required changes from the first review are confirmed implemented and tested. QA should include T-086 in the T-090 security checklist and T-091 integration testing. |
+
+**What was reviewed:**
+
+- `backend/src/routes/landTravel.js` — All 5 endpoints (GET list, POST, GET by ID, PATCH, DELETE)
+- `backend/src/models/landTravelModel.js` — Full model with TO_CHAR date formatting
+- `backend/src/migrations/20260227_009_create_land_travels.js` — Migration 009 with up/down
+- `backend/src/app.js` — Route registration confirmed
+- `backend/src/__tests__/sprint6.test.js` — 42 T-086 tests confirmed present
+
+**Review Findings (all PASS):**
+
+1. **Authentication & Authorization:** `router.use(authenticate)` protects all routes. `requireTripOwnership()` called before any data access on every route. UUID validation on both `tripId` and `ltId` params.
+2. **Same-day time validation (T-086 fix #1 — POST):** `createLandTravelSchema.arrival_time.custom` correctly checks `arrival_date === departure_date && departure_time && arrival_time <= departure_time` → 400 VALIDATION_ERROR with message "Arrival time must be after departure time when arriving on the same day". String comparison on HH:MM:SS is lexicographically correct.
+3. **Same-day time validation (T-086 fix #2 — PATCH):** PATCH cross-field block computes `mergedDepartureTime` (incoming or existing) and applies the same same-day rule using merged values. Matches pattern of all other PATCH cross-field checks in this codebase.
+4. **API contract time format update:** `api-contracts.md` T-086 section updated — `departure_time` and `arrival_time` type now reads `string (HH:MM:SS)`, all JSON examples updated to full format (e.g., `"09:00:00"`). Consistent with `TO_CHAR(departure_time, 'HH24:MI:SS')` in model.
+5. **Security:** No hardcoded secrets. All Knex queries parameterized (no SQL injection risk). Error responses use structured JSON (`message` + `code` only — no stack traces or internal paths). Mode enum enforced at app layer AND DB layer (CHECK constraint in migration).
+6. **Migration 009:** UUID PK via `gen_random_uuid()`, `trip_id` FK with `ON DELETE CASCADE`, CHECK constraint on mode enum, index on `trip_id`, TIMESTAMPTZ timestamps. `down()` uses `dropTableIfExists` — fully reversible. ✅
+7. **Model:** `TO_CHAR` normalizes DATE and TIME columns to strings at the DB level. Ordering: `departure_date ASC, departure_time ASC NULLS LAST`. `findLandTravelById` scoped to both `id` AND `trip_id` (defense-in-depth).
+8. **Tests:** 42 T-086 tests confirmed in `sprint6.test.js` (lines 279–921) — all CRUD, happy paths and error paths, 401/403/404, UUID validation, same-day validation (4 dedicated tests). Far exceeds the "1 happy + 1 error" minimum.
+
+**QA Critical Verification Items (T-090/T-091):**
+
+- **Land travel ownership:** Cross-user `GET/POST/PATCH/DELETE /api/v1/trips/:tripId/land-travel` → 403 FORBIDDEN
+- **Migration 009:** Verify `land_travels` table exists in staging DB after `knex migrate:latest`
+- **Migration rollback:** `knex migrate:rollback` removes `land_travels` table cleanly
+- **Valid mode enum:** POST with `mode: "HELICOPTER"` → 400 VALIDATION_ERROR
+- **Same-day validation:** POST with same `arrival_date` and `departure_date`, `arrival_time` < `departure_time` → 400, message matches `/after departure time/i`
+- **Cross-day validation passes:** Arrival on next day (`arrival_date > departure_date`) with any time values → 201 (same-day rule must NOT fire)
+- **Sorting:** GET list returns entries ordered by `departure_date ASC`, `departure_time ASC NULLS LAST` — entries without departure_time sort after timed entries on the same date
+- **ILIKE escaping (T-085 carry-over):** `GET /api/v1/trips?search=%` with real PostgreSQL → `{ data: [] }` (not 500, not all trips)
+
+---
+
 ### Sprint 6 — Backend Engineer → QA Engineer + Manager: T-086 Fix Complete → Re-Review (2026-02-27)
 
 | Field | Value |
@@ -24,9 +67,9 @@ When you finish work that another agent needs to pick up:
 | Sprint | 6 |
 | From Agent | Backend Engineer |
 | To Agent | Manager Agent (for re-review), QA Engineer (heads up) |
-| Status | Pending |
+| Status | Done |
 | Related Task | T-086 |
-| Handoff Summary | T-086 fix is complete. Both required changes from the Manager code review have been implemented and tested. Ready for Manager re-review, then QA integration testing (T-090/T-091). |
+| Handoff Summary | T-086 fix is complete. Both required changes from the Manager code review have been implemented and tested. Ready for Manager re-review, then QA integration testing (T-090/T-091). **[Manager: Reviewed and APPROVED 2026-02-27 — T-086 moved to Integration Check. See new handoff entry above for full review notes.]** |
 
 **Changes Made:**
 

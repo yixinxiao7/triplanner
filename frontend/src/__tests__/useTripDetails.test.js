@@ -9,6 +9,7 @@ vi.mock('../utils/api', () => ({
     flights: { list: vi.fn() },
     stays: { list: vi.fn() },
     activities: { list: vi.fn() },
+    land_travel: { list: vi.fn() },
   },
 }));
 
@@ -81,6 +82,7 @@ describe('useTripDetails', () => {
     api.flights.list.mockResolvedValue({ data: { data: [] } });
     api.stays.list.mockResolvedValue({ data: { data: [] } });
     api.activities.list.mockResolvedValue({ data: { data: [] } });
+    api.land_travel.list.mockResolvedValue({ data: { data: [] } });
   });
 
   // ── 1. Parallel fetch of trip + flights + stays + activities on mount ─────────
