@@ -32,6 +32,58 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 006 | 1 | Create `activities` table | Create Table | `20260224_006_create_activities.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 | 007 | 2 | Add `start_date` + `end_date` to `trips` table | Alter Table | `20260225_007_add_trip_date_range.js` | ✅ Applied on Staging (2026-02-25, T-038) |
 | 008 | 3 | Make `start_time` + `end_time` nullable on `activities` | Alter Table | `20260225_008_make_activity_times_optional.js` | ✅ Implemented — awaiting staging deploy (T-054) |
+| 009 | 6 | Create `land_travels` table | Create Table | `20260227_009_create_land_travels.js` | ⏳ Proposed — Pre-Approved by Manager (2026-02-27, Sprint 6 planning). Ready for Backend Engineer to implement (T-086). Requires Deploy Engineer to run on staging (T-092). |
+
+---
+
+### Migration 009 — `land_travels` table
+
+**Sprint:** 6
+**Task:** T-086
+**Status:** ⏳ Proposed — **Pre-Approved by Manager** (explicitly approved in `active-sprint.md`, Sprint 6 planning, 2026-02-27)
+
+**Rationale:** Adds a new `land_travels` sub-resource table to track ground transportation (rental cars, buses, trains, rideshares, ferries, etc.) associated with a trip. This is a net-new table with no impact on existing tables or data. Schema pre-approved so T-086 can begin implementation immediately after T-081 design spec review.
+
+**File:** `backend/src/migrations/20260227_009_create_land_travels.js`
+
+**up():**
+```sql
+CREATE TABLE land_travels (
+  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  trip_id             UUID        NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  mode                TEXT        NOT NULL CHECK (mode IN ('RENTAL_CAR','BUS','TRAIN','RIDESHARE','FERRY','OTHER')),
+  provider            TEXT        NULL,
+  from_location       TEXT        NOT NULL,
+  to_location         TEXT        NOT NULL,
+  departure_date      DATE        NOT NULL,
+  departure_time      TIME        NULL,
+  arrival_date        DATE        NULL,
+  arrival_time        TIME        NULL,
+  confirmation_number TEXT        NULL,
+  notes               TEXT        NULL,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX land_travels_trip_id_idx ON land_travels(trip_id);
+```
+
+**down():**
+```sql
+DROP TABLE IF EXISTS land_travels;
+```
+
+**Notes:**
+- `CHECK (mode IN (...))` enforces the enum at the DB level. Adding a new mode value in the future will require an `ALTER TABLE` to widen the constraint.
+- `ON DELETE CASCADE` on `trip_id` ensures land travel entries are automatically removed when their parent trip is deleted — consistent with the cascade pattern used on `flights`, `stays`, and `activities`.
+- `arrival_time` may be stored even when `arrival_date` is NULL at the DB level; cross-field validation is enforced entirely at the application layer for simplicity.
+- `TEXT` (unbounded) for `from_location`, `to_location`, and `notes` — length limits are enforced in the API validation layer (500 chars, 500 chars, 2000 chars respectively).
+- Index on `trip_id` supports the common query pattern `SELECT * FROM land_travels WHERE trip_id = $1 ORDER BY departure_date ASC`.
+- No trigger for `updated_at` — application layer must explicitly set `updated_at = NOW()` in every PATCH handler (consistent with existing sub-resource tables).
+
+**Manager Approval Note:** Schema was explicitly pre-approved by the Manager Agent in `active-sprint.md` Sprint 6 planning section (2026-02-27) with the following note: *"Pre-approved to allow T-086 to proceed immediately after T-081 design spec is reviewed."* No additional Manager handoff needed before implementation.
+
+**Deploy Engineer Note:** When T-091 (QA Integration Testing) is complete and T-092 (Staging Re-deploy) begins, migration 009 must be applied to the staging database before the backend is restarted. See handoff-log.md for the Deploy Engineer handoff entry.
 
 ---
 

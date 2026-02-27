@@ -17,6 +17,111 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 6 — Backend Engineer → QA Engineer: T-085 + T-086 API Contracts Ready for Test Reference (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer (T-090, T-091) |
+| Status | Pending |
+| Related Task | T-085 (ILIKE fix), T-086 (Land Travel API) |
+| Handoff Summary | Backend Engineer has published Sprint 6 API contracts to `.workflow/api-contracts.md`. Two backend changes this sprint are fully specified. QA Engineer should use these contracts as the testing reference for T-090 (Security Checklist) and T-091 (Integration Testing). |
+
+**Key items for QA to verify:**
+
+**T-085 — ILIKE Wildcard Escaping (Bug Fix, FB-062):**
+- `GET /api/v1/trips?search=%` must return `{ "data": [] }` (0 results), not all trips
+- `GET /api/v1/trips?search=_` must not match single-character names as a wildcard
+- `GET /api/v1/trips?search=Paris` must still work correctly (normal search unaffected)
+- `GET /api/v1/trips?search=100%` must match only trips containing literal "100%"
+- No endpoint signature change — method, path, response shape, auth, and error codes unchanged from T-072 contract
+
+**T-086 — Land Travel CRUD (New Feature):**
+- **GET /api/v1/trips/:tripId/land-travel** → 200 with `{ "data": [...] }` sorted by departure_date ASC; empty list → `{ "data": [] }` (not 404)
+- **POST** with valid required fields (mode, from_location, to_location, departure_date) → 201 with full object including server-assigned id + timestamps
+- **POST** with invalid mode (e.g., `"BIKE"`, `"AIRPLANE"`) → 400 `VALIDATION_ERROR`
+- **POST** with `arrival_time` but no `arrival_date` → 400 `VALIDATION_ERROR`
+- **POST** with `arrival_date` before `departure_date` → 400 `VALIDATION_ERROR`
+- **PATCH** with one field → 200, only that field updated, `updated_at` updated
+- **DELETE** → 204 No Content; subsequent GET does not include that entry
+- **Cross-user access (security critical):** Authenticated user A attempting GET/POST/PATCH/DELETE on user B's trip → 403 `FORBIDDEN`
+- **Non-UUID IDs:** `GET /trips/not-a-uuid/land-travel` → 400 `VALIDATION_ERROR` (not 500)
+- **Non-existent trip:** `GET /trips/<valid-uuid>/land-travel` (no such trip) → 404 `NOT_FOUND`
+- **Non-existent entry:** `PATCH/DELETE /trips/:id/land-travel/<valid-uuid>` (no such entry) → 404 `NOT_FOUND`
+- **Unauthenticated:** Any endpoint without Bearer token → 401 `UNAUTHORIZED`
+- **Ordering:** Multiple entries return sorted by departure_date ASC; entries with no departure_time appear after timed entries on same date (NULLS LAST)
+- **Cascade delete:** Delete a trip → all its land travel entries are gone (verify via DB or GET after trip delete)
+
+**Migration 009 (T-092 — Deploy):**
+- `land_travels` table must exist with correct columns and CHECK constraint on `mode`
+- `knex migrate:rollback` should cleanly drop the `land_travels` table
+- `land_travels_trip_id_idx` index must exist
+
+---
+
+### Sprint 6 — Backend Engineer → Frontend Engineer: T-085 + T-086 API Contracts Ready for Integration (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer (T-087, T-088) |
+| Status | Pending |
+| Related Task | T-085 (ILIKE fix), T-086 (Land Travel API) |
+| Handoff Summary | Backend Engineer has published Sprint 6 API contracts to `.workflow/api-contracts.md`. The land travel API contract (T-086) is now defined and ready for Frontend Engineer to use in T-087 (Land Travel Edit Page) and T-088 (Land Travel Section on Trip Details). |
+
+**Key integration details for Frontend Engineer:**
+
+**T-085 — ILIKE Wildcard Fix (No frontend changes required):**
+- The fix is backend-only. The `GET /api/v1/trips?search=<term>` endpoint's request/response signature is unchanged. No frontend update needed — this just makes search behave correctly when the user types `%` or `_`.
+
+**T-086 — Land Travel API (reference `.workflow/api-contracts.md` Sprint 6 → T-086 section):**
+
+**Base path:** `/api/v1/trips/:tripId/land-travel`
+**Auth:** All endpoints require `Authorization: Bearer <token>` header.
+
+**Endpoint summary:**
+| Method | Path | Returns | Use in |
+|--------|------|---------|--------|
+| GET | `/api/v1/trips/:tripId/land-travel` | `{ data: LandTravel[] }` sorted by departure_date ASC | T-088 (Trip Details), T-087 (Edit page load) |
+| POST | `/api/v1/trips/:tripId/land-travel` | `{ data: LandTravel }` (201) | T-087 (save new entry) |
+| PATCH | `/api/v1/trips/:tripId/land-travel/:ltId` | `{ data: LandTravel }` (200) | T-087 (save edit) |
+| DELETE | `/api/v1/trips/:tripId/land-travel/:ltId` | 204 No Content | T-087 (delete entry) |
+
+**Land travel object fields:**
+- `id`, `trip_id`, `mode` (enum: `RENTAL_CAR|BUS|TRAIN|RIDESHARE|FERRY|OTHER`), `provider` (nullable)
+- `from_location`, `to_location` (required strings)
+- `departure_date` (`YYYY-MM-DD`, required), `departure_time` (`HH:MM` or null)
+- `arrival_date` (`YYYY-MM-DD` or null), `arrival_time` (`HH:MM` or null)
+- `confirmation_number` (nullable), `notes` (nullable)
+- `created_at`, `updated_at` (ISO 8601 UTC)
+
+**Mode display labels (for UI):** `RENTAL_CAR → "rental car"`, `BUS → "bus"`, `TRAIN → "train"`, `RIDESHARE → "rideshare"`, `FERRY → "ferry"`, `OTHER → "other"` (all lowercase per design spec). The edit form `<select>` uses human-readable capitalized labels (`"Rental Car"`, etc.) but sends the uppercase enum value to the API.
+
+**Time fields:** `departure_time` and `arrival_time` are returned as `HH:MM` strings (24h). No timezone associated — render directly without conversion. Treat as local wall-clock time.
+
+**Validation to enforce in edit form (client-side, mirroring server-side rules):**
+1. `mode` required (select defaults to first option)
+2. `from_location` and `to_location` required, non-empty
+3. `departure_date` required, valid date
+4. If `arrival_time` is filled, `arrival_date` must also be filled
+5. If `arrival_date` is filled, it must be >= `departure_date`
+6. If `arrival_date` == `departure_date` and both times are filled, `arrival_time` must be > `departure_time`
+
+**PATCH behavior:** Send only changed fields — unchanged fields are preserved server-side (partial update). No need to re-send all fields on edit save.
+
+**Batch save pattern for edit page (T-087):** Match ActivitiesEditPage pattern — use `Promise.allSettled`:
+- POST for each new row (no existing `id`)
+- PATCH for each modified existing row
+- DELETE for each removed existing row
+
+**Empty list:** A trip with no land travel returns `{ "data": [] }` (200 OK, not 404). Show empty state as defined in Spec 12A.2.
+
+**Error handling:** Show error banner on API failure. For 400 validation errors, the response includes `error.fields` with per-field messages — surface these inline where possible.
+
+---
+
 ### Sprint 6 — Design Agent → Backend Engineer + Frontend Engineer: T-081 & T-082 Specs Complete — Land Travel & Calendar Enhancements Ready (2026-02-27)
 
 | Field | Value |
@@ -24,7 +129,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 6 |
 | From Agent | Design Agent |
 | To Agent | Backend Engineer (T-086), Frontend Engineer (T-087, T-088, T-089) |
-| Status | Pending |
+| Status | Acknowledged (Backend Engineer — 2026-02-27) |
 | Related Task | T-081 (Done), T-082 (Done) |
 | Handoff Summary | Design Agent has published Sprint 6 UI specs to `.workflow/ui-spec.md`. Two complete specs are now available: **Spec 12 (T-081)** — Land Travel Sub-Resource (Part A: Trip Details Display section + Part B: Edit Page at `/trips/:id/land-travel/edit`). **Spec 12 Addendum / T-082** — Calendar Enhancements (event time display + "+X more" clickable popover). Both specs are marked **Approved** and unblock all downstream tasks. |
 | Notes | See detailed notes per spec below. |

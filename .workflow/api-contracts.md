@@ -2728,3 +2728,544 @@ The following Sprint 5 tasks require **no new or changed API contracts** from th
 ---
 
 *Sprint 5 contracts above are marked Agreed and approved for implementation. The T-072 contract documents the only backend API change this sprint. The GET /trips endpoint gains search, filter, and sort query parameters — all other endpoints are unchanged. Frontend Engineer and QA Engineer should reference this contract for integration and testing.*
+
+---
+
+## Sprint 6 Contracts
+
+---
+
+## T-085 — ILIKE Wildcard Escaping Fix (GET /api/v1/trips — search behavior correction)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| Task | T-085 |
+| Status | Agreed |
+| Auth Required | Bearer token |
+| Feedback Source | FB-062 |
+
+**Description:** Bug fix to the existing `GET /api/v1/trips?search=<term>` endpoint documented in T-072. The search parameter is used in a PostgreSQL `ILIKE` query, but special SQL wildcard characters in the user's search string (`%`, `_`, `\`) were not being escaped. As a result, `search=%` matched all trips (because `%` is the SQL wildcard for "any sequence of characters"), and `search=_` matched any single-character trip name, both leaking data the user did not intend to search for.
+
+**Change:** Before interpolating the search string into the ILIKE pattern, the backend must escape:
+- `\` → `\\` (backslash, must be escaped first to avoid double-escaping)
+- `%` → `\%`
+- `_` → `\_`
+
+The ESCAPE clause must be used in the ILIKE expression: `name ILIKE ? ESCAPE '\'`
+
+**No endpoint signature change.** Route, method, query parameters, response shape, auth, and error codes are identical to the T-072 contract. Only the internal query behavior changes.
+
+**Before (Sprint 5 behavior):**
+```sql
+-- search=% matched all rows (% is SQL wildcard)
+name ILIKE '%' || search || '%'
+-- equivalent to ILIKE '%%%' → matches everything
+```
+
+**After (Sprint 6 corrected behavior):**
+```sql
+-- search=% is escaped to \%, treated as a literal percent sign
+-- escape function applied before interpolation
+escaped_search = search
+  .replace(/\\/g, '\\\\')  -- escape backslash first
+  .replace(/%/g, '\\%')    -- escape percent
+  .replace(/_/g, '\\_')    -- escape underscore
+
+name ILIKE '%' || escaped_search || '%' ESCAPE '\'
+-- search=% → ILIKE '%\%%' ESCAPE '\' → matches literal '%' in name
+-- search=_ → ILIKE '%\_%' ESCAPE '\' → matches literal '_' in name
+```
+
+**Verified behavioral changes:**
+
+| Search Term | Sprint 5 Result | Sprint 6 Result (Correct) |
+|-------------|----------------|--------------------------|
+| `%` | All trips (wildcard matches everything) | 0 trips (or only trips with `%` in name/destinations) |
+| `_` | All trips with a single-character name | Only trips containing literal `_` |
+| `Paris` | Trips containing "Paris" | Trips containing "Paris" (unchanged — no special chars) |
+| `100%` | Trips containing "100" followed by anything | Trips containing literal "100%" |
+| `New_York` | Trips with names matching "New" + any single char + "York" | Trips containing literal "New_York" |
+
+**Applies to both search targets:**
+- `name ILIKE '%<escaped_search>%' ESCAPE '\'`
+- `array_to_string(destinations, ',') ILIKE '%<escaped_search>%' ESCAPE '\'`
+
+**No schema changes required.**
+
+---
+
+## T-086 — Land Travel CRUD Endpoints
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| Task | T-086 |
+| Status | Agreed |
+| Auth Required | Bearer token (all endpoints) |
+| Schema Change | Migration 009 — Creates `land_travels` table (Manager Pre-Approved) |
+
+**Description:** Full CRUD for a new `land_travels` sub-resource nested under trips. Land travel captures ground transportation entries (rental cars, buses, trains, rideshares, ferries, and other modes) for a trip. All endpoints require authentication and enforce trip ownership (the authenticated user must own the parent trip).
+
+---
+
+### Land Travel Object Shape
+
+The canonical land travel resource object returned in all success responses:
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440001",
+  "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+  "mode": "RENTAL_CAR",
+  "provider": "Hertz",
+  "from_location": "San Francisco",
+  "to_location": "Los Angeles",
+  "departure_date": "2026-08-07",
+  "departure_time": "09:00",
+  "arrival_date": "2026-08-07",
+  "arrival_time": "14:30",
+  "confirmation_number": "XYZ-123456",
+  "notes": "Pick up at airport terminal 2. Return same location.",
+  "created_at": "2026-08-01T10:00:00.000Z",
+  "updated_at": "2026-08-01T10:00:00.000Z"
+}
+```
+
+**Field Descriptions:**
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `id` | UUID string | No | Primary key, UUID v4 |
+| `trip_id` | UUID string | No | Parent trip's ID |
+| `mode` | string (enum) | No | One of: `RENTAL_CAR`, `BUS`, `TRAIN`, `RIDESHARE`, `FERRY`, `OTHER` |
+| `provider` | string | Yes | Carrier/company name (e.g., `"Hertz"`, `"Amtrak"`, `"Uber"`). `null` if not set. |
+| `from_location` | string | No | Origin location name (e.g., `"San Francisco"`, `"SFO Airport"`) |
+| `to_location` | string | No | Destination location name |
+| `departure_date` | string (`YYYY-MM-DD`) | No | Departure date in ISO 8601 date format |
+| `departure_time` | string (`HH:MM`) | Yes | Departure local time in 24h format. `null` if not set. |
+| `arrival_date` | string (`YYYY-MM-DD`) | Yes | Arrival date in ISO 8601 date format. `null` if not set. |
+| `arrival_time` | string (`HH:MM`) | Yes | Arrival local time in 24h format. `null` if not set. |
+| `confirmation_number` | string | Yes | Booking/confirmation code. `null` if not set. |
+| `notes` | string | Yes | Free-text notes. `null` if not set. |
+| `created_at` | ISO 8601 UTC string | No | Record creation timestamp |
+| `updated_at` | ISO 8601 UTC string | No | Last update timestamp |
+
+**Notes on time fields:**
+- `departure_time` and `arrival_time` are stored as PostgreSQL `TIME` and returned as `HH:MM` strings (seconds stripped). E.g., `"09:00"`, `"14:30"`.
+- There are no timezone fields for land travel times — times are stored and returned as local (wall-clock) times, matching how the user entered them. The frontend renders them directly without timezone conversion.
+- `arrival_time` is only meaningful if `arrival_date` is also set. The API enforces: if `arrival_time` is provided, `arrival_date` must also be provided (400 error otherwise).
+- If `arrival_date` is provided, it must be greater than or equal to `departure_date`. (Same-day arrivals are valid.)
+
+---
+
+### GET /api/v1/trips/:tripId/land-travel
+
+| Field | Value |
+|-------|-------|
+| Method | GET |
+| Path | `/api/v1/trips/:tripId/land-travel` |
+| Auth Required | Bearer token |
+| Pagination | No (returns all entries for the trip) |
+
+**Description:** Returns all land travel entries for a trip, sorted by `departure_date` ASC, then `departure_time` ASC NULLS LAST (entries without a departure time appear after timed entries on the same date).
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tripId` | UUID | The parent trip's ID |
+
+**Request Body:** None
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+      "mode": "TRAIN",
+      "provider": "Amtrak",
+      "from_location": "San Francisco",
+      "to_location": "Los Angeles",
+      "departure_date": "2026-08-07",
+      "departure_time": "09:00",
+      "arrival_date": "2026-08-07",
+      "arrival_time": "20:45",
+      "confirmation_number": "AMTK-789012",
+      "notes": null,
+      "created_at": "2026-08-01T10:00:00.000Z",
+      "updated_at": "2026-08-01T10:00:00.000Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+      "mode": "RENTAL_CAR",
+      "provider": "Hertz",
+      "from_location": "Los Angeles",
+      "to_location": "San Diego",
+      "departure_date": "2026-08-08",
+      "departure_time": null,
+      "arrival_date": null,
+      "arrival_time": null,
+      "confirmation_number": null,
+      "notes": "Compact car, unlimited mileage",
+      "created_at": "2026-08-01T10:05:00.000Z",
+      "updated_at": "2026-08-01T10:05:00.000Z"
+    }
+  ]
+}
+```
+
+**Empty list (no entries yet — 200 OK):**
+```json
+{
+  "data": []
+}
+```
+
+**Error Responses:**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 400 | `VALIDATION_ERROR` | `tripId` is not a valid UUID v4 |
+| 401 | `UNAUTHORIZED` | Missing or invalid/expired access token |
+| 403 | `FORBIDDEN` | Authenticated user does not own the trip |
+| 404 | `NOT_FOUND` | Trip with `tripId` does not exist |
+| 500 | `INTERNAL_ERROR` | Unexpected server error |
+
+**Error shapes:**
+```json
+{ "error": { "message": "Invalid ID format", "code": "VALIDATION_ERROR" } }
+{ "error": { "message": "Authentication required", "code": "UNAUTHORIZED" } }
+{ "error": { "message": "You do not have access to this trip", "code": "FORBIDDEN" } }
+{ "error": { "message": "Trip not found", "code": "NOT_FOUND" } }
+```
+
+---
+
+### POST /api/v1/trips/:tripId/land-travel
+
+| Field | Value |
+|-------|-------|
+| Method | POST |
+| Path | `/api/v1/trips/:tripId/land-travel` |
+| Auth Required | Bearer token |
+
+**Description:** Creates a new land travel entry for the specified trip. Returns the created entry with its server-assigned `id`, `created_at`, and `updated_at`.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tripId` | UUID | The parent trip's ID |
+
+**Request Body:**
+```json
+{
+  "mode": "RENTAL_CAR",
+  "provider": "Hertz",
+  "from_location": "San Francisco",
+  "to_location": "Los Angeles",
+  "departure_date": "2026-08-07",
+  "departure_time": "09:00",
+  "arrival_date": "2026-08-07",
+  "arrival_time": "14:30",
+  "confirmation_number": "XYZ-123456",
+  "notes": "Pick up at airport terminal 2."
+}
+```
+
+**Field Validation Rules:**
+
+| Field | Required | Type | Rules |
+|-------|----------|------|-------|
+| `mode` | Yes | string (enum) | Must be one of: `RENTAL_CAR`, `BUS`, `TRAIN`, `RIDESHARE`, `FERRY`, `OTHER`. Case-sensitive. |
+| `provider` | No | string \| null | Optional. If provided: trimmed, max length 255. Send `null` or omit to leave empty. |
+| `from_location` | Yes | string | Trimmed. Min length 1 after trim. Max length 500. |
+| `to_location` | Yes | string | Trimmed. Min length 1 after trim. Max length 500. |
+| `departure_date` | Yes | string (`YYYY-MM-DD`) | Required. Must be a valid calendar date in ISO 8601 format. |
+| `departure_time` | No | string \| null | Optional. If provided: must match `HH:MM` or `HH:MM:SS` (24h format). Send `null` or omit to leave empty. |
+| `arrival_date` | No | string \| null | Optional. If provided: must be a valid `YYYY-MM-DD` date >= `departure_date`. Send `null` or omit to leave empty. |
+| `arrival_time` | No | string \| null | Optional. If provided: `arrival_date` must also be provided. Must match `HH:MM` or `HH:MM:SS`. If `arrival_date` == `departure_date`, `arrival_time` must be > `departure_time` (when both are provided). |
+| `confirmation_number` | No | string \| null | Optional. Trimmed. Max length 255. |
+| `notes` | No | string \| null | Optional. Max length 2000. |
+
+**Cross-field validation rules:**
+1. If `arrival_time` is provided, `arrival_date` must also be provided. (400 error: "arrival_date is required when arrival_time is provided")
+2. If `arrival_date` is provided, it must be >= `departure_date`. (400 error: "arrival_date cannot be before departure_date")
+3. If `arrival_date` == `departure_date` and both `departure_time` and `arrival_time` are provided, `arrival_time` must be > `departure_time`. (400 error: "arrival_time must be after departure_time on the same day")
+
+**Response (Success — 201 Created):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+    "mode": "RENTAL_CAR",
+    "provider": "Hertz",
+    "from_location": "San Francisco",
+    "to_location": "Los Angeles",
+    "departure_date": "2026-08-07",
+    "departure_time": "09:00",
+    "arrival_date": "2026-08-07",
+    "arrival_time": "14:30",
+    "confirmation_number": "XYZ-123456",
+    "notes": "Pick up at airport terminal 2.",
+    "created_at": "2026-08-01T10:00:00.000Z",
+    "updated_at": "2026-08-01T10:00:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 400 | `VALIDATION_ERROR` | `tripId` is not a valid UUID v4 |
+| 400 | `VALIDATION_ERROR` | Missing required field (`mode`, `from_location`, `to_location`, `departure_date`) |
+| 400 | `VALIDATION_ERROR` | `mode` is not one of the allowed enum values |
+| 400 | `VALIDATION_ERROR` | `departure_date` is not a valid `YYYY-MM-DD` date |
+| 400 | `VALIDATION_ERROR` | `departure_time` / `arrival_time` is not a valid `HH:MM` or `HH:MM:SS` time |
+| 400 | `VALIDATION_ERROR` | `arrival_time` provided without `arrival_date` |
+| 400 | `VALIDATION_ERROR` | `arrival_date` before `departure_date` |
+| 400 | `VALIDATION_ERROR` | `arrival_time` not after `departure_time` on same day |
+| 401 | `UNAUTHORIZED` | Missing or invalid/expired access token |
+| 403 | `FORBIDDEN` | Authenticated user does not own the trip |
+| 404 | `NOT_FOUND` | Trip with `tripId` does not exist |
+| 500 | `INTERNAL_ERROR` | Unexpected server error |
+
+**Validation error shape (field-level):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "mode": "mode must be one of: RENTAL_CAR, BUS, TRAIN, RIDESHARE, FERRY, OTHER",
+      "departure_date": "departure_date is required"
+    }
+  }
+}
+```
+
+---
+
+### PATCH /api/v1/trips/:tripId/land-travel/:ltId
+
+| Field | Value |
+|-------|-------|
+| Method | PATCH |
+| Path | `/api/v1/trips/:tripId/land-travel/:ltId` |
+| Auth Required | Bearer token |
+
+**Description:** Partially updates an existing land travel entry. At least one updatable field must be provided. For cross-field validation (e.g., arrival before departure), the merged values (existing fields + incoming changes) are used for comparison — the client does not need to re-send unchanged fields.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tripId` | UUID | The parent trip's ID |
+| `ltId` | UUID | The land travel entry's ID |
+
+**Request Body:** One or more updatable fields:
+```json
+{
+  "mode": "TRAIN",
+  "provider": "Amtrak",
+  "from_location": "San Francisco",
+  "to_location": "Los Angeles",
+  "departure_date": "2026-08-07",
+  "departure_time": "10:00",
+  "arrival_date": "2026-08-07",
+  "arrival_time": "21:00",
+  "confirmation_number": "AMTK-789012",
+  "notes": "Quiet car reserved."
+}
+```
+
+**Updatable Fields:** All fields from POST except `id`, `trip_id`, `created_at`, `updated_at` are updatable via PATCH. Fields not included in the request body are left unchanged.
+
+**Field Validation Rules (same as POST, applied only to provided fields):**
+
+| Field | Rules |
+|-------|-------|
+| `mode` | If provided: must be one of the valid enum values. |
+| `provider` | If provided: string or `null`. Trimmed, max 255. |
+| `from_location` | If provided: trimmed, min 1 char, max 500. |
+| `to_location` | If provided: trimmed, min 1 char, max 500. |
+| `departure_date` | If provided: valid `YYYY-MM-DD` date. |
+| `departure_time` | If provided: valid `HH:MM` or `HH:MM:SS`, or `null`. |
+| `arrival_date` | If provided: valid `YYYY-MM-DD` >= merged departure_date, or `null`. Setting to `null` also clears `arrival_time`. |
+| `arrival_time` | If provided: valid `HH:MM` or `HH:MM:SS`, or `null`. Merged `arrival_date` must exist. |
+| `confirmation_number` | If provided: string or `null`. Trimmed, max 255. |
+| `notes` | If provided: string or `null`. Max 2000. |
+
+**Cross-field validation (using merged existing + incoming values):**
+1. If merged `arrival_time` is non-null, merged `arrival_date` must be non-null.
+2. If merged `arrival_date` is non-null, merged `arrival_date` >= merged `departure_date`.
+3. If merged `arrival_date` == merged `departure_date` and both times are non-null, merged `arrival_time` > merged `departure_time`.
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+    "mode": "TRAIN",
+    "provider": "Amtrak",
+    "from_location": "San Francisco",
+    "to_location": "Los Angeles",
+    "departure_date": "2026-08-07",
+    "departure_time": "10:00",
+    "arrival_date": "2026-08-07",
+    "arrival_time": "21:00",
+    "confirmation_number": "AMTK-789012",
+    "notes": "Quiet car reserved.",
+    "created_at": "2026-08-01T10:00:00.000Z",
+    "updated_at": "2026-08-02T08:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 400 | `VALIDATION_ERROR` | `tripId` or `ltId` is not a valid UUID v4 |
+| 400 | `VALIDATION_ERROR` | No updatable fields provided in request body |
+| 400 | `VALIDATION_ERROR` | Any field fails its validation rule (type, format, enum, cross-field) |
+| 401 | `UNAUTHORIZED` | Missing or invalid/expired access token |
+| 403 | `FORBIDDEN` | Authenticated user does not own the trip |
+| 404 | `NOT_FOUND` | Trip with `tripId` does not exist |
+| 404 | `NOT_FOUND` | Land travel entry with `ltId` does not exist under this trip |
+| 500 | `INTERNAL_ERROR` | Unexpected server error |
+
+---
+
+### DELETE /api/v1/trips/:tripId/land-travel/:ltId
+
+| Field | Value |
+|-------|-------|
+| Method | DELETE |
+| Path | `/api/v1/trips/:tripId/land-travel/:ltId` |
+| Auth Required | Bearer token |
+
+**Description:** Permanently deletes a land travel entry. Returns 204 No Content on success.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tripId` | UUID | The parent trip's ID |
+| `ltId` | UUID | The land travel entry's ID |
+
+**Request Body:** None
+
+**Response (Success — 204 No Content):** Empty body.
+
+**Error Responses:**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 400 | `VALIDATION_ERROR` | `tripId` or `ltId` is not a valid UUID v4 |
+| 401 | `UNAUTHORIZED` | Missing or invalid/expired access token |
+| 403 | `FORBIDDEN` | Authenticated user does not own the trip |
+| 404 | `NOT_FOUND` | Trip with `tripId` does not exist |
+| 404 | `NOT_FOUND` | Land travel entry with `ltId` does not exist under this trip |
+| 500 | `INTERNAL_ERROR` | Unexpected server error |
+
+---
+
+### T-086 — Migration 009: Create `land_travels` Table
+
+**Manager Pre-Approved:** Schema approved in Sprint 6 planning (2026-02-27). Backend Engineer may implement migration 009 immediately following the design spec review (T-081 is Done).
+
+**File:** `backend/src/migrations/20260227_009_create_land_travels.js`
+
+**up():**
+```sql
+CREATE TABLE land_travels (
+  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  trip_id             UUID        NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  mode                TEXT        NOT NULL CHECK (mode IN ('RENTAL_CAR','BUS','TRAIN','RIDESHARE','FERRY','OTHER')),
+  provider            TEXT        NULL,
+  from_location       TEXT        NOT NULL,
+  to_location         TEXT        NOT NULL,
+  departure_date      DATE        NOT NULL,
+  departure_time      TIME        NULL,
+  arrival_date        DATE        NULL,
+  arrival_time        TIME        NULL,
+  confirmation_number TEXT        NULL,
+  notes               TEXT        NULL,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX land_travels_trip_id_idx ON land_travels(trip_id);
+```
+
+**down():**
+```sql
+DROP TABLE IF EXISTS land_travels;
+```
+
+**Notes:**
+- `CHECK` constraint on `mode` enforces the enum at the DB level.
+- `ON DELETE CASCADE` on `trip_id` ensures all land travel entries are automatically deleted when the parent trip is deleted.
+- `arrival_time` allowed even when `arrival_date` is NULL at the DB level — cross-field validation is enforced at the application layer (API routes) to keep the migration simple and reversible.
+- `TEXT` used for `from_location`, `to_location`, `notes` (no hard length cap at DB level); length limits enforced at application layer.
+- Index on `trip_id` for performant per-trip queries.
+- `updated_at` is not automatically maintained by a trigger; the application layer must set it explicitly on every PATCH.
+
+---
+
+### T-086 — Test Plan
+
+Minimum tests required:
+
+**Happy paths:**
+- `GET /trips/:id/land-travel` with no entries → 200, `data: []`
+- `GET /trips/:id/land-travel` with multiple entries → 200, sorted by departure_date ASC, departure_time NULLS LAST
+- `POST /trips/:id/land-travel` with all fields → 201, returns full object with server-assigned id + timestamps
+- `POST /trips/:id/land-travel` with only required fields (mode, from_location, to_location, departure_date) → 201, nullable fields are null
+- `PATCH /trips/:id/land-travel/:ltId` with one field → 200, only that field changes, updated_at updated
+- `PATCH /trips/:id/land-travel/:ltId` with mode change → 200, mode updated
+- `DELETE /trips/:id/land-travel/:ltId` → 204, subsequent GET no longer includes that entry
+
+**Error paths:**
+- `POST` with invalid mode (e.g., `"BIKE"`) → 400 `VALIDATION_ERROR`
+- `POST` with missing `from_location` → 400 `VALIDATION_ERROR`
+- `POST` with `arrival_date` before `departure_date` → 400 `VALIDATION_ERROR`
+- `POST` with `arrival_time` but no `arrival_date` → 400 `VALIDATION_ERROR`
+- `GET/POST/PATCH/DELETE` with non-UUID `tripId` → 400 `VALIDATION_ERROR`
+- `GET/POST/PATCH/DELETE` without auth token → 401 `UNAUTHORIZED`
+- `GET/POST/PATCH/DELETE` with valid token but different user's trip → 403 `FORBIDDEN`
+- `GET/POST` with non-existent `tripId` → 404 `NOT_FOUND`
+- `PATCH/DELETE` with non-existent `ltId` → 404 `NOT_FOUND`
+
+---
+
+## Sprint 6 — No Backend Contract Changes Required for Other Tasks
+
+The following Sprint 6 tasks require **no new or changed API contracts** from the Backend Engineer:
+
+| Task | Reason |
+|------|--------|
+| T-081 (Design: Land Travel Spec) | Design spec only. Unblocks T-086. |
+| T-082 (Design: Calendar Enhancements) | Design spec only. No backend changes. |
+| T-083 (FE: Activity Edit Bugs) | Frontend-only bug fix. No API changes. |
+| T-084 (FE: FilterToolbar Flicker Fix) | Frontend-only bug fix. No API changes. |
+| T-087 (FE: Land Travel Edit Page) | Frontend-only. Consumes T-086 API contract. |
+| T-088 (FE: Land Travel Section + Calendar Integration) | Frontend-only. Consumes T-086 API contract. |
+| T-089 (FE: Calendar Enhancements) | Frontend-only. Uses existing sub-resource data. |
+| T-090 (QA: Security Checklist) | QA review only. |
+| T-091 (QA: Integration Testing) | QA testing only. |
+| T-092 (Deploy: Staging Re-deploy) | Deploy scope. |
+| T-093 (Monitor: Health Check) | Monitor scope. |
+| T-094 (User Agent: Walkthrough) | User testing only. |
+
+---
+
+*Sprint 6 contracts above are marked Agreed and approved for implementation. Two backend changes this sprint: (1) T-085 escapes ILIKE wildcard characters in the search parameter of GET /trips — no endpoint signature change, behavior-only fix. (2) T-086 introduces the full land travel sub-resource with four new endpoints nested under /trips/:tripId/land-travel, backed by migration 009 (pre-approved). Frontend Engineer and QA Engineer should reference this contract for integration and testing.*
