@@ -144,18 +144,23 @@ export async function listTripsByUser(userId, options = {}) {
     if (search && search.trim()) {
       // T-085 / B-033 / FB-062: Escape ILIKE special characters before interpolation.
       // Without escaping, a user searching for "%" would match ALL trips (SQL wildcard),
-      // and "_" would match any single character. We escape \, %, and _ so they are
-      // treated as literal characters in the ILIKE pattern.
+      // and "_" would match any single character. We use "!" as the ESCAPE character
+      // (a single literal char, safe with standard_conforming_strings=on since PG 9.1).
+      //
+      // Escaping order matters: escape "!" first to avoid double-escaping.
+      //   ! → !!   (the escape char itself)
+      //   % → !%   (SQL wildcard)
+      //   _ → !_   (SQL single-char wildcard)
       const escaped = search
         .trim()
-        .replace(/\\/g, '\\\\') // Escape backslash first (it becomes the ESCAPE char)
-        .replace(/%/g, '\\%')   // Escape percent wildcard
-        .replace(/_/g, '\\_');  // Escape underscore single-char wildcard
+        .replace(/!/g, '!!')  // Escape the escape char first
+        .replace(/%/g, '!%')  // Escape percent wildcard
+        .replace(/_/g, '!_'); // Escape underscore single-char wildcard
 
       const searchTerm = `%${escaped}%`;
       query.where(function () {
-        this.whereRaw("name ILIKE ? ESCAPE '\\\\'", [searchTerm])
-          .orWhereRaw("array_to_string(destinations, ',') ILIKE ? ESCAPE '\\\\'", [searchTerm]);
+        this.whereRaw("name ILIKE ? ESCAPE '!'", [searchTerm])
+          .orWhereRaw("array_to_string(destinations, ',') ILIKE ? ESCAPE '!'", [searchTerm]);
       });
     }
 

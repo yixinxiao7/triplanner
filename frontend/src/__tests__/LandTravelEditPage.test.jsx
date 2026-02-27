@@ -141,10 +141,12 @@ describe('LandTravelEditPage', () => {
     api.land_travel.list.mockResolvedValue({ data: { data: mockEntries } });
     renderPage();
     await waitFor(() => {
-      expect(screen.getByDisplayValue('TRAIN')).toBeDefined();
+      // 'Train' is the displayed label for TRAIN mode option
+      expect(screen.getByDisplayValue('Train')).toBeDefined();
       expect(screen.getByDisplayValue('Amtrak')).toBeDefined();
       expect(screen.getByDisplayValue('New York')).toBeDefined();
-      expect(screen.getByDisplayValue('Washington DC')).toBeDefined();
+      // 'Washington DC' appears in two inputs (to_location entry 1 + from_location entry 2)
+      expect(screen.getAllByDisplayValue('Washington DC').length).toBeGreaterThanOrEqual(1);
     });
   });
 

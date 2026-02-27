@@ -17,6 +17,239 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 6 — Backend Engineer → Manager: T-085 ESCAPE Clause P1 Fix Complete (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | Backend Engineer |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-085 (In Review) |
+| Handoff Summary | T-085 ILIKE wildcard escaping P1 bug has been fixed. The ESCAPE character changed from `\` to `!` — resolves the PostgreSQL `invalid escape string` error confirmed by QA on staging. All 247/247 backend tests pass. Ready for Manager re-review. |
+
+**Root Cause (per QA analysis):**
+The original implementation used `ESCAPE '\\\\'` in JS, which sends `ESCAPE '\\'` to PostgreSQL. With `standard_conforming_strings=on` (PG default since 9.1), `'\\'` is interpreted as the 2-character literal `\\` — violating the PostgreSQL requirement that the ESCAPE argument be exactly 1 character.
+
+**Fix Applied — `backend/src/models/tripModel.js`, `applyBaseFilters()` function:**
+
+Old escaping (broken with PostgreSQL `standard_conforming_strings=on`):
+```js
+const escaped = search.trim()
+  .replace(/\\/g, '\\\\')  // \ → \\
+  .replace(/%/g, '\\%')    // % → \%
+  .replace(/_/g, '\\_');   // _ → \_
+this.whereRaw("name ILIKE ? ESCAPE '\\\\'", [searchTerm])
+```
+
+New escaping (single-char `!` escape, always safe):
+```js
+const escaped = search.trim()
+  .replace(/!/g, '!!')   // ! → !!  (escape the escape char first)
+  .replace(/%/g, '!%')   // % → !%  (percent wildcard)
+  .replace(/_/g, '!_');  // _ → !_  (underscore single-char wildcard)
+this.whereRaw("name ILIKE ? ESCAPE '!'", [searchTerm])
+```
+
+**Unit Test Updated — `backend/src/__tests__/sprint6.test.js`:**
+- `model unit: escaping function produces correct patterns` test updated to verify `!`-based output (e.g., `%` → `!%`, `_` → `!_`, `!` → `!!`) instead of old backslash-based patterns.
+
+**Verification:**
+- All 247/247 backend tests pass (`npm test --run`)
+- No changes to API contract (behavior is identical — special chars treated as literals)
+- No schema changes
+- No new environment variables
+
+**Files changed:**
+- `backend/src/models/tripModel.js` — `applyBaseFilters()` escaping and ILIKE ESCAPE clause
+- `backend/src/__tests__/sprint6.test.js` — T-085 unit test updated for `!` escape char
+
+**QA Note:** After Manager approval, QA should re-verify `GET /api/v1/trips?search=%` against live PostgreSQL returns `{"data": []}` (HTTP 200) instead of the previous HTTP 500. Normal search (`?search=Paris`) must still return matching results.
+
+---
+
+### Sprint 6 — QA Engineer → Deploy Engineer: DEPLOYMENT BLOCKED — Awaiting T-085 + T-087 Fixes (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | QA Engineer |
+| To Agent | Deploy Engineer |
+| Status | Pending |
+| Related Task | T-092 (Blocked) |
+| Handoff Summary | Sprint 6 QA is NOT complete. Deployment is **BLOCKED**. Two issues must be resolved before T-092 can proceed: (1) **P1 Bug in T-085** — ILIKE ESCAPE clause causes 500 errors on real PostgreSQL. (2) **Failing unit test in T-087** — test assertion bug (correct display value is 'Train' not 'TRAIN'). Deploy Engineer should monitor handoff-log.md for the Backend Engineer and Frontend Engineer fix confirmations. **Do NOT begin T-092 until a new "QA → Deploy" handoff with Status: Pending is logged confirming both blockers are resolved.** |
+
+**Blocker 1 — T-085 (P1 — Backend Engineer must fix):**
+- ESCAPE clause in `tripModel.js:applyBaseFilters()` causes PostgreSQL error: `ERROR: invalid escape string` when search term contains `%` or `_`
+- Confirmed on local PostgreSQL with `standard_conforming_strings=on` (default since PG 9.1)
+- Fix: change escape character from `\` to `!` and update escaping logic accordingly
+- See handoff entry "QA Engineer → Backend Engineer: T-085 BLOCKED" below for full details
+
+**Blocker 2 — T-087 (Frontend Engineer must fix):**
+- 1 failing unit test: `getByDisplayValue('TRAIN')` should be `getByDisplayValue('Train')`
+- Implementation is correct; test assertion is wrong
+- See handoff entry "QA Engineer → Frontend Engineer: T-087 Test Fix Required" below for full details
+
+**What is ready to deploy once fixes are made:**
+- T-083 ✅, T-084 ✅, T-086 ✅, T-088 ✅, T-089 ✅
+- Backend 247/247 tests pass ✅
+- Migration 009 ready ✅
+- npm audit --production: 0 vulnerabilities ✅
+
+---
+
+### Sprint 6 — QA Engineer → Frontend Engineer: T-087 Test Fix Required (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | QA Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-087 (Blocked) |
+| Handoff Summary | T-087 (LandTravelEditPage) is BLOCKED due to 1 failing unit test. The implementation is correct per spec, but the test assertion uses the wrong value. **Fix is a 1-line change.** |
+
+**Failing Test:**
+```
+FAIL src/__tests__/LandTravelEditPage.test.jsx
+  > LandTravelEditPage > renders existing land travel entries with mode, provider, from/to locations
+  → Unable to find an element with the display value: TRAIN.
+```
+
+**Root Cause:**
+React Testing Library's `getByDisplayValue` for `<select>` elements matches the **text content** of the currently selected option, NOT the `value` attribute.
+
+The select option for TRAIN mode is:
+```html
+<option value="TRAIN">Train</option>
+```
+
+The selected option's display text is `"Train"` (title case), not `"TRAIN"`.
+
+**Required Fix — `frontend/src/__tests__/LandTravelEditPage.test.jsx`, line 144:**
+```js
+// Change FROM:
+expect(screen.getByDisplayValue('TRAIN')).toBeDefined();
+
+// Change TO:
+expect(screen.getByDisplayValue('Train')).toBeDefined();
+```
+
+**Note:** The implementation in `LandTravelEditPage.jsx` is correct per spec (human-readable labels: "Rental Car", "Bus", "Train", etc.). Do NOT change the component — only fix the test assertion.
+
+**After fix:** Run `cd frontend && npm test`. All 332 tests should pass. Move T-087 to Done and log a handoff to QA Engineer (or confirm in this thread) so QA can update T-091 status and unblock T-092.
+
+---
+
+### Sprint 6 — QA Engineer → Backend Engineer: T-085 BLOCKED — P1 ESCAPE Clause Bug (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | QA Engineer |
+| To Agent | Backend Engineer |
+| Status | Pending |
+| Related Task | T-085 (Blocked) |
+| Handoff Summary | T-085 (ILIKE wildcard escaping) is BLOCKED due to a **P1 bug** confirmed via live PostgreSQL testing. The unit tests all pass (they mock the DB), but the actual ESCAPE clause causes a PostgreSQL error when users search for `%` or `_`. This blocks T-091 (integration) and T-092 (deploy). |
+
+**Bug Description:**
+
+In `backend/src/models/tripModel.js`, `applyBaseFilters()`:
+```js
+this.whereRaw("name ILIKE ? ESCAPE '\\\\'", [searchTerm])
+  .orWhereRaw("array_to_string(destinations, ',') ILIKE ? ESCAPE '\\\\'", [searchTerm]);
+```
+
+In JavaScript, `'\\\\'` = 2 backslashes. Knex sends `ESCAPE '\\'` to PostgreSQL. With `standard_conforming_strings=on` (default since PG 9.1), `'\\'` is the literal 2-char string `\\` — invalid for ESCAPE which requires exactly 1 character.
+
+**Verified on local PostgreSQL (`standard_conforming_strings=on`):**
+```sql
+SELECT name FROM trips WHERE name ILIKE '%\%%' ESCAPE '\\';
+-- ERROR:  invalid escape string
+-- HINT:  Escape string must be empty or one character.
+```
+
+**User Impact:**
+- `GET /api/v1/trips?search=%` → 500 Internal Server Error
+- `GET /api/v1/trips?search=_` → 500 Internal Server Error
+- Normal searches (no `%`/`_`) → unaffected ✅
+
+**Required Fix — `backend/src/models/tripModel.js`, function `applyBaseFilters()`:**
+
+Change the escape character from `\` to `!`:
+
+```js
+// Replace the existing escaping block:
+const escaped = search
+  .trim()
+  .replace(/!/g, '!!')  // Escape the escape char first (! → !!)
+  .replace(/%/g, '!%')  // Escape percent wildcard
+  .replace(/_/g, '!_'); // Escape underscore wildcard
+
+const searchTerm = `%${escaped}%`;
+query.where(function () {
+  this.whereRaw("name ILIKE ? ESCAPE '!'", [searchTerm])
+    .orWhereRaw("array_to_string(destinations, ',') ILIKE ? ESCAPE '!'", [searchTerm]);
+});
+```
+
+**Also update the T-085 unit test** in `sprint6.test.js` (`model unit: escaping function produces correct patterns`) to verify `!` escaping patterns instead of `\` patterns.
+
+**After fix:**
+1. Run `cd backend && npm test` → all tests should pass
+2. Verify on local PostgreSQL: `GET /api/v1/trips?search=%` → 200 `{ data: [] }`, NOT 500
+3. Verify: `GET /api/v1/trips?search=Paris` → 200 with results (regression check)
+4. Move T-085 back to "In Review" and log handoff to Manager for re-review
+
+**Urgency:** This is a P1 blocking bug. T-091 (integration), T-092 (deploy), and all downstream Sprint 6 tasks are blocked on this fix.
+
+---
+
+### Sprint 6 — QA Engineer → Manager: Sprint 6 QA Complete — 2 Blockers Found (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | QA Engineer |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-090 (Done), T-091 (Blocked), T-085 (Blocked), T-087 (Blocked) |
+| Handoff Summary | Sprint 6 QA (T-090 security audit + T-091 integration testing) is complete. Security audit passed with 1 P1 finding. Integration testing found 1 P1 confirmed bug. Deployment is blocked pending 2 fixes. Full report in `.workflow/qa-build-log.md`. |
+
+**T-090 Security Audit — DONE:**
+- 15/16 security checklist items pass ✅
+- Rate limiting accepted known risk (Sprint 1) — no change
+- No XSS vectors found (frontend JSX rendering throughout)
+- No hardcoded secrets (`.env` is gitignored)
+- npm audit --production: 0 vulnerabilities
+- Mode enum enforced at app layer + DB layer (CHECK constraint)
+- Ownership checks on all 5 land travel endpoints
+- **1 P1 finding: T-085 ESCAPE clause bug** (see below)
+
+**T-091 Integration Testing — BLOCKED:**
+- T-085: BLOCKED (P1) — ILIKE ESCAPE clause causes 500 errors on PostgreSQL
+- T-086: PASS — Full code review + 42 tests verified. Migration 009 ready.
+- T-083, T-084, T-088, T-089: PASS — Code review verified
+- T-087: BLOCKED — 1 failing unit test (test bug, not implementation bug)
+
+**Blocking Issues:**
+
+**Blocker 1 — T-085 (P1):**
+The ESCAPE clause in `tripModel.js` uses `ESCAPE '\\\\'` which sends `ESCAPE '\\'` to PostgreSQL. With `standard_conforming_strings=on` (PG default), this causes `ERROR: invalid escape string`. Confirmed via live psql test. Unit tests pass because they mock the DB. Fix: change escape char to `!`. Backend Engineer has been notified via handoff.
+
+**Blocker 2 — T-087 (test bug):**
+`LandTravelEditPage.test.jsx` uses `getByDisplayValue('TRAIN')` but RTL's `getByDisplayValue` for select matches the selected option's TEXT CONTENT (`'Train'`, not `'TRAIN'`). Implementation is correct per spec. Frontend Engineer has been notified via handoff.
+
+**Tasks Marked Done:** T-083, T-084, T-086, T-088, T-089, T-090
+**Tasks Blocked:** T-085 (P1), T-087 (test fix), T-091 (awaiting fixes), T-092 (awaiting T-091)
+
+**Recommended Next Steps:**
+1. Backend Engineer fixes T-085 ESCAPE clause → Manager re-reviews → QA re-verifies
+2. Frontend Engineer fixes T-087 test assertion → QA re-verifies
+3. Once both blockers resolved, QA signs off on T-091 → Deploy Engineer proceeds with T-092
+
+---
+
 ### Sprint 6 — Manager → QA Engineer: T-086 Code Review APPROVED → Integration Check (2026-02-27)
 
 | Field | Value |

@@ -232,34 +232,36 @@ describe('T-085: ILIKE wildcard escaping (tripModel.listTripsByUser)', () => {
    * via observable route behavior with a real (non-mocked) implementation.
    */
   it('model unit: escaping function produces correct patterns', () => {
-    // Test the escaping logic directly as a standalone unit
+    // Test the escaping logic directly as a standalone unit.
+    // Uses "!" as the ESCAPE character (safe with standard_conforming_strings=on).
+    // Escaping order: ! → !! first, then % → !%, then _ → !_
     function escapeILIKE(str) {
       return str
-        .replace(/\\/g, '\\\\')
-        .replace(/%/g, '\\%')
-        .replace(/_/g, '\\_');
+        .replace(/!/g, '!!')  // Escape the escape char first
+        .replace(/%/g, '!%')  // Escape percent wildcard
+        .replace(/_/g, '!_'); // Escape underscore single-char wildcard
     }
 
     // Normal term: unchanged (no wildcards)
     expect(escapeILIKE('Japan')).toBe('Japan');
 
-    // Percent sign: becomes \%
-    expect(escapeILIKE('%')).toBe('\\%');
-    expect(escapeILIKE('100%')).toBe('100\\%');
-    expect(escapeILIKE('100% off')).toBe('100\\% off');
+    // Percent sign: becomes !%
+    expect(escapeILIKE('%')).toBe('!%');
+    expect(escapeILIKE('100%')).toBe('100!%');
+    expect(escapeILIKE('100% off')).toBe('100!% off');
 
-    // Underscore: becomes \_
-    expect(escapeILIKE('_')).toBe('\\_');
-    expect(escapeILIKE('_name')).toBe('\\_name');
-    expect(escapeILIKE('first_last')).toBe('first\\_last');
+    // Underscore: becomes !_
+    expect(escapeILIKE('_')).toBe('!_');
+    expect(escapeILIKE('_name')).toBe('!_name');
+    expect(escapeILIKE('first_last')).toBe('first!_last');
 
-    // Backslash: becomes \\
-    expect(escapeILIKE('\\')).toBe('\\\\');
-    expect(escapeILIKE('C:\\Users')).toBe('C:\\\\Users');
+    // Exclamation mark (the escape char itself): becomes !!
+    expect(escapeILIKE('!')).toBe('!!');
+    expect(escapeILIKE('hello!')).toBe('hello!!');
 
-    // Combined: backslash before % and _ (backslash escaped first)
-    expect(escapeILIKE('\\%')).toBe('\\\\\\%');
-    expect(escapeILIKE('\\_')).toBe('\\\\\\_');
+    // Combined: escape char before % and _ (! escaped first)
+    expect(escapeILIKE('!%')).toBe('!!!%');
+    expect(escapeILIKE('!_')).toBe('!!!_');
 
     // Unicode passthrough: unchanged
     expect(escapeILIKE('café')).toBe('café');
