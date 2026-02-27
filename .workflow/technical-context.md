@@ -33,6 +33,40 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 007 | 2 | Add `start_date` + `end_date` to `trips` table | Alter Table | `20260225_007_add_trip_date_range.js` | ✅ Applied on Staging (2026-02-25, T-038) |
 | 008 | 3 | Make `start_time` + `end_time` nullable on `activities` | Alter Table | `20260225_008_make_activity_times_optional.js` | ✅ Implemented — awaiting staging deploy (T-054) |
 | 009 | 6 | Create `land_travels` table | Create Table | `20260227_009_create_land_travels.js` | ✅ Implemented (2026-02-27, T-086). Awaiting staging deploy by Deploy Engineer (T-092). |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` table | Alter Table | `20260227_010_add_notes_to_trips.js` | ⏳ Proposed (2026-02-27, T-103). **Pre-Approved by Manager** — see active-sprint.md Sprint 7 section. Awaiting implementation by Backend Engineer. |
+
+---
+
+### Migration 010 — Add `notes` to `trips` table
+
+**Sprint:** 7
+**Task:** T-103
+**Status:** ⏳ Proposed (2026-02-27) — **Pre-Approved by Manager** (explicitly pre-approved in `active-sprint.md`, Sprint 7 planning, 2026-02-27: *"Adding `notes TEXT NULL` column to the `trips` table (migration 010). Backward-compatible nullable addition. Pre-approved to allow T-103 (backend) to proceed immediately after T-096 design spec is reviewed."*)
+
+**Rationale:** Adds the trip notes freeform description field to the `trips` table. This is the first "rich trip metadata" field beyond `name` and `destinations`. The column is `TEXT NULL` — nullable, backward-compatible with all existing trip rows (which will have `notes = NULL` after the migration). No existing queries are impacted; the `notes` column is simply included in `SELECT *` going forward. Length enforcement (max 2000 chars) is applied at the API validation layer only.
+
+**File:** `backend/src/migrations/20260227_010_add_notes_to_trips.js`
+
+**up():**
+```sql
+ALTER TABLE trips ADD COLUMN notes TEXT NULL;
+```
+
+**down():**
+```sql
+ALTER TABLE trips DROP COLUMN IF EXISTS notes;
+```
+
+**Notes:**
+- `TEXT NULL` — no DB-level length constraint. Max 2000 chars enforced in API validation middleware (route handler PATCH /trips/:id).
+- `IF EXISTS` guard in `down()` makes rollback safe to run even if the column was never created.
+- No index needed — notes are not queried or filtered server-side; they are returned as part of the trip resource.
+- `updated_at` is not affected by this migration — application layer sets it on every PATCH.
+- This is a pure `ALTER TABLE ADD COLUMN` — zero downtime on PostgreSQL (no table rewrite for nullable TEXT column).
+
+**Manager Approval Note:** Schema was explicitly pre-approved by the Manager Agent in `active-sprint.md` Sprint 7 planning section (2026-02-27). Backend Engineer may proceed with implementation as soon as T-096 (Design Spec) is complete. No additional Manager handoff required before implementation.
+
+**Deploy Engineer Note:** When T-106 (QA Integration Testing) is complete and T-107 (Staging Re-deploy) begins, migration 010 must be applied to the staging database before the backend is restarted. See handoff-log.md for the Deploy Engineer handoff entry.
 
 ---
 

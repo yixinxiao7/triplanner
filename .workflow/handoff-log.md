@@ -17,6 +17,34 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 7 — Backend Engineer → QA Engineer: Sprint 7 API Contracts Ready for Testing Reference (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-098, T-103 (contracts) → T-105 (QA Security), T-106 (QA Integration) |
+| Handoff Summary | Backend Engineer has published the complete Sprint 7 API contracts in `.workflow/api-contracts.md` (Sprint 7 section). Two backend tasks have contracts documented: (1) **T-098** — UTC timestamp fix for stays endpoints. No endpoint signature change. Documents the root cause (pg driver timezone conversion), the fix approach (pg type parser override for OIDs 1184 + 1114), and confirms the existing contract shape. (2) **T-103** — Trip notes field. Documents `notes` field additions to `GET /trips`, `GET /trips/:id`, and `PATCH /trips/:id`, plus migration 010 schema. QA should reference this contract for T-105 (security checklist) and T-106 (integration testing). |
+| Notes | **T-098 testing focus for QA:** (a) After fix, verify `check_in_at` and `check_out_at` in API responses always end with `Z` or `+00:00` — never a local-timezone offset like `-04:00`. (b) Create a stay with 4:00 PM local time (e.g., `America/New_York` UTC-4 → stored as `T20:00:00Z`), GET it back, confirm the returned string is the UTC form, and confirm frontend displays it as 4:00 PM (not 12:00 PM UTC). (c) Security: stays endpoints use `TIMESTAMPTZ` columns — confirm no timezone injection vector. **T-103 testing focus for QA:** (a) All three trips endpoints now include `notes` field — confirm all return it correctly (null when unset, string when set). (b) PATCH with notes > 2000 chars → 400 `VALIDATION_ERROR`. (c) PATCH with `notes: null` → clears the field. (d) Confirm `notes` field does not appear in the `flights`, `stays`, `activities`, or `land-travel` sub-resource responses (it is only on the `trips` resource). (e) SQL injection: confirm the notes field is stored via parameterized query — no raw string interpolation. (f) XSS: confirm notes is stored and returned as-is (no HTML sanitization — frontend is responsible for display escaping in React). **Migration 010:** Verify migration is reversible — `down()` must cleanly drop the column. |
+
+---
+
+### Sprint 7 — Backend Engineer → Frontend Engineer: Sprint 7 API Contracts Ready for Integration (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-098, T-103 (contracts) → T-098 (FE side fix), T-104 (FE trip notes UI) |
+| Handoff Summary | Backend Engineer has published the complete Sprint 7 API contracts in `.workflow/api-contracts.md` (Sprint 7 section). Two changes affect Frontend Engineer work: (1) **T-098** — UTC timestamp serialization fix on stays endpoints. The API contract for `check_in_at` / `check_out_at` has always specified UTC ISO strings — the fix makes the backend honor this. Frontend must ensure it converts UTC → local time using `check_in_tz` / `check_out_tz` IANA timezone strings (NOT by reading the hours directly from the timestamp). If the frontend was relying on a non-UTC offset string from the backend, it must be updated. (2) **T-103** — All three trips endpoints now include a `notes` field (`string | null`). Frontend Engineer can use this immediately for T-104 (trip notes UI on TripDetailsPage + TripCard). |
+| Notes | **T-098 FE integration details:** (a) Correct conversion: `new Date(check_in_at).toLocaleTimeString('en-US', { timeZone: check_in_tz, ... })`. Do NOT use `new Date(check_in_at).getHours()` (UTC hours only). (b) The check-in form sends a local datetime-local input — it should have been constructing the UTC ISO string already (e.g., using moment-timezone or Temporal API). Verify the POST/PATCH body sends the correct UTC string. (c) After the backend fix, the API response `check_in_at` will always be UTC — test against staging after T-095 re-enables HTTPS. **T-103 FE integration details (T-104):** (a) `GET /trips` list — each trip object now has `notes: string | null`. TripCard: show truncated first 100 chars + `"…"` below status badge when non-null and non-empty (Spec 13.6). (b) `GET /trips/:id` — trip object now has `notes: string | null`. TripDetailsPage: show notes section in view mode or "add trip notes…" empty placeholder (Spec 13.2). (c) `PATCH /trips/:id` — send `{ "notes": "<text>" }` to save, `{ "notes": null }` to clear. 400 `VALIDATION_ERROR` if > 2000 chars (client-side textarea maxLength should prevent this, but handle server-side 400 gracefully). (d) Notes field is NOT present on sub-resources (flights, stays, activities, land-travel). See api-contracts.md Sprint 7 section for full response shapes. |
+
+---
+
 ### Sprint 7 — Design Agent → Frontend Engineer: Spec 13 Approved — Calendar Time Enhancements + Trip Notes UI Ready to Build (2026-02-27)
 
 | Field | Value |

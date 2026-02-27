@@ -3269,3 +3269,368 @@ The following Sprint 6 tasks require **no new or changed API contracts** from th
 ---
 
 *Sprint 6 contracts above are marked Agreed and approved for implementation. Two backend changes this sprint: (1) T-085 escapes ILIKE wildcard characters in the search parameter of GET /trips — no endpoint signature change, behavior-only fix. (2) T-086 introduces the full land travel sub-resource with four new endpoints nested under /trips/:tripId/land-travel, backed by migration 009 (pre-approved). Frontend Engineer and QA Engineer should reference this contract for integration and testing.*
+
+---
+
+## Sprint 7 Contracts
+
+**Sprint 7 — 2026-02-27**
+
+Backend Engineer scope this sprint:
+
+| Task | Contract Summary |
+|------|-----------------|
+| T-098 | Bug fix — stays `check_in_at` / `check_out_at` UTC serialization. No endpoint signature changes. Clarification note added to stays contracts. |
+| T-103 | Feature — trip notes field. Migration 010 adds `notes TEXT NULL` to `trips`. `GET /trips`, `GET /trips/:id`, and `PATCH /trips/:id` all updated to include `notes`. |
+
+No new endpoints are introduced in Sprint 7. All changes are additive (notes field) or correctness fixes (UTC serialization).
+
+---
+
+### T-098 — Stays UTC Timestamp Serialization Fix (FB-081)
+
+**Sprint:** 7
+**Task:** T-098
+**Status:** Agreed
+**Type:** Bug Fix — no endpoint signature change
+
+#### Root Cause
+
+The `check_in_at` and `check_out_at` columns on the `stays` table are `TIMESTAMPTZ` (timestamp with time zone) in PostgreSQL. The Node.js `pg` driver, by default, parses `TIMESTAMPTZ` values using the Node.js process local timezone before handing the JS `Date` object back to Knex. When that `Date` is serialized to JSON (via `JSON.stringify`), it emits a local-timezone ISO string — **not UTC** — unless the process is running in UTC.
+
+On staging, the server process runs in a timezone that differs from UTC (e.g., `America/New_York` = UTC−4 during EDT). A stay with check-in at 4:00 PM local time is stored correctly as `2026-08-07T20:00:00.000Z` in the DB, but when returned it becomes `2026-08-07T16:00:00-04:00` — which clients may mis-interpret as 4 PM UTC, shifting the displayed time by 4 hours.
+
+#### Fix Approach (Implementation Reference Only — No Contract Shape Change)
+
+The fix is **applied at the `pg` driver level** before Knex processes the result. PostgreSQL type OID 1184 (`TIMESTAMPTZ`) and 1114 (`TIMESTAMP`) must be overridden to return the raw string from the database driver without automatic JS Date conversion:
+
+```js
+// In backend/src/config/database.js (or a separate pg-types setup file)
+import pg from 'pg';
+
+// Override TIMESTAMPTZ (1184) parsing — return raw UTC string from PostgreSQL
+pg.types.setTypeParser(1184, (val) => val);
+// Override TIMESTAMP (1114) parsing — return raw string (no tz conversion)
+pg.types.setTypeParser(1114, (val) => val);
+```
+
+PostgreSQL always returns `TIMESTAMPTZ` in UTC ISO 8601 format when no client timezone is set (i.e., `SET TIME ZONE 'UTC'` is the default session). With this override, the raw string passes through unchanged and is serialized by `JSON.stringify` as-is.
+
+**No application-layer changes required to routes or models.** The contract shape below was already the intended shape — this fix makes the implementation honor the contract.
+
+#### Confirmed Contract (No Change to Shape)
+
+All stays endpoints return `check_in_at` and `check_out_at` as **ISO 8601 UTC strings**. This was the original Sprint 1 contract; T-098 makes it correct in practice.
+
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440020",
+    "trip_id": "550e8400-e29b-41d4-a716-446655440001",
+    "category": "HOTEL",
+    "name": "Hyatt Regency San Francisco",
+    "address": "5 Embarcadero Center, San Francisco, CA 94111",
+    "check_in_at": "2026-08-07T20:00:00.000Z",
+    "check_in_tz": "America/Los_Angeles",
+    "check_out_at": "2026-08-09T15:00:00.000Z",
+    "check_out_tz": "America/Los_Angeles",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-24T12:00:00.000Z"
+  }
+}
+```
+
+**`check_in_at`:** UTC ISO 8601 timestamp of check-in moment. Displayed in local time by converting with `check_in_tz`.
+**`check_out_at`:** UTC ISO 8601 timestamp of checkout moment. Displayed in local time by converting with `check_out_tz`.
+
+#### Frontend Integration Note (T-098)
+
+The Frontend Engineer must ensure that when displaying `check_in_at` / `check_out_at`, the local time is derived by converting the UTC string using the accompanying `_tz` field:
+
+```js
+// Correct — uses IANA timezone to convert UTC → local display time
+const localTime = new Date(check_in_at).toLocaleTimeString('en-US', {
+  timeZone: check_in_tz,
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+// WRONG — do not display UTC hours directly as if they were local
+const wrongTime = new Date(check_in_at).getHours(); // UTC hours only
+```
+
+If the frontend was previously relying on the incorrectly-serialized local timestamp string from the backend, it must be updated to use proper UTC → local conversion via the `_tz` field.
+
+#### Test Plan — T-098
+
+**Happy path:**
+- Create a stay with `check_in_at: "2026-08-07T20:00:00.000Z"` (`check_in_tz: "America/Los_Angeles"`) → GET stay returns `"check_in_at": "2026-08-07T20:00:00.000Z"` (UTC, not shifted)
+- The displayed local time from converting this with `America/Los_Angeles` = 4:00 PM — must match what was entered
+- Create a stay in a UTC+9 timezone (e.g., `check_in_at: "2026-08-07T03:00:00.000Z"`, `check_in_tz: "Asia/Tokyo"`) → local time = 12:00 PM JST
+
+**Error path (regression):**
+- After fix: confirm `check_in_at` string in API response ends with `Z` (UTC) or includes explicit `+00:00` offset — never a non-UTC offset like `-04:00` or `-05:00`
+
+---
+
+### T-103 — Trip Notes Field
+
+**Sprint:** 7
+**Task:** T-103
+**Status:** Agreed
+**Schema Change:** Migration 010 — adds `notes TEXT NULL` to `trips` table (Manager Pre-Approved 2026-02-27)
+**Auth Required:** Bearer token (all endpoints below)
+
+#### Overview
+
+The `notes` field is a freeform text field on the trip resource. It is stored as `TEXT NULL` in the database (nullable, no DB-level length cap). The API enforces a 2000-character maximum. All existing trip endpoints (`GET /trips`, `GET /trips/:id`, `PATCH /trips/:id`) are updated to include the `notes` field.
+
+No new endpoints are introduced.
+
+---
+
+#### Migration 010 — Add `notes` to `trips` Table
+
+**File:** `backend/src/migrations/20260227_010_add_notes_to_trips.js`
+
+**up():**
+```sql
+ALTER TABLE trips ADD COLUMN notes TEXT NULL;
+```
+
+**down():**
+```sql
+ALTER TABLE trips DROP COLUMN IF EXISTS notes;
+```
+
+**Notes:**
+- Nullable addition — fully backward-compatible. Existing trips get `notes = NULL` automatically.
+- No DB-level length constraint — max length enforced at the API validation layer (2000 chars).
+- `updated_at` is NOT touched by this migration — the column already exists and is managed by the application layer.
+
+---
+
+#### Updated: GET /api/v1/trips (List)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 (extends Sprint 1 T-005) |
+| Task | T-103 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+
+**Change:** The `notes` field is now included in every trip object in the list response. Existing query parameters (`?search`, `?status`, `?sort_by`, `?sort_order`, `?page`, `?limit`) are unchanged.
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Japan 2026",
+      "destinations": ["Tokyo", "Osaka", "Kyoto"],
+      "status": "PLANNING",
+      "start_date": "2026-08-07",
+      "end_date": "2026-08-21",
+      "notes": "We fly into Narita on August 7th...",
+      "created_at": "2026-02-24T12:00:00.000Z",
+      "updated_at": "2026-02-24T12:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1
+  }
+}
+```
+
+**`notes` field:**
+- Type: `string | null`
+- `null` when no notes have been set
+- Non-null string (up to 2000 chars) when notes exist
+- Empty string `""` is treated as `null` at the display layer (frontend) — the API may return `""` or `null` when notes are cleared; frontend treats both as "no notes"
+
+**All error responses are unchanged from Sprint 1.**
+
+---
+
+#### Updated: GET /api/v1/trips/:id
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 (extends Sprint 1 T-005) |
+| Task | T-103 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+
+**Change:** The `notes` field is now included in the single-trip response.
+
+**Path Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Trip ID |
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-21",
+    "notes": "We fly into Narita on August 7th and spend 10 days exploring Tokyo, Kyoto, and Osaka.",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-24T13:00:00.000Z"
+  }
+}
+```
+
+**`notes` field:**
+- Type: `string | null`
+- `null` when no notes exist
+- Non-null string (up to 2000 chars) when notes have been saved
+
+**All error responses are unchanged from Sprint 1 (401, 403, 404).**
+
+---
+
+#### Updated: PATCH /api/v1/trips/:id
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 (extends Sprint 1 T-005) |
+| Task | T-103 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+
+**Change:** `notes` is now an accepted field in the PATCH request body.
+
+**Path Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Trip ID |
+
+**Request Body (all fields optional — PATCH semantics):**
+```json
+{
+  "name": "string",
+  "destinations": ["string"],
+  "status": "PLANNING | ONGOING | COMPLETED",
+  "notes": "string | null"
+}
+```
+
+**Field Validation Rules (applied only to provided fields):**
+| Field | Rules |
+|-------|-------|
+| `name` | String. Trimmed. Min length 1 after trim. Max length 255. |
+| `destinations` | Array of strings. Min 1 element. Each element: non-empty string after trim. |
+| `status` | Must be one of: `"PLANNING"`, `"ONGOING"`, `"COMPLETED"`. |
+| `notes` | String or null. If string: max length 2000 characters (after no trimming — whitespace is preserved). If null: clears the notes field. Empty string `""` is accepted and stored as-is (equivalent to null at the display layer). |
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-21",
+    "notes": "My updated notes.",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-27T09:00:00.000Z"
+  }
+}
+```
+
+**Response (Error — 400 Bad Request — notes exceeds max length):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "notes": "Notes must not exceed 2000 characters"
+    }
+  }
+}
+```
+
+**Response (Error — 400 Bad Request — notes is not a string or null):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "notes": "Notes must be a string or null"
+    }
+  }
+}
+```
+
+**All other error responses are unchanged from Sprint 1 (400 NO_UPDATABLE_FIELDS, 401, 403, 404).**
+
+**Notes:**
+- Sending `{ "notes": null }` explicitly clears the notes field (sets DB column to NULL).
+- Sending `{ "notes": "" }` stores an empty string in the DB (treated as "no notes" in the frontend display layer).
+- `notes` participates in the existing `NO_UPDATABLE_FIELDS` check — if the ONLY field sent is `notes`, it is a valid update (not a `NO_UPDATABLE_FIELDS` error) because `notes` is now an accepted updatable field.
+- `updated_at` is bumped on every successful PATCH that includes `notes`.
+
+---
+
+#### Test Plan — T-103
+
+**Happy paths:**
+- `GET /trips` with no notes → each trip has `"notes": null`
+- `GET /trips` after notes are set → trip includes `"notes": "text"`
+- `GET /trips/:id` with no notes → `"notes": null` in response
+- `GET /trips/:id` after `PATCH` sets notes → `"notes": "text"` in response
+- `PATCH /trips/:id` with `{ "notes": "My Tokyo trip notes" }` → 200, response includes `"notes": "My Tokyo trip notes"`
+- `PATCH /trips/:id` with `{ "notes": null }` → 200, response includes `"notes": null`
+- `PATCH /trips/:id` with `{ "notes": "" }` → 200, response includes `"notes": ""`
+- `PATCH /trips/:id` with exactly 2000 characters → 200 (boundary: accepted)
+- `PATCH /trips/:id` with `notes` as only field → 200 (not a NO_UPDATABLE_FIELDS error)
+- `PATCH /trips/:id` combining `notes` with `name` → 200, both fields updated
+
+**Error paths:**
+- `PATCH /trips/:id` with notes > 2000 characters → 400 `VALIDATION_ERROR`, `fields.notes` present
+- `PATCH /trips/:id` with `{ "notes": 12345 }` (number, not string/null) → 400 `VALIDATION_ERROR`
+- `PATCH /trips/:id` with `{ "notes": ["array"] }` → 400 `VALIDATION_ERROR`
+- `PATCH /trips/:id` with notes field without auth → 401 `UNAUTHORIZED`
+- `PATCH /trips/:id` with notes field on another user's trip → 403 `FORBIDDEN`
+- `PATCH /trips/:id` on non-existent trip → 404 `NOT_FOUND`
+
+---
+
+## Sprint 7 — No Backend Contract Changes Required for Other Tasks
+
+The following Sprint 7 tasks require **no new or changed API contracts** from the Backend Engineer:
+
+| Task | Reason |
+|------|--------|
+| T-094 (User Agent: Sprint 6 carry-over) | User testing only. No API changes. |
+| T-095 (Deploy: HTTPS + pm2 re-enable) | Infrastructure only. No API changes. |
+| T-096 (Design: Calendar + Notes spec) | Design spec only. Unblocks T-103. |
+| T-097 (FE: +X more popover fix) | Frontend-only visual bug fix. No API changes. |
+| T-099 (FE: Section reorder) | Frontend-only layout change. No API changes. |
+| T-100 (FE: All-day sort to top) | Frontend-only sort change. No API changes. |
+| T-101 (FE: Calendar checkout/arrival time display) | Frontend-only calendar chip enhancement. Uses existing sub-resource data already returned by API. |
+| T-104 (FE: Trip notes frontend) | Frontend-only. Consumes T-103 updated API contracts above. |
+| T-105 (QA: Security checklist) | QA review only. |
+| T-106 (QA: Integration testing) | QA testing only. |
+| T-107 (Deploy: Staging re-deploy) | Deploy scope. Migration 010 must be applied. |
+| T-108 (Monitor: Health check) | Monitor scope. |
+| T-109 (User Agent: Sprint 7 walkthrough) | User testing only. |
+
+---
+
+*Sprint 7 contracts above are Agreed and pre-approved for implementation. Two backend changes this sprint: (1) T-098 fixes the UTC timestamp serialization bug in stays endpoints — no API signature change, implementation-only fix at the pg driver level. (2) T-103 adds the `notes` field to all three trips endpoints (GET list, GET single, PATCH) backed by migration 010 (pre-approved by Manager). The `notes` field is nullable, max 2000 chars, and follows PATCH semantics (optional field). Frontend Engineer and QA Engineer should reference this contract for integration and testing.*
