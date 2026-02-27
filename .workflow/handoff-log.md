@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 7 — Backend Engineer → Deploy Engineer: Migration 010 Ready to Apply (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Backend Engineer |
+| To Agent | Deploy Engineer |
+| Status | Pending |
+| Related Task | T-103 → T-107 (Deploy: Staging re-deployment) |
+| Handoff Summary | **Migration 010** has been created at `backend/src/migrations/20260227_010_add_trip_notes.js`. It adds a `notes TEXT NULL` column to the `trips` table (backward-compatible nullable addition). This migration must be applied to staging as part of T-107 before the Sprint 7 frontend (T-104) can use the notes field. |
+| Notes | Run order: `knex migrate:latest` applies migration 010 after 009. Rollback: `knex migrate:rollback` drops the `notes` column cleanly. No data loss — all existing trips receive `notes = NULL` automatically. No new environment variables required. |
+
+---
+
+### Sprint 7 — Backend Engineer → QA Engineer: T-098 + T-103 Implementation Complete (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-098, T-103 → T-105 (QA Security), T-106 (QA Integration) |
+| Handoff Summary | Both backend tasks are complete and moved to In Review. **T-098 (UTC fix):** Overrode `pg` type parsers for OIDs 1184 (TIMESTAMPTZ) and 1114 (TIMESTAMP) in `backend/src/config/database.js`. TIMESTAMPTZ values now serialize to `new Date(val).toISOString()` — always UTC with "Z" suffix — rather than relying on the `pg` default that can mis-apply a Node.js process timezone offset. **T-103 (Trip notes):** Migration 010 adds `notes TEXT NULL` to trips. `tripModel.js` TRIP_COLUMNS updated to include `notes`. `routes/trips.js` updated for POST (notes optional, max 2000 chars, empty string → null) and PATCH (same validation + notes added to UPDATABLE_FIELDS + empty-string normalization). All 265 backend tests pass (18 new sprint7.test.js tests). |
+| Notes | **QA T-105 security checks:** (1) `notes` field uses parameterized Knex query — no SQL injection. `notes` is stored/returned as-is (no server-side HTML sanitization — React escaping on frontend handles XSS). (2) `notes` max 2000 chars enforced at validate middleware layer before hitting model. (3) `database.js` pg type parser uses `new Date(val).toISOString()` — no injection vector. (4) Migration 010 reversible — `down()` drops column with `dropColumn('notes')`. **QA T-106 integration tests:** (a) T-098: Create stay with `check_in_at: "2026-08-07T20:00:00.000Z"`, `check_in_tz: "America/New_York"` → GET response `check_in_at` ends with "Z" (not "-04:00"). Frontend displays as 4:00 PM (not 12:00 PM). (b) T-103: `PATCH /trips/:id { "notes": "My trip notes" }` → 200 with notes in response. GET /trips/:id and GET /trips both return `notes` field. PATCH with 2001-char notes → 400 `VALIDATION_ERROR`. PATCH `notes: null` → clears field. **New test file:** `backend/src/__tests__/sprint7.test.js` (18 tests covering all scenarios above). |
+
+---
+
+### Sprint 7 — Backend Engineer → Frontend Engineer: T-098 + T-103 Backend Implementation Complete (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-098, T-103 → T-098 (FE fix), T-104 (FE Trip Notes UI) |
+| Handoff Summary | Both backend tasks are implemented and tested. **T-098:** The pg type parser fix in `database.js` ensures all `check_in_at`/`check_out_at` (and all other `*_at`) fields from the API are always UTC ISO 8601 strings ending in "Z". The frontend must display times by converting UTC + the `_tz` IANA string — NOT by reading raw UTC hours. **T-103:** All three trips endpoints now include `notes: string | null`. See api-contracts.md Sprint 7 section for full shapes. Frontend can proceed with T-104 (trip notes UI on TripDetailsPage + TripCard) once migration 010 is deployed by T-107. |
+| Notes | **T-098 FE fix (critical):** If StaysEditPage sends `check_in_at` as a datetime-local value without UTC conversion (e.g., "2026-08-07T16:00:00" instead of "2026-08-07T20:00:00.000Z"), the backend stores it as 16:00 UTC, and when displayed in New York timezone it shows 12:00 PM. FE must convert: given datetime-local value "2026-08-07T16:00" and timezone "America/New_York" (UTC-4 in EDT), send "2026-08-07T20:00:00.000Z". **T-104 notes UI details:** (a) GET /trips list — each trip has `notes: string | null`. Show first 100 chars + "…" on TripCard when non-null. (b) GET /trips/:id — notes section on TripDetailsPage (view + inline edit, max 2000 chars textarea, char count). (c) PATCH /trips/:id with `{ "notes": "..." }` to save, `{ "notes": null }` to clear. Empty textarea → send `null` (same as clear). |
+
+---
+
 ### Sprint 7 — Backend Engineer → QA Engineer: Sprint 7 API Contracts Ready for Testing Reference (2026-02-27)
 
 | Field | Value |
@@ -31,6 +73,20 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 7 — Frontend Engineer → QA Engineer: Sprint 7 Frontend Implementation Complete (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Frontend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Tasks | T-097, T-099, T-100, T-101 |
+| Handoff Summary | Frontend Engineer has completed all unblocked Sprint 7 frontend tasks. **T-097** — Fixed "+X more" calendar popover visual corruption by moving DayPopover rendering to a ReactDOM.createPortal anchored to document.body with position:fixed. Calendar grid layout no longer disrupted when popover opens. All existing popover tests pass + 3 new tests added. **T-099** — Reordered TripDetailsPage sections: Flights → Land Travel → Stays → Activities (was Flights → Stays → Activities → Land Travel). 1 test added verifying order. **T-100** — Changed ActivityDayGroup sort so all-day activities (null start_time) appear FIRST in each day group, followed by timed activities in ascending start_time order. 2 tests added. **T-101** — Calendar time display enhancements: (1) Stay checkout time shown on last day of multi-day stays ("check-out Xa"); (2) Single-day stay shows both check-in and check-out on same chip; (3) Flight arrival time shown on arrival_date when different from departure_date ("arrives Xa"); (4) Land travel arrival rendering was already implemented in Sprint 6 (no change needed). 6 tests added. **T-104 (Trip Notes)** — Blocked on T-103 (Backend: migration 010 + API changes). Will implement once T-103 is complete. |
+| Notes | **What to test (T-097):** (1) Add 4+ events to same calendar day, click "+X more" → popover opens without corrupting calendar grid layout (no cell expanding, no other cells shifting). (2) Press Escape → popover closes. (3) Click close button → popover closes. (4) Click outside popover → popover closes. (5) Calendar grid visual: all 7 columns remain equal width after popover opens. **What to test (T-099):** Navigate to trip details page, verify section order is: Flights → Land Travel → Stays → Activities (land travel should appear between flights and stays, not at the bottom). **What to test (T-100):** Create a trip day with both timed activities (e.g., 9:00 AM and 2:00 PM) and all-day activities → verify all-day items appear at TOP of the day group, timed items below. **What to test (T-101):** (1) Multi-day stay: checkout day cell should show "check-out Xa" time. First day shows check-in time. Middle days show no time. (2) Single-day stay: cell shows both check-in and check-out times. (3) Flight spanning two days (departs Aug 7, arrives Aug 8): departure day shows departure time, arrival day shows "arrives Xa". **T-104 status:** Blocked on T-103. Will implement as soon as T-103 completes. |
+
+---
+
 ### Sprint 7 — Backend Engineer → Frontend Engineer: Sprint 7 API Contracts Ready for Integration (2026-02-27)
 
 | Field | Value |
@@ -38,7 +94,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 7 |
 | From Agent | Backend Engineer |
 | To Agent | Frontend Engineer |
-| Status | Pending |
+| Status | Acknowledged |
 | Related Task | T-098, T-103 (contracts) → T-098 (FE side fix), T-104 (FE trip notes UI) |
 | Handoff Summary | Backend Engineer has published the complete Sprint 7 API contracts in `.workflow/api-contracts.md` (Sprint 7 section). Two changes affect Frontend Engineer work: (1) **T-098** — UTC timestamp serialization fix on stays endpoints. The API contract for `check_in_at` / `check_out_at` has always specified UTC ISO strings — the fix makes the backend honor this. Frontend must ensure it converts UTC → local time using `check_in_tz` / `check_out_tz` IANA timezone strings (NOT by reading the hours directly from the timestamp). If the frontend was relying on a non-UTC offset string from the backend, it must be updated. (2) **T-103** — All three trips endpoints now include a `notes` field (`string | null`). Frontend Engineer can use this immediately for T-104 (trip notes UI on TripDetailsPage + TripCard). |
 | Notes | **T-098 FE integration details:** (a) Correct conversion: `new Date(check_in_at).toLocaleTimeString('en-US', { timeZone: check_in_tz, ... })`. Do NOT use `new Date(check_in_at).getHours()` (UTC hours only). (b) The check-in form sends a local datetime-local input — it should have been constructing the UTC ISO string already (e.g., using moment-timezone or Temporal API). Verify the POST/PATCH body sends the correct UTC string. (c) After the backend fix, the API response `check_in_at` will always be UTC — test against staging after T-095 re-enables HTTPS. **T-103 FE integration details (T-104):** (a) `GET /trips` list — each trip object now has `notes: string | null`. TripCard: show truncated first 100 chars + `"…"` below status badge when non-null and non-empty (Spec 13.6). (b) `GET /trips/:id` — trip object now has `notes: string | null`. TripDetailsPage: show notes section in view mode or "add trip notes…" empty placeholder (Spec 13.2). (c) `PATCH /trips/:id` — send `{ "notes": "<text>" }` to save, `{ "notes": null }` to clear. 400 `VALIDATION_ERROR` if > 2000 chars (client-side textarea maxLength should prevent this, but handle server-side 400 gracefully). (d) Notes field is NOT present on sub-resources (flights, stays, activities, land-travel). See api-contracts.md Sprint 7 section for full response shapes. |

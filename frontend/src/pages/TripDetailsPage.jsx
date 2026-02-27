@@ -206,15 +206,15 @@ function ActivityEntry({ activity }) {
   );
 }
 
-// ── Activity Day Group (timeless activities sort after timed) ─
+// ── Activity Day Group (all-day activities sort to top — T-100) ─
 function ActivityDayGroup({ date, activities }) {
   const dateDisplay = formatActivityDate(date);
   const sortedActivities = [...activities].sort((a, b) => {
-    // Timed activities first, then timeless; within same group sort by start_time/name
+    // T-100: All-day activities first, then timed; within same group sort by start_time/name
     const aIsAllDay = !a.start_time && !a.end_time;
     const bIsAllDay = !b.start_time && !b.end_time;
-    if (aIsAllDay && !bIsAllDay) return 1;
-    if (!aIsAllDay && bIsAllDay) return -1;
+    if (aIsAllDay && !bIsAllDay) return -1;  // all-day before timed
+    if (!aIsAllDay && bIsAllDay) return 1;   // timed after all-day
     if (aIsAllDay && bIsAllDay) return a.name.localeCompare(b.name);
     // Both timed
     if ((a.start_time || '') < (b.start_time || '')) return -1;
@@ -718,6 +718,7 @@ export default function TripDetailsPage() {
           </div>
 
           {/* ── Flights Section ── */}
+          {/* T-099: Section order is Flights → Land Travel → Stays → Activities */}
           <section className={styles.section}>
             <SectionHeader title="flights" actionLabel="edit flights" actionHref={`/trips/${tripId}/edit/flights`} />
             {flightsLoading ? (
@@ -737,54 +738,9 @@ export default function TripDetailsPage() {
             )}
           </section>
 
-          {/* ── Stays Section ── */}
-          <section className={styles.section}>
-            <SectionHeader title="stays" actionLabel="edit stays" actionHref={`/trips/${tripId}/edit/stays`} />
-            {staysLoading ? (
-              <SkeletonBar width="100%" height="80px" />
-            ) : staysError ? (
-              <SectionError resourceName="stays" onRetry={refetchStays} />
-            ) : stays.length === 0 ? (
-              <EmptyState
-                icon={<svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ color: 'var(--accent)', opacity: 0.3 }}><rect x="2" y="12" width="24" height="14" rx="1" stroke="currentColor" strokeWidth="1.2" /><path d="M2 16h24M6 16v10M22 16v10M8 12V8a6 6 0 0112 0v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>}
-                text="no stays added yet."
-                subtext="add your accommodation details to see them here."
-              />
-            ) : (
-              <div className={styles.cardList}>
-                {stays.map((stay) => <StayCard key={stay.id} stay={stay} />)}
-              </div>
-            )}
-          </section>
-
-          {/* ── Activities Section ── */}
-          <section className={styles.section}>
-            <SectionHeader title="activities" actionLabel="edit activities" actionHref={`/trips/${tripId}/edit/activities`} />
-            {activitiesLoading ? (
-              <div>
-                <SkeletonBar width="150px" height="12px" />
-                <div style={{ marginTop: 12 }}><SkeletonBar width="100%" height="52px" /></div>
-                <div style={{ marginTop: 8 }}><SkeletonBar width="100%" height="52px" /></div>
-              </div>
-            ) : activitiesError ? (
-              <SectionError resourceName="activities" onRetry={refetchActivities} />
-            ) : activities.length === 0 ? (
-              <EmptyState
-                icon={<svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ color: 'var(--accent)', opacity: 0.3 }}><rect x="2" y="3" width="24" height="22" rx="2" stroke="currentColor" strokeWidth="1.2" /><path d="M2 9h24M8 2v4M20 2v4M7 14h6M7 19h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>}
-                text="no activities planned yet."
-                subtext="add your daily itinerary to see it here, grouped by day."
-              />
-            ) : (
-              <div className={styles.activityGroups}>
-                {sortedDates.map((date) => (
-                  <ActivityDayGroup key={date} date={date} activities={activitiesByDate[date]} />
-                ))}
-              </div>
-            )}
-          </section>
-
           {/* ── Land Travel Section ── */}
-          <section className={`${styles.section} ${styles.sectionLast}`}>
+          {/* T-099: Moved to between Flights and Stays for logical travel flow */}
+          <section className={styles.section}>
             <SectionHeader title="land travel" actionLabel="edit land travel" actionHref={`/trips/${tripId}/land-travel/edit`} />
             {landTravelsLoading ? (
               <div>
@@ -810,6 +766,53 @@ export default function TripDetailsPage() {
               <div className={styles.cardList}>
                 {landTravels.map((entry) => (
                   <LandTravelCard key={entry.id} entry={entry} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ── Stays Section ── */}
+          <section className={styles.section}>
+            <SectionHeader title="stays" actionLabel="edit stays" actionHref={`/trips/${tripId}/edit/stays`} />
+            {staysLoading ? (
+              <SkeletonBar width="100%" height="80px" />
+            ) : staysError ? (
+              <SectionError resourceName="stays" onRetry={refetchStays} />
+            ) : stays.length === 0 ? (
+              <EmptyState
+                icon={<svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ color: 'var(--accent)', opacity: 0.3 }}><rect x="2" y="12" width="24" height="14" rx="1" stroke="currentColor" strokeWidth="1.2" /><path d="M2 16h24M6 16v10M22 16v10M8 12V8a6 6 0 0112 0v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>}
+                text="no stays added yet."
+                subtext="add your accommodation details to see them here."
+              />
+            ) : (
+              <div className={styles.cardList}>
+                {stays.map((stay) => <StayCard key={stay.id} stay={stay} />)}
+              </div>
+            )}
+          </section>
+
+          {/* ── Activities Section ── */}
+          {/* T-099: Activities is now last; moved sectionLast class here from Land Travel */}
+          <section className={`${styles.section} ${styles.sectionLast}`}>
+            <SectionHeader title="activities" actionLabel="edit activities" actionHref={`/trips/${tripId}/edit/activities`} />
+            {activitiesLoading ? (
+              <div>
+                <SkeletonBar width="150px" height="12px" />
+                <div style={{ marginTop: 12 }}><SkeletonBar width="100%" height="52px" /></div>
+                <div style={{ marginTop: 8 }}><SkeletonBar width="100%" height="52px" /></div>
+              </div>
+            ) : activitiesError ? (
+              <SectionError resourceName="activities" onRetry={refetchActivities} />
+            ) : activities.length === 0 ? (
+              <EmptyState
+                icon={<svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ color: 'var(--accent)', opacity: 0.3 }}><rect x="2" y="3" width="24" height="22" rx="2" stroke="currentColor" strokeWidth="1.2" /><path d="M2 9h24M8 2v4M20 2v4M7 14h6M7 19h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>}
+                text="no activities planned yet."
+                subtext="add your daily itinerary to see it here, grouped by day."
+              />
+            ) : (
+              <div className={styles.activityGroups}>
+                {sortedDates.map((date) => (
+                  <ActivityDayGroup key={date} date={date} activities={activitiesByDate[date]} />
                 ))}
               </div>
             )}

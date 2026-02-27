@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import styles from './TripCalendar.module.css';
 
 /**
@@ -12,6 +13,13 @@ import styles from './TripCalendar.module.css';
  *   activities   — array of activity objects
  *   landTravels  — array of land travel objects (T-088)
  *   isLoading    — true while sub-resources are loading
+ *
+ * Sprint 7 changes (T-097, T-101):
+ *   T-097: DayPopover now renders via ReactDOM.createPortal to document.body with
+ *          position:fixed to prevent CSS grid layout corruption when popover opens.
+ *   T-101: Added checkout time on last day of multi-day stays ("check-out Xa"),
+ *          flight arrival time on arrival day when different from departure day ("arrives Xa").
+ *          Land travel arrival day was already implemented in Sprint 6.
  */
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -107,6 +115,7 @@ function todayStr() {
 }
 
 // ── Build events map: date → { flights, stays, activities, landTravels } ──
+// T-101: Added flight arrival day + stay checkout time on last day
 
 function buildEventsMap(flights, stays, activities, landTravels) {
   const map = {};
@@ -117,23 +126,45 @@ function buildEventsMap(flights, stays, activities, landTravels) {
     map[dateStr][type].push(item);
   }
 
+  // ── Flights ──
+  // Shows departure chip on departure_date.
+  // T-101: Also shows arrival chip on arrival_date when different from departure_date.
   for (const flight of flights) {
-    const localDate = toLocalDate(flight.departure_at, flight.departure_tz);
-    const calTime = formatCalendarTime(isoToLocalHHMM(flight.departure_at, flight.departure_tz));
-    addEvent(localDate, 'flights', { ...flight, _calTime: calTime });
+    const localDepartureDate = toLocalDate(flight.departure_at, flight.departure_tz);
+    const depCalTime = formatCalendarTime(isoToLocalHHMM(flight.departure_at, flight.departure_tz));
+    addEvent(localDepartureDate, 'flights', { ...flight, _calTime: depCalTime });
+
+    // T-101 CAL-3.3: Add arrival chip on arrival_date if different from departure_date
+    const localArrivalDate = toLocalDate(flight.arrival_at, flight.arrival_tz);
+    if (localArrivalDate && localArrivalDate !== localDepartureDate) {
+      const arrCalTime = formatCalendarTime(isoToLocalHHMM(flight.arrival_at, flight.arrival_tz));
+      addEvent(localArrivalDate, 'flights', {
+        ...flight,
+        _calTime: arrCalTime,
+        _isArrival: true,
+      });
+    }
   }
 
+  // ── Stays ──
+  // T-101 CAL-3.2: Added checkout time on the last day of multi-day stays.
+  // Single-day stays (check_in === check_out) are both _isFirst and _isLast.
   for (const stay of stays) {
     const checkIn = toLocalDate(stay.check_in_at, stay.check_in_tz);
     const checkOut = toLocalDate(stay.check_out_at, stay.check_out_tz);
     const checkInTime = formatCalendarTime(isoToLocalHHMM(stay.check_in_at, stay.check_in_tz));
+    const checkOutTime = formatCalendarTime(isoToLocalHHMM(stay.check_out_at, stay.check_out_tz));
     const dates = getDateRange(checkIn, checkOut);
     for (let i = 0; i < dates.length; i++) {
+      const isFirst = i === 0;
+      const isLast = i === dates.length - 1;
       addEvent(dates[i], 'stays', {
         ...stay,
-        _isFirst: i === 0,
-        _isLast: i === dates.length - 1,
-        _calTime: i === 0 ? checkInTime : null, // only show check-in time on first day
+        _isFirst: isFirst,
+        _isLast: isLast,
+        _calTime: isFirst ? checkInTime : null,
+        // T-101: expose checkout time on last day cell
+        _checkOutTime: isLast ? checkOutTime : null,
       });
     }
   }
@@ -148,7 +179,7 @@ function buildEventsMap(flights, stays, activities, landTravels) {
     const calTime = lt.departure_time ? formatCalendarTime(lt.departure_time) : null;
     const modeLabel = LAND_TRAVEL_MODE_LABELS[lt.mode] || lt.mode.toLowerCase();
     addEvent(lt.departure_date, 'landTravels', { ...lt, _calTime: calTime, _modeLabel: modeLabel });
-    // Also on arrival_date if different from departure_date
+    // Also on arrival_date if different from departure_date (Sprint 6 T-088)
     if (lt.arrival_date && lt.arrival_date !== lt.departure_date) {
       const arrCalTime = lt.arrival_time ? formatCalendarTime(lt.arrival_time) : null;
       addEvent(lt.arrival_date, 'landTravels', {
@@ -164,8 +195,11 @@ function buildEventsMap(flights, stays, activities, landTravels) {
 }
 
 // ── Day Popover ───────────────────────────────────────────────
+// T-097: DayPopover now accepts a `position` prop ({ top, left }) for fixed positioning
+// via portal. Previously rendered inside DayCell's overflowWrapper which caused
+// CSS grid layout corruption (cells expanding when popover opened).
 
-function DayPopover({ day, events, onClose, triggerRef }) {
+function DayPopover({ day, events, onClose, triggerRef, position }) {
   const popoverRef = useRef(null);
   const allEvents = [
     ...(events?.flights || []).map((f) => ({ type: 'flight', item: f })),
@@ -178,6 +212,17 @@ function DayPopover({ day, events, onClose, triggerRef }) {
   const dateLabel = parsed
     ? `${DAYS_OF_WEEK[(new Date(`${day}T00:00:00`)).getDay()]}, ${MONTHS[parsed.month]} ${parsed.day}`
     : day;
+
+  // Build fixed positioning style from the stored bounding rect
+  // In JSDOM tests, getBoundingClientRect returns zeros → popover at top:4,left:0 (fine for tests)
+  const positionStyle = position
+    ? {
+        position: 'fixed',
+        top: (position.bottom || 0) + 4,
+        left: Math.max(0, position.left || 0),
+        zIndex: 1000,
+      }
+    : { position: 'fixed', top: 4, left: 0, zIndex: 1000 };
 
   // Focus the popover on open
   useEffect(() => {
@@ -236,7 +281,9 @@ function DayPopover({ day, events, onClose, triggerRef }) {
 
   function getEventTime(type, item) {
     if (!item._calTime) return null;
-    if (type === 'flight') return `dep. ${item._calTime}`;
+    if (type === 'flight') {
+      return item._isArrival ? `arrives ${item._calTime}` : `dep. ${item._calTime}`;
+    }
     if (type === 'stay') {
       if (item._isFirst) return `check-in ${item._calTime}`;
       return null;
@@ -252,6 +299,7 @@ function DayPopover({ day, events, onClose, triggerRef }) {
     <div
       ref={popoverRef}
       className={styles.popover}
+      style={positionStyle}
       role="dialog"
       aria-modal="true"
       aria-label={`Events for ${dateLabel}`}
@@ -287,6 +335,10 @@ function DayPopover({ day, events, onClose, triggerRef }) {
 }
 
 // ── Day Cell ─────────────────────────────────────────────────
+// T-097: No longer renders DayPopover inline. Instead calls onOpenPopover with the
+//         trigger button's bounding rect so TripCalendar can portal the popover.
+// T-101: Stay chips now show checkout time on last day. Flight chips show "arrives X"
+//         label on arrival day.
 
 function DayCell({ day, isOutsideMonth, isToday, events, openPopoverDay, onOpenPopover }) {
   const parsed = parseDateStr(day);
@@ -323,30 +375,60 @@ function DayCell({ day, isOutsideMonth, isToday, events, openPopoverDay, onOpenP
       <div className={styles.eventsArea}>
         {visible.map((ev, i) => {
           if (ev.type === 'flight') {
+            const isArrival = ev.item._isArrival;
             return (
               <div
                 key={`f-${i}`}
                 className={`${styles.eventChip} ${styles.eventChipFlight}`}
-                aria-label={`Flight: ${ev.item.flight_number}`}
+                aria-label={isArrival ? `Flight arrives: ${ev.item.flight_number}` : `Flight: ${ev.item.flight_number}`}
                 title={`${ev.item.airline} ${ev.item.flight_number}`}
               >
                 <span className={styles.eventName}>{ev.item.flight_number || ev.item.airline}</span>
-                {ev.item._calTime && <span className={styles.eventTime}>{ev.item._calTime}</span>}
+                {/* T-101: show "arrives X" on arrival day, normal time on departure day */}
+                {isArrival && ev.item._calTime && (
+                  <span className={styles.eventTime}>arrives {ev.item._calTime}</span>
+                )}
+                {!isArrival && ev.item._calTime && (
+                  <span className={styles.eventTime}>{ev.item._calTime}</span>
+                )}
               </div>
             );
           }
           if (ev.type === 'stay') {
+            const { _isFirst, _isLast, _calTime, _checkOutTime } = ev.item;
+            // T-101: Determine what time text to show
+            // _isFirst && _isLast (single-day): "checkInTime → check-out checkOutTime"
+            // _isFirst && !_isLast: show check-in time only
+            // !_isFirst && _isLast: show "check-out checkOutTime"
+            // !_isFirst && !_isLast: no text (visual span bar)
+            let timeText = null;
+            if (_isFirst && _isLast) {
+              // Single-day stay: both check-in and check-out
+              if (_calTime && _checkOutTime) {
+                timeText = `${_calTime} → check-out ${_checkOutTime}`;
+              } else if (_calTime) {
+                timeText = _calTime;
+              } else if (_checkOutTime) {
+                timeText = `check-out ${_checkOutTime}`;
+              }
+            } else if (_isFirst) {
+              timeText = _calTime || null;
+            } else if (_isLast) {
+              timeText = _checkOutTime ? `check-out ${_checkOutTime}` : null;
+            }
+
             return (
               <div
                 key={`s-${i}`}
-                className={`${styles.eventChip} ${styles.eventChipStay} ${ev.item._isFirst ? styles.chipFirst : ''} ${ev.item._isLast ? styles.chipLast : ''}`}
+                className={`${styles.eventChip} ${styles.eventChipStay} ${_isFirst ? styles.chipFirst : ''} ${_isLast ? styles.chipLast : ''}`}
                 aria-label={`Stay: ${ev.item.name}`}
                 title={ev.item.name}
               >
-                {ev.item._isFirst && (
+                {/* Show content on first day (name + time) OR last day (checkout time) */}
+                {(_isFirst || _isLast) && (
                   <>
-                    <span className={styles.eventName}>{ev.item.name}</span>
-                    {ev.item._calTime && <span className={styles.eventTime}>{ev.item._calTime}</span>}
+                    {_isFirst && <span className={styles.eventName}>{ev.item.name}</span>}
+                    {timeText && <span className={styles.eventTime}>{timeText}</span>}
                   </>
                 )}
               </div>
@@ -382,6 +464,8 @@ function DayCell({ day, isOutsideMonth, isToday, events, openPopoverDay, onOpenP
           return null;
         })}
 
+        {/* T-097: overflow button now only calls onOpenPopover with trigger ref + rect.
+             DayPopover is NO LONGER rendered inside DayCell — it's portaled in TripCalendar. */}
         {overflow > 0 && (
           <div className={styles.overflowWrapper}>
             <button
@@ -389,7 +473,9 @@ function DayCell({ day, isOutsideMonth, isToday, events, openPopoverDay, onOpenP
               className={styles.overflowBtn}
               onClick={(e) => {
                 e.stopPropagation();
-                onOpenPopover(day, overflowBtnRef);
+                // T-097: pass bounding rect so TripCalendar can position the portal popover
+                const rect = overflowBtnRef.current?.getBoundingClientRect() || null;
+                onOpenPopover(day, overflowBtnRef, rect);
               }}
               aria-haspopup="dialog"
               aria-expanded={isPopoverOpen}
@@ -397,14 +483,7 @@ function DayCell({ day, isOutsideMonth, isToday, events, openPopoverDay, onOpenP
             >
               +{overflow} more
             </button>
-            {isPopoverOpen && (
-              <DayPopover
-                day={day}
-                events={events}
-                onClose={() => onOpenPopover(null, null)}
-                triggerRef={overflowBtnRef}
-              />
-            )}
+            {/* DayPopover is NO LONGER here — moved to TripCalendar portal */}
           </div>
         )}
       </div>
@@ -435,14 +514,15 @@ export default function TripCalendar({
   const [viewYear, setViewYear] = useState(initialDate.year);
   const [viewMonth, setViewMonth] = useState(initialDate.month);
 
-  // Popover state: { day: "YYYY-MM-DD", triggerRef: React.RefObject } | null
+  // T-097: Popover state now includes bounding rect for portal positioning.
+  // Shape: { day: "YYYY-MM-DD", triggerRef: React.RefObject, rect: DOMRect | null } | null
   const [openPopover, setOpenPopover] = useState(null);
 
-  const handleOpenPopover = useCallback((day, triggerRef) => {
+  const handleOpenPopover = useCallback((day, triggerRef, rect) => {
     if (!day) {
       setOpenPopover(null);
     } else {
-      setOpenPopover({ day, triggerRef });
+      setOpenPopover({ day, triggerRef, rect });
     }
   }, []);
 
@@ -549,6 +629,20 @@ export default function TripCalendar({
       {/* Empty state message */}
       {!isLoading && !hasAnyEvents && (
         <div className={styles.emptyMessage}>no events this month</div>
+      )}
+
+      {/* T-097: DayPopover rendered via portal to document.body.
+           This prevents the popover from being constrained by the CSS grid layout,
+           fixing the visual corruption where day cells would expand when popover opened. */}
+      {openPopover && createPortal(
+        <DayPopover
+          day={openPopover.day}
+          events={eventsMap[openPopover.day]}
+          onClose={() => handleOpenPopover(null, null, null)}
+          triggerRef={openPopover.triggerRef}
+          position={openPopover.rect}
+        />,
+        document.body
       )}
     </div>
   );

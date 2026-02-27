@@ -587,7 +587,7 @@ describe('TripDetailsPage', () => {
     expect(screen.getByRole('article', { name: /Free exploration, all day/i })).toBeDefined();
   });
 
-  it('timeless activities sort after timed activities within same day', () => {
+  it('all-day activities sort before timed activities within same day (T-100)', () => {
     const mixedActivities = [
       {
         id: 'act-timed',
@@ -626,7 +626,8 @@ describe('TripDetailsPage', () => {
     const hikeIdx = texts.findIndex((t) => t.includes('Morning Hike'));
     const freeDayIdx = texts.findIndex((t) => t.includes('Free Day'));
 
-    expect(hikeIdx).toBeLessThan(freeDayIdx);
+    // All-day activities ("Free Day") must appear BEFORE timed activities ("Morning Hike")
+    expect(freeDayIdx).toBeLessThan(hikeIdx);
   });
 
   // ── 13. Land Travel Section (Sprint 6 T-088) ─────────────────────────────
@@ -746,6 +747,30 @@ describe('TripDetailsPage', () => {
 
     fireEvent.click(screen.getByText('try again'));
     expect(mockRefetchLandTravels).toHaveBeenCalledTimes(1);
+  });
+
+  // ── 14. Section Order (Sprint 7 T-099) ───────────────────────────────────
+  it('renders main sections in order: flights → land travel → stays → activities (T-099)', () => {
+    renderTripDetailsPage();
+
+    const headings = screen.getAllByRole('heading', { level: 2 });
+    const headingTexts = headings.map((h) => h.textContent.toLowerCase().trim());
+
+    const flightsIdx = headingTexts.indexOf('flights');
+    const landTravelIdx = headingTexts.indexOf('land travel');
+    const staysIdx = headingTexts.indexOf('stays');
+    const activitiesIdx = headingTexts.indexOf('activities');
+
+    // All four headings must be present
+    expect(flightsIdx).toBeGreaterThanOrEqual(0);
+    expect(landTravelIdx).toBeGreaterThanOrEqual(0);
+    expect(staysIdx).toBeGreaterThanOrEqual(0);
+    expect(activitiesIdx).toBeGreaterThanOrEqual(0);
+
+    // Correct ordering: flights < land travel < stays < activities
+    expect(flightsIdx).toBeLessThan(landTravelIdx);
+    expect(landTravelIdx).toBeLessThan(staysIdx);
+    expect(staysIdx).toBeLessThan(activitiesIdx);
   });
 
   it('renders confirmation number in land travel card when present', () => {

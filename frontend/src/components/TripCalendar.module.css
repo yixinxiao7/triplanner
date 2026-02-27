@@ -214,12 +214,11 @@
   text-decoration: underline;
 }
 
-/* ── Day Events Popover (T-089) ── */
+/* ── Day Events Popover (T-089, updated T-097) ── */
+/* T-097: position/top/left are now set via inline styles (position:fixed via portal).
+   This element is rendered at document.body level — not inside the calendar grid. */
 .popover {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 4px);
-  z-index: 100;
+  z-index: 1000;
   width: 240px;
   background: var(--surface);
   border: 1px solid var(--border-subtle);
