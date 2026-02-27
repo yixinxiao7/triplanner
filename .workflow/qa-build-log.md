@@ -615,3 +615,286 @@ Notes: All 45 checks pass. Sprint 5 search/filter/sort features fully operationa
 **Summary:** 45/45 checks PASS. Deploy Verified = **Yes**. All Sprint 5 features (search, filter, sort, combined params, validation) verified end-to-end. All Sprint 1–4 regression checks pass over HTTPS. 4/4 Playwright E2E tests pass. Zero 5xx errors. Cookie security, TLS, and security headers all correct. Staging is ready for User Agent testing (T-080).
 
 ---
+
+---
+
+## Sprint 6 QA Run — 2026-02-27
+
+**QA Engineer:** QA Agent (automated orchestrator — Sprint #6)
+**Tasks in scope:** T-085, T-086 (Integration Check); T-083, T-084, T-087, T-088, T-089 (frontend — completed per FE handoff); T-090 (security audit), T-091 (integration testing)
+
+---
+
+### Test Type: Unit Test — Backend (T-090)
+
+**Command:** `cd backend && npm test`
+**Date:** 2026-02-27
+**Result:** ✅ 247/247 PASS (0 failures)
+
+| Test File | Tests | Status |
+|-----------|-------|--------|
+| `auth.test.js` | 14 | ✅ PASS |
+| `trips.test.js` | 16 | ✅ PASS |
+| `flights.test.js` | 10 | ✅ PASS |
+| `stays.test.js` | 8 | ✅ PASS |
+| `activities.test.js` | 12 | ✅ PASS |
+| `tripStatus.test.js` | 19 | ✅ PASS |
+| `sprint2.test.js` | 37 | ✅ PASS |
+| `sprint3.test.js` | 33 | ✅ PASS |
+| `sprint4.test.js` | 19 | ✅ PASS |
+| `sprint5.test.js` | 28 | ✅ PASS |
+| `sprint6.test.js` | 51 | ✅ PASS |
+
+**Sprint 6 backend test coverage (sprint6.test.js — 51 tests):**
+- T-085 ILIKE escaping: 7 tests (unit + route-level) — all pass against mocked DB
+- T-086 Land Travel CRUD: 44 tests — GET list (6), POST (12), GET by ID (5), PATCH (12), DELETE (5) + same-day validation (4)
+- All tests use mocked model layer (DB not exercised in unit test suite)
+
+**Coverage assessment:**
+- ✅ Happy path per endpoint: covered
+- ✅ Error path per endpoint: covered (400, 401, 403, 404)
+- ✅ UUID validation: covered
+- ✅ Ownership check: covered
+- ✅ Same-day arrival_time > departure_time validation: 4 dedicated tests (POST + PATCH error + happy)
+
+---
+
+### Test Type: Unit Test — Frontend (T-090)
+
+**Command:** `cd frontend && npm test`
+**Date:** 2026-02-27
+**Result:** ❌ 331/332 PASS — **1 FAILURE**
+
+| Test File | Tests | Status |
+|-----------|-------|--------|
+| `LoginPage.test.jsx` | pass | ✅ |
+| `RegisterPage.test.jsx` | pass | ✅ |
+| `Navbar.test.jsx` | pass | ✅ |
+| `HomePage.test.jsx` | pass | ✅ |
+| `HomePageSearch.test.jsx` | pass | ✅ (T-084 toolbar fix verified) |
+| `TripCard.test.jsx` | pass | ✅ |
+| `TripDetailsPage.test.jsx` | pass | ✅ |
+| `useTripDetails.test.js` | pass | ✅ |
+| `ActivitiesEditPage.test.jsx` | pass | ✅ (T-083 CSS class tests pass) |
+| `FlightsEditPage.test.jsx` | pass | ✅ |
+| `StaysEditPage.test.jsx` | pass | ✅ |
+| `TripCalendar.test.jsx` | pass | ✅ (T-089 calendar enhancements) |
+| `LandTravelEditPage.test.jsx` | 15/16 ✅, **1 ❌** | ⚠️ FAIL |
+| `useTrips.test.js` | pass | ✅ |
+| All other test files | pass | ✅ |
+
+**Failure Detail:**
+
+```
+FAIL src/__tests__/LandTravelEditPage.test.jsx
+  > LandTravelEditPage > renders existing land travel entries with mode, provider, from/to locations
+  → Unable to find an element with the display value: TRAIN.
+  (timeout 1014ms)
+```
+
+**Root Cause Analysis (QA):** This is a **test bug**, not an implementation bug.
+
+- `screen.getByDisplayValue('TRAIN')` — RTL's `getByDisplayValue` for select elements matches the TEXT CONTENT of the currently selected option, not the `value` attribute.
+- The `<select>` has options: `<option value="TRAIN">Train</option>` (title case label per spec).
+- When `mode = 'TRAIN'`, the selected option's display text is `"Train"` (not `"TRAIN"`).
+- The correct assertion should be `getByDisplayValue('Train')`.
+- The implementation in `LandTravelEditPage.jsx` is correct per spec (human-readable labels: "Rental Car", "Bus", "Train", etc.).
+
+**Action Required:** Frontend Engineer must update test assertion on line 144 of `LandTravelEditPage.test.jsx`:
+- Change: `expect(screen.getByDisplayValue('TRAIN')).toBeDefined();`
+- To: `expect(screen.getByDisplayValue('Train')).toBeDefined();`
+
+---
+
+### Test Type: Config Consistency Check
+
+**Date:** 2026-02-27
+**Result:** ✅ ALL CONSISTENT
+
+| Check | Expected | Actual | Status |
+|-------|----------|--------|--------|
+| Backend PORT (`.env`) | 3000 | `PORT=3000` | ✅ |
+| Vite proxy target (`vite.config.js`) | `http://localhost:3000` | `http://localhost:3000` | ✅ |
+| SSL enabled? | No (COOKIE_SECURE=false, SSL paths commented out) | Disabled | ✅ |
+| Vite proxy scheme | `http://` (no SSL) | `http://localhost:3000` | ✅ |
+| CORS_ORIGIN (`.env`) | `http://localhost:5173` | `http://localhost:5173` | ✅ |
+| Frontend dev server port | 5173 | `server.port: 5173` in vite.config.js | ✅ |
+| Docker backend PORT | 3000 | `PORT: 3000` in docker-compose.yml | ✅ |
+
+**Notes:**
+- Port 3001 used on staging (Sprint 5 T-020 conflict) is a staging-only override via environment variables; local dev config (3000) is correct and consistent.
+- No config consistency issues found.
+
+---
+
+### Test Type: Security Scan (T-090)
+
+**Date:** 2026-02-27
+**npm audit (production dependencies):** `found 0 vulnerabilities` ✅
+**npm audit (all dependencies including dev):** 5 moderate — all in vite/vitest dev toolchain (NOT production, not blocking)
+
+#### Security Checklist — Sprint 6 Items
+
+| # | Check | Status | Notes |
+|---|-------|--------|-------|
+| 1 | All land travel endpoints require authentication | ✅ PASS | `router.use(authenticate)` at top of `landTravel.js` — all 5 routes protected |
+| 2 | Trip ownership enforced on every land travel operation | ✅ PASS | `requireTripOwnership()` called before any data access in all 5 handlers |
+| 3 | Cross-user access → 403 (not 404) | ✅ PASS | Confirmed in `requireTripOwnership()` implementation and 4 ownership tests |
+| 4 | UUID validation on tripId and ltId | ✅ PASS | `router.param('tripId', uuidParamHandler)` and `router.param('ltId', uuidParamHandler)` |
+| 5 | Mode enum enforced at app layer | ✅ PASS | `createLandTravelSchema.mode.enum = VALID_LAND_TRAVEL_MODES` |
+| 6 | Mode enum enforced at DB layer | ✅ PASS | CHECK constraint in migration 009: `CHECK (mode IN ('RENTAL_CAR','BUS','TRAIN','RIDESHARE','FERRY','OTHER'))` |
+| 7 | No SQL injection (parameterized Knex queries) | ✅ PASS | All queries use Knex builder (`.where({ id })`, `.insert({})`); no string concatenation |
+| 8 | Error responses contain no stack traces or internal details | ✅ PASS | All error responses use `{ message, code, fields? }` format only |
+| 9 | Migration 009 reversible | ✅ PASS | `down()` uses `dropTableIfExists('land_travels')` |
+| 10 | No XSS in land travel form (no dangerouslySetInnerHTML) | ✅ PASS | No raw HTML injection found in `LandTravelEditPage.jsx` |
+| 11 | No XSS in calendar popover | ✅ PASS | `DayPopover` renders all data through React JSX — no `dangerouslySetInnerHTML` |
+| 12 | FilterToolbar fix logic correct | ✅ PASS | `showToolbar = initialLoadDone && (hasTripsBefore || trips.length > 0)` — `!isLoading` removed ✅ |
+| 13 | Land travel API client uses correct endpoints | ✅ PASS | `api.land_travel.{list,create,get,update,delete}` all use `/trips/${tripId}/land-travel` |
+| 14 | No hardcoded secrets in source files | ✅ PASS | `backend/.env` is in `.gitignore`; JWT_SECRET is env var only |
+| 15 | Rate limiting on auth endpoints | ⚠️ KNOWN RISK | Rate limiting still not applied to `/auth/login` and `/auth/register` — accepted known risk from Sprint 1 (T-010 review) |
+| **16** | **T-085 ILIKE ESCAPE clause with real PostgreSQL** | **❌ P1 FAIL** | **See critical finding below** |
+
+---
+
+### ⚠️ CRITICAL FINDING — P1 Bug: T-085 ILIKE ESCAPE Clause Fails on PostgreSQL
+
+**Severity:** P1 — Causes 500 Internal Server Error for any search containing `%` or `_`
+**Affected Endpoint:** `GET /api/v1/trips?search=<term>`
+**Discovered:** Live PostgreSQL test on local DB (appdb, migrations 001-008)
+
+**PostgreSQL Configuration:**
+- `standard_conforming_strings = on` (PostgreSQL default since v9.1)
+
+**Root Cause:**
+
+In `backend/src/models/tripModel.js`, `applyBaseFilters()`:
+```js
+this.whereRaw("name ILIKE ? ESCAPE '\\\\'", [searchTerm])
+  .orWhereRaw("array_to_string(destinations, ',') ILIKE ? ESCAPE '\\\\'", [searchTerm]);
+```
+
+In JavaScript source, `'\\\\'` is 2 backslashes (4 escape chars → 2 actual chars). Knex sends `ESCAPE '\\'` to PostgreSQL. With `standard_conforming_strings=on`, `'\\'` is the 2-character string `\\` (two backslashes). PostgreSQL's `ESCAPE` clause requires exactly 1 character.
+
+**Verified on local PostgreSQL:**
+```sql
+SELECT name FROM trips WHERE name ILIKE '%\%%' ESCAPE '\\';
+-- ERROR:  invalid escape string
+-- HINT:  Escape string must be empty or one character.
+```
+
+**Impact:**
+- `GET /api/v1/trips?search=%` → 500 Internal Server Error (not 200 with 0 results)
+- `GET /api/v1/trips?search=_` → 500 Internal Server Error
+- Normal searches (e.g., `?search=Paris`) are unaffected (no wildcard chars in term)
+
+**Unit tests pass because** the T-085 tests mock `tripModel.js` (`vi.mock('../models/tripModel.js')`), so the actual SQL is never executed against PostgreSQL.
+
+**Required Fix** (Backend Engineer):
+Change escape character from `\` to `!` in `tripModel.js:applyBaseFilters()`:
+```js
+const escaped = search
+  .trim()
+  .replace(/!/g, '!!') // Escape the escape char first
+  .replace(/%/g, '!%') // Escape percent wildcard
+  .replace(/_/g, '!_'); // Escape underscore wildcard
+
+// In whereRaw calls, change ESCAPE '\\\\' to ESCAPE '!'
+this.whereRaw("name ILIKE ? ESCAPE '!'", [searchTerm])
+  .orWhereRaw("array_to_string(destinations, ',') ILIKE ? ESCAPE '!'", [searchTerm]);
+```
+Update the T-085 tests (sprint6.test.js) to verify the `!` escaping pattern instead of `\`.
+
+---
+
+### Test Type: Integration Test (T-091)
+
+**Date:** 2026-02-27
+**Method:** Code review + static analysis + live DB verification (staging not available)
+
+#### T-085 Integration Verification
+
+| Check | Result | Details |
+|-------|--------|---------|
+| `GET /trips?search=%` → 200 `{ data: [] }` | ❌ **FAIL** | Returns **500 ERROR** on real PostgreSQL — ESCAPE clause bug confirmed via live psql test |
+| `GET /trips?search=_` → 200 `{ data: [] }` | ❌ **FAIL** | Same root cause — 500 error |
+| `GET /trips?search=Paris` → 200 with results | ✅ PASS | Normal search terms (no `%`/`_`) unaffected |
+| Auth check unchanged | ✅ PASS | Verified in test suite |
+
+**T-085 Integration Result: ❌ BLOCKED — P1 bug confirmed**
+
+#### T-086 Integration Verification (Code Review)
+
+| Check | Result | Details |
+|-------|--------|---------|
+| POST → 201 with full resource | ✅ PASS | Verified: route returns `{ data: entry }` with all fields |
+| GET list → 200 `{ data: [] }` when empty | ✅ PASS | `listLandTravelsByTrip` returns empty array |
+| GET list sorted by departure_date ASC, departure_time NULLS LAST | ✅ PASS | `orderByRaw('departure_date ASC, departure_time ASC NULLS LAST')` confirmed |
+| PATCH → 200 with merged values | ✅ PASS | Uses existing DB values as fallback for unset fields |
+| DELETE → 204 | ✅ PASS | `res.status(204).send()` confirmed |
+| Cross-user access → 403 | ✅ PASS | `requireTripOwnership()` checks `trip.user_id !== req.user.id` → 403 |
+| Invalid mode → 400 VALIDATION_ERROR | ✅ PASS | Enum check in `createLandTravelSchema` and PATCH manual validation |
+| Missing required fields → 400 | ✅ PASS | `required: true` fields validated |
+| arrival_time without arrival_date → 400 | ✅ PASS | Custom validator in `arrival_time` field |
+| arrival_date before departure_date → 400 | ✅ PASS | Custom validator in `arrival_date` field |
+| Same-day arrival_time ≤ departure_time → 400 | ✅ PASS | POST: `createLandTravelSchema.arrival_time.custom`; PATCH: cross-field block with merged values |
+| Cross-day arrival + any times → 201/200 (rule not triggered) | ✅ PASS | Same-day rule conditioned on `arrival_date === departure_date` |
+| Non-UUID tripId/ltId → 400 | ✅ PASS | `router.param` with `uuidParamHandler` |
+| Non-existent trip → 404 | ✅ PASS | `findTripById` returns undefined → 404 in `requireTripOwnership` |
+| Non-existent entry → 404 | ✅ PASS | `findLandTravelById` returns undefined → 404 |
+| Unauthenticated → 401 | ✅ PASS | `router.use(authenticate)` |
+| Migration 009 in codebase (pending deployment) | ✅ READY | `20260227_009_create_land_travels.js` present and correct |
+
+**T-086 Integration Result: ✅ PASS (code review)**
+**Note:** Live DB verification pending T-092 deployment (migration 009 not yet applied to staging).
+
+#### Frontend Integration Verification (Code Review)
+
+| Task | Check | Result | Details |
+|------|-------|--------|---------|
+| T-083 | AM/PM column min-width | ✅ PASS | `min-width: 110px` on time columns in CSS |
+| T-083 | Clock icon color | ✅ PASS | `color-scheme: dark` on `[type="time"]` inputs |
+| T-084 | FilterToolbar stays visible during refetch | ✅ PASS | `showToolbar = initialLoadDone && (hasTripsBefore || trips.length > 0)` — no `!isLoading` |
+| T-087 | Land travel edit page route registered | ✅ PASS | `App.jsx` has `/trips/:id/land-travel/edit` route |
+| T-087 | Multi-row form with all 6 mode options | ✅ PASS | `LAND_TRAVEL_MODES` array with 6 entries in `LandTravelEditPage.jsx` |
+| T-087 | Batch save (POST new / PATCH edited / DELETE removed) | ✅ PASS | `handleSave()` uses `Promise.allSettled` with ops for create/update/delete |
+| T-087 | API uses correct endpoints | ✅ PASS | `api.land_travel.create/update/delete(tripId, ...)` matches contract |
+| T-088 | Land travel section below Activities | ✅ PASS | Section rendered in `TripDetailsPage.jsx` |
+| T-088 | Parallel fetch via `Promise.allSettled` | ✅ PASS | `useTripDetails.js` includes `api.land_travel.list` in `Promise.allSettled` |
+| T-088 | Mode badge, from→to, dates, optional fields displayed | ✅ PASS | Confirmed in `TripDetailsPage.jsx` JSX |
+| T-088 | Calendar receives land travel data | ✅ PASS | `landTravels={landTravels}` passed to `TripCalendar` |
+| T-089 | `formatCalendarTime()` helper defined | ✅ PASS | Function defined in `TripCalendar.jsx` |
+| T-089 | Event time shown on flight, stay, activity, land travel chips | ✅ PASS | `_calTime` field added via `formatCalendarTime()` in `buildEventsMap` |
+| T-089 | `DayPopover` component with `role="dialog"` | ✅ PASS | `DayPopover` function component in `TripCalendar.jsx` |
+| T-089 | "+X more" opens popover | ✅ PASS | `openPopoverDay` state toggled on overflow button click |
+| API contract compliance — land_travel endpoints | ✅ PASS | All 5 client methods match contract paths |
+
+---
+
+### Summary — Sprint 6 QA Results
+
+| Task | Type | Status | Notes |
+|------|------|--------|-------|
+| T-083 | Bug Fix (FE) | ✅ Pass | Implementation correct; test passes |
+| T-084 | Bug Fix (FE) | ✅ Pass | Toolbar fix confirmed; test passes |
+| **T-085** | **Bug Fix (BE)** | **❌ BLOCKED** | **P1: ESCAPE clause causes 500 on real PostgreSQL with `%` or `_` search** |
+| T-086 | Feature (BE) | ✅ Pass | All 42 tests pass; code review verified; same-day validation implemented |
+| **T-087** | **Feature (FE)** | **⚠️ BLOCKED** | **1 failing unit test (test bug: `getByDisplayValue('TRAIN')` should be `getByDisplayValue('Train')`)** |
+| T-088 | Feature (FE) | ✅ Pass | Implementation and tests correct |
+| T-089 | Feature (FE) | ✅ Pass | Calendar enhancements implemented and tested |
+| T-090 | Security Audit | ✅ Done | 15/16 checks pass; 1 P1 found (T-085); rate limiting is known accepted risk |
+| T-091 | Integration Test | ❌ Blocked | T-085 P1 blocks integration pass |
+| T-092 | Deploy | ❌ Blocked | Waiting on T-085 fix + T-087 test fix |
+
+**Overall Sprint 6 QA Verdict: ❌ BLOCKED — Deployment cannot proceed.**
+
+**Blockers:**
+1. **P1 (T-085):** ILIKE ESCAPE clause causes 500 errors on PostgreSQL with `standard_conforming_strings=on`. Backend Engineer must fix. Change escape char from `\` to `!`.
+2. **P2 (T-087):** 1 failing frontend unit test (test assertion bug). Frontend Engineer must fix `getByDisplayValue('TRAIN')` → `getByDisplayValue('Train')`.
+
+**Ready to deploy after fixes:**
+- T-083, T-084, T-086, T-088, T-089 ✅
+- Backend 247/247 tests pass ✅
+- Frontend 331/332 tests pass (1 test fix needed) ⚠️
+- No security vulnerabilities in production dependencies ✅
+- Config consistency verified ✅
+

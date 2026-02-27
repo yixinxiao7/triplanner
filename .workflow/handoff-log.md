@@ -17,6 +17,48 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 6 — Frontend Engineer → QA Engineer: T-087 Test Fix Complete — Unblock T-091 (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| From Agent | Frontend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-087 (Done) |
+| Handoff Summary | T-087 (LandTravelEditPage) test fix is complete. Fixed 2 test assertion bugs in `LandTravelEditPage.test.jsx`. Implementation is unchanged — only test assertions corrected. All **332/332 frontend tests pass**. T-087 moved to **Done** in dev-cycle-tracker.md. QA can now sign off on T-091 (pending T-085 backend fix from Manager re-review). |
+
+**API Contract Acknowledged:**
+- `GET /api/v1/trips/:tripId/land-travel` — List land travel entries (sorted by departure_date ASC, departure_time ASC NULLS LAST)
+- `POST /api/v1/trips/:tripId/land-travel` — Create entry (mode required, from_location, to_location, departure_date required; optional: provider, departure_time, arrival_date, arrival_time, confirmation_number, notes)
+- `PATCH /api/v1/trips/:tripId/land-travel/:id` — Update entry (partial updates, same-day arrival_time > departure_time validation)
+- `DELETE /api/v1/trips/:tripId/land-travel/:id` — Delete entry (returns 204)
+All endpoints require auth. Trip ownership enforced (403 on cross-user access). UUID validation on both params.
+
+**Test Fix Details — `frontend/src/__tests__/LandTravelEditPage.test.jsx`:**
+
+*Fix 1 (line 144):* `getByDisplayValue` for `<select>` matches the selected option's **text content**, not its `value` attribute. The TRAIN option renders as `<option value="TRAIN">Train</option>`, so the display value is `"Train"` not `"TRAIN"`.
+```js
+// Before (failing):
+expect(screen.getByDisplayValue('TRAIN')).toBeDefined();
+// After (correct):
+expect(screen.getByDisplayValue('Train')).toBeDefined();
+```
+
+*Fix 2 (line 147):* The mock data has `to_location: 'Washington DC'` for entry 1 and `from_location: 'Washington DC'` for entry 2 — "Washington DC" appears in two inputs. `getByDisplayValue` throws when multiple elements match. Changed to `getAllByDisplayValue` with a length assertion.
+```js
+// Before (failing — multiple matches):
+expect(screen.getByDisplayValue('Washington DC')).toBeDefined();
+// After (correct — handles multiple matches):
+expect(screen.getAllByDisplayValue('Washington DC').length).toBeGreaterThanOrEqual(1);
+```
+
+**Verification:** `cd frontend && npm test --run` → **332/332 tests pass** (0 failures).
+
+**Note on T-085:** The Backend Engineer has already submitted a T-085 fix (ESCAPE char changed from `\` to `!`) and is awaiting Manager re-review. Once Manager approves T-085, QA can proceed with T-091 integration testing against live PostgreSQL.
+
+---
+
 ### Sprint 6 — Backend Engineer → Manager: T-085 ESCAPE Clause P1 Fix Complete (2026-02-27)
 
 | Field | Value |
@@ -105,9 +147,9 @@ this.whereRaw("name ILIKE ? ESCAPE '!'", [searchTerm])
 | Sprint | 6 |
 | From Agent | QA Engineer |
 | To Agent | Frontend Engineer |
-| Status | Pending |
-| Related Task | T-087 (Blocked) |
-| Handoff Summary | T-087 (LandTravelEditPage) is BLOCKED due to 1 failing unit test. The implementation is correct per spec, but the test assertion uses the wrong value. **Fix is a 1-line change.** |
+| Status | Done |
+| Related Task | T-087 (Done) |
+| Handoff Summary | T-087 (LandTravelEditPage) is BLOCKED due to 1 failing unit test. The implementation is correct per spec, but the test assertion uses the wrong value. **Fix is a 1-line change.** **[Frontend Engineer 2026-02-27] Fixed. See "Sprint 6 — Frontend Engineer → QA Engineer: T-087 Test Fix Complete" entry above. 332/332 tests pass.** |
 
 **Failing Test:**
 ```
