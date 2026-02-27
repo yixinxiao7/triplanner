@@ -4,11 +4,13 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #5 — 2026-02-25 to 2026-03-11
+## Sprint #6 — 2026-02-27 to 2026-03-12
 
-**Sprint Goal**: Enhance the home page with trip search, filter, and sort capabilities so users can quickly find trips as their collection grows. Establish end-to-end test coverage with Playwright for production deployment confidence. Address React Router v7 deprecation warnings.
+**Sprint Goal**: Deliver the land travel sub-resource (rental cars, buses, trains, rideshares, ferries) as a full new section on the trip details page with a dedicated edit experience. Enhance the calendar with event time display and a clickable "+X more" day overflow popover. Fix two project-owner-reported activity edit page bugs (AM/PM cutoff, clock icon color). Close spec compliance gap on the FilterToolbar refetch flicker. Ship the ILIKE wildcard search escaping fix.
 
-**Context:** The MVP has been feature-complete since Sprint 2, production-hardened in Sprint 3, and polished to zero issues in Sprint 4. Sprint 4 was the cleanest sprint in project history: 13/13 positive feedback entries, zero bugs. The application has 428 tests (168 backend + 260 frontend), full HTTPS, comprehensive accessibility compliance, and all tech debt from Sprints 1–4 resolved. Sprint 5 is the first "enhancement" sprint — it adds user-facing functionality beyond the original MVP scope. The primary deferred item (B-022 production deployment) remains blocked on the project owner selecting a hosting provider.
+**Context:** Sprint 5 delivered search/filter/sort, E2E testing, and React Router v7 migration — all verified perfect by the User Agent (14/16 positives, 2 minor issues). The application has 496 tests (196 backend + 296 frontend + 4 E2E), full HTTPS, comprehensive accessibility, and 5 consecutive zero-rework-cycle sprints. Sprint 6 is a feature expansion sprint driven entirely by project owner feedback: adding land travel fills a gap in the trip-planning hub (users currently have no way to record ground transportation), and the calendar enhancements address the most common usability requests from manual testing.
+
+**Manager Pre-Approved Schema Change:** Adding `land_travels` table (migration 009). Columns: `id` UUID PK, `trip_id` UUID FK (CASCADE DELETE), `mode` TEXT NOT NULL (RENTAL_CAR|BUS|TRAIN|RIDESHARE|FERRY|OTHER), `provider` TEXT NULL, `from_location` TEXT NOT NULL, `to_location` TEXT NOT NULL, `departure_date` DATE NOT NULL, `departure_time` TIME NULL, `arrival_date` DATE NULL, `arrival_time` TIME NULL, `confirmation_number` TEXT NULL, `notes` TEXT NULL, `created_at` TIMESTAMPTZ DEFAULT NOW(), `updated_at` TIMESTAMPTZ DEFAULT NOW(). Index on `trip_id`. Pre-approved to allow T-086 to proceed immediately after T-081 design spec is reviewed.
 
 ---
 
@@ -17,24 +19,28 @@ The operational reference for the current development cycle. Refreshed at the st
 *All tasks below are in `dev-cycle-tracker.md`. Dependency order is enforced — no task starts before its Blocked By items are Done.*
 
 ### Phase 1 — Design Specs (start immediately)
-- [ ] T-071 — Design spec: Home page search bar, status filter, sort controls, empty search state
+- [ ] T-081 — Design spec: Land travel section (trip details display + edit page) — Spec 12
+- [ ] T-082 — Design spec addendum: Calendar enhancements (event times + "+X more" popover)
 
-### Phase 2 — Backend (start immediately, parallel with Design)
-- [ ] T-072 — Backend: API contract + implementation for GET /trips query params (?search, ?status, ?sort_by, ?sort_order)
+### Phase 2 — Quick Bug Fixes (start immediately, parallel with Design)
+- [ ] T-083 — Frontend: Fix activity edit page bugs (AM/PM cutoff + clock icon color) ← no blockers
+- [ ] T-084 — Frontend: Fix FilterToolbar refetch flicker (remove !isLoading from showToolbar) ← no blockers
+- [ ] T-085 — Backend: Escape ILIKE wildcard chars in search parameter ← no blockers
 
-### Phase 3 — Frontend (T-073 waits on T-071 + T-072; T-074 starts immediately)
-- [ ] T-073 — Frontend: Home page search/filter/sort UI ← T-071, T-072
-- [ ] T-074 — Frontend: React Router v7 future flag migration (no blockers)
+### Phase 3 — Backend: Land Travel (starts after T-081 design spec approved)
+- [ ] T-086 — Backend: Land travel API contract + migration 009 + full CRUD ← T-081
 
-### Phase 4 — E2E Testing (after implementation)
-- [ ] T-075 — E2E: Install Playwright + write critical user flow tests ← T-072, T-073, T-074
+### Phase 4 — Frontend: Land Travel + Calendar (depends on Design + Backend)
+- [ ] T-087 — Frontend: Land travel edit page ← T-081, T-086
+- [ ] T-088 — Frontend: Land travel section on trip details + calendar data integration ← T-081, T-086
+- [ ] T-089 — Frontend: Calendar enhancements (event times + "+X more" popover) ← T-082, T-088
 
 ### Phase 5 — QA, Deploy, Monitor, User (sequential after all implementation)
-- [ ] T-076 — QA: Security checklist + code review audit ← T-072, T-073, T-074, T-075
-- [ ] T-077 — QA: Integration testing ← T-076
-- [ ] T-078 — Deploy: Staging re-deployment ← T-077
-- [ ] T-079 — Monitor: Staging health check ← T-078
-- [ ] T-080 — User Agent: Feature walkthrough + feedback ← T-079
+- [ ] T-090 — QA: Security checklist + code review audit ← T-083, T-084, T-085, T-086, T-087, T-088, T-089
+- [ ] T-091 — QA: Integration testing ← T-090
+- [ ] T-092 — Deploy: Staging re-deployment (migration 009) ← T-091
+- [ ] T-093 — Monitor: Staging health check ← T-092
+- [ ] T-094 — User Agent: Feature walkthrough + feedback ← T-093
 
 ---
 
@@ -42,12 +48,13 @@ The operational reference for the current development cycle. Refreshed at the st
 
 *These items are explicitly deferred. Do not start them this sprint.*
 
-- **B-022 — Production deployment to hosting provider** — Still blocked on the project owner selecting a hosting provider (Railway, Fly.io, Render, AWS), configuring DNS, approving budget, and provisioning production PostgreSQL. **Escalated to project owner since Sprint 3.** All deployment preparation is complete. The application is deployment-ready.
-- **B-020 — Rate limiting persistence (Redis)** — In-memory rate limiting is acceptable for staging and initial single-instance production. Redis-backed store only needed for multi-process scaling. Deferred until production architecture is defined.
-- **B-024 — Per-account rate limiting** — IP-based rate limiting is standard. Per-account limiting is an enhancement for shared-IP environments. Depends on B-020 infrastructure.
+- **B-022 — Production deployment to hosting provider** — Still blocked on the project owner selecting a hosting provider (Railway, Fly.io, Render, AWS), configuring DNS, approving budget, and provisioning production PostgreSQL. **Escalated to project owner since Sprint 3.** All deployment preparation is complete. The application is fully deployment-ready.
+- **B-030 — Trip notes/description field** — Useful enhancement. Deferred to Sprint 7 to keep Sprint 6 scope focused on land travel and calendar enhancements.
+- **B-031 — Activity location links (clickable URLs)** — Minor enhancement. Deferred to Sprint 7+.
+- **B-032 — Trip export/print** — Useful enhancement. Deferred to Sprint 7+.
+- **B-020 — Rate limiting persistence (Redis)** — In-memory rate limiting acceptable for current single-instance deployment. Deferred until production architecture defined.
+- **B-024 — Per-account rate limiting** — Enhancement. Depends on B-020. Deferred.
 - **B-021 — Dev dependency esbuild vulnerability** — No production impact. Monitor for upstream fix.
-- **B-030 — Trip notes/description field** — Useful enhancement deferred to Sprint 6. Added to backlog.
-- **B-032 — Trip export/print** — Useful enhancement deferred to Sprint 6. Added to backlog.
 - **MFA login** — Explicitly out of scope per project brief.
 - **Home page summary calendar** — Explicitly out of scope per project brief.
 - **Auto-generated itinerary suggestions** — Explicitly out of scope per project brief.
@@ -58,113 +65,131 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Manager | Sprint planning (done), code review all implementation tasks, triage feedback | Review T-071–T-075 specs + implementations; approve before downstream tasks start |
-| Design Agent | Search/filter/sort UI spec for home page | T-071 |
-| Backend Engineer | Trip search/filter/sort API (contract + implementation) | T-072 |
-| Frontend Engineer | Search/filter/sort UI + React Router migration | T-073, T-074 |
-| QA Engineer | E2E test setup with Playwright + security checklist + integration testing | T-075, T-076, T-077 |
-| Deploy Engineer | Staging re-deployment with all Sprint 5 changes | T-078 |
-| Monitor Agent | Health checks (Sprint 4 regression + Sprint 5 changes) | T-079 |
-| User Agent | Test search/filter/sort, E2E validation, Sprint 4 regression, feedback | T-080 |
+| Manager | Sprint planning (done), code review all implementation tasks, approve schema, triage feedback | Review T-081–T-089 specs + implementations; approve before downstream tasks start |
+| Design Agent | Land travel UI spec + calendar enhancement spec | T-081, T-082 |
+| Backend Engineer | ILIKE wildcard fix + land travel API + migration 009 | T-085, T-086 |
+| Frontend Engineer | Activity bugs, toolbar fix, land travel edit + display, calendar enhancements | T-083, T-084, T-087, T-088, T-089 |
+| QA Engineer | Security checklist + integration testing | T-090, T-091 |
+| Deploy Engineer | Staging re-deployment (migration 009 + all Sprint 6 changes) | T-092 |
+| Monitor Agent | Health checks (Sprint 5 regression + Sprint 6 features) | T-093 |
+| User Agent | Test land travel, calendar, bug fixes, Sprint 5 regression, feedback | T-094 |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-T-071 (Design: Search/Filter/Sort UI)  ──────────────────────┐
-                                                               │
-T-072 (BE: Search/Filter/Sort API)     ──────────────────────┤  (parallel)
-                                                               │
-T-074 (FE: React Router Migration)     ──────────────────────┤  (parallel, independent)
-                                                               ↓
-T-073 (FE: Search/Filter/Sort UI)      ← T-071, T-072 ──────┤
-                                                               ↓
-                            T-075 (E2E: Playwright Tests)     ← T-072, T-073, T-074
-                                                               ↓
-                            T-076 (QA: Security + Code Review)
-                                                               ↓
-                            T-077 (QA: Integration Tests)
-                                                               ↓
-                            T-078 (Deploy: Staging Re-deploy)
-                                                               ↓
-                            T-079 (Monitor: Health Check)
-                                                               ↓
-                            T-080 (User Agent: Testing)
+T-081 (Design: Land Travel Spec)  ──────────────────────────────────┐
+T-082 (Design: Calendar Spec)     ───────────────────────────────┐  │  (parallel)
+T-083 (FE: Activity Edit Bugs)    ──────────────────────────────── ─┤  (parallel, no blockers)
+T-084 (FE: Toolbar Flicker Fix)   ──────────────────────────────── ─┤  (parallel, no blockers)
+T-085 (BE: ILIKE Escape Fix)      ──────────────────────────────── ─┤  (parallel, no blockers)
+                                                                     │
+                       T-086 (BE: Land Travel API) ← T-081 ─────────┤
+                                                                     │
+                       T-087 (FE: Land Travel Edit) ← T-081, T-086  │
+                       T-088 (FE: Land Travel Display) ← T-081, T-086─┤
+                                                                     │
+                       T-089 (FE: Calendar Enhancements) ← T-082, T-088
+                                                                     │
+                       T-090 (QA: Security + Code Review) ← all above
+                                                                     ↓
+                       T-091 (QA: Integration Tests)
+                                                                     ↓
+                       T-092 (Deploy: Staging Re-deploy w/ migration 009)
+                                                                     ↓
+                       T-093 (Monitor: Health Check)
+                                                                     ↓
+                       T-094 (User Agent: Testing)
 ```
 
-**Note on parallelism:** Phase 1 (Design), Phase 2 (Backend), and T-074 (React Router migration) can all start simultaneously. T-073 (search UI) must wait for both T-071 (design spec) and T-072 (backend API) to be complete. T-075 (E2E) waits for all implementation tasks. This sprint has moderate parallelism — the critical path runs through T-071/T-072 → T-073 → T-075 → QA → Deploy → Monitor → User.
+**Note on parallelism:** Phases 1 (Design) and 2 (Bug Fixes) all start simultaneously. T-085 (ILIKE fix) starts immediately with no blockers. T-086 (land travel backend) must wait for T-081 (design spec) to be reviewed and approved. T-087 and T-088 (frontend) must wait for both T-081 and T-086. T-089 (calendar) must wait for T-082 (design spec) and T-088 (to have land travel data structure established). Critical path: T-081 → T-086 → T-088 → T-089 → T-090 → T-091 → T-092 → T-093 → T-094.
 
 ---
 
-## Sprint 4 Feedback Triage Summary
+## Sprint 5 Feedback Triage Summary
 
-*Triaged by Manager Agent on 2026-02-25 as part of Sprint 5 planning.*
+*Triaged by Manager Agent on 2026-02-27 as part of Sprint 6 planning.*
 
-| FB Entry | Category | Severity | Sprint 5 Disposition | Task |
+| FB Entry | Category | Severity | Sprint 6 Disposition | Task |
 |----------|----------|----------|---------------------|------|
-| FB-044 | Positive | — | Acknowledged | — |
-| FB-045 | Positive | — | Acknowledged | — |
-| FB-046 | Positive | — | Acknowledged | — |
-| FB-047 | Positive | — | Acknowledged | — |
-| FB-048 | Positive | — | Acknowledged | — |
-| FB-049 | Positive | — | Acknowledged | — |
-| FB-050 | Positive | — | Acknowledged | — |
-| FB-051 | Positive | — | Acknowledged | — |
-| FB-052 | Positive | — | Acknowledged | — |
-| FB-053 | Positive | — | Acknowledged | — |
-| FB-054 | Positive | — | Acknowledged | — |
-| FB-055 | Positive | — | Acknowledged | — |
-| FB-056 | Positive | — | Acknowledged | — |
+| FB-057 | Positive | — | Acknowledged | — |
+| FB-058 | Positive | — | Acknowledged | — |
+| FB-059 | Positive | — | Acknowledged | — |
+| FB-060 | Positive | — | Acknowledged | — |
+| FB-061 | Positive | — | Acknowledged | — |
+| FB-062 | Security | Minor | **Tasked → T-085** | ILIKE wildcard escaping |
+| FB-063 | Positive | — | Acknowledged | — |
+| FB-064 | Positive | — | Acknowledged | — |
+| FB-065 | Positive | — | Acknowledged | — |
+| FB-066 | Positive | — | Acknowledged | — |
+| FB-067 | UX Issue | Minor | **Tasked → T-084** | FilterToolbar refetch flicker (was B-034) |
+| FB-068 | Positive | — | Acknowledged | — |
+| FB-069 | Positive | — | Acknowledged | — |
+| FB-070 | Positive | — | Acknowledged | — |
+| FB-071 | Positive | — | Acknowledged | — |
+| FB-072 | Positive | — | Acknowledged | — |
+| FB-073 | Feature Request | — | **Tasked → T-081, T-086, T-087, T-088** | Land travel sub-resource |
+| FB-074 | Feature Request | Minor | **Tasked → T-089** | Clickable "+X more" calendar overflow |
+| FB-075 | Feature Request | Minor | **Tasked → T-089** | Event times on calendar |
+| FB-076 | Bug | Minor | **Tasked → T-083** | AM/PM cutoff in activity edit page |
+| FB-077 | Bug | Minor | **Tasked → T-083** | Clock icon color in activity edit page |
 
-**Summary:** All 13 Sprint 4 feedback entries are positive findings — zero issues, zero bugs, zero suggestions. This is the first sprint in the project's history with zero issues found by the User Agent. No new tasks needed from Sprint 4 feedback. Sprint 5 tasks are driven by enhancement priorities (trip search/filter/sort) and production readiness (E2E testing, React Router migration).
+**Summary:** 14 positives (all Acknowledged). 5 new issues/requests from project owner feedback (FB-073–FB-077) — all Tasked. 2 carried-over items from Sprint 5 user agent testing (FB-062 → T-085, FB-067 → T-084). Total Sprint 6 tasks: 14 (T-081–T-094). No items declined (Won't Fix). The land travel feature (FB-073) is the largest work item and drives the critical path. All feedback-driven tasks are addressed this sprint.
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #5 is complete?*
+*How do we know Sprint #6 is complete?*
 
-- [ ] Design Agent has published search/filter/sort UI spec to `.workflow/ui-spec.md` (T-071)
-- [ ] Manager Agent has reviewed and approved the design spec before T-073 starts
-- [ ] Backend Engineer has updated API contracts for GET /trips query params before implementation (T-072)
-- [ ] GET /trips?search=<text> returns trips matching name or destinations (case-insensitive partial match) (T-072)
-- [ ] GET /trips?status=<PLANNING|ONGOING|COMPLETED> filters by computed trip status (T-072)
-- [ ] GET /trips?sort_by=<name|created_at|start_date>&sort_order=<asc|desc> sorts correctly (T-072)
-- [ ] Combined search + filter + sort params work together (T-072)
-- [ ] Frontend home page renders search bar, status filter, and sort controls per design spec (T-073)
-- [ ] Search input is debounced (300ms) and triggers API calls with query params (T-073)
-- [ ] Empty search results show proper empty state with "clear filters" action (T-073)
-- [ ] React Router v7 future flags added — no deprecation warnings in test output (T-074)
-- [ ] Playwright installed and ≥4 E2E tests pass against staging (T-075)
+- [ ] Design Agent has published land travel Spec 12 to `.workflow/ui-spec.md` (T-081) — reviewed and approved by Manager before T-086 starts
+- [ ] Design Agent has published calendar enhancement spec addendum (T-082) — reviewed and approved by Manager before T-089 starts
+- [ ] Backend Engineer has published land travel API contract to `.workflow/api-contracts.md` before implementation (T-086)
+- [ ] Migration 009 creates `land_travels` table with correct schema and rollback works (T-086)
+- [ ] POST /api/v1/trips/:id/land-travel creates land travel entry with all fields → 201 (T-086)
+- [ ] GET /api/v1/trips/:id/land-travel lists entries sorted by departure_date asc → 200 (T-086)
+- [ ] PATCH /api/v1/trips/:id/land-travel/:ltId updates entry → 200 (T-086)
+- [ ] DELETE /api/v1/trips/:id/land-travel/:ltId → 204 (T-086)
+- [ ] Cross-user access to land travel entries → 403 (T-086)
+- [ ] Frontend land travel edit page renders form, user can add/edit/delete entries, save persists (T-087)
+- [ ] Land travel section on trip details page shows entries and passes data to calendar (T-088)
+- [ ] Calendar event chips display times for flights/stays/activities/land travel (T-089)
+- [ ] "+X more" calendar overflow is a clickable button that opens a popover with all events for that day (T-089)
+- [ ] Activity edit page AM/PM fully visible in time columns (T-083, FB-076 resolved)
+- [ ] Activity edit page clock icon is white/light colored (T-083, FB-077 resolved)
+- [ ] FilterToolbar stays visible during API refetch (T-084, FB-067/B-034 resolved)
+- [ ] GET /trips?search=% returns 0 results, not all trips (T-085, FB-062/B-033 resolved)
 - [ ] All task dependencies (Blocked By) are resolved before moving tasks to In Progress
 - [ ] Manager Agent has completed code review for all implementation tasks
-- [ ] QA Engineer has completed security checklist (T-076) and integration testing (T-077)
+- [ ] QA Engineer has completed security checklist (T-090) and integration testing (T-091)
 - [ ] QA Engineer has logged all results in `.workflow/qa-build-log.md`
-- [ ] Deploy Engineer has redeployed to staging with all Sprint 5 changes (T-078)
-- [ ] Monitor Agent has verified staging health — all Sprint 4 checks pass + Sprint 5 checks pass (T-079)
-- [ ] User Agent has tested all changes and submitted feedback to `.workflow/feedback-log.md` (T-080)
-- [ ] Manager Agent has triaged all Sprint 5 feedback entries (New → Tasked/Acknowledged/Won't Fix)
+- [ ] Deploy Engineer has redeployed to staging with migration 009 and all Sprint 6 changes (T-092)
+- [ ] Monitor Agent has verified staging health — all Sprint 5 checks pass + Sprint 6 checks pass (T-093)
+- [ ] User Agent has tested all changes and submitted feedback to `.workflow/feedback-log.md` (T-094)
+- [ ] Manager Agent has triaged all Sprint 6 feedback entries (New → Tasked/Acknowledged/Won't Fix)
 - [ ] Sprint summary added to `.workflow/sprint-log.md`
 
 ---
 
-## Success Criteria (Sprint 5)
+## Success Criteria (Sprint 6)
 
-By the end of Sprint #5, the following must be verifiable on staging (in addition to all Sprint 1 + Sprint 2 + Sprint 3 + Sprint 4 criteria):
+By the end of Sprint #6, the following must be verifiable on staging (in addition to all Sprint 1–5 criteria):
 
-- [ ] GET /trips?search=Tokyo returns only trips with "Tokyo" in name or destinations
-- [ ] GET /trips?status=PLANNING returns only trips with computed PLANNING status
-- [ ] GET /trips?sort_by=name&sort_order=asc returns trips sorted alphabetically
-- [ ] GET /trips?search=Tokyo&status=PLANNING&sort_by=name combined params work
-- [ ] Home page search bar renders, user types, results filter dynamically
-- [ ] Home page status filter dropdown filters trip cards
-- [ ] Home page sort controls change trip card order
-- [ ] Empty search results show "no trips match" message with clear filters action
-- [ ] React Router v7 future flags enabled — no deprecation warnings in test output
-- [ ] Playwright is installed and ≥4 E2E test scenarios pass against staging
-- [ ] All 428+ existing unit tests pass (no regressions)
-- [ ] All Sprint 1+2+3+4 features still work over HTTPS (full regression)
+- [ ] User can navigate to `/trips/:id/land-travel/edit`, add a rental car entry (mode=RENTAL_CAR, from=SFO, to=Los Angeles, departure_date=2026-08-07), save → entry appears in land travel section on trip details
+- [ ] Land travel entry appears on the calendar on departure_date with distinct color
+- [ ] POST /api/v1/trips/:id/land-travel with invalid mode → 400 VALIDATION_ERROR
+- [ ] Cross-user GET /api/v1/trips/:id/land-travel → 403 FORBIDDEN
+- [ ] Calendar flight event chip shows departure time (e.g., "9a")
+- [ ] Calendar activity event chip shows start time (e.g., "2p")
+- [ ] Calendar day with 4+ events shows "+X more" button; clicking reveals popover with all events
+- [ ] Pressing Escape closes the "+X more" popover
+- [ ] Activity edit page: AM/PM suffix fully visible without truncation
+- [ ] Activity edit page: clock icon visible (white/light colored) against dark background
+- [ ] Home page: FilterToolbar does NOT disappear when search term is typed (no flicker)
+- [ ] GET /api/v1/trips?search=% returns empty results (not all trips)
+- [ ] All 496+ existing tests pass (no regressions)
+- [ ] All Sprint 1–5 features still work over HTTPS (full regression)
 
 ---
 
@@ -172,11 +197,11 @@ By the end of Sprint #5, the following must be verifiable on staging (in additio
 
 *Active blockers that need resolution before the sprint can complete.*
 
-- **B-022 (Production Deployment):** Deferred to Sprint 6+ pending project owner decision on hosting provider. All deployment preparation complete since Sprint 3. This is NOT a Sprint 5 blocker.
-- **Docker availability:** Playwright E2E tests (T-075) run directly against the staging environment (HTTPS localhost), not in Docker. Docker unavailability does not block Sprint 5.
+- **B-022 (Production Deployment):** Deferred to Sprint 7+ pending project owner decision on hosting provider. All deployment preparation complete since Sprint 3. This is NOT a Sprint 6 blocker — staging continues to be the target environment.
+- **Docker availability:** Sprint 6 does not add Docker complexity. No new blockers from Docker unavailability.
 
-*No implementation blockers. Phase 1 (Design), Phase 2 (Backend), and T-074 are all unblocked and ready to start immediately.*
+*No implementation blockers. Phase 1 (Design), Phase 2 (Bug Fixes), and T-085 are all unblocked and ready to start immediately.*
 
 ---
 
-*Previous sprint (Sprint #4) archived to `.workflow/sprint-log.md` on 2026-02-25. Sprint #5 begins 2026-02-25.*
+*Previous sprint (Sprint #5) archived to `.workflow/sprint-log.md` on 2026-02-27. Sprint #6 begins 2026-02-27.*

@@ -28,7 +28,7 @@ Your task: Review all tasks currently in 'In Review' status.
 
 Be thorough but pragmatic. Focus on correctness, security, and convention adherence. Don't nitpick style if the code is functional and readable."
 
-    run_agent_with_retry "manager" "$task_prompt" 3
+    run_agent_with_retry "manager" "$task_prompt" 3 40 "${MODEL_HEAVY:-sonnet}"
 
     # Check if any tasks were sent back for rework
     local in_progress
@@ -38,7 +38,7 @@ Be thorough but pragmatic. Focus on correctness, security, and convention adhere
         # Re-run build for rework items
         run_phase_build
         # Re-run review
-        run_agent_with_retry "manager" "$task_prompt" 3
+        run_agent_with_retry "manager" "$task_prompt" 3 40 "${MODEL_HEAVY:-sonnet}"
     fi
 
     sprint_state_set "phase" "review"

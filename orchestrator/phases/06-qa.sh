@@ -17,7 +17,7 @@ run_phase_qa() {
 Your task: Run all testing and verification for this sprint.
 
 1. Read .workflow/dev-cycle-tracker.md for tasks in 'Integration Check' status
-2. Read .workflow/handoff-log.md for context from the engineers about what to test
+2. Read .workflow/handoff-log.md — only the Sprint #${sprint_num} section — for context from the engineers about what to test
 3. Read .workflow/api-contracts.md for expected API behavior
 4. Read .workflow/ui-spec.md for expected UI behavior
 
@@ -57,7 +57,7 @@ FINAL STEPS:
 
 Be thorough. Run actual commands to test. Check actual code for security issues."
 
-    run_agent_with_retry "qa-engineer" "$task_prompt" 3
+    run_agent_with_retry "qa-engineer" "$task_prompt" 3 45 "${MODEL_HEAVY:-sonnet}"
 
     # Check if QA found issues
     if grep -q 'Blocked' "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null; then
@@ -72,7 +72,7 @@ Be thorough. Run actual commands to test. Check actual code for security issues.
 
             # Re-run QA
             log_info "Re-running QA after fixes..."
-            run_agent_with_retry "qa-engineer" "$task_prompt" 3
+            run_agent_with_retry "qa-engineer" "$task_prompt" 3 45 "${MODEL_HEAVY:-sonnet}"
         fi
     fi
 

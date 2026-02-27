@@ -100,6 +100,11 @@ run_sprint() {
 
     log_phase "Starting Sprint #${sprint_num}"
 
+    # Archive old sprint data from workflow files to reduce agent token usage
+    if [[ "$sprint_num" -gt 2 ]]; then
+        archive_old_sprints "$sprint_num"
+    fi
+
     # Determine where to start (for --continue mode)
     local start_phase
     if [[ "$MODE" == "continue" ]]; then

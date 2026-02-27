@@ -53,7 +53,7 @@ ${feedback_context}
 Focus on incremental progress. Each sprint should deliver a visible improvement to the product."
     fi
 
-    run_agent_with_retry "manager" "$task_prompt" 3
+    run_agent_with_retry "manager" "$task_prompt" 3 30 "${MODEL_LIGHT:-sonnet}"
 
     # Verify planning produced results
     if phase_planning_complete; then

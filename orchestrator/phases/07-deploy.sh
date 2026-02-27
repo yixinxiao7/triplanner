@@ -12,7 +12,7 @@ run_phase_deploy() {
 Your task: Build and deploy the application to staging.
 
 PRE-DEPLOY:
-1. Read .workflow/handoff-log.md for QA's confirmation that all tests pass
+1. Read .workflow/handoff-log.md — only the Sprint #${sprint_num} section — for QA's confirmation that all tests pass
 2. Read .workflow/technical-context.md for any pending migrations
 3. Read .workflow/dev-cycle-tracker.md — verify all sprint tasks are Done
 
@@ -42,7 +42,7 @@ If any step fails, log the failure details in qa-build-log.md and handoff-log.md
 
 Note: For this local/staging setup, 'staging' means running the built application locally with a real database. Production deployment will be handled separately when CI/CD is configured."
 
-    run_agent_with_retry "deploy-engineer" "$task_prompt" 3
+    run_agent_with_retry "deploy-engineer" "$task_prompt" 3 30 "${MODEL_LIGHT:-sonnet}"
 
     sprint_state_set "phase" "deploy"
     sprint_state_set "deploy_status" "complete"

@@ -11,16 +11,18 @@
 # 4. Writes its outputs to workflow files and source code
 #
 # Usage:
-#   run_agent <agent_name> <task_prompt> [max_turns]
+#   run_agent <agent_name> <task_prompt> [max_turns] [model]
 #
 # agent_name: matches the filename in .agents/ (without .md)
 # task_prompt: what the agent should do right now
 # max_turns: optional, defaults to AGENT_MAX_TURNS from config
+# model: optional, defaults to MODEL_LIGHT from config (e.g. "sonnet", "opus")
 
 run_agent() {
     local agent_name="$1"
     local task_prompt="$2"
     local max_turns="${3:-${AGENT_MAX_TURNS:-50}}"
+    local model="${4:-${MODEL_LIGHT:-sonnet}}"
     local agent_file="${AGENTS_DIR}/${agent_name}.md"
     local log_dir="${ORCHESTRATOR_DIR}/logs"
     local timestamp
@@ -41,19 +43,24 @@ run_agent() {
     system_prompt=$(build_system_prompt "$agent_name")
 
     log_agent "$agent_name" "Starting task..."
-    log_info "Max turns: $max_turns | Log: $log_file"
+    log_info "Max turns: $max_turns | Model: $model | Log: $log_file"
 
     # Invoke Claude Code
     # --print: non-interactive mode, output to stdout
+    # --model: select model tier (sonnet, opus, haiku)
     # --system-prompt: the agent's role and context
     # --max-turns: prevent runaway agents
-    # --allowedTools: scoped to what the agent needs
     local exit_code=0
+    local budget_flag=""
+    if [[ "${MAX_BUDGET_PER_AGENT:-0}" != "0" ]]; then
+        budget_flag="--max-budget-usd ${MAX_BUDGET_PER_AGENT}"
+    fi
     claude --print \
         --dangerously-skip-permissions \
+        --model "$model" \
         --system-prompt "$system_prompt" \
         --max-turns "$max_turns" \
-        --verbose \
+        $budget_flag \
         "$task_prompt" \
         2>&1 | tee "$log_file" || exit_code=$?
 
@@ -103,9 +110,10 @@ SYSPROMPT
 # Run multiple agents concurrently and wait for all to complete
 #
 # Usage:
-#   run_agents_parallel "agent1:task1" "agent2:task2"
+#   run_agents_parallel "agent1|turns|model|task1" "agent2|turns|model|task2"
 #
-# Each argument is "agent_name:task_prompt"
+# Each argument is "agent_name|max_turns|model|task_prompt" (pipe-delimited).
+# max_turns and model can be empty to use defaults.
 
 run_agents_parallel() {
     local pids=()
@@ -117,14 +125,20 @@ run_agents_parallel() {
     log_info "Starting ${#@} agents in parallel..."
 
     for entry in "$@"; do
-        local agent_name="${entry%%:*}"
-        local task_prompt="${entry#*:}"
+        # Parse pipe-delimited fields: agent_name|max_turns|model|task_prompt
+        local agent_name max_turns model task_prompt
+        agent_name=$(echo "$entry" | cut -d'|' -f1)
+        max_turns=$(echo "$entry" | cut -d'|' -f2)
+        model=$(echo "$entry" | cut -d'|' -f3)
+        task_prompt=$(echo "$entry" | cut -d'|' -f4-)
+        max_turns="${max_turns:-${AGENT_MAX_TURNS:-50}}"
+        model="${model:-${MODEL_LIGHT:-sonnet}}"
 
         agents+=("$agent_name")
 
         # Run in background
         (
-            run_agent "$agent_name" "$task_prompt"
+            run_agent "$agent_name" "$task_prompt" "$max_turns" "$model"
         ) &
         pids+=($!)
     done
@@ -158,16 +172,21 @@ run_agents_parallel() {
 
 # ── Agent with Retry ─────────────────────────────────────────────────
 # Retry an agent up to N times if it fails
+#
+# Usage:
+#   run_agent_with_retry <agent_name> <task_prompt> [max_retries] [max_turns] [model]
 
 run_agent_with_retry() {
     local agent_name="$1"
     local task_prompt="$2"
     local max_retries="${3:-2}"
+    local max_turns="${4:-${AGENT_MAX_TURNS:-50}}"
+    local model="${5:-${MODEL_LIGHT:-sonnet}}"
     local attempt=1
 
     while [[ $attempt -le $max_retries ]]; do
         log_info "Attempt $attempt/$max_retries for agent '$agent_name'"
-        if run_agent "$agent_name" "$task_prompt"; then
+        if run_agent "$agent_name" "$task_prompt" "$max_turns" "$model"; then
             return 0
         fi
         log_warn "Agent '$agent_name' failed (attempt $attempt/$max_retries)"
