@@ -2822,9 +2822,9 @@ The canonical land travel resource object returned in all success responses:
   "from_location": "San Francisco",
   "to_location": "Los Angeles",
   "departure_date": "2026-08-07",
-  "departure_time": "09:00",
+  "departure_time": "09:00:00",
   "arrival_date": "2026-08-07",
-  "arrival_time": "14:30",
+  "arrival_time": "14:30:00",
   "confirmation_number": "XYZ-123456",
   "notes": "Pick up at airport terminal 2. Return same location.",
   "created_at": "2026-08-01T10:00:00.000Z",
@@ -2843,16 +2843,16 @@ The canonical land travel resource object returned in all success responses:
 | `from_location` | string | No | Origin location name (e.g., `"San Francisco"`, `"SFO Airport"`) |
 | `to_location` | string | No | Destination location name |
 | `departure_date` | string (`YYYY-MM-DD`) | No | Departure date in ISO 8601 date format |
-| `departure_time` | string (`HH:MM`) | Yes | Departure local time in 24h format. `null` if not set. |
+| `departure_time` | string (`HH:MM:SS`) | Yes | Departure local time in 24h format. `null` if not set. |
 | `arrival_date` | string (`YYYY-MM-DD`) | Yes | Arrival date in ISO 8601 date format. `null` if not set. |
-| `arrival_time` | string (`HH:MM`) | Yes | Arrival local time in 24h format. `null` if not set. |
+| `arrival_time` | string (`HH:MM:SS`) | Yes | Arrival local time in 24h format. `null` if not set. |
 | `confirmation_number` | string | Yes | Booking/confirmation code. `null` if not set. |
 | `notes` | string | Yes | Free-text notes. `null` if not set. |
 | `created_at` | ISO 8601 UTC string | No | Record creation timestamp |
 | `updated_at` | ISO 8601 UTC string | No | Last update timestamp |
 
 **Notes on time fields:**
-- `departure_time` and `arrival_time` are stored as PostgreSQL `TIME` and returned as `HH:MM` strings (seconds stripped). E.g., `"09:00"`, `"14:30"`.
+- `departure_time` and `arrival_time` are stored as PostgreSQL `TIME` and returned as `HH:MM:SS` strings (24-hour format with seconds). E.g., `"09:00:00"`, `"14:30:00"`. The PostgreSQL `pg` driver returns `TIME` columns as `HH:MM:SS`; the backend normalises to this format via `TO_CHAR(departure_time, 'HH24:MI:SS')`.
 - There are no timezone fields for land travel times — times are stored and returned as local (wall-clock) times, matching how the user entered them. The frontend renders them directly without timezone conversion.
 - `arrival_time` is only meaningful if `arrival_date` is also set. The API enforces: if `arrival_time` is provided, `arrival_date` must also be provided (400 error otherwise).
 - If `arrival_date` is provided, it must be greater than or equal to `departure_date`. (Same-day arrivals are valid.)
@@ -2890,9 +2890,9 @@ The canonical land travel resource object returned in all success responses:
       "from_location": "San Francisco",
       "to_location": "Los Angeles",
       "departure_date": "2026-08-07",
-      "departure_time": "09:00",
+      "departure_time": "09:00:00",
       "arrival_date": "2026-08-07",
-      "arrival_time": "20:45",
+      "arrival_time": "20:45:00",
       "confirmation_number": "AMTK-789012",
       "notes": null,
       "created_at": "2026-08-01T10:00:00.000Z",
@@ -2969,9 +2969,9 @@ The canonical land travel resource object returned in all success responses:
   "from_location": "San Francisco",
   "to_location": "Los Angeles",
   "departure_date": "2026-08-07",
-  "departure_time": "09:00",
+  "departure_time": "09:00:00",
   "arrival_date": "2026-08-07",
-  "arrival_time": "14:30",
+  "arrival_time": "14:30:00",
   "confirmation_number": "XYZ-123456",
   "notes": "Pick up at airport terminal 2."
 }
@@ -3008,9 +3008,9 @@ The canonical land travel resource object returned in all success responses:
     "from_location": "San Francisco",
     "to_location": "Los Angeles",
     "departure_date": "2026-08-07",
-    "departure_time": "09:00",
+    "departure_time": "09:00:00",
     "arrival_date": "2026-08-07",
-    "arrival_time": "14:30",
+    "arrival_time": "14:30:00",
     "confirmation_number": "XYZ-123456",
     "notes": "Pick up at airport terminal 2.",
     "created_at": "2026-08-01T10:00:00.000Z",
@@ -3077,9 +3077,9 @@ The canonical land travel resource object returned in all success responses:
   "from_location": "San Francisco",
   "to_location": "Los Angeles",
   "departure_date": "2026-08-07",
-  "departure_time": "10:00",
+  "departure_time": "10:00:00",
   "arrival_date": "2026-08-07",
-  "arrival_time": "21:00",
+  "arrival_time": "21:00:00",
   "confirmation_number": "AMTK-789012",
   "notes": "Quiet car reserved."
 }
@@ -3118,9 +3118,9 @@ The canonical land travel resource object returned in all success responses:
     "from_location": "San Francisco",
     "to_location": "Los Angeles",
     "departure_date": "2026-08-07",
-    "departure_time": "10:00",
+    "departure_time": "10:00:00",
     "arrival_date": "2026-08-07",
-    "arrival_time": "21:00",
+    "arrival_time": "21:00:00",
     "confirmation_number": "AMTK-789012",
     "notes": "Quiet car reserved.",
     "created_at": "2026-08-01T10:00:00.000Z",

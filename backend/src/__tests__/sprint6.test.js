@@ -536,6 +536,42 @@ describe('POST /api/v1/trips/:tripId/land-travel — create entry (T-086)', () =
     expect(res.body.error.fields.arrival_time).toBeDefined();
   });
 
+  it('error path: same-day arrival_time <= departure_time → 400 VALIDATION_ERROR (T-086 fix)', async () => {
+    // Arrival time is before departure time on the same day — must be rejected
+    const res = await request(
+      buildLandTravelApp(), 'POST',
+      `/api/v1/trips/${TRIP_ID}/land-travel`,
+      {
+        ...minimalPayload,
+        departure_date: '2026-08-07',
+        departure_time: '17:00:00',
+        arrival_date: '2026-08-07', // same day
+        arrival_time: '09:00:00',   // earlier than departure
+      }, AUTH,
+    );
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.body.error.fields.arrival_time).toMatch(/after departure time/i);
+  });
+
+  it('happy path: same-day arrival_time > departure_time → 201 (T-086 fix)', async () => {
+    landTravelModel.createLandTravel.mockResolvedValue(mockLandTravel);
+
+    // Departure at 09:00, arrival at 17:00 — same day, valid order
+    const res = await request(
+      buildLandTravelApp(), 'POST',
+      `/api/v1/trips/${TRIP_ID}/land-travel`,
+      {
+        ...minimalPayload,
+        departure_date: '2026-08-07',
+        departure_time: '09:00:00',
+        arrival_date: '2026-08-07',
+        arrival_time: '17:00:00',
+      }, AUTH,
+    );
+    expect(res.status).toBe(201);
+  });
+
   it('error path: unauthenticated → 401', async () => {
     const res = await request(
       buildLandTravelApp(), 'POST',
@@ -726,6 +762,39 @@ describe('PATCH /api/v1/trips/:tripId/land-travel/:ltId — update entry (T-086)
 
     expect(res.status).toBe(400);
     expect(res.body.error.fields.arrival_date).toBeDefined();
+  });
+
+  it('error path: same-day arrival_time <= departure_time (merged values) → 400 (T-086 fix)', async () => {
+    // mockLandTravel has: departure_date=2026-08-07, departure_time=09:00:00,
+    //                     arrival_date=2026-08-07, arrival_time=17:00:00
+    // Updating arrival_time to something earlier than existing departure_time on same day
+    const res = await request(
+      buildLandTravelApp(), 'PATCH',
+      `/api/v1/trips/${TRIP_ID}/land-travel/${LT_ID}`,
+      { arrival_time: '08:00:00' }, // same day (arrival_date=2026-08-07), but before 09:00:00 departure
+      AUTH,
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.body.error.fields.arrival_time).toMatch(/after departure time/i);
+  });
+
+  it('happy path: same-day arrival_time > departure_time (merged values) → 200 (T-086 fix)', async () => {
+    const updated = { ...mockLandTravel, arrival_time: '18:00:00', updated_at: '2026-02-27T12:00:00.000Z' };
+    landTravelModel.updateLandTravel.mockResolvedValue(updated);
+
+    // mockLandTravel existing: departure_date=2026-08-07, departure_time=09:00:00, arrival_date=2026-08-07
+    // Updating arrival_time to 18:00 — same day, after departure time → valid
+    const res = await request(
+      buildLandTravelApp(), 'PATCH',
+      `/api/v1/trips/${TRIP_ID}/land-travel/${LT_ID}`,
+      { arrival_time: '18:00:00' },
+      AUTH,
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.arrival_time).toBe('18:00:00');
   });
 
   it('error path: land travel entry not found → 404', async () => {

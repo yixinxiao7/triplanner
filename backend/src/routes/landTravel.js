@@ -112,6 +112,18 @@ const createLandTravelSchema = {
       if (value && !body.arrival_date) {
         return 'Arrival time requires an arrival date to be set';
       }
+      // Same-day rule: when arrival_date == departure_date, arrival_time must be > departure_time
+      // (T-086 code review fix — Manager required 2026-02-27)
+      if (
+        value &&
+        body.arrival_date &&
+        body.departure_date &&
+        body.arrival_date === body.departure_date &&
+        body.departure_time &&
+        value <= body.departure_time
+      ) {
+        return 'Arrival time must be after departure time when arriving on the same day';
+      }
       return null;
     },
   },
@@ -280,6 +292,8 @@ router.patch('/:ltId', async (req, res, next) => {
       req.body.arrival_date !== undefined ? req.body.arrival_date : existing.arrival_date;
     const mergedArrivalTime =
       req.body.arrival_time !== undefined ? req.body.arrival_time : existing.arrival_time;
+    const mergedDepartureTime =
+      req.body.departure_time !== undefined ? req.body.departure_time : existing.departure_time;
 
     // Cross-field: arrival_date >= departure_date
     if (
@@ -302,6 +316,27 @@ router.patch('/:ltId', async (req, res, next) => {
       (mergedArrivalDate === null || mergedArrivalDate === undefined)
     ) {
       errors.arrival_time = 'Arrival time requires an arrival date to be set';
+    }
+
+    // Cross-field: same-day rule — arrival_time must be > departure_time when
+    // arrival_date == departure_date (T-086 code review fix — Manager required 2026-02-27)
+    if (
+      !errors.arrival_time &&
+      !errors.departure_time &&
+      !errors.arrival_date &&
+      !errors.departure_date &&
+      mergedArrivalDate !== null &&
+      mergedArrivalDate !== undefined &&
+      mergedDepartureDate !== null &&
+      mergedDepartureDate !== undefined &&
+      mergedArrivalDate === mergedDepartureDate &&
+      mergedArrivalTime !== null &&
+      mergedArrivalTime !== undefined &&
+      mergedDepartureTime !== null &&
+      mergedDepartureTime !== undefined &&
+      mergedArrivalTime <= mergedDepartureTime
+    ) {
+      errors.arrival_time = 'Arrival time must be after departure time when arriving on the same day';
     }
 
     // Validate string lengths for text fields
