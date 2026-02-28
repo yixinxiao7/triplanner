@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import DestinationChipInput from '../components/DestinationChipInput';
 import { useTripDetails } from '../hooks/useTripDetails';
-import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatTripDateRange } from '../utils/formatDate';
+import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatTripDateRange, parseLocationWithLinks } from '../utils/formatDate';
 import TripCalendar from '../components/TripCalendar';
 import { api } from '../utils/api';
 import styles from './TripDetailsPage.module.css';
@@ -106,7 +106,8 @@ function FlightCard({ flight }) {
         <div className={styles.flightCol}>
           <div className={styles.airportCode}>{flight.from_location}</div>
           <div className={styles.flightDateTime}>
-            {depDisplay}{depTz ? ` ${depTz}` : ''}
+            {depDisplay}
+            {depTz && <span className={styles.tzAbbr}>{depTz}</span>}
           </div>
         </div>
         <div className={styles.flightCenter}>
@@ -117,7 +118,8 @@ function FlightCard({ flight }) {
         <div className={`${styles.flightCol} ${styles.flightColRight}`}>
           <div className={styles.airportCode}>{flight.to_location}</div>
           <div className={styles.flightDateTime}>
-            {arrDisplay}{arrTz ? ` ${arrTz}` : ''}
+            {arrDisplay}
+            {arrTz && <span className={styles.tzAbbr}>{arrTz}</span>}
           </div>
         </div>
       </div>
@@ -129,6 +131,9 @@ function FlightCard({ flight }) {
 function StayCard({ stay }) {
   const checkInDisplay = formatDateTime(stay.check_in_at, stay.check_in_tz);
   const checkOutDisplay = formatDateTime(stay.check_out_at, stay.check_out_tz);
+  // T-113: DST-aware timezone abbreviations for check-in and check-out
+  const checkInTz = formatTimezoneAbbr(stay.check_in_at, stay.check_in_tz);
+  const checkOutTz = formatTimezoneAbbr(stay.check_out_at, stay.check_out_tz);
 
   return (
     <article className={styles.stayCard} aria-label={`Stay: ${stay.name}`}>
@@ -152,11 +157,17 @@ function StayCard({ stay }) {
       <div className={styles.stayDates}>
         <div className={styles.stayDateBlock}>
           <div className={styles.stayDateLabel}>CHECK IN</div>
-          <div className={styles.stayDateValue}>{checkInDisplay}</div>
+          <div className={styles.stayDateValue}>
+            {checkInDisplay}
+            {checkInTz && <span className={styles.tzAbbr}>{checkInTz}</span>}
+          </div>
         </div>
         <div className={styles.stayDateBlock}>
           <div className={styles.stayDateLabel}>CHECK OUT</div>
-          <div className={styles.stayDateValue}>{checkOutDisplay}</div>
+          <div className={styles.stayDateValue}>
+            {checkOutDisplay}
+            {checkOutTz && <span className={styles.tzAbbr}>{checkOutTz}</span>}
+          </div>
         </div>
       </div>
     </article>
@@ -198,7 +209,22 @@ function ActivityEntry({ activity }) {
               <path d="M5 .833A2.917 2.917 0 017.917 3.75C7.917 6.25 5 9.167 5 9.167S2.083 6.25 2.083 3.75A2.917 2.917 0 015 .833z" stroke="currentColor" strokeWidth="1" />
               <circle cx="5" cy="3.75" r=".833" fill="currentColor" />
             </svg>
-            {activity.location}
+            {/* T-114: Render URLs as secure hyperlinks, plain text stays as-is */}
+            {parseLocationWithLinks(activity.location).map((segment, idx) =>
+              segment.type === 'link' ? (
+                <a
+                  key={idx}
+                  href={segment.content}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.locationLink}
+                >
+                  {segment.content}
+                </a>
+              ) : (
+                <span key={idx}>{segment.content}</span>
+              )
+            )}
           </div>
         )}
       </div>

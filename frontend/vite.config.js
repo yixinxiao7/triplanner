@@ -12,14 +12,26 @@ const httpsConfig = hasCerts
   ? { cert: readFileSync(certPath), key: readFileSync(keyPath) }
   : undefined;
 
+// Dev proxy configuration:
+//   Local development:  BACKEND_PORT unset → port 3000 (matches backend/.env.example PORT=3000)
+//   Staging dev mode:   BACKEND_PORT=3001 npm run dev (backend/.env staging uses PORT=3001 + HTTPS)
+//
+// When BACKEND_SSL=true (e.g. when running against the staging backend on port 3001 with TLS),
+// the proxy uses https:// and skips self-signed certificate verification.
+const backendPort = process.env.BACKEND_PORT || '3000';
+const backendSSL = process.env.BACKEND_SSL === 'true';
+const backendProtocol = backendSSL ? 'https' : 'http';
+
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: `${backendProtocol}://localhost:${backendPort}`,
         changeOrigin: true,
+        // Allow self-signed certs when proxying to the local staging backend
+        ...(backendSSL ? { secure: false } : {}),
       },
     },
   },
