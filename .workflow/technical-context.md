@@ -34,6 +34,19 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 008 | 3 | Make `start_time` + `end_time` nullable on `activities` | Alter Table | `20260225_008_make_activity_times_optional.js` | ✅ Implemented — awaiting staging deploy (T-054) |
 | 009 | 6 | Create `land_travels` table | Create Table | `20260227_009_create_land_travels.js` | ✅ Implemented (2026-02-27, T-086). Awaiting staging deploy by Deploy Engineer (T-092). |
 | 010 | 7 | Add `notes TEXT NULL` to `trips` table | Alter Table | `20260227_010_add_trip_notes.js` | ✅ Implemented (2026-02-27, T-103). **Manager Code Review APPROVED** — Integration Check. Awaiting staging deploy by Deploy Engineer (T-107). |
+| — | 8 | *(No new migrations this sprint)* | — | — | Sprint 8 features (T-113 timezone abbreviations, T-114 activity URL links) are frontend-only. Existing schema (001–010) is sufficient. Migration 010 is the only pending deploy (T-107). Confirmed by Backend Engineer 2026-02-27. |
+
+---
+
+### Sprint 8 — No Schema Changes
+
+**Date:** 2026-02-27
+**Confirmed by:** Backend Engineer
+**Reason:** Sprint 8 introduces two frontend-only features:
+- **T-113 (Timezone abbreviations):** Uses existing `*_at` (UTC timestamp) and `*_tz` (IANA timezone string) columns already present in `flights`, `stays`, and `land_travels` tables. No column additions required.
+- **T-114 (Activity URL link detection):** Uses the existing `location TEXT NULL` column in `activities`. URL parsing and linkification are purely a frontend rendering concern. No column additions required.
+
+The only pending schema action this sprint is **applying migration 010** (`notes TEXT NULL` on `trips`) as part of T-107. This was implemented and approved in Sprint 7.
 
 ---
 

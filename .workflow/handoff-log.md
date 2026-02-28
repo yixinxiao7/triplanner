@@ -17,6 +17,82 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 8 — Backend Engineer: API Contracts Complete — No New Endpoints (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 8 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer, QA Engineer |
+| Status | Pending |
+| Related Task | T-113, T-114 |
+| Handoff Summary | **Sprint 8 API contract review is complete. No new or changed API endpoints are required this sprint. Both new features (T-113 and T-114) are frontend-only and consume existing API fields. A detailed field reference has been appended to `.workflow/api-contracts.md` under "Sprint 8 Contracts".** |
+
+**For Frontend Engineer (T-113 — Timezone Abbreviations):**
+
+All required data is already returned by existing endpoints. No API changes needed:
+
+- **Flights** (`GET /api/v1/trips/:tripId/flights`): Use `departure_at` + `departure_tz` for departure abbreviation; `arrival_at` + `arrival_tz` for arrival abbreviation.
+- **Stays** (`GET /api/v1/trips/:tripId/stays`): Use `check_in_at` + `check_in_tz`; `check_out_at` + `check_out_tz`. Note: T-098 (Sprint 7) fixed the UTC serialization bug — these fields are now correct.
+- **Land Travels** (`GET /api/v1/trips/:tripId/land-travels`): Use `departure_at` + `departure_tz`; `arrival_at` + `arrival_tz`.
+
+Derive abbreviation via:
+```js
+new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' })
+  .formatToParts(new Date(utcAt))
+  .find(p => p.type === 'timeZoneName')?.value ?? tz
+```
+Fallback: if `Intl` throws, display the raw IANA string in muted text. Full field reference in `api-contracts.md` → Sprint 8 section.
+
+**For Frontend Engineer (T-114 — Activity Location URL Links):**
+
+The existing `location` field (string | null) on Activity objects already contains the freeform text. No API changes needed. Frontend must:
+1. Split `location` string by `/(https?:\/\/[^\s]+)/g`
+2. Render http/https matches as `<a href="..." target="_blank" rel="noopener noreferrer">`
+3. Render all other segments (and null/empty) as plain text
+4. **Never** linkify `javascript:`, `data:`, or `vbscript:` schemes — treat as plain text
+5. Do NOT use `dangerouslySetInnerHTML` — use React element arrays
+
+Full rendering contract table in `api-contracts.md` → Sprint 8 section.
+
+**Schema note:** No new migrations this sprint. Migration 010 (`notes TEXT NULL`) is the only pending deploy item — it's handled by T-107 (Deploy Engineer), not Sprint 8 frontend work.
+
+---
+
+### Sprint 8 — Backend Engineer: QA Reference — Sprint 8 API Contract Scope (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 8 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-116, T-117 |
+| Handoff Summary | **Sprint 8 API contract review complete. No new backend endpoints or migrations. QA testing for T-116/T-117 should verify the frontend correctly transforms existing API data — the contract is what the Frontend Engineer renders, not what the backend returns.** |
+
+**QA Testing Reference for Sprint 8 Features:**
+
+**T-113 — Timezone Abbreviation Display (integration check items):**
+- Existing Flights API response already includes `departure_at` (UTC) + `departure_tz` (IANA). Verify frontend correctly derives abbreviation from these fields.
+- Test case: flight `departure_at = "2026-08-07T10:00:00.000Z"`, `departure_tz = "America/New_York"` → card must display `"6:00 AM EDT"` (America/New_York in August = EDT = UTC-4)
+- Test case: flight `arrival_at = "2026-08-08T00:00:00.000Z"`, `arrival_tz = "Asia/Tokyo"` → card must display `"9:00 AM JST"` (Asia/Tokyo = UTC+9)
+- Test case: stay `check_in_at = "2026-07-15T13:00:00.000Z"`, `check_in_tz = "Europe/Paris"` → `"3:00 PM CEST"`
+- Test case: land travel `departure_at = "2026-01-15T10:00:00.000Z"`, `departure_tz = "Europe/London"` → `"10:00 AM GMT"`
+- No backend API contract verification needed — existing endpoints unchanged.
+
+**T-114 — Activity Location URL Links (integration check items):**
+- Existing Activities API response already includes `location` (string | null). Verify frontend renders correctly based on contract table.
+- Test case: `location = "Lunch at https://www.yelp.com/biz/xyz"` → plain text "Lunch at " + `<a>` element
+- Test case: `location = "javascript:alert(1)"` → plain text only, no `<a>` element rendered
+- Test case: `location = "Golden Gate Park"` → plain text only, no `<a>` element rendered
+- Test case: `location = null` → location section not shown
+- Security: verify `rel="noopener noreferrer"` present on all rendered links; verify no `dangerouslySetInnerHTML` in implementation
+- No backend API contract verification needed — existing endpoint unchanged, `location` field schema unchanged.
+
+**No new backend endpoints to test.** The backend API is frozen for Sprint 8. Focus QA effort on frontend rendering correctness and security properties of the new UI features.
+
+---
+
 ### Sprint 8 — Manager Agent: Sprint 8 Plan Published + Agent Dispatch (2026-02-27)
 
 | Field | Value |

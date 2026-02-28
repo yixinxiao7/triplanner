@@ -3634,3 +3634,156 @@ The following Sprint 7 tasks require **no new or changed API contracts** from th
 ---
 
 *Sprint 7 contracts above are Agreed and pre-approved for implementation. Two backend changes this sprint: (1) T-098 fixes the UTC timestamp serialization bug in stays endpoints — no API signature change, implementation-only fix at the pg driver level. (2) T-103 adds the `notes` field to all three trips endpoints (GET list, GET single, PATCH) backed by migration 010 (pre-approved by Manager). The `notes` field is nullable, max 2000 chars, and follows PATCH semantics (optional field). Frontend Engineer and QA Engineer should reference this contract for integration and testing.*
+
+---
+
+## Sprint 8 Contracts
+
+**Backend Engineer Contract Review — Sprint 8 (2026-02-27)**
+
+After reviewing the full Sprint 8 scope in `active-sprint.md` and all assigned tasks in `dev-cycle-tracker.md`, the Backend Engineer has determined that **Sprint 8 requires no new or changed API endpoints**. Both new features (T-113 and T-114) are purely frontend rendering enhancements that consume existing API fields already documented and agreed in prior sprints.
+
+No schema migrations are planned this sprint. Migration 010 (`notes TEXT NULL`) was shipped in Sprint 7 (T-103) and awaits staging deployment via T-107.
+
+---
+
+### Sprint 8 — No New Backend Contracts Required
+
+The following Sprint 8 tasks require **no new or changed API contracts** from the Backend Engineer:
+
+| Task | Reason |
+|------|--------|
+| T-110 (FE: Fix T-098 UTC test) | Test fix only. No API changes. |
+| T-111 (FE: Write T-104 notes tests) | Test authoring only. No API changes. |
+| T-112 (Design: Spec 14 — TZ abbreviations + URL links) | Design spec only. Unblocks T-113, T-114. No API changes. |
+| T-113 (FE: Timezone abbreviations on detail cards) | Frontend-only rendering enhancement. Uses existing `*_at` + `*_tz` fields already returned by Flights, Stays, and Land Travels APIs. See field reference below. |
+| T-114 (FE: Activity location clickable URL) | Frontend-only rendering enhancement. Uses existing `location` field already returned by Activities API. See field reference below. |
+| T-105 (QA: Sprint 7 security checklist) | QA audit only. No API changes. |
+| T-106 (QA: Sprint 7 integration testing) | QA testing only. No API changes. |
+| T-107 (Deploy: Staging re-deploy Sprint 7) | Deploy scope. Migration 010 must be applied. No new migrations. |
+| T-108 (Monitor: Sprint 7 health check) | Monitor scope. No API changes. |
+| T-109 (User Agent: Sprint 7 walkthrough) | User testing only. No API changes. |
+| T-094 (User Agent: Sprint 6 carry-over walkthrough) | User testing only. No API changes. |
+| T-115 (QA: Playwright E2E expansion) | Test authoring only. No API changes. |
+| T-116 (QA: Sprint 8 security + code review) | QA audit only. No API changes. |
+| T-117 (QA: Sprint 8 integration testing) | QA testing only. No API changes. |
+| T-118 (Deploy: Staging re-deploy Sprint 8) | Deploy scope only. No new migrations. |
+| T-119 (Monitor: Sprint 8 health check) | Monitor scope. No API changes. |
+| T-120 (User Agent: Sprint 8 walkthrough) | User testing only. No API changes. |
+
+---
+
+### Existing API Fields Reference for Sprint 8 Frontend Features
+
+The following is a summary of **existing, already-implemented API fields** that T-113 and T-114 will consume. These are not new — they were agreed in Sprints 1 and 6 respectively. This reference is provided as a convenience so the Frontend Engineer does not need to search prior contract sections.
+
+---
+
+#### T-113 — Timezone Abbreviation Display: Existing Fields Used
+
+**Purpose:** The Frontend Engineer will use `Intl.DateTimeFormat` with `{ timeZoneName: 'short' }` to derive a DST-aware timezone abbreviation (e.g., `"EDT"`, `"JST"`, `"CEST"`) from each card's UTC timestamp + IANA timezone string pair. No backend changes are required.
+
+##### Flights (existing, Sprint 1 — T-006)
+
+Endpoint: `GET /api/v1/trips/:tripId/flights` and `GET /api/v1/trips/:tripId/flights/:id`
+
+Relevant fields already returned:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `departure_at` | ISO 8601 UTC string | Departure datetime in UTC. Example: `"2026-08-07T10:00:00.000Z"` |
+| `departure_tz` | IANA timezone string | Departure timezone. Example: `"America/New_York"` |
+| `arrival_at` | ISO 8601 UTC string | Arrival datetime in UTC. Example: `"2026-08-08T00:00:00.000Z"` |
+| `arrival_tz` | IANA timezone string | Arrival timezone. Example: `"Asia/Tokyo"` |
+
+**Frontend usage for T-113:**
+```
+// Derive "EDT" from departure_at + departure_tz:
+const abbr = new Intl.DateTimeFormat('en-US', {
+  timeZone: departure_tz,
+  timeZoneName: 'short'
+}).formatToParts(new Date(departure_at))
+  .find(p => p.type === 'timeZoneName')?.value ?? departure_tz;
+// Result: "EDT" (America/New_York, August) or "EST" (January)
+```
+
+Fallback: if `Intl.DateTimeFormat` throws (unsupported timezone), display the IANA string (`departure_tz`) in muted text.
+
+##### Stays (existing, Sprint 1 — T-006; bug-fixed UTC serialization in Sprint 7 — T-098)
+
+Endpoint: `GET /api/v1/trips/:tripId/stays` and `GET /api/v1/trips/:tripId/stays/:id`
+
+Relevant fields already returned:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `check_in_at` | ISO 8601 UTC string | Check-in datetime in UTC. Example: `"2026-08-07T20:00:00.000Z"` |
+| `check_in_tz` | IANA timezone string | Check-in timezone. Example: `"America/New_York"` |
+| `check_out_at` | ISO 8601 UTC string | Check-out datetime in UTC. Example: `"2026-08-14T20:00:00.000Z"` |
+| `check_out_tz` | IANA timezone string | Check-out timezone. Example: `"America/New_York"` |
+
+**Important:** T-098 (Sprint 7) fixed the UTC serialization bug — `check_in_at` and `check_out_at` are now returned as correct UTC ISO strings (no unwanted UTC offset applied on read). This fix is a prerequisite for T-113 timezone abbreviation accuracy on stay cards.
+
+##### Land Travels (existing, Sprint 6 — T-086)
+
+Endpoint: `GET /api/v1/trips/:tripId/land-travels` and `GET /api/v1/trips/:tripId/land-travels/:id`
+
+Relevant fields already returned:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `departure_at` | ISO 8601 UTC string | Departure datetime in UTC. Example: `"2026-01-15T10:00:00.000Z"` |
+| `departure_tz` | IANA timezone string | Departure timezone. Example: `"Europe/London"` |
+| `arrival_at` | ISO 8601 UTC string | Arrival datetime in UTC. Example: `"2026-01-15T13:30:00.000Z"` |
+| `arrival_tz` | IANA timezone string | Arrival timezone. Example: `"Europe/Paris"` |
+
+**Frontend usage for T-113:** Same `Intl.DateTimeFormat` pattern as flights above. `"Europe/London"` in January → `"GMT"`. `"Europe/Paris"` in July → `"CEST"`.
+
+---
+
+#### T-114 — Activity Location Clickable URL: Existing Field Used
+
+**Purpose:** The Frontend Engineer will parse the `location` string using a URL-detection regex and render detected http/https URLs as `<a>` elements with `target="_blank" rel="noopener noreferrer"`. Non-http/https schemes (e.g., `javascript:`, `data:`, `vbscript:`) must never be rendered as links. No backend changes are required — validation and sanitization happens entirely at the frontend rendering layer.
+
+##### Activities (existing, Sprint 1 — T-006)
+
+Endpoint: `GET /api/v1/trips/:tripId/activities` and `GET /api/v1/trips/:tripId/activities/:id`
+
+Relevant field already returned:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `location` | string \| null | Optional freeform location string. May contain plain text, an address, a URL, or a combination. Example: `"Lunch at https://www.yelp.com/biz/xyz"`, `"Golden Gate Park"`, `null` |
+
+**Frontend rendering contract for T-114:**
+
+| Input | Expected Render |
+|-------|----------------|
+| `null` or `""` | Render nothing (no location row) |
+| `"Golden Gate Park"` | Plain text only — no `<a>` element |
+| `"https://www.yelp.com/biz/xyz"` | Single `<a href="https://..." target="_blank" rel="noopener noreferrer">` |
+| `"Lunch at https://www.yelp.com/biz/xyz"` | `"Lunch at "` as plain text + URL as `<a>` |
+| `"javascript:alert(1)"` | Plain text only — scheme is not http/https, do NOT linkify |
+| `"data:text/html,<h1>XSS</h1>"` | Plain text only — scheme not allowed |
+| Multiple URLs in one string | Each http/https URL becomes its own `<a>` element; text segments remain plain |
+
+**Regex pattern (reference only — Frontend Engineer implements):**
+```
+/(https?:\/\/[^\s]+)/g
+```
+
+**Security note:** The backend stores and returns `location` verbatim — no server-side URL validation is applied on this field (it is optional, freeform text). XSS protection relies on React's default escaping (do NOT use `dangerouslySetInnerHTML`). The Frontend Engineer must split the string into text/url tokens and render each as a React element, never as raw HTML.
+
+---
+
+### Sprint 8 — Confirmed: No Schema Changes
+
+Per the Manager pre-approval note in `active-sprint.md`:
+
+> **Manager Pre-Approved Schema Change:** None new this sprint. Migration 010 (trip notes `TEXT NULL`) was pre-approved in Sprint 7 and will be applied in T-107.
+
+The Backend Engineer confirms no new database migrations are required for Sprint 8. The existing schema (migrations 001–010) fully supports both new frontend features:
+- T-113 timezone abbreviations use existing `*_at` (UTC timestamp) and `*_tz` (IANA string) columns already present in `flights`, `stays`, and `land_travels`
+- T-114 activity URL links use the existing `location TEXT NULL` column in `activities`
+
+*Sprint 8 contract review complete — 2026-02-27. Backend Engineer: no implementation work this sprint. All Sprint 8 features are frontend-only. Existing API contracts (Sprint 1 and Sprint 6) are Agreed and sufficient. Frontend Engineer and QA Engineer should reference this section alongside the original Sprint 1 T-006 and Sprint 6 land travels contracts for integration and testing.*
