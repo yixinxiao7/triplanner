@@ -22,6 +22,72 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint 8 Entries
+
+| Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
+|----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 8 — T-107 Pre-Deploy Readiness Check (2026-02-27) | Pre-Deploy Blocker Check | Partial | Partial | Staging | No | Deploy Engineer | BLOCKED — No QA T-106 sign-off in handoff-log.md. Infrastructure ready (pm2 online, HTTPS, migration 010 pending). Backend: 265/265 pass. Frontend: 364/366 (2 T-113 test failures — CEST assertion, pending FE fix). |
+| Sprint 8 — T-118 Pre-Deploy Readiness Check (2026-02-27) | Pre-Deploy Blocker Check | Fail | Partial | Staging | No | Deploy Engineer | BLOCKED — No QA T-117 sign-off. T-113 tests still failing (2/3 fixed, 1 CEST assertion remaining). T-115 not started. T-116/T-117 pipeline not started. Cannot rebuild until QA pipeline clears. |
+
+---
+
+### Sprint 8 — Deploy Engineer: T-107 + T-118 Pre-Deploy Readiness Check — 2026-02-27
+
+**Related Tasks:** T-107 (Staging Re-deployment — Sprint 7), T-118 (Staging Re-deployment — Sprint 8)
+**Sprint:** 8
+**Date:** 2026-02-27
+**Checked By:** Deploy Engineer
+**Deploy Verified: NO — BOTH BLOCKED (awaiting QA sign-offs)**
+
+---
+
+#### Pre-Deploy Verification Results — T-107 (Sprint 7 Re-deployment)
+
+**Rule check:** Per workspace rules, deployment requires QA confirmation in handoff-log.md. Checking all prerequisites:
+
+| Check | Status | Detail |
+|-------|--------|--------|
+| QA T-106 (Integration Testing) sign-off to Deploy Engineer | ❌ MISSING | T-106 is `Backlog` — QA has not completed it |
+| QA T-105 (Security Audit) completion | ❌ MISSING | T-105 is `Backlog` — QA has not completed it |
+| QA → Deploy Engineer handoff in handoff-log.md | ❌ MISSING | No "deploy-ready" QA→Deploy entry for Sprint 7 T-107 |
+| T-098 tests (T-110 fix) | ✅ PASS | T-110 approved by Manager — T-098 at Integration Check |
+| T-104 tests (T-111 fix) | ✅ PASS | T-111 approved by Manager — T-104 at Integration Check |
+| T-105 pipeline now unblocked? | ✅ YES | Manager approved T-110/T-111 → T-105 is now unblocked for QA |
+| pm2 `triplanner-backend` | ✅ ONLINE | pid 26323, cluster mode, 2h uptime, 0 restarts, 74.9 MB |
+| HTTPS (port 3001) | ✅ CONFIGURED | SSL_KEY_PATH + SSL_CERT_PATH set in backend/.env |
+| Backend PORT | ✅ 3001 | Correct staging port (no conflict) |
+| CORS_ORIGIN | ✅ https://localhost:4173 | Correct for HTTPS staging frontend |
+| Migration 010 file | ✅ EXISTS | `20260227_010_add_trip_notes.js` — 839 bytes |
+| Migration 010 applied? | ❌ PENDING | `knex migrate:status` → 1 pending migration (010). Ready to apply when deploy is cleared. |
+| Migrations 001–009 | ✅ ALL APPLIED | 9 migrations fully applied on staging |
+| Backend tests | ✅ 265/265 PASS | All 12 test files pass — 0 failures, 0 regressions |
+| Frontend build | ✅ SUCCESS | Vite 6.4.1 — 121 modules, 337.21 kB JS, 70.24 kB CSS, 700ms |
+| Frontend tests | ⚠️ 364/366 (2 FAIL) | 2 T-113 test failures (CEST/JST assertion brittleness in JSDOM — NOT Sprint 7 work; Sprint 8 T-113 fix pending from FE Engineer) |
+| Vite preview serving | ✅ RUNNING | PID 26485, serving on port 4173 (last build from earlier sprint) |
+
+**Conclusion for T-107:** Infrastructure is fully ready. Migration 010 is queued. pm2 is healthy. The deployment CAN proceed immediately once QA T-106 sign-off is received. The only technical concern is 2 failing T-113 frontend tests (Sprint 8 work — not Sprint 7). If QA determines these T-113 failures are acceptable for T-107 (Sprint 7 deploy), deployment can proceed; otherwise T-113 test fix must come first.
+
+**Primary Blocker: NO QA T-106 SIGN-OFF. Cannot deploy per workspace rules.**
+
+---
+
+#### Pre-Deploy Verification Results — T-118 (Sprint 8 Re-deployment)
+
+| Check | Status | Detail |
+|-------|--------|--------|
+| QA T-117 (Sprint 8 Integration Testing) sign-off | ❌ MISSING | T-117 is `Backlog` — QA pipeline not started |
+| QA T-116 (Sprint 8 Security Audit) completion | ❌ MISSING | T-116 is `Backlog` — QA pipeline not started |
+| T-113 (Timezone abbreviations) tests | ⚠️ 2 FAILING | T-113 is `In Progress` — Manager issued Changes Required for 3 brittle test assertions; 1 CEST assertion (TripDetailsPage line 1129) still failing. FE Engineer must fix. |
+| T-114 (Activity URL links) tests | ✅ PASS | T-114 at `Integration Check` — all tests pass |
+| T-115 (Playwright expansion) | ❌ NOT STARTED | T-115 is `Backlog` — blocked by T-109 (User Agent Sprint 7 walkthrough, also Backlog) |
+| No new migrations for Sprint 8 | ✅ CONFIRMED | Backend Engineer confirmed Sprint 8 is frontend-only |
+
+**Conclusion for T-118:** Multiple upstream dependencies remain incomplete. T-118 cannot proceed until: T-113 tests fixed (FE Engineer) → T-109 completes (User Agent) → T-115 completes (QA Playwright) → T-116 security audit → T-117 integration test with QA sign-off.
+
+**Primary Blocker: No QA T-117 sign-off. T-113 FE tests still failing. Full Sprint 8 pipeline incomplete.**
+
+---
+
 ## Sprint 7 Entries
 
 | Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
