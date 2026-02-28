@@ -17,6 +17,50 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 8 — Backend Engineer: Sprint 8 Audit Complete — All Backend Tests Pass (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 8 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-105, T-106 |
+| Handoff Summary | **Sprint 8 backend audit complete. All 265 backend tests pass (12 test files). No new backend tasks exist for Sprint 8. Sprint 7 backend implementations (T-098 and T-103) are fully implemented, tested, and correctly reflected in dev-cycle-tracker.md.** |
+
+**Sprint 7 Backend Task Status (carry-over into Sprint 8):**
+
+**T-103 — Trip Notes Field (Backend) — Integration Check ✅**
+- Migration 010 (`20260227_010_add_trip_notes.js`): Adds `notes TEXT NULL` to `trips` table. Up/down both correct and reversible.
+- `tripModel.js`: `notes` included in `TRIP_COLUMNS` — automatically propagates to all GET responses (list + single).
+- `trips.js` routes: POST validates `notes` (optional, max 2000 chars, empty string normalized to null via `hasOwnProperty` guard). PATCH validates `notes` (optional, max 2000 chars, whitespace-only normalized to null, `null` accepted to clear). `notes` is included in `UPDATABLE_FIELDS`.
+- Tests: 13 T-103 tests in `sprint7.test.js` — all pass. Covers GET null, GET string, list includes notes, PATCH set, PATCH null clear, PATCH 2000-char boundary, PATCH >2000 → 400, PATCH omit leaves unchanged, PATCH whitespace→null, POST with notes, POST >2000 → 400, POST omit, POST null.
+- **QA note (non-blocking, verify in T-106):** `api-contracts.md` says `PATCH { notes: "" }` stores an empty string in DB, but the route normalizes `''` to `null`. Actual stored value is `NULL` (correct and preferable). QA should verify `PATCH { notes: '' }` → GET response returns `notes: null`.
+
+**T-098 — Stays UTC Timestamp Fix (Backend) — Backend Approved; Overall Task in Backlog pending T-110 ✅**
+- `database.js`: pg type parser overridden for OID 1184 (TIMESTAMPTZ) → `new Date(val).toISOString()` ensuring UTC ISO 8601 strings always returned. OID 1114 (TIMESTAMP) returns raw string.
+- Tests: 4 T-098 tests in `sprint7.test.js` — all pass. Covers GET stays UTC round-trip (EDT, PDT, PST), POST stays UTC pass-through, PATCH stays UTC pass-through.
+- The overall T-098 task remains in Backlog until T-110 (Frontend Engineer) fixes the 1 failing frontend test and adds the missing TripDetailsPage display test.
+
+**Sprint 8 Backend — No New Work Required ✅**
+- Sprint 8 features (T-113 timezone abbreviations, T-114 activity URL links) are 100% frontend-only.
+- No new migrations required (schema fully supports all Sprint 8 features via existing `*_at`/`*_tz` columns on flights, stays, land_travels and `location` on activities).
+- Full field reference documented in `api-contracts.md` Sprint 8 section.
+
+**QA Focus for T-105 (Backend-Specific Security Checks):**
+1. **T-103 SQL injection**: `notes` stored via parameterized Knex query — `db('trips').where({ id }).update({ notes, updated_at: new Date() })`. No string concatenation.
+2. **T-103 auth/ownership**: All trips routes protected by `router.use(authenticate)` + per-request `trip.user_id !== req.user.id` → 403.
+3. **T-103 max length**: 2000-char limit enforced in `validate()` middleware before reaching the model (not just DB-level).
+4. **T-098 no info leak**: The pg type parser fix is transparent — no error messages expose timezone details; the driver silently normalizes to UTC.
+5. **T-098 no injection**: Timezone strings (`check_in_tz`) are stored verbatim via parameterized queries; they are never executed as code.
+
+**Test Run Summary (2026-02-27, Sprint 8):**
+- `npm test` → 265 tests passed, 0 failed, 0 skipped (12 test files)
+- `sprint7.test.js`: 18 tests ✅ (T-098: 4 tests, T-103: 14 tests incl. fixture helpers)
+- All other test files: 247 tests ✅ (no regressions from Sprint 7/8 changes)
+
+---
+
 ### Sprint 8 — Backend Engineer: API Contracts Complete — No New Endpoints (2026-02-27)
 
 | Field | Value |
