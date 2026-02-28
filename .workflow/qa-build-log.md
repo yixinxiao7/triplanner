@@ -28,6 +28,99 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 |----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
 | Sprint 8 — T-107 Pre-Deploy Readiness Check (2026-02-27) | Pre-Deploy Blocker Check | Partial | Partial | Staging | No | Deploy Engineer | BLOCKED — No QA T-106 sign-off in handoff-log.md. Infrastructure ready (pm2 online, HTTPS, migration 010 pending). Backend: 265/265 pass. Frontend: 364/366 (2 T-113 test failures — CEST assertion, pending FE fix). |
 | Sprint 8 — T-118 Pre-Deploy Readiness Check (2026-02-27) | Pre-Deploy Blocker Check | Fail | Partial | Staging | No | Deploy Engineer | BLOCKED — No QA T-117 sign-off. T-113 tests still failing (2/3 fixed, 1 CEST assertion remaining). T-115 not started. T-116/T-117 pipeline not started. Cannot rebuild until QA pipeline clears. |
+| Sprint 8 — T-107 Staging Deploy (2026-02-27) | Post-Deploy Health Check | Pass | Success | Staging | No — handoff sent to Monitor Agent | Deploy Engineer | None — all acceptance criteria met. |
+
+---
+
+### Sprint 8 — Deploy Engineer: T-107 Staging Deployment — 2026-02-27
+
+**Related Tasks:** T-107 (Staging Re-deployment — Sprint 7 features)
+**Sprint:** 8
+**Date:** 2026-02-27
+**Deployed By:** Deploy Engineer
+**Deploy Verified:** No — handoff sent to Monitor Agent (T-108)
+
+---
+
+#### Pre-Deploy Gate Check
+
+| Gate | Status | Detail |
+|------|--------|--------|
+| QA T-105 (Security Audit) sign-off | ✅ PASS | Done — 21/21 security checks pass (logged in handoff-log.md) |
+| QA T-106 (Integration Testing) sign-off | ✅ PASS | Done — 40/40 integration checks pass (logged in handoff-log.md) |
+| QA → Deploy Engineer handoff | ✅ RECEIVED | QA Engineer issued "Ready for Deploy" sign-off (handoff-log.md line ~988) |
+| Backend tests | ✅ 265/265 PASS | Verified by QA at T-106 completion |
+| Frontend tests | ✅ 366/366 PASS | T-113 CEST/JST test fix confirmed by QA — all dynamic now |
+
+**All gates cleared. Proceeding with deployment.**
+
+---
+
+#### Build Phase
+
+| Step | Result | Detail |
+|------|--------|--------|
+| `cd backend && npm install` | ✅ SUCCESS | up to date, 215 packages audited |
+| `cd frontend && npm install` | ✅ SUCCESS | up to date, 283 packages audited |
+| `cd frontend && npm run build` | ✅ SUCCESS | Vite 6.4.1 — 121 modules, 337.21 kB JS (102.63 kB gzip), 70.24 kB CSS (10.87 kB gzip), built in 654ms |
+| Frontend build artifacts | ✅ GENERATED | `dist/index.html`, `dist/assets/index-CNsOYXJm.css`, `dist/assets/index-CWPdh_C8.js` |
+
+**Build Status: SUCCESS**
+
+---
+
+#### Database Migration Phase
+
+| Migration | Status | Detail |
+|-----------|--------|--------|
+| 001–009 (previously applied) | ✅ ALREADY APPLIED | Confirmed via `knex migrate:status` |
+| 010 — `add_trip_notes.js` (notes TEXT NULL on trips) | ✅ APPLIED | `Batch 5 run: 1 migrations` — knex migrate:latest completed successfully |
+| Total applied | ✅ 10/10 | `No Pending Migration files Found` — all migrations current |
+
+**Migration Status: COMPLETE — `notes TEXT NULL` column now live on `trips` table**
+
+---
+
+#### Staging Deployment Phase
+
+| Step | Result | Detail |
+|------|--------|--------|
+| pm2 restart triplanner-backend | ✅ SUCCESS | New PID: 53303, status: online, 1 restart (expected from pm2 restart command) |
+| pm2 status (post-restart) | ✅ ONLINE | PID 53303, mode: cluster, status: online, 0 crashes, memory: 91.0 MB |
+| Backend HTTPS health check | ✅ PASS | `curl -sk https://localhost:3001/api/v1/health` → `{"status":"ok"}` |
+| Backend auth protection | ✅ PASS | `GET /api/v1/trips` → `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` (correct 401) |
+| Frontend SPA serving | ✅ PASS | `https://localhost:4173/` → HTML response with 5+ matching tags |
+| pm2 error logs (post-restart) | ✅ CLEAN | Server startup: "HTTPS Server running on https://localhost:3001" at 21:13:25 EST — no startup errors |
+| Pre-existing error log entries | ℹ️ NON-CRITICAL | JSON parse errors in error.log are from prior malformed client requests (handled by ErrorHandler middleware, no impact on startup) |
+
+**Environment:** Staging (localhost HTTPS)
+**Backend URL:** https://localhost:3001
+**Frontend URL:** https://localhost:4173
+
+---
+
+#### Sprint 7 Feature Smoke Tests
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Migration 010 (trip notes column) | ✅ APPLIED | `knex migrate:status` confirms all 10 migrations complete |
+| Backend API health | ✅ PASS | `/api/v1/health` → `{"status":"ok"}` |
+| Auth middleware | ✅ PASS | Protected routes return 401 correctly |
+| pm2 online | ✅ PASS | No crashes post-restart |
+| Frontend build serves | ✅ PASS | Vite dist serving on port 4173 |
+| Sprint 8 features included | ✅ YES | Frontend rebuild includes T-113 (timezone abbreviations) + T-114 (URL linkification) as QA requested |
+
+---
+
+#### Deployment Summary
+
+- **Build:** ✅ SUCCESS (654ms, 121 modules)
+- **Migration 010:** ✅ APPLIED (notes TEXT NULL column added to trips)
+- **Backend:** ✅ ONLINE (pm2, HTTPS, PID 53303)
+- **Frontend:** ✅ SERVING (Vite dist on https://localhost:4173)
+- **T-107 Status: DEPLOYED — handing off to Monitor Agent (T-108)**
+
+**Next action:** Monitor Agent to run T-108 (Staging health check — Sprint 7 + Sprint 6 regression).
 
 ---
 
