@@ -26,7 +26,61 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 | Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
 |----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 7 — T-107 Pre-Deploy Check (2026-02-27) | Pre-Deploy Blocker Check | Fail | Partial | Staging | No | Deploy Engineer | BLOCKED — T-098 (1 failing + 1 missing frontend test) and T-104 (0/8 tests written) are not complete. QA has not issued a Sprint 7 deploy-ready sign-off. Deployment cannot proceed per rules. |
 | Sprint 7 — T-095 HTTPS + pm2 Re-enable (2026-02-28) | Post-Deploy Health Check | Pass | Success | Staging | Yes | Deploy Engineer | None — all acceptance criteria met. HTTPS on port 3001 ✅, pm2 online ✅, CORS ✅, Secure cookie ✅, Frontend HTTPS on 4173 ✅. |
+
+---
+
+### Sprint 7 — Deploy Engineer: T-107 Pre-Deploy Blocker Check — 2026-02-27
+
+**Related Tasks:** T-107 (Deploy: Staging Re-deployment — BLOCKED)
+**Sprint:** 7
+**Date:** 2026-02-27
+**Checked By:** Deploy Engineer
+**Deploy Verified: NO — BLOCKED**
+
+---
+
+#### Pre-Deploy Verification Results
+
+**Rule check:** Per workspace rules, deployment requires QA confirmation in handoff-log.md.
+
+| Check | Status | Detail |
+|-------|--------|--------|
+| QA T-105 (Security Audit) sign-off | ❌ MISSING | T-105 is `Backlog` — not started by QA Engineer |
+| QA T-106 (Integration Testing) sign-off | ❌ MISSING | T-106 is `Backlog` — not started by QA Engineer |
+| QA handoff to Deploy Engineer in handoff-log.md | ❌ MISSING | No Sprint 7 QA → Deploy Engineer entry found |
+| QA partial report verdict | ❌ NOT READY | qa-build-log.md Sprint 7 QA summary explicitly states: "Pre-Deploy Status: 🚫 NOT READY" |
+| T-098 (Stays UTC fix) tests | ❌ BLOCKED | 1 failing test (`UTC` not in TIMEZONES dropdown → `api.stays.create` never called → assertion fails) + 1 missing test (TripDetailsPage check-in local time display) |
+| T-104 (Trip Notes UI) tests | ❌ BLOCKED | 0/8 required tests written in `TripDetailsPage.test.jsx` + `TripCard.test.jsx` |
+| T-098 (tracker status) | ❌ In Progress | Not In Review — tasks incomplete |
+| T-104 (tracker status) | ❌ In Progress | Not In Review — tasks incomplete |
+
+#### Build Attempt (Documentation Only — not a deployable build)
+
+| Step | Result | Detail |
+|------|--------|--------|
+| `cd backend && npm install` | ✅ SUCCESS | 215 packages, up to date |
+| `cd frontend && npm install` | ✅ SUCCESS | 283 packages, up to date |
+| `cd frontend && npm run build` | ✅ SUCCESS | 121 modules, 336.48 kB JS, 69.99 kB CSS — built in 662ms |
+| Backend unit tests (`npm test`) | ✅ 265/265 PASS | All 12 test files pass — no regressions |
+| Frontend unit tests (`npm test -- --run`) | ❌ 343/344 — 1 FAILURE | `StaysEditPage.test.jsx [T-098] submits check_in_at unchanged (no offset) when timezone is UTC` — FAILS (UTC not in TIMEZONES dropdown; api.stays.create never called) |
+
+#### Pending Migration
+
+| Migration | File | Status |
+|-----------|------|--------|
+| 010 — Add `notes TEXT NULL` to trips | `backend/src/migrations/20260227_010_add_trip_notes.js` | ✅ File exists, ready to apply when deploy is unblocked |
+
+#### Blocker Summary
+
+**T-107 Deployment is BLOCKED. Cannot proceed until:**
+1. **Frontend Engineer** fixes T-098: Add `'UTC'` to `TIMEZONES` array in `frontend/src/utils/timezones.js` (or rewrite test to use a real timezone with UTC+0 offset in winter). Add missing TripDetailsPage test verifying local time display from stored UTC `check_in_at`.
+2. **Frontend Engineer** fixes T-104: Write 8+ tests for `TripDetailsPage.test.jsx` (notes display, placeholder, edit mode, char count, save, cancel, null payload) and `TripCard.test.jsx` (truncated notes, full notes, hidden when null).
+3. **QA Engineer** reruns T-105 (Security) + T-106 (Integration) with all tasks in Integration Check state.
+4. **QA Engineer** issues a Sprint 7 deploy-ready handoff in `handoff-log.md` to Deploy Engineer.
+
+*T-107 status: BLOCKED. Will re-attempt when T-106 QA handoff is received.*
 
 ---
 

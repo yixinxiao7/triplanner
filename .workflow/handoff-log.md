@@ -17,6 +17,43 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 7 — Deploy Engineer: T-107 BLOCKED — Awaiting QA Sign-off + T-098/T-104 Test Fixes (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Deploy Engineer |
+| To Agent | Manager Agent, QA Engineer, Frontend Engineer |
+| Status | Blocked |
+| Related Task | T-107 (Deploy: Staging Re-deployment — BLOCKED), T-098, T-104, T-105, T-106 |
+| Handoff Summary | **T-107 (Staging Re-deployment) is BLOCKED.** Pre-deploy verification found 4 blockers: (1) QA T-105 (Security Audit) has not run — status is Backlog. (2) QA T-106 (Integration Testing) has not run — status is Backlog. (3) No Sprint 7 QA → Deploy Engineer sign-off exists in handoff-log.md. (4) QA partial report explicitly states "Pre-Deploy Status: 🚫 NOT READY." T-098 and T-104 are both In Progress with failing/missing tests. |
+
+**What was completed (build documentation only — not a live deploy):**
+- `npm install` (backend + frontend): ✅ Both up to date (215 + 283 packages)
+- `npm run build` (frontend Vite): ✅ SUCCESS — 121 modules, 336.48 kB JS output, built in 662ms
+- Backend tests: ✅ 265/265 PASS
+- Frontend tests: ❌ 343/344 — 1 FAILURE (`[T-098] submits check_in_at unchanged (no offset) when timezone is UTC` — UTC not in TIMEZONES dropdown → `api.stays.create` never called → assertion fails)
+
+**Pending migration (ready but not applied — awaiting QA clearance):**
+- Migration 010 (`backend/src/migrations/20260227_010_add_trip_notes.js`) — adds `notes TEXT NULL` to `trips` table
+
+**Blockers that must be resolved before T-107 can proceed:**
+
+1. **Frontend Engineer → T-098:** Fix the failing test. Two options per QA guidance:
+   - Option A: Add `{ label: 'UTC — Coordinated Universal Time', value: 'UTC' }` to `frontend/src/utils/timezones.js` and keep test as-is (expected `check_in_at` stays `'2026-09-01T12:00:00.000Z'` — zero offset)
+   - Option B: Rewrite test to use `'Europe/London'` in winter (UTC+0, genuinely no offset)
+   - Also required: Add missing TripDetailsPage test — stay with `check_in_at: '2026-08-07T20:00:00.000Z'` + `check_in_tz: 'America/New_York'` displays as "4:00 PM EDT"
+
+2. **Frontend Engineer → T-104:** Write 8+ tests:
+   - `TripDetailsPage.test.jsx`: notes text renders, placeholder when null, pencil→edit mode, char count at ≥1800, save calls `api.trips.update`, cancel restores without API call, empty notes sends `null`
+   - `TripCard.test.jsx`: truncated notes (>100 chars) with ellipsis, full notes (≤100 chars) without ellipsis, notes hidden when null/empty
+
+3. **QA Engineer:** After T-098 and T-104 are fixed and pass In Review, run T-105 (Security) and T-106 (Integration) for all Sprint 7 tasks. Issue deploy-ready handoff to Deploy Engineer.
+
+4. **Deploy Engineer (self):** Will re-attempt T-107 immediately upon receiving QA handoff.
+
+---
+
 ### Sprint 7 — Manager → QA Engineer: T-097, T-099, T-100, T-101 Pass Review → Integration Check (2026-02-27)
 
 | Field | Value |
