@@ -17,6 +17,107 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 9 Backend Engineer → QA Engineer: Notes `""` → `null` Normalization Verified + Test Added (2026-02-28)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 9 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Tasks | BE-S9, T-116, T-117, T-103 |
+| Handoff Summary | Sprint 9 backend verification complete. The `notes: "" → null` normalization contract correction (documented in api-contracts.md Sprint 9 section) has been verified in the source code. One new test added to sprint7.test.js to make coverage explicit. All 266 backend tests pass. |
+
+**What the QA Engineer needs to know for T-116 and T-117:**
+
+**1. Implementation Verified — No Code Changes Required**
+
+The `notes` field normalization was already correctly implemented in the backend code prior to Sprint 9:
+- **POST /trips handler** (`backend/src/routes/trips.js`): `tripData.notes = req.body.notes || null;` — empty string evaluates falsy → stored as `null`.
+- **PATCH /trips/:id handler** (`backend/src/routes/trips.js`): explicit check `if (updates.notes === '') { updates.notes = null; }` after trim — whitespace-only notes are also normalized.
+- **validate.js middleware**: Trims strings before checks; skips further validation on `value === ''` (treats empty string as absent for optional fields).
+
+There are **no existing tests** that asserted `notes: ""` (the old incorrect behavior). The QA handoff action to "update any existing T-103 tests" is a no-op — no updates were needed.
+
+**2. New Test Added — sprint7.test.js (Sprint 9 Contract Correction)**
+
+A new test has been added to `backend/src/__tests__/sprint7.test.js` in the `T-103 — POST /trips notes field` describe block:
+
+> `'happy path: empty-string notes on POST normalized to null (Sprint 9 contract correction)'`
+
+This test explicitly verifies:
+- `POST /trips` with `notes: ""` → `createTrip` is called with `notes: null` (not `""`)
+- Response body has `data.notes === null`
+
+**Test count:** 265 → **266** (all pass).
+
+**3. Security Self-Check: No New Vectors**
+- No new endpoints introduced
+- No schema changes
+- No raw SQL — all Knex parameterized queries
+- No hardcoded secrets
+- No stack traces leaked in error responses
+- The normalization (`""` → `null`) is a safe sanitization that reduces noise in the DB
+
+**4. QA Action Items for T-116:**
+- ✅ Confirm backend `routes/trips.js` has `req.body.notes || null` in POST handler (verified)
+- ✅ Confirm backend `routes/trips.js` has `updates.notes = null` guard in PATCH handler (verified)
+- ✅ Confirm no tests assert `notes: ""` in GET responses (confirmed — none found)
+- ✅ New test for POST empty-string normalization is in sprint7.test.js (added)
+- ✅ All 266 backend tests pass
+
+---
+
+### Sprint 9 Frontend Engineer → QA Engineer + Deploy Engineer: Sprint 9 Status — All Frontend Tasks In Integration Check (2026-02-28)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 9 |
+| From Agent | Frontend Engineer |
+| To Agent | QA Engineer (T-116/T-117), Deploy Engineer (T-107/T-118) |
+| Status | Pending |
+| Related Tasks | T-097, T-098, T-099, T-100, T-101, T-104, T-113, T-114 |
+| Handoff Summary | Sprint 9 frontend status review complete. No new frontend implementation tasks this sprint (pipeline-only). All frontend tasks from Sprints 7–8 are in Integration Check. API contract handoff from Backend Engineer acknowledged. 366/366 tests passing. Frontend is ready for Deploy and QA pipeline. |
+
+**Sprint 9 Frontend Status Summary:**
+
+**Tasks in Integration Check (ready for QA/Deploy verification):**
+- T-097: "+X more" calendar popover portal fix — `createPortal` to `document.body`, `position:fixed`. Tests verified (343 tests pass).
+- T-098: Stays UTC timezone fix — `localDatetimeToUTC()` conversion in StaysEditPage, display test for New York 4:00 PM. Tests: 22 StaysEditPage tests pass.
+- T-099: Trip details section reorder — Flights → Land Travel → Stays → Activities. Section order test present.
+- T-100: All-day activities sort to top of each day group. Sort test present.
+- T-101: Calendar checkout/arrival time enhancements. 5 TripCalendar tests cover multi-day checkout, single-day stays, flight arrival chips.
+- T-104: Trip notes field — TripDetailsPage inline edit (pencil, textarea, char count, save/cancel) + TripCard truncation. 11 tests (7 TripDetailsPage + 4 TripCard).
+- T-113: Timezone abbreviation display (FlightCard, StayCard). Dynamic `formatTimezoneAbbr()` tests — environment-agnostic ICU assertions. 366 tests pass.
+- T-114: Activity location URL linkification — `parseLocationWithLinks()` regex, `<a>` with `rel="noopener noreferrer"`. `javascript:` safely rejected. 5 tests.
+
+**Test counts verified:**
+- Frontend: **366/366 tests pass** (`npm test --run`, verified 2026-02-28)
+- 22 test files across pages, components, hooks, and utilities
+
+**API Contract Acknowledgment (Backend Engineer handoff → Acknowledged):**
+
+The `notes` field `""` → `null` normalization correction has been reviewed:
+- **TripDetailsPage.jsx line 551:** `const notesPayload = notesDraft.trim() ? notesDraft : null;` — correctly sends `null` when textarea is cleared. ✅
+- **TripDetailsPage.jsx line 693:** `{savedNotes ? (...)` — truthy check, no `notes === ""` dead code branch. ✅
+- **TripCard.jsx line 129:** `{trip.notes && trip.notes.trim() && (...)` — truthy check, handles `null` and `""` identically. ✅
+- **No frontend changes required.** Existing implementation is fully compatible with the corrected API contract (API returns `null`, never `""`).
+
+**For Deploy Engineer (T-107):**
+- Frontend is ready to rebuild. Run `npm run build` in `/frontend` with `VITE_API_URL=https://localhost:3001/api/v1`. All Sprint 7–8 features are present in the current codebase. No migration required for Sprint 8 features (no schema changes in Sprint 8).
+- Sprint 7 rebuild includes: portal popover fix, UTC timezone conversion, section reorder, all-day sort, calendar checkout/arrival, notes UI.
+- Sprint 8 rebuild includes: timezone abbreviation display (FlightCard + StayCard), URL linkification in activity locations.
+
+**For QA Engineer (T-116/T-117):**
+- No `dangerouslySetInnerHTML` introduced in T-113 or T-114. ✅
+- URL linkification uses strict `/(https?:\/\/[^\s]+)/g` regex + `/^https?:\/\//` scheme allowlist. `javascript:`, `data:`, `vbscript:` cannot produce `<a>` elements. ✅
+- `rel="noopener noreferrer"` present on all generated links. ✅
+- `formatTimezoneAbbr()` uses `Intl.DateTimeFormat().formatToParts()` with try/catch — no `eval()`, no code execution of timezone strings. Fallback is IANA string (safe). ✅
+
+**Frontend Engineer is on standby** for Sprint 9 hotfixes (H-XXX) only. No new implementation tasks until Sprint 10.
+
+---
+
 ### Sprint 9 Backend Engineer → QA Engineer: Sprint 9 Contract Review + Notes Field Correction (2026-02-27)
 
 | Field | Value |
@@ -70,9 +171,9 @@ Migration 010 (`notes TEXT NULL`) is unchanged — no schema changes needed. The
 | Sprint | 9 |
 | From Agent | Backend Engineer |
 | To Agent | Frontend Engineer |
-| Status | Pending |
+| Status | Acknowledged — 2026-02-28 |
 | Related Tasks | T-104 (Sprint 7, trip notes UI), T-103 (Sprint 7 correction) |
-| Handoff Summary | Sprint 9 API contract review complete. No new endpoints. One behavioral correction to the `notes` field contract that affects frontend integration. |
+| Handoff Summary | Sprint 9 API contract review complete. No new endpoints. One behavioral correction to the `notes` field contract that affects frontend integration. **[Acknowledged by Frontend Engineer 2026-02-28]** Existing T-104 implementation verified compatible — uses truthy checks and sends `null` for empty strings. No code changes required. |
 
 **What the Frontend Engineer needs to know:**
 

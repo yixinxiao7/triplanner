@@ -540,4 +540,24 @@ describe('T-103 — POST /trips notes field', () => {
       expect.objectContaining({ notes: null }),
     );
   });
+
+  it('happy path: empty-string notes on POST normalized to null (Sprint 9 contract correction)', async () => {
+    // Sprint 9 / BE-S9: API contract correction — PATCH /trips/:id and POST /trips
+    // must normalize notes: "" to null. GET endpoints never return "".
+    // This test verifies POST-side normalization explicitly.
+    tripModel.createTrip.mockResolvedValue({ ...BASE_TRIP, notes: null });
+
+    const res = await request(buildTripsApp(), 'POST', '/api/v1/trips', {
+      name: 'Tokyo Trip',
+      destinations: ['Tokyo'],
+      notes: '',   // empty string → route normalizes via `|| null` → null
+    }, AUTH);
+
+    expect(res.status).toBe(201);
+    // createTrip must receive notes: null (not notes: "")
+    expect(tripModel.createTrip).toHaveBeenCalledWith(
+      expect.objectContaining({ notes: null }),
+    );
+    expect(res.body.data.notes).toBeNull();
+  });
 });
