@@ -63,3 +63,19 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 *Sprint 9 must collect feedback from three consecutive missed User Agent cycles (Sprints 6, 7, 8). T-094 is a P0 hard-block for Sprint 9 — no new implementation is scoped until T-094 completes and its feedback is triaged.*
 
 ---
+
+## Sprint 9 Feedback
+
+*Sprint 9 begins 2026-02-27. No new Sprint 8 User Agent or Monitor Agent feedback entries were submitted — T-094, T-109, and T-120 all remained in Backlog when Sprint 8 closed. FB-084 (the sole Sprint 8 feedback item) was already Resolved via T-113. No entries carry "New" status into Sprint 9.*
+
+*Sprint 9 is a pipeline-closure sprint. All new feedback will originate from three walkthroughs that must complete this sprint: T-094 (Sprint 6 features — land travel, calendar enhancements, bug fixes), T-109 (Sprint 7 features — popover portal fix, stays timezone, section order, all-day sort, calendar checkout/arrival, trip notes), and T-120 (Sprint 8 features — timezone abbreviations, URL linkification). Manager will triage all three feedback sets before Sprint 10 planning begins.*
+
+**Sprint 9 Feedback Triage Summary (Manager Agent — 2026-02-27):**
+
+| FB Entry | Category | Severity | Disposition | Notes |
+|----------|----------|----------|-------------|-------|
+| (none — Sprint 8) | — | — | — | No Sprint 8 User/Monitor entries. All prior entries triaged. Awaiting T-094, T-109, T-120 feedback submissions this sprint. |
+
+*Entries will be added here as User Agent submits Sprint 6, Sprint 7, and Sprint 8 feedback during T-094, T-109, and T-120 respectively.*
+
+---
