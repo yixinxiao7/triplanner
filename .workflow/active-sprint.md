@@ -4,13 +4,15 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #7 — 2026-02-27 to 2026-03-12
+## Sprint #8 — 2026-02-27
 
-**Sprint Goal:** Fix two Major bugs from Sprint 6 feedback ("+X more" calendar popover visual corruption, stays check-in time UTC offset bug). Complete the Sprint 6 User Agent testing cycle (T-094 carry-over). Deliver five UX improvements (land travel section ordering, all-day activity sort, calendar checkout/arrival time display). Ship the trip notes/description feature as the first backlog enhancement from the project brief.
+**Sprint Goal:** Unblock the Sprint 7 QA pipeline by fixing two broken test files (T-110 fixes T-098's UTC fixture, T-111 writes the missing T-104 tests). Complete the long-overdue Sprint 6 User Agent walkthrough (T-094 — third consecutive carry-over). Close the full QA → Deploy → Monitor → User Agent cycle for all Sprint 7 integration-check tasks. Deliver two small but user-visible enhancements — timezone abbreviation display on flight/stay/land travel detail cards (FB-084, deferred from Sprint 7) and clickable activity location URLs (B-031). Expand Playwright E2E coverage to 7+ tests.
 
-**Context:** Sprint 6 delivered the land travel sub-resource, calendar time display, and "+X more" overflow popover — all verified by Monitor Agent (16/16 health checks). However, two Major bugs were reported by the project owner: the "+X more" popover corrupts the calendar day layout (FB-080), and stays check-in times are shifted by ~4 hours due to a UTC conversion issue (FB-081). These are the Sprint 7 P0 priorities. Staging is currently running HTTP (not HTTPS) with the backend as a direct node process — T-095 re-enables HTTPS and pm2 before any testing runs. T-094 (User Agent carry-over from Sprint 6) must complete and its feedback triaged before the QA phase begins.
+**Context:** Sprint 7 delivered five solid implementation tasks (T-097/T-099/T-100/T-101/T-103, all in Integration Check) but failed to close the QA pipeline because: (1) `StaysEditPage.test.jsx` had one failing test — `UTC` not in the TIMEZONES dropdown so the test fixture never called `api.stays.create`; (2) `TripDetailsPage.test.jsx` and `TripCard.test.jsx` had zero T-104 tests written despite complete code. The deploy gate correctly blocked T-107. Sprint 8 resolves these immediately (T-110, T-111), closes the full Sprint 7 pipeline, then adds a small focused batch of new features. Sprint scope is deliberately narrower than Sprint 7 to ensure the full pipeline closes cleanly within the sprint boundary.
 
-**Manager Pre-Approved Schema Change:** Adding `notes TEXT NULL` column to the `trips` table (migration 010). Backward-compatible nullable addition. Pre-approved to allow T-103 (backend) to proceed immediately after T-096 design spec is reviewed.
+**FB-084 Disposition:** Timezone abbreviation display was "Acknowledged" (deferred) since Sprint 6 feedback. T-098 timezone fix is now backend/frontend approved (code done, tests being fixed by T-110). FB-084 is promoted to **Tasked → T-113** in Sprint 8 — unblocked after T-098 implementation is QA-verified.
+
+**Manager Pre-Approved Schema Change:** None new this sprint. Migration 010 (trip notes `TEXT NULL`) was pre-approved in Sprint 7 and will be applied in T-107.
 
 ---
 
@@ -18,34 +20,39 @@ The operational reference for the current development cycle. Refreshed at the st
 
 *All tasks below are in `dev-cycle-tracker.md`. Dependency order is enforced — no task starts before its Blocked By items are Done.*
 
-### Phase 0 — Infrastructure (start immediately, no blockers)
-- [ ] T-095 — Deploy/Infra: Re-enable HTTPS + re-register backend under pm2 ← no blockers
+### Phase 0 — Test Fixes (P0, start immediately, run in parallel)
+- [ ] T-110 — Frontend Engineer: Fix T-098 failing UTC test + add missing TripDetailsPage stay display test ← **no blockers — start immediately**
+- [ ] T-111 — Frontend Engineer: Write 8+ T-104 tests (TripDetailsPage notes + TripCard notes) ← **no blockers — start immediately**
 
-### Phase 1 — User Agent Testing (Sprint 6 carry-over, blocked by T-095)
-- [ ] T-094 — User Agent: Sprint 6 feature walkthrough (land travel, calendar, bug fixes, regression) ← T-095
+### Phase 1 — User Agent Sprint 6 Carry-Over (P0 hard-block — unblocked by T-095 which is Done)
+- [ ] T-094 — User Agent: Sprint 6 feature walkthrough (land travel, calendar, bug fixes, regression) ← **T-095 (Done) — start immediately**
 
 ### Phase 2 — Design Spec (parallel with Phase 0 + Phase 1, no blockers)
-- [ ] T-096 — Design spec: Calendar checkout/arrival time display + trip notes field (Spec 13 addendum) ← no blockers
+- [ ] T-112 — Design Agent: Spec 14 — timezone abbreviation display + activity URL link detection ← **no blockers — start immediately**
 
-### Phase 3 — Bug Fixes (parallel, no blockers)
-- [ ] T-097 — Frontend: Fix "+X more" calendar popover visual corruption (FB-080) ← no blockers
-- [ ] T-098 — Backend + Frontend: Fix stays check-in/checkout time UTC offset bug (FB-081) ← no blockers
-- [ ] T-099 — Frontend: Reorder trip details sections — land travel between flights and stays (FB-078) ← no blockers
-- [ ] T-100 — Frontend: Sort all-day activities to top of each day (FB-079) ← no blockers
+### Phase 3 — Manager Review Gate
+*Manager reviews T-110 and T-111 submissions. On approval, T-098 and T-104 move to Integration Check, unblocking T-105.*
 
-### Phase 4 — Calendar Enhancements (blocked by T-096 design spec)
-- [ ] T-101 — Frontend: Calendar checkout/arrival time display (FB-082, FB-083) ← T-096
-
-### Phase 5 — Trip Notes Feature (blocked by T-096 design spec + T-103 backend)
-- [ ] T-103 — Backend: Trip notes field — migration 010 + PATCH /trips/:id + GET responses ← T-096
-- [ ] T-104 — Frontend: Trip notes field — TripDetailsPage inline edit + TripCard preview ← T-096, T-103
-
-### Phase 6 — QA, Deploy, Monitor, User (sequential after all implementation)
-- [ ] T-105 — QA: Security checklist + code review audit ← T-097, T-098, T-099, T-100, T-101, T-103, T-104
-- [ ] T-106 — QA: Integration testing ← T-105
-- [ ] T-107 — Deploy: Staging re-deployment (migration 010 + all Sprint 7 changes) ← T-106
-- [ ] T-108 — Monitor: Staging health check ← T-107
+### Phase 4 — Sprint 7 QA Pipeline (sequential — starts after T-110 + T-111 pass Manager review)
+- [ ] T-105 — QA: Security checklist + code review (all Sprint 7 tasks: T-097–T-104) ← T-110, T-111
+- [ ] T-106 — QA: Integration testing (Sprint 7 features + Sprint 6 regression) ← T-105
+- [ ] T-107 — Deploy: Staging re-deployment (migration 010 + all Sprint 7 frontend/backend changes) ← T-106
+- [ ] T-108 — Monitor: Staging health check (Sprint 7 + Sprint 6 regression) ← T-107
 - [ ] T-109 — User Agent: Sprint 7 feature walkthrough + feedback ← T-108
+
+### Phase 5 — Sprint 8 New Feature Implementation (parallel with Phase 3-4, starts after T-112 approved)
+- [ ] T-113 — Frontend Engineer: Timezone abbreviations on flight/stay/land travel detail cards (FB-084) ← T-112
+- [ ] T-114 — Frontend Engineer: Activity location clickable URL detection (B-031) ← T-112
+
+### Phase 6 — E2E Expansion (after T-109 Sprint 7 walkthrough)
+- [ ] T-115 — QA Engineer: Expand Playwright coverage — land travel edit E2E + calendar overflow E2E + mobile viewport tests ← T-109
+
+### Phase 7 — Sprint 8 QA Pipeline (sequential — after T-113 + T-114 pass Manager review + T-109 done)
+- [ ] T-116 — QA: Security checklist + code review (Sprint 8 features: T-113, T-114, T-115) ← T-113, T-114, T-109
+- [ ] T-117 — QA: Integration testing (Sprint 8 features + Sprint 7 regression) ← T-116
+- [ ] T-118 — Deploy: Staging re-deployment (Sprint 8 frontend rebuild — no new migrations) ← T-117
+- [ ] T-119 — Monitor: Staging health check (Sprint 8 + Sprint 7 regression) ← T-118
+- [ ] T-120 — User Agent: Sprint 8 feature walkthrough + feedback ← T-119
 
 ---
 
@@ -53,14 +60,12 @@ The operational reference for the current development cycle. Refreshed at the st
 
 *These items are explicitly deferred. Do not start them this sprint.*
 
-- **B-022 — Production deployment to hosting provider** — Blocked on project owner selecting a hosting provider (Railway, Fly.io, Render, AWS). All deployment preparation complete since Sprint 3. Escalated since Sprint 3. Not a Sprint 7 blocker.
-- **FB-084 / Timezone abbreviations on calendar** — Deferred to Sprint 8. Complex IANA → abbreviation conversion; calendar chips are already space-constrained. Depends on timezone bug fix (T-098) completing first.
-- **B-031 — Activity location links (clickable URLs)** — Minor enhancement. Deferred to Sprint 8+.
-- **B-032 — Trip export/print** — Useful enhancement. Deferred to Sprint 8+.
-- **B-020 — Rate limiting persistence (Redis)** — In-memory acceptable for current single-instance deployment. Deferred until production architecture defined.
-- **B-024 — Per-account rate limiting** — Enhancement. Depends on B-020. Deferred.
-- **B-021 — Dev dependency esbuild vulnerability** — No production impact. Monitor for upstream fix.
-- **E2E test expansion** — Additional Playwright tests for land travel edit flows, mobile viewport. Deferred to Sprint 8 after major bugs are fixed.
+- **B-022 — Production deployment to hosting provider** — Blocked on the project owner selecting a hosting provider (Railway, Fly.io, Render, AWS). All deployment preparation complete since Sprint 3. Escalated every sprint since Sprint 3. This requires a human decision — NOT a Sprint 8 engineering blocker.
+- **B-032 — Trip export/print** — Useful enhancement, but a larger scope feature. Deferred to Sprint 9 to keep Sprint 8 focused on pipeline recovery.
+- **B-020 — Rate limiting persistence (Redis)** — In-memory acceptable for current single-instance staging. Deferred until production architecture is decided.
+- **B-024 — Per-account rate limiting** — Depends on B-020. Deferred.
+- **B-021 — Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99** — No production impact. Monitor for upstream fix.
+- **Sort logic duplication in tripModel.js** — Minor DRY violation across status-filter code paths. Deferred.
 - **MFA login** — Explicitly out of scope per project brief.
 - **Home page summary calendar** — Explicitly out of scope per project brief.
 - **Auto-generated itinerary suggestions** — Explicitly out of scope per project brief.
@@ -71,118 +76,121 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Manager | Sprint planning (done), code review all implementation tasks, triage T-094 feedback | Review T-095–T-104; approve before downstream tasks start |
-| Deploy Engineer | Re-enable HTTPS + pm2 (critical first action), staging re-deployment | T-095, T-107 |
-| User Agent | Sprint 6 feature walkthrough (carry-over), Sprint 7 walkthrough | T-094, T-109 |
-| Design Agent | Calendar checkout/arrival spec + trip notes spec | T-096 |
-| Frontend Engineer | Two Major bug fixes + UX fixes + calendar + notes UI | T-097, T-099, T-100, T-101, T-104 |
-| Backend Engineer | Timezone investigation + fix + trip notes backend | T-098, T-103 |
-| QA Engineer | Security checklist + integration testing | T-105, T-106 |
-| Monitor Agent | Staging health check | T-108 |
+| Manager | Sprint planning (done), code review T-110/T-111 submissions → unblock T-105, code review T-113/T-114, triage T-094/T-109/T-120 feedback | T-110/T-111 review, T-112 approval, T-113/T-114 review |
+| Frontend Engineer | Fix T-098 tests, write T-104 tests, implement timezone abbreviations, implement URL link detection | T-110, T-111, T-113, T-114 |
+| Design Agent | Spec 14: timezone abbreviation display + activity URL link detection | T-112 |
+| User Agent | Sprint 6 walkthrough (3rd carry-over — P0), Sprint 7 walkthrough, Sprint 8 walkthrough | T-094, T-109, T-120 |
+| QA Engineer | Sprint 7 security + integration audit, Playwright expansion, Sprint 8 security + integration audit | T-105, T-106, T-115, T-116, T-117 |
+| Deploy Engineer | Staging re-deployment ×2 (Sprint 7 pipeline + Sprint 8 features) | T-107, T-118 |
+| Monitor Agent | Staging health check ×2 (Sprint 7 pipeline + Sprint 8 features) | T-108, T-119 |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-T-095 (Deploy: HTTPS + pm2 re-enable)  ← IMMEDIATE START — unblocks T-094
+T-110 (FE: Fix T-098 tests)              ← IMMEDIATE START — unblocks T-105
+T-111 (FE: Write T-104 tests)           ← IMMEDIATE START — unblocks T-105
+T-094 (User Agent: Sprint 6 carry-over) ← T-095 (Done) — IMMEDIATE START
+T-112 (Design: Spec 14 TZ + URL links)  ← IMMEDIATE START — unblocks T-113, T-114
+
+[After T-110 + T-111 pass Manager review → T-098 and T-104 move to Integration Check]
+
+T-105 (QA: Security + code review)      ← T-110, T-111 (+ T-097, T-099, T-100, T-101, T-103 in Integration Check)
         │
-        └→ T-094 (User Agent: Sprint 6 carry-over)
-
-T-096 (Design: Calendar + Notes spec) ← PARALLEL — unblocks T-101, T-103, T-104
-
-T-097 (FE: +X more popover fix)       ← PARALLEL — no blockers
-T-098 (BE+FE: Stays timezone fix)     ← PARALLEL — no blockers
-T-099 (FE: Section reorder)           ← PARALLEL — no blockers
-T-100 (FE: All-day sort to top)       ← PARALLEL — no blockers
-
-T-101 (FE: Calendar checkout/arrival) ← T-096
-T-103 (BE: Trip notes backend)        ← T-096
-T-104 (FE: Trip notes frontend)       ← T-096, T-103
-
-T-105 (QA: Security + code review)   ← T-097, T-098, T-099, T-100, T-101, T-103, T-104
-        │
-        └→ T-106 (QA: Integration testing)
+        └→ T-106 (QA: Integration testing — Sprint 7)
                 │
-                └→ T-107 (Deploy: Staging re-deploy + migration 010)
+                └→ T-107 (Deploy: Staging — migration 010 + Sprint 7 changes)
                         │
-                        └→ T-108 (Monitor: Health check)
+                        └→ T-108 (Monitor: Health check — Sprint 7)
                                 │
                                 └→ T-109 (User Agent: Sprint 7 walkthrough)
+
+T-113 (FE: Timezone abbreviations)      ← T-112
+T-114 (FE: Activity URL links)          ← T-112
+
+[After T-113 + T-114 pass Manager review AND T-109 done]
+
+T-115 (QA: E2E Playwright expansion)    ← T-109
+
+T-116 (QA: Security + code review)      ← T-113, T-114, T-109
+        │
+        └→ T-117 (QA: Integration testing — Sprint 8)
+                │
+                └→ T-118 (Deploy: Staging — Sprint 8 features, no migration)
+                        │
+                        └→ T-119 (Monitor: Health check — Sprint 8)
+                                │
+                                └→ T-120 (User Agent: Sprint 8 walkthrough)
 ```
 
-**Critical path:** T-095 → T-094 (longest carry-over) | T-096 → T-103 → T-104 → T-105 → T-106 → T-107 → T-108 → T-109.
+**Critical path (Sprint 7 pipeline):** T-110 + T-111 → Manager review → T-105 → T-106 → T-107 → T-108 → T-109.
 
-**Note on T-094 and Sprint 7 planning:** T-094 feedback may surface additional issues. If T-094 finds Critical or Major bugs not already addressed in Sprint 7, Manager will create hotfix tasks (H-XXX) and insert them before T-105. Minor or Suggestion items from T-094 will be added to backlog for Sprint 8.
+**Critical path (Sprint 8 features):** T-112 → T-113 + T-114 → Manager review → T-116 → T-117 → T-118 → T-119 → T-120.
+
+**Note on T-094:** T-094 runs immediately (T-095 is Done). If T-094 finds Critical or Major bugs in Sprint 6 features, Manager creates hotfix tasks (H-XXX) before T-105 starts. Minor/Suggestion items go to backlog.
 
 ---
 
-## Sprint 6 Feedback Triage Summary
+## Sprint 7 → Sprint 8 Feedback Triage
 
-*Triaged by Manager Agent on 2026-02-27 as part of Sprint 7 planning.*
+*Sprint 7 produced no feedback entries (User Agent T-094 and T-109 both did not run). Triage is limited to the FB-084 carry-over from Sprint 6.*
 
-| FB Entry | Category | Severity | Sprint 7 Disposition | Task |
+| FB Entry | Category | Severity | Sprint 8 Disposition | Task |
 |----------|----------|----------|---------------------|------|
-| FB-078 | UX Issue | Minor | **Tasked → T-099** | Land travel between flights and stays |
-| FB-079 | UX Issue | Minor | **Tasked → T-100** | All-day activities sort to top of day |
-| FB-080 | Bug | **Major** | **Tasked → T-097 (P0)** | "+X more" calendar popover visual corruption |
-| FB-081 | Bug | **Major** | **Tasked → T-098 (P0)** | Stays check-in time UTC offset 4-hour shift |
-| FB-082 | Feature Gap | Minor | **Tasked → T-101** | Calendar checkout time on last stay day |
-| FB-083 | Feature Gap | Minor | **Tasked → T-101** | Calendar arrival times on arrival day (flights/land travel) |
-| FB-084 | Feature Gap | Minor | **Acknowledged (backlog)** | Timezone abbreviation display — deferred to Sprint 8 |
-
-**Summary:** 2 Major bugs requiring immediate P0 attention (FB-080, FB-081). 4 minor UX/feature items tasked (FB-078, FB-079, FB-082, FB-083). 1 item deferred to backlog (FB-084). No items declined (Won't Fix). All feedback is addressed.
+| (none) | — | — | — | No Sprint 7 User Agent or Monitor Agent feedback submitted before sprint closeout |
+| FB-084 (Sprint 6) | Feature Gap | Minor | **Tasked → T-113** | Timezone abbreviation display on flight/stay/land travel cards — now unblocked after T-098 lands; scheduled for Sprint 8 |
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #7 is complete?*
+*How do we know Sprint #8 is complete?*
 
-- [ ] HTTPS re-enabled and backend running under pm2 on staging (T-095)
-- [ ] User Agent has completed Sprint 6 feature walkthrough and submitted feedback (T-094)
+**Sprint 7 Pipeline Closure:**
+- [ ] T-098 frontend tests all pass — T-110 submitted and Manager-approved (T-098 moves to Integration Check)
+- [ ] T-104 tests written (8+ tests) and passing — T-111 submitted and Manager-approved (T-104 moves to Integration Check)
+- [ ] User Agent has completed Sprint 6 feature walkthrough and submitted structured feedback (T-094)
 - [ ] T-094 feedback triaged by Manager Agent (New → Tasked/Acknowledged/Won't Fix)
-- [ ] Design Agent has published Spec 13 addendum (calendar times + trip notes) (T-096)
-- [ ] "+X more" calendar popover opens without corrupting calendar day cell layout (T-097)
-- [ ] Stays check-in time displays the correct local time without UTC offset shift (T-098)
-- [ ] Trip details page section order: Flights → Land Travel → Stays → Activities (T-099)
-- [ ] All-day activities render at the top of each day group in activities section (T-100)
-- [ ] Calendar stay chips show checkout time on checkout day (T-101)
-- [ ] Calendar flight/land travel chips show arrival time on arrival day (T-101)
-- [ ] Migration 010 adds `notes TEXT NULL` to trips table with rollback (T-103)
-- [ ] PATCH /trips/:id accepts and stores `notes` field (max 2000 chars) (T-103)
-- [ ] GET /trips/:id and GET /trips list both include `notes` field (T-103)
-- [ ] TripDetailsPage shows notes text with inline edit and char count (T-104)
-- [ ] TripCard shows truncated notes (first 100 chars) if non-empty (T-104)
-- [ ] All task dependencies (Blocked By) resolved before moving to In Progress
-- [ ] Manager Agent has completed code review for all implementation tasks
-- [ ] QA Engineer has completed security checklist (T-105) and integration testing (T-106)
-- [ ] QA Engineer has logged results in `.workflow/qa-build-log.md`
-- [ ] Deploy Engineer has redeployed staging with migration 010 and all Sprint 7 changes (T-107)
-- [ ] Monitor Agent has verified staging health — all Sprint 6 checks pass + Sprint 7 checks (T-108)
-- [ ] User Agent has tested Sprint 7 features and submitted feedback (T-109)
-- [ ] Manager Agent has triaged all Sprint 7 feedback entries
-- [ ] Sprint summary added to `.workflow/sprint-log.md`
+- [ ] QA has run security checklist for all Sprint 7 tasks (T-105) and results logged in qa-build-log.md
+- [ ] QA has run integration testing for all Sprint 7 tasks (T-106) and results logged in qa-build-log.md
+- [ ] Deploy has applied migration 010 and redeployed staging with all Sprint 7 changes (T-107)
+- [ ] Monitor has verified staging health with all Sprint 7 checks passing (T-108)
+- [ ] User Agent has tested all Sprint 7 features and submitted structured feedback (T-109)
+- [ ] T-109 feedback triaged by Manager Agent
+
+**Sprint 8 New Features:**
+- [ ] Design Agent has published Spec 14 addendum (timezone abbreviations + URL links) (T-112)
+- [ ] Flight/stay/land travel detail cards show DST-aware timezone abbreviation (e.g., "EDT", "JST") (T-113)
+- [ ] Activity location URLs detected and rendered as accessible `<a>` elements with `rel="noopener noreferrer"` (T-114)
+- [ ] Playwright E2E expanded from 4 to 7+ tests: land travel edit + calendar overflow + mobile viewport (T-115)
+- [ ] QA security + integration audit for Sprint 8 features completed and logged (T-116, T-117)
+- [ ] Staging redeployed with Sprint 8 frontend changes (T-118)
+- [ ] Monitor verifies Sprint 8 feature health on staging (T-119)
+- [ ] User Agent tests Sprint 8 features and submits structured feedback (T-120)
+- [ ] T-120 feedback triaged by Manager Agent
+- [ ] Sprint 8 summary added to `.workflow/sprint-log.md`
 
 ---
 
-## Success Criteria (Sprint 7)
+## Success Criteria (Sprint 8)
 
-By the end of Sprint #7, the following must be verifiable on staging (in addition to all Sprint 1–6 criteria):
+By the end of Sprint #8, the following must be verifiable on staging (in addition to all Sprint 1–7 criteria):
 
-- [ ] Click "+X more" on a calendar day with overflow events → popover opens, calendar grid layout unchanged (no corruption)
-- [ ] Create a stay with check-in time 4:00 PM, save → displayed as "4:00 PM" (not "12:00 PM" or any other UTC-shifted time)
-- [ ] Trip details page section order: flights section header appears first, then land travel, then stays, then activities
-- [ ] Activities section: a day with mixed all-day and timed activities → all-day items appear above timed items
-- [ ] Calendar: stay chip on checkout_date shows checkout time formatted as "check-out HH:MMa/p"
-- [ ] Calendar: flight chip on arrival_date (when different from departure_date) shows arrival time formatted as "arrives HH:MMa/p"
-- [ ] Calendar: land travel chip on arrival_date (when different from departure_date) shows arrival time
-- [ ] PATCH /trips/:id with `{"notes":"My Tokyo trip notes"}` → GET /trips/:id returns `"notes":"My Tokyo trip notes"`
-- [ ] TripDetailsPage shows notes text; clicking edit → textarea opens; saving → updated text displayed
-- [ ] TripCard on home page shows "My Tokyo trip notes" (truncated at 100 chars with "…")
-- [ ] PATCH /trips/:id with notes > 2000 chars → 400 VALIDATION_ERROR
-- [ ] All 583+ existing tests pass (no regressions from Sprint 7 changes)
-- [ ] Playwright E2E: 4/4 tests pass against HTTPS staging
+*Sprint 7 pipeline closure:*
+- [ ] All 344 frontend tests pass — including T-098 UTC timezone test and all 8 T-104 notes tests
+- [ ] All Sprint 7 features verified on staging by User Agent (T-109): "+X more" popover portal fix, stays 4:00 PM → 4:00 PM (no UTC shift), Flights → Land Travel → Stays → Activities section order, all-day activities sort to top, calendar checkout/arrival times, trip notes display + edit + TripCard truncation
+- [ ] Playwright 4/4 E2E pass against HTTPS staging (Sprint 7 baseline)
+
+*Sprint 8 new features:*
+- [ ] Create a flight: New York departure (America/New_York, August) → detail card shows "6:00 AM EDT"; Tokyo arrival (Asia/Tokyo) → detail card shows "9:00 AM JST"
+- [ ] Create a stay in Paris (Europe/Paris, July) → check-in detail card shows "3:00 PM CEST"
+- [ ] Create a land travel from London (Europe/London, January) → departure detail shows "10:00 AM GMT"
+- [ ] Activity location "Lunch at https://www.yelp.com/biz/xyz" → "Lunch at " renders as plain text, "https://www.yelp.com/biz/xyz" renders as clickable `<a>` element with `target="_blank" rel="noopener noreferrer"`
+- [ ] Activity location "javascript:alert(1)" → renders entirely as plain text (NOT a clickable link)
+- [ ] Activity location "Golden Gate Park" (no URL) → renders as plain text (no spurious link)
+- [ ] Playwright E2E: 7/7 tests pass — including land travel edit flow, calendar overflow popover, mobile viewport tests
+- [ ] All 344+ existing tests pass with zero regressions from Sprint 8 changes
 
 ---
 
@@ -190,10 +198,11 @@ By the end of Sprint #7, the following must be verifiable on staging (in additio
 
 *Active blockers that need resolution before the sprint can complete.*
 
-- **HTTPS Disabled (from Sprint 6 deployment):** T-095 must run immediately at sprint start. Backend was deployed over HTTP (port 3000) in Sprint 6. HTTPS must be re-enabled before T-094 User Agent testing and before T-107 staging re-deployment.
-- **pm2 Not Running (from Sprint 6 deployment):** Backend is running as direct `node src/index.js` process. pm2 must be re-registered in T-095 for crash recovery.
-- **B-022 (Production Deployment):** Deferred to Sprint 8+ pending project owner decision on hosting provider. This is NOT a Sprint 7 blocker.
+- **T-098 broken test (1 failing):** `StaysEditPage.test.jsx` test `[T-098] submits check_in_at unchanged (no offset) when timezone is UTC` fails because `UTC` is not in the TIMEZONES dropdown. T-110 resolves this immediately. No other action needed until T-110 submits for Manager review.
+- **T-104 zero tests:** `TripDetailsPage.test.jsx` and `TripCard.test.jsx` have no T-104 notes tests despite complete working code. T-111 writes them. No other action needed until T-111 submits for Manager review.
+- **T-094 carry-over (3rd consecutive sprint):** Sprint 6 features have never been User-Agent-tested. T-094 is the #1 priority for the User Agent — starts immediately (T-095 is Done). The QA pipeline (T-105+) must NOT start until T-098 and T-104 tests are fixed, but T-094 runs concurrently with the test fixes since it only requires T-095 (Done).
+- **B-022 (Production Deployment):** Deferred to Sprint 9+ pending project owner decision on hosting provider. NOT a Sprint 8 engineering task.
 
 ---
 
-*Previous sprint (Sprint #6) archived to `.workflow/sprint-log.md` on 2026-02-27. Sprint #7 begins 2026-02-27.*
+*Previous sprint (Sprint #7) archived to `.workflow/sprint-log.md` on 2026-02-27. Sprint #8 begins 2026-02-27.*
