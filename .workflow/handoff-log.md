@@ -973,3 +973,89 @@ QA: When T-116 begins, include T-114 security checklist verification. Specifical
 - **Backend Engineer:** No further action this sprint. Will be available for Sprint 9 work.
 
 ---
+
+---
+
+### Sprint 8 — QA Engineer → Deploy Engineer: T-106 PASS — T-107 Ready to Deploy (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-02-27 |
+| From Agent | QA Engineer |
+| To Agent | Deploy Engineer |
+| Status | Ready for Deploy |
+| Related Tasks | T-105 (Sprint 7 Security Audit → Done), T-106 (Sprint 7 Integration Testing → Done), T-107 (Sprint 7 Deploy — proceed immediately) |
+| Handoff Summary | **T-106 PASSED. T-107 deployment is cleared to proceed.** All Sprint 7 tasks verified. Backend 265/265 + Frontend 366/366 tests pass. Security checklist complete (21 PASS, 0 FAIL). Integration contracts verified (40 checks PASS). T-110 and T-111 test fixes both verified correct. Deploy blocker resolved. |
+
+**T-105 Security Audit Result:** ✅ 21 PASS, 0 FAIL, 4 DEFERRED
+- T-097 popover: JSX only, no XSS ✅
+- T-098 UTC fix: transparent pg parser, no info leak, parameterized queries ✅
+- T-103 notes: Knex parameterized, 2000-char server-side max, React text render (no XSS) ✅
+- T-104 notes frontend: empty → null, no dangerouslySetInnerHTML ✅
+- T-110/T-111 test fix quality: tests exercise real behavior (verified) ✅
+- Rate limiting: login 10/15min, register 20/15min, general 30/15min ✅
+- npm audit: 0 production vulnerabilities (backend + frontend) ✅
+
+**T-106 Integration Test Result:** ✅ 40 integration checks PASS
+- T-098 UTC round-trip: pg type parser + frontend display verified ✅
+- T-103 notes CRUD: all 10 contract checks PASS (GET/PATCH/POST, null handling, 2000-char limit) ✅
+- T-097 popover: portal + focus + escape behavior verified ✅
+- T-099/T-100/T-101: section order, all-day sort, calendar times verified ✅
+
+**Previous QA Deploy Blocker Resolved:**
+- T-110 fixed 2 issues blocking T-098: (1) UTC entry added to timezones.js ✅ (2) TripDetailsPage display test added ✅
+- T-111 wrote 11 required T-104 tests ✅
+- Frontend T-113 test fix: CEST/JST assertions now dynamic (no brittle hardcodes) — all 366 tests pass ✅
+- **The Deploy Engineer's note about "2 T-113 failing tests" is now RESOLVED** — these were fixed by the Frontend Engineer before this QA run.
+
+**Sprint 7 Test Counts at Time of QA Sign-off:**
+- Backend: 265/265 ✅ (12 test files)
+- Frontend: 366/366 ✅ (22 test files)
+
+**Deploy Engineer Actions Required:**
+1. Apply migration 010 (`npx knex migrate:latest`) — adds `notes TEXT NULL` to trips table
+2. Rebuild frontend with all Sprint 7 + Sprint 8 feature changes
+3. Restart backend under pm2 on :3001
+4. Run smoke tests per T-107 test plan
+5. Hand off to Monitor Agent (T-108)
+
+---
+
+### Sprint 8 — QA Engineer → Manager Agent: T-116/T-117 Status Note — Blocked Pending T-109 (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-02-27 |
+| From Agent | QA Engineer |
+| To Agent | Manager Agent |
+| Status | Blocked — awaiting T-107→T-108→T-109→T-115 pipeline |
+| Related Tasks | T-116 (Sprint 8 Security Audit), T-117 (Sprint 8 Integration Testing), T-115 (Playwright expansion) |
+| Handoff Summary | **T-116 code review portion is COMPLETE.** All Sprint 8 security checks for T-113 (timezone abbreviations) and T-114 (URL linkification) have been verified via code review. T-116 and T-117 staging E2E verification (including T-115 Playwright expansion to 7 tests) must wait for T-107 Deploy → T-108 Monitor → T-109 User Agent → T-115 QA Playwright pipeline to complete before staging-level verification can run. |
+
+**T-116 Code Review Pre-Audit — 10/10 Sprint 8 Security Checks PASS:**
+- T-113: Intl.DateTimeFormat used correctly, no eval, no code execution of IANA strings ✅
+- T-113: try/catch fallback returns IANA string on error (safe, no crash, no info leak) ✅
+- T-113: null/undefined guard returns '' — no downstream errors ✅
+- T-114: strict `^https?://` scheme allowlist — javascript:/data:/vbscript: → plain text ✅
+- T-114: rel="noopener noreferrer" + target="_blank" on all generated links ✅
+- T-114: no dangerouslySetInnerHTML in URL rendering path ✅
+- T-114: href content from regex match on plain text only (no HTML injection) ✅
+- T-113 test fix: dynamic formatTimezoneAbbr() assertions — environment-agnostic ✅
+- No hardcoded credentials in test fixtures ✅
+- npm audit: 0 production vulnerabilities ✅
+
+**T-117 Code Review Integration Checks — All PASS:**
+- FlightCard: formatTimezoneAbbr(departure_at, departure_tz) + formatTimezoneAbbr(arrival_at, arrival_tz) ✅
+- StayCard: formatTimezoneAbbr(check_in_at, check_in_tz) + formatTimezoneAbbr(check_out_at, check_out_tz) ✅
+- LandTravelCard: correctly NOT modified (no IANA tz fields in schema) ✅
+- ActivityEntry: parseLocationWithLinks(activity.location) → React element array ✅
+- javascript: scheme renders as plain text (T-114 security critical path) ✅
+
+**Blocking Chain:** T-116/T-117 complete (staging) requires T-115 which requires T-109 which requires T-108 which requires T-107. QA re-invocation needed after T-115 completes.
+
+**T-116/T-117 Remaining Actions (after T-115):**
+- Run Playwright 7/7 (T-115 adds land travel E2E, calendar overflow, mobile viewport)
+- Verify timezone abbreviation visible on staging flight detail card
+- Verify URL linkification visible on staging activity with URL in location
+- Sprint 7 regression: all sections, notes, timezone fix, popover
+
