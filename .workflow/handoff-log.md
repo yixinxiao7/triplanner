@@ -17,6 +17,54 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 7 → Sprint 8 — Manager Agent: Sprint Closeout + Sprint 8 Kickoff Brief (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 → 8 |
+| From Agent | Manager Agent |
+| To Agent | All Agents |
+| Status | Pending |
+| Related Task | T-094, T-098, T-104, T-105, T-106, T-107, T-108, T-109 |
+| Handoff Summary | **Sprint #7 is closed. Full summary in `.workflow/sprint-log.md`.** Sprint 8 begins immediately. The critical path for Sprint 8 is: (1) Fix T-098 and T-104 tests → (2) Run T-094 → (3) QA T-105/T-106 → (4) Deploy T-107 → (5) Monitor T-108 → (6) User Agent T-109. All other work is secondary until T-109 completes and its feedback is triaged. |
+
+**Sprint 8 Priority Queue (in strict execution order):**
+
+**Step 1 — Frontend Engineer (IMMEDIATE — P0):**
+- **T-098 test fixes** — Fix the failing `StaysEditPage.test.jsx` UTC test (add `{ label: 'UTC — Coordinated Universal Time', value: 'UTC' }` to `frontend/src/utils/timezones.js`, OR rewrite test to use an existing dropdown timezone) + add the missing `TripDetailsPage.test.jsx` T-098 test (stay with `check_in_at: '2026-08-07T20:00:00.000Z'` + `check_in_tz: 'America/New_York'` → displays "4:00 PM"). All 344 tests must pass. Move T-098 to In Review when done.
+- **T-104 tests** — Write 8+ tests in `TripDetailsPage.test.jsx` (notes text renders, placeholder when null, pencil→edit mode, char count ≥1800, save calls `api.trips.update`, cancel restores, empty→null) and `TripCard.test.jsx` (>100 chars truncated + ellipsis, ≤100 chars full, null hidden). Move T-104 to In Review when done.
+
+**Step 2 — Manager Agent (after T-098 + T-104 pass In Review):**
+- Final Manager review for T-098 and T-104. Move both to Integration Check on approval.
+
+**Step 3 — User Agent (T-094 — P0 hard-block after T-098/T-104 clear review):**
+- Sprint 6 feature walkthrough (HTTPS staging). Test: land travel CRUD via UI, calendar enhancements (+X more popover, event times), activity edit page bug fixes (AM/PM, clock icon), FilterToolbar refetch fix, ILIKE wildcard search, full Sprint 1–5 regression. Submit structured feedback to `feedback-log.md` (Sprint 6 section). T-094 must complete before any Sprint 9 scope is planned.
+
+**Step 4 — Manager Agent (after T-094 feedback submitted):**
+- Triage T-094 feedback: Critical/Major → Tasked; Minor → Acknowledged/backlog; Positive → Acknowledged.
+
+**Step 5 — QA Engineer (T-105 + T-106 — after T-098, T-104, T-101, T-099, T-100, T-097, T-103 all in Integration Check):**
+- T-105: Security checklist audit for all Sprint 7 tasks.
+- T-106: Integration testing — all Sprint 7 features + Sprint 6 regression + E2E 4/4.
+- See existing Manager → QA handoff in this log (Status: Pending, 2026-02-27) for full scope.
+
+**Step 6 — Deploy Engineer (T-107 — after QA issues deploy-ready sign-off):**
+- Apply migration 010 (`notes TEXT NULL`). Rebuild frontend with all Sprint 7 changes. Verify pm2 still online (from T-095). Run smoke tests. Handoff to Monitor Agent.
+
+**Step 7 — Monitor Agent (T-108 — after T-107 completes):**
+- Sprint 7 health check: HTTPS ✅, pm2 ✅, migration 010 applied ✅, trip notes API ✅, stays timezone correct ✅, all Sprint 6 regression checks ✅, Playwright 4/4 ✅. Handoff to User Agent.
+
+**Step 8 — User Agent (T-109 — after T-108 health check passes):**
+- Sprint 7 feature walkthrough: popover fix, timezone fix, section reorder, all-day sort, calendar checkout/arrival, trip notes. Full Sprint 6 regression. Submit structured feedback.
+
+**Step 9 — Manager Agent (after T-109 feedback submitted):**
+- Triage T-109 feedback. Plan Sprint 9 based on remaining MVP items + any new issues.
+
+**Non-blocking / can start in parallel:**
+- Production deployment (B-022): Project owner must select hosting provider (Railway, Fly.io, Render, AWS) — all infra is ready, decision is the only blocker. This has been escalated every sprint since Sprint 3.
+
+---
+
 ### Sprint 7 — Deploy Engineer: T-107 BLOCKED — Awaiting QA Sign-off + T-098/T-104 Test Fixes (2026-02-27)
 
 | Field | Value |

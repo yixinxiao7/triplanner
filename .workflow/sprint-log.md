@@ -868,4 +868,144 @@ Summary of each completed development cycle. Written by the Manager Agent at the
 
 ---
 
+### Sprint #7 — 2026-02-27 to 2026-02-27
+
+**Goal:** Fix two Major bugs from Sprint 6 feedback — "+X more" calendar popover visual corruption (FB-080/T-097) and stays check-in time UTC offset bug (FB-081/T-098). Complete Sprint 6 User Agent carry-over (T-094). Deliver five UX improvements: land travel section ordering (FB-078/T-099), all-day activity sort to top of each day (FB-079/T-100), calendar checkout time on last stay day (FB-082/T-101), calendar arrival time on arrival day for flights and land travel (FB-083/T-101). Ship the trip notes/description field as the first backlog feature from the project brief (T-103/T-104).
+
+**Goal Met:** ⚠️ SUBSTANTIALLY INCOMPLETE — The implementation phase was largely completed (3 tasks fully Done; 5 tasks in Integration Check having passed Manager code review). However, two implementation tasks (T-098 and T-104) remained In Progress due to failing/missing frontend tests, which blocked the entire QA → Deploy → Monitor → User Agent pipeline. T-094 (User Agent Sprint 6 carry-over) did not execute for the third consecutive sprint closeout. No User Agent or Monitor feedback was collected this sprint.
+
+---
+
+**Tasks Done — Fully Complete (3):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-095 | Deploy/Infra: HTTPS + pm2 re-enabled on staging (port 3001, CORS, Secure cookie) | ✅ Done |
+| T-096 | Design spec addendum: Calendar checkout/arrival time display + trip notes field (Spec 13 addendum to ui-spec.md) | ✅ Done |
+| T-102 | Design spec: Trip notes field (pre-collapsed into T-096 per Manager approval) | ✅ Done |
+
+**Tasks in Integration Check — Implementation Complete, Awaiting QA (5):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-097 | Frontend: "+X more" calendar popover portal fix — `createPortal` to `document.body` eliminates CSS grid layout corruption | Integration Check |
+| T-099 | Frontend: Trip details section reorder — Flights → Land Travel → Stays → Activities | Integration Check |
+| T-100 | Frontend: All-day activities sort to top of each activity day group | Integration Check |
+| T-101 | Frontend: Calendar checkout/arrival time display — stay checkout on last day, flight/land travel arrival time on arrival day | Integration Check |
+| T-103 | Backend: Trip notes — migration 010 (`notes TEXT NULL`), PATCH/GET updates, 13 new tests | Integration Check |
+
+**Tasks Carried Over — In Progress / Not Completed (8):**
+
+| ID | Description | Status | Carry-Over Reason |
+|----|-------------|--------|-------------------|
+| T-094 | User Agent: Sprint 6 feature walkthrough (3rd carry-over) | Backlog | T-098/T-104 blocked QA → pipeline never reached User Agent phase |
+| T-098 | Backend + Frontend: Stays UTC timezone fix | In Progress → Backlog | Backend approved; frontend UTC conversion logic correct; 1 test failing (UTC not in TIMEZONES dropdown) + 1 TripDetailsPage test missing |
+| T-104 | Frontend: Trip notes UI (TripDetailsPage + TripCard) | In Progress → Backlog | Code complete and approved; 0 of 8 required tests written |
+| T-105 | QA: Security checklist + code review audit | Backlog | T-098 and T-104 still In Progress — QA could not start |
+| T-106 | QA: Integration testing | Backlog | T-105 not started |
+| T-107 | Deploy: Staging re-deployment (migration 010) | Blocked | QA not cleared; Deploy Engineer correctly enforced the dependency gate |
+| T-108 | Monitor: Staging health check | Backlog | T-107 not started |
+| T-109 | User Agent: Sprint 7 feature walkthrough | Backlog | T-108 not started |
+
+---
+
+**Key Decisions (ADRs / Approvals This Sprint):**
+
+- **Calendar Popover Portal Pattern (T-097 — Approved):** `DayPopover` now renders via `ReactDOM.createPortal` to `document.body` with `position:fixed` coordinates from `getBoundingClientRect()`. This eliminates the CSS grid layout corruption root cause — the popover no longer exists inside the constrained day cell's layout flow. Accessibility (role="dialog", Escape-to-close, click-outside, focus return to trigger) maintained. 3 dedicated portal tests added to `TripCalendar.test.jsx`.
+- **T-102 Collapsed into T-096:** Trip notes design spec was manageable in a single Spec 13 document alongside the calendar enhancements spec. Manager pre-approved the collapse during sprint planning. T-102 marked Done.
+- **Frontend UTC Conversion Helper (T-098 partial — Approved):** `localDatetimeToUTC` helper correctly converts datetime-local input + IANA timezone string to UTC ISO 8601 for API submission. Backend `pg` type parser override (OID 1184 → `new Date(val).toISOString()`) resolves server-side TIMESTAMPTZ serialization drift. Both implementation changes approved in Manager review. Remaining blocker is test fixture issue only (UTC not in TIMEZONES dropdown).
+- **Trip Notes API Design (T-103 — Approved):** `notes TEXT NULL` added via migration 010 with clean rollback. Whitespace-only input normalized to `null` before storage. `TRIP_COLUMNS` array propagates `notes` to all GET responses automatically. 2000-char max enforced via middleware. Empty string `''` normalized to `null` (preferable to contract doc; QA to verify behavior in T-106).
+- **Deploy Gate Enforced (T-107 — Blocked Correctly):** Deploy Engineer verified QA sign-off was absent and did not proceed with deployment. All 4 blockers were documented in handoff-log.md before blocking. This is the correct behavior per workspace rules.
+
+---
+
+**Feedback Summary (Sprint 7):**
+
+*No Sprint 7 feedback entries. T-094 (User Agent Sprint 6 carry-over) remained in Backlog. T-109 (User Agent Sprint 7 walkthrough) also did not run — the full QA pipeline was blocked by T-098/T-104 test issues. Zero feedback entries to triage.*
+
+*All Sprint 6 project-owner feedback (FB-078 through FB-084) was triaged at Sprint 7 planning and remains at its triaged status. No entries are "New." FB-084 (timezone abbreviation display) remains "Acknowledged" and deferred to Sprint 8 after T-098 lands fully.*
+
+---
+
+**What Went Well:**
+
+- **Five implementation tasks passed Manager code review cleanly:** T-097, T-099, T-100, T-101, T-103 all reached Integration Check with solid, production-ready implementations. The popover portal fix, section reorder, all-day sort, calendar checkout/arrival display, and trip notes backend are all correct pending QA sign-off.
+- **T-097 (popover) root cause correctly identified and fixed:** Using `createPortal` to render the `DayPopover` at `document.body` with `position:fixed` is the architecturally correct solution to CSS grid containment. Accessibility model maintained across all 4 close triggers.
+- **T-103 backend trip notes is comprehensive:** 13 tests cover all boundary cases — GET null/string, list includes notes, PATCH set/clear/omit/whitespace/2000-char boundary/overflow/POST-with-notes. Migration 010 includes proper rollback.
+- **T-098 backend side is correct:** The pg type parser override and `localDatetimeToUTC` helper are both approved. The remaining issue is a test fixture problem (UTC not in dropdown), not a logic error in the fix.
+- **T-095 infrastructure restored immediately:** HTTPS re-enabled, pm2 re-registered, CORS and Secure cookie flags verified on Day 1 of the sprint. Staging infrastructure is fully ready for testing.
+- **Deploy Engineer correctly blocked T-107:** Pre-deploy verification found 4 blockers and refused to deploy without QA sign-off. The dependency chain is working as designed — no partial deployments were made.
+- **Test count grew:** Backend grew from 247 → 265 tests (+18). Frontend has 343 tests (1 failing T-098 UTC fixture; 342 passing from T-097/T-099/T-100/T-101 additions).
+
+**What Could Improve:**
+
+- **Pre-submission test runs must be mandatory:** T-104's code was complete but had zero tests submitted for review — the In Review submission should have been blocked by a pre-submission checklist. T-098's test had a broken fixture (UTC not in TIMEZONES dropdown) that a local `npm test` run would have caught immediately. **Action: Engineers must run the full test suite locally before moving any task to In Review.**
+- **T-094 has carried over three consecutive sprints:** The User Agent Sprint 6 walkthrough has been blocked for two full sprint closeouts (Sprint 6 and Sprint 7). Sprint 6 features have never been tested by the User Agent. This is a widening quality blindspot. Sprint 8 must treat T-094 as a P0 hard-block — no new feature implementation starts until T-094 completes and its feedback is triaged.
+- **Sprint scope was too wide for reliable pipeline closure:** 16 tasks were planned; only 3 reached Done. The sprint needed the full QA-Deploy-Monitor-User chain to close, but two late-stage test failures blocked the entire second half of the pipeline. Reducing implementation scope (6–8 implementation tasks) to guarantee the full pipeline completes within the sprint boundary would produce better outcomes.
+- **T-103 contract doc slightly misleading:** `api-contracts.md` states `{ "notes": "" }` stores an empty string, but code normalizes `''` to `null`. Behavior is correct and preferable, but the contract doc should be updated when QA runs T-106.
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 8+):**
+
+*From Sprint 1 (still outstanding):*
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (no production impact, B-021)
+
+*From Sprint 2 (still outstanding):*
+- ⚠️ Rate limiting uses in-memory store — will not persist across restarts or scale across processes (B-020)
+
+*From Sprint 3 (still outstanding):*
+- ⚠️ Auth rate limit is IP-based only — aggressive on shared-IP environments (B-024)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+
+*From Sprint 5 (still outstanding):*
+- ⚠️ Sort logic duplicated across status-filter vs non-status-filter code paths in tripModel.js (minor DRY violation)
+
+*New from Sprint 7:*
+- ⚠️ T-098 frontend test broken: UTC not in TIMEZONES array → test fixture fails; `api.stays.create` never called (fix: add UTC to dropdown OR rewrite test to use a timezone already in the array)
+- ⚠️ T-104 has 0 of 8 required tests written despite complete code implementation
+- ⚠️ T-094 User Agent Sprint 6 walkthrough has never run — Sprint 6 features (land travel, calendar enhancements, bug fixes) are untested by the User Agent (3rd consecutive carry-over)
+- ⚠️ 5 tasks in Integration Check (T-097, T-099, T-100, T-101, T-103) have not passed formal QA — carry to Sprint 8 QA queue as first priority
+- ⚠️ api-contracts.md notes section: `{ "notes": "" }` described as storing empty string, but code normalizes to null — minor doc inconsistency; update in Sprint 8 QA
+
+*Resolved this sprint (from prior debt):*
+- ✅ HTTPS disabled on staging (Sprint 6 deployment gap) → resolved by T-095
+- ✅ Backend not running under pm2 (Sprint 6 deployment gap) → resolved by T-095
+
+---
+
+**Next Sprint Focus (Sprint 8 Recommendations):**
+
+*Priority order: unblock the pipeline → complete T-094 carry-over → full QA-Deploy-Monitor-User cycle → production deployment decision → feature enhancements.*
+
+**P0 — Sprint 8 Must-Do First (Unblock the Pipeline):**
+1. **Fix T-098 frontend tests** — Either add `{ label: 'UTC — Coordinated Universal Time', value: 'UTC' }` to `frontend/src/utils/timezones.js` (expected `check_in_at` stays `'2026-09-01T12:00:00.000Z'` with zero offset), OR rewrite the UTC test to use a timezone already in the dropdown (e.g., `'Europe/London'` in winter). Also add the missing `TripDetailsPage.test.jsx` T-098 test (stay with `check_in_at: '2026-08-07T20:00:00.000Z'` + `check_in_tz: 'America/New_York'` → displays "4:00 PM"). Move to In Review after both tests pass.
+2. **Fix T-104 tests** — Write 8+ tests: `TripDetailsPage.test.jsx` (renders notes text, "no notes yet" placeholder, pencil→edit mode, char count ≥1800, save calls `api.trips.update`, cancel restores, empty notes sends `null`) + `TripCard.test.jsx` (truncated notes >100 chars with ellipsis, full notes ≤100 chars, notes hidden when null). Move to In Review when all tests pass.
+3. **Run T-094 IMMEDIATELY (P0 hard-block)** — User Agent tests all Sprint 6 features (land travel CRUD via UI, calendar enhancements, bug fix verification, Sprint 1–5 regression). Third carry-over — no new features are scoped for Sprint 9 until T-094 feedback is triaged.
+4. **QA: Run T-105 + T-106** — Security checklist and integration testing for all Sprint 7 implementation tasks (T-097, T-098, T-099, T-100, T-101, T-103, T-104). QA handoff already in handoff-log.md (Status: Pending from Manager).
+5. **Deploy + Monitor: T-107 + T-108** — Apply migration 010, rebuild frontend, verify all Sprint 7 features on staging.
+6. **User Agent Sprint 7 walkthrough: T-109** — Full feature verification + Sprint 6 regression. Triage T-109 feedback before Sprint 9 planning.
+
+**P0 — Production Deployment (Blocked on Human Decision — Sprint 3+):**
+7. **B-022** — Production deployment to hosting provider. Blocked since Sprint 3 on the project owner selecting a hosting provider (Railway, Fly.io, Render, AWS), configuring DNS, and provisioning production PostgreSQL. All infrastructure is complete: Docker Compose, CI/CD pipeline, Dockerfiles, nginx config, deployment runbook. **Escalated for 5 consecutive sprints. No decision received. Escalating again — this is now the single most critical outstanding item.**
+
+**P1 — Feature Enhancements (after T-094 and T-109 feedback triaged):**
+8. **FB-084 / Timezone abbreviations** — Deferred from Sprint 7. Now unblocked after T-098 timezone fix lands fully. Ready for Sprint 8 implementation after T-098 QA sign-off.
+9. **B-032** — Trip export/print: Printable itinerary view of trip details page.
+10. **B-031** — Activity location links: Detect URLs in activity locations and make them clickable.
+11. Expand E2E coverage: Add Playwright tests for land travel edit flows, calendar overflow interactions, and mobile viewport.
+
+**P2 — Tech Debt (if capacity allows):**
+12. **B-020** — Rate limiting persistence: Move from in-memory to Redis-backed store.
+13. **B-024** — Per-account rate limiting alongside IP-based.
+14. **B-021** — Resolve dev dependency esbuild vulnerability.
+15. Refactor sort logic duplication in tripModel.js (status-filter vs non-filter code paths).
+
+**Out of Scope (per project brief):**
+- MFA login
+- Home page summary calendar
+- Auto-generated itinerary suggestions
+
+---
+
 *Add new sprint summaries above this line, newest first.*
