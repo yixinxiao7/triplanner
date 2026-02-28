@@ -17,6 +17,90 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 9 Backend Engineer → QA Engineer: Sprint 9 Contract Review + Notes Field Correction (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 9 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Tasks | T-116, T-117, T-103 (Sprint 7 correction) |
+| Handoff Summary | Sprint 9 API contract review is complete. No new endpoints are introduced this sprint (pipeline-only). One documentation correction has been applied to `api-contracts.md` per T-116's requirement. |
+
+**What the QA Engineer needs to know for T-116 and T-117:**
+
+**1. No New Endpoints This Sprint**
+Sprint 9 has zero new backend API endpoints. All tasks are deploy, monitor, QA audit, E2E expansion, and User Agent walkthrough scope. The API contract table of contents is unchanged from Sprint 8.
+
+**2. Documentation Correction: `notes` Field `""` → `null` Normalization**
+
+The Sprint 7 T-103 contract was documented incorrectly. Three statements implied that:
+- `PATCH /trips/:id` with `{ "notes": "" }` stores `""` in the database
+- `GET /trips` / `GET /trips/:id` may return `"notes": ""`
+- `""` normalization was a frontend display concern
+
+**The corrected behavior (now in `api-contracts.md`, Sprint 9 section):**
+- `PATCH /trips/:id` with `{ "notes": "" }` → API normalizes `""` to `null` → DB stores `NULL` → response returns `"notes": null`
+- GET endpoints never return `"notes": ""` — only `null` or a non-empty string
+- Normalization happens at the API layer (backend), not the frontend display layer
+
+**T-116 audit action required:**
+- Verify the backend implementation in `backend/src/` correctly normalizes `""` to `null` in the trip model/route handler
+- Update any existing T-103 integration tests that assert `{ "notes": "" }` produces `"notes": ""` — they should now assert `"notes": null`
+- The amended test plan is documented in the Sprint 9 section of `api-contracts.md`
+
+**T-117 integration testing action required:**
+- Run: `PATCH /trips/:id` with `{ "notes": "" }` → expect `200`, response `"notes": null` (not `""`)
+- Run: `GET /trips/:id` after above PATCH → expect `"notes": null` (not `""`)
+- Run: `GET /trips` after above PATCH → trip object has `"notes": null`
+- All other T-103 test cases unchanged
+
+**3. No Migration Changes**
+Migration 010 (`notes TEXT NULL`) is unchanged — no schema changes needed. The `TEXT NULL` column already stores `null` correctly. Normalization is application-layer only.
+
+**Reference:** `api-contracts.md` → Sprint 9 Contracts section → "Documentation Correction: `notes` Field `""` → `null` Normalization"
+
+---
+
+### Sprint 9 Backend Engineer → Frontend Engineer: Sprint 9 Contract Review + Notes Field Correction (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 9 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Tasks | T-104 (Sprint 7, trip notes UI), T-103 (Sprint 7 correction) |
+| Handoff Summary | Sprint 9 API contract review complete. No new endpoints. One behavioral correction to the `notes` field contract that affects frontend integration. |
+
+**What the Frontend Engineer needs to know:**
+
+**No New Endpoints**
+Sprint 9 is pipeline-only. You have no implementation tasks this sprint (on standby for hotfixes H-XXX only). This handoff is informational — documenting a contract correction that should be verified in existing code.
+
+**Correction: `notes` Field — API Now Guarantees No `""` in Responses**
+
+The Sprint 7 T-103 contract incorrectly described `""` normalization as a frontend display concern. **The corrected contract states:**
+
+- The API normalizes `{ "notes": "" }` to `null` at the input layer
+- GET endpoints (`GET /trips`, `GET /trips/:id`) only return `null` or a non-empty string for `notes` — **never** `""`
+- The frontend does **not** need a special-case branch for `notes === ""`
+
+**Action for Frontend Engineer (verification, no new implementation):**
+
+Review the existing `notes` handling in the trip-related components and forms (TripDetailsPage, TripCard, notes input form — implemented in T-104). Verify:
+
+1. **Display:** `if (notes)` or `notes != null` guard is used (both work since API guarantees non-empty or null). Any `notes === ""` branch is dead code and can be removed.
+2. **Form submission:** If the notes form field is cleared (user deletes all text), the form submits `""` or `null` — either is fine because the API normalizes `""` to `null` server-side. No frontend change required for this case.
+3. **Test assertions:** Any existing test that asserts `notes === ""` in a response should be updated to assert `notes === null`.
+
+**In practice:** Since migration 010 has not yet reached staging (T-107 will apply it), this correction has zero impact on the currently deployed app. It takes effect when T-107 deploys. If existing T-104 frontend code already uses `if (notes)` (truthy check), no change is needed. The correction only matters if any frontend code explicitly checks `notes !== ""` as a distinct case from `null`.
+
+**Reference:** `api-contracts.md` → Sprint 9 Contracts section → "Documentation Correction: `notes` Field `""` → `null` Normalization"
+
+---
+
 ### Sprint 9 Design Agent — No-Op Acknowledgment (2026-02-27)
 
 | Field | Value |

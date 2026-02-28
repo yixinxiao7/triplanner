@@ -3787,3 +3787,139 @@ The Backend Engineer confirms no new database migrations are required for Sprint
 - T-114 activity URL links use the existing `location TEXT NULL` column in `activities`
 
 *Sprint 8 contract review complete — 2026-02-27. Backend Engineer: no implementation work this sprint. All Sprint 8 features are frontend-only. Existing API contracts (Sprint 1 and Sprint 6) are Agreed and sufficient. Frontend Engineer and QA Engineer should reference this section alongside the original Sprint 1 T-006 and Sprint 6 land travels contracts for integration and testing.*
+
+---
+
+## Sprint 9 Contracts
+
+**Backend Engineer Contract Review — Sprint 9 (2026-02-27)**
+
+Sprint 9 is a **pipeline-only sprint** per `active-sprint.md`. There are zero new backend implementation tasks. The Backend Engineer is on standby for hotfixes (H-XXX) only, which will be scoped here if T-094, T-109, or T-120 User Agent walkthroughs surface Critical or Major bugs. No hotfixes have been created at sprint start.
+
+This section serves two purposes:
+1. **Confirm** no new or changed endpoints are needed for any Sprint 9 task
+2. **Correct** a documentation error in the Sprint 7 T-103 `notes` field contract (flagged by T-116 QA audit)
+
+---
+
+### Sprint 9 — No New API Endpoints
+
+All Sprint 9 tasks are pipeline work (deploys, health checks, QA audits, E2E test expansion, User Agent walkthroughs). No task requires a new or changed API endpoint:
+
+| Task | Reason — No API Contract Change |
+|------|--------------------------------|
+| T-094 (User Agent: Sprint 6 walkthrough) | User testing only. No API changes. |
+| T-107 (Deploy: Sprint 7 staging re-deploy) | Deploy scope. Applies existing migration 010. No new API changes. |
+| T-108 (Monitor: Sprint 7 health check) | Monitor scope. No API changes. |
+| T-109 (User Agent: Sprint 7 walkthrough) | User testing only. No API changes. |
+| T-115 (QA: Playwright E2E expansion 4→7) | Test authoring only. Tests existing endpoints. No API changes. |
+| T-116 (QA: Sprint 8 security + code review) | QA audit only. Flagged the `notes` field documentation error — corrected below. |
+| T-117 (QA: Sprint 8 integration testing) | QA testing only. No API changes. |
+| T-118 (Deploy: Sprint 8 frontend rebuild) | Deploy scope only. No new migrations. No API changes. |
+| T-119 (Monitor: Sprint 8 health check) | Monitor scope. No API changes. |
+| T-120 (User Agent: Sprint 8 walkthrough) | User testing only. No API changes. |
+| H-XXX (Hotfix, if needed) | If created: will be scoped here at that time. Not currently needed. |
+
+---
+
+### Sprint 9 — Documentation Correction: `notes` Field `""` → `null` Normalization
+
+**Flagged by:** T-116 (QA: Sprint 8 security + code review)
+**Correction date:** 2026-02-27
+**Contract sections affected:** `PATCH /api/v1/trips/:id` (T-103, Sprint 7), `GET /api/v1/trips` (T-103, Sprint 7)
+
+#### What Was Wrong
+
+The Sprint 7 T-103 contract contained three documentation statements that incorrectly described how empty-string (`""`) notes values are handled:
+
+1. **`GET /api/v1/trips` — `notes` field note (line ~3453):**
+   > "Empty string `""` is treated as `null` at the display layer (frontend) — the API may return `""` or `null` when notes are cleared; frontend treats both as 'no notes'"
+
+2. **`PATCH /api/v1/trips/:id` — Field Validation Table (line ~3534):**
+   > "Empty string `""` is accepted and stored as-is (equivalent to null at the display layer)."
+
+3. **`PATCH /api/v1/trips/:id` — Notes section (line ~3584):**
+   > "Sending `{ "notes": "" }` stores an empty string in the DB (treated as 'no notes' in the frontend display layer)."
+
+**The problem:** These statements described `""` normalization as a **frontend display concern** and implied the API might store `""` in the database. This is incorrect. The normalization belongs at the **API layer** — the backend must normalize `""` to `null` before writing to the database and must never return `""` from the GET endpoints.
+
+#### Corrected Behavior (Authoritative from Sprint 9 Forward)
+
+**Rule:** The API normalizes empty string (`""`) to `null` at the input boundary. The database column `notes TEXT NULL` only ever holds `null` or a non-empty string. The API response only ever returns `null` or a non-empty string for the `notes` field. The frontend does **not** need to treat `""` and `null` as equivalent — the API guarantees `notes` is always `null | non-empty string`.
+
+---
+
+#### Corrected: `PATCH /api/v1/trips/:id` — `notes` Field Validation Rule
+
+**Replaces** the Sprint 7 T-103 field validation table entry for `notes`.
+
+| Field | Rules |
+|-------|-------|
+| `notes` | String or null. If string: max length 2000 characters (whitespace preserved — no trimming). If string is empty (`""`): **normalized to `null` at the API layer — stored as NULL in the database**. If null: clears the notes field (sets DB column to NULL). |
+
+**Corrected behavior table:**
+
+| Request value | API action | DB stored | Response value |
+|---------------|-----------|-----------|----------------|
+| `"My notes text"` | Store as-is | `"My notes text"` | `"My notes text"` |
+| `""` (empty string) | Normalize to null | `NULL` | `null` |
+| `null` | Clear field | `NULL` | `null` |
+| *(field omitted)* | No change | *(unchanged)* | *(current value)* |
+
+**Corrected Notes section (replaces Sprint 7 bullets):**
+- Sending `{ "notes": null }` explicitly clears the notes field (sets DB column to NULL). Response returns `"notes": null`.
+- Sending `{ "notes": "" }` is **normalized by the API to null** — stored as NULL in DB, response returns `"notes": null`. The frontend does not need special-case handling for `""`.
+- Sending `{ "notes": "text" }` stores the non-empty string. Response returns `"notes": "text"`.
+- `notes` participates in the existing `NO_UPDATABLE_FIELDS` check — if the ONLY field sent is `notes`, it is a valid update (not a `NO_UPDATABLE_FIELDS` error) because `notes` is an accepted updatable field.
+- `updated_at` is bumped on every successful PATCH that includes `notes` (including `""` → null normalization).
+
+---
+
+#### Corrected: `GET /api/v1/trips` and `GET /api/v1/trips/:id` — `notes` Field Contract
+
+**Replaces** the Sprint 7 T-103 `notes` field description in both GET endpoints.
+
+**`notes` field (all GET trip endpoints):**
+- Type: `string | null`
+- `null` when no notes have been set, or when notes were cleared (including via `""` input)
+- Non-null, non-empty string (1–2000 chars) when notes exist
+- The API **never** returns `""` for the `notes` field — only `null` or a non-empty string
+
+**Frontend integration note:** Frontend components rendering `notes` should check `if (notes)` (falsy check) — both `null` and an empty string (which the API now guarantees won't appear) are handled correctly this way. No special `notes === ""` branch is needed.
+
+---
+
+#### Corrected: Test Plan Entries for T-103
+
+The following test plan entries from Sprint 7 T-103 are **amended** (additions in bold):
+
+**Happy paths (corrected):**
+- `PATCH /trips/:id` with `{ "notes": "My Tokyo trip notes" }` → 200, response includes `"notes": "My Tokyo trip notes"`
+- `PATCH /trips/:id` with `{ "notes": null }` → 200, response includes `"notes": null`
+- ~~`PATCH /trips/:id` with `{ "notes": "" }` → 200, response includes `"notes": ""`~~ **CORRECTED:** `PATCH /trips/:id` with `{ "notes": "" }` → 200, **response includes `"notes": null`** (empty string normalized to null at API layer)
+- `GET /trips` after notes are cleared via `""` → `"notes": null` in response *(not `""`)* **[NEW]**
+- `GET /trips/:id` after notes cleared via `""` → `"notes": null` *(not `""`)* **[NEW]**
+
+**Invariant (must always hold):**
+- The API never returns `"notes": ""` — only `null` or a non-empty string
+
+---
+
+#### Migration Impact
+
+No migration changes required. The `notes TEXT NULL` column (migration 010) already allows NULL, which is the normalized storage value for both `null` and `""` inputs. The normalization is applied at the application validation layer in `backend/src/models/tripModel.js` (or the route handler), not at the DB schema level.
+
+---
+
+### Sprint 9 — No Schema Changes
+
+No new database migrations are introduced in Sprint 9. The outstanding pending migration is still migration 010 (`notes TEXT NULL`) from Sprint 7, which will be applied by the Deploy Engineer as part of T-107.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | Pending staging deploy (T-107) — pre-approved |
+| — | 9 | *(No new migrations)* | Sprint 9 is pipeline-only |
+
+---
+
+*Sprint 9 contract review complete — 2026-02-27. Backend Engineer: no new endpoints or schema changes this sprint. One documentation correction applied to the Sprint 7 T-103 `notes` field contract: empty string `""` is now documented as API-layer normalized to `null` (not a frontend display concern). This correction has no impact on already-deployed behavior since migration 010 has not yet reached staging — T-107 will apply it fresh with the correct normalization semantics. Frontend Engineer: update your `notes` handling to rely on the API guarantee (never returns `""`). QA Engineer: update T-103 test plan line for `{ "notes": "" }` — expect `"notes": null` in response, not `"notes": ""`.*
