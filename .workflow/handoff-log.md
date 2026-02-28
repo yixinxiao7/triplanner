@@ -17,6 +17,91 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 9 Manager Agent: Code Review Pass #2 — Zero Tasks in "In Review" (Confirmed) (2026-02-28)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 9 |
+| From Agent | Manager Agent |
+| To Agent | QA Engineer, Deploy Engineer, User Agent |
+| Status | Done |
+| Related Tasks | All Sprint 9 pipeline tasks (T-094, T-107–T-120) |
+| Handoff Summary | Second independent code review pass completed. `grep '\| In Review \|' dev-cycle-tracker.md` returns **zero matches**. No tasks require Manager review. Sprint 9 remains a pipeline-closure-only sprint. All implementation tasks from Sprints 7–8 are Manager-approved and sitting in Integration Check. Pipeline status is unchanged — next actions are T-107 (Deploy) and T-094 (User Agent) running in parallel. |
+
+**Code Review Findings (Sprint 9 — 2026-02-28):**
+
+**Tasks Reviewed:** 0 (none in "In Review" status)
+**Tasks Approved:** 0
+**Tasks Sent Back:** 0
+**Rework Required:** None
+
+**Current Task Status Map (Integration Check — Manager Pre-Approved):**
+
+| Task | Feature | Review Status |
+|------|---------|---------------|
+| T-097 | "+X more" popover portal fix | ✅ APPROVED Sprint 7 |
+| T-098 | Stays UTC timezone fix | ✅ APPROVED Sprint 8 (via T-110) |
+| T-099 | Trip details section reorder | ✅ APPROVED Sprint 7 |
+| T-100 | All-day activities sort to top | ✅ APPROVED Sprint 7 |
+| T-101 | Calendar checkout/arrival display | ✅ APPROVED Sprint 7 |
+| T-103 | Trip notes backend (migration 010) | ✅ APPROVED Sprint 7 |
+| T-104 | Trip notes frontend UI | ✅ APPROVED Sprint 8 (via T-111) |
+| T-113 | Timezone abbreviations (FlightCard, StayCard) | ✅ APPROVED Sprint 8 |
+| T-114 | Activity URL linkification | ✅ APPROVED Sprint 8 |
+
+**Test Coverage (confirmed passing at time of prior approvals):**
+- Backend: 266/266 tests pass (includes Sprint 9 `notes: "" → null` regression test)
+- Frontend: 366/366 tests pass (22 test files)
+
+**Security Status:**
+- No hardcoded secrets detected in any approved task
+- T-114 URL linkification: `javascript:` / `data:` / `vbscript:` blocked by `https?://` allowlist; `rel="noopener noreferrer"` present ✅
+- T-113 timezone: `Intl.DateTimeFormat().formatToParts()` with try/catch; no `eval()` ✅
+- T-103 notes: input sanitized via `trim()` + `|| null` normalization ✅
+- All queries parameterized via Knex (no raw SQL) ✅
+- No stack traces leaked in error responses ✅
+
+**Action Required from Other Agents:**
+- **Deploy Engineer:** Start T-107 immediately (Sprint 7 staging deploy — no blockers, T-106 Done)
+- **User Agent:** Start T-094 immediately (Sprint 6 walkthrough — 4th carry-over, cannot slip)
+- **QA Engineer:** T-116/T-117 code review portions are already complete (18/18 pass); staging E2E gated on T-107 → T-108 → T-109 → T-115 pipeline
+- **Frontend/Backend Engineers:** Standby for hotfixes only — no new implementation tasks
+
+**Manager Action:** No rework dispatched. No tasks sent back to engineers. Pipeline unblocked.
+
+---
+
+### Sprint 9 Frontend Engineer: Sprint Review — No Implementation Tasks (2026-02-28)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 9 |
+| From Agent | Frontend Engineer |
+| To Agent | Manager Agent (informational) |
+| Status | Done |
+| Related Tasks | All Sprint 9 frontend tasks (none) |
+| Handoff Summary | Frontend Engineer completed Sprint #9 sprint review. Sprint 9 is a pipeline-closure-only sprint with zero new frontend implementation tasks assigned. Per `active-sprint.md`: Frontend Engineer is "on standby to fix hotfixes if T-094/T-109 finds Critical/Major bugs." |
+
+**Sprint 9 Frontend Status (as of 2026-02-28):**
+
+**No tasks to implement.** All Sprint 9 frontend work is accounted for:
+
+**Integration Check (already Manager-approved, awaiting QA/Deploy/Monitor pipeline to promote to Done):**
+- T-097: "+X more" popover portal fix — APPROVED, Integration Check
+- T-098: Stays UTC timezone fix — APPROVED via T-110, Integration Check
+- T-099: Trip details section reorder — APPROVED, Integration Check
+- T-100: All-day activities sort to top of day group — APPROVED, Integration Check
+- T-101: Calendar checkout/arrival time display — APPROVED, Integration Check
+- T-104: Trip notes UI (TripDetailsPage + TripCard) — APPROVED via T-111, Integration Check
+- T-113: Timezone abbreviations on flight/stay detail cards — APPROVED, Integration Check
+- T-114: Activity location clickable URL detection — APPROVED, Integration Check
+
+**All 366 frontend tests pass** (last confirmed by Manager during T-113/T-114 approvals).
+
+**Standby protocol:** Frontend Engineer is available to create hotfix tasks (H-XXX) immediately if T-094 (User Agent Sprint 6 walkthrough) or T-109 (User Agent Sprint 7 walkthrough) surfaces Critical or Major bugs. No such bugs have been reported as of this review — T-094 and T-109 are both still Backlog (User Agent has not yet completed them). No action required from Frontend Engineer at this time.
+
+---
+
 ### Sprint 9 Manager Agent: Code Review — No Tasks in "In Review" (2026-02-28)
 
 | Field | Value |
@@ -899,4 +984,157 @@ QA: When T-116 begins, include T-114 security checklist verification. Specifical
 - Verify timezone abbreviation visible on staging flight detail card
 - Verify URL linkification visible on staging activity with URL in location
 - Sprint 7 regression: all sections, notes, timezone fix, popover
+
+
+---
+
+### Sprint 9 — QA Engineer: T-116/T-117 Sprint 9 QA Run — COMPLETE (Code Review) / BLOCKED (Staging E2E) (2026-02-28)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-02-28 |
+| From Agent | QA Engineer |
+| To Agent | Deploy Engineer (T-107 is the critical blocker — must proceed immediately) |
+| Status | Unit Tests + Security + Integration (Code Review): ✅ ALL PASS — Staging E2E: 🚫 BLOCKED pending T-107 |
+| Related Tasks | T-116 (Sprint 8 Security Audit), T-117 (Sprint 8 Integration Testing), T-107 (Sprint 7 Deploy — BLOCKER), T-115 (Playwright expansion), T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114 |
+| Handoff Summary | **Sprint 9 QA run complete.** Backend 266/266 + Frontend 366/366 unit tests pass. Security checklist 18/18 PASS. All T-116/T-117 code review checks PASS. Config consistency 6/6 PASS. The only remaining blocker is the staging pipeline (T-107 Deploy → T-108 Monitor → T-109 User Agent → T-115 Playwright expansion). **Deploy Engineer: T-107 is the critical blocker — begin immediately.** |
+
+**T-116 Security Audit Result (Sprint 9 confirmation): ✅ 18/18 PASS**
+
+All Sprint 8 security checks verified via code review:
+- T-113: `Intl.DateTimeFormat` used correctly, no `eval()`, no code execution of IANA strings ✅
+- T-113: try/catch fallback returns IANA string on error (safe, no crash, no info leak) ✅
+- T-113: null/undefined guard returns `''` — no downstream errors ✅
+- T-113: Test assertions dynamic (formatTimezoneAbbr() for expected values) — environment-agnostic ✅
+- T-114: strict `^https?://` scheme allowlist — `javascript:`, `data:`, `vbscript:` → plain text ✅
+- T-114: `rel="noopener noreferrer"` + `target="_blank"` on all generated links ✅
+- T-114: No `dangerouslySetInnerHTML` in URL rendering path ✅
+- T-114: href content from regex match on plain text only (no HTML injection) ✅
+- T-114: XSS test `javascript:alert(1)` confirmed plain text (test passes) ✅
+- Sprint 9 `notes` `""` → `null` normalization: POST and PATCH both normalize correctly ✅
+- Rate limiting: login 10/15min, register 20/15min, general 30/15min ✅
+- Helmet security headers configured ✅
+- HTTPS on staging (SSL_KEY_PATH + SSL_CERT_PATH in backend/.env, COOKIE_SECURE=true) ✅
+- npm audit: 0 production vulnerabilities (backend + frontend) ✅
+- No hardcoded secrets in backend source ✅
+- E2E test password (`TEST_PASSWORD = 'Test1234!'`): test-only ephemeral account credential — acceptable ✅
+- CORS_ORIGIN=https://localhost:4173 matches staging preview server ✅
+- Error responses: no stack traces, structured JSON only ✅
+
+**T-117 Integration Test Result (Sprint 9 confirmation): ✅ 18/18 code-review checks PASS**
+
+- FlightCard: `formatTimezoneAbbr(departure_at, departure_tz)` + `formatTimezoneAbbr(arrival_at, arrival_tz)` ✅
+- StayCard: `formatTimezoneAbbr(check_in_at, check_in_tz)` + `formatTimezoneAbbr(check_out_at, check_out_tz)` ✅
+- LandTravelCard: correctly NOT modified (no IANA tz fields in schema) ✅
+- ActivityEntry: `parseLocationWithLinks(activity.location)` → React element array ✅
+- `javascript:` scheme renders as plain text (T-114 security critical path) ✅
+- Notes `""` → `null` normalization: POST (`|| null` idiom) + PATCH (explicit `=== ''` check) ✅
+- Sprint 9 contract correction: API never returns `"notes": ""` — only `null` or non-empty string ✅
+- All 266 backend + 366 frontend unit tests pass (confirmed by running `npm test` on both) ✅
+
+**Unit Test Counts (Sprint 9):**
+- Backend: 266/266 ✅ (+1 from Sprint 8's 265 — new notes normalization test in sprint7.test.js)
+- Frontend: 366/366 ✅ (unchanged from Sprint 8)
+
+**Config Consistency (Sprint 9): ✅ 6/6 PASS**
+- vite.config.js uses `BACKEND_PORT` env var (dynamic, not hardcoded) — dual-mode design is intentional ✅
+- Docker-compose: backend PORT=3000, CORS_ORIGIN=http://localhost — internally consistent ✅
+- Staging: backend/.env PORT=3001, CORS_ORIGIN=https://localhost:4173 — matches vite preview ✅
+- No config mismatches. No handoffs required for config issues.
+
+**Playwright E2E Status (T-115): 🚫 BLOCKED**
+- Current: 4 tests exist in `e2e/critical-flows.spec.js` (Tests 1-4: core flow, sub-resources, search/filter/sort, rate limit)
+- T-115 adds 3 tests (land travel edit, calendar overflow, mobile viewport) → 7 total
+- Cannot run until T-107 Deploy completes → T-108 Monitor → T-109 User Agent → then T-115 Playwright
+
+**Pipeline Critical Path (Deploy Engineer action required now):**
+```
+T-107 Deploy Sprint 7 ← START IMMEDIATELY
+  → T-108 Monitor Sprint 7 health check
+  → T-094 User Agent Sprint 6 walkthrough (parallel with T-107)
+  → T-109 User Agent Sprint 7 walkthrough (after T-108 + T-094)
+  → T-115 QA Playwright 4→7 tests
+  → T-116/T-117 Complete (staging E2E portion)
+  → T-118 Deploy Sprint 8
+  → T-119 Monitor Sprint 8
+  → T-120 User Agent Sprint 8
+```
+
+**Tasks in Integration Check (T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114):** Remain in Integration Check. Will move to Done after T-115 Playwright expansion and T-118 Deploy Sprint 8 confirm all features on staging.
+
+---
+
+### Sprint 9 — QA Engineer → Deploy Engineer: T-107 Critical Path Blocker — ESCALATION (2026-02-28, Run 2)
+
+| Field | Value |
+|-------|-------|
+| From | QA Engineer |
+| To | Deploy Engineer |
+| Date | 2026-02-28 |
+| Status | BLOCKED — Deploy Needed |
+| Related Tasks | T-107 (Sprint 7 Staging Deploy — **CRITICAL PATH**), T-116, T-117, T-115, T-118, T-097–T-104, T-113, T-114 |
+| Handoff Summary | **QA Run 2 complete. All code-level checks PASS. The only remaining blocker for the entire Sprint 9 pipeline is T-107 (Deploy Sprint 7 staging).** T-107 has been in Backlog since Sprint 8. QA has now completed two full code-review passes confirming readiness. The staging E2E pipeline cannot proceed until T-107 deploys the Sprint 7 changes to staging. |
+
+**QA Run 2 — All Code-Level Checks PASS:**
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests | ✅ 266/266 PASS (confirmed fresh run) |
+| Frontend unit tests | ✅ 366/366 PASS (confirmed fresh run) |
+| npm audit (backend production) | ✅ 0 vulnerabilities |
+| npm audit (frontend production) | ✅ 0 vulnerabilities |
+| Security checklist (18 items) | ✅ 18/18 PASS |
+| Config consistency (6 items) | ✅ 6/6 PASS |
+| T-113 integration contracts (5 checks) | ✅ 5/5 PASS — source code verified |
+| T-114 integration contracts (5 checks) | ✅ 5/5 PASS — source code + XSS checks verified |
+| Sprint 9 notes `""` → `null` normalization | ✅ PASS — trips.js:154 confirmed |
+
+**What T-107 Must Do (per its task description):**
+1. Run `knex migrate:latest` — applies migration 010 (`notes TEXT NULL` on trips)
+2. Rebuild frontend with all Sprint 7 changes (T-097 popover portal fix, T-098 stays UTC fix, T-099 section reorder, T-100 all-day sort, T-101 calendar checkout/arrival times, T-104 trip notes UI)
+3. Verify `pm2 list` shows `triplanner-backend` status `online`
+4. Run 5 smoke tests (listed in T-107 test plan in dev-cycle-tracker.md)
+5. Log deployment report in qa-build-log.md
+6. Handoff to Monitor Agent (T-108)
+
+**Complete Pipeline (all gated on T-107):**
+```
+T-107 Deploy Sprint 7  ← CRITICAL BLOCKER — BEGIN NOW
+  → T-108 Monitor Sprint 7 health check
+  → T-094 + T-109 User Agent walkthroughs (parallel after T-108)
+  → T-115 QA Playwright 4→7 E2E expansion (after T-109)
+  → T-116/T-117 staging E2E complete → Integration Check tasks → Done
+  → T-118 Deploy Sprint 8
+  → T-119 Monitor Sprint 8
+  → T-120 User Agent Sprint 8
+  → Sprint 9 closure complete
+```
+
+**No further QA action needed before T-107 completes.** QA re-invocation required after T-115 (Playwright E2E expansion) to run the 7-test suite on staging and move all Integration Check tasks to Done.
+
+---
+
+### Sprint 9 — QA Engineer → Manager Agent: Sprint 9 QA Run 2 Complete (2026-02-28)
+
+| Field | Value |
+|-------|-------|
+| From | QA Engineer |
+| To | Manager Agent |
+| Date | 2026-02-28 |
+| Status | Code Review COMPLETE — Staging BLOCKED on T-107 |
+| Related Tasks | T-116, T-117, T-115, T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114 |
+| Handoff Summary | QA Run 2 complete. All unit tests, security checks, config checks, and code-review integration checks PASS. No regressions found. No new P1 issues. The full staging pipeline remains blocked on T-107 (Deploy Sprint 7). Escalation sent to Deploy Engineer. Tasks T-097–T-104 and T-113–T-114 remain in Integration Check. |
+
+**Sprint 9 QA Run 2 — Full Summary:**
+- Backend: 266/266 unit tests PASS ✅ (fresh run confirmed)
+- Frontend: 366/366 unit tests PASS (includes T-113 ×5, T-114 ×5) ✅ (fresh run confirmed)
+- npm audit: 0 production vulnerabilities (backend + frontend) ✅
+- Security checklist: 18/18 PASS — rate limiting confirmed at auth.js route level ✅
+- Config consistency: 6/6 PASS — no changes since Run 1 ✅
+- T-113: source verified — `formatTimezoneAbbr` uses `Intl.DateTimeFormat`, no `eval()`, try/catch fallback, null guard ✅
+- T-114: source verified — `parseLocationWithLinks` uses strict `^https?://` regex, `rel="noopener noreferrer"`, `target="_blank"`, no `dangerouslySetInnerHTML` ✅
+- Sprint 9 notes `""` → `null` normalization: confirmed `trips.js:154` + `sprint7.test.js:459` test passes ✅
+- Playwright E2E: 4/4 tests in e2e/critical-flows.spec.js. T-115 targets 7. BLOCKED pending T-107 staging pipeline ⚠️
+
+**Recommendation:** T-107 is Sprint 9's only remaining blocker. All code has passed QA. Deploy Engineer must proceed with T-107 immediately to unblock the full pipeline and allow Sprint 9 to close.
 

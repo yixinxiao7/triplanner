@@ -468,3 +468,431 @@ Sprint 7+8 frontend test coverage highlights:
 
 **Pre-Deploy Status (T-107):** ✅ READY — All Sprint 7 tasks verified. Backend 265/265 + Frontend 366/366 tests pass. Security checklist clear. T-107 deploy can proceed immediately.
 
+---
+
+## Sprint 9 QA Log — 2026-02-28
+
+**Sprint:** 9 (pipeline-closure-only sprint)
+**QA Engineer invocation:** QA re-run for Sprint 9 — unit tests, security re-verification, config consistency, integration contract re-check, staging pipeline status.
+**Scope:** T-116 (Sprint 8 security audit) + T-117 (Sprint 8 integration testing) + ongoing unit test verification for all Integration Check tasks (T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114).
+
+---
+
+### Sprint 9 — Test Type: Unit Test
+
+**Date:** 2026-02-28
+
+#### Backend Unit Tests
+
+| File | Tests | Status |
+|------|-------|--------|
+| `src/__tests__/sprint4.test.js` | 19 | ✅ PASS |
+| `src/__tests__/auth.test.js` | 14 | ✅ PASS |
+| `src/__tests__/sprint7.test.js` | 19 | ✅ PASS |
+| `src/__tests__/sprint5.test.js` | 28 | ✅ PASS |
+| `src/__tests__/sprint3.test.js` | 33 | ✅ PASS |
+| `src/__tests__/sprint2.test.js` | 37 | ✅ PASS |
+| `src/__tests__/sprint6.test.js` | 51 | ✅ PASS |
+| `src/__tests__/tripStatus.test.js` | 19 | ✅ PASS |
+| `src/__tests__/stays.test.js` | 8 | ✅ PASS |
+| `src/__tests__/flights.test.js` | 10 | ✅ PASS |
+| `src/__tests__/activities.test.js` | 12 | ✅ PASS |
+| `src/__tests__/trips.test.js` | 16 | ✅ PASS |
+| **TOTAL** | **266** | **✅ ALL PASS** |
+
+**Stderr notes:** Two expected stderr lines appear in `sprint2.test.js` for the "T-027/B-012: Malformed JSON returns 400 INVALID_JSON" tests. These are intentional — the error handler logs parse errors to stderr when processing malformed JSON test inputs. Both tests pass.
+
+**Count change from Sprint 8:** 265 → 266 (+1 test). Consistent with test additions in `sprint7.test.js` (`notes: ""` normalization test).
+
+#### Frontend Unit Tests
+
+| File | Tests | Status |
+|------|-------|--------|
+| `src/__tests__/useTripDetails.test.js` | 21 | ✅ PASS |
+| `src/__tests__/ActivitiesEditPage.test.jsx` | 18 | ✅ PASS |
+| `src/__tests__/LandTravelEditPage.test.jsx` | 16 | ✅ PASS |
+| `src/__tests__/TripCalendar.test.jsx` | 35 | ✅ PASS |
+| `src/__tests__/HomePage.test.jsx` | 14 | ✅ PASS |
+| `src/__tests__/StaysEditPage.test.jsx` | 22 | ✅ PASS |
+| `src/__tests__/TripDetailsPage.test.jsx` | 66 | ✅ PASS |
+| `src/__tests__/axiosInterceptor.test.js` | 8 | ✅ PASS |
+| `src/__tests__/useTrips.test.js` | 11 | ✅ PASS |
+| `src/__tests__/RegisterPage.test.jsx` | 13 | ✅ PASS |
+| `src/__tests__/FlightsEditPage.test.jsx` | 19 | ✅ PASS |
+| `src/__tests__/FilterToolbar.test.jsx` | 17 | ✅ PASS |
+| `src/__tests__/DestinationChipInput.test.jsx` | 18 | ✅ PASS |
+| `src/__tests__/HomePageSearch.test.jsx` | 11 | ✅ PASS |
+| `src/__tests__/LoginPage.test.jsx` | 13 | ✅ PASS |
+| `src/__tests__/CreateTripModal.test.jsx` | 11 | ✅ PASS |
+| `src/__tests__/TripCard.test.jsx` | 12 | ✅ PASS |
+| `src/__tests__/formatDate.test.js` | 14 | ✅ PASS |
+| `src/__tests__/EmptySearchResults.test.jsx` | 8 | ✅ PASS |
+| `src/__tests__/rateLimitUtils.test.js` | 9 | ✅ PASS |
+| `src/__tests__/StatusBadge.test.jsx` | 4 | ✅ PASS |
+| `src/__tests__/Navbar.test.jsx` | 6 | ✅ PASS |
+| **TOTAL** | **366** | **✅ ALL PASS** |
+
+**Stderr notes:** `FlightsEditPage.test.jsx` emits React `act()` warnings (state updates not wrapped in act) during several tests. These are pre-existing warnings that don't cause test failures — all 19 FlightsEditPage tests pass. Non-blocking.
+
+#### Unit Test Coverage Spot-Check (Sprint 8 features)
+
+**T-113 (Timezone abbreviations) — TripDetailsPage.test.jsx:**
+| Test | Coverage | Status |
+|------|----------|--------|
+| `[T-113] flight departure shows EDT for America/New_York in summer` | Happy path: EDT detection (DST-aware) | ✅ PASS |
+| `[T-113] stay check-in shows correct timezone abbreviation (JST for Asia/Tokyo)` | Happy path: JST detection, both check-in + check-out | ✅ PASS |
+| `[T-113] flight departure shows EST for America/New_York in winter` | Happy path: EST detection (DST boundary) | ✅ PASS |
+| `[T-113] no timezone span rendered when *_tz field is missing` | Error path: null/missing tz field | ✅ PASS |
+| `[T-113] stay check-in shows CEST for Europe/Paris in summer` | Happy path: CEST detection | ✅ PASS |
+
+T-113 test coverage: 5 tests covering EDT, EST, JST, CEST, DST-aware behavior, null fallback. ✅ Sufficient.
+
+**T-114 (URL linkification) — TripDetailsPage.test.jsx:**
+| Test | Coverage | Status |
+|------|----------|--------|
+| `[T-114] renders activity location with URL as a clickable hyperlink` | Happy path: https:// URL → link with target/rel | ✅ PASS |
+| `[T-114] renders plain text location without any links` | Happy path: plain text → no links | ✅ PASS |
+| `[T-114] javascript: scheme in location renders as plain text (NOT a link)` | Security path: XSS payload blocked | ✅ PASS |
+| `[T-114] mixed text+URL splits correctly: plain text + link` | Happy path: mixed content | ✅ PASS |
+| `[T-114] no link rendered when activity location is null` | Error path: null location | ✅ PASS |
+
+T-114 test coverage: 5 tests covering all critical paths including security. ✅ Sufficient.
+
+---
+
+### Sprint 9 — Test Type: Integration Test
+
+**Date:** 2026-02-28
+
+Integration verification performed via code review (staging E2E verification remains blocked pending T-107 Deploy → T-108 Monitor → T-109 User Agent → T-115 Playwright expansion pipeline).
+
+#### T-113 Integration Contract Checks
+
+| Check | Expected | Actual (Code Review) | Status |
+|-------|----------|----------------------|--------|
+| FlightCard calls `formatTimezoneAbbr(departure_at, departure_tz)` | TZ abbr shown next to departure time | ✅ Confirmed in TripDetailsPage.jsx line 97-110 | ✅ PASS |
+| FlightCard calls `formatTimezoneAbbr(arrival_at, arrival_tz)` | TZ abbr shown next to arrival time | ✅ Confirmed in TripDetailsPage.jsx line 97-122 | ✅ PASS |
+| StayCard calls `formatTimezoneAbbr(check_in_at, check_in_tz)` | TZ abbr shown next to check-in time | ✅ Confirmed in TripDetailsPage.jsx line 135-162 | ✅ PASS |
+| StayCard calls `formatTimezoneAbbr(check_out_at, check_out_tz)` | TZ abbr shown next to check-out time | ✅ Confirmed in TripDetailsPage.jsx line 135-169 | ✅ PASS |
+| LandTravelCard NOT modified | No IANA tz fields in land travel schema | ✅ Confirmed — no formatTimezoneAbbr in LandTravelCard | ✅ PASS |
+| `formatTimezoneAbbr` returns IANA string on error (safe fallback) | No crash, graceful degradation | ✅ try/catch block returns `ianaTimezone` | ✅ PASS |
+| Null/undefined `isoString` or `ianaTimezone` → returns `''` | No render crash | ✅ Guard `if (!isoString \|\| !ianaTimezone) return ''` | ✅ PASS |
+
+#### T-114 Integration Contract Checks
+
+| Check | Expected | Actual (Code Review) | Status |
+|-------|----------|----------------------|--------|
+| ActivityEntry calls `parseLocationWithLinks(activity.location)` | Location segmented into text/link parts | ✅ Confirmed TripDetailsPage.jsx line 213 | ✅ PASS |
+| URL segments render as `<a>` elements | Clickable links for http(s) URLs | ✅ Confirmed line 214-223 | ✅ PASS |
+| All generated `<a>` tags have `target="_blank"` | Opens in new tab | ✅ Confirmed line 218 | ✅ PASS |
+| All generated `<a>` tags have `rel="noopener noreferrer"` | Prevents opener/referrer leakage | ✅ Confirmed line 219 | ✅ PASS |
+| Plain text segments render as `<span>` | No link for non-URL text | ✅ Confirmed line 224-226 | ✅ PASS |
+| `javascript:` scheme does NOT produce `<a>` element | XSS prevention | ✅ URL_REGEX only matches `https?://` — javascript: → type:'text' | ✅ PASS |
+| Null location → no location div rendered | Graceful null handling | ✅ `if (!text) return []` → empty array → no elements | ✅ PASS |
+
+#### Sprint 9 Contract Correction — Notes Field `""` → `null` Normalization
+
+| Check | Expected | Actual (Code Review) | Status |
+|-------|----------|----------------------|--------|
+| POST /trips with `{ "notes": "" }` normalizes to null | API stores null, never `""` | ✅ `tripData.notes = req.body.notes \|\| null` (trips.js line 154) | ✅ PASS |
+| PATCH /trips/:id with `{ "notes": "" }` normalizes to null | API stores null, returns `null` | ✅ `if (updates.notes === '') { updates.notes = null; }` (trips.js line 266-267) | ✅ PASS |
+| GET /trips/:id never returns `"notes": ""` | Only null or non-empty string | ✅ Guaranteed by POST/PATCH normalization | ✅ PASS |
+| sprint7.test.js has whitespace→null normalization test | `{ notes: '   ' }` → `{ notes: null }` | ✅ Test at line 459 passes | ✅ PASS |
+
+**Integration Test Summary:** 18/18 code-review integration checks PASS. All T-113 and T-114 integration contracts verified. Sprint 9 `notes` field normalization confirmed correct.
+
+**Staging E2E (pending T-115):**
+- Playwright 4-test suite currently exists (Tests 1-4 in `e2e/critical-flows.spec.js`)
+- T-115 adds 3 new tests (land travel edit, calendar overflow, mobile viewport) → 7 total
+- T-115 is blocked pending T-109 (User Agent Sprint 7 walkthrough) → T-108 (Monitor) → T-107 (Deploy)
+- Staging E2E status: 🚫 BLOCKED — cannot run until T-107 deploy completes
+
+---
+
+### Sprint 9 — Test Type: Config Consistency Check
+
+**Date:** 2026-02-28
+
+| Check | Expected | Actual | Status |
+|-------|----------|--------|--------|
+| Backend PORT matches vite proxy target port (dev mode) | Proxy targets PORT env var | backend/.env PORT=3001; vite.config.js defaults to port 3000 but accepts `BACKEND_PORT` env var. Developer must set `BACKEND_PORT=3001` for staging dev mode. Documented in vite.config.js comments. | ✅ PASS (intentional design) |
+| Backend SSL → vite proxy uses https:// | `BACKEND_SSL=true` triggers https:// proxy | vite.config.js: `backendSSL = process.env.BACKEND_SSL === 'true'`; `backendProtocol = backendSSL ? 'https' : 'http'`. Developer must set `BACKEND_SSL=true` when running against HTTPS staging backend. Documented in comments. | ✅ PASS (intentional design) |
+| CORS_ORIGIN includes frontend dev server or preview origin | CORS_ORIGIN=https://localhost:4173 | backend/.env CORS_ORIGIN=https://localhost:4173 matches preview server (port 4173 with HTTPS). Dev mode (port 5173) uses vite proxy → requests appear as same-origin. | ✅ PASS |
+| Docker backend PORT=3000 | Internal container uses port 3000 | docker-compose.yml: `PORT: 3000`. Health check targets `http://localhost:3000/api/v1/health`. ✅ Consistent. | ✅ PASS |
+| Docker CORS_ORIGIN matches nginx frontend | CORS_ORIGIN defaults to http://localhost | docker-compose.yml: `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}`. nginx serves frontend on port 80 at http://localhost. ✅ Consistent. | ✅ PASS |
+| No hardcoded backend port in vite proxy | Port from env var | `const backendPort = process.env.BACKEND_PORT \|\| '3000'` — dynamic, not hardcoded. ✅ | ✅ PASS |
+
+**Config Consistency Result:** ✅ 6/6 checks PASS. The vite.config.js dual-mode design (local dev port 3000 / staging port 3001 with SSL) is intentional and documented. No mismatches found. No handoffs required.
+
+---
+
+### Sprint 9 — Test Type: Security Scan
+
+**Date:** 2026-02-28
+
+#### npm audit
+
+| Package Set | Vulnerabilities | Status |
+|-------------|-----------------|--------|
+| Backend (`npm audit --production`) | 0 | ✅ PASS |
+| Frontend (`npm audit --omit=dev`) | 0 | ✅ PASS |
+
+#### Security Checklist — Sprint 9 Applicable Items
+
+| # | Item | Category | Result | Notes |
+|---|------|----------|--------|-------|
+| 1 | All API endpoints require authentication | Auth | ✅ PASS | Sprint 7/8 features (T-113, T-114) are frontend-only display changes — no new endpoints |
+| 2 | Auth tokens have expiration + refresh | Auth | ✅ PASS | Unchanged from Sprint 6 (15m access, 7d refresh). Verified in backend/.env |
+| 3 | Passwords hashed with bcrypt (12 rounds) | Auth | ✅ PASS | Unchanged from Sprint 1. Verified previously |
+| 4 | Failed login rate-limited | Auth | ✅ PASS | Rate limiting active: login 10/15min, register 20/15min (T-099 added in Sprint 7) |
+| 5 | All inputs validated client + server side | Input | ✅ PASS | T-113/T-114 are display-only. No new input vectors introduced |
+| 6 | SQL uses parameterized queries (no string concat) | Input | ✅ PASS | Knex used throughout. No new queries in Sprint 8 |
+| 7 | HTML output sanitized to prevent XSS | Input | ✅ PASS | T-114: `parseLocationWithLinks` returns typed segments (no innerHTML). React escapes all text nodes. `javascript:` scheme blocked by URL_REGEX. Confirmed no `dangerouslySetInnerHTML` |
+| 8 | CORS configured for expected origins only | API | ✅ PASS | CORS_ORIGIN=https://localhost:4173 (staging). Helmet configured |
+| 9 | Rate limiting on public endpoints | API | ✅ PASS | Login 10/15min, register 20/15min, general 30/15min |
+| 10 | API responses don't leak internal errors/stacks | API | ✅ PASS | Unchanged. Error handler strips stacks |
+| 11 | No sensitive data in URL query params | API | ✅ PASS | Unchanged |
+| 12 | Security headers (Helmet) | API | ✅ PASS | Helmet configured at startup |
+| 13 | DB credentials/API keys in environment variables | Data | ✅ PASS | backend/.env uses env vars only. No hardcoded secrets in source |
+| 14 | Logs don't contain PII/passwords/tokens | Data | ✅ PASS | Unchanged from Sprint 6 |
+| 15 | HTTPS enforced on staging | Infra | ✅ PASS | SSL_KEY_PATH + SSL_CERT_PATH configured in backend/.env. COOKIE_SECURE=true |
+| 16 | Dependencies: 0 known vulnerabilities | Infra | ✅ PASS | npm audit: 0 production vulns (both backend and frontend) |
+| 17 | No default/sample credentials in source | Infra | ✅ PASS | No hardcoded credentials in backend/src/. E2E test password (`TEST_PASSWORD = 'Test1234!'`) is a test-only ephemeral account password — not a production credential, acceptable for E2E |
+| 18 | Error pages don't reveal server technology | Infra | ✅ PASS | Helmet removes X-Powered-By. Structured JSON errors only |
+
+**T-113 Specific Security Checks:**
+| Check | Result |
+|-------|--------|
+| `Intl.DateTimeFormat` used correctly — no `eval()` | ✅ PASS |
+| try/catch fallback returns IANA string (no crash, no info leak) | ✅ PASS |
+| null/undefined guard returns `''` — no downstream errors | ✅ PASS |
+| IANA timezone strings not executed as code | ✅ PASS — `Intl.DateTimeFormat` treats timezone as data |
+| Test assertions are dynamic (not brittle hardcodes) | ✅ PASS — assertions use `formatTimezoneAbbr()` for expected values |
+
+**T-114 Specific Security Checks:**
+| Check | Result |
+|-------|--------|
+| Strict `^https?://` scheme allowlist | ✅ PASS — `javascript:`, `data:`, `vbscript:` → type:'text', no link rendered |
+| `rel="noopener noreferrer"` on all generated anchors | ✅ PASS — confirmed in TripDetailsPage.jsx line 219 |
+| `target="_blank"` on all generated anchors | ✅ PASS — confirmed line 218 |
+| No `dangerouslySetInnerHTML` in URL rendering path | ✅ PASS — map() creates React elements only |
+| href content from regex match only (no HTML injection) | ✅ PASS — content set from plain text split, never from innerHTML |
+| XSS test: `javascript:alert(1)` renders as plain text | ✅ PASS — test at TripDetailsPage.test.jsx line 1193 passes |
+
+**Security Scan Result:** ✅ 18/18 security checklist items PASS. 0 P1 security failures. No handoffs required.
+
+---
+
+### Sprint 9 QA Summary
+
+| Task | Sprint | Status | Notes |
+|------|--------|--------|-------|
+| T-116 (Sprint 8 Security Audit) | 9 | ✅ Code Review COMPLETE — Staging E2E pending | 18/18 security checklist items PASS. 0 production vulns. All T-113/T-114 security checks PASS. Staging verification blocked pending T-107→T-108→T-109→T-115. |
+| T-117 (Sprint 8 Integration Testing) | 9 | ✅ Code Review COMPLETE — Staging E2E pending | 18/18 integration contract checks PASS. Notes `""` normalization correct. Staging E2E verification pending pipeline. |
+| T-113 | 8→9 | ✅ Verified (Unit Tests Pass) | 5/5 T-113 tests PASS. Timezone abbreviation DST-aware, safe fallback, null guard. |
+| T-114 | 8→9 | ✅ Verified (Unit Tests Pass) | 5/5 T-114 tests PASS. URL linkification secure: javascript: blocked, rel/target correct. |
+| T-097, T-098, T-099, T-100, T-101, T-103, T-104 | 7→9 | ✅ Integration Check (Unchanged) | All Sprint 7 tasks previously verified in T-105/T-106. Remain in Integration Check until staging deploy (T-107) and Playwright E2E (T-115) complete. |
+| T-115 (Playwright E2E expansion) | 9 | 🚫 BLOCKED | Requires T-109 (User Agent Sprint 7) → T-108 (Monitor) → T-107 (Deploy). Cannot run until pipeline proceeds. |
+
+**Backend Tests:** 266/266 PASS ✅
+**Frontend Tests:** 366/366 PASS ✅
+**npm audit:** 0 production vulnerabilities (backend + frontend) ✅
+**Config consistency:** All 6 checks PASS ✅
+**Security checklist:** 18/18 PASS ✅
+
+**Pre-Deploy Status (T-118):** ⚠️ BLOCKED — Sprint 8 code review confirms all security and integration checks PASS. T-118 deploy cannot proceed until T-107 (Sprint 7 deploy) → T-108 (Monitor) → T-109 (User Agent Sprint 7) → T-115 (E2E expansion) pipeline completes. Deploy Engineer must begin T-107 immediately to unblock the full pipeline.
+
+---
+
+## Sprint 9 — Second QA Run (2026-02-28)
+
+| Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
+|----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 9 — T-116/T-117 Re-verification: Unit Tests + Security + Config (2026-02-28, Run 2) | Unit Test | Pass | Success | Local | No | QA Engineer | 266 backend + 366 frontend tests pass. 0 production vulnerabilities. 18/18 security items pass. 6/6 config checks pass. Staging E2E still blocked pending T-107. |
+| Sprint 9 — T-116 Security Scan Re-confirmation (2026-02-28, Run 2) | Security Scan | Pass | Success | Local | No | QA Engineer | 18/18 checklist items PASS. No new code changes since prior run. T-113/T-114 specific checks re-verified against actual source. |
+| Sprint 9 — T-117 Integration Contracts Re-confirmation (2026-02-28, Run 2) | Integration Test | Partial | Success | Local | No | QA Engineer | 18/18 code-review integration checks PASS. Notes "" → null normalization confirmed in trips.js line 154. Staging E2E (Playwright 4/4 baseline + T-115 expansion to 7) still BLOCKED pending T-107 deploy pipeline. |
+
+---
+
+### Sprint 9 — Run 2: Unit Test Results (2026-02-28)
+
+**Date:** 2026-02-28 (Run 2 — confirmation of prior run)
+**Run by:** QA Engineer
+
+#### Backend Test Results
+
+```
+Test Files  12 passed (12)
+Tests       266 passed (266)
+Duration    850ms
+```
+
+All 12 backend test files passed. Happy-path and error-path coverage confirmed per endpoint:
+
+| Test File | Tests | Happy Path | Error Path |
+|-----------|-------|------------|------------|
+| auth.test.js | ✅ | Register + login success | 409 duplicate, 401 wrong pw, 400 missing fields |
+| trips.test.js | ✅ | CRUD success | 401 unauth, 403 wrong user, 404 not found, 400 no fields |
+| flights.test.js | ✅ | Create + list + delete | 401, 403, 400 (arrival before departure, missing fields) |
+| stays.test.js | ✅ | Create + list + delete | 401, 400 (bad category, check_out before check_in) |
+| activities.test.js | ✅ | Create + list + delete | 401, 403, 404, 400 (bad date, end before start, missing fields) |
+| sprint2.test.js | ✅ | Sub-resource CRUD | Error paths |
+| sprint3.test.js | ✅ | Status update CRUD | Error paths |
+| sprint4.test.js | ✅ | Land travel CRUD | Error paths |
+| sprint5.test.js | ✅ | Search/filter/sort | Error paths |
+| sprint6.test.js | ✅ | Land travel + ILIKE search | Error paths |
+| sprint7.test.js | ✅ | Notes CRUD, "" → null normalization | Error paths |
+| tripStatus.test.js | ✅ | Status transition | Error paths |
+
+#### Frontend Test Results
+
+```
+Test Files  22 passed (22)
+Tests       366 passed (366)
+Duration    3.61s
+```
+
+All 22 frontend test files passed including:
+- T-113 tests (5 tests): formatTimezoneAbbr timezone abbreviation display — all dynamic assertions ✅
+- T-114 tests (5 tests): parseLocationWithLinks URL linkification — javascript: blocked ✅
+- All previous sprint tests (356 tests): no regressions ✅
+
+---
+
+### Sprint 9 — Run 2: Config Consistency Check (2026-02-28)
+
+**Date:** 2026-02-28
+
+| Check | Expected | Actual | Status |
+|-------|----------|--------|--------|
+| Backend PORT matches vite proxy target port | Dynamic via BACKEND_PORT env var | backend/.env PORT=3001; vite.config.js: `const backendPort = process.env.BACKEND_PORT \|\| '3000'` — intentional dual-mode design | ✅ PASS |
+| Backend SSL → vite proxy uses https:// | BACKEND_SSL=true → https:// proxy | vite.config.js: `backendSSL = process.env.BACKEND_SSL === 'true'`; `secure: false` for self-signed certs. Documented correctly. | ✅ PASS |
+| CORS_ORIGIN includes frontend dev server origin | https://localhost:4173 (staging preview) | backend/.env CORS_ORIGIN=https://localhost:4173. Dev mode uses vite proxy (same-origin). | ✅ PASS |
+| Docker backend PORT=3000 | Internal container port 3000 | docker-compose.yml: `PORT: 3000`. Health check: `http://localhost:3000/api/v1/health` ✅ | ✅ PASS |
+| Docker CORS_ORIGIN matches nginx frontend | http://localhost | docker-compose.yml: `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}`. nginx on port 80. ✅ | ✅ PASS |
+| No hardcoded backend port in vite proxy | Port from env var | `process.env.BACKEND_PORT \|\| '3000'` — dynamic ✅ | ✅ PASS |
+
+**Config Consistency Result:** ✅ 6/6 checks PASS. No changes since Run 1. No handoffs required.
+
+---
+
+### Sprint 9 — Run 2: Security Scan (2026-02-28)
+
+**Date:** 2026-02-28
+
+#### npm audit (Run 2)
+
+| Package Set | Command | Vulnerabilities | Status |
+|-------------|---------|-----------------|--------|
+| Backend | `npm audit --production` | 0 | ✅ PASS |
+| Frontend | `npm audit --omit=dev` | 0 | ✅ PASS |
+
+#### Security Checklist — Sprint 9 (Run 2 Re-verification)
+
+| # | Item | Category | Result | Source Verified |
+|---|------|----------|--------|-----------------|
+| 1 | All API endpoints require authentication | Auth | ✅ PASS | No new endpoints in Sprint 8/9. Existing middleware unchanged. |
+| 2 | Auth tokens have expiration + refresh | Auth | ✅ PASS | backend/.env: JWT_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d |
+| 3 | Passwords hashed with bcrypt (12 rounds) | Auth | ✅ PASS | Unchanged from Sprint 1 |
+| 4 | Failed login rate-limited | Auth | ✅ PASS | auth.js: loginRateLimiter (10/15min) on POST /login; registerRateLimiter (20/15min) on POST /register; generalAuthRateLimiter on refresh + logout. Source confirmed. |
+| 5 | All inputs validated client + server side | Input | ✅ PASS | T-113/T-114 are display-only. No new input vectors. |
+| 6 | SQL uses parameterized queries (Knex) | Input | ✅ PASS | All DB queries via Knex. No string concatenation found. |
+| 7 | HTML output sanitized (no XSS) | Input | ✅ PASS | T-114: parseLocationWithLinks returns typed segments (no innerHTML). Strict `^https?://` regex. `javascript:` → type:'text'. No dangerouslySetInnerHTML. React escapes text. |
+| 8 | CORS configured for expected origins | API | ✅ PASS | CORS_ORIGIN=https://localhost:4173. Helmet configured in app.js. |
+| 9 | Rate limiting on public endpoints | API | ✅ PASS | loginRateLimiter + registerRateLimiter + generalAuthRateLimiter all applied at route level in auth.js. |
+| 10 | API responses don't leak stack traces | API | ✅ PASS | errorHandler.js: 500 → 'An unexpected error occurred'. Stack logged server-side only. |
+| 11 | No sensitive data in URL query params | API | ✅ PASS | No auth tokens or secrets in query strings |
+| 12 | Security headers (Helmet) | API | ✅ PASS | app.js line 17: `app.use(helmet())` |
+| 13 | DB credentials/API keys in env vars | Data | ✅ PASS | backend/.env: JWT_SECRET via process.env. DATABASE_URL via env. No hardcoded secrets in source. |
+| 14 | Logs don't contain PII/passwords/tokens | Data | ✅ PASS | errorHandler.js logs only error stacks. No user data logged. |
+| 15 | HTTPS enforced on staging | Infra | ✅ PASS | backend/.env: SSL_CERT_PATH + SSL_KEY_PATH configured. COOKIE_SECURE=true. |
+| 16 | Dependencies: 0 known vulnerabilities | Infra | ✅ PASS | npm audit: 0 production vulns (backend + frontend) — confirmed Run 2 |
+| 17 | No default/sample credentials in source | Infra | ✅ PASS | No hardcoded creds in backend/src/. E2E TEST_PASSWORD is test-only, ephemeral. |
+| 18 | Error pages don't reveal server technology | Infra | ✅ PASS | Helmet removes X-Powered-By. JSON errors only, no server version. |
+
+**T-113 Security Re-verification (source code check):**
+| Check | Source Location | Result |
+|-------|----------------|--------|
+| `Intl.DateTimeFormat` — no `eval()` | formatDate.js:75-88 | ✅ PASS — standard Web API, IANA string treated as data |
+| try/catch fallback returns IANA string | formatDate.js:84-87 | ✅ PASS — `catch { return ianaTimezone; }` |
+| null/undefined guard returns `''` | formatDate.js:76 | ✅ PASS — `if (!isoString \|\| !ianaTimezone) return '';` |
+| No code execution of IANA strings | formatDate.js:75-88 | ✅ PASS — passed as `timeZone` option, not evaluated |
+
+**T-114 Security Re-verification (source code check):**
+| Check | Source Location | Result |
+|-------|----------------|--------|
+| Strict `^https?://` regex | formatDate.js:149 | ✅ PASS — `/(https?:\/\/[^\s]+)/g` — `javascript:` not matched |
+| `rel="noopener noreferrer"` on links | TripDetailsPage.jsx:219 | ✅ PASS — confirmed line 219 |
+| `target="_blank"` on links | TripDetailsPage.jsx:218 | ✅ PASS — confirmed line 218 |
+| No `dangerouslySetInnerHTML` | formatDate.js + TripDetailsPage.jsx | ✅ PASS — `.map()` creates React elements only |
+| XSS: `javascript:alert(1)` → plain text | TripDetailsPage.test.jsx:1193 | ✅ PASS — test passes, type='text' confirmed |
+
+**Security Scan Result (Run 2):** ✅ 18/18 security checklist items PASS. 0 P1 security failures. No new handoffs required.
+
+---
+
+### Sprint 9 — Run 2: Integration Test Results (2026-02-28)
+
+**Date:** 2026-02-28
+
+#### Sprint 9 Contract Correction Verification
+
+| Check | Contract Requirement | Code Verification | Result |
+|-------|---------------------|-------------------|--------|
+| `PATCH { notes: "" }` normalizes to `null` at API layer | Sprint 9 api-contracts.md correction | trips.js:154 `tripData.notes = req.body.notes \|\| null;` (empty string → falsy → null) | ✅ PASS |
+| `PATCH { notes: "   " }` (whitespace-only) normalizes to `null` | Sprint 9 correction | trips.js:265 trim + null normalization. sprint7.test.js:459 confirms test passes | ✅ PASS |
+| GET /trips never returns `notes: ""` | Sprint 9 correction | Normalization at PATCH layer means DB only has null or non-empty strings. GET reads from DB. | ✅ PASS |
+| GET /trips/:id never returns `notes: ""` | Sprint 9 correction | Same as above | ✅ PASS |
+
+#### T-113 Integration Contract Checks
+
+| Check | Expected (Contract) | Verified Via | Result |
+|-------|---------------------|-------------|--------|
+| FlightCard shows timezone abbreviation using departure_tz | `formatTimezoneAbbr(departure_at, departure_tz)` renders abbreviated tz | TripDetailsPage.jsx:97-98 + test at line 1013 | ✅ PASS |
+| StayCard shows timezone abbreviation using check_in_tz | `formatTimezoneAbbr(check_in_at, check_in_tz)` renders abbreviated tz | TripDetailsPage.jsx:135-136 + test at line 1043 | ✅ PASS |
+| Missing `*_tz` field → no timezone span rendered | `formatTimezoneAbbr(null, null)` returns `''` | TripDetailsPage.test.jsx:1076 — no span rendered | ✅ PASS |
+| America/New_York in August → DST-aware abbreviation | Should show summer offset | formatTimezoneAbbr uses Intl.DateTimeFormat — ICU-sourced | ✅ PASS |
+| Fallback on unsupported timezone | Returns IANA string, no crash | formatDate.js:84-87 try/catch returns `ianaTimezone` | ✅ PASS |
+
+#### T-114 Integration Contract Checks
+
+| Check | Expected (Contract) | Verified Via | Result |
+|-------|---------------------|-------------|--------|
+| Activity location with URL → renders `<a>` element | `href` set, `target="_blank"`, `rel="noopener noreferrer"` | TripDetailsPage.jsx:213-221 + test at line 1136 | ✅ PASS |
+| Activity location without URL → plain text, no `<a>` | No anchor element | TripDetailsPage.test.jsx:1164 — test passes | ✅ PASS |
+| `javascript:alert(1)` in location → plain text | Scheme blocked by regex; type='text' | TripDetailsPage.test.jsx:1193 — test passes | ✅ PASS |
+| Mixed text + URL → correct splitting | text segment + link segment in order | TripDetailsPage.test.jsx:1222 — test passes | ✅ PASS |
+| `null` location → no render (no crash) | Returns `[]` from parseLocationWithLinks | TripDetailsPage.test.jsx:1251 + formatDate.js:148 guard | ✅ PASS |
+
+#### Playwright E2E Status (T-115)
+
+| Status | Details |
+|--------|---------|
+| Current tests | 4/4 (Tests 1-4 in e2e/critical-flows.spec.js) |
+| T-115 target | 7/7 (add: land travel edit, calendar overflow, mobile viewport) |
+| Can run now? | 🚫 NO — staging not ready |
+| Blocker | T-107 (Deploy Sprint 7) → T-108 (Monitor) → T-109 (User Agent Sprint 7) → T-115 |
+
+**Integration Test Result (Run 2):** ✅ All code-review integration checks PASS (18/18). Staging E2E (Playwright) remains BLOCKED pending T-107 pipeline. No regressions found.
+
+---
+
+### Sprint 9 — Run 2: QA Summary
+
+| Task | Status | Notes |
+|------|--------|-------|
+| T-116 (Sprint 8 Security Audit) | ✅ Code Review COMPLETE — Staging E2E pending | 18/18 security items PASS. 0 prod vulns. Staging blocked on T-107. |
+| T-117 (Sprint 8 Integration Testing) | ✅ Code Review COMPLETE — Staging E2E pending | 18/18 integration contract checks PASS. Staging blocked on T-107. |
+| T-113 | ✅ Verified | 366/366 frontend tests pass (includes 5 T-113 tests). Source code security checks pass. |
+| T-114 | ✅ Verified | 366/366 frontend tests pass (includes 5 T-114 tests). XSS/URL security checks pass. |
+| T-097, T-098, T-099, T-100, T-101, T-103, T-104 | ✅ Integration Check (no change) | Sprint 7 tasks remain in Integration Check. Await staging deploy (T-107) + E2E (T-115). |
+| T-115 (Playwright E2E expansion 4→7) | 🚫 BLOCKED | Blocked on T-107 → T-108 → T-109. QA will run after pipeline proceeds. |
+
+**Backend Tests:** 266/266 PASS ✅
+**Frontend Tests:** 366/366 PASS ✅
+**npm audit:** 0 production vulnerabilities (backend + frontend) ✅
+**Config consistency:** 6/6 PASS ✅
+**Security checklist:** 18/18 PASS ✅
+
+**Pre-Deploy Status (T-118):** ⚠️ BLOCKED — All code-level QA checks PASS (security, integration, unit tests). T-118 cannot proceed until T-107 (Sprint 7 staging deploy) → T-108 (Monitor Sprint 7) → T-109 (User Agent Sprint 7) → T-115 (Playwright 4→7). **Deploy Engineer: T-107 is the critical path blocker. Begin immediately.**
+
