@@ -534,3 +534,50 @@ Spec 13 is published. The backend notes feature (T-103) can now start — the sp
 
 ---
 
+### Sprint 8 — Design Agent → Frontend Engineer: Spec 14 Ready — Timezone Abbreviations + Activity URL Links (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 8 |
+| From Agent | Design Agent |
+| To Agent | Frontend Engineer |
+| Status | Ready for Implementation |
+| Related Tasks | T-112 (Design, Done), T-113 (FE: Timezone abbreviations), T-114 (FE: URL link detection) |
+| Spec Reference | `.workflow/ui-spec.md` → Spec 14 (appended at end of file) |
+| Handoff Summary | Spec 14 is published and auto-approved. Frontend Engineer may begin T-113 and T-114 immediately. Both tasks are unblocked (only dependency was T-112, now Done). |
+
+**What was designed (Spec 14):**
+
+**Part A — Timezone Abbreviation Display (→ T-113):**
+
+The `formatTimezoneAbbr(isoString, ianaTimezone)` utility already exists in `frontend/src/utils/formatDate.js` and requires **no changes**. T-113 must:
+
+1. **FlightCard:** Replace the existing inline string concat `{depDisplay}{depTz ? \` ${depTz}\` : ''}` with a proper `<span className={styles.tzAbbr}>{depTz}</span>` element. Same for arrival.
+2. **StayCard:** Add `formatTimezoneAbbr` calls for `check_in_at`/`check_in_tz` and `check_out_at`/`check_out_tz`. Render abbreviations in `<span className={styles.tzAbbr}>` adjacent to each datetime display.
+3. **LandTravelCard: No changes.** Land travel stores times as wall-clock strings with no IANA timezone field — the spec documents this scope boundary with future sprint recommendation.
+4. **CSS:** Add `.tzAbbr { color: var(--text-muted); font-size: inherit; font-weight: 400; margin-left: 4px; display: inline; }` to `TripDetailsPage.module.css`.
+
+**Part B — Activity Location URL Detection (→ T-114):**
+
+1. **Add utility:** `parseLocationWithLinks(text)` in `formatDate.js` (or new `textUtils.js`). Splits location string using `/(https?:\/\/[^\s]+)/g` and returns typed segments (`type: 'text' | 'link'`).
+2. **Update ActivityEntry:** Replace `{activity.location}` with a `.map()` over parsed segments, rendering `<span>` for text and `<a href target="_blank" rel="noopener noreferrer" className={styles.locationLink}>` for links.
+3. **CSS:** Add `.locationLink { color: var(--accent); text-decoration: underline; word-break: break-all; }` + hover/focus-visible states.
+4. **Security:** Only `http://` and `https://` create links. `javascript:`, `data:`, `vbscript:` → plain text. No `dangerouslySetInnerHTML`.
+
+**Test requirements:**
+- T-113: 6+ tests (EDT/JST abbreviations, stay check-in/out, unknown timezone fallback, DST boundary)
+- T-114: 5+ tests (plain text, single URL, mixed text+URL, multiple URLs, `javascript:` scheme → plain text)
+
+**Key files to modify:**
+- `frontend/src/pages/TripDetailsPage.jsx` — FlightCard, StayCard, ActivityEntry components
+- `frontend/src/pages/TripDetailsPage.module.css` — add `.tzAbbr` and `.locationLink` rules
+- `frontend/src/utils/formatDate.js` — add `parseLocationWithLinks` (no changes to `formatTimezoneAbbr`)
+
+**Critical constraints:**
+- Do NOT modify LandTravelCard for timezone abbreviations (no timezone data available)
+- Do NOT use `dangerouslySetInnerHTML` anywhere in T-114
+- All generated `<a>` elements must have `target="_blank" rel="noopener noreferrer"`
+- All 344+ existing tests must continue to pass (no regressions)
+
+---
+

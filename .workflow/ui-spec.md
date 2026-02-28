@@ -4681,3 +4681,507 @@ Do not render the element at all (not even an empty `<p>`) when notes is null or
 ---
 
 *Sprint 7 Spec 13 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-27.*
+
+---
+
+### Spec 14: Sprint 8 Addendum — Timezone Abbreviation Display + Activity Location URL Detection
+
+**Status:** Approved
+**Task:** T-112
+**Sprint:** 8
+**Published:** 2026-02-27
+**Implemented by:** T-113 (timezone abbreviations), T-114 (URL link detection)
+
+---
+
+#### 14.0 Overview
+
+This spec covers two small but user-visible enhancements to the TripDetailsPage:
+
+1. **Part A — Timezone Abbreviation Display (T-113):** Flight and stay detail cards currently display formatted times (e.g., "Aug 7, 2026 · 6:00 AM") without indicating which timezone the time is in. This spec defines how to extract and display a short, DST-aware timezone abbreviation (e.g., "EDT", "JST", "CEST") adjacent to each time value on flight and stay detail cards.
+
+2. **Part B — Activity Location URL Detection (T-114):** Activity location strings are currently rendered as plain text. This spec defines how to detect `http://` and `https://` URLs within a location string and render them as accessible, secure hyperlink elements, while leaving all other text as plain text and explicitly blocking dangerous URI schemes.
+
+---
+
+#### Part A — Timezone Abbreviation Display on Detail Cards
+
+---
+
+#### 14.A.1 Problem Statement
+
+**Current behavior:**
+- `FlightCard`: Renders a timezone abbreviation as an inline string concatenated to the full datetime string (e.g., `"Aug 7, 2026 · 6:00 AM EDT"`). The abbreviation is not wrapped in a distinct HTML element.
+- `StayCard`: Renders check-in and check-out times with NO timezone abbreviation whatsoever.
+- `LandTravelCard`: Has no timezone data — stores times as wall-clock strings (`HH:MM:SS`) without an IANA timezone field. See §14.A.7 for the scope boundary.
+
+**Desired behavior:**
+- `FlightCard` and `StayCard` each display a muted, visually distinct timezone abbreviation (`<span className="tz-abbr">`) adjacent to each time value.
+- The abbreviation is DST-aware: "America/New_York" in August yields "EDT"; in January it yields "EST". "Asia/Tokyo" always yields "JST". "Europe/Paris" in July yields "CEST".
+- If the timezone abbreviation cannot be determined (missing/invalid timezone string), the display degrades gracefully — either showing the IANA string or nothing — without crashing.
+
+---
+
+#### 14.A.2 Data Model Reference
+
+| Card | UTC Timestamp Field | Timezone Field (IANA) |
+|------|--------------------|-----------------------|
+| FlightCard — departure | `departure_at` (ISO 8601 UTC) | `departure_tz` |
+| FlightCard — arrival | `arrival_at` (ISO 8601 UTC) | `arrival_tz` |
+| StayCard — check-in | `check_in_at` (ISO 8601 UTC) | `check_in_tz` |
+| StayCard — check-out | `check_out_at` (ISO 8601 UTC) | `check_out_tz` |
+| LandTravelCard | `departure_date` (DATE string) + `departure_time` (TIME string) | **None — see §14.A.7** |
+
+No backend changes are required. All `*_tz` fields already exist in the API responses.
+
+---
+
+#### 14.A.3 Utility Function — `formatTimezoneAbbr`
+
+The function `formatTimezoneAbbr(isoString, ianaTimezone)` already exists in `frontend/src/utils/formatDate.js`. **No changes are needed to this function.** Its current implementation:
+
+```js
+export function formatTimezoneAbbr(isoString, ianaTimezone) {
+  if (!isoString || !ianaTimezone) return '';
+  try {
+    const date = new Date(isoString);
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZoneName: 'short',
+      timeZone: ianaTimezone,
+    }).formatToParts(date);
+    const tzPart = parts.find((p) => p.type === 'timeZoneName');
+    return tzPart ? tzPart.value : ianaTimezone;
+  } catch {
+    return ianaTimezone;
+  }
+}
+```
+
+**How it works:**
+- Uses `Intl.DateTimeFormat` with `{ timeZoneName: 'short' }` applied to the **actual event datetime** (not a static reference date), ensuring DST awareness.
+- `America/New_York` at a summer datetime → `"EDT"` (UTC-4)
+- `America/New_York` at a winter datetime → `"EST"` (UTC-5)
+- `Asia/Tokyo` → always `"JST"` (no DST)
+- `Europe/Paris` in summer → `"CEST"`; in winter → `"CET"`
+- `UTC` → `"UTC"`
+- Invalid or unrecognized timezone → returns the IANA string as-is (graceful fallback, no crash)
+- Missing `isoString` or `ianaTimezone` → returns `''` (empty string, nothing rendered)
+
+T-113 must import this function from `formatDate.js`. No new utility is required.
+
+---
+
+#### 14.A.4 Visual Specification — Timezone Abbreviation Element
+
+**Format:** `[Date · Time] [TZ_ABBR]`
+
+**Example renders:**
+
+```
+Aug 7, 2026 · 6:00 AM EDT
+Aug 7, 2026 · 6:00 AM JST
+Jul 15, 2026 · 3:00 PM CEST
+Jan 10, 2026 · 10:00 AM GMT
+```
+
+**Rendered HTML structure:**
+```html
+<div class="flightDateTime">
+  Aug 7, 2026 · 6:00 AM <span class="tzAbbr">EDT</span>
+</div>
+```
+
+**Spec rules:**
+- The `<span className={styles.tzAbbr}>` element is placed immediately after the formatted datetime string, separated by a single space (via `margin-left: 4px` on the span).
+- The abbreviation text is muted to visually subordinate it to the primary time value — it is supplementary information, not the main display.
+- Do NOT wrap both the time AND the abbreviation in a shared `<span>`. Keep them as: `{timeString} <span>{tzAbbr}</span>`.
+- If `tzAbbr` is empty string (missing data), render nothing — no empty `<span>`.
+
+**CSS for `.tzAbbr`:**
+```css
+.tzAbbr {
+  color: var(--text-muted);   /* rgba(252, 252, 252, 0.5) */
+  font-size: inherit;          /* match the surrounding time text size */
+  font-weight: 400;            /* regular weight — not bold */
+  margin-left: 4px;            /* 4px gap from the formatted time string */
+  display: inline;
+}
+```
+
+**Accessibility:**
+- The abbreviation is supplementary to the time — screen readers will read it as part of the text flow, which is correct.
+- No additional ARIA attributes needed. The abbreviation text ("EDT", "JST") is human-readable and meaningful.
+- If the timezone abbreviation is long (e.g., "GMT+5:30"), it reads naturally as part of the time value.
+
+---
+
+#### 14.A.5 FlightCard — Updated Implementation
+
+**Current code (to be replaced):**
+```jsx
+// departure
+<div className={styles.flightDateTime}>
+  {depDisplay}{depTz ? ` ${depTz}` : ''}
+</div>
+
+// arrival
+<div className={styles.flightDateTime}>
+  {arrDisplay}{arrTz ? ` ${arrTz}` : ''}
+</div>
+```
+
+**New code:**
+```jsx
+// departure
+<div className={styles.flightDateTime}>
+  {depDisplay}
+  {depTz && <span className={styles.tzAbbr}>{depTz}</span>}
+</div>
+
+// arrival
+<div className={styles.flightDateTime}>
+  {arrDisplay}
+  {arrTz && <span className={styles.tzAbbr}>{arrTz}</span>}
+</div>
+```
+
+The variables `depTz` and `arrTz` are already computed via `formatTimezoneAbbr` at the top of the `FlightCard` component — no additional calls needed.
+
+**aria-label on the `<article>`:** The existing `aria-label` does not need to be updated. Screen readers will read the timezone abbreviation from the visible text inside the article naturally.
+
+---
+
+#### 14.A.6 StayCard — Updated Implementation
+
+**Current code:** `StayCard` does not call `formatTimezoneAbbr`. The check-in/out times show no timezone indicator.
+
+**Changes needed:**
+
+1. Verify that `formatTimezoneAbbr` is already imported at the top of `TripDetailsPage.jsx` (it should be, since `FlightCard` uses it). Confirm the import line includes it:
+   ```js
+   import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatTripDateRange } from '../utils/formatDate';
+   ```
+
+2. Add two new variable computations inside `StayCard`:
+```jsx
+function StayCard({ stay }) {
+  const checkInDisplay  = formatDateTime(stay.check_in_at,  stay.check_in_tz);
+  const checkOutDisplay = formatDateTime(stay.check_out_at, stay.check_out_tz);
+  // NEW — timezone abbreviations
+  const checkInTz  = formatTimezoneAbbr(stay.check_in_at,  stay.check_in_tz);
+  const checkOutTz = formatTimezoneAbbr(stay.check_out_at, stay.check_out_tz);
+  // ... rest unchanged
+}
+```
+
+3. Update the check-in and check-out date value renders:
+
+**Current:**
+```jsx
+<div className={styles.stayDateValue}>{checkInDisplay}</div>
+// ...
+<div className={styles.stayDateValue}>{checkOutDisplay}</div>
+```
+
+**New:**
+```jsx
+<div className={styles.stayDateValue}>
+  {checkInDisplay}
+  {checkInTz && <span className={styles.tzAbbr}>{checkInTz}</span>}
+</div>
+// ...
+<div className={styles.stayDateValue}>
+  {checkOutDisplay}
+  {checkOutTz && <span className={styles.tzAbbr}>{checkOutTz}</span>}
+</div>
+```
+
+**Layout note:** The stay card's `stayDateValue` elements are block-level within a flex row. Adding an inline `<span>` after the datetime string does not change the block flow — both check-in and check-out remain in their respective `stayDateBlock` columns.
+
+---
+
+#### 14.A.7 LandTravelCard — Scope Boundary (No Change This Sprint)
+
+**Architectural constraint:** The `land_travels` table stores `departure_time` and `arrival_time` as PostgreSQL `TIME` (wall-clock local time, no timezone). There are no `departure_tz` or `arrival_tz` columns in the `land_travels` table or the API contract. The `formatTimezoneAbbr` function requires an ISO UTC datetime AND an IANA timezone string — neither is available for land travel entries.
+
+**Sprint 8 decision: LandTravelCard receives NO timezone abbreviation changes.** Displaying a timezone abbreviation derived from guesswork or a hardcoded value would be misleading to users. The existing departure and arrival displays remain as-is (date + wall-clock time, no timezone label).
+
+**Note on Sprint 8 success criteria:** The active-sprint success criteria mentions "Create a land travel from London (Europe/London, January) → departure detail shows '10:00 AM GMT'". This cannot be implemented in Sprint 8 without a schema migration. The criteria is aspirational and reflects a future goal. The Sprint 8 implementation correctly limits timezone abbreviations to flights and stays.
+
+**Future sprint recommendation:** If timezone support for land travel is desired, a schema migration must add `departure_tz VARCHAR(50)` and `arrival_tz VARCHAR(50)` columns to `land_travels`, the API contract must be updated, and the `LandTravelEditPage` must include timezone selection inputs.
+
+---
+
+#### 14.A.8 States
+
+| State | Behavior |
+|-------|----------|
+| **Normal — DST zone, summer** | Abbreviation shows summer variant (e.g., "EDT" for America/New_York in August) |
+| **Normal — DST zone, winter** | Abbreviation shows winter variant (e.g., "EST" for America/New_York in January) |
+| **Normal — non-DST zone** | Single abbreviation always (e.g., "JST" for Asia/Tokyo) |
+| **Unknown timezone string** | `formatTimezoneAbbr` returns IANA string as fallback; rendered in `<span className={styles.tzAbbr}>` |
+| **Missing `*_tz` field (null/undefined)** | `formatTimezoneAbbr` returns `''`; conditional guard `{tzAbbr && <span>}` prevents empty span render |
+| **Missing `*_at` field (null/undefined)** | `formatTimezoneAbbr` returns `''`; same guard applies |
+| **`Intl.DateTimeFormat` throws** | `formatTimezoneAbbr` catches the error and returns the IANA string as fallback |
+
+---
+
+#### 14.A.9 Responsive Behavior
+
+- **Desktop:** Timezone abbreviation inline with the time string, same line. Narrow containers may cause the time + abbreviation to wrap as a unit — this is acceptable.
+- **Tablet / Mobile:** Same behavior. The `<span>` is inline content and wraps naturally with the time string if the container is narrow.
+- The stay card's `stayDateBlock` columns may stack on mobile depending on the existing responsive layout. The timezone abbreviation follows the time string on the same line regardless of column stacking.
+
+---
+
+#### Part B — Activity Location URL Detection
+
+---
+
+#### 14.B.1 Problem Statement
+
+**Current behavior:** `ActivityEntry` renders `activity.location` as a plain text string inside `<div className={styles.activityLocation}>`. If the user stores a Google Maps link or any other URL as the location, it renders as non-clickable text.
+
+**Desired behavior:**
+- Any `http://` or `https://` URL within a location string is rendered as a clickable `<a>` element that opens in a new tab.
+- Surrounding text (before/after the URL) renders as plain text.
+- Non-URL text locations are completely unchanged in appearance.
+- Dangerous URI schemes (`javascript:`, `data:`, `vbscript:`, `file:`, etc.) are never linkified — they remain as plain text.
+- No `dangerouslySetInnerHTML` under any circumstances.
+
+---
+
+#### 14.B.2 URL Detection Algorithm
+
+**Regex:** `/(https?:\/\/[^\s]+)/g`
+
+How it works:
+- Matches strings starting with `http://` or `https://`
+- Captures everything until the next whitespace character
+- The `g` flag finds all matches in the string
+- `javascript:`, `data:`, `vbscript:`, `file:`, and any other scheme do NOT match because they do not start with `http://` or `https://`
+
+**Edge cases handled by the regex:**
+
+| Input | Result |
+|-------|--------|
+| `"Golden Gate Park"` | No match → plain text |
+| `"https://maps.google.com/place/XYZ"` | Match → link |
+| `"http://example.com"` | Match → link |
+| `"Meet at https://maps.google.com"` | Split → `["Meet at ", "https://maps.google.com"]` |
+| `"https://a.com and https://b.com"` | Split → `["https://a.com", " and ", "https://b.com"]` |
+| `"javascript:alert(1)"` | No match → plain text |
+| `"data:text/html,<h1>hi</h1>"` | No match → plain text |
+| `""` (empty) | Returns `[]` → nothing rendered |
+
+**Note on trailing punctuation:** The regex `[^\s]+` will include trailing punctuation (e.g., a period at the end of a URL: `"https://example.com."`). This is acceptable and consistent with standard URL detection behavior. Most URLs in practice do not end with punctuation.
+
+---
+
+#### 14.B.3 `parseLocationWithLinks` Utility Function
+
+Create the following utility. Preferred location: `frontend/src/utils/formatDate.js` (to avoid creating a new import file). Alternatively, `frontend/src/utils/textUtils.js` (new file) is also acceptable if the team prefers separation of concerns.
+
+```js
+/**
+ * Parse a location string, detecting HTTP/HTTPS URLs and splitting the text
+ * into typed segments: 'text' (plain) or 'link' (URL).
+ *
+ * Only http:// and https:// schemes create links. All other content,
+ * including javascript:, data:, and vbscript: URIs, is returned as 'text'.
+ *
+ * @param {string|null|undefined} text - The location string to parse
+ * @returns {Array<{type: 'text'|'link', content: string}>}
+ */
+export function parseLocationWithLinks(text) {
+  if (!text) return [];
+  const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(URL_REGEX);
+  return parts
+    .filter((part) => part.length > 0)
+    .map((part) => ({
+      type: /^https?:\/\//.test(part) ? 'link' : 'text',
+      content: part,
+    }));
+}
+```
+
+**Implementation notes:**
+- `String.prototype.split` with a capturing-group regex returns captured groups interspersed in the result array. This is standard, well-supported JavaScript behavior.
+- The secondary `.test(/^https?:\/\//)` check on each `part` is a safety guard that re-confirms only `http://` or `https://`-prefixed strings become links — it defends against any edge case in the split behavior.
+- No `eval()`, no `new Function()`, no dynamic property access on user input.
+
+---
+
+#### 14.B.4 ActivityEntry — Updated Rendering
+
+**File:** `frontend/src/pages/TripDetailsPage.jsx` → `ActivityEntry` component
+
+**Current location render:**
+```jsx
+{activity.location && (
+  <div className={styles.activityLocation}>
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+      <path d="..." stroke="currentColor" strokeWidth="1" />
+      <circle cx="5" cy="3.75" r=".833" fill="currentColor" />
+    </svg>
+    {activity.location}
+  </div>
+)}
+```
+
+**New location render:**
+```jsx
+{activity.location && (
+  <div className={styles.activityLocation}>
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+      <path d="..." stroke="currentColor" strokeWidth="1" />
+      <circle cx="5" cy="3.75" r=".833" fill="currentColor" />
+    </svg>
+    {parseLocationWithLinks(activity.location).map((segment, index) =>
+      segment.type === 'link' ? (
+        <a
+          key={index}
+          href={segment.content}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.locationLink}
+        >
+          {segment.content}
+        </a>
+      ) : (
+        <span key={index}>{segment.content}</span>
+      )
+    )}
+  </div>
+)}
+```
+
+**Why `key={index}` is acceptable here:** The segments array is deterministically derived from a static string value (`activity.location`). Segments do not reorder between renders. Using `index` as key is correct for this case.
+
+**Do NOT use `dangerouslySetInnerHTML`.** The `href` attribute is set via JSX `href={segment.content}`, which React handles safely without HTML injection. Text content inside `<a>` and `<span>` tags is rendered via JSX children (plain strings), which React automatically escapes.
+
+---
+
+#### 14.B.5 Link Styling
+
+Add the following to `frontend/src/pages/TripDetailsPage.module.css`:
+
+```css
+/* Activity location hyperlink — URL detected within location string */
+.locationLink {
+  color: var(--accent);              /* #5D737E — matches interactive element color */
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;             /* prevent long URLs from overflowing narrow containers */
+  transition: color 150ms ease;
+}
+
+.locationLink:hover {
+  color: var(--text-primary);        /* #FCFCFC — lighten on hover */
+}
+
+.locationLink:focus-visible {
+  outline: 2px solid var(--border-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+```
+
+**Design rationale:**
+- `var(--accent)` (`#5D737E`) for link color matches the existing interactive element color in the design system — it signals clickability without a new color token.
+- Underline is the universal browser convention for hyperlinks, ensuring clarity including for colorblind users.
+- `word-break: break-all` prevents long URLs with query strings from overflowing the activity card or pushing layout horizontally.
+- Hover lightens to `var(--text-primary)` for minimal, Japandi-appropriate feedback.
+- `focus-visible` outline ensures keyboard users can clearly identify focused links (no outline on mouse click, outline on Tab navigation).
+
+---
+
+#### 14.B.6 Security Requirements
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Only `http://` and `https://` create links | Regex `/(https?:\/\/[^\s]+)/g` + secondary `.test(/^https?:\/\//)` guard |
+| `javascript:` → plain text | Regex does not match; result is `{ type: 'text', content: 'javascript:alert(1)' }` |
+| `data:` URIs → plain text | Regex does not match; all `data:` URIs → `type: 'text'` |
+| `vbscript:` → plain text | Regex does not match |
+| No `dangerouslySetInnerHTML` | JSX renders via React children — React escapes all text automatically |
+| `target="_blank"` requires `rel="noopener noreferrer"` | Required on every generated `<a>` element — prevents tab-napping and referrer leakage |
+| No code execution on user input | Utility uses only `String.split`, `Array.filter`, `Array.map`, and `RegExp.test` |
+
+---
+
+#### 14.B.7 All States
+
+| State | Input Example | Expected Render |
+|-------|---------------|-----------------|
+| **No location** | `null` or `undefined` | Location `<div>` not rendered (existing `activity.location &&` guard, unchanged) |
+| **Plain text — no URL** | `"Golden Gate Park"` | `<span>Golden Gate Park</span>` inside the location div — no `<a>` element |
+| **URL only** | `"https://maps.google.com/place/XYZ"` | `<a href="..." target="_blank" rel="noopener noreferrer">https://maps.google.com/place/XYZ</a>` |
+| **Text before URL** | `"Meet at https://maps.google.com"` | `<span>Meet at </span>` + `<a>https://maps.google.com</a>` |
+| **URL then text** | `"https://maps.google.com — see map"` | `<a>https://maps.google.com</a>` + `<span> — see map</span>` |
+| **Text + URL + text** | `"Lunch at https://yelp.com/biz/xyz done at 2pm"` | `<span>Lunch at </span>` + `<a>https://yelp.com/biz/xyz</a>` + `<span> done at 2pm</span>` |
+| **Multiple URLs** | `"https://a.com and https://b.com"` | `<a>https://a.com</a>` + `<span> and </span>` + `<a>https://b.com</a>` |
+| **Dangerous scheme — javascript:** | `"javascript:alert(1)"` | `<span>javascript:alert(1)</span>` — plain text, NOT a link |
+| **Dangerous scheme — data:** | `"data:text/html,<h1>hi</h1>"` | `<span>data:text/html,&lt;h1&gt;hi&lt;/h1&gt;</span>` — escaped plain text |
+| **Empty string** | `""` | `parseLocationWithLinks` returns `[]`; location div still guarded by `activity.location &&` — not rendered |
+
+---
+
+#### 14.B.8 Accessibility Considerations
+
+- All generated `<a>` elements have visible text (the URL string itself). Screen readers will read the full URL, which is descriptive enough for navigation context.
+- `target="_blank"` opens a new tab. The `:focus-visible` ring makes keyboard-focused links discoverable.
+- The location pin icon (`<svg aria-hidden="true">`) is unchanged — it remains decorative.
+- No ARIA changes to the `ActivityEntry` `<article>` element. The `aria-label` on the article uses `activity.name` + time and does not include location text — this is acceptable as location is secondary metadata.
+
+---
+
+#### 14.B.9 Responsive Behavior
+
+- **Desktop:** Activity location text wraps within the `activityDetails` panel. Long URLs are contained by `word-break: break-all`.
+- **Mobile (< 640px):** Same. Activity card stacks time | divider | details vertically. URL wrapping is contained by the `word-break` rule.
+- No breakpoint-specific link behavior needed.
+
+---
+
+#### 14.C Summary — What the Frontend Engineer Must Build (T-113 + T-114)
+
+**T-113 — Timezone Abbreviation Display:**
+
+| File | Change |
+|------|--------|
+| `frontend/src/utils/formatDate.js` | **No changes** — `formatTimezoneAbbr` already exists and is correct |
+| `frontend/src/pages/TripDetailsPage.jsx` → `FlightCard` | Replace inline string concat with `{depTz && <span className={styles.tzAbbr}>{depTz}</span>}` (departure + arrival) |
+| `frontend/src/pages/TripDetailsPage.jsx` → `StayCard` | Add `formatTimezoneAbbr` calls for check-in + check-out; add `<span className={styles.tzAbbr}>` renders |
+| `frontend/src/pages/TripDetailsPage.module.css` | Add `.tzAbbr` CSS rule |
+| `frontend/src/pages/TripDetailsPage.jsx` → `LandTravelCard` | **No changes** — land travel has no timezone fields (see §14.A.7) |
+
+**T-114 — Activity Location URL Detection:**
+
+| File | Change |
+|------|--------|
+| `frontend/src/utils/formatDate.js` OR `frontend/src/utils/textUtils.js` (new) | Add `parseLocationWithLinks(text)` utility function |
+| `frontend/src/pages/TripDetailsPage.jsx` → `ActivityEntry` | Replace `{activity.location}` plain text with `parseLocationWithLinks(activity.location).map(...)` render |
+| `frontend/src/pages/TripDetailsPage.module.css` | Add `.locationLink` CSS rule |
+
+---
+
+**Tests required for T-113 (minimum 6):**
+1. `FlightCard`: departure time shows "EDT" abbreviation for `America/New_York` in summer (August datetime)
+2. `FlightCard`: arrival time shows "JST" abbreviation for `Asia/Tokyo`
+3. `StayCard`: check-in time shows correct timezone abbreviation adjacent to the check-in datetime
+4. `StayCard`: check-out time shows correct timezone abbreviation adjacent to the check-out datetime
+5. Unknown/invalid timezone string passed to `formatTimezoneAbbr` → returns IANA string as fallback, no crash, component renders
+6. DST boundary: same zone (`America/New_York`), January datetime → "EST"; July datetime → "EDT" (different abbreviation)
+
+**Tests required for T-114 (minimum 5):**
+1. Plain text location (no URL) → no `<a>` element rendered in the document
+2. Single URL location → `<a>` rendered with correct `href`, `target="_blank"`, `rel="noopener noreferrer"`, and `className="locationLink"`
+3. Mixed text + URL location → text segment rendered as `<span>`, URL segment rendered as `<a>`
+4. Multiple URLs in one string → each URL is a separate `<a>` element; intervening text is a `<span>`
+5. `javascript:alert(1)` location string → renders entirely as plain text, NO `<a>` element rendered
+
+---
+
+*Sprint 8 Spec 14 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-27.*
