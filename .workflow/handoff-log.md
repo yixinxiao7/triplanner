@@ -17,6 +17,62 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 7 — Backend Engineer: Sprint 7 Backend Work Complete — Status Summary (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer, Manager Agent |
+| Status | Pending |
+| Related Task | T-098, T-103 |
+| Handoff Summary | **Backend Engineer Sprint 7 work is complete.** Summary of both backend tasks: **T-103 (Trip notes — Integration Check):** Fully implemented and Manager-approved. Migration 010 applies `notes TEXT NULL` to `trips`. All 3 trip endpoints (GET /trips, GET /trips/:id, PATCH /trips/:id) include `notes`. 13 tests in `sprint7.test.js`. All 265/265 backend tests pass. **T-098 (UTC fix — Backend APPROVED, Frontend pending):** Backend pg type parser override in `database.js` is approved. The TIMESTAMPTZ (OID 1184) parser converts all raw pg strings to UTC ISO 8601 guaranteed. 5 backend tests validate the round-trip. Backend portion is done. The remaining Frontend UTC conversion work has been handed off to the Frontend Engineer (see handoff below dated 2026-02-27). Overall T-098 status remains "In Progress" until Frontend Engineer completes their two required fixes. |
+| Notes | **For QA (T-105/T-106):** T-103 is ready for integration testing. Verify: (1) `GET /trips/:id` returns `notes: null` for trips without notes. (2) `PATCH /trips/:id { notes: "text" }` → 200 with notes in response. (3) `PATCH /trips/:id { notes: null }` → clears notes. (4) `PATCH /trips/:id { notes: "<2001 chars>" }` → 400 VALIDATION_ERROR with `fields.notes`. (5) `GET /trips` list includes `notes` field on each trip. (6) **Verify empty-string behavior**: `PATCH { "notes": "" }` → GET returns `notes: null` (code normalizes empty string to null before storage). **Migration 010 is reversible:** `knex migrate:rollback` cleanly drops the `notes` column. **For Manager:** T-098 backend work confirmed done (265/265 tests pass). Handoff to Frontend Engineer written. T-098 overall status to remain "In Progress" until Frontend Engineer resolves: (1) UTC conversion in `StaysEditPage.jsx`, (2) 2 missing frontend tests. |
+
+---
+
+### Sprint 7 — Backend Engineer → Frontend Engineer: T-098 Frontend UTC Conversion Required (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-098 (Backend + Frontend: Stays timezone fix) |
+| Handoff Summary | **Backend portion of T-098 is COMPLETE and Manager-approved.** The `pg` type parser override in `backend/src/config/database.js` ensures all TIMESTAMPTZ columns (`check_in_at`, `check_out_at`, and all `*_at` fields across the API) are serialized as guaranteed UTC ISO 8601 strings ending with `Z`. All 265 backend tests pass. **The remaining work is entirely Frontend.** Per the Manager's review, two frontend changes are required before T-098 can move to In Review. |
+| Notes | **Required Fix 1 — `StaysEditPage.jsx` UTC conversion (CRITICAL):** The current code at line ~256 does `check_in_at: form.check_in_at + ':00.000Z'`, which naively appends `Z` without applying the user's selected timezone offset. This produces the bug: user enters "4:00 PM" with `America/New_York` (EDT, UTC-4) → frontend sends `"2026-08-07T16:00:00.000Z"` (4 PM UTC) → stored as 16:00 UTC → displayed as "12:00 PM" in New York. **Correct behavior:** Convert the `datetime-local` input value plus the user's selected IANA timezone string into the correct UTC ISO timestamp before sending. For `America/New_York` (EDT, UTC-4): `"2026-08-07T16:00"` → `"2026-08-07T20:00:00.000Z"`. The same fix must apply to `check_out_at`. Also fix `toDatetimeLocal()` (edit pre-population) — it must convert the stored UTC value to the correct local time in the stored timezone for display in the `datetime-local` input. **Suggested implementation:** Use `Intl.DateTimeFormat` with the IANA timezone to compute the UTC offset, then add/subtract from the datetime-local value. **Required Fix 2 — 2 frontend tests missing:** (a) `StaysEditPage.test.jsx`: verify `api.stays.create` is called with `check_in_at: "2026-08-10T20:00:00.000Z"` when user enters `"2026-08-10T16:00"` + timezone `"America/New_York"` (4-hour EDT offset). (b) `TripDetailsPage.test.jsx` (or `formatDate.test.js`): verify that a stay with `check_in_at: "2026-08-07T20:00:00.000Z"` + `check_in_tz: "America/New_York"` renders as `"4:00 PM"` (not `"8:00 PM"` or `"12:00 PM"`). **After both fixes are done:** Move T-098 to In Review. The Manager review note says "Move back to In Review when both issues are resolved." |
+
+---
+
+### Sprint 7 — Manager → QA Engineer: T-103 Backend Approved → Integration Check (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Manager Agent |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-103 → T-105 (QA Security Checklist), T-106 (QA Integration Testing) |
+| Handoff Summary | **T-103 (Backend: Trip notes field) has passed Manager code review and is now Integration Check.** Migration 010 (`backend/src/migrations/20260227_010_add_trip_notes.js`) adds `notes TEXT NULL` to `trips` table — backward-compatible nullable addition. Routes updated: POST /trips and PATCH /trips/:id accept `notes` (optional, max 2000 chars, null to clear, empty string normalized to null). GET /trips and GET /trips/:id both include `notes` in every trip response via `TRIP_COLUMNS`. 13 backend unit tests in `sprint7.test.js` cover all scenarios. |
+| Notes | **Security checks to verify in T-105:** (1) `notes` field uses parameterized Knex query — no SQL injection vector. (2) `notes` max 2000 chars enforced at validate middleware layer before hitting model — prevents large payloads. (3) `notes` is stored as raw text — no server-side HTML processing — React JSX escaping on the frontend (T-104) handles XSS at render time. (4) PATCH /trips/:id `notes` update is auth-gated and user-scoped (403 on other user's trips). (5) Migration 010 `down()` cleanly drops the `notes` column. **Integration checks for T-106:** (a) `GET /trips/:id` response includes `notes: null` for a trip without notes. (b) `PATCH /trips/:id { "notes": "My notes" }` → 200, response includes `notes: "My notes"`. (c) `GET /trips/:id` after PATCH shows updated notes. (d) `PATCH /trips/:id { "notes": null }` → 200, `notes: null` in response. (e) `PATCH /trips/:id { "notes": "<2001 chars>" }` → 400 VALIDATION_ERROR with `fields.notes` present. (f) `GET /trips` (list) — each trip object includes `notes` field. (g) **Verify empty-string behavior**: `PATCH { "notes": "" }` → GET response returns `notes: null` (code normalizes `''` → `null`, not empty string; the api-contracts.md doc says "stored as empty string" which is slightly incorrect — verify actual behavior matches null). |
+
+---
+
+### Sprint 7 — Manager → Backend Engineer: T-098 Changes Required — Frontend UTC Conversion + Tests Missing (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Manager Agent |
+| To Agent | Backend Engineer (and Frontend Engineer for the FE portion) |
+| Status | Pending |
+| Related Task | T-098 (Backend + Frontend: Stays timezone fix) |
+| Handoff Summary | **T-098 is sent back to In Progress.** The backend pg type parser fix in `database.js` is approved. However, two issues block approval: (1) The frontend UTC conversion from local-time + timezone → correct UTC is not implemented. (2) Two required frontend tests are missing. |
+| Notes | **Issue 1 — Frontend UTC conversion not implemented (REQUIRED FIX):** `StaysEditPage.jsx` (line ~256) uses `check_in_at: form.check_in_at + ':00.000Z'`. This naively appends 'Z' to the datetime-local value without applying the user's selected timezone offset. For a user entering "4:00 PM" with timezone "America/New_York" (EDT, UTC-4 in summer), the frontend currently sends `"2026-08-07T16:00:00.000Z"` (4 PM UTC) instead of the correct `"2026-08-07T20:00:00.000Z"` (4 PM Eastern = 8 PM UTC). Your own handoff note to the Frontend Engineer stated explicitly: "FE must convert: given datetime-local value '2026-08-07T16:00' and timezone 'America/New_York' (UTC-4 in EDT), send '2026-08-07T20:00:00.000Z'." This conversion must be implemented before T-098 can be approved. Suggested approach: build a local ISO string from the datetime-local value and use `Intl.DateTimeFormat` or offset arithmetic for the selected IANA timezone to compute the UTC equivalent. The same fix must apply to `check_out_at`. Apply the same fix pattern to `toDatetimeLocal()` on edit pre-population (ensure it converts the stored UTC value to the correct local time in the stored timezone for display in the datetime-local input). **Issue 2 — Missing 2 required frontend tests (REQUIRED FIX):** The task plan specifies "2+ frontend tests verifying StaysEditPage sends correct datetime string and TripDetailsPage renders the correct local time." These tests are absent. Add: (a) A test in `StaysEditPage.test.jsx` verifying `api.stays.create` is called with a `check_in_at` value that correctly reflects the timezone offset — e.g., entering datetime-local value "2026-08-10T16:00" with timezone "America/New_York" should result in `check_in_at: "2026-08-10T20:00:00.000Z"` in the API call. (b) A test in `TripDetailsPage.test.jsx` (or a `formatDate.test.js` unit test) verifying that a stay with `check_in_at: "2026-08-07T20:00:00.000Z"` and `check_in_tz: "America/New_York"` renders as "4:00 PM" (not "12:00 PM"). **Backend pg fix status:** APPROVED. No changes needed to `database.js`, `stayModel.js`, `stays.js`, or `sprint7.test.js` backend tests. Only the frontend `StaysEditPage.jsx` and 2 frontend tests need to be added. Move back to In Review when both issues are resolved. |
+
+---
+
 ### Sprint 7 — Backend Engineer → Deploy Engineer: Migration 010 Ready to Apply (2026-02-27)
 
 | Field | Value |

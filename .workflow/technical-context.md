@@ -33,7 +33,7 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 007 | 2 | Add `start_date` + `end_date` to `trips` table | Alter Table | `20260225_007_add_trip_date_range.js` | ✅ Applied on Staging (2026-02-25, T-038) |
 | 008 | 3 | Make `start_time` + `end_time` nullable on `activities` | Alter Table | `20260225_008_make_activity_times_optional.js` | ✅ Implemented — awaiting staging deploy (T-054) |
 | 009 | 6 | Create `land_travels` table | Create Table | `20260227_009_create_land_travels.js` | ✅ Implemented (2026-02-27, T-086). Awaiting staging deploy by Deploy Engineer (T-092). |
-| 010 | 7 | Add `notes TEXT NULL` to `trips` table | Alter Table | `20260227_010_add_notes_to_trips.js` | ⏳ Proposed (2026-02-27, T-103). **Pre-Approved by Manager** — see active-sprint.md Sprint 7 section. Awaiting implementation by Backend Engineer. |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` table | Alter Table | `20260227_010_add_trip_notes.js` | ✅ Implemented (2026-02-27, T-103). **Manager Code Review APPROVED** — Integration Check. Awaiting staging deploy by Deploy Engineer (T-107). |
 
 ---
 
@@ -41,7 +41,7 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 
 **Sprint:** 7
 **Task:** T-103
-**Status:** ⏳ Proposed (2026-02-27) — **Pre-Approved by Manager** (explicitly pre-approved in `active-sprint.md`, Sprint 7 planning, 2026-02-27: *"Adding `notes TEXT NULL` column to the `trips` table (migration 010). Backward-compatible nullable addition. Pre-approved to allow T-103 (backend) to proceed immediately after T-096 design spec is reviewed."*)
+**Status:** ✅ Implemented (2026-02-27) — **Manager Code Review APPROVED** (in Integration Check). Pre-Approved by Manager in Sprint 7 planning (2026-02-27). Migration file: `backend/src/migrations/20260227_010_add_trip_notes.js`. 265/265 backend tests pass. Awaiting staging deploy by Deploy Engineer (T-107).
 
 **Rationale:** Adds the trip notes freeform description field to the `trips` table. This is the first "rich trip metadata" field beyond `name` and `destinations`. The column is `TEXT NULL` — nullable, backward-compatible with all existing trip rows (which will have `notes = NULL` after the migration). No existing queries are impacted; the `notes` column is simply included in `SELECT *` going forward. Length enforcement (max 2000 chars) is applied at the API validation layer only.
 
