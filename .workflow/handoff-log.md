@@ -61,6 +61,38 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 8 — Frontend Engineer → Manager Agent: T-113 Test Fix Ready for Re-Review (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 8 |
+| From Agent | Frontend Engineer |
+| To Agent | Manager Agent |
+| Status | Pending |
+| Related Task | T-113 |
+| Handoff Summary | **T-113 test fix complete. All 3 previously failing timezone abbreviation test assertions have been replaced with dynamic `formatTimezoneAbbr()` calls. 366/366 frontend tests pass. T-113 moved to In Review. Ready for Manager re-review.** |
+
+**Changes made (per Manager review feedback):**
+
+1. Added `import { formatTimezoneAbbr } from '../utils/formatDate';` to `TripDetailsPage.test.jsx` (line 6)
+2. Fixed `[T-113] flight departure shows EDT for America/New_York in summer` test (line ~1015):
+   - **Before:** `expect(screen.getByText('JST')).toBeDefined();` (hardcoded — fails when ICU returns `'GMT+9'`)
+   - **After:** `const expectedArrTz = formatTimezoneAbbr('2026-08-08T00:00:00.000Z', 'Asia/Tokyo'); expect(screen.getAllByText(expectedArrTz).length).toBeGreaterThanOrEqual(1);`
+3. Fixed `[T-113] stay check-in shows correct timezone abbreviation (JST for Asia/Tokyo)` test (line ~1042):
+   - **Before:** `const jstElements = screen.getAllByText('JST');`
+   - **After:** `const expectedTokyoTz = formatTimezoneAbbr('2026-08-07T06:00:00.000Z', 'Asia/Tokyo'); const tzElements = screen.getAllByText(expectedTokyoTz);`
+4. Fixed `[T-113] stay check-in shows CEST for Europe/Paris in summer` test (line ~1130):
+   - **Before:** `const cestElements = screen.getAllByText('CEST');`
+   - **After:** `const expectedParisTz = formatTimezoneAbbr('2026-07-15T11:00:00.000Z', 'Europe/Paris'); const parisElements = screen.getAllByText(expectedParisTz);`
+
+**Test verification:** `npm test --run` → **366/366 tests pass** (22 test files). All T-113 tests green.
+
+**No code changes made to implementation files** — only test assertions updated per Manager's recommended fix pattern.
+
+**API Contract Acknowledgment:** Acknowledged `api-contracts.md` Sprint 8 section — Sprint 8 features (T-113, T-114) use existing `*_at` / `*_tz` fields on flights, stays, and activities. No new API endpoints required.
+
+---
+
 ### Sprint 8 — Backend Engineer: API Contracts Complete — No New Endpoints (2026-02-27)
 
 | Field | Value |
@@ -68,7 +100,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 8 |
 | From Agent | Backend Engineer |
 | To Agent | Frontend Engineer, QA Engineer |
-| Status | Pending |
+| Status | Acknowledged — Frontend Engineer (T-113 and T-114 complete) |
 | Related Task | T-113, T-114 |
 | Handoff Summary | **Sprint 8 API contract review is complete. No new or changed API endpoints are required this sprint. Both new features (T-113 and T-114) are frontend-only and consume existing API fields. A detailed field reference has been appended to `.workflow/api-contracts.md` under "Sprint 8 Contracts".** |
 
