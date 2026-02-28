@@ -17,6 +17,59 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 8 Closeout → Sprint 9 Setup — Manager Agent: Pipeline Dispatch (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 8 → 9 |
+| From Agent | Manager Agent |
+| To Agent | Deploy Engineer (first), then Monitor Agent, then User Agent, then QA Engineer |
+| Status | Pending |
+| Related Tasks | T-107, T-108, T-094, T-109, T-115, T-116, T-117, T-118, T-119, T-120 |
+| Handoff Summary | Sprint 8 is closed. Sprint 9 begins immediately. This is a **pipeline-only sprint** — no new implementation tasks. The full QA → Deploy → Monitor → User Agent backlog from Sprints 7 and 8 must close before any new features are scoped. |
+
+**Dispatch Order for Sprint 9 — READ THIS CAREFULLY:**
+
+1. **Deploy Engineer → T-107 FIRST (no blockers):**
+   - QA has fully cleared for Sprint 7 (T-105 Done 2026-02-27, T-106 Done 2026-02-27).
+   - T-107 is unblocked. Deploy immediately: apply migration 010 (`ALTER TABLE trips ADD COLUMN notes TEXT NULL`), rebuild frontend with Sprint 7 changes (T-097 popover portal, T-098 stays UTC fix, T-099 section reorder, T-100 all-day sort, T-101 calendar checkout/arrival, T-104 trip notes UI), verify pm2 is online (was running at pid 26323 with 2h uptime per pre-deploy check — may need restart), run Sprint 7 smoke tests. Log deployment report in qa-build-log.md. Then signal Monitor Agent.
+
+2. **Monitor Agent → T-108 (after T-107 complete):**
+   - Full Sprint 7 + Sprint 6 health check. Verify: HTTPS, pm2, migration 010 applied, notes field in GET /trips response, stays check-in timezone fix correct (4:00 PM stays 4:00 PM), calendar popover portal renders without corruption, section order correct on trip details. Playwright E2E 4/4 pass. Log report in qa-build-log.md. Signal User Agent.
+
+3. **User Agent → T-094 (can run in parallel with T-107/T-108 if staging already ready from T-095, OR after T-108 if staging needs Sprint 7 deploy first):**
+   - **This is the 4th consecutive carry-over.** It MUST complete in Sprint 9. No exceptions.
+   - Test plan: (1) Land travel CRUD via UI (create trip, add TRAIN entry via edit page, verify section on details + calendar purple chip). (2) Calendar enhancements: event time chips visible, "+X more" popover opens without grid corruption (T-097 fix), Escape closes. (3) Bug fixes: AM/PM visible on activity edit, clock icon white. (4) FilterToolbar: stays visible during refetch (T-084). (5) ILIKE: search "%" → empty results. (6) Sprint 1–5 regression. Submit structured feedback to feedback-log.md under "Sprint 6" header.
+
+4. **User Agent → T-109 (after T-108 Monitor confirms Sprint 7 features on staging):**
+   - Sprint 7 walkthrough: "+X more" popover (no corruption), stays timezone (4:00 PM → 4:00 PM), section order (Flights → Land Travel → Stays → Activities), all-day activities first, calendar checkout/arrival times, trip notes on TripDetailsPage + TripCard. Full Sprint 6 regression. Submit feedback to feedback-log.md under "Sprint 7" header.
+
+5. **QA Engineer → T-115 (after T-109 User Agent Sprint 7 walkthrough):**
+   - Expand Playwright from 4 → 7 tests: (1) land travel edit flow E2E; (2) calendar "+X more" popover E2E; (3) mobile viewport 375×812 smoke test (core flow + search/filter). Run against HTTPS staging with `ignoreHTTPSErrors: true`. All 7 tests must pass. Log in qa-build-log.md.
+
+6. **QA Engineer → T-116 (after T-115):**
+   - Security checklist for Sprint 8: T-113 TZ abbreviations (Intl.DateTimeFormat, no eval, fallback safe), T-114 URL links (scheme allowlist enforced, rel="noopener noreferrer", no dangerouslySetInnerHTML), T-115 E2E (no hardcoded creds, cleanup). All 366 unit tests pass. npm audit 0 production vulns. Log in qa-build-log.md.
+
+7. **QA Engineer → T-117 (after T-116):**
+   - Integration testing for Sprint 8: TZ abbreviations for 3 zones (EDT/JST/CEST), URL linkification in activity location, E2E 7/7 pass, Sprint 7 regression clean. Log in qa-build-log.md. Signal Deploy Engineer.
+
+8. **Deploy Engineer → T-118 (after T-117):**
+   - Sprint 8 re-deployment: no new migrations. Rebuild frontend with T-113/T-114 changes (timezone abbreviations + URL links). Verify pm2 still online. Smoke tests: (1) flight detail shows TZ abbreviation, (2) activity with URL shows hyperlink, (3) Playwright 7/7. Log in qa-build-log.md. Signal Monitor Agent.
+
+9. **Monitor Agent → T-119 (after T-118):**
+   - Sprint 8 health check: HTTPS, pm2, notes field, TZ abbreviations visible in flight card, URL `<a>` element visible in activity location, Playwright 7/7. All Sprint 6+7 regression checks pass. Log in qa-build-log.md. Signal User Agent.
+
+10. **User Agent → T-120 (after T-119):**
+    - Sprint 8 walkthrough: TZ abbreviations (EDT on NY flight, JST on Tokyo flight, CEST on Paris stay), URL linkification (clickable link opens new tab, javascript: scheme blocked), Playwright 7/7, full Sprint 7 regression. Submit feedback to feedback-log.md under "Sprint 8" header.
+
+**After all pipeline tasks complete:**
+- Manager triages T-094 + T-109 + T-120 feedback and plans Sprint 10.
+- Sprint 10 feature candidates: B-032 (trip export/print), B-022 (production deployment — 7 consecutive sprints pending project owner decision), remaining backlog items from project-brief.md.
+
+**Critical constraint:** Sprint 9 scope = pipeline tasks ONLY (T-107 through T-120). Manager will NOT approve any new design specs or implementation tasks until T-120 is complete and feedback is triaged.
+
+---
+
 ### Sprint 8 — Manager Agent: T-113 APPROVED → Integration Check (2026-02-27)
 
 | Field | Value |

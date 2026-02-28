@@ -48,3 +48,18 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 *Entries added below as User Agent and Monitor Agent submit Sprint 8 feedback.*
 
 ---
+
+**Sprint 8 Closeout Triage Summary (Manager Agent — 2026-02-27):**
+
+*No new Sprint 8 User Agent or Monitor Agent feedback entries were submitted. T-094 (User Agent: Sprint 6 carry-over, 4th consecutive sprint) remained in Backlog — the deploy/monitor/user pipeline (T-107, T-108, T-109) was never reached despite QA clearing (T-105, T-106 Done). T-120 (User Agent: Sprint 8 walkthrough) also did not run. No T-109 or T-120 feedback entries exist.*
+
+*FB-084 (the only Sprint 8 feedback item) was already "Tasked → T-113" at sprint start. T-113 is now Done (Manager-approved, Integration Check). Status updated to Resolved below.*
+
+| FB Entry | Category | Severity | Disposition | Notes |
+|----------|----------|----------|-------------|-------|
+| FB-084 | Feature Gap | Minor | **Resolved → T-113 Done** | Timezone abbreviation display implemented for FlightCard (departure + arrival) and StayCard (check-in + check-out). `formatTimezoneAbbr()` utility added to `formatDate.js`. All 366 tests pass. Awaiting staging deploy (T-118) to fully close. |
+| (Sprint 8 User Agent) | — | — | — | No Sprint 8 entries. T-094, T-109, T-120 did not run. Feedback for Sprint 6, Sprint 7, and Sprint 8 features will be collected in Sprint 9. |
+
+*Sprint 9 must collect feedback from three consecutive missed User Agent cycles (Sprints 6, 7, 8). T-094 is a P0 hard-block for Sprint 9 — no new implementation is scoped until T-094 completes and its feedback is triaged.*
+
+---

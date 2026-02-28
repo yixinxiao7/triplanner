@@ -1008,4 +1008,163 @@ Summary of each completed development cycle. Written by the Manager Agent at the
 
 ---
 
+### Sprint #8 — 2026-02-27 to 2026-02-27
+
+**Goal:** Unblock the Sprint 7 QA pipeline by fixing two broken test files (T-110 fixes T-098's UTC fixture, T-111 writes the missing T-104 tests). Complete the long-overdue Sprint 6 User Agent walkthrough (T-094). Close the full QA → Deploy → Monitor → User Agent cycle for all Sprint 7 integration-check tasks. Deliver two user-visible enhancements: timezone abbreviation display on flight/stay detail cards (T-113, from FB-084) and clickable activity location URLs (T-114, from B-031). Expand Playwright E2E coverage to 7+ tests.
+
+**Goal Met:** ⚠️ PARTIALLY MET — Implementation goals were achieved: both test-fix tasks (T-110, T-111), the design spec (T-112), the Sprint 7 QA audit (T-105, T-106), and both new feature implementations (T-113, T-114) are Done. Sprint 7 implementation tasks (T-097, T-099, T-100, T-101, T-103, T-098, T-104) advanced to Integration Check. However, the pipeline from Deploy onward never closed: T-094 (User Agent Sprint 6) did not run for the fourth consecutive sprint, T-107 Deploy was not triggered despite QA clearing, and T-109, T-115–T-120 all remain in Backlog.
+
+---
+
+**Tasks Completed (7 tasks fully Done this sprint):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-110 | Fix T-098 frontend tests: UTC entry added to timezones.js; TripDetailsPage display test for T-098 added. All 344 frontend tests pass. | ✅ Done |
+| T-111 | Write T-104 tests: 11 total tests written for TripDetailsPage (notes text, placeholder, edit mode, char count, save/cancel/null) and TripCard (truncation, full text, null hidden). All 344+ tests pass. | ✅ Done |
+| T-112 | Design spec: Spec 14 — timezone abbreviation display (Intl.DateTimeFormat, DST-aware, fallback) + activity URL linkification (parseLocationWithLinks, security attrs, scheme allowlist). Published to ui-spec.md. | ✅ Done |
+| T-105 | QA: Security checklist + code review audit for all Sprint 7 implementation tasks (T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-110, T-111). All items verified. Report in qa-build-log.md. | ✅ Done |
+| T-106 | QA: Integration testing for all Sprint 7 tasks — stays timezone, trip notes CRUD, calendar popover portal, section order, all-day sort, calendar checkout/arrival times. 30+ checks. Full report in qa-build-log.md. | ✅ Done |
+| T-113 | Frontend: Timezone abbreviation display — `formatTimezoneAbbr()` utility added to formatDate.js; FlightCard shows departure + arrival abbreviations; StayCard shows check-in + check-out abbreviations. DST-aware. Fallback to IANA string. 5 tests (6+ scenarios). 366/366 tests pass. Manager APPROVED → Integration Check. | ✅ Done |
+| T-114 | Frontend: Activity location clickable URL detection — `parseLocationWithLinks()` utility splits on `/(https?:\/\/[^\s]+)/g`; ActivityEntry renders `<a target="_blank" rel="noopener noreferrer">` for links; `javascript:` scheme blocked as plain text; no dangerouslySetInnerHTML. 5+ tests pass. Manager APPROVED → Integration Check. | ✅ Done |
+
+**Sprint 7 Tasks Advanced to Integration Check (implementation complete, QA cleared via T-105/T-106):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-097 | Calendar "+X more" popover portal fix — `createPortal` to `document.body` with `position:fixed` eliminates CSS grid layout corruption | Integration Check |
+| T-098 | Stays check-in/checkout UTC timezone fix — `localDatetimeToUTC` helper, pg type parser override. Tests now complete via T-110. | Integration Check |
+| T-099 | Trip details section reorder — Flights → Land Travel → Stays → Activities | Integration Check |
+| T-100 | All-day activities sort to top of each activity day group | Integration Check |
+| T-101 | Calendar checkout/arrival time display — stay checkout on last day, flight/land travel arrival time on arrival day | Integration Check |
+| T-103 | Backend: Trip notes — migration 010 (`notes TEXT NULL`), PATCH/GET, 13 tests | Integration Check |
+| T-104 | Frontend: Trip notes UI (TripDetailsPage + TripCard). Tests complete via T-111. | Integration Check |
+
+**Tasks Carried Over (10 tasks — Backlog):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-094 | User Agent: Sprint 6 feature walkthrough (**4th consecutive carry-over**) | Deploy/Monitor pipeline never reached; staging was ready but T-107 not triggered after QA cleared |
+| T-107 | Deploy: Sprint 7 staging re-deployment (migration 010 + Sprint 7 frontend rebuild) | QA (T-106) is now Done — deploy is unblocked. Carry to Sprint 9 as immediate P0. |
+| T-108 | Monitor: Sprint 7 staging health check | T-107 not deployed |
+| T-109 | User Agent: Sprint 7 feature walkthrough | T-108 not run |
+| T-115 | E2E: Playwright expansion from 4 → 7 tests (land travel edit, calendar overflow, mobile viewport) | T-109 not completed — T-115 was blocked by T-109 |
+| T-116 | QA: Sprint 8 security checklist + code review audit | T-113, T-114 in Integration Check but T-115 not started; pipeline didn't reach this phase |
+| T-117 | QA: Sprint 8 integration testing | T-116 not started |
+| T-118 | Deploy: Sprint 8 staging re-deployment (no new migrations) | T-117 not started |
+| T-119 | Monitor: Sprint 8 health check (TZ abbreviations, URL links, Playwright 7/7) | T-118 not deployed |
+| T-120 | User Agent: Sprint 8 feature walkthrough (TZ abbreviations, URL links, Sprint 7 regression) | T-119 not run |
+
+---
+
+**Key Decisions (ADRs / Approvals This Sprint):**
+
+- **UTC Entry Added to Timezones List (T-110):** Adding `{ label: 'UTC — Coordinated Universal Time', value: 'UTC' }` to `frontend/src/utils/timezones.js` was the cleaner fix for T-098's failing test (vs. rewriting the test to use Europe/London). UTC is a valid timezone selection that users may legitimately need; adding it improves both test correctness and UX simultaneously.
+
+- **Dynamic formatTimezoneAbbr() in Test Assertions (T-113 fix):** Hardcoded timezone abbreviation strings (`'JST'`, `'CEST'`) caused test failures when Node.js ICU data returned `'GMT+9'` and `'GMT+2'` instead. The correct fix was to import `formatTimezoneAbbr` in the test file and call it dynamically, making tests environment-agnostic across small-ICU and full-ICU Node.js builds. Only `'EDT'` (America/New_York in summer) was kept as a hardcoded assertion — it is reliable across all ICU builds.
+
+- **LandTravelCard Correctly Excluded from TZ Abbreviation (T-113):** The `land_travels` schema has no IANA timezone fields (`*_tz`) — only dates and times without timezone context. Per Spec 14, LandTravelCard was NOT modified. This is consistent with the original DB schema design.
+
+- **T-102 (Design Spec for Notes) Already Collapsed into T-096 (Sprint 7 Decision):** Noted for Sprint 9 context — T-102 was pre-closed by Manager approval in Sprint 7 as part of T-096/Spec 13.
+
+---
+
+**Feedback Summary (Sprint 8):**
+
+*No new Sprint 8 User Agent or Monitor Agent feedback entries. T-094, T-109, and T-120 all remained in Backlog — the deploy/monitor/user pipeline never executed. FB-084 (the only Sprint 8 feedback item) was already "Tasked → T-113" at sprint start and is now Resolved (T-113 Done, pending staging deploy via T-118).*
+
+| FB Entry | Category | Severity | Disposition | Description |
+|----------|----------|----------|-------------|-------------|
+| FB-084 | Feature Gap | Minor | **Resolved** (T-113 Done) | Timezone abbreviation display on flight/stay detail cards — implemented and manager-approved. Staging deploy pending T-118. |
+
+---
+
+**What Went Well:**
+
+- **Test debt cleared completely:** T-110 and T-111 resolved the two long-standing test blockers from Sprint 7. The UTC timezone entry addition to timezones.js is a genuine UX improvement, not just a test workaround. T-111's 11 notes tests exceed the required 8 minimum and cover all edge cases (null/empty → null, char count, truncation in TripCard). Total frontend tests grew from 344 → 366 (+22).
+
+- **Both Sprint 8 features implemented cleanly and approved first pass:** T-113 (timezone abbreviations) required one fix cycle for brittle test assertions, but the underlying implementation was correct on first review. T-114 (URL linkification) passed Manager review on the first submission. Both are now in Integration Check with robust test suites.
+
+- **Sprint 7 QA pipeline unblocked and cleared:** T-105 and T-106 (the QA audit and integration testing for all 7 Sprint 7 implementation tasks) are Done. The Sprint 7 implementation quality is confirmed. T-107 Deploy can proceed immediately in Sprint 9 with no remaining blockers.
+
+- **Spec 14 design spec was complete and precise:** T-112 provided clear guidance for both features — fallback strategy for unknown timezones, security attributes for URL links, scheme allowlist — which enabled T-113 and T-114 to implement correctly without mid-sprint specification ambiguity.
+
+- **Narrower scope than Sprint 7 produced better implementation results:** The Sprint 8 implementation tasks were intentionally smaller and more focused. All implementation tasks that were attempted were approved by Manager. The issue is the QA/Deploy/Monitor pipeline, not implementation quality.
+
+**What Could Improve:**
+
+- **T-094 has now carried over four consecutive sprints (Sprint 6 → 7 → 8 → 9):** Sprint 6 features (land travel CRUD, calendar enhancements) have never been tested by the User Agent. This is an ever-widening quality blindspot — Sprint 7 and Sprint 8 features have now also accumulated without User Agent validation. Sprint 9 MUST treat T-094 as a P0 hard-block with no exceptions. If the pipeline cannot close in Sprint 9, the sprint should be scoped to only the pipeline tasks.
+
+- **T-107 was unblocked but not triggered:** After T-106 (QA integration testing) was marked Done, the Deploy Engineer had all information needed to proceed with T-107. However, T-107 was not dispatched this sprint. Sprint 9 should dispatch T-107 as the very first action, before any new design or implementation work begins.
+
+- **Sprint 8 scope was still too ambitious:** The sprint had 11 new tasks + 5 carry-overs from Sprint 7 + the T-094 P0 carry-over. Only 7 new tasks reached Done; 10 tasks carry to Sprint 9. Sprint 9 should be scoped exclusively to closing the pipeline and collecting feedback — zero new features until T-094, T-109, and T-120 are complete.
+
+- **The pipeline-first rule must be enforced at planning time:** This is the third sprint where feature implementation completed but the QA→Deploy→Monitor→User pipeline did not close. Going forward, the sprint scope must be planned to guarantee the full pipeline closes: if implementation tasks are added, time/capacity must explicitly be reserved for QA + Deploy + Monitor + User Agent.
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 9+):**
+
+*From Sprint 1 (still outstanding):*
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (no production impact, B-021)
+
+*From Sprint 2 (still outstanding):*
+- ⚠️ Rate limiting uses in-memory store — will not persist across restarts or scale across processes (B-020)
+
+*From Sprint 3 (still outstanding):*
+- ⚠️ Auth rate limit is IP-based only — aggressive on shared-IP environments (B-024)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+
+*From Sprint 5 (still outstanding):*
+- ⚠️ Sort logic duplicated across status-filter vs non-status-filter code paths in tripModel.js (minor DRY violation)
+
+*From Sprint 7 (still outstanding):*
+- ⚠️ api-contracts.md notes section: `{ "notes": "" }` described as storing empty string, but code normalizes to `null` — minor doc inconsistency; update during T-106/T-117 QA
+
+*New from Sprint 8:*
+- ⚠️ No dedicated unit tests for `formatTimezoneAbbr()` in `formatDate.test.js` — currently integration-covered only via TripDetailsPage tests; acceptable for now but should be added when formatDate.js tests are next touched
+- ⚠️ T-094 User Agent walkthrough has never run — Sprint 6 + Sprint 7 + Sprint 8 features are all untested by the User Agent (4th consecutive carry-over; critical quality blindspot)
+- ⚠️ Sprint 8 features (T-113, T-114) in Integration Check but not yet deployed to staging — no staging verification of timezone abbreviation rendering or URL link behavior under real browser/PostgreSQL conditions
+
+*Resolved this sprint (from prior debt):*
+- ✅ T-098 test fixture broken (UTC not in TIMEZONES dropdown) → resolved by T-110 (UTC added to timezones.js)
+- ✅ T-104 had 0 of 8 required tests → resolved by T-111 (11 tests written, all pass)
+
+---
+
+**Next Sprint Focus (Sprint 9 Recommendations):**
+
+*This sprint is pipeline-only. No new implementation tasks should be added until the backlog of 3 User Agent walkthroughs (T-094, T-109, T-120) and 2 staging deploys (T-107, T-118) are complete and feedback is triaged. Sprint 9 is a catch-up sprint — the pipeline must close cleanly before Sprint 10 can plan new features.*
+
+**P0 — Sprint 9 Must-Do: Close the Pipeline (sequential)**
+
+1. **T-107 IMMEDIATELY** — Deploy: Sprint 7 staging re-deployment (migration 010 + frontend rebuild). QA has cleared (T-106 Done). No blockers remain. Apply migration 010 (`notes TEXT NULL`), rebuild frontend with T-097/T-098/T-099/T-100/T-101/T-104 changes, verify pm2 online.
+2. **T-108** — Monitor: Sprint 7 staging health check. Immediately after T-107.
+3. **T-094 (P0 HARD-BLOCK)** — User Agent: Sprint 6 feature walkthrough. Can run in parallel with T-107/T-108 if staging is ready. **This is the fourth carry-over. It cannot slip again.** If T-094 requires staging to be deployed, then it must follow T-107/T-108.
+4. **T-109** — User Agent: Sprint 7 feature walkthrough. After T-108 Monitor confirms staging health.
+5. **T-115** — E2E: Playwright expansion (4 → 7 tests). After T-109 User Agent confirms staging is clean.
+6. **T-116** — QA: Sprint 8 security checklist (T-113 timezone abbreviations, T-114 URL links, T-115 E2E).
+7. **T-117** — QA: Sprint 8 integration testing.
+8. **T-118** — Deploy: Sprint 8 staging re-deployment (no new migrations — rebuild frontend only with T-113/T-114 changes).
+9. **T-119** — Monitor: Sprint 8 health check.
+10. **T-120** — User Agent: Sprint 8 feature walkthrough (TZ abbreviations, URL links, full regression).
+
+**P1 — Triage Feedback and Plan Sprint 10:**
+
+11. Manager triages T-094 + T-109 + T-120 feedback → scope Sprint 10 features from project-brief.md backlog.
+12. Top backlog candidates for Sprint 10: **B-032** (trip export/print), **B-022** (production deployment decision — now 7 consecutive sprints without a hosting provider decision), ILIKE wildcard edge case (B-033 partially done in T-085 but doc update pending).
+
+**P2 — Tech Debt (only if pipeline closes early):**
+
+13. **B-020** — Rate limiting persistence: Move from in-memory to Redis-backed store.
+14. **B-021** — Resolve dev dependency esbuild vulnerability.
+15. Update api-contracts.md notes field (`""` → `null` normalization behavior).
+
+**Out of Scope (per project brief):**
+- MFA login
+- Home page summary calendar
+- Auto-generated itinerary suggestions
+
+---
+
 *Add new sprint summaries above this line, newest first.*

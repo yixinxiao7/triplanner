@@ -471,6 +471,8 @@ Each task is a row in the table below. Agents update their assigned tasks as the
 
 **Sprint field updates for carry-over tasks:** T-094, T-105, T-106, T-107, T-108, T-109 are all carried from Sprint 7 — their Sprint field is updated to 8. T-098 and T-104 remain partially in Sprint 7's section (implementation approved) and are completed by T-110 and T-111 in Sprint 8.
 
+**Sprint 8 Closeout (Manager Agent — 2026-02-27):** Sprint #8 is closed. 7 tasks fully Done: T-110, T-111, T-112, T-105, T-106, T-113, T-114. 7 Sprint 7 implementation tasks advanced to Integration Check (T-097, T-098, T-099, T-100, T-101, T-103, T-104 — all cleared by QA T-105/T-106). Deploy pipeline was not triggered despite QA clearing: T-107, T-108, T-109, T-115, T-116, T-117, T-118, T-119, T-120 all carry to Sprint 9. T-094 carries to Sprint 9 as a P0 hard-block (4th consecutive carry-over). Sprint 9 must be pipeline-only — T-107 deploy is the first action, followed by T-094, T-108, T-109, T-115, T-116, T-117, T-118, T-119, T-120 in sequence. No new implementation tasks until all three User Agent walkthroughs (T-094, T-109, T-120) complete and feedback is triaged. See `.workflow/sprint-log.md` for full Sprint #8 summary.
+
 ---
 
 ### Phase 0 — Test Fixes (P0, start immediately, parallel, no blockers)
