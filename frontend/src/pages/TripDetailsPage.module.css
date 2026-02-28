@@ -882,3 +882,97 @@
   padding-top: 4px;
   border-top: 1px solid var(--border-subtle);
 }
+
+/* ── Trip Notes (T-104) ── */
+.notesSection {
+  margin-top: 24px;
+  margin-bottom: 0;
+}
+
+.notesDisplay {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.notesText {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.notesPlaceholder {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.notesPencilBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  transition: color 150ms ease;
+  flex-shrink: 0;
+}
+
+.notesPencilBtn:hover {
+  color: var(--text-primary);
+}
+
+.notesEditContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notesTextarea {
+  width: 100%;
+  min-height: 100px;
+  background: var(--surface-elevated, rgba(255,255,255,0.04));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  padding: 10px 12px;
+  resize: vertical;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.notesTextarea:focus {
+  border-color: var(--accent);
+}
+
+.notesCharCount {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  letter-spacing: 0.02em;
+}
+
+.notesCharCountWarn {
+  color: var(--color-activity, #C47A2E);
+}
+
+.notesEditActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notesError {
+  font-size: 12px;
+  color: var(--color-danger, #e05252);
+  margin-top: 2px;
+}

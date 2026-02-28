@@ -295,4 +295,87 @@ describe('StaysEditPage', () => {
       expect(screen.getByText(/add a stay/i)).toBeDefined();
     });
   });
+
+  // ── T-098: UTC conversion tests ──────────────────────────────────────────────
+
+  it('[T-098] submits check_in_at as correct UTC when timezone is Asia/Tokyo (UTC+9)', async () => {
+    // "2026-08-10T16:00" in Asia/Tokyo (UTC+9, no DST) should be stored as "2026-08-10T07:00:00.000Z"
+    // Old bug: naively appended 'Z', sending "2026-08-10T16:00:00.000Z" (incorrect — off by 9h)
+    api.stays.create.mockResolvedValue({
+      data: {
+        data: {
+          id: 'stay-tokyo',
+          category: 'HOTEL',
+          name: 'Tokyo Hotel',
+          address: '1-1 Shinjuku',
+          check_in_at: '2026-08-10T07:00:00.000Z',
+          check_in_tz: 'Asia/Tokyo',
+          check_out_at: '2026-08-15T02:00:00.000Z',
+          check_out_tz: 'Asia/Tokyo',
+        },
+      },
+    });
+
+    renderPage();
+    await screen.findByText(/add a stay/i);
+
+    fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'HOTEL' } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Tokyo Hotel' } });
+    fireEvent.change(screen.getByLabelText(/^address$/i), { target: { value: '1-1 Shinjuku' } });
+    fireEvent.change(screen.getByLabelText(/check-in date/i), { target: { value: '2026-08-10T16:00' } });
+    fireEvent.change(screen.getByLabelText(/check-in timezone/i), { target: { value: 'Asia/Tokyo' } });
+    fireEvent.change(screen.getByLabelText(/check-out date/i), { target: { value: '2026-08-15T11:00' } });
+    fireEvent.change(screen.getByLabelText(/check-out timezone/i), { target: { value: 'Asia/Tokyo' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /save stay/i }));
+
+    await waitFor(() => {
+      expect(api.stays.create).toHaveBeenCalledWith('trip-001', expect.objectContaining({
+        check_in_at: '2026-08-10T07:00:00.000Z',
+        check_in_tz: 'Asia/Tokyo',
+      }));
+    });
+
+    // Verify the old broken value is NOT sent
+    const callArgs = api.stays.create.mock.calls[0][1];
+    expect(callArgs.check_in_at).not.toBe('2026-08-10T16:00:00.000Z');
+  });
+
+  it('[T-098] submits check_in_at unchanged (no offset) when timezone is UTC', async () => {
+    // "2026-09-01T12:00" in UTC → UTC is 12:00 exactly (zero offset)
+    api.stays.create.mockResolvedValue({
+      data: {
+        data: {
+          id: 'stay-utc',
+          category: 'HOTEL',
+          name: 'London Hotel',
+          address: '10 Baker St',
+          check_in_at: '2026-09-01T12:00:00.000Z',
+          check_in_tz: 'UTC',
+          check_out_at: '2026-09-05T10:00:00.000Z',
+          check_out_tz: 'UTC',
+        },
+      },
+    });
+
+    renderPage();
+    await screen.findByText(/add a stay/i);
+
+    fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'HOTEL' } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'London Hotel' } });
+    fireEvent.change(screen.getByLabelText(/^address$/i), { target: { value: '10 Baker St' } });
+    fireEvent.change(screen.getByLabelText(/check-in date/i), { target: { value: '2026-09-01T12:00' } });
+    fireEvent.change(screen.getByLabelText(/check-in timezone/i), { target: { value: 'UTC' } });
+    fireEvent.change(screen.getByLabelText(/check-out date/i), { target: { value: '2026-09-05T10:00' } });
+    fireEvent.change(screen.getByLabelText(/check-out timezone/i), { target: { value: 'UTC' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /save stay/i }));
+
+    await waitFor(() => {
+      expect(api.stays.create).toHaveBeenCalledWith('trip-001', expect.objectContaining({
+        check_in_at: '2026-09-01T12:00:00.000Z',
+        check_in_tz: 'UTC',
+      }));
+    });
+  });
 });

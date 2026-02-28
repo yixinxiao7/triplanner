@@ -22,6 +22,78 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint 7 Entries
+
+| Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
+|----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 7 — T-095 HTTPS + pm2 Re-enable (2026-02-28) | Post-Deploy Health Check | Pass | Success | Staging | Yes | Deploy Engineer | None — all acceptance criteria met. HTTPS on port 3001 ✅, pm2 online ✅, CORS ✅, Secure cookie ✅, Frontend HTTPS on 4173 ✅. |
+
+---
+
+### Sprint 7 — Deploy Engineer: T-095 HTTPS + pm2 Re-enable — 2026-02-28
+
+**Related Tasks:** T-095 (Deploy/Infra: Re-enable HTTPS + pm2)
+**Sprint:** 7
+**Date:** 2026-02-28T00:01:53Z
+**Checked By:** Deploy Engineer
+**Deploy Verified: YES — All acceptance criteria pass**
+
+---
+
+#### Environment State Prior to T-095
+
+At Sprint 6 close (per Monitor Agent T-093 report), the staging environment was:
+- `PORT=3000`, `SSL_KEY_PATH=(commented out)`, `CORS_ORIGIN=http://localhost:5173`
+- Backend running as direct `node src/index.js` — no pm2
+
+#### Changes Made for T-095
+
+| Change | Detail |
+|--------|--------|
+| `backend/.env` — `PORT` | Updated to `3001` (avoids local dev port conflict) |
+| `backend/.env` — `SSL_KEY_PATH` | Set to `../infra/certs/localhost-key.pem` (uncommented) |
+| `backend/.env` — `SSL_CERT_PATH` | Set to `../infra/certs/localhost.pem` (uncommented) |
+| `backend/.env` — `CORS_ORIGIN` | Updated to `https://localhost:4173` |
+| `backend/.env` — `COOKIE_SECURE` | Set to `true` |
+| pm2 | Backend re-registered via `pm2 start infra/ecosystem.config.cjs`, `pm2 save` |
+| Frontend | Rebuilt with `VITE_API_URL=https://localhost:3001/api/v1`; `vite preview` serves on port 4173 with HTTPS via `infra/certs/localhost.pem` |
+
+#### SSL Certificate Status
+
+| Field | Value |
+|-------|-------|
+| Subject | `CN=localhost` |
+| Valid From | 2026-02-25T18:14:13Z |
+| Valid Until | 2027-02-25T18:14:13Z |
+| Status | ✅ Valid (12 months remaining) |
+| Location | `infra/certs/localhost.pem` + `infra/certs/localhost-key.pem` |
+
+#### Acceptance Criteria Verification
+
+| Check | Command / Method | Result |
+|-------|-----------------|--------|
+| **HTTPS health check** | `curl -k https://localhost:3001/api/v1/health` | ✅ `{"status":"ok"}` — 200 OK |
+| **TLS handshake** | `curl -sv https://localhost:3001/api/v1/health` | ✅ Server hello returned, cert presented (self-signed, expected) |
+| **pm2 status** | `pm2 list` | ✅ `triplanner-backend` — status: `online`, 0 restarts, uptime 25m+ |
+| **pm2 save** | `pm2 save` | ✅ Saved to `/Users/yixinxiao/.pm2/dump.pm2` |
+| **CORS preflight** | `OPTIONS https://localhost:3001/api/v1/trips` with `Origin: https://localhost:4173` | ✅ `204 No Content`, `Access-Control-Allow-Origin: https://localhost:4173`, `Access-Control-Allow-Credentials: true` |
+| **Secure cookie** | `POST https://localhost:3001/api/v1/auth/register` | ✅ `Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Strict` |
+| **Frontend HTTPS** | `curl -sv https://localhost:4173/` | ✅ TLS handshake, `200 OK`, `index.html` served |
+| **Frontend API URL** | Grep in `frontend/dist/assets/index-*.js` | ✅ `https://localhost:3001/api/v1` embedded in bundle |
+| **Cert on both ports** | TLS handshake on 3001 + 4173 | ✅ Both show `CN=localhost` self-signed cert |
+
+#### Known Accepted Limitations
+
+- **Self-signed certificate:** `curl` without `-k` reports `SSL certificate problem: self signed certificate`. Expected for local staging. Browsers require a security exception to be added. Real HTTPS with a CA-signed cert is deferred to production deployment (B-022).
+- **pm2 startup on boot:** `pm2 startup` was not run (requires sudo). Process will restart automatically if the system reboots only after running `pm2 startup && pm2 save`. Acceptable for local staging.
+
+#### Post-Deploy Status
+
+- **T-094 (User Agent carry-over):** ✅ Unblocked — HTTPS staging is operational. User Agent can begin Sprint 6 feature walkthrough.
+- **T-107 (Staging re-deploy):** ⏳ Blocked — awaiting T-106 (QA Integration Testing) completion.
+
+---
+
 ## Sprint 6 Entries
 
 | Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |

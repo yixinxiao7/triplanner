@@ -17,6 +17,62 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 7 — Manager → QA Engineer: T-097, T-099, T-100, T-101 Pass Review → Integration Check (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Manager Agent |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Task | T-097, T-099, T-100, T-101, T-105, T-106 |
+| Handoff Summary | **4 Sprint 7 frontend tasks reviewed and approved.** All 4 tasks have been moved to Integration Check and are ready for QA: **(1) T-097** — Calendar "+X more" popover portal fix. `createPortal` to `document.body` with `position:fixed` eliminates CSS grid layout corruption. 3 T-097 tests in `TripCalendar.test.jsx` pass. **(2) T-099** — Trip details section reorder to Flights → Land Travel → Stays → Activities. 1 T-099 test in `TripDetailsPage.test.jsx` passes. **(3) T-100** — All-day activities sort to top of day group in `ActivityDayGroup` component. 1 T-100 test in `TripDetailsPage.test.jsx` passes. **(4) T-101** — Calendar checkout/arrival time enhancements: stay checkout time on last day ("check-out Xa"), flight arrival time on arrival day ("arrives Xa"). 5+ T-101 tests in `TripCalendar.test.jsx` pass. |
+| Notes | **Current test count:** 343 passing, 1 failing (T-098 UTC test — unrelated to these 4 tasks). **For QA (T-105):** Verify no XSS vectors in popover content (JSX rendering confirmed). Verify section order on staging: Flights → Land Travel → Stays → Activities. Verify "+X more" popover opens without corrupting calendar grid. Verify checkout and arrival times appear on calendar. **For QA (T-106):** Integration-check the 4 features above on staging. T-103 (Backend: Trip notes — Integration Check) is also ready for QA. Note: T-104 (Frontend: Trip notes) is In Progress (tests missing) — do NOT include T-104 in T-105/T-106 until it moves to Integration Check. |
+
+---
+
+### Sprint 7 — Manager → Frontend Engineer: T-098 UTC Test Fix Required (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Manager Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-098 |
+| Handoff Summary | **T-098 partially fixed — 2 issues remain before review passes.** (1) **FAILING TEST**: `StaysEditPage.test.jsx` "[T-098] submits check_in_at unchanged (no offset) when timezone is UTC" fails with 0 calls to `api.stays.create`. Root cause: `'UTC'` is not in the `TIMEZONES` array (`frontend/src/utils/timezones.js`). In JSDOM, setting a `<select>` to a non-existent option value reverts to empty string — `form.check_in_tz` stays `''`, validation blocks submit. Fix: add `{ label: 'UTC — Coordinated Universal Time', value: 'UTC' }` to the TIMEZONES array (smallest change) — with 0 offset, expected `check_in_at` stays `'2026-09-01T12:00:00.000Z'`. Alternatively, rewrite the test to use a timezone that IS in the dropdown. (2) **MISSING TEST**: `TripDetailsPage.test.jsx` still has no T-098 test verifying that a stay with a known UTC `check_in_at` value renders the correct local time using `check_in_tz`. Example: mock a stay with `check_in_at: '2026-08-07T20:00:00.000Z'` and `check_in_tz: 'America/New_York'` and verify the displayed time includes the expected 4:00 PM representation. |
+| Notes | **`localDatetimeToUTC` algorithm is CORRECT** — the Tokyo timezone test passes. `toDatetimeLocal` is also correct. Both helpers are properly used in `handleSubmit`. No changes needed to the implementation logic. Only the test fixture and the missing second test need work. After fixing both issues, move T-098 to In Review for Manager re-review. |
+
+---
+
+### Sprint 7 — Manager → Frontend Engineer: T-104 Trip Notes Tests Required (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Manager Agent |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Task | T-104 |
+| Handoff Summary | **T-104 code is complete — tests are entirely missing.** `TripDetailsPage.jsx` notes section (lines 372-727) and `TripCard.jsx` notes preview (lines 128-135) are fully implemented and correct. However, `TripDetailsPage.test.jsx` has 0 T-104 tests and `TripCard.test.jsx` has 0 T-104 tests. The task cannot pass review without them. Required tests: (1) TripDetailsPage: renders notes text when non-null; renders "no notes yet" placeholder when null; pencil button enters edit mode (textarea visible); char count visible when notesDraft.length >= 1800; Save calls `api.trips.update` with correct notes payload; Cancel restores previous notes without API call; submitting blank notes sends `null`. (2) TripCard: shows truncated first 100 chars + ellipsis when notes.length > 100; shows full notes when ≤100 chars; notes section hidden when trip.notes is null. Min 8 tests required. When tests are written and passing, move T-104 to In Review. |
+| Notes | **Blocker dependencies cleared:** T-096 (design spec) is Done; T-103 (backend notes) is Integration Check. T-104 is unblocked. Note that mock for `api.trips.update` is already configured in `TripDetailsPage.test.jsx` (line 20). Notes state in TripDetailsPage initializes from `trip.notes` via `useEffect` (line 415-418). The `defaultHookValue` in the test has no `notes` field on `mockTrip` — add `notes: null` to `mockTrip` and create variants with `notes: 'some text'` for tests. |
+
+---
+
+### Sprint 7 — Frontend Engineer → Acknowledged API Contracts (T-098, T-103) (2026-02-27)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 |
+| From Agent | Frontend Engineer |
+| To Agent | Manager Agent |
+| Status | Acknowledged |
+| Related Task | T-098, T-103, T-097, T-099, T-100, T-101, T-104 |
+| Handoff Summary | **API Contract Acknowledgment:** Frontend Engineer has read and acknowledged the following Sprint 7 API contracts before beginning implementation: (1) **T-098** — UTC timestamp fix for stays endpoints. The pg type parser override ensures all `check_in_at`/`check_out_at` values from the API are always UTC ISO 8601 strings ending in "Z". Frontend must display times by converting UTC + the `_tz` IANA string. Fix: `StaysEditPage.jsx` must use proper UTC conversion when constructing the payload (`localDatetimeToUTC(datetimeLocalStr, ianaTimezone)` helper), and `toDatetimeLocal` must convert UTC + timezone to local display correctly for the datetime-local input when editing. (2) **T-103** — Trip notes field. All three trips endpoints (`GET /trips`, `GET /trips/:id`, `PATCH /trips/:id`) now include `notes: string \| null`. PATCH accepts `notes` as optional field (max 2000 chars, null to clear). GET list includes `notes` for TripCard display. Implementation plan: T-104 adds notes section to TripDetailsPage with inline edit and notes preview to TripCard. |
+| Notes | **Code already implemented (needs tracker update + tests):** T-097 (portal fix), T-099 (section reorder: Flights → Land Travel → Stays → Activities), T-100 (all-day activities sort to top of day group), T-101 (calendar checkout/arrival time enhancements) — all code changes present in source files. Tracker still shows "Backlog" for these tasks. Tests will be added and tracker updated as part of this Sprint 7 frontend work session. |
+
+---
+
 ### Sprint 7 — Backend Engineer: Sprint 7 Backend Work Complete — Status Summary (2026-02-27)
 
 | Field | Value |

@@ -125,6 +125,15 @@ export default function TripCard({ trip, onDelete }) {
             </p>
           )}
 
+          {/* Notes preview (T-104): show first 100 chars if notes exist */}
+          {trip.notes && trip.notes.trim() && (
+            <p className={styles.notesPreview}>
+              {trip.notes.length > 100
+                ? `${trip.notes.slice(0, 100)}\u2026`
+                : trip.notes}
+            </p>
+          )}
+
           {/* Divider */}
           <hr className={styles.divider} />
 
