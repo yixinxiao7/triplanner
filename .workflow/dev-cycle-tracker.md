@@ -700,4 +700,33 @@ See `.workflow/sprint-log.md` Sprint #9 summary for full retrospective. See `.wo
 
 ---
 
-**Sprint 10 Closeout will be written here by Manager Agent after all pipeline tasks complete and feedback is triaged.**
+**Sprint 10 Closeout — Manager Agent — 2026-03-04**
+
+*Sprint 10 closed without the pipeline completing. T-094 (User Agent: Sprint 6 walkthrough) carried over for the sixth consecutive sprint. T-108, T-109, T-115, T-118, T-119, T-120 did not execute. T-116 and T-117 remain Blocked on staging E2E (code-review portions Done from Sprint 9 — 18/18 security checks, 266/266 backend + 366/366 frontend tests verified).*
+
+*Phase 5 tasks T-121 and T-122 (trip export/print) ran and completed this sprint despite the Pipeline-Only Rule not being satisfied — a deviation from the sprint plan. Sprint 11 must close the pipeline as its absolute first and only priority before any new implementation is dispatched.*
+
+**Sprint 10 — Tasks Completed:**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-121 | Design spec: Trip export/print view (Spec 15) — print button placement, `@media print` CSS, `window.print()`, IBM Plex Mono retained | ✅ Done (2026-03-04) |
+| T-122 | Frontend: Trip print/export — Print button on TripDetailsPage, print.css @media print rules, 3 new tests, 369/369 tests pass, Manager + QA APPROVED | ✅ Done (2026-03-04) |
+| BE-S10 | Backend: Sprint 10 review — 266/266 tests pass, zero schema/API changes, api-contracts.md Sprint 10 section added | ✅ Done (2026-03-04) |
+| MGR-S10 | Manager: Sprint 10 code review pass — zero rework dispatched, T-122 independently verified correct | ✅ Done (2026-03-04) |
+
+**Sprint 10 — Carry-Over Tasks to Sprint 11:**
+
+| ID | Description | Carry-Over # | Sprint 11 Status |
+|----|-------------|-------------|-----------------|
+| T-094 | User Agent: Sprint 6 feature walkthrough | **6th** | Backlog — P0 HARD-BLOCK, START IMMEDIATELY |
+| T-108 | Monitor Agent: Sprint 7 staging health check | 4th | Backlog — P0, START IMMEDIATELY (parallel with T-094) |
+| T-109 | User Agent: Sprint 7 feature walkthrough | 4th | Backlog — after T-108 + T-094 Done |
+| T-115 | QA: Playwright expansion 4→7 tests | 3rd | Backlog — after T-109 |
+| T-116 | QA: Sprint 8 staging E2E verification | 2nd | Blocked (on T-115); code review Done Sprint 9 |
+| T-117 | QA: Sprint 8 staging integration check | 2nd | Blocked (on T-116); code review Done Sprint 9 |
+| T-118 | Deploy Engineer: Sprint 8 staging re-deployment | 3rd | Backlog — after T-117 |
+| T-119 | Monitor Agent: Sprint 8 health check | 3rd | Backlog — after T-118 |
+| T-120 | User Agent: Sprint 8 feature walkthrough | 3rd | Backlog — after T-119 |
+
+*See sprint-log.md Sprint #10 summary and feedback-log.md Sprint 10 Closeout Triage for full retrospective, feedback disposition, and Sprint 11 recommendations.*
