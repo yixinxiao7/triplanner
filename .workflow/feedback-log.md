@@ -145,3 +145,21 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 *Entries will be added here as User Agent submits Sprint 6, Sprint 7, Sprint 8, and Sprint 10 feedback during T-094, T-109, T-120, and T-123 respectively.*
 
 ---
+
+### FB-085 — UX Issue: Deploy phase overwrites .env, breaking local dev
+
+| Field | Value |
+|-------|-------|
+| Sprint | 11 |
+| Category | UX Issue |
+| Severity | Major |
+| Status | New |
+| Related Task | — |
+
+**Description:** The Deploy Engineer agent modifies `backend/.env` to staging settings (HTTPS, port 3001, secure cookies, staging CORS origin) during the deploy phase, but never restores it afterward. This leaves `.env` in staging mode after the sprint completes, which breaks `npm run dev` for the project owner — the frontend proxy can't connect because it expects HTTP on port 3000 by default.
+
+**Recommended fix:** Use a separate `backend/.env.staging` file for staging deployments instead of overwriting `backend/.env`. The deploy phase and staging-related agents should read from `.env.staging`, while `.env` remains untouched for local development. The Deploy Engineer prompt and the deploy phase script should be updated to reference `.env.staging` instead of mutating `.env`.
+
+**Requested by:** Project owner (manual testing feedback)
+
+---
