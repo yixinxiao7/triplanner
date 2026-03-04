@@ -17,6 +17,63 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 9 — Deploy Engineer → Monitor Agent: T-107 COMPLETE — T-108 Staging Health Check Ready (2026-02-28)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 9 |
+| From Agent | Deploy Engineer |
+| To Agent | Monitor Agent |
+| Status | Pending |
+| Related Tasks | T-107 (Done), T-108 (Monitor: Sprint 7 health check — START NOW) |
+| Handoff Summary | T-107 Sprint 7 staging deployment is COMPLETE. Backend restarted under pm2 (PID 92765, online). All 10 migrations applied (migration 010 confirmed current). Frontend rebuilt (Vite 6.4.1, 121 modules, 337.21 kB). All 6 smoke tests pass. Monitor Agent is cleared to begin T-108 (Sprint 7 + Sprint 6 health check) immediately. |
+
+**T-107 Deployment Results:**
+
+| Item | Value |
+|------|-------|
+| Build Status | ✅ SUCCESS — Vite 6.4.1, 121 modules, 337.21 kB JS |
+| Migration Status | ✅ 10/10 applied — migration 010 (`notes TEXT NULL`) confirmed current |
+| pm2 Status | ✅ ONLINE — PID 92765, cluster mode, 0 crashes |
+| Backend Health | ✅ `GET /api/v1/health` → `{"status":"ok"}` |
+| Auth Protection | ✅ `GET /api/v1/trips` → 401 UNAUTHORIZED (correct) |
+| Frontend Serving | ✅ `https://localhost:4173/` → valid HTML, new build active |
+| Smoke Tests | ✅ 6/6 PASS |
+| npm audit | ✅ 0 production vulnerabilities (backend + frontend) |
+
+**Services Running:**
+- **Backend:** https://localhost:3001 (pm2, pid 92765, cluster mode)
+- **Frontend:** https://localhost:4173 (vite preview, pid 92828, serving `dist/`)
+
+**Sprint 7 Features Now Live on Staging:**
+- T-097: "+X more" calendar overflow popover portal fix (renders to `document.body`, no grid corruption)
+- T-098: Stays check-in/check-out UTC timezone fix (pg parser override, local time display via `check_in_tz`)
+- T-099: Trip details section reorder (Flights → Land Travel → Stays → Activities)
+- T-100: All-day activities sort to top of each day group
+- T-101: Calendar checkout/arrival time display (time chips on correct days)
+- T-103: Trip notes backend (migration 010 applied, `notes TEXT NULL` on trips)
+- T-104: Trip notes frontend (TripDetailsPage inline edit + TripCard truncated preview)
+
+**Sprint 8 Features Also Live (included in current codebase build):**
+- T-113: Timezone abbreviation display on FlightCard/StayCard (`formatTimezoneAbbr`)
+- T-114: Activity location URL linkification (`parseLocationWithLinks`, https-only, `rel="noopener noreferrer"`)
+
+**Monitor Agent T-108 Actions Required:**
+1. Verify HTTPS on `https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+2. Verify pm2 `triplanner-backend` status: online
+3. Confirm migration 010 applied — `GET /trips` response includes `notes` field (null or string, never `""`)
+4. Test stays check-in UTC fix: stays with `check_in_tz = "America/New_York"` should display local time (not raw UTC)
+5. Test calendar "+X more" popover: clicking overflow chip should open popover without grid corruption
+6. Verify section order on TripDetailsPage: Flights → Land Travel → Stays → Activities
+7. Run Playwright E2E 4/4 tests (baseline — before T-115 expansion): `npx playwright test` from project root
+8. Verify Sprint 6 regression: land travels CRUD, FilterToolbar stays visible, ILIKE search "%" returns empty results
+9. Log health check report in `qa-build-log.md`
+10. Signal User Agent to begin T-094 (Sprint 6 walkthrough) and T-109 (Sprint 7 walkthrough, after T-108 complete)
+
+**Detailed deployment log:** `qa-build-log.md` → "Sprint 9 Deploy Log — 2026-02-28" section.
+
+---
+
 ### Sprint 9 Manager Agent: Code Review Pass #2 — Zero Tasks in "In Review" (Confirmed) (2026-02-28)
 
 | Field | Value |

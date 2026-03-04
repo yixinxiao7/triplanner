@@ -896,3 +896,127 @@ All 22 frontend test files passed including:
 
 **Pre-Deploy Status (T-118):** ⚠️ BLOCKED — All code-level QA checks PASS (security, integration, unit tests). T-118 cannot proceed until T-107 (Sprint 7 staging deploy) → T-108 (Monitor Sprint 7) → T-109 (User Agent Sprint 7) → T-115 (Playwright 4→7). **Deploy Engineer: T-107 is the critical path blocker. Begin immediately.**
 
+---
+
+## Sprint 9 Deploy Log — 2026-02-28
+
+| Test Run | Test Type | Result | Build Status | Environment | Deploy Verified | Tested By | Error Summary |
+|----------|-----------|--------|-------------|-------------|-----------------|-----------|---------------|
+| Sprint 9 — T-107 Pre-Deploy Gate Check (2026-02-28) | Pre-Deploy Check | Pass | — | Staging | — | Deploy Engineer | QA T-106 confirmed Done. QA T-116/T-117 code review PASS. All gates cleared. |
+| Sprint 9 — T-107 Staging Deploy (2026-02-28) | Build + Deploy | Pass | Success | Staging | No — handoff sent to Monitor Agent (T-108) | Deploy Engineer | None — all acceptance criteria met. |
+
+---
+
+### Sprint 9 — Deploy Engineer: T-107 Staging Re-Deployment — 2026-02-28
+
+**Related Tasks:** T-107 (Staging Re-deployment — Sprint 7 features + Sprint 9 rebuild)
+**Sprint:** 9
+**Date:** 2026-02-28
+**Deployed By:** Deploy Engineer
+**Deploy Verified:** No — handoff sent to Monitor Agent (T-108)
+
+---
+
+#### Pre-Deploy Gate Check
+
+| Gate | Status | Detail |
+|------|--------|--------|
+| QA T-105 (Security Audit) sign-off | ✅ PASS | Done — 21/21 security checks pass (logged in handoff-log.md) |
+| QA T-106 (Integration Testing) sign-off | ✅ PASS | Done — 40/40 integration checks pass; "T-106 PASS — T-107 Ready to Deploy" entry in handoff-log.md |
+| QA Sprint 9 Run 1 re-verification | ✅ PASS | 266/266 backend + 366/366 frontend tests pass, 18/18 security items, 6/6 config items |
+| QA Sprint 9 Run 2 escalation | ✅ RECEIVED | QA escalation entry in handoff-log.md confirms T-107 is critical path blocker — Deploy Engineer cleared to proceed |
+| Backend tests (verified by QA) | ✅ 266/266 PASS | Sprint 9 QA Run 2 — confirmed fresh run 2026-02-28 |
+| Frontend tests (verified by QA) | ✅ 366/366 PASS | Sprint 9 QA Run 2 — confirmed fresh run 2026-02-28 |
+| npm audit — production | ✅ 0 vulnerabilities | Backend: 0 prod vulns. Frontend: 0 prod vulns (dev vulns excluded) |
+
+**All gates cleared. Proceeding with Sprint 9 deployment.**
+
+---
+
+#### Installation Phase
+
+| Step | Result | Detail |
+|------|--------|--------|
+| `cd backend && npm install` | ✅ SUCCESS | up to date, 0 production vulnerabilities |
+| `cd frontend && npm install` | ✅ SUCCESS | up to date, 0 production vulnerabilities |
+| `npm audit --production` (backend) | ✅ 0 vulns | `found 0 vulnerabilities` |
+| `npm audit --omit=dev` (frontend) | ✅ 0 vulns | `found 0 vulnerabilities` |
+
+---
+
+#### Build Phase
+
+| Step | Result | Detail |
+|------|--------|--------|
+| `cd frontend && npm run build` | ✅ SUCCESS | Vite 6.4.1 — 121 modules, 337.21 kB JS (102.63 kB gzip), 70.24 kB CSS (10.87 kB gzip), built in 672ms |
+| Frontend build artifacts | ✅ GENERATED | `dist/index.html`, `dist/assets/index-CNsOYXJm.css`, `dist/assets/index-CWPdh_C8.js` |
+| Sprint 7 features in build | ✅ CONFIRMED | T-097 popover portal, T-098 UTC fix, T-099 section reorder, T-100 all-day sort, T-101 calendar checkout/arrival, T-104 trip notes UI |
+| Sprint 8 features in build | ✅ CONFIRMED | T-113 timezone abbreviations (FlightCard/StayCard), T-114 activity URL linkification |
+
+**Build Status: SUCCESS**
+
+---
+
+#### Database Migration Phase
+
+| Migration | Status | Detail |
+|-----------|--------|--------|
+| 001–009 (previously applied) | ✅ ALREADY APPLIED | Confirmed via `knex migrate:latest` output |
+| 010 — `add_trip_notes.js` (notes TEXT NULL on trips) | ✅ ALREADY APPLIED | Applied in Sprint 8 (T-107 first run, 2026-02-27). `knex migrate:latest` → "Already up to date" |
+| Total applied | ✅ 10/10 | `Already up to date` — all migrations current on staging |
+
+**Migration Status: COMPLETE — All 10 migrations applied. `notes TEXT NULL` column live on `trips` table.**
+
+---
+
+#### Staging Deployment Phase
+
+| Step | Result | Detail |
+|------|--------|--------|
+| pm2 pre-state check | ✅ ONLINE | PID 53303, status: online, 13h uptime — carry-over from Sprint 8 T-107 deployment |
+| pm2 restart triplanner-backend | ✅ SUCCESS | New PID: 92765, status: online, 2 restarts (1 from Sprint 8 + 1 from Sprint 9 restart) |
+| pm2 status (post-restart) | ✅ ONLINE | PID 92765, mode: cluster, status: online, 2 restarts, memory: 80.8 MB |
+| Backend HTTPS health check | ✅ PASS | `curl -sk https://localhost:3001/api/v1/health` → `{"status":"ok"}` |
+| Backend auth protection | ✅ PASS | `GET /api/v1/trips` → `{"error":{"code":"UNAUTHORIZED"}}` (correct 401) |
+| Frontend SPA serving (vite preview) | ✅ PASS | `curl -sk https://localhost:4173/` → valid HTML response with `<meta charset="UTF-8" />` |
+| Vite preview restarted | ✅ ONLINE | Old PID 26485 stopped; new PID 92828 started serving fresh build from `dist/` |
+
+**Environment:** Staging (localhost HTTPS)
+**Backend URL:** https://localhost:3001
+**Frontend URL:** https://localhost:4173
+
+---
+
+#### T-107 Smoke Test Results
+
+| Test | Expected | Result | Status |
+|------|----------|--------|--------|
+| GET /api/v1/health | `{"status":"ok"}` | `{"status":"ok"}` | ✅ PASS |
+| GET /api/v1/trips (no auth) | 401 UNAUTHORIZED | `{"error":{"code":"UNAUTHORIZED"}}` | ✅ PASS |
+| Frontend SPA HTML served | Valid HTML with `<html>` tags | `<!doctype html><html lang="en">...` | ✅ PASS |
+| pm2 status after restart | online, no crashes | PID 92765, status: online, memory: 80.8 MB | ✅ PASS |
+| Migration 010 applied | `notes TEXT NULL` column on trips | "Already up to date" (applied Sprint 8) | ✅ PASS |
+| npm audit production | 0 vulnerabilities | 0 prod vulns (backend + frontend) | ✅ PASS |
+
+**Smoke Test Result: ✅ 6/6 PASS**
+
+---
+
+#### Sprint 9 T-107 Deployment Summary
+
+| Item | Value |
+|------|-------|
+| Sprint | 9 |
+| Task | T-107 (Sprint 7 Staging Re-deployment) |
+| Date | 2026-02-28 |
+| Build Status | ✅ SUCCESS |
+| Environment | Staging |
+| Backend URL | https://localhost:3001 |
+| Frontend URL | https://localhost:4173 |
+| Migrations Applied | 10/10 (010 already applied in Sprint 8 — verified current) |
+| pm2 PID | 92765 |
+| Deploy Verified | No — Monitor Agent T-108 handoff sent |
+| Next Action | Monitor Agent: Run T-108 (Sprint 7 health check) |
+
+**T-107 Status: COMPLETE ✅**
+
