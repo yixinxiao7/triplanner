@@ -5185,3 +5185,604 @@ Add the following to `frontend/src/pages/TripDetailsPage.module.css`:
 ---
 
 *Sprint 8 Spec 14 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-27.*
+
+---
+
+### Spec 15: Trip Export / Print View
+
+**Sprint:** #10
+**Related Task:** T-121
+**Status:** Approved
+
+**Description:**
+Spec 15 adds a lightweight, browser-native print capability to the TripDetailsPage. Users can generate a clean, single-column, black-on-white paper-ready view of their entire trip itinerary by clicking a "Print" button. There is no PDF library, no server-side generation, and no new route — the feature uses `window.print()` combined with a `@media print` CSS stylesheet that overrides the dark theme and hides interactive elements unsuitable for print (navbar, edit/add/delete controls, the interactive calendar). IBM Plex Mono is retained as the document font in print.
+
+**Target User:** Detail-oriented travelers who want a physical or PDF copy of their itinerary to carry while travelling (offline reference, customs forms, accommodation confirmations).
+
+---
+
+#### 15.1 Print Button — Screen Appearance
+
+**Placement:** The Print button lives inside the `pageHeader` block on TripDetailsPage, in the same row as the trip name and destination chips. It is positioned at the far right of that header row using flexbox (`justify-content: space-between`).
+
+**Layout structure of updated pageHeader row:**
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│  [← back to trips]                                                         │
+│                                                                            │
+│  Trip Name (h1)                                          [🖨 Print]        │
+│  ● Tokyo  ● Paris  [edit destinations]                                     │
+│  Aug 7 – Aug 20, 2026  [edit dates]                                        │
+│  Notes text...  [pencil icon]                                              │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+The trip name (`h1.tripName`) and the print button are in a flex row (`tripNameRow`) with `justify-content: space-between` and `align-items: flex-start`. The destinations, date range, and notes remain below, unchanged.
+
+**Button spec:**
+
+| Property | Value |
+|----------|-------|
+| Label | `Print` (text only, no emoji — use a small SVG printer icon to the left) |
+| Icon | Printer SVG: 14×14px, `stroke="currentColor"`, `strokeWidth="1.5"`, `aria-hidden="true"`. Simple printer outline (rectangle body, paper output tray at top, feed sheet below). |
+| Style | Secondary button (see Design System: transparent bg, `1px solid rgba(93,115,126,0.5)` border, `#FCFCFC` text) |
+| Font size | 11px |
+| Font weight | 500 |
+| Letter spacing | 0.06em |
+| Text transform | uppercase |
+| Padding | 6px 14px |
+| Border radius | `var(--radius-sm)` (2px) |
+| Gap (icon + label) | 6px |
+| Hover state | Background `rgba(252,252,252,0.05)`, border stays |
+| Focus visible | `outline: 2px solid var(--border-accent); outline-offset: 2px` |
+| Cursor | pointer |
+| `aria-label` | `"Print trip itinerary"` |
+| CSS class | `.printBtn` (added to `TripDetailsPage.module.css`) |
+
+**Why secondary style:** The Print button is a utility action, not the primary CTA of the page. Secondary style signals availability without competing with section-level "add" actions.
+
+---
+
+#### 15.2 Print Button — CSS (`.printBtn` in `TripDetailsPage.module.css`)
+
+```css
+/* ── Print Button ── */
+.tripNameRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.printBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid rgba(93, 115, 126, 0.5);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  flex-shrink: 0;      /* prevent button from squishing under long trip name */
+  white-space: nowrap;
+}
+
+.printBtn:hover {
+  background: rgba(252, 252, 252, 0.05);
+}
+
+.printBtn:focus-visible {
+  outline: 2px solid var(--border-accent);
+  outline-offset: 2px;
+}
+```
+
+---
+
+#### 15.3 Print Button — JSX Structure
+
+The `pageHeader` in `TripDetailsPage.jsx` currently renders the trip name `h1` directly inside `pageHeader`. Wrap the `h1` and the new print button in a `tripNameRow` div:
+
+```jsx
+<div className={styles.pageHeader}>
+  <Link to="/" className={styles.backLink} aria-label="Back to my trips">
+    ← back to trips
+  </Link>
+
+  {/* NEW: trip name + print button row */}
+  <div className={styles.tripNameRow}>
+    <h1 className={styles.tripName}>{trip?.name}</h1>
+
+    <button
+      className={styles.printBtn}
+      onClick={() => window.print()}
+      aria-label="Print trip itinerary"
+    >
+      {/* Printer SVG icon */}
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 14 14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        {/* Paper feed (top sheet) */}
+        <rect x="3" y="1" width="8" height="4" rx="0.5" />
+        {/* Printer body */}
+        <rect x="1" y="5" width="12" height="6" rx="1" />
+        {/* Output tray / printed page */}
+        <rect x="3" y="9" width="8" height="4" rx="0.5" />
+      </svg>
+      Print
+    </button>
+  </div>
+
+  {/* destinations, date range, notes — unchanged below */}
+  ...
+</div>
+```
+
+**onClick handler:** `() => window.print()` — inline, no separate function needed. The browser opens the print dialog using the document's current rendered state, which `@media print` CSS transforms into a clean layout.
+
+---
+
+#### 15.4 Print Layout — What the User Sees in Print Preview
+
+When the user clicks Print and the browser print dialog opens, the page renders as:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│  TRIPLANNER                          (small, top-right) │
+│                                                         │
+│  Trip to Japan                                          │
+│  (h1 — large, black)                                    │
+│                                                         │
+│  Tokyo · Osaka · Kyoto                                  │
+│  (destinations, comma-separated or pill chips)          │
+│                                                         │
+│  Aug 7 – Aug 20, 2026                                   │
+│  (date range, if set)                                   │
+│                                                         │
+│  notes: Book restaurant on day 3 in Osaka...            │
+│  (notes, if present — full text, no truncation)         │
+│                                                         │
+│  ──────────────────────────────────────────────────     │
+│  FLIGHTS                                                │
+│  ──────────────────────────────────────────────────     │
+│                                                         │
+│  JFK → NRT                                              │
+│  Delta  DL006                                           │
+│  Aug 7, 2026 — 11:00 AM EDT → Aug 8, 2026 — 2:15 PM JST│
+│                                                         │
+│  ──────────────────────────────────────────────────     │
+│  LAND TRAVEL                                            │
+│  ──────────────────────────────────────────────────     │
+│  [shinkansen entries ...]                               │
+│                                                         │
+│  ──────────────────────────────────────────────────     │
+│  STAYS                                                  │
+│  ──────────────────────────────────────────────────     │
+│  [hotel entries ...]                                    │
+│                                                         │
+│  ──────────────────────────────────────────────────     │
+│  ACTIVITIES                                             │
+│  ──────────────────────────────────────────────────     │
+│  [day-grouped activity entries ...]                     │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Key print layout rules:**
+- Single column, full-width (no max-content-width constraint — paper is narrower than 1120px)
+- Black (`#000`) text on white (`#fff`) background — all dark theme colors overridden
+- IBM Plex Mono font retained throughout
+- Section headers (FLIGHTS, LAND TRAVEL, STAYS, ACTIVITIES) preserved with their horizontal rule
+- All trip data (flight cards, stay cards, land travel cards, activity entries) displayed in full
+- No interactive UI: no navbar, no edit buttons, no add buttons, no delete buttons, no calendar, no back link, no edit-destinations link, no date edit controls, no notes pencil button, no save/cancel/clear buttons, no print button itself
+
+---
+
+#### 15.5 `@media print` CSS Rules — `frontend/src/styles/print.css`
+
+Create a new file: `frontend/src/styles/print.css`
+
+This file contains only `@media print` rules. It must be imported in `TripDetailsPage.jsx` (the only page where printing is relevant).
+
+```css
+/* ============================================================
+   Print Stylesheet — TripDetailsPage
+   Imported in TripDetailsPage.jsx
+   Controls layout when user triggers window.print()
+   ============================================================ */
+
+@media print {
+
+  /* ── 1. Global overrides: white paper, black ink, IBM Plex Mono ── */
+  *,
+  *::before,
+  *::after {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #ccc !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  body {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11pt;
+    line-height: 1.5;
+    background: #fff;
+    color: #000;
+  }
+
+  /* ── 2. Hide interactive / non-print UI ── */
+
+  /* Navbar (Navbar.module.css: .navbar) */
+  [class*="navbar_navbar"],
+  [class*="Navbar_navbar"] {
+    display: none !important;
+  }
+
+  /* Back link */
+  [class*="backLink"] {
+    display: none !important;
+  }
+
+  /* Print button itself */
+  [class*="printBtn"] {
+    display: none !important;
+  }
+
+  /* Edit destinations link */
+  [class*="editDestLink"] {
+    display: none !important;
+  }
+
+  /* Destination edit container (inline edit mode) */
+  [class*="destEditContainer"] {
+    display: none !important;
+  }
+
+  /* Set dates / Edit dates links */
+  [class*="setDatesLink"],
+  [class*="editDatesLink"] {
+    display: none !important;
+  }
+
+  /* Date range edit form (input + save/clear/cancel) */
+  [class*="dateRangeEdit"] {
+    display: none !important;
+  }
+
+  /* Clear and cancel date buttons */
+  [class*="clearDatesBtn"],
+  [class*="cancelDatesLink"] {
+    display: none !important;
+  }
+
+  /* Notes pencil / edit button */
+  [class*="notesPencilBtn"] {
+    display: none !important;
+  }
+
+  /* Notes edit container (textarea + save/cancel) */
+  [class*="notesEditContainer"] {
+    display: none !important;
+  }
+
+  /* Section action buttons/links ("+ add flight", "+ add stay", etc.) */
+  [class*="sectionActionBtn"],
+  [class*="sectionActionLink"] {
+    display: none !important;
+  }
+
+  /* Calendar wrapper (interactive, not useful for print) */
+  [class*="calendarWrapper"] {
+    display: none !important;
+  }
+
+  /* ── 3. Remove max-width constraint for print ── */
+  [class*="container"] {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  [class*="main"] {
+    padding: 0 !important;
+  }
+
+  /* ── 4. Ensure all sections show (override any conditional display) ── */
+  [class*="section"] {
+    display: block !important;
+    page-break-inside: avoid;
+    margin-bottom: 24pt;
+  }
+
+  /* ── 5. Cards — single column, no card background ── */
+  [class*="cardList"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16pt !important;
+  }
+
+  [class*="flightCard"],
+  [class*="stayCard"],
+  [class*="landTravelCard"] {
+    border: 1px solid #ccc !important;
+    border-radius: 0 !important;
+    padding: 12pt !important;
+    page-break-inside: avoid;
+  }
+
+  /* Flight columns — keep three-column layout (from / airline+number / to) */
+  [class*="flightColumns"] {
+    display: flex !important;
+  }
+
+  /* ── 6. Activities ── */
+  [class*="dayGroup"] {
+    page-break-inside: avoid;
+    margin-bottom: 12pt;
+  }
+
+  [class*="activityEntry"] {
+    page-break-inside: avoid;
+    border-bottom: 1px solid #eee !important;
+    padding-bottom: 8pt;
+    margin-bottom: 8pt;
+  }
+
+  /* ── 7. Section headers — preserve uppercase label + line ── */
+  [class*="sectionHeader"] {
+    display: flex !important;
+    align-items: center;
+    margin-bottom: 12pt;
+    border-bottom: 1px solid #000 !important;
+    padding-bottom: 4pt;
+  }
+
+  [class*="sectionLine"] {
+    display: none !important; /* The border-bottom on sectionHeader replaces it */
+  }
+
+  [class*="sectionTitle"] {
+    font-size: 9pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+    color: #000 !important;
+  }
+
+  /* ── 8. Status badges — visible in print ── */
+  [class*="categoryBadge"],
+  [class*="landTravelModeBadge"],
+  [class*="allDayBadge"] {
+    border: 1px solid #888 !important;
+    padding: 1pt 6pt !important;
+    border-radius: 2pt !important;
+    font-size: 8pt !important;
+  }
+
+  /* ── 9. Page setup ── */
+  @page {
+    size: A4 portrait;
+    margin: 20mm 15mm 20mm 15mm;
+  }
+
+  /* ── 10. Typography adjustments for print ── */
+  [class*="tripName"] {
+    font-size: 20pt !important;
+    margin-bottom: 8pt !important;
+  }
+
+  [class*="destinations"],
+  [class*="destinationsRow"] {
+    font-size: 11pt !important;
+    margin-bottom: 6pt !important;
+  }
+
+  [class*="destChipReadonly"] {
+    background: none !important;
+    border: 1px solid #999 !important;
+    padding: 2pt 6pt !important;
+    border-radius: 2pt !important;
+    font-size: 9pt !important;
+  }
+
+  [class*="dateRangeText"] {
+    font-size: 10pt !important;
+    color: #444 !important;
+  }
+
+  [class*="notesText"] {
+    font-size: 10pt !important;
+    color: #333 !important;
+  }
+
+  /* Ensure notes section displays in full (not truncated) */
+  [class*="notesSection"] {
+    display: block !important;
+  }
+
+  [class*="notesDisplay"] {
+    display: block !important;
+  }
+
+  /* Airport codes larger for readability */
+  [class*="airportCode"] {
+    font-size: 14pt !important;
+    font-weight: 600 !important;
+  }
+
+  /* ── 11. Links — show as text, not blue underlined ── */
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  /* Exception: activity location URLs — show URL as text so reader can type it */
+  [class*="locationLink"] {
+    color: #000 !important;
+    text-decoration: underline !important;  /* keep underline to signal it was a link */
+  }
+
+  /* ── 12. Timezone abbreviation badges ── */
+  [class*="tzAbbr"] {
+    color: #555 !important;
+    font-size: 8pt !important;
+  }
+
+  /* ── 13. Skeleton loading states (should not appear in print) ── */
+  .skeleton {
+    display: none !important;
+  }
+
+  /* ── 14. Spinners (should not appear in print) ── */
+  .spinner {
+    display: none !important;
+  }
+
+}
+```
+
+**Implementation note on CSS Modules class name selectors:** Because TripDetailsPage uses CSS Modules, the actual compiled class names in the DOM are namespaced (e.g., `TripDetailsPage_navbar__abc12`). The `[class*="navbar_navbar"]` attribute selector matches any element whose class attribute contains that substring. This is the correct technique for targeting CSS Module classes from a global print stylesheet without needing to add `id` attributes or data attributes everywhere.
+
+**Alternative (more maintainable) approach:** If the attribute selector approach proves fragile across build hashes, the Frontend Engineer may instead add `id` attributes to key wrapper elements in TripDetailsPage.jsx (e.g., `id="print-hide-navbar"`, `id="print-calendar"`) and target those in print.css. This trades JSX changes for CSS stability. The attribute selector approach is preferred for MVP since it requires zero JSX changes beyond the print button and `tripNameRow` wrapper.
+
+---
+
+#### 15.6 Import in TripDetailsPage.jsx
+
+Add the following import at the top of `frontend/src/pages/TripDetailsPage.jsx`, alongside existing style imports:
+
+```jsx
+import '../styles/print.css';
+```
+
+This ensures the `@media print` rules are included in the Vite bundle and applied globally when `window.print()` is invoked on the TripDetailsPage.
+
+---
+
+#### 15.7 User Flow — Step by Step
+
+1. **User lands on TripDetailsPage** — sees the normal dark-theme view with the Print button in the top-right of the page header.
+2. **User clicks "Print"** — browser immediately opens the native OS print dialog (no loading state, no animation — `window.print()` is synchronous from the browser's perspective).
+3. **Print preview renders** — browser applies `@media print` CSS, hiding the navbar, interactive controls, and calendar; overriding colors to black-on-white; resetting layout to single-column.
+4. **User sees print preview** — all four trip sections (Flights, Land Travel, Stays, Activities) are visible in order; trip name, destinations, date range, and notes appear at the top.
+5. **User selects printer or PDF** — clicks Print in the OS dialog. Browser sends the document to the printer (physical) or saves as PDF.
+6. **Dialog closes** — page reverts to normal dark-theme screen rendering. No page reload or state change.
+
+---
+
+#### 15.8 All States
+
+| State | Behavior |
+|-------|----------|
+| **Normal screen** | Print button visible in page header; dark theme; all sections, calendar, and controls visible |
+| **Print preview** | Navbar hidden; calendar hidden; all edit/add/delete buttons hidden; back link hidden; notes pencil hidden; black-on-white single column; all trip data sections visible |
+| **Empty trip (no flights, no stays, etc.)** | Empty state messages (e.g., "no flights added yet") are still visible in print — they tell the reader this section has no data. Empty state CTAs (the "add" links/buttons) are hidden via sectionActionBtn/sectionActionLink selectors. |
+| **No date range set** | "trip dates not set" text renders in print (the setDatesLink control is hidden) |
+| **No notes** | "no notes yet" placeholder text renders in print (the notesPencilBtn is hidden) |
+| **Loading** | If user somehow triggers print while the page is still loading (skeleton state), skeleton shimmer elements are hidden in print. However, this should be edge-case-only — the Print button is only rendered after the trip data loads (controlled by the same `if (!trip) return` loading guard already in TripDetailsPage). |
+| **Trip load error** | Print button is not rendered in the error state (the error state renders a different branch: `tripErrorState`). No print action available without data. |
+| **Destinations in edit mode** | If the user has the destination edit form open when they click Print, the `destEditContainer` is hidden in print, and the `destinationsRow` (read-only chips) is shown — which is the intended print state. The edit form inputs would have been visible in the DOM but are suppressed by the `destEditContainer` `display: none !important` rule. |
+
+---
+
+#### 15.9 Responsive Behavior (Screen — Desktop → Mobile)
+
+The Print button is a screen-side element. The `@media print` stylesheet handles print. On screen:
+
+| Breakpoint | Print Button Behavior |
+|------------|----------------------|
+| **Desktop (≥ 768px)** | Visible in `tripNameRow`, far right of trip name. Button is full-size (11px label + icon). |
+| **Mobile (< 640px)** | Button remains visible but `tripNameRow` wraps using `flex-wrap: wrap`. On very narrow viewports the button may appear below the trip name on its own row. `white-space: nowrap` and `flex-shrink: 0` keep the button label intact. |
+
+Add the following responsive rule in `TripDetailsPage.module.css` inside the existing `@media (max-width: 640px)` block (or create it if absent):
+
+```css
+@media (max-width: 640px) {
+  .tripNameRow {
+    flex-wrap: wrap;
+  }
+
+  .printBtn {
+    font-size: 10px;
+    padding: 5px 12px;
+  }
+}
+```
+
+---
+
+#### 15.10 Accessibility Considerations
+
+| Concern | Implementation |
+|---------|---------------|
+| **Button label** | `aria-label="Print trip itinerary"` on the `<button>` element. Describes the action and the context (not just "print") |
+| **Icon-only ambiguity** | The button has both the SVG icon and the text "Print" — it is never icon-only. The SVG has `aria-hidden="true"`. Screen readers read the visible text "Print" and the aria-label |
+| **Keyboard access** | The `<button>` element is natively keyboard-focusable (Tab order). Enter and Space activate it. Focus ring via `focus-visible` |
+| **Print dialog accessibility** | `window.print()` opens the OS print dialog which is fully accessible — it is a native OS component |
+| **Color contrast (screen)** | Secondary button: `#FCFCFC` on transparent (over `#02111B` page background) — passes WCAG AA at any font size |
+| **Color contrast (print)** | `#000` on `#fff` — maximum contrast |
+| **No motion** | `window.print()` has no animation; `transition: all 150ms ease` on the button hover is below the prefers-reduced-motion threshold. Add `@media (prefers-reduced-motion: reduce) { .printBtn { transition: none; } }` for completeness |
+
+---
+
+#### 15.11 Tests Required (T-122)
+
+Minimum 2 tests. Both in `frontend/src/__tests__/TripDetailsPage.test.jsx` or a new `TripDetailsPage.print.test.jsx`:
+
+**Test 1 — Print button renders:**
+```
+Given: TripDetailsPage is rendered with a valid trip object (all sections may be empty)
+When: Component mounts
+Then: An element with aria-label="Print trip itinerary" is present in the document
+```
+
+**Test 2 — Print button calls window.print():**
+```
+Given: TripDetailsPage is rendered with a valid trip object
+  AND: window.print is mocked (jest.fn())
+When: User clicks the button with aria-label="Print trip itinerary"
+Then: window.print() was called exactly once
+  AND: No navigation occurred
+  AND: No API calls were made
+```
+
+**Test 3 (recommended, not required):** Verify the button is NOT present in the trip error state (renders `tripErrorState` branch, no print button).
+
+**Existing tests:** All 366+ existing tests must continue to pass (no regressions from the `tripNameRow` wrapper div addition or the `print.css` import).
+
+---
+
+#### 15.12 Files to Create / Modify (T-122 Summary)
+
+| File | Change Type | Description |
+|------|------------|-------------|
+| `frontend/src/styles/print.css` | **Create** | New file — all `@media print` rules |
+| `frontend/src/pages/TripDetailsPage.jsx` | **Modify** | (1) Import `'../styles/print.css'`; (2) Wrap `h1.tripName` in `div.tripNameRow` alongside new `<button className={styles.printBtn}>`; (3) `onClick={() => window.print()}` on button |
+| `frontend/src/pages/TripDetailsPage.module.css` | **Modify** | Add `.tripNameRow` and `.printBtn` CSS rules; add `@media (max-width: 640px)` responsive rules for these |
+| `frontend/src/__tests__/TripDetailsPage.test.jsx` | **Modify** | Add 2+ print-related test cases |
+
+**No backend changes required.** No new routes. No new API calls. No migration.
+
+---
+
+*Sprint 10 Spec 15 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-04.*

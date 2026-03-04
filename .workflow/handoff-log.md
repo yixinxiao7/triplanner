@@ -1221,3 +1221,49 @@ T-107 Deploy Sprint 7  ← CRITICAL BLOCKER — BEGIN NOW
 
 **Recommendation:** T-107 is Sprint 9's only remaining blocker. All code has passed QA. Deploy Engineer must proceed with T-107 immediately to unblock the full pipeline and allow Sprint 9 to close.
 
+
+---
+
+### Sprint 10 — Design Agent → Frontend Engineer: Spec 15 Ready — Trip Export/Print View (T-121 → T-122)
+
+| Field | Value |
+|-------|-------|
+| From | Design Agent |
+| To | Frontend Engineer |
+| Date | 2026-03-04 |
+| Status | **Approved — Ready to Implement** |
+| Related Tasks | T-121 (Design: print spec — **Done**), T-122 (Frontend: print implementation — **Backlog, ready to start**) |
+| Handoff Summary | Spec 15 (Trip Export/Print View) is complete and auto-approved. The Frontend Engineer may begin T-122 implementation immediately. All spec details are in `.workflow/ui-spec.md` § Spec 15. |
+
+**Spec 15 Summary — What to Build (T-122):**
+
+1. **Print button** — Add a secondary-style "Print" button to TripDetailsPage inside a new `tripNameRow` flex wrapper alongside the existing `h1.tripName`. Button `onClick={() => window.print()}`. See Spec 15 §15.1–15.3 for exact JSX, CSS class specs, icon spec, and aria-label.
+
+2. **`frontend/src/styles/print.css`** — Create this new file containing only `@media print` rules. Key rules:
+   - Global `background: #fff; color: #000` override of dark theme
+   - `display: none !important` for: navbar, back link, print button itself, edit-destinations link, destination edit form, set/edit dates links, date range edit form, clear/cancel date buttons, notes pencil button, notes edit container, section action buttons/links, calendar wrapper
+   - Remove max-width container constraint for single-column paper layout
+   - `@page { size: A4 portrait; margin: 20mm 15mm; }` for proper paper margins
+   - `page-break-inside: avoid` on cards, day groups, activity entries
+   - IBM Plex Mono font retained
+   - See Spec 15 §15.5 for the full CSS block
+
+3. **Import `print.css`** — Add `import '../styles/print.css'` at the top of `TripDetailsPage.jsx`.
+
+4. **CSS module additions** — Add `.tripNameRow` and `.printBtn` to `TripDetailsPage.module.css` per Spec 15 §15.2. Add responsive rules for `max-width: 640px`.
+
+5. **Tests (minimum 2):**
+   - Test 1: Print button renders (`aria-label="Print trip itinerary"` present after mount)
+   - Test 2: Clicking print button calls `window.print()` once (mock `window.print = jest.fn()`)
+   - All 366+ existing tests must continue to pass
+
+**Files to touch:**
+- `frontend/src/styles/print.css` ← **CREATE**
+- `frontend/src/pages/TripDetailsPage.jsx` ← modify (import, tripNameRow div, printBtn)
+- `frontend/src/pages/TripDetailsPage.module.css` ← modify (tripNameRow, printBtn, responsive)
+- `frontend/src/__tests__/TripDetailsPage.test.jsx` ← modify (2+ new tests)
+
+**No backend changes. No new routes. No migrations.**
+
+**Dependency:** T-122 is blocked by T-121 (now Done). T-122 may begin immediately.
+
