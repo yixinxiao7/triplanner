@@ -501,4 +501,52 @@ No migration file is needed for Sprint 5. The migration log remains at 8 entries
 
 ---
 
+---
+
+## Sprint 10 — No Schema Changes Required
+
+**Date:** 2026-03-04
+**Confirmed by:** Backend Engineer
+
+Sprint 10 is a pipeline-closure sprint with no new backend or frontend implementation tasks (except for T-122, the trip print feature, which is frontend-only). No schema changes are required.
+
+### Sprint 10 Task Analysis
+
+| Task | Schema Impact |
+|------|--------------|
+| T-094 (User Agent: Sprint 6 walkthrough) | None — user testing only |
+| T-108 (Monitor: Sprint 7 health check) | None — monitor scope |
+| T-109 (User Agent: Sprint 7 walkthrough) | None — user testing only |
+| T-115 (QA: Playwright E2E expansion 4→7) | None — test authoring only |
+| T-116 (QA: Sprint 8 staging E2E) | None — QA audit only |
+| T-117 (QA: Sprint 8 staging integration check) | None — QA testing only |
+| T-118 (Deploy: Sprint 8 frontend rebuild) | None — deploy scope; no new migrations |
+| T-119 (Monitor: Sprint 8 health check) | None — monitor scope |
+| T-120 (User Agent: Sprint 8 walkthrough) | None — user testing only |
+| T-121 (Design: trip export/print spec) | None — design spec only |
+| T-122 (Frontend: trip print implementation) | None — `window.print()` is frontend-only; no new columns, no new tables, no API routes. UI spec Spec 15 confirms: "No backend changes required." |
+| H-XXX (Hotfix, if triggered by T-094/T-109/T-120) | TBD — if any hotfix requires a schema change, it will be proposed here and logged for Manager approval before implementation. No hotfix tasks currently exist (2026-03-04). |
+
+### Current Schema State (Sprint 10 Start — 2026-03-04)
+
+**All 10 migrations applied on staging (confirmed by T-107 Deploy, 2026-02-28):**
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time` + `end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (T-107, 2026-02-28) |
+| — | 8–10 | *(No new migrations)* | Sprints 8, 9, 10 are all schema-stable |
+
+The schema is complete and current for all features through Sprint 10. No pending migrations. The migration log remains at 10 entries (001–010).
+
+---
+
 *This document is maintained by the Manager Agent and Backend Engineer. Update it whenever the stack or conventions change.*

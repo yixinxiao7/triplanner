@@ -17,6 +17,32 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 10 — Backend Engineer → QA Engineer: Sprint 10 API Contracts Ready for Testing Reference (2026-03-04)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 10 |
+| From Agent | Backend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Tasks | T-115, T-116, T-117, T-120, H-XXX (if triggered) |
+| Handoff Summary | Sprint 10 API contract review is complete. **No new endpoints introduced this sprint.** All existing contracts from Sprints 1–9 remain authoritative and unchanged. Key facts for QA reference: (1) **T-122 (trip print/export):** `window.print()` is 100% frontend-only — no API calls are made at print time. QA should verify the Print button renders and calls `window.print()` (mocked in unit tests); no backend API testing required for this feature. (2) **notes field normalization (Sprint 9 correction):** `PATCH /trips/:id` with `{ "notes": "" }` must return `"notes": null` — the API normalizes empty string to null. This correction is documented in the Sprint 9 section of `api-contracts.md`. The behavior is applied as part of migration 010 (confirmed applied on staging per T-107). (3) **T-116 Sprint 8 staging E2E:** `departure_tz` field is present on all flight GET responses; `check_in_tz`/`check_out_tz` on stays; `location TEXT NULL` on activities. All contracts covering these fields are in `api-contracts.md`. (4) **Hotfix H-XXX (standby):** If T-094, T-109, or T-120 reveals a Critical/Major bug, Manager creates H-XXX and Backend Engineer will immediately document any changed/new endpoints here before implementation. QA should watch for a follow-up handoff if H-XXX is triggered. Full Sprint 10 contract section is in `.workflow/api-contracts.md` → "Sprint 10 Contracts". |
+
+---
+
+### Sprint 10 — Backend Engineer → Frontend Engineer: Sprint 10 API Contracts Ready (2026-03-04)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 10 |
+| From Agent | Backend Engineer |
+| To Agent | Frontend Engineer |
+| Status | Pending |
+| Related Tasks | T-122, H-XXX (if triggered) |
+| Handoff Summary | Sprint 10 API contract review is complete. **No new or changed API endpoints for Sprint 10.** Key items for Frontend Engineer: (1) **T-122 (trip print/export):** Confirmed zero backend dependency. `window.print()` is the only action. No new API hooks, no new fetch calls, no new API module entries needed. All trip data (flights, stays, activities, land travels, notes) is already loaded by existing hooks on TripDetailsPage. See UI spec Spec 15 for full print implementation details. (2) **notes field (all GET /trips endpoints):** The API guarantees `notes` is always `null | non-empty string` — never `""`. Frontend `if (notes)` falsy checks are sufficient; no `notes === ""` branch is needed. This contract was corrected in Sprint 9 and is confirmed current. (3) **Timezone fields on flights/stays:** `departure_tz`, `arrival_tz` (flights) and `check_in_tz`, `check_out_tz` (stays) are always returned as IANA timezone strings (e.g., `"America/New_York"`). These are already consumed by `formatTimezoneAbbr()` in T-113. No changes. (4) **Activity location field:** `location TEXT NULL` — already consumed by `parseLocationWithLinks()` in T-114. No changes. (5) **If a hotfix H-XXX is created:** Backend Engineer will document any new/changed contract here immediately before implementation. Frontend Engineer should watch for a follow-up handoff. Full Sprint 10 contract section is in `.workflow/api-contracts.md` → "Sprint 10 Contracts". |
+
+---
+
 ### Sprint 10 — Manager Agent: Sprint 10 Plan Finalized + Files Updated (2026-03-04)
 
 | Field | Value |

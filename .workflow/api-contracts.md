@@ -3923,3 +3923,113 @@ No new database migrations are introduced in Sprint 9. The outstanding pending m
 ---
 
 *Sprint 9 contract review complete — 2026-02-27. Backend Engineer: no new endpoints or schema changes this sprint. One documentation correction applied to the Sprint 7 T-103 `notes` field contract: empty string `""` is now documented as API-layer normalized to `null` (not a frontend display concern). This correction has no impact on already-deployed behavior since migration 010 has not yet reached staging — T-107 will apply it fresh with the correct normalization semantics. Frontend Engineer: update your `notes` handling to rely on the API guarantee (never returns `""`). QA Engineer: update T-103 test plan line for `{ "notes": "" }` — expect `"notes": null` in response, not `"notes": ""`.*
+
+---
+
+## Sprint 10 Contracts
+
+**Date:** 2026-03-04
+**Reviewed by:** Backend Engineer
+**Sprint Goal:** Pipeline closure — execute T-094/T-108 → T-109 → T-115 → T-116 → T-117 → T-118 → T-119 → T-120 → feedback triage → Sprint 11 plan. Phase 5 (T-121/T-122 trip export/print) contingent on clean pipeline closure.
+
+---
+
+### Sprint 10 — No New API Endpoints
+
+All Sprint 10 tasks are either pipeline work (User Agent walkthroughs, QA E2E verification, Monitor health checks, staging deploy) or a purely frontend feature (trip print/export). No new or changed API endpoints are needed this sprint.
+
+| Task | Reason — No API Contract Change |
+|------|--------------------------------|
+| T-094 (User Agent: Sprint 6 walkthrough — 5th carry-over) | User testing only. No API changes. |
+| T-108 (Monitor: Sprint 7 health check) | Monitor scope. No API changes. |
+| T-109 (User Agent: Sprint 7 walkthrough) | User testing only. No API changes. |
+| T-115 (QA: Playwright E2E expansion 4→7 tests) | Test authoring only. Tests existing endpoints. No API changes. |
+| T-116 (QA: Sprint 8 staging E2E verification) | QA audit only. Existing contracts in use. No API changes. |
+| T-117 (QA: Sprint 8 staging integration check) | QA testing only. No API changes. |
+| T-118 (Deploy: Sprint 8 frontend rebuild + staging re-deploy) | Deploy scope only. No new migrations. No API changes. |
+| T-119 (Monitor: Sprint 8 health check) | Monitor scope. No API changes. |
+| T-120 (User Agent: Sprint 8 walkthrough) | User testing only. No API changes. |
+| T-121 (Design: trip export/print spec — Phase 5, contingent) | Design spec authoring only. UI spec Spec 15 explicitly confirms: "No backend changes required." No API changes. |
+| T-122 (Frontend: trip print implementation — Phase 5, contingent) | `window.print()` invocation — 100% frontend-only. UI spec Spec 15 confirms: "No new routes. No new API calls. No migration." No API changes. |
+
+---
+
+### Sprint 10 — Trip Export/Print Feature (T-121/T-122): Backend Confirmation
+
+**Feature:** "Print trip itinerary" — adds a Print button to TripDetailsPage that calls `window.print()`. The browser's native print dialog renders all trip data from the already-loaded page state using `@media print` CSS rules.
+
+**Backend impact:** **Zero.** This feature requires no new API endpoints, no changes to existing endpoints, no schema migrations, and no backend code changes of any kind.
+
+**Rationale:** All data needed for the print view (trip name, destinations, date range, notes, flights, land travels, stays, activities) is already fetched by the existing TripDetailsPage data-loading hooks. `window.print()` captures the current DOM — no additional server requests are made at print time.
+
+**Authoritative reference:** UI spec Spec 15, Section 15.12 (Files to Create/Modify): "No backend changes required."
+
+---
+
+### Sprint 10 — Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–9 remain in force and unchanged. The following table summarises the current authoritative state of all endpoint groups:
+
+| Sprint | Endpoint Group | Contract Status | Key Notes |
+|--------|---------------|----------------|-----------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7 (migration 010 ✅ on staging). `notes` is always `null \| non-empty string` — never `""` (Sprint 9 correction). |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field added Sprint 7. |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` updatable field added Sprint 7. `""` input normalized to `null` at API layer (Sprint 9 correction). |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | `departure_tz` + `arrival_tz` fields present and returned (used by T-113 timezone abbreviation display). |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | `check_in_tz` + `check_out_tz` fields present and returned (used by T-113 timezone abbreviation display). |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | `location TEXT NULL` field present (used by T-114 URL linkification). `start_time` + `end_time` nullable since Sprint 3 (migration 008). |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
+| 6 | `POST /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+
+**Schema state on staging (as of T-107 deployment, 2026-02-28):** All 10 migrations applied (001–010). Database is current. No pending migrations for Sprint 10.
+
+---
+
+### Sprint 10 — Hotfix Standby Protocol
+
+**Trigger:** If User Agent walkthroughs T-094, T-109, or T-120 reveal a **Critical or Major bug**, the Manager Agent will immediately create an H-XXX hotfix task. The Backend Engineer is on standby to respond.
+
+**Backend Engineer hotfix protocol:**
+1. Read the H-XXX task definition created by Manager in `dev-cycle-tracker.md`
+2. If the hotfix requires a **new or changed endpoint:** document the new/changed contract here (under a `Sprint 10 — Hotfix H-XXX` subsection) before writing any code
+3. If the hotfix requires a **schema change:** propose the migration in `technical-context.md` and log a handoff to Manager for approval before implementing
+4. If the hotfix requires **only code changes to existing endpoints** (no schema, no contract change): implement immediately and log the fix in `handoff-log.md`
+5. All hotfix implementations must include tests, pass the security checklist, and be logged to `handoff-log.md` for QA and Deploy
+
+**Current status (Sprint 10 start — 2026-03-04):** No H-XXX tasks exist. All three walkthroughs (T-094, T-109, T-120) are pending. Backend Engineer is monitoring.
+
+---
+
+### Sprint 10 — No Schema Changes
+
+No new database migrations are introduced in Sprint 10. The schema is current and complete for all Sprint 10 features.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (2026-02-28, T-107) |
+| — | 8 | *(No new migrations)* | Sprint 8 features (timezone abbreviations, URL links) are frontend-only |
+| — | 9 | *(No new migrations)* | Sprint 9 is pipeline-only |
+| — | 10 | *(No new migrations)* | Sprint 10 is pipeline-only + frontend-only print (T-122) |
+
+The `land_travels` table (migration 009, Sprint 6) is confirmed applied on staging (T-107 deployment report, 2026-02-28). All 10 migrations (001–010) are applied and current.
+
+---
+
+*Sprint 10 contract review complete — 2026-03-04. Backend Engineer: no new endpoints or schema changes this sprint. Trip print/export (T-121/T-122) is confirmed frontend-only with zero backend impact. All existing contracts (Sprints 1–9) remain authoritative and unchanged. Backend Engineer on hotfix standby — if H-XXX tasks are created by Manager following T-094/T-109/T-120 walkthroughs, contract updates will be documented here immediately before any implementation begins.*
