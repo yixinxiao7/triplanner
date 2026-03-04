@@ -730,3 +730,117 @@ See `.workflow/sprint-log.md` Sprint #9 summary for full retrospective. See `.wo
 | T-120 | User Agent: Sprint 8 feature walkthrough | 3rd | Backlog — after T-119 |
 
 *See sprint-log.md Sprint #10 summary and feedback-log.md Sprint 10 Closeout Triage for full retrospective, feedback disposition, and Sprint 11 recommendations.*
+
+---
+
+## Sprint 11 Tasks
+
+**Sprint 11 Kickoff (Manager Agent — 2026-03-04):** Sprint #11 begins. This is the **seventh consecutive sprint where the primary goal is closing the pipeline validation backlog**. T-094 (User Agent: Sprint 6 walkthrough) is now in its **SIXTH consecutive carry-over** — the longest pipeline gap in this project's history. Sprint 6, 7, 8, and 10 features have accumulated without a single User Agent feedback cycle completing. The Pipeline-Only Rule is **absolute and non-negotiable this sprint** — zero new design, backend, or frontend implementation tasks may begin until T-120 AND T-123 (User Agent Sprint 10 walkthrough) both complete and all feedback is triaged.
+
+**Pipeline-Only Rule (Absolute — No Exceptions):** Sprint 11 is pipeline-only. No new features, no tech debt tasks, no refactors until T-120 completes and T-123 User Agent Sprint 10 walkthrough is done. If any walkthrough (T-094, T-109, T-120, T-123) reveals a Critical or Major bug, Manager creates an H-XXX hotfix task immediately — that hotfix takes P0 priority over everything else. T-124 (hosting research spike) is a documentation-only task that may run in parallel after T-108 confirms staging healthy (Deploy Engineer is otherwise idle while pipeline agents run). Backend Engineer is on standby for hotfixes only.
+
+**Feedback triage note:** No "New" feedback entries exist entering Sprint 11. All prior entries (FB-001–FB-084) triaged in previous sprints. FB-084 Resolved (T-113 Done, T-122 Done). New feedback will originate from T-094, T-109, T-120, and T-123 walkthroughs this sprint.
+
+**Sprint field updates for carry-over tasks:** T-094, T-108, T-109, T-115, T-116, T-117, T-118, T-119, T-120 are all carried from Sprint 10 — their effective Sprint is now **11**. Tasks T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114 remain in Integration Check — they move to Done after T-116/T-117 staging E2E and T-118 Deploy confirm them on staging.
+
+**B-022 Escalation (Project Owner Action Required — 9 consecutive sprints):** The production hosting provider decision has been blocked since Sprint 3. The application is feature-complete per MVP scope (Sprints 1–10). All infrastructure (Docker Compose, nginx, HTTPS, CI/CD, deploy runbook) is complete. T-124 (Deploy Engineer research spike) is now scheduled in Sprint 11 to produce a concrete hosting recommendation for the project owner. No blocking dependency — report can be submitted independently.
+
+**Sprint 11 Carry-Over Summary:**
+
+| ID | Carry-Over # | Sprint 11 Action |
+|----|-------------|-----------------|
+| T-094 | **6th** | **START IMMEDIATELY — P0 HARD-BLOCK. Zero tolerance for another carry-over.** |
+| T-108 | 4th | **START IMMEDIATELY (parallel with T-094) — fully unblocked (T-107 Done 2026-02-28).** |
+| T-109 | 4th | After T-108 + T-094 both Done |
+| T-115 | 3rd | After T-109 |
+| T-116 | 2nd | After T-115 (code review Done Sprint 9) |
+| T-117 | 2nd | After T-116 (code review Done Sprint 9) |
+| T-118 | 3rd | After T-117 |
+| T-119 | 3rd | After T-118 |
+| T-120 | 3rd | After T-119 |
+
+---
+
+### Phase 0 — Immediate Parallel Start (both start NOW — zero remaining blockers)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-108 | (Carried from Sprint 10 — 4th carry-over. Full task description in Sprint 9 section.) Monitor Agent: Sprint 7 + Sprint 10 staging health check — verify all Sprint 6 regression checks still pass, new Sprint 7 checks (HTTPS ✅, pm2 online ✅, migration 010 applied ✅, notes field present ✅, stays check-in not UTC-shifted ✅, "+X more" popover functional ✅, Flights→Land Travel→Stays→Activities order ✅, Playwright 4/4 ✅), AND T-122 verification (Print button visible on TripDetailsPage trip header area ✅). Full report in qa-build-log.md. Handoff to User Agent (T-109). **START IMMEDIATELY — T-107 Done (2026-02-28), staging live, no blockers remain.** | Infrastructure | Monitor Agent | Backlog | P0 | S | 11 | T-107 | All Sprint 6 + Sprint 7 endpoint and regression checks pass. HTTPS ✅, pm2 ✅, migration 010 ✅, notes field ✅, timezone fix ✅, Playwright 4/4 ✅. T-122 Print button visible on TripDetailsPage ✅. Full report in qa-build-log.md. Handoff to User Agent (T-109) logged in handoff-log.md. |
+| T-094 | (Carried from Sprints 6, 7, 8, 9, 10 — **6th consecutive carry-over. ABSOLUTE HARD-BLOCK.** Full task description in Sprint 9 section.) User Agent: Sprint 6 feature walkthrough — test all Sprint 6 features on HTTPS staging: (1) Land travel CRUD — create, edit, delete land travel entry (mode=TRAIN, from/to, dates); verify on trip details land travel section and calendar. (2) Calendar enhancements — event time chips (compact 12h: "9a", "2:30p") visible; click "+X more", verify popover opens without layout corruption, Escape closes. (3) Activity AM/PM fix — edit page time selector renders without cutoff; clock icon white on dark. (4) FilterToolbar refetch — type and clear search, toolbar stays visible during loading. (5) ILIKE search — search "%" → empty results (not all trips). (6) Full Sprint 1–5 regression. Submit structured feedback to feedback-log.md under Sprint 11 / Sprint 6 header. **START IMMEDIATELY — T-095 Done, staging live, no blockers remain. ZERO tolerance for another carry-over.** | Documentation | User Agent | Backlog | P0 | L | 11 | T-095 | All Sprint 6 features verified on HTTPS staging. Structured feedback submitted to feedback-log.md. Any Critical or Major bugs → Manager creates hotfix tasks (H-XXX) before T-109 may proceed. Minor/Suggestion → backlog. |
+
+---
+
+### Phase 1 — User Agent Sprint 7 Walkthrough (sequential — after T-108 + T-094 both complete)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-109 | (Carried from Sprint 10 — 4th carry-over. Full task description in Sprint 9 section.) User Agent: Sprint 7 feature walkthrough — (1) "+X more" popover: overflow events, click, verify no layout corruption, Escape closes. (2) Stays timezone: create stay with check-in 4:00 PM → displayed as "4:00 PM" (not UTC-shifted). (3) Section order: Flights → Land Travel → Stays → Activities on trip details page. (4) All-day activities: mixed day → all-day appear first in day group. (5) Calendar checkout/arrival: stay shows "check-out Xa" on checkout day; flight shows "arrives Xa" on arrival day. (6) Trip notes: add notes → shown below destinations on details page; TripCard shows first 100 chars + "…" if > 100 chars. (7) Full Sprint 6 regression. Submit structured feedback to feedback-log.md under Sprint 11 / Sprint 7 header. | Documentation | User Agent | Backlog | P0 | L | 11 | T-108, T-094 | All Sprint 7 features verified. Structured feedback submitted. Any Critical/Major bugs → Manager creates H-XXX hotfix tasks immediately before T-115 can proceed. Sprint 6 regression clean. |
+
+---
+
+### Phase 2 — E2E Coverage Expansion (sequential — after T-109 confirms staging clean)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-115 | (Carried from Sprint 10 — 3rd carry-over. Full task description in Sprint 9 section.) QA Engineer: Expand Playwright coverage from 4 → 7 tests. New test 1: Land travel edit flow (create entry, verify on trip details). New test 2: Calendar "+X more" popover (open + Escape close + focus return). New test 3: Mobile viewport smoke test at 375×812 (core user flow + search/filter/sort). All tests run against HTTPS staging with `ignoreHTTPSErrors: true`. Target: 4 → 7 total Playwright tests. Report in qa-build-log.md. | Feature | QA Engineer | Backlog | P2 | M | 11 | T-109 | `npx playwright test` → 7/7 PASS on HTTPS staging. Land travel edit E2E correct. Calendar overflow popover opens/closes. Mobile viewport 375×812 passes. Report in qa-build-log.md. |
+
+---
+
+### Phase 3 — Sprint 8 QA Pipeline: Staging E2E Completion (code review Done in Sprint 9 — only staging verification remains)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-116 | (Carried from Sprint 10 — 2nd carry-over. **Code review COMPLETE**: 18/18 security checks PASS, 266/266 backend + 366/366 frontend tests verified, npm audit 0 prod vulns. Only staging E2E portion remains.) QA Engineer: Staging E2E verification — (1) run `npx playwright test` on HTTPS staging → 7/7 PASS confirmed; (2) verify T-115 new tests cover land travel edit, "+X more" popover, mobile viewport; (3) confirm api-contracts.md notes field doc correction (`""` → `null`) is current; (4) update qa-build-log.md Sprint 11 section with E2E results. Move T-116 to Done. | Code Review | QA Engineer | Blocked | P0 | S | 11 | T-115 | Playwright 7/7 confirmed on HTTPS staging. api-contracts.md notes doc current. QA report updated in qa-build-log.md. |
+| T-117 | (Carried from Sprint 10 — 2nd carry-over. **Code review COMPLETE**: 18/18 integration contract checks PASS. Only staging E2E portion remains.) QA Engineer: Staging integration check — (1) verify timezone abbreviations on staging (flight departure: "EDT"/"EST" for America/New_York, "JST"/"GMT+9" for Asia/Tokyo, "CEST"/"GMT+2" for Europe/Paris in summer); (2) verify activity with URL in location renders `<a>` hyperlink on staging; (3) confirm all Sprint 7 regression checks still pass (section order, notes, timezone fix, popover) post Sprint 8 rebuild; (4) Playwright 7/7 confirmed via T-116; (5) update qa-build-log.md Sprint 11 section with full Sprint 8 integration results. Handoff to Deploy (T-118). Move T-117 to Done. | Feature | QA Engineer | Blocked | P0 | S | 11 | T-116 | Staging integration check complete. TZ abbreviations visible for 3+ zones. URL links functional. Sprint 7 regression clean. Playwright 7/7 confirmed. QA report in qa-build-log.md. Handoff to Deploy (T-118) logged in handoff-log.md. |
+| T-118 | (Carried from Sprint 10 — 3rd carry-over. Full task description in Sprint 9 section.) Deploy Engineer: Sprint 8 staging re-deployment — rebuild frontend with T-113/T-114 changes (timezone abbreviations, URL links) and T-115 new Playwright tests committed to repo. No new backend migrations (no schema changes in Sprint 8). Verify pm2 still online (from T-107). Smoke tests: (1) flight detail shows timezone abbreviation; (2) activity with URL shows `<a>` hyperlink; (3) `npx playwright test` → 7/7 PASS. Deployment report in qa-build-log.md Sprint 11 section. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 11 | T-117 | Frontend rebuilt with Sprint 8 features. pm2 online. Smoke tests pass: TZ abbreviation visible, URL linkified, Playwright 7/7. Report in qa-build-log.md. Handoff to Monitor (T-119) logged in handoff-log.md. |
+| T-119 | (Carried from Sprint 10 — 3rd carry-over. Full task description in Sprint 9 section.) Monitor Agent: Sprint 8 staging health check — HTTPS ✅, pm2 online ✅, GET /trips/:id (flight) includes `departure_tz` ✅, flight detail card shows timezone abbreviation text ✅, activity with URL shows `<a>` ✅, Playwright 7/7 PASS ✅, all Sprint 6+7 regression checks from T-108 still pass ✅. Full report in qa-build-log.md Sprint 11 section. Handoff to User Agent (T-120). | Infrastructure | Monitor Agent | Backlog | P1 | S | 11 | T-118 | All Sprint 7 + Sprint 8 checks pass. HTTPS ✅, pm2 ✅, TZ abbreviations ✅, URL links ✅, Playwright 7/7 ✅. Report in qa-build-log.md. Handoff to User Agent (T-120) logged in handoff-log.md. |
+
+---
+
+### Phase 4 — User Agent Sprint 8 Walkthrough + Full Feedback Triage (final original pipeline phase)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-120 | (Carried from Sprint 10 — 3rd carry-over. Full task description in Sprint 9 section.) User Agent: Sprint 8 feature walkthrough — (1) Timezone abbreviations: flight departing New York (America/New_York, August) → "EDT"/"EST" shown; flight arriving Tokyo → "JST"/"GMT+9" shown; stay Paris (summer) → "CEST"/"GMT+2" shown on check-in card. (2) URL linkification: activity "Meet at https://maps.google.com/place/XYZ" → URL is clickable `<a>` opening new tab; surrounding text is plain; plain-text location → no spurious `<a>`; "javascript:alert(1)" → plain text, NOT a link. (3) Playwright 7/7: all 7 E2E tests pass. (4) Full Sprint 7 regression per T-109 test plan. Submit structured feedback to feedback-log.md under Sprint 11 / Sprint 8 header. | Documentation | User Agent | Backlog | P1 | M | 11 | T-119 | All Sprint 8 features verified on staging. Structured feedback submitted to feedback-log.md. Any Critical/Major bugs → Manager creates H-XXX hotfix tasks immediately. Sprint 7 regression clean. |
+
+---
+
+### Phase 5 — User Agent Sprint 10 Walkthrough (new — validates T-122 print/export on staging)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-123 | NEW — User Agent: Sprint 10 feature walkthrough — validate the T-122 trip print/export feature on HTTPS staging. Test steps: (1) Navigate to a trip details page with flights, stays, and activities populated. (2) Verify the "Print" button is visible in the trip header area (secondary style, printer SVG icon, aria-label="Print trip itinerary"). (3) Click the Print button — verify the browser print dialog opens (window.print() is invoked). (4) In print preview, verify the following appear: trip name, destinations, date range, notes (if any), all four sections (Flights, Land Travel, Stays, Activities) with their entries. (5) In print preview, verify the following are hidden: navbar, all edit/add/delete buttons, calendar section. (6) Verify print layout is single-column, black-on-white (dark theme overridden). (7) Verify IBM Plex Mono font is retained in print. (8) Full Sprint 8 regression per T-120 test plan — confirm all Sprint 8 features still operational. (9) Submit structured feedback to feedback-log.md under Sprint 11 / Sprint 10 header. | Documentation | User Agent | Backlog | P1 | S | 11 | T-120 | T-122 print button visible on staging ✅. Print dialog opens on click ✅. Print preview shows all trip sections ✅. Navbar/edit buttons/calendar hidden in print ✅. Print layout single-column, black-on-white ✅. IBM Plex Mono retained ✅. Sprint 8 regression clean ✅. Structured feedback submitted to feedback-log.md. |
+
+---
+
+### Phase 6 — Hosting Research Spike (independent — can start after T-108 confirms staging healthy)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-124 | NEW — Deploy Engineer: Production hosting provider research spike (B-022). The production hosting decision has been blocked for 9 consecutive sprints. Task: (1) Research 4+ hosting providers suitable for triplanner (Express/Node.js backend + PostgreSQL + React/Vite static frontend): Railway, Render, Fly.io, DigitalOcean App Platform (and optionally Heroku, AWS EC2/Elastic Beanstalk). (2) For each provider evaluate: pricing (free tier availability, pay-as-you-go costs at minimal scale), PostgreSQL managed database support, automatic HTTPS/SSL certificates, Node.js/pm2 or Docker support for backend, static file serving or CDN for frontend, zero-downtime deploys, environment variable management, CI/CD integration options, cold start behavior. (3) Create `.workflow/hosting-research.md` with a comparison table (provider × criteria matrix) and a final recommendation (top pick + runner-up) with rationale. (4) Recommendation must include: estimated monthly cost at current app scale, setup effort (1–5 scale), migration steps from local staging (which DEPLOY.md runbook sections to update). This is a documentation-only task — no code changes, no deployments. Output: `.workflow/hosting-research.md` published and logged as handoff to Manager (for project owner review). | Spike | Deploy Engineer | Backlog | P2 | M | 11 | T-108 | `.workflow/hosting-research.md` published with provider comparison table and concrete recommendation. Handoff logged to Manager in handoff-log.md. |
+
+---
+
+### Sprint 11 — Backend Engineer: On Standby (pipeline-only sprint)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| BE-S11 | Backend Engineer: Sprint 11 pipeline review — confirm 266/266 backend tests still pass; confirm no schema/API drift since Sprint 10 close (BE-S10). On standby for hotfix H-XXX tasks — if T-094, T-109, T-120, or T-123 walkthroughs reveal a Critical or Major bug requiring backend changes, Backend Engineer must document the contract in `api-contracts.md` before implementing and log a new handoff to QA. No new backend implementation tasks this sprint. Log completion to handoff-log.md. | Documentation | Backend Engineer | Backlog | P0 | S | 11 | — | 266/266 backend tests confirmed. No schema changes. api-contracts.md up to date. On standby for hotfixes. Handoff logged. |
+
+---
+
+### Sprint 11 — Integration Check → Done Promotion Table
+
+*The following tasks are implementation-complete and QA-cleared. Status moves to Done when staging confirmation arrives.*
+
+| Task | Description | Promoted to Done when |
+|------|-------------|----------------------|
+| T-097 | Frontend: "+X more" calendar popover portal fix (createPortal to document.body) | T-108 Monitor confirms Sprint 7 staging ✅ |
+| T-098 | Backend + Frontend: Stays check-in/checkout UTC timezone fix | T-108 Monitor confirms Sprint 7 staging ✅ |
+| T-099 | Frontend: Trip details section reorder (Flights → Land Travel → Stays → Activities) | T-108 Monitor confirms Sprint 7 staging ✅ |
+| T-100 | Frontend: All-day activities sort to top of each activity day group | T-108 Monitor confirms Sprint 7 staging ✅ |
+| T-101 | Frontend: Calendar checkout/arrival time display enhancements | T-108 Monitor confirms Sprint 7 staging ✅ |
+| T-103 | Backend: Trip notes field (migration 010, PATCH/GET, 13 tests) | T-108 Monitor confirms Sprint 7 staging ✅ |
+| T-104 | Frontend: Trip notes UI (TripDetailsPage inline edit + TripCard truncation) | T-108 Monitor confirms Sprint 7 staging ✅ |
+| T-113 | Frontend: Timezone abbreviation display on FlightCard + StayCard | T-119 Monitor confirms Sprint 8 staging ✅ |
+| T-114 | Frontend: Activity location clickable URL detection + XSS guard | T-119 Monitor confirms Sprint 8 staging ✅ |

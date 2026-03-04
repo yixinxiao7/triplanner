@@ -127,3 +127,21 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 *Sprint 11 must collect feedback from SIX consecutive missed User Agent cycles (Sprints 6–10 targets all remained unexecuted). T-094 is a P0 absolute hard-block — Sprint 11 cannot advance past T-094 under any circumstances. Pipeline order: T-108 + T-094 (parallel) → T-109 → T-115 → T-116 (staging E2E) → T-117 (staging E2E) → T-118 → T-119 → T-120 → Manager triage → new T-12X (User Agent Sprint 10 walkthrough for T-122 print feature) → Sprint 12 plan.*
 
 ---
+
+## Sprint 11 Feedback
+
+*Sprint 11 begins 2026-03-04. No "New" feedback entries carry into Sprint 11. All prior entries (FB-001 through FB-084) were triaged in previous sprints. FB-084 is Resolved (T-113 Done, T-122 Done and deployed). No User Agent or Monitor Agent feedback has been submitted for Sprint 6, 7, 8, or 10 features — T-094, T-109, T-120, and the new T-123 (Sprint 10 walkthrough) have never run. This is the seventh consecutive sprint where the pipeline has not fully closed.*
+
+*Sprint 11 will collect feedback from four long-overdue walkthroughs: T-094 (Sprint 6 features — land travel CRUD, calendar enhancements, activity AM/PM fix, FilterToolbar refetch, ILIKE search), T-109 (Sprint 7 features — popover portal fix, stays UTC timezone fix, section reorder, all-day sort, calendar checkout/arrival times, trip notes), T-120 (Sprint 8 features — timezone abbreviations on flight/stay cards, URL linkification in activity location), and T-123 (Sprint 10 features — trip print/export via window.print()). Manager will triage each feedback set immediately after submission and create hotfix tasks (H-XXX) if any Critical or Major bugs are found.*
+
+**Sprint 11 Feedback Triage Summary (Manager Agent — 2026-03-04):**
+
+*No "New" entries carry into Sprint 11. All prior entries (FB-001 through FB-084) triaged in previous sprints. FB-084 Resolved (T-113 Done). Awaiting T-094, T-109, T-120, and T-123 feedback submissions this sprint.*
+
+| FB Entry | Category | Severity | Disposition | Notes |
+|----------|----------|----------|-------------|-------|
+| (none — carry-in) | — | — | — | No entries carry "New" status into Sprint 11. All prior entries triaged. FB-084 Resolved. Awaiting T-094, T-109, T-120, T-123 submissions this sprint. |
+
+*Entries will be added here as User Agent submits Sprint 6, Sprint 7, Sprint 8, and Sprint 10 feedback during T-094, T-109, T-120, and T-123 respectively.*
+
+---
