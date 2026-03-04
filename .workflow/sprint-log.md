@@ -1167,4 +1167,153 @@ Summary of each completed development cycle. Written by the Manager Agent at the
 
 ---
 
+### Sprint #9 — 2026-02-27 to 2026-03-03
+
+**Goal:** Close the four-sprint pipeline backlog. Execute T-094 (User Agent Sprint 6 walkthrough — 4th carry-over), T-107 (Deploy Sprint 7 staging re-deployment), T-108 (Monitor Sprint 7 health check), T-109 (User Agent Sprint 7 walkthrough), T-115 (Playwright expansion 4→7), T-116/T-117 (QA Sprint 8 pipeline), T-118 (Deploy Sprint 8 staging re-deployment), T-119 (Monitor Sprint 8 health check), T-120 (User Agent Sprint 8 walkthrough). Triage all three feedback sets and write Sprint 10 plan. Zero new implementation tasks.
+
+**Goal Met:** ❌ NO — Only T-107 (Deploy Sprint 7 staging) and two internal manager/backend tasks completed. T-094 carried over for the 5th consecutive sprint. T-108, T-109, T-115, T-118, T-119, T-120 did not execute. T-116/T-117 completed code-review portions but remain Blocked on staging E2E.
+
+---
+
+**Tasks Completed (3/12 pipeline tasks):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-107 | Deploy: Sprint 7 staging re-deployment — migration 010 applied, frontend rebuilt (Vite, 121 modules), pm2 restarted (PID 92765). 6/6 smoke tests pass. | ✅ Done (2026-02-28) |
+| MGR-S9 | Manager: Sprint 9 code review pass — zero tasks in "In Review"; no rework dispatched; pipeline unblocked. | ✅ Done |
+| BE-S9 | Backend: Sprint 9 API contract review — confirmed zero new endpoints needed; corrected api-contracts.md notes-field normalization doc (`""` → `null`). | ✅ Done |
+
+**Tasks Partially Completed (code review done, staging E2E blocked):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-116 | QA: Sprint 8 security checklist + code review — 18/18 security items PASS, 266/266 backend + 366/366 frontend tests verified, npm audit 0 prod vulns. Staging E2E BLOCKED pending T-115. | Blocked |
+| T-117 | QA: Sprint 8 integration testing — 18/18 integration contract checks PASS via source review. Staging E2E (Playwright 7/7) BLOCKED pending T-115. | Blocked |
+
+**Tasks Carried Over to Sprint 10 (7 tasks):**
+
+| ID | Description | Carry-Over Count | Reason |
+|----|-------------|-----------------|--------|
+| T-094 | User Agent: Sprint 6 feature walkthrough | **5th consecutive sprint** | Pipeline never reached User Agent; staging was ready (T-107 Done 2026-02-28) but T-094 was not triggered before sprint closeout |
+| T-108 | Monitor: Sprint 7 staging health check | 3rd | Depends on T-107 (now Done) — unblocked for Sprint 10 |
+| T-109 | User Agent: Sprint 7 feature walkthrough | 3rd | Depends on T-108 + T-094 |
+| T-115 | E2E: Playwright expansion 4→7 tests | 2nd | Depends on T-109 |
+| T-118 | Deploy: Sprint 8 staging re-deployment | 2nd | Depends on T-117 staging completion |
+| T-119 | Monitor: Sprint 8 health check | 2nd | Depends on T-118 |
+| T-120 | User Agent: Sprint 8 feature walkthrough | 2nd | Depends on T-119 |
+
+**Integration Check Tasks (awaiting pipeline confirmation — not yet Done):**
+
+| ID | Description |
+|----|-------------|
+| T-097 | Frontend: "+X more" calendar popover portal fix |
+| T-098 | Backend + Frontend: Stays check-in/checkout UTC timezone fix |
+| T-099 | Frontend: Trip details section reorder (Flights → Land Travel → Stays → Activities) |
+| T-100 | Frontend: All-day activities sort to top of day |
+| T-101 | Frontend: Calendar checkout/arrival time display enhancements |
+| T-103 | Backend: Trip notes/description field (migration 010) |
+| T-104 | Frontend: Trip notes UI (display, edit, TripCard truncation) |
+| T-113 | Frontend: Timezone abbreviation display on FlightCard + StayCard |
+| T-114 | Frontend: Activity location clickable URL detection |
+
+---
+
+**Key Decisions:**
+
+- No new ADRs this sprint (pipeline-only sprint; no implementation decisions required).
+- **api-contracts.md correction (BE-S9):** The `notes` field `{ "notes": "" }` → `null` normalization is now documented as an API-layer responsibility. GET responses never return `""` for notes — always `null` or a non-empty string.
+- **T-107 deploy confirmed T-116/T-117 staging Playwright blocker:** Deploy Engineer's pre-deploy notes from Sprint 8 confirmed that T-115 (Playwright expansion to 7 tests) must complete before Playwright 7/7 can be verified on staging. QA correctly Blocked T-116/T-117 rather than skipping the E2E verification requirement.
+
+---
+
+**Feedback Summary (Sprint 9):**
+
+*No new User Agent or Monitor Agent feedback entries submitted this sprint. T-094, T-108, T-109, T-115, T-118, T-119, T-120 all did not execute. No feedback exists for Sprint 6, Sprint 7, or Sprint 8 features from the User Agent — now 5 consecutive sprints without User Agent validation.*
+
+| FB Entry | Category | Severity | Disposition | Notes |
+|----------|----------|----------|-------------|-------|
+| (none) | — | — | — | No Sprint 9 User/Monitor entries. All prior entries remain as triaged in Sprint 8. |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- **T-107 finally executed:** The Sprint 7 staging re-deployment that was blocked since Sprint 7 completed successfully on 2026-02-28. Migration 010 applied cleanly, frontend rebuilt with all Sprint 7 changes (T-097 popover portal, T-098 timezone fix, T-099 section reorder, T-100 all-day sort, T-101 calendar times, T-104 notes UI). This unblocks T-108 (Monitor) immediately in Sprint 10.
+- **QA code review completed ahead of staging verification:** T-116 and T-117's code-review portions (18/18 security checks, source verification of T-113/T-114 implementation, notes normalization confirmed) were completed proactively. Sprint 10's QA phase only needs to run the staging E2E checks (after T-115 adds the new Playwright tests).
+- **Zero implementation drift:** The pipeline-only discipline held — no new implementation tasks were introduced. Implementation quality from Sprints 7 and 8 remains intact and awaits staging confirmation.
+
+**What Could Improve:**
+- **T-094 is now a 5-sprint carry-over — this is a critical quality blindspot.** Sprint 6 features (land travel CRUD, calendar enhancements, bug fixes), Sprint 7 features (popover portal, stays timezone, notes, section reorder), and Sprint 8 features (timezone abbreviations, URL links) have accumulated without ANY User Agent validation. If bugs exist in these features, they have been in production-intended code for 5 sprints without discovery.
+- **Staging was ready but T-094 was not triggered:** T-107 completed on 2026-02-28, making staging ready for T-094 immediately. T-094 should have run in the same sprint cycle but did not. Sprint 10 must trigger T-094 as the very first action after T-108 Monitor verifies staging health.
+- **T-115 remains the critical E2E blocker:** T-116/T-117 cannot complete without T-115 (Playwright expansion). Sprint 10 must schedule T-115 explicitly after T-109 but before T-116.
+- **Sprint 9 had 12 pipeline tasks — too many to reliably close in one sprint:** Future pipeline-closure sprints should be broken into sub-sprints or explicitly time-boxed to ensure at least one User Agent walkthrough completes per sprint.
+
+**Action Items for Sprint 10:**
+1. T-108 IMMEDIATELY (Monitor Sprint 7 health check — T-107 is Done, staging is ready)
+2. T-094 IMMEDIATELY IN PARALLEL (User Agent Sprint 6 walkthrough — staging ready)
+3. T-109 after T-108 + T-094 both complete
+4. T-115 after T-109 (Playwright expansion)
+5. T-116 + T-117 staging E2E after T-115
+6. T-118 (Deploy Sprint 8) → T-119 (Monitor Sprint 8) → T-120 (User Agent Sprint 8)
+7. Manager triages all three feedback sets → Sprint 11 plan
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 10+):**
+
+*All debt from Sprint 8 carried forward unchanged:*
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (no production impact, B-021)
+- ⚠️ Rate limiting uses in-memory store — will not persist across restarts (B-020)
+- ⚠️ Auth rate limit is IP-based only (B-024)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+- ⚠️ Sort logic duplicated across code paths in tripModel.js (minor DRY violation, Sprint 5)
+- ⚠️ No dedicated unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+- ⚠️ **T-094 User Agent walkthrough has never run — Sprint 6 + 7 + 8 features all untested by User Agent (5th consecutive carry-over; CRITICAL quality blindspot)**
+- ⚠️ T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114 all in Integration Check — awaiting staging confirmation before closing to Done
+
+*Resolved this sprint:*
+- (none — no implementation work this sprint)
+
+*New this sprint:*
+- ⚠️ T-116/T-117 are Blocked on T-115 — staging E2E phase incomplete (code review portions done)
+
+---
+
+**Next Sprint Focus (Sprint 10 Recommendations):**
+
+Sprint 10 is again a pipeline-closure sprint. No new features should be added until all three User Agent walkthroughs complete and feedback is triaged. The situation is now urgent — five consecutive sprints without User Agent feedback is a significant quality risk.
+
+**P0 — CRITICAL: Close the User Agent Pipeline**
+
+1. **T-108 IMMEDIATELY** — Monitor: Sprint 7 staging health check (T-107 is Done, staging ready, no blockers)
+2. **T-094 IMMEDIATELY (PARALLEL with T-108)** — User Agent: Sprint 6 walkthrough. **5th carry-over. Absolute hard-block — Sprint 10 cannot proceed past this point.** If any Critical bugs are found, hotfix tasks (H-XXX) must be created and resolved before T-109.
+3. **T-109** — User Agent: Sprint 7 feature walkthrough (after T-108 + T-094 complete)
+4. **T-115** — QA/E2E: Playwright expansion 4→7 tests (after T-109 confirms staging clean)
+5. **T-116 (staging E2E)** — QA: Sprint 8 security checklist staging portion (code review already done; just needs Playwright 7/7 verified on staging after T-115)
+6. **T-117 (staging E2E)** — QA: Sprint 8 integration testing staging portion
+7. **T-118** — Deploy: Sprint 8 staging re-deployment
+8. **T-119** — Monitor: Sprint 8 health check
+9. **T-120** — User Agent: Sprint 8 feature walkthrough
+10. **Manager: Triage T-094 + T-109 + T-120 feedback → write Sprint 11 plan**
+
+**P1 — After Pipeline Closes: Plan New Features from Backlog**
+
+- **B-032** — Trip export/print (PDF or print-friendly view) — highest-priority unstarted MVP-adjacent feature
+- **B-022** — Production deployment decision (project owner must select hosting provider — now 7 consecutive sprints without decision; escalate again)
+- Any Critical/Major bugs discovered in T-094/T-109/T-120 walkthroughs → hotfix tasks take P0 priority
+
+**P2 — Tech Debt (only if pipeline closes early)**
+
+- B-020: Redis-backed rate limiting
+- B-021: Resolve esbuild dev dependency vulnerability
+- Add unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+
+**Out of Scope:**
+- MFA login
+- Home page summary calendar
+- Auto-generated itinerary suggestions
+
+---
+
 *Add new sprint summaries above this line, newest first.*

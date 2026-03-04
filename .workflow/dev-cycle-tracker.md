@@ -600,3 +600,26 @@ Each task is a row in the table below. Agents update their assigned tasks as the
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
 | BE-S9 | Sprint 9 API contract review — pipeline-only sprint. (1) Reviewed all Sprint 9 tasks: confirmed zero new API endpoints needed (all tasks are deploy/monitor/QA/user-testing scope). (2) Applied documentation correction to `api-contracts.md` Sprint 9 section: `notes` field `""` → `null` normalization is now documented as an API-layer responsibility (not a frontend display concern). The corrected contract states the API normalizes `{ "notes": "" }` to `null` before DB write and never returns `""` in GET responses. (3) Logged handoffs to Frontend Engineer and QA Engineer. (4) On standby for hotfixes (H-XXX) if T-094/T-109/T-120 surface Critical or Major bugs during walkthroughs. | Documentation | Backend Engineer | Done | P0 | S | 9 | — | Contract review complete 2026-02-27. Sprint 9 section added to `api-contracts.md`. Handoffs logged to Frontend Engineer and QA Engineer in `handoff-log.md`. No schema changes. No migrations. Awaiting hotfix trigger only if User Agent walkthroughs find Critical/Major bugs. |
 | MGR-S9 | Manager Agent: Sprint 9 Code Review Pass — 2026-02-28. Scanned dev-cycle-tracker.md for all tasks with Status "In Review". Result: **zero tasks in In Review**. Sprint 9 is pipeline-closure-only — no new implementation tasks were added. All Sprints 7 and 8 implementation tasks (T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114) are already in Integration Check status after Manager approval in prior sprints. No rework dispatched. No tasks sent back to engineers. Pipeline is unblocked at Phase 0: T-107 (Deploy Sprint 7 staging) and T-094 (User Agent Sprint 6 walkthrough) may proceed immediately in parallel. Handoff logged in handoff-log.md. | Documentation | Manager Agent | Done | P0 | S | 9 | — | Code review pass complete 2026-02-28. Zero tasks in "In Review" status. No rework required. Integration Check tasks (T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114) await QA pipeline (T-116/T-117) and Deploy (T-107/T-118) confirmation. Pipeline unblocked. |
+
+---
+
+**Sprint 9 Closeout (Manager Agent — 2026-03-03):** Sprint #9 is closed. Goal was not met. Only 3 of 12 pipeline tasks completed: T-107 (Deploy Sprint 7 staging ✅ Done 2026-02-28), MGR-S9 (Manager code review ✅ Done), BE-S9 (Backend contract review ✅ Done). T-116 and T-117 completed code-review portions but remain **Blocked** on staging E2E (requires T-115 first). T-094 carries to Sprint 10 as a **P0 CRITICAL hard-block — 5th consecutive sprint carry-over**. T-108, T-109, T-115, T-118, T-119, T-120 all carry to Sprint 10 in Backlog.
+
+**Sprint 10 carry-over task list and updated priority:**
+
+| ID | Carry-Over Reason | Sprint 10 Action |
+|----|------------------|-----------------|
+| T-094 | 5th consecutive carry-over. Staging ready (T-107 Done). Pipeline never triggered T-094. | **START IMMEDIATELY — P0 CRITICAL. Absolute hard-block.** |
+| T-108 | T-107 now Done — T-108 is fully unblocked. | **START IMMEDIATELY (parallel with T-094)** |
+| T-109 | Blocked by T-108 + T-094 | After T-108 + T-094 both complete |
+| T-115 | Blocked by T-109 | After T-109 |
+| T-116 | Code review Done; staging E2E needs T-115 | After T-115 |
+| T-117 | Code review Done; staging E2E needs T-116 | After T-116 |
+| T-118 | Blocked by T-117 | After T-117 |
+| T-119 | Blocked by T-118 | After T-118 |
+| T-120 | Blocked by T-119 | After T-119 |
+
+**Integration Check tasks — remain in Integration Check; move to Done after T-116/T-117 staging E2E + T-118 Deploy confirm:**
+T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114
+
+See `.workflow/sprint-log.md` Sprint #9 summary for full retrospective. See `.workflow/handoff-log.md` for Sprint 10 handoffs.
