@@ -7,6 +7,7 @@ import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, for
 import TripCalendar from '../components/TripCalendar';
 import { api } from '../utils/api';
 import styles from './TripDetailsPage.module.css';
+import '../styles/print.css';
 
 // ── Small Calendar Icon ───────────────────────────────────────
 function CalendarIconSmall() {
@@ -625,7 +626,37 @@ export default function TripDetailsPage() {
               </>
             ) : (
               <>
-                <h1 className={styles.tripName}>{trip?.name}</h1>
+                {/* ── Trip Name Row (T-122: trip name + print button) ── */}
+                <div className={styles.tripNameRow}>
+                  <h1 className={styles.tripName}>{trip?.name}</h1>
+
+                  <button
+                    className={styles.printBtn}
+                    onClick={() => window.print()}
+                    aria-label="Print trip itinerary"
+                  >
+                    {/* Printer SVG icon */}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      {/* Paper feed (top sheet) */}
+                      <rect x="3" y="1" width="8" height="4" rx="0.5" />
+                      {/* Printer body */}
+                      <rect x="1" y="5" width="12" height="6" rx="1" />
+                      {/* Output tray / printed page */}
+                      <rect x="3" y="9" width="8" height="4" rx="0.5" />
+                    </svg>
+                    Print
+                  </button>
+                </div>
 
                 {/* ── Destinations (editable chips — Sprint 3 T-046) ── */}
                 {destMode === 'display' && (

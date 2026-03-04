@@ -1272,4 +1272,50 @@ describe('TripDetailsPage', () => {
     const activityLocation = container.querySelector('[class*="activityLocation"]');
     expect(activityLocation).toBeNull();
   });
+
+  // ── 19. T-122: Trip Print / Export ────────────────────────────────────────
+
+  it('[T-122] renders Print button with aria-label="Print trip itinerary" on TripDetailsPage', () => {
+    useTripDetails.mockReturnValue({ ...defaultHookValue });
+
+    renderTripDetailsPage();
+
+    const printBtn = screen.getByRole('button', { name: /print trip itinerary/i });
+    expect(printBtn).toBeDefined();
+  });
+
+  it('[T-122] clicking Print button calls window.print() exactly once', () => {
+    useTripDetails.mockReturnValue({ ...defaultHookValue });
+
+    // Mock window.print
+    const mockPrint = vi.fn();
+    const originalPrint = window.print;
+    window.print = mockPrint;
+
+    renderTripDetailsPage();
+
+    const printBtn = screen.getByRole('button', { name: /print trip itinerary/i });
+    fireEvent.click(printBtn);
+
+    expect(mockPrint).toHaveBeenCalledTimes(1);
+
+    // Restore
+    window.print = originalPrint;
+  });
+
+  it('[T-122] Print button is NOT rendered in the trip error state', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      trip: null,
+      tripLoading: false,
+      tripError: { type: 'not_found', message: 'trip not found.' },
+    });
+
+    renderTripDetailsPage();
+
+    // Error state renders — no print button
+    expect(screen.queryByRole('button', { name: /print trip itinerary/i })).toBeNull();
+    // Error message is visible instead
+    expect(screen.getByText('trip not found.')).toBeDefined();
+  });
 });

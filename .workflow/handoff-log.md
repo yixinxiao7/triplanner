@@ -30,6 +30,19 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 10 — Frontend Engineer → QA Engineer: T-122 Trip Print/Export Ready for Testing (2026-03-04)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 10 |
+| From Agent | Frontend Engineer |
+| To Agent | QA Engineer |
+| Status | Pending |
+| Related Tasks | T-122 |
+| Handoff Summary | T-122 (Trip print/export — Spec 15) is complete and in review. **What was implemented:** (1) `frontend/src/styles/print.css` created — contains all `@media print` rules from Spec 15 (Sections 1–14): global white/black override, navbar hidden, calendar hidden, all edit/add/delete/print buttons hidden, single-column layout, IBM Plex Mono retained, A4 page setup, typography adjustments, section headers preserved, status badges visible, skeleton/spinner hidden. (2) `frontend/src/pages/TripDetailsPage.jsx` modified — added `import '../styles/print.css'`; wrapped `h1.tripName` in `div.tripNameRow` alongside new `<button className={styles.printBtn} onClick={() => window.print()} aria-label="Print trip itinerary">` with SVG printer icon. (3) `frontend/src/pages/TripDetailsPage.module.css` modified — added `.tripNameRow`, `.printBtn`, `.printBtn:hover`, `.printBtn:focus-visible`, `@media (prefers-reduced-motion: reduce)` rule for print button, and `@media (max-width: 640px)` responsive rules for `tripNameRow` and `printBtn`. (4) `frontend/src/__tests__/TripDetailsPage.test.jsx` — 3 new print tests added (section 19): ✅ Print button renders with correct aria-label; ✅ clicking Print button calls `window.print()` exactly once (mocked); ✅ Print button NOT present in trip error state. **Test results:** 369/369 tests pass (3 new + 366 existing — zero regressions). **QA test plan:** (1) Verify Print button renders in trip header on TripDetailsPage; (2) Click Print button — browser native print dialog opens; (3) In print preview: verify navbar hidden, calendar hidden, all edit/add/delete buttons hidden, back link hidden; (4) In print preview: verify all four sections (Flights, Land Travel, Stays, Activities) visible in black-on-white single column; (5) In print preview: verify trip name, destinations, date range, notes visible; (6) Verify Print button NOT rendered on trip error page; (7) Run `npm test --run` → 369/369 pass. **No backend changes — purely frontend CSS + JSX.** |
+
+---
+
 ### Sprint 10 — Backend Engineer → Frontend Engineer: Sprint 10 API Contracts Ready (2026-03-04)
 
 | Field | Value |
@@ -37,7 +50,7 @@ When you finish work that another agent needs to pick up:
 | Sprint | 10 |
 | From Agent | Backend Engineer |
 | To Agent | Frontend Engineer |
-| Status | Pending |
+| Status | Acknowledged |
 | Related Tasks | T-122, H-XXX (if triggered) |
 | Handoff Summary | Sprint 10 API contract review is complete. **No new or changed API endpoints for Sprint 10.** Key items for Frontend Engineer: (1) **T-122 (trip print/export):** Confirmed zero backend dependency. `window.print()` is the only action. No new API hooks, no new fetch calls, no new API module entries needed. All trip data (flights, stays, activities, land travels, notes) is already loaded by existing hooks on TripDetailsPage. See UI spec Spec 15 for full print implementation details. (2) **notes field (all GET /trips endpoints):** The API guarantees `notes` is always `null | non-empty string` — never `""`. Frontend `if (notes)` falsy checks are sufficient; no `notes === ""` branch is needed. This contract was corrected in Sprint 9 and is confirmed current. (3) **Timezone fields on flights/stays:** `departure_tz`, `arrival_tz` (flights) and `check_in_tz`, `check_out_tz` (stays) are always returned as IANA timezone strings (e.g., `"America/New_York"`). These are already consumed by `formatTimezoneAbbr()` in T-113. No changes. (4) **Activity location field:** `location TEXT NULL` — already consumed by `parseLocationWithLinks()` in T-114. No changes. (5) **If a hotfix H-XXX is created:** Backend Engineer will document any new/changed contract here immediately before implementation. Frontend Engineer should watch for a follow-up handoff. Full Sprint 10 contract section is in `.workflow/api-contracts.md` → "Sprint 10 Contracts". |
 
