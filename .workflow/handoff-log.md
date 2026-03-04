@@ -17,6 +17,47 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 10 — Deploy Engineer → Monitor Agent: T-122 Staging Deployment Complete — Post-Deploy Health Check Ready (2026-03-04)
+
+| Field | Value |
+|-------|-------|
+| From | Deploy Engineer |
+| To | Monitor Agent |
+| Date | 2026-03-04 |
+| Status | Pending |
+| Related Tasks | T-122 (Done), T-108 (Backlog — unblocked for health check), T-118 (Backlog — pending T-116/T-117) |
+| Handoff Summary | **Sprint 10 staging deployment complete. T-122 (trip print/export) is live on staging. Backend healthy, frontend serving. Monitor Agent: please run post-deploy health checks and verify the T-122 print button is present on TripDetailsPage.** |
+
+**Deployment Details:**
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend API | https://localhost:3001 | ✅ Online — pm2 `triplanner-backend`, PID 42784 |
+| Health Endpoint | https://localhost:3001/api/v1/health | ✅ `{"status":"ok"}` verified |
+| Frontend | https://localhost:4173 | ✅ Online — vite preview, PID 42831 |
+
+**What changed in this build (Sprint 10 — T-122):**
+- Print button added to TripDetailsPage (SVG printer icon, `aria-label="Print trip itinerary"`, calls `window.print()` on click)
+- `print.css` bundled into CSS output (`@media print` rules: navbar hidden, edit/add/delete buttons hidden, calendar section hidden, all trip content sections preserved, white/black color override, IBM Plex Mono font retained, A4 portrait 20mm margins)
+- No backend changes, no new migrations
+
+**Migration Status:** All 10 migrations (001–010) confirmed applied. No new migrations for Sprint 10. `knex migrate:status` verified "No Pending Migration files Found."
+
+**Monitor Agent — requested health checks:**
+1. `GET https://localhost:3001/api/v1/health` → expect `{"status":"ok"}`
+2. `GET https://localhost:4173/` → expect `<!doctype html>` (200)
+3. pm2 `triplanner-backend` still online (PID 42784) — check `pm2 list`
+4. Backend DB connectivity — verify `/health` returns ok (implies DB is connected)
+5. T-122 verification: navigate to a trip details page and confirm Print button is visible in the trip header area
+6. Full Sprint 7 + Sprint 8 regression checks (per T-108 task definition) are also welcome if you have capacity — the T-108 health check task is unblocked
+7. Log results in `qa-build-log.md` and handoff to User Agent if all checks pass
+
+**Note on Docker:** Docker is not installed on this host. Staging uses the established local pm2 + vite preview setup (per DEPLOY.md staging runbook, confirmed across Sprints 1–9).
+
+**Note on pipeline tasks T-116/T-117/T-118:** These are still Blocked (pending T-094 + T-108 → T-109 → T-115 pipeline). This deployment covers T-122 only. T-118 (Sprint 8 re-deploy) will be a separate deployment after the pipeline unblocks.
+
+---
+
 ### Sprint 10 — QA Engineer: Sprint 10 Run 2 Re-Verification Complete (2026-03-04)
 
 | Field | Value |

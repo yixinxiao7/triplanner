@@ -1452,3 +1452,80 @@ Note: Docker Compose (production, PORT=3000) and backend/.env (staging, PORT=300
 
 **Decision: T-122 CONFIRMED DONE. All Sprint 10 unit tests and security checks pass. Pipeline tasks T-116/T-117 remain Blocked pending T-094 + T-108 completion. No regressions. No P1 issues. Handoff confirmed to Deploy Engineer for T-122.**
 
+---
+
+## Sprint 10 Deploy Entries
+
+### Sprint 10 — Deploy Engineer: T-122 Staging Deployment (2026-03-04)
+
+**Related Tasks:** T-122 (Trip Print/Export — Frontend-only)
+**Sprint:** 10
+**Date:** 2026-03-04
+**Deployed By:** Deploy Engineer
+**Deploy Verified:** No — handoff sent to Monitor Agent for post-deploy health check
+
+---
+
+#### Pre-Deploy Gate Check
+
+| Gate | Status | Detail |
+|------|--------|--------|
+| QA T-122 sign-off (Run 1) | ✅ PASS | 22/22 integration checks, 369/369 frontend + 266/266 backend tests pass |
+| QA T-122 sign-off (Run 2 re-verification) | ✅ PASS | Fresh re-run confirmed — 266/266 backend (2.83s) + 369/369 frontend (15.23s), 18/18 security PASS |
+| Manager Code Review (MGR-S10) | ✅ PASS | Independent verification — all 12 checks green, no rework dispatched |
+| Pending Migrations | ✅ NONE | All 10 migrations (001–010) already applied. `npx knex migrate:status` → "No Pending Migration files Found." |
+| New backend changes | ✅ NONE | T-122 is frontend-only (window.print() + @media print CSS). Zero backend modifications. |
+| QA handoff in handoff-log.md | ✅ CONFIRMED | Sprint 10 QA Run 2 handoff confirmed to Deploy Engineer |
+
+---
+
+#### Build Summary
+
+| Step | Result | Detail |
+|------|--------|--------|
+| Backend `npm install` | ✅ Success | Up to date, 215 packages audited. 5 moderate dev vulns (pre-existing, non-blocking). 0 production vulns. |
+| Frontend `npm install` | ✅ Success | Up to date, 283 packages audited. 5 moderate dev vulns (pre-existing, non-blocking). 0 production vulns. |
+| Frontend `npm run build` | ✅ Success | 122 modules transformed in 690ms. Output: `dist/index.html` (0.39 kB), `dist/assets/index-BXdx0laI.css` (73.84 kB / 11.79 kB gzip), `dist/assets/index-CAatTCXT.js` (337.83 kB / 102.75 kB gzip). Zero errors. Zero warnings. |
+| T-122 `@media print` in bundle | ✅ Confirmed | `grep "@media print" dist/assets/*.css` → 1 match in `index-BXdx0laI.css`. Print styles bundled correctly. |
+
+---
+
+#### Staging Deployment Summary
+
+| Check | Result | Detail |
+|-------|--------|--------|
+| pm2 `triplanner-backend` pre-deploy | ✅ Online | PID 6258, 10h uptime, 0 restarts — confirmed running before deploy |
+| Migrations (staging) | ✅ No-op | All 10/10 migrations already applied. No new migrations for Sprint 10. |
+| pm2 restart | ✅ Success | `pm2 restart triplanner-backend` → PID 42784, status: online, 1 restart |
+| Backend health post-restart | ✅ Pass | `curl -sk https://localhost:3001/api/v1/health` → `{"status":"ok"}` |
+| Frontend preview (old) stopped | ✅ Done | Old PID 6486 terminated |
+| Frontend preview (new) started | ✅ Running | `npx vite preview --port 4173` → PID 42831. Serving Sprint 10 build with T-122. |
+| Frontend health | ✅ Pass | `curl -sk https://localhost:4173/` → `<!doctype html>` (200 OK) |
+| Docker | ⚠️ Not Available | Docker not installed on this machine. Staging uses pm2 + vite preview (local staging mode per DEPLOY.md). This is the established setup from prior sprints. |
+
+---
+
+#### Staging URLs
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend API | https://localhost:3001 | ✅ Online (pm2, PID 42784) |
+| Health Check | https://localhost:3001/api/v1/health | ✅ `{"status":"ok"}` |
+| Frontend | https://localhost:4173 | ✅ Online (vite preview, PID 42831) |
+
+---
+
+#### Sprint 10 Features in This Build
+
+| Feature | Task | Bundled |
+|---------|------|---------|
+| Trip Print/Export (`window.print()` on button click) | T-122 | ✅ Yes |
+| Print button on TripDetailsPage (SVG icon, aria-label="Print trip itinerary") | T-122 | ✅ Yes |
+| `print.css` — Spec 15 compliant (14 @media print sections, navbar/buttons/calendar hidden, white/black override, IBM Plex Mono retained) | T-122 | ✅ Yes (in `index-BXdx0laI.css`) |
+
+---
+
+**Build Status: ✅ SUCCESS**
+**Environment: Staging**
+**Deploy Verified: No — handoff sent to Monitor Agent for post-deploy health check**
+
