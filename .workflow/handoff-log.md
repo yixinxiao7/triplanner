@@ -17,6 +17,79 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 11 — Backend Engineer → QA Engineer: Sprint 11 API Contract Review Complete — Hotfix Standby Active (2026-03-04)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | QA Engineer |
+| Date | 2026-03-04 |
+| Status | Pending |
+| Related Tasks | BE-S11, T-115, T-116, T-117, H-XXX (if triggered) |
+| Handoff Summary | **Sprint 11 API contract review complete. No new endpoints or schema changes this sprint. All existing contracts (Sprints 1–10) remain authoritative and unchanged. Sprint 11 section published in `api-contracts.md`. Backend Engineer on hotfix standby for any Critical/Major bugs surfaced by T-094, T-109, T-120, or T-123.** |
+
+**For QA Engineer — Sprint 11 Reference:**
+
+Sprint 11 is a pipeline-only sprint. No new endpoints, no schema changes. All QA work (T-115, T-116, T-117) exercises existing, unchanged contracts.
+
+**Contracts relevant to your Sprint 11 tasks:**
+
+| Your Task | Endpoints Being Exercised | Contract Location |
+|-----------|--------------------------|-------------------|
+| T-115 — Playwright 4→7 tests | Land travel edit: `POST /api/v1/trips/:id/land-travels`, `PATCH /api/v1/trips/:id/land-travels/:lid`, `GET /api/v1/trips/:id/land-travels`; Calendar overflow: `GET /api/v1/trips/:id/flights`, `GET /api/v1/trips/:id/stays`, `GET /api/v1/trips/:id/activities`; Mobile viewport: same full trip CRUD stack | Sprint 1 (flights, stays, activities), Sprint 6 (land-travels) |
+| T-116 — Sprint 8 E2E staging | Same as T-115 above; additionally verifies `departure_tz`/`arrival_tz` on flights and `check_in_tz`/`check_out_tz` on stays | Sprint 1 contracts; Sprint 8 section confirms no changes |
+| T-117 — Sprint 8 integration check | `GET /api/v1/trips/:id/flights` → `departure_tz` present; `GET /api/v1/trips/:id/stays` → `check_in_tz` present; `GET /api/v1/trips/:id/activities` → `location` present | Sprint 1 contracts |
+
+**Key contract invariants to verify during QA:**
+1. All list endpoints return `{ "data": [...] }` shape (no unwrapped arrays)
+2. All timestamps are ISO 8601 UTC strings ending in `Z`
+3. `notes` on trips is always `null` or a non-empty string — **never** `""`
+4. `location` on activities is `TEXT NULL` — may be `null`; URL linkification is frontend-only (no backend contract change)
+5. `departure_tz` / `arrival_tz` on flights and `check_in_tz` / `check_out_tz` on stays are IANA timezone strings (e.g., `"America/New_York"`, `"Asia/Tokyo"`)
+
+**Hotfix notification:** If Manager creates any H-XXX hotfix tasks during T-094/T-109/T-120/T-123 walkthroughs, the Backend Engineer will publish an amended contract under `Sprint 11 — Hotfix H-XXX` in `api-contracts.md` and log a follow-up handoff to QA before implementation begins.
+
+---
+
+### Sprint 11 — Backend Engineer → Frontend Engineer: Sprint 11 API Contract Review Complete — No Contract Changes (2026-03-04)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | Frontend Engineer |
+| Date | 2026-03-04 |
+| Status | Pending |
+| Related Tasks | BE-S11, H-XXX (if triggered) |
+| Handoff Summary | **Sprint 11 API contract review complete. No new endpoints, no schema changes, no contract amendments. All existing contracts (Sprints 1–10) remain fully authoritative and in force. Frontend Engineer requires no action this sprint unless an H-XXX hotfix task is triggered by a User Agent walkthrough.** |
+
+**For Frontend Engineer — Sprint 11 Reference:**
+
+Sprint 11 is pipeline-only. The Frontend Engineer is not assigned any implementation tasks this sprint. However, if a User Agent walkthrough (T-094, T-109, T-120, or T-123) surfaces a Critical or Major backend bug that impacts the API contract, the Backend Engineer will:
+
+1. Immediately publish the corrected/new contract under `Sprint 11 — Hotfix H-XXX` in `api-contracts.md`
+2. Log a follow-up handoff to the Frontend Engineer with the specific contract change and any required UI update
+
+**Current contract state — all authoritative, all unchanged:**
+
+| Resource | List | Create | Get Single | Update | Delete |
+|----------|------|--------|------------|--------|--------|
+| Trips | `GET /api/v1/trips` | `POST /api/v1/trips` | `GET /api/v1/trips/:id` | `PATCH /api/v1/trips/:id` | `DELETE /api/v1/trips/:id` |
+| Flights | `GET /api/v1/trips/:id/flights` | `POST /api/v1/trips/:id/flights` | `GET /api/v1/trips/:id/flights/:fid` | `PATCH /api/v1/trips/:id/flights/:fid` | `DELETE /api/v1/trips/:id/flights/:fid` |
+| Stays | `GET /api/v1/trips/:id/stays` | `POST /api/v1/trips/:id/stays` | `GET /api/v1/trips/:id/stays/:sid` | `PATCH /api/v1/trips/:id/stays/:sid` | `DELETE /api/v1/trips/:id/stays/:sid` |
+| Activities | `GET /api/v1/trips/:id/activities` | `POST /api/v1/trips/:id/activities` | `GET /api/v1/trips/:id/activities/:aid` | `PATCH /api/v1/trips/:id/activities/:aid` | `DELETE /api/v1/trips/:id/activities/:aid` |
+| Land Travels | `GET /api/v1/trips/:id/land-travels` | `POST /api/v1/trips/:id/land-travels` | `GET /api/v1/trips/:id/land-travels/:lid` | `PATCH /api/v1/trips/:id/land-travels/:lid` | `DELETE /api/v1/trips/:id/land-travels/:lid` |
+| Auth | — | `POST /api/v1/auth/register` | — | — | — |
+| Auth | — | `POST /api/v1/auth/login` | — | — | — |
+| Auth | — | `POST /api/v1/auth/refresh` | — | — | — |
+| Auth | — | `POST /api/v1/auth/logout` | — | — | — |
+
+**Reminder — Sprint 9 correction still in force:**
+The `notes` field on trips is always returned as `null` (not `""`) when unset. `PATCH /api/v1/trips/:id` with `notes: ""` normalizes to `null` server-side. Any frontend code that checks `notes !== ""` should instead check `notes != null`.
+
+**No Frontend Engineer action required this sprint** unless an H-XXX handoff arrives.
+
+---
+
 ### Sprint 11 — Design Agent → Manager Agent: Sprint 11 Design Agent Standby — Pipeline-Only Sprint, No Design Tasks in Scope (2026-03-04)
 
 | Field | Value |
