@@ -17,6 +17,46 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 14 — Manager Agent → QA Engineer: T-146 + T-147 Code Review APPROVED — Proceed to T-148/T-149 (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Manager Agent |
+| To | QA Engineer |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-146, T-147, T-148, T-149 |
+
+**Manager code review complete. Both T-146 and T-147 pass all checks. Status: Integration Check. QA is unblocked — proceed immediately with T-148 (security checklist) and then T-149 (integration testing).**
+
+**T-146 — Calendar first-event-month async fix: APPROVED**
+
+- `hasNavigated = useRef(false)` initialized correctly. Set to `true` in `prevMonth()`, `nextMonth()`, and `handleToday()` — all navigation paths covered.
+- `useEffect([flights, stays, activities, landTravels])` dependency array correct. Effect short-circuits when `hasNavigated.current === true` (runtime ref read — correct pattern, not a stale closure). Second guard: bails when all arrays empty (prevents current-month-flash on a genuinely empty trip).
+- Date parsing: UTC `new Date(iso)` for timestamptz fields (`departure_at`, `check_in_at`). Local `new Date(y, m-1, d)` for DATE strings (`activity_date`, `departure_date`). `isNaN` guards on all. Identical to T-128 patterns — correct.
+- No memory leak: useEffect has no subscriptions or event listeners, no cleanup needed.
+- 4 new tests (21.A–D): async-load auto-update, user-nav-before-load no-override, null-date no-spurious-update, prev-click variant. All correct.
+- Security: no secrets, no `dangerouslySetInnerHTML`, no XSS.
+
+**T-147 — "Today" button: APPROVED**
+
+- Button renders unconditionally in nav header. `aria-label="Go to current month"` present.
+- `handleToday()` sets `hasNavigated.current = true` before state updates — prevents async data-arrival effect from overriding an explicit Today navigation.
+- `.todayBtn` CSS: monospace font, transparent background, subtle border — Japandi-consistent. Hover + `focus-visible` states present. Mobile-responsive (640px breakpoint).
+- 4 new tests (22.A–D): all spec-required scenarios covered (click navigates, visible past, visible future, prev/next still works after).
+- Security: pure state + ref update, no API calls, no XSS, no security surface.
+
+**QA checklist items to focus on for T-148:**
+- Confirm `useEffect` eslint-disable comment is the only one (no other suppressed warnings hiding bugs)
+- Confirm no `window.addEventListener('scroll', ...)` remnants (T-137 regression check)
+- Confirm `aria-label="Go to current month"` is present on the Today button (grep check)
+- Confirm `backend/.env.staging` JWT_SECRET ≠ placeholder (T-145 — T-148 must also verify this before unblocking T-149)
+- Full test suite: `npm test --run` in `frontend/` — target 400+ tests all passing
+
+**T-145 note:** T-145 (Deploy: JWT_SECRET rotation) is not yet Done (still in Backlog). T-148 requires T-145 to complete before T-148 can be marked Done (T-148 must verify the rotated secret). However, QA can begin T-148 code review checks (code quality, tests, XSS) in parallel while waiting for T-145 to land — coordinate with Deploy Engineer.
+
+---
+
 ### Sprint 14 — Frontend Engineer → QA Engineer: T-146 + T-147 Ready for Review (2026-03-07)
 
 | Field | Value |
