@@ -17,6 +17,46 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 13 — Manager Agent → QA Engineer: T-137, T-138, T-139 Pass Code Review (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Manager Agent |
+| To | QA Engineer |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-137, T-138, T-139, T-140, T-141 |
+
+**Code review complete — all three Sprint 13 implementation tasks pass. Proceed to T-140 (security checklist + code review audit) and T-141 (integration testing).**
+
+**T-137 — DayPopover Stay-Open on Scroll: APPROVED**
+- Scroll-close `useEffect` from T-126 is fully removed — confirmed zero `addEventListener('scroll', ...)` calls in TripCalendar.jsx.
+- `positionStyle` correctly switches to `position: 'absolute'` with `top = rect.bottom + scrollY + 4` and `left = rect.left + scrollX` for document-relative anchoring.
+- Right-edge clamping (`left + popoverWidth > scrollX + viewportWidth - 16`) and bottom-edge flip (render above trigger) preserved.
+- Escape-to-close `useEffect` intact (lines 311–320), click-outside `useEffect` intact (lines 322–334), close button intact (line 396–403).
+- No memory leak — no scroll listener registered, no cleanup needed.
+- No XSS, no hardcoded secrets, no `dangerouslySetInnerHTML`.
+- Tests: 6 new tests (19.A–F): scroll no-op, no-scroll-listener spy, document-relative coords, Escape regression, click-outside regression, no-cleanup. 2 T-126 scroll tests removed. All 392 tests pass.
+
+**T-138 — Rental Car Pick-Up/Drop-Off Time Chips: APPROVED**
+- `mode === 'RENTAL_CAR'` guard applied in both `DayCell` chip render (lines 543–548) and `DayPopover.getEventTime` (lines 372–376) — both paths match.
+- `_isArrival` flag correctly set to `true` in `buildEventsMap` for land travel arrival date (line 240); departure day has `_isArrival` undefined (falsy) → "pick-up".
+- Same-day rental car (departure_date === arrival_date): `buildEventsMap` skips arrival entry (line 234 guard) → only pick-up chip. Correct.
+- `arrival_date = null` handled: guard at line 234 prevents drop-off entry. Correct.
+- Non-RENTAL_CAR modes fall through unchanged (line 378–379).
+- No XSS, no eval, safe string concatenation only.
+- Tests: 7 new tests (20.A–G) covering pick-up chip, drop-off chip, null arrival, no-time labels, non-RENTAL_CAR unaffected, popover overflow, same-day. All 392 tests pass.
+
+**T-139 — api-contracts.md /land-travel Documentation Fix: APPROVED**
+- All actual Land Travel endpoint paths throughout api-contracts.md use `/land-travel` (singular). Verified by grep scan.
+- 3 remaining occurrences of "land-travels" are in the T-139 meta-documentation section (lines ~4289–4295) explaining the problem and fix — acceptable.
+- No code changes. Documentation-only as intended.
+
+**Status changes:** T-137, T-138, T-139 moved from "In Review" → "Integration Check" in dev-cycle-tracker.md.
+**Next action:** QA Engineer executes T-140 (security checklist + full test run) then T-141 (integration testing). Both are now unblocked.
+
+---
+
 ### Sprint 13 — Frontend Engineer → QA Engineer: T-137 and T-138 Complete (2026-03-07)
 
 | Field | Value |
