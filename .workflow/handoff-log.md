@@ -17,6 +17,29 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 12 — Manager Agent → QA Engineer: T-126, T-127, T-128 Code Review Approved — Ready for Integration Check (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | Manager Agent |
+| To | QA Engineer |
+| Date | 2026-03-06 |
+| Status | Pending |
+| Related Tasks | T-126, T-127, T-128 (→ unblocks T-129, T-130) |
+| Handoff Summary | Manager code review complete for all three Sprint 12 frontend tasks. All three tasks approved and promoted to **Integration Check**. Proceed with T-129 (security checklist + code review audit) and T-130 (integration testing) immediately — no Phase 1 blockers remain. |
+
+**Review findings per task:**
+
+- **T-126 (DayPopover scroll-close):** APPROVED. `window.addEventListener('scroll', handler, { capture: true })` in `useEffect` with matching cleanup — no memory leak. Focus restoration and Escape-to-close preserved. 3 new tests: scroll-closes-popover, listener lifecycle with `vi.spyOn`, Escape regression. No XSS or security issues. Matches Spec 16.
+
+- **T-127 (check-in chip label):** APPROVED. `"check-in "` correctly prepended in all 3 stay-chip cases (multi-day first day, single-day combined, checkout unchanged). `DayPopover.getEventTime` was already pre-existing and consistent. 5 new tests including edge cases. Pure render change, zero security surface. Matches Spec 17.
+
+- **T-128 (calendar default month):** APPROVED. `getInitialMonth()` utility covers all 4 event types. Activity/land-travel dates parsed as local time to avoid UTC midnight offset (per Spec 18). `isNaN` guards all parsed dates. Lazy `useState` initializers. Fallback to current month. Month navigation unaffected. 5 new tests covering all scenarios including malformed date handling. Matches Spec 18.
+
+**Note on T-125:** T-125 (Deploy Engineer: .env staging isolation) remains in Backlog — it has not been submitted for review. QA T-129/T-130 will need to verify T-125 once the Deploy Engineer completes it. T-129 is blocked by T-125 per the tracker; coordinate accordingly.
+
+---
+
 ### Sprint 12 — Frontend Engineer → QA Engineer: T-126, T-127, T-128 Implementation Complete — Ready for QA (2026-03-06)
 
 | Field | Value |
