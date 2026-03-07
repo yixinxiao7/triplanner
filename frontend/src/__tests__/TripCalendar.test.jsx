@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import TripCalendar from '../components/TripCalendar';
 
@@ -74,17 +74,20 @@ describe('TripCalendar', () => {
     expect(screen.getByText('Sat')).toBeDefined();
   });
 
-  it('shows the month label for the initial trip start date month', () => {
+  it('T-128: shows the month of the earliest event, not trip start_date', () => {
+    // T-128: initial month is now determined by the earliest event across
+    // flights/stays/activities — not trip.start_date. Passing a flight in August
+    // ensures the calendar opens on August 2026.
     render(
       <TripCalendar
         trip={mockTrip}
-        flights={[]}
+        flights={mockFlights}
         stays={[]}
         activities={[]}
       />
     );
 
-    // Trip start_date is 2026-08-07, so should show August 2026
+    // mockFlights departure_at is '2026-08-07T18:00:00.000Z' → August 2026
     expect(screen.getByText(/AUGUST 2026/i)).toBeDefined();
   });
 
@@ -113,10 +116,11 @@ describe('TripCalendar', () => {
   });
 
   it('navigates to the next month when next button is clicked', () => {
+    // T-128: pass flights in August so calendar starts on August 2026
     render(
       <TripCalendar
         trip={mockTrip}
-        flights={[]}
+        flights={mockFlights}
         stays={[]}
         activities={[]}
       />
@@ -130,10 +134,11 @@ describe('TripCalendar', () => {
   });
 
   it('navigates to the previous month when prev button is clicked', () => {
+    // T-128: pass flights in August so calendar starts on August 2026
     render(
       <TripCalendar
         trip={mockTrip}
-        flights={[]}
+        flights={mockFlights}
         stays={[]}
         activities={[]}
       />
@@ -829,5 +834,324 @@ describe('TripCalendar', () => {
     const trainChips = screen.getAllByTitle('train → NYC');
     // Should have at least 2 chips: one for departure day and one for arrival day
     expect(trainChips.length).toBeGreaterThanOrEqual(2);
+  });
+
+  // ── T-126: DayPopover scroll-close behavior ───────────────────────────────
+
+  // Helper: set up 4 events on Aug 7 to produce overflow "+X more" button
+  function renderWithOverflow() {
+    const flight = {
+      id: 'of1', flight_number: 'AA1', airline: 'AA',
+      from_location: 'A', to_location: 'B',
+      departure_at: '2026-08-07T09:00:00.000Z', departure_tz: 'UTC',
+      arrival_at: '2026-08-07T12:00:00.000Z', arrival_tz: 'UTC',
+    };
+    const stay = {
+      id: 'os1', name: 'Hotel X', category: 'HOTEL',
+      check_in_at: '2026-08-07T15:00:00.000Z', check_in_tz: 'UTC',
+      check_out_at: '2026-08-12T11:00:00.000Z', check_out_tz: 'UTC',
+    };
+    const activity = {
+      id: 'oa1', name: 'Tour A', activity_date: '2026-08-07', start_time: '10:00:00',
+    };
+    const landTravel = {
+      id: 'olt1', mode: 'TRAIN', from_location: 'X', to_location: 'Y',
+      departure_date: '2026-08-07', departure_time: null, arrival_date: null, arrival_time: null,
+    };
+    return render(
+      <TripCalendar
+        trip={mockTrip}
+        flights={[flight]}
+        stays={[stay]}
+        activities={[activity]}
+        landTravels={[landTravel]}
+      />
+    );
+  }
+
+  it('T-126: DayPopover closes when a scroll event fires on window', () => {
+    renderWithOverflow();
+
+    // Open the popover
+    fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
+    expect(screen.getByRole('dialog')).toBeDefined();
+
+    // Fire a scroll event on window with capture
+    fireEvent.scroll(window);
+
+    // Popover should be gone
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('T-126: scroll listener is added and removed when DayPopover opens/closes', () => {
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+
+    renderWithOverflow();
+
+    // Open the popover — scroll listener should be registered
+    fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
+
+    const scrollCalls = addSpy.mock.calls.filter(([event, , opts]) =>
+      event === 'scroll' && opts?.capture === true
+    );
+    expect(scrollCalls.length).toBeGreaterThan(0);
+
+    // Close via Escape — scroll listener should be removed
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    const removeScrollCalls = removeSpy.mock.calls.filter(([event, , opts]) =>
+      event === 'scroll' && opts?.capture === true
+    );
+    expect(removeScrollCalls.length).toBeGreaterThan(0);
+
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
+  });
+
+  it('T-126: Escape still closes DayPopover after scroll listener is attached', () => {
+    renderWithOverflow();
+
+    // Open the popover
+    fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
+    expect(screen.getByRole('dialog')).toBeDefined();
+
+    // Press Escape — must still close the popover with no errors
+    expect(() => {
+      fireEvent.keyDown(document, { key: 'Escape' });
+    }).not.toThrow();
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  // ── T-127: Check-in chip label ────────────────────────────────────────────
+
+  it('T-127: check-in day chip shows "check-in Xa" prefix (multi-day stay, first day)', () => {
+    // Stay from Aug 8 (check-in 16:00 UTC = 4p) to Aug 12 (check-out 11:00 UTC = 11a)
+    // Using UTC timezone so times are unambiguous in tests
+    const stay = {
+      id: 'stay-checkin',
+      name: 'Test Hotel',
+      category: 'HOTEL',
+      check_in_at: '2026-08-08T16:00:00.000Z',  // 16:00 UTC → "4p"
+      check_in_tz: 'UTC',
+      check_out_at: '2026-08-12T11:00:00.000Z',  // 11:00 UTC → "11a"
+      check_out_tz: 'UTC',
+    };
+
+    render(
+      <TripCalendar trip={mockTrip} flights={mockFlights} stays={[stay]} activities={[]} />
+    );
+
+    // Aug 8 check-in chip should read "check-in 4p", NOT just "4p"
+    const checkinChips = screen.getAllByText(/check-in 4p/i);
+    expect(checkinChips.length).toBeGreaterThan(0);
+  });
+
+  it('T-127: check-in chip does NOT appear as bare time without prefix', () => {
+    const stay = {
+      id: 'stay-nobare',
+      name: 'Test Hotel',
+      category: 'HOTEL',
+      check_in_at: '2026-08-08T16:00:00.000Z',  // 16:00 UTC → "4p"
+      check_in_tz: 'UTC',
+      check_out_at: '2026-08-12T11:00:00.000Z',
+      check_out_tz: 'UTC',
+    };
+
+    const { container } = render(
+      <TripCalendar trip={mockTrip} flights={mockFlights} stays={[stay]} activities={[]} />
+    );
+
+    // The check-in day cell (Aug 8) should not contain a bare "4p" without the "check-in" prefix
+    const aug8Cell = container.querySelector('[aria-label="Sat, August 8"]');
+    expect(aug8Cell).not.toBeNull();
+    // Should contain "check-in 4p" but NOT a standalone "4p" text node
+    expect(aug8Cell.textContent).toMatch(/check-in 4p/i);
+  });
+
+  it('T-127: check-out chip is unchanged (still shows "check-out Xa")', () => {
+    const stay = {
+      id: 'stay-checkout',
+      name: 'Test Hotel',
+      category: 'HOTEL',
+      check_in_at: '2026-08-08T16:00:00.000Z',
+      check_in_tz: 'UTC',
+      check_out_at: '2026-08-12T11:00:00.000Z',  // 11:00 UTC → "11a"
+      check_out_tz: 'UTC',
+    };
+
+    render(
+      <TripCalendar trip={mockTrip} flights={mockFlights} stays={[stay]} activities={[]} />
+    );
+
+    // Aug 12 checkout chip should still read "check-out 11a" (unchanged by T-127)
+    const checkoutChips = screen.getAllByText(/check-out 11a/i);
+    expect(checkoutChips.length).toBeGreaterThan(0);
+  });
+
+  it('T-127: single-day stay shows "check-in Xa → check-out Xa" combined chip', () => {
+    // Same-day check-in and check-out
+    const stay = {
+      id: 'stay-sameday',
+      name: 'Day Hotel',
+      category: 'HOTEL',
+      check_in_at: '2026-08-08T14:00:00.000Z',  // 14:00 UTC → "2p"
+      check_in_tz: 'UTC',
+      check_out_at: '2026-08-08T22:00:00.000Z',  // 22:00 UTC → "10p"
+      check_out_tz: 'UTC',
+    };
+
+    render(
+      <TripCalendar trip={mockTrip} flights={mockFlights} stays={[stay]} activities={[]} />
+    );
+
+    // Single-day chip should show "check-in 2p → check-out 10p"
+    const chips = screen.getAllByText(/check-in 2p → check-out 10p/i);
+    expect(chips.length).toBeGreaterThan(0);
+  });
+
+  it('T-127: check-in label in DayPopover matches the day cell chip label', () => {
+    // Create 4 events including a stay on Aug 7 to force the popover
+    const flight = {
+      id: 'of1', flight_number: 'AA1', airline: 'AA',
+      from_location: 'A', to_location: 'B',
+      departure_at: '2026-08-07T09:00:00.000Z', departure_tz: 'UTC',
+      arrival_at: '2026-08-07T12:00:00.000Z', arrival_tz: 'UTC',
+    };
+    const stay = {
+      id: 'os1', name: 'Hotel X', category: 'HOTEL',
+      check_in_at: '2026-08-07T15:00:00.000Z', check_in_tz: 'UTC',  // 15:00 UTC → "3p"
+      check_out_at: '2026-08-12T11:00:00.000Z', check_out_tz: 'UTC',
+    };
+    const activity = {
+      id: 'oa1', name: 'Tour A', activity_date: '2026-08-07', start_time: '10:00:00',
+    };
+    const landTravel = {
+      id: 'olt1', mode: 'TRAIN', from_location: 'X', to_location: 'Y',
+      departure_date: '2026-08-07', departure_time: null, arrival_date: null, arrival_time: null,
+    };
+
+    render(
+      <TripCalendar
+        trip={mockTrip}
+        flights={[flight]}
+        stays={[stay]}
+        activities={[activity]}
+        landTravels={[landTravel]}
+      />
+    );
+
+    // Open the popover to see all events
+    fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
+    const dialog = screen.getByRole('dialog');
+
+    // The popover should show "check-in 3p" for the stay (DayPopover.getEventTime already
+    // prepends "check-in" — T-127 ensures the day cell matches this format)
+    expect(dialog.textContent).toMatch(/check-in 3p/i);
+  });
+
+  // ── T-128: Calendar default month — first planned event ───────────────────
+
+  it('T-128: defaults to earliest event month when events exist', () => {
+    // All events in August 2026
+    render(
+      <TripCalendar
+        trip={{ id: 't1', name: 'Test' }}
+        flights={[{ id: 'f1', flight_number: 'UA1', airline: 'UA',
+          from_location: 'A', to_location: 'B',
+          departure_at: '2026-08-07T10:00:00.000Z', departure_tz: 'UTC',
+          arrival_at: '2026-08-07T14:00:00.000Z', arrival_tz: 'UTC' }]}
+        stays={[{ id: 's1', name: 'H', category: 'HOTEL',
+          check_in_at: '2026-08-07T20:00:00.000Z', check_in_tz: 'UTC',
+          check_out_at: '2026-08-10T11:00:00.000Z', check_out_tz: 'UTC' }]}
+        activities={[{ id: 'a1', name: 'A', activity_date: '2026-08-08', start_time: null }]}
+      />
+    );
+
+    // Should open on August 2026, not the current month
+    expect(screen.getByText(/AUGUST 2026/i)).toBeDefined();
+  });
+
+  it('T-128: falls back to current month when no events exist', () => {
+    const now = new Date();
+    const currentMonthLabel = now.toLocaleString('en-US', { month: 'long' }).toUpperCase();
+    const currentYear = now.getFullYear();
+
+    render(
+      <TripCalendar
+        trip={{ id: 't1', name: 'Empty Trip' }}
+        flights={[]}
+        stays={[]}
+        activities={[]}
+      />
+    );
+
+    expect(screen.getByText(new RegExp(`${currentMonthLabel} ${currentYear}`, 'i'))).toBeDefined();
+  });
+
+  it('T-128: picks the earliest month across mixed event types', () => {
+    // Activity in August is earlier than the flight/stay in September
+    render(
+      <TripCalendar
+        trip={{ id: 't1', name: 'Mixed' }}
+        flights={[{ id: 'f1', flight_number: 'UA1', airline: 'UA',
+          from_location: 'A', to_location: 'B',
+          departure_at: '2026-09-15T06:00:00.000Z', departure_tz: 'UTC',
+          arrival_at: '2026-09-15T10:00:00.000Z', arrival_tz: 'UTC' }]}
+        stays={[{ id: 's1', name: 'H', category: 'HOTEL',
+          check_in_at: '2026-09-15T20:00:00.000Z', check_in_tz: 'UTC',
+          check_out_at: '2026-09-20T11:00:00.000Z', check_out_tz: 'UTC' }]}
+        activities={[{ id: 'a1', name: 'A', activity_date: '2026-08-20', start_time: null }]}
+      />
+    );
+
+    // The activity date (August 20) is the earliest → calendar opens on August
+    expect(screen.getByText(/AUGUST 2026/i)).toBeDefined();
+  });
+
+  it('T-128: month navigation works normally from the initial event month', () => {
+    render(
+      <TripCalendar
+        trip={{ id: 't1', name: 'Nav Test' }}
+        flights={[{ id: 'f1', flight_number: 'UA1', airline: 'UA',
+          from_location: 'A', to_location: 'B',
+          departure_at: '2026-08-07T10:00:00.000Z', departure_tz: 'UTC',
+          arrival_at: '2026-08-07T14:00:00.000Z', arrival_tz: 'UTC' }]}
+        stays={[]}
+        activities={[]}
+      />
+    );
+
+    // Starts on August 2026
+    expect(screen.getByText(/AUGUST 2026/i)).toBeDefined();
+
+    // Navigate forward
+    fireEvent.click(screen.getByRole('button', { name: /next month/i }));
+    expect(screen.getByText(/SEPTEMBER 2026/i)).toBeDefined();
+
+    // Navigate backward
+    fireEvent.click(screen.getByRole('button', { name: /previous month/i }));
+    expect(screen.getByText(/AUGUST 2026/i)).toBeDefined();
+  });
+
+  it('T-128: malformed date in one event is skipped; valid event determines month', () => {
+    render(
+      <TripCalendar
+        trip={{ id: 't1', name: 'Malformed Test' }}
+        flights={[{ id: 'f1', flight_number: 'BAD', airline: 'Bad',
+          from_location: 'A', to_location: 'B',
+          departure_at: 'not-a-date', departure_tz: 'UTC',
+          arrival_at: 'not-a-date', arrival_tz: 'UTC' }]}
+        stays={[{ id: 's1', name: 'H', category: 'HOTEL',
+          check_in_at: '2026-10-01T12:00:00.000Z', check_in_tz: 'UTC',
+          check_out_at: '2026-10-05T11:00:00.000Z', check_out_tz: 'UTC' }]}
+        activities={[]}
+      />
+    );
+
+    // Malformed flight date is skipped; stay check-in Oct 1 determines the month
+    expect(screen.getByText(/OCTOBER 2026/i)).toBeDefined();
   });
 });

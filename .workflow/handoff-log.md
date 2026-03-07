@@ -17,6 +17,80 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 12 — Frontend Engineer → QA Engineer: T-126, T-127, T-128 Implementation Complete — Ready for QA (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | Frontend Engineer |
+| To | QA Engineer |
+| Date | 2026-03-06 |
+| Status | Pending |
+| Related Tasks | T-126, T-127, T-128 (→ unblocks T-129, T-130) |
+| Handoff Summary | All three Sprint 12 frontend tasks are implemented, tested (382 tests passing), and moved to In Review. All changes are confined to `frontend/src/components/TripCalendar.jsx` and `frontend/src/__tests__/TripCalendar.test.jsx`. No backend changes. No new routes. No API calls added. |
+
+**What was implemented:**
+
+**T-126 — DayPopover scroll-close fix (`frontend/src/components/TripCalendar.jsx`):**
+- Added a `useEffect` in `DayPopover` that registers `window.addEventListener('scroll', handler, { capture: true })` when the popover opens.
+- On scroll, the handler calls `onClose()` and restores focus to the trigger button via `triggerRef?.current?.focus()`.
+- Cleanup uses `window.removeEventListener('scroll', handler, { capture: true })` with matching options — no memory leak.
+- All pre-existing behaviors preserved: Escape-to-close, outside-click-to-close, focus restoration.
+- **New tests added:** scroll closes popover; listener add/remove verified with vi.spyOn; Escape regression after scroll listener attached.
+
+**T-127 — Check-in chip label prefix (`frontend/src/components/TripCalendar.jsx`):**
+- In `DayCell`'s stay chip renderer: prepended `"check-in "` to the check-in time string in all three cases:
+  - Single-day stay (check-in and check-out same day): `"check-in 2p → check-out 10p"`
+  - Multi-day first day only: `"check-in 4p"`
+  - Checkout day last day: `"check-out 11a"` (unchanged)
+- `DayPopover.getEventTime` already returned `"check-in Xa"` (pre-existing) — both rendering paths now consistent.
+- **New tests added:** check-in prefix in day cell; bare time without prefix absent; check-out chip unchanged; single-day combined chip; popover label matches day cell.
+
+**T-128 — Calendar defaults to earliest event month (`frontend/src/components/TripCalendar.jsx`):**
+- Added `getInitialMonth(flights, stays, activities, landTravels)` utility function using the algorithm from Spec 18.
+- Replaced `useMemo` based on `trip.start_date` with lazy `useState` initializers for `viewYear` and `viewMonth`.
+- Activity dates parsed as local time (`new Date(year, month-1, day)`) to avoid UTC midnight offset. Flight/stay ISO strings parsed normally.
+- Malformed/null dates silently skipped via `isNaN(d)` guard. Fallback to current month when all arrays empty.
+- Month navigation (prev/next) unaffected — only the initial value changes.
+- **New tests added:** defaults to earliest event month; falls back to current month with no events; picks earliest across mixed types; navigation works from initial month; malformed date skipped gracefully.
+- **Updated existing tests:** 3 tests that relied on `trip.start_date` for initial month now pass `mockFlights` to anchor the calendar to August 2026.
+
+**What to test (QA checklist for T-129/T-130):**
+
+| Check | Expected Result |
+|-------|----------------|
+| Open DayPopover, then scroll page | Popover closes immediately; focus returns to "+X more" button |
+| Open DayPopover, press Escape | Popover still closes (regression check) |
+| Open DayPopover, click outside | Popover still closes (regression check) |
+| Stay check-in day chip | Reads `"check-in Xa"` (e.g., `"check-in 4p"`) |
+| Stay check-out day chip | Still reads `"check-out Xa"` (unchanged) |
+| Single-day stay chip | Reads `"check-in Xa → check-out Xa"` |
+| Stay check-in chip in DayPopover overflow list | Reads `"check-in Xa"` (consistent with day cell) |
+| Trip with events in August 2026 — open calendar | Calendar opens on August 2026, not current month (March 2026) |
+| Trip with no events — open calendar | Calendar opens on current month (March 2026) |
+| Navigate month forward/back from initial month | Works correctly; goes to correct adjacent month |
+
+**Test suite:** 382 tests pass (`npm test -- --run` in `frontend/`). Previous count was 369; added 13 new tests.
+
+**Known limitations / notes:**
+- `getInitialMonth` calls the function twice (once for `viewYear`, once for `viewMonth`) but this is a mount-time cost only and imperceptible in practice.
+- The scroll-close behavior applies on mobile too (per Spec 16 §16.8) — consistent cross-platform.
+- No CSS changes, no new components, no new routes.
+
+---
+
+### Sprint 12 — Frontend Engineer → Frontend Engineer: API Contract Acknowledgment for T-126, T-127, T-128 (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | Frontend Engineer |
+| To | Frontend Engineer (self-acknowledgment per protocol) |
+| Date | 2026-03-06 |
+| Status | Acknowledged |
+| Related Tasks | T-126, T-127, T-128 |
+| Handoff Summary | Acknowledged the Sprint 12 API contract handoff from Backend Engineer (see entry below). **No new or changed API endpoints for T-126, T-127, or T-128.** All three tasks are frontend-only changes. Existing data already available via `useTripDetails` hook (flights, stays, activities). No new API calls wired up this sprint. Proceeding with implementation immediately. |
+
+---
+
 ### Sprint 12 — Backend Engineer → QA Engineer: Sprint 12 API Contract Review — No New Contracts (2026-03-06)
 
 | Field | Value |

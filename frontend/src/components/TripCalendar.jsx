@@ -114,6 +114,57 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// ── T-128: Initial month — earliest planned event ─────────────────────────
+//
+// Find the earliest event date across flights, stays, activities (and land travels
+// since they are already rendered on the calendar). Returns a Date set to the
+// first day of that month. Falls back to the first day of the current month when
+// no events exist or all date fields are null / malformed.
+
+function getInitialMonth(flights = [], stays = [], activities = [], landTravels = []) {
+  const dates = [];
+
+  flights.forEach((f) => {
+    if (f.departure_at) {
+      const d = new Date(f.departure_at);
+      if (!isNaN(d)) dates.push(d);
+    }
+  });
+
+  stays.forEach((s) => {
+    if (s.check_in_at) {
+      const d = new Date(s.check_in_at);
+      if (!isNaN(d)) dates.push(d);
+    }
+  });
+
+  // Parse activity_date as local time to avoid UTC-midnight offset issues
+  activities.forEach((a) => {
+    if (a.activity_date) {
+      const [year, month, day] = a.activity_date.split('-').map(Number);
+      const d = new Date(year, month - 1, day);
+      if (!isNaN(d)) dates.push(d);
+    }
+  });
+
+  // Include land travel departure dates if they are calendar-rendered
+  landTravels.forEach((lt) => {
+    if (lt.departure_date) {
+      const [year, month, day] = lt.departure_date.split('-').map(Number);
+      const d = new Date(year, month - 1, day);
+      if (!isNaN(d)) dates.push(d);
+    }
+  });
+
+  if (dates.length === 0) {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
+  const earliest = dates.reduce((min, d) => (d < min ? d : min), dates[0]);
+  return new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+}
+
 // ── Build events map: date → { flights, stays, activities, landTravels } ──
 // T-101: Added flight arrival day + stay checkout time on last day
 
@@ -230,6 +281,19 @@ function DayPopover({ day, events, onClose, triggerRef, position }) {
       popoverRef.current.focus();
     }
   }, []);
+
+  // T-126: Close popover when page is scrolled to prevent position drift
+  // Uses { capture: true } to catch scroll events on any scrollable ancestor, not just window
+  useEffect(() => {
+    const handleScroll = () => {
+      onClose();
+      triggerRef?.current?.focus();
+    };
+    window.addEventListener('scroll', handleScroll, { capture: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll, { capture: true });
+    };
+  }, [onClose, triggerRef]);
 
   // Close on Escape
   useEffect(() => {
@@ -404,15 +468,17 @@ function DayCell({ day, isOutsideMonth, isToday, events, openPopoverDay, onOpenP
             let timeText = null;
             if (_isFirst && _isLast) {
               // Single-day stay: both check-in and check-out
+              // T-127: prepend "check-in " to the check-in time, matching "check-out" label format
               if (_calTime && _checkOutTime) {
-                timeText = `${_calTime} → check-out ${_checkOutTime}`;
+                timeText = `check-in ${_calTime} → check-out ${_checkOutTime}`;
               } else if (_calTime) {
-                timeText = _calTime;
+                timeText = `check-in ${_calTime}`;
               } else if (_checkOutTime) {
                 timeText = `check-out ${_checkOutTime}`;
               }
             } else if (_isFirst) {
-              timeText = _calTime || null;
+              // T-127: prepend "check-in " to first-day time chip
+              timeText = _calTime ? `check-in ${_calTime}` : null;
             } else if (_isLast) {
               timeText = _checkOutTime ? `check-out ${_checkOutTime}` : null;
             }
@@ -501,18 +567,15 @@ export default function TripCalendar({
   landTravels = [],
   isLoading = false,
 }) {
-  // Determine initial month
-  const initialDate = useMemo(() => {
-    if (trip?.start_date) {
-      const parsed = parseDateStr(trip.start_date);
-      if (parsed) return { year: parsed.year, month: parsed.month };
-    }
-    const today = new Date();
-    return { year: today.getFullYear(), month: today.getMonth() };
-  }, [trip?.start_date]);
-
-  const [viewYear, setViewYear] = useState(initialDate.year);
-  const [viewMonth, setViewMonth] = useState(initialDate.month);
+  // T-128: Determine initial month from earliest planned event across all event types.
+  // Falls back to current month when no events exist.
+  // Lazy initializer ensures this only runs once at mount (no flash from wrong month).
+  const [viewYear, setViewYear] = useState(() =>
+    getInitialMonth(flights, stays, activities, landTravels).getFullYear()
+  );
+  const [viewMonth, setViewMonth] = useState(() =>
+    getInitialMonth(flights, stays, activities, landTravels).getMonth()
+  );
 
   // T-097: Popover state now includes bounding rect for portal positioning.
   // Shape: { day: "YYYY-MM-DD", triggerRef: React.RefObject, rect: DOMRect | null } | null
