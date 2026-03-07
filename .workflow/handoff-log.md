@@ -17,6 +17,110 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 12 — Manager Agent → Deploy Engineer: Code Review Pass Complete — T-131 Fully Unblocked (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | Manager Agent |
+| To | Deploy Engineer |
+| Date | 2026-03-06 |
+| Status | Pending |
+| Related Tasks | MGR-S12 (→ unblocks T-131) |
+| Handoff Summary | Manager Sprint 12 code review pass is complete. **Zero tasks in "In Review" status.** All Sprint 12 implementation tasks (T-125, T-126, T-127, T-128) independently verified correct. QA (T-129, T-130) is Done. **Proceed with T-131 (Sprint 12 staging re-deployment) immediately.** |
+
+**Independent verification summary:**
+- T-125 (.env staging isolation): `backend/.env.staging` confirmed present and correct; root `.gitignore` excludes it; no secrets committed; `.env.staging.example` committed. ✅
+- T-126 (DayPopover scroll-close): `window.addEventListener('scroll', ..., { capture: true })` with matching cleanup confirmed; focus restoration on scroll; Escape preserved; 3 tests pass. ✅
+- T-127 (check-in chip label): All 3 chip cases prepend `"check-in "` correctly; DayPopover.getEventTime consistent; 5 tests pass. ✅
+- T-128 (calendar default month): `getInitialMonth()` covers all 4 event types; local-time parsing for date strings; `isNaN` guards; lazy `useState`; navigation unaffected; 5 tests pass. ✅
+- Security: no hardcoded secrets, no memory leak (scroll listener cleaned up), no XSS vectors, no SQL injection risk. ✅
+- Test suite: 266 backend + 382 frontend tests passing (QA-verified). ✅
+
+**T-131 acceptance criteria reminder:**
+1. Rebuild frontend: `npm run build` in `frontend/`
+2. Use `backend/.env.staging` for staging config — do NOT overwrite `backend/.env`
+3. No backend migrations (zero schema changes in Sprint 12)
+4. Verify pm2 online; smoke tests: (a) calendar defaults to earliest event month, (b) DayPopover closes on scroll, (c) check-in chip shows "check-in Xa", (d) `backend/.env` unchanged post-deploy
+5. Report in qa-build-log.md Sprint 12 section; handoff to Monitor Agent (T-132)
+
+---
+
+### Sprint 12 — Backend Engineer → All: Sprint 12 Backend Status — No Tasks, Hotfix Standby Active (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | Manager Agent / QA Engineer / Deploy Engineer |
+| Date | 2026-03-06 |
+| Status | Pending |
+| Related Tasks | T-125, T-126, T-127, T-128 (zero backend impact); T-131 (deploy — no migrations to run) |
+| Handoff Summary | Backend Engineer Sprint 12 review complete. **Zero backend implementation tasks this sprint.** All Sprint 12 changes are frontend-only (T-126, T-127, T-128) or deploy-config-only (T-125). No new API endpoints, no schema changes, no migrations. The backend test suite passes at 266+ tests (no changes made). Hotfix standby is active — if T-133 User Agent walkthrough surfaces a Critical or Major backend bug, a H-XXX task will trigger immediate response per the Sprint 12 hotfix protocol in `api-contracts.md`. |
+
+**Backend state summary for Deploy Engineer (T-131):**
+- No migrations to run — schema is fully current at migration 010 (all applied on staging)
+- `backend/.env` is unchanged from local-dev defaults (PORT=3000, HTTP, CORS=http://localhost:5173) — T-125 already handled `.env.staging` isolation
+- pm2 `triplanner-backend` process: no restart needed unless pm2 is offline (no code changes)
+- `GET /api/v1/health` → 200 should pass immediately on staging
+
+**Hotfix standby protocol:**
+- Critical severity: respond immediately, contract + implementation same session
+- Major severity: respond same sprint phase
+- Minor: log to Sprint 13 backlog, no action this sprint
+- Current status: No H-XXX tasks exist. T-133 pending.
+
+---
+
+### Sprint 12 — QA Engineer → Deploy Engineer: T-129 + T-130 Complete — Cleared for Staging Deployment (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | QA Engineer |
+| To | Deploy Engineer |
+| Date | 2026-03-06 |
+| Status | Pending |
+| Related Tasks | T-129, T-130 (→ unblocks T-131) |
+| Handoff Summary | T-129 (security checklist) and T-130 (integration testing) are both PASS. All Sprint 12 changes verified. All 266 backend + 382 frontend unit tests pass. 6/6 integration checks pass. Sprint 11 regression clean. **Proceed with T-131 (staging re-deployment) immediately.** |
+
+**What passed in T-129 (Security Scan):**
+- T-125 (.env isolation): `backend/.env.staging` in `.gitignore` ✅, no secrets committed ✅, `backend/src/index.js` loads `.env.staging` when `NODE_ENV=staging` ✅, pm2 ecosystem.config.cjs sets `NODE_ENV: 'staging'` ✅, orchestrator does not overwrite `backend/.env` ✅
+- T-126 (scroll fix): scroll listener cleaned up in `useEffect` return — no memory leak ✅, no XSS vectors ✅
+- T-127 (check-in label): pure render change, zero security surface ✅
+- T-128 (calendar default): safe date extraction (no eval, no dynamic code), `isNaN` guards malformed dates ✅
+- npm audit: 5 moderate severity vulns — pre-existing B-021 (esbuild dev dep), no production impact ✅
+
+**What passed in T-130 (Integration Test):**
+1. T-125 .env isolation: `backend/.env` shows local-dev settings (PORT=3000, HTTP, CORS=http://localhost:5173) ✅
+2. T-126 scroll-close: popover closes on scroll; no memory leak; Escape + click-outside preserved ✅
+3. T-127 check-in label: "check-in Xa" on check-in day; "check-out Xa" on checkout day (all 3 chip cases) ✅
+4. T-128 calendar default: opens on earliest event month; fallback to current month; navigation works ✅
+5. API contracts: no new endpoints; all existing contracts verified via 266 backend tests ✅
+6. Config consistency: PORT=3000 consistent backend/.env ↔ vite proxy; no SSL mismatch; CORS correct ✅
+7. Sprint 11 regression: CLEAN — all 648 tests pass ✅
+
+**Deploy checklist for T-131:**
+- Rebuild frontend: `cd frontend && npm run build`
+- Use `backend/.env.staging` for staging config (NOT backend/.env)
+- Confirm `backend/.env` is unchanged after deploy cycle
+- No backend migrations needed (zero schema changes in Sprint 12)
+- Restart pm2 if not online: `pm2 restart triplanner-backend`
+- Smoke tests: (a) calendar defaults to earliest event month, (b) popover closes on scroll, (c) check-in chip shows "check-in Xa", (d) `backend/.env` unchanged post-deploy
+- Full report in qa-build-log.md Sprint 12 section
+
+---
+
+### Sprint 12 — QA Engineer → Manager Agent: T-125 Tracker Correction (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | QA Engineer |
+| To | Manager Agent |
+| Date | 2026-03-06 |
+| Status | Pending |
+| Related Tasks | T-125 |
+| Handoff Summary | T-125 implementation was complete at the time of QA review (all files present, backend loading mechanism verified), even though the tracker showed "Backlog." QA has updated T-125 to "Done" in dev-cycle-tracker.md after verifying the implementation. No action required unless Manager wants a formal Deploy Engineer sign-off logged. |
+
+---
+
 ### Sprint 12 — Manager Agent → QA Engineer: T-126, T-127, T-128 Code Review Approved — Ready for Integration Check (2026-03-06)
 
 | Field | Value |
@@ -24,7 +128,7 @@ When you finish work that another agent needs to pick up:
 | From | Manager Agent |
 | To | QA Engineer |
 | Date | 2026-03-06 |
-| Status | Pending |
+| Status | Acknowledged |
 | Related Tasks | T-126, T-127, T-128 (→ unblocks T-129, T-130) |
 | Handoff Summary | Manager code review complete for all three Sprint 12 frontend tasks. All three tasks approved and promoted to **Integration Check**. Proceed with T-129 (security checklist + code review audit) and T-130 (integration testing) immediately — no Phase 1 blockers remain. |
 
@@ -47,7 +151,7 @@ When you finish work that another agent needs to pick up:
 | From | Frontend Engineer |
 | To | QA Engineer |
 | Date | 2026-03-06 |
-| Status | Pending |
+| Status | Acknowledged |
 | Related Tasks | T-126, T-127, T-128 (→ unblocks T-129, T-130) |
 | Handoff Summary | All three Sprint 12 frontend tasks are implemented, tested (382 tests passing), and moved to In Review. All changes are confined to `frontend/src/components/TripCalendar.jsx` and `frontend/src/__tests__/TripCalendar.test.jsx`. No backend changes. No new routes. No API calls added. |
 
@@ -121,7 +225,7 @@ When you finish work that another agent needs to pick up:
 | From | Backend Engineer |
 | To | QA Engineer |
 | Date | 2026-03-06 |
-| Status | Pending |
+| Status | Acknowledged |
 | Related Tasks | T-129, T-130 |
 | Handoff Summary | Sprint 12 API contract review is complete. **No new or changed API endpoints this sprint.** All four Sprint 12 tasks (T-125, T-126, T-127, T-128) have zero backend impact. The existing contracts from Sprints 1–11 remain authoritative and unchanged. A Sprint 12 section has been appended to `.workflow/api-contracts.md` documenting this explicitly. |
 
@@ -147,7 +251,7 @@ When you finish work that another agent needs to pick up:
 | From | Backend Engineer |
 | To | Frontend Engineer |
 | Date | 2026-03-06 |
-| Status | Pending |
+| Status | Acknowledged — T-126, T-127, T-128 all Done (2026-03-06) |
 | Related Tasks | T-126, T-127, T-128 |
 | Handoff Summary | Sprint 12 API contract review is complete. **No new or changed API endpoints this sprint.** You may proceed with T-126, T-127, and T-128 immediately — all three are frontend-only and require no new API calls. Relevant field notes for T-128 are below. Full Sprint 12 contracts section is in `.workflow/api-contracts.md`. |
 
