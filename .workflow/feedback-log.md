@@ -225,7 +225,19 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | FB-090 | Monitor Alert | Minor | **Tasked → T-139** | Backend Engineer to fix `api-contracts.md` — change `/land-travels` to `/land-travel` (singular). Documentation-only fix. P3, Sprint 13. |
 | FB-091 | Feature Gap | Minor | **Tasked → T-137** | Frontend Engineer to rework DayPopover: use `position: absolute` (document-anchored) so popover stays open and in place on scroll. Reverts T-126 scroll-close approach. P2, Sprint 13. |
 | FB-092 | Feature Gap | Minor | **Tasked → T-138** | Frontend Engineer to add "pick-up Xp" and "drop-off Xp" time chips for rental car entries on calendar (pick-up day and drop-off day respectively), matching stay check-in/check-out chip format. P2, Sprint 13. |
-| FB-093 | Monitor Alert | Major | **Tasked → Sprint 14 (T-145)** | JWT_SECRET in backend/.env.staging is the publicly-known placeholder value. Deploy Engineer must rotate before any external staging access. P1, Sprint 14. |
+| FB-093 | Monitor Alert | Major | **Tasked → T-145** | JWT_SECRET in backend/.env.staging is the publicly-known placeholder value. Deploy Engineer must rotate before any external staging access. P1, Sprint 14. |
+| FB-094 | Feature Gap | Minor | **Tasked → T-147** | Add a "Today" button to calendar navigation so user can jump back to current month. Frontend fix. P2, Sprint 14. |
+| FB-095 | Bug | Major | **Tasked → T-146** | Calendar does not default to first event's month — still shows current month (March) even when first event is in May. T-128 implementation likely not included in deployed build, or bug in date-parsing. Must investigate and fix on staging. P1, Sprint 14. |
+
+---
+
+## Sprint 13 → Sprint 14 Feedback Triage (Manager Agent — 2026-03-07)
+
+| FB Entry | Category | Severity | Disposition | Notes |
+|----------|----------|----------|-------------|-------|
+| FB-093 | Monitor Alert | Major | **Tasked → T-145** | Deploy Engineer: rotate JWT_SECRET in `backend/.env.staging` (`openssl rand -hex 32`), restart pm2. P1, Sprint 14. Must complete before any external staging access. |
+| FB-094 | Feature Gap | Minor | **Tasked → T-147** | Frontend Engineer: add "Today" button to TripCalendar navigation header. Clicking it sets `currentMonth` to the current date's month/year. P2, Sprint 14. |
+| FB-095 | Bug | Major | **Tasked → T-146** | Frontend Engineer: investigate and fix T-128 regression — calendar still opens on current month even when first event is in a future month. Root cause likely in deployed build not including T-128, or a date-parsing edge case. Reproduce on staging, compare TripCalendar.jsx implementation against `getInitialMonth()` logic in source. P1, Sprint 14. |
 
 ---
 
@@ -241,7 +253,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 13 |
 | Category | Monitor Alert |
 | Severity | Major |
-| Status | Tasked → Sprint 14 (T-145) |
+| Status | Tasked → T-145 |
 | Related Task | T-143 (health check that surfaced this), T-142 (staging deploy) |
 
 **Detected by:** Monitor Agent — T-143 Post-Deploy Health Check — 2026-03-07T16:00:00Z
@@ -266,5 +278,39 @@ This is the publicly documented placeholder value from the project template. Bec
 4. Invalidate all current staging tokens (restart suffices since token signatures will no longer validate)
 
 **This does not block staging testing** (all health checks passed), but must be resolved before any external user or third party accesses the staging environment.
+
+---
+
+### FB-094 — Feature Gap: Add "Today" button to calendar view
+
+| Field | Value |
+|-------|-------|
+| Feedback | Calendar view needs a "Today" button to jump back to the current month |
+| Sprint | 13 |
+| Category | Feature Gap |
+| Severity | Minor |
+| Status | Tasked → T-147 |
+| Related Task | T-128, T-147 |
+
+**Description:** The calendar on the trip detail page currently defaults to the month of the first scheduled event (implemented in T-128, Sprint 12). If there are no planned events, it defaults to the current month. This behavior is correct. However, once the user navigates away from the current month (e.g., browsing future trip events), there is no quick way to return to the current month. Add a "Today" button to the calendar navigation that, when clicked, immediately navigates the calendar view to the current month. This button should be visible at all times in the calendar header/navigation area, consistent with the existing month navigation arrows.
+
+**Requested by:** Project owner (manual feedback)
+
+---
+
+### FB-095 — Bug: Calendar does not default to first event's month (T-128 broken)
+
+| Field | Value |
+|-------|-------|
+| Feedback | Calendar still defaults to current month instead of first event's month |
+| Sprint | 13 |
+| Category | Bug |
+| Severity | Major |
+| Status | Tasked → T-146 |
+| Related Task | T-128, T-146 |
+
+**Description:** T-128 (Sprint 12) was supposed to make the calendar default to the month of the trip's first scheduled event. This is not working. Reproduction: open a trip with events only in May 2026 (e.g., Memorial Day trip) — the calendar defaults to March 2026 (the current month) instead of May 2026. The user must manually click the forward arrow twice to reach their events. The T-128 implementation is either not applying or has a bug in how it determines the first event's month. This needs to be investigated and fixed — the calendar should open on May 2026 when the first event is in May.
+
+**Requested by:** Project owner (manual testing — confirmed broken)
 
 ---

@@ -1697,11 +1697,13 @@ Sprint 13 must begin with immediate correction of the T-131 staging deployment f
 
 **Feedback Summary (Sprint 13):**
 
-*1 Monitor Agent alert filed; User Agent walkthroughs (T-136, T-144) never ran — no User Agent feedback received.*
+*1 Monitor Agent alert filed. User Agent walkthroughs (T-136, T-144) never ran. 2 additional feedback entries submitted by project owner via manual testing.*
 
 | Entry | Category | Severity | Disposition | Description |
 |-------|----------|----------|-------------|-------------|
-| FB-093 | Monitor Alert | Major | **Tasked → Sprint 14 (T-145)** | `backend/.env.staging` JWT_SECRET is the publicly-known template placeholder `CHANGE-ME-generate-with-openssl-rand-hex-32`. Auth endpoints work but tokens can be forged by anyone who knows the placeholder. Must be rotated before any external staging access. Does not block local testing. |
+| FB-093 | Monitor Alert | Major | **Tasked → T-145** | `backend/.env.staging` JWT_SECRET is the publicly-known template placeholder `CHANGE-ME-generate-with-openssl-rand-hex-32`. Auth endpoints work but tokens can be forged. Must be rotated before external staging access. Does not block local testing. |
+| FB-094 | Feature Gap | Minor | **Tasked → T-147** | Project owner manual feedback: Calendar needs a "Today" button to jump back to the current month. Visible at all times in calendar header, consistent with prev/next month arrows. |
+| FB-095 | Bug | Major | **Tasked → T-146** | Project owner manual testing: Calendar still defaults to current month (March) even when first event is in May. T-128 implementation is not working on staging — either the deployed build does not include T-128, or there is a date-parsing bug in `getInitialMonth()`. Must investigate and fix. |
 
 ---
 
@@ -1742,25 +1744,26 @@ Sprint 13 must begin with immediate correction of the T-131 staging deployment f
 
 **Next Sprint Focus (Sprint 14 Recommendations):**
 
-*Priority order: User Agent walkthroughs → JWT_SECRET rotation → production deployment decision → backlog features.*
+*Priority order: calendar bug fix → security fix → "Today" button → User Agent walkthrough → production deployment decision.*
 
-**P0 — Immediate (User Agent pipeline closure — overdue 5 sprints):**
-1. **T-144 (carry-over) + T-136 scope merged** — User Agent: Conduct combined Sprint 12 + Sprint 13 feature walkthrough on staging. Updated expected behaviors: (a) `.env` isolation — `backend/.env` shows local-dev defaults; (b) DayPopover: scroll keeps popover OPEN (not closed, per T-137 reversal); (c) Calendar check-in label "check-in Xa"; (d) Calendar defaults to first event month; (e) Rental car: pick-up day shows "pick-up Xp", drop-off day shows "drop-off Xp"; (f) Sprint 11 regression clean.
+**P0 — Pipeline (User Agent walkthrough — overdue 5 sprints):**
+1. **T-152** — User Agent: Conduct comprehensive Sprint 13 + Sprint 14 feature walkthrough on staging. Updated expected behaviors include: DayPopover scroll keeps popover OPEN; rental car pick-up/drop-off chips; calendar defaults to first event month (after T-146 fix); "Today" button visible and functional; Sprint 12/11 regressions clean.
 
-**P1 — Security (must complete before any external staging access):**
-2. **T-145 (FB-093)** — Deploy Engineer: Generate secure JWT_SECRET (`openssl rand -hex 32`); replace placeholder in `backend/.env.staging`; restart pm2 (`pm2 restart triplanner-backend`); confirm auth endpoints still issue valid tokens.
+**P1 — Bug Fix (broken feature — T-128 regression):**
+2. **T-146 (FB-095)** — Frontend Engineer: Investigate and fix `getInitialMonth()` — calendar not defaulting to first event month despite T-128 implementation. Check: (a) whether T-128 changes are in the deployed build, (b) data shape from API, (c) date parsing edge cases.
+
+**P1 — Security (before any external staging access):**
+3. **T-145 (FB-093)** — Deploy Engineer: Generate secure JWT_SECRET (`openssl rand -hex 32`), replace in `backend/.env.staging`, restart pm2.
+
+**P2 — Feature Enhancement:**
+4. **T-147 (FB-094)** — Frontend Engineer: Add "Today" button to TripCalendar header. Clicking sets `currentMonth` to current date month/year. Visible at all times alongside prev/next arrows.
 
 **P1 — Production Deployment (blocked on project owner):**
-3. **B-022** — Project owner must review `.workflow/hosting-research.md` and select a hosting provider (Railway, Fly.io, Render, AWS). All infrastructure is complete and staging-validated. **12 consecutive sprints with no decision.** This is the single most critical outstanding item for the project.
+5. **B-022** — Project owner must review `.workflow/hosting-research.md` and select a hosting provider. **13 consecutive sprints with no decision.**
 
-**P2 — QA Process Improvement:**
-4. Add explicit placeholder-value check to QA security checklist: `[x] No placeholder values in backend/.env.staging` — prevents recurrence of FB-093.
-5. Add `formatTimezoneAbbr()` dedicated unit tests to `formatDate.test.js` (minor debt from Sprint 7).
-
-**P3 — Tech Debt (if capacity allows):**
-6. B-020: Redis-backed rate limiting
-7. B-021: Resolve esbuild dev dependency vulnerability
-8. B-024: Per-account rate limiting
+**P3 — Tech Debt:**
+6. Add `formatTimezoneAbbr()` unit tests (minor debt from Sprint 7)
+7. B-020: Redis-backed rate limiting, B-021: esbuild vuln, B-024: per-account rate limiting
 
 ---
 

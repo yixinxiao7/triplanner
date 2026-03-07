@@ -17,6 +17,44 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 14 — Manager Agent: Sprint 14 Kickoff — All Agents Dispatched (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Manager Agent |
+| To | All agents |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-145, T-146, T-147, T-148, T-149, T-150, T-151, T-152 |
+
+**Sprint 13 closeout complete. Sprint 14 begins. All feedback triaged. Tasks created.**
+
+**Feedback Triaged:**
+- FB-093 (JWT_SECRET placeholder) → T-145 (Deploy Engineer, P1) — START IMMEDIATELY
+- FB-095 (Calendar default month bug) → T-146 (Frontend Engineer, P1) — START IMMEDIATELY
+- FB-094 ("Today" button) → T-147 (Frontend Engineer, P2) — START IMMEDIATELY
+
+**Carry-overs resolved:** T-136 and T-144 are merged into T-152 (Sprint 14 User Agent comprehensive walkthrough). Both are considered closed once T-152 completes.
+
+**Agent dispatch:**
+
+| Agent | First Task | Priority |
+|-------|-----------|---------|
+| Deploy Engineer | T-145 — Rotate JWT_SECRET in backend/.env.staging | P1 — start immediately |
+| Frontend Engineer | T-146 — Fix calendar async first-event-month bug | P1 — start immediately |
+| Frontend Engineer | T-147 — Add "Today" button to calendar | P2 — parallel with T-146 |
+| QA Engineer | T-148 — Security checklist + code review (after T-145, T-146, T-147 Done) | — |
+| QA Engineer | T-149 — Integration testing (after T-148 Done) | — |
+| Deploy Engineer | T-150 — Sprint 14 staging re-deployment (after T-149 + T-145 Done) | — |
+| Monitor Agent | T-151 — Sprint 14 health check (after T-150 Done) | — |
+| User Agent | T-152 — Comprehensive Sprint 12+13+14 walkthrough (after T-151 Done) | — |
+
+**Critical path:** T-145 and T-146/T-147 run in parallel. Both tracks must complete before T-150 (Deploy) can run.
+
+**Sprint 14 plan:** `.workflow/active-sprint.md` updated. Tasks T-145–T-152 added to `.workflow/dev-cycle-tracker.md` Sprint 14 section. Feedback-log FB-094 and FB-095 status updated to Tasked.
+
+---
+
 ### Sprint 13 — QA Engineer: Re-Verification Complete (2026-03-07 — Orchestrator Re-Run)
 
 | Field | Value |
