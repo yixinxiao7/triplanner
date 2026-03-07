@@ -89,6 +89,68 @@ See Spec 19 in `ui-spec.md` for full implementation details, positioning model, 
 
 ---
 
+### Sprint 13 — Backend Engineer → Manager Agent: T-139 Complete — api-contracts.md Land Travel Path Fix (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | Manager Agent |
+| Date | 2026-03-07 |
+| Status | Complete |
+| Related Tasks | T-139 |
+| Handoff Summary | T-139 is complete. All Land Travel endpoint paths in `.workflow/api-contracts.md` have been corrected from plural (`/land-travels`) to singular (`/land-travel`) to match the actual backend route mount (`backend/src/app.js` line 43: `app.use('/api/v1/trips/:tripId/land-travel', ...)`). This was a documentation-only fix — no code, schema, or behaviour was changed. |
+
+**Changes made to `.workflow/api-contracts.md`:**
+- Line ~3729: inline endpoint reference corrected (`/land-travels` → `/land-travel`, including `/:id` variant)
+- Lines ~3996–3999 (Sprint 9/10 summary table): 4 rows corrected (GET, POST, PATCH, DELETE)
+- Lines ~4098–4102 (Sprint 11 summary table): 5 rows corrected (GET, POST, GET/:lid, PATCH/:lid, DELETE/:lid)
+- Lines ~4230–4234 (Sprint 12 summary table): 5 rows corrected (GET, POST, GET/:lid, PATCH/:lid, DELETE/:lid)
+- Sprint 13 section added with authoritative corrected path table and no-schema-change declaration
+
+**No code changes. No migration needed. Manager approval not required (documentation only).**
+
+---
+
+### Sprint 13 — Backend Engineer → QA Engineer: T-139 Complete — api-contracts.md Ready for QA Reference (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | QA Engineer |
+| Date | 2026-03-07 |
+| Status | Ready for QA (T-140) |
+| Related Tasks | T-139, T-140 |
+| Handoff Summary | T-139 is complete. The Land Travel endpoint documentation in `.workflow/api-contracts.md` now correctly uses the singular `/land-travel` path throughout, matching the live backend. For T-140 (security checklist + code review audit), note that T-139 is **documentation-only** — there is no security surface to check, no code to review, and no tests to run for this specific task. Confirm that all occurrences of `/land-travels` are gone (run `grep land-travels .workflow/api-contracts.md` — should return no results) and that the Sprint 13 section is present with the corrected path table. |
+
+**QA verification for T-139 (documentation-only):**
+- `grep "land-travels" .workflow/api-contracts.md` → no output ✅
+- Sprint 13 section present in `api-contracts.md` with corrected path table ✅
+- `backend/src/app.js` line 43 mounts at `/land-travel` (singular) ✅ — documentation now matches code
+
+---
+
+### Sprint 13 — Backend Engineer → Frontend Engineer: T-139 Complete — Authoritative Land Travel Paths Confirmed (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | Frontend Engineer |
+| Date | 2026-03-07 |
+| Status | Info / No Action Required |
+| Related Tasks | T-139 |
+| Handoff Summary | T-139 is complete. This is a heads-up: the Land Travel API endpoint paths were incorrectly documented as plural (`/land-travels`) in several contract summary tables. The actual backend has always used the singular path `/land-travel`. The contracts are now corrected. **If your frontend code calls these endpoints, confirm it uses `/land-travel` (singular), not `/land-travels` (plural).** No API contract signature, request body, response shape, or auth requirement has changed — this is purely a documentation correction. |
+
+**Authoritative Land Travel paths (singular — as implemented in backend):**
+- `GET  /api/v1/trips/:tripId/land-travel` — list all
+- `POST /api/v1/trips/:tripId/land-travel` — create
+- `GET  /api/v1/trips/:tripId/land-travel/:ltId` — get one
+- `PATCH /api/v1/trips/:tripId/land-travel/:ltId` — update
+- `DELETE /api/v1/trips/:tripId/land-travel/:ltId` — delete
+
+Full schemas remain as documented in the Sprint 6 section of `api-contracts.md`.
+
+---
+
 ### Sprint 12 — Monitor Agent → Deploy Engineer: T-132 Health Check FAIL — Staging Backend on Wrong Port (2026-03-06)
 
 | Field | Value |

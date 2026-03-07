@@ -3726,7 +3726,7 @@ Relevant fields already returned:
 
 ##### Land Travels (existing, Sprint 6 — T-086)
 
-Endpoint: `GET /api/v1/trips/:tripId/land-travels` and `GET /api/v1/trips/:tripId/land-travels/:id`
+Endpoint: `GET /api/v1/trips/:tripId/land-travel` and `GET /api/v1/trips/:tripId/land-travel/:id`
 
 Relevant fields already returned:
 
@@ -3993,10 +3993,10 @@ All contracts from Sprints 1–9 remain in force and unchanged. The following ta
 | 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
 | 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
 | 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
-| 6 | `GET /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
-| 6 | `POST /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
-| 6 | `PATCH /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
-| 6 | `DELETE /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
 
 **Schema state on staging (as of T-107 deployment, 2026-02-28):** All 10 migrations applied (001–010). Database is current. No pending migrations for Sprint 10.
 
@@ -4095,11 +4095,11 @@ All contracts from Sprints 1–10 remain in force and unchanged. The complete au
 | 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
 | 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
 | 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
-| 6 | `GET /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
-| 6 | `POST /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
-| 6 | `GET /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
-| 6 | `PATCH /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
-| 6 | `DELETE /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
 
 **Schema state on staging (as of T-107 deployment, 2026-02-28 + T-122 deployment, 2026-03-04):** All 10 migrations applied (001–010). Database is current. No pending migrations for Sprint 11.
 
@@ -4227,11 +4227,11 @@ All contracts from Sprints 1–11 remain in force and unchanged. The complete au
 | 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
 | 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
 | 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
-| 6 | `GET /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
-| 6 | `POST /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
-| 6 | `GET /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
-| 6 | `PATCH /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
-| 6 | `DELETE /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
 
 **Schema state on staging (as of T-118/T-122 deployment, 2026-03-04):** All 10 migrations applied (001–010). Database is fully current. No pending migrations.
 
@@ -4280,3 +4280,55 @@ No new database migrations are introduced in Sprint 12. The schema is complete a
 ---
 
 *Sprint 12 contract review complete — 2026-03-06. Backend Engineer: no new endpoints or schema changes this sprint. Sprint 12 is a focused polish sprint — all four tasks (T-125 deploy config, T-126/T-127/T-128 frontend component fixes) have zero backend impact. T-128 (calendar default month) reads `departure_at`, `check_in_at`, and `activity_date` from already-fetched in-memory data — no new API calls needed. All existing contracts (Sprints 1–11) remain authoritative and unchanged. Backend Engineer on hotfix standby only.*
+
+---
+
+## Sprint 13 — API Contracts
+
+**Date:** 2026-03-07
+**Backend Engineer task:** T-139 — Documentation-only fix: correct Land Travel endpoint paths from plural (`/land-travels`) to singular (`/land-travel`) throughout this file.
+
+### T-139 — Land Travel Path Correction (Documentation Only)
+
+**Problem (FB-090):** All Land Travel endpoint rows in the sprint contract summary tables incorrectly used the plural path `/land-travels`. The actual backend route is mounted at the singular path `/land-travel` (confirmed in `backend/src/app.js` line 43: `app.use('/api/v1/trips/:tripId/land-travel', landTravelRoutes)`). The detailed Sprint 6 endpoint specs (Section "Sprint 6 — Land Travel") were already correct; only the consolidated summary tables were wrong.
+
+**Fix applied (T-139):** All occurrences of `/land-travels` corrected to `/land-travel` in this file. No code, schema, or behaviour changes — documentation only.
+
+**Corrected endpoint paths (authoritative — match backend/src/app.js mount):**
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/trips/:tripId/land-travel` | Bearer token | List all land travel entries for a trip |
+| POST | `/api/v1/trips/:tripId/land-travel` | Bearer token | Create a new land travel entry |
+| GET | `/api/v1/trips/:tripId/land-travel/:ltId` | Bearer token | Get a single land travel entry |
+| PATCH | `/api/v1/trips/:tripId/land-travel/:ltId` | Bearer token | Update a land travel entry |
+| DELETE | `/api/v1/trips/:tripId/land-travel/:ltId` | Bearer token | Delete a land travel entry |
+
+Full request/response schemas and error cases remain as documented in the Sprint 6 section above. No changes to request bodies, response shapes, auth requirements, or error codes.
+
+### Sprint 13 — No Schema Changes
+
+No new database migrations are introduced in Sprint 13. The schema is complete and current.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–010 | 1–10 | All previously applied migrations | ✅ Applied on Staging |
+| — | **13** | *(No new migrations)* | **Sprint 13 is pipeline closure + UX polish + documentation fix. Zero schema work.** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+### Sprint 13 — Hotfix Standby Protocol
+
+**Trigger:** If User Agent walkthroughs T-136 or T-144 reveal a **Critical or Major backend bug**, the Manager Agent will create an H-XXX hotfix task. The Backend Engineer is on standby to respond.
+
+| Severity | Backend Engineer Action |
+|----------|------------------------|
+| **Critical** | Respond immediately. Document contract change (if any) here under `Sprint 13 — Hotfix H-XXX` first, then implement. |
+| **Major** | Respond within the same sprint phase. Document contract change (if any) here first, then implement. |
+| **Minor / Suggestion** | Log to Sprint 14 backlog. No Backend Engineer action this sprint. |
+
+**Current status (Sprint 13 start — 2026-03-07):** No H-XXX tasks exist. Backend Engineer is monitoring. Sprint 12 closed with zero Critical or Major bugs — no outstanding hotfix debt.
+
+---
+
+*Sprint 13 contract review complete — 2026-03-07 (T-139). Backend Engineer: no new endpoints or schema changes this sprint. T-139 corrects documentation-only error in Land Travel path (plural → singular) in all summary tables. All existing endpoint contracts (Sprints 1–12) remain authoritative and unchanged. Backend Engineer on hotfix standby only.*
