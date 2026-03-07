@@ -23,6 +23,7 @@ module.exports = {
       restart_delay: 1000,
       env: {
         NODE_ENV: 'staging',
+        PORT: 3001,
       },
       // Log configuration
       error_file: './logs/backend-error.log',
