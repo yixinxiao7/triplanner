@@ -122,7 +122,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 12 |
 | Category | Monitor Alert |
 | Severity | Major |
-| Status | New |
+| Status | Tasked → Sprint 13 (T-131 re-execution required) |
 | Related Task | T-131, T-132 |
 
 **Description:** Sprint 12 post-deploy health check (T-132) found the staging backend running on `https://localhost:3000`, not `https://localhost:3001` as specified in `backend/.env.staging`. The backend is serving HTTPS (TLS certs loaded from `infra/certs/`), but `PORT=3000` was used instead of the staging-config value of `PORT=3001`. The Sprint 11 staging backend (pm2 PID 42784, `https://localhost:3001`) is no longer running — port 3001 has no listener.
@@ -157,7 +157,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 12 |
 | Category | Monitor Alert |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged (backlog — documentation fix, no functional impact) |
 | Related Task | T-132 |
 
 **Description:** During T-132 health checks, Monitor Agent discovered that the land travel API route is mounted at `/api/v1/trips/:tripId/land-travel` (singular) in `backend/src/app.js`, but `api-contracts.md` documents it as `/land-travels` (plural). All 266 backend tests use the singular URL and pass. The frontend uses the singular URL (application works). This is a pre-existing documentation inconsistency from Sprint 6, not a Sprint 12 regression.
@@ -171,5 +171,16 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 **Impact:** No functional impact — application works correctly. Risk: future agents or external API consumers reading `api-contracts.md` may call the wrong URL. Should be corrected in api-contracts.md.
 
 **Required Action:** Backend Engineer to correct `api-contracts.md` to document the endpoint as `/land-travel` (singular) in a future sprint. Low priority.
+
+---
+
+## Sprint 12 Feedback Triage Summary (Manager Agent — 2026-03-06)
+
+*No User Agent feedback received (T-133 blocked by T-131 staging failure). Two Monitor Agent alerts triaged.*
+
+| FB Entry | Category | Severity | Disposition | Notes |
+|----------|----------|----------|-------------|-------|
+| FB-089 | Monitor Alert | Major | **Tasked → Sprint 13 (T-131 re-execution)** | Deploy Engineer must use `pm2 start infra/ecosystem.config.cjs` from project root. Backend must run on `https://localhost:3001` (PORT=3001 from `.env.staging`). P0, Sprint 13. |
+| FB-090 | Monitor Alert | Minor | **Acknowledged (backlog)** | Backend Engineer to fix `api-contracts.md` — change `/land-travels` to `/land-travel` (singular). No functional impact. Low priority. |
 
 ---

@@ -1555,4 +1555,100 @@ Sprint 11 is a **mandatory pipeline-closure sprint** with zero exceptions. No ne
 
 ---
 
+### Sprint #12 — 2026-03-06 to 2026-03-06
+
+**Goal:** Ship four targeted UX/infrastructure fixes surfaced by project owner feedback (FB-085 through FB-088): isolate staging environment config from local dev (`.env.staging`), fix DayPopover scroll anchoring, add missing "check-in" label to calendar check-in chips, and default the calendar to the month of the first planned event. Close the sprint's QA/deploy/monitor/user-agent cycle cleanly.
+
+**Goal Met:** PARTIALLY MET — All four implementation tasks (T-125 through T-128) were completed, code-reviewed, and QA-cleared (266 backend + 382 frontend tests passing; 6/6 integration checks pass). However, the deploy/monitor/user-agent pipeline did not close: T-131 (staging re-deployment) was executed with an incorrect configuration (backend started on port 3000 instead of port 3001; pm2 not used). T-132 (Monitor health check) detected the misconfiguration and filed FB-089. T-133 (User Agent walkthrough) was blocked. The implementation work is production-ready; only the staging deployment step needs correction in Sprint 13.
+
+---
+
+**Tasks Completed (7/10):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-125 | Deploy: .env staging isolation — `backend/.env.staging` created as authoritative staging config; `.env.staging.example` committed; deploy scripts updated; `backend/.env` restored to local-dev defaults | Done |
+| T-126 | Frontend: DayPopover scroll-close — scroll listener (`window.addEventListener('scroll', handler, { capture: true })`) closes popover on page scroll; focus restored to trigger; Escape-to-close preserved; 3 new tests | Done |
+| T-127 | Frontend: Calendar check-in label — "check-in Xa" chip added to check-in day (all 3 stay-chip cases); 5 new tests | Done |
+| T-128 | Frontend: Calendar defaults to first event month — `getInitialMonth()` covers all 4 event types; UTC vs local-time parsing correct; `isNaN` guard for malformed dates; fallback to current month; 5 new tests | Done |
+| T-129 | QA: Security checklist + code review audit — all Sprint 12 changes verified; 266 backend + 382 frontend tests passing; no new vulnerabilities introduced | Done |
+| T-130 | QA: Integration testing — 6/6 Sprint 12 integration checks pass; Sprint 11 regression clean | Done |
+| MGR-S12 | Manager: Sprint 12 code review pass — all 4 implementation tasks independently verified correct; no rework dispatched | Done |
+
+**Tasks Carried Over (3/10 — move to Sprint 13):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-131 | Deploy: Sprint 12 staging re-deployment | Backend started as `node src/index.js` on port 3000 instead of via `pm2 start infra/ecosystem.config.cjs` (which sets `NODE_ENV=staging` and loads `.env.staging` with `PORT=3001`). T-131 acceptance criteria not met. No handoff logged to Monitor. |
+| T-132 | Monitor: Sprint 12 staging health check | Ran and detected T-131 misconfiguration (FB-089 filed). Must re-run after T-131 is corrected. |
+| T-133 | User Agent: Sprint 12 feature walkthrough | Blocked by T-131/T-132 failure — staging not in the correct state for formal User Agent verification. |
+
+---
+
+**Key Decisions:**
+- No new ADRs this sprint (all tasks were UX fixes and an infrastructure isolation improvement).
+- Design Agent authored component-level behavior specs (Spec 16, 17, 18) for T-126, T-127, T-128 — all auto-approved.
+
+---
+
+**Feedback Summary (Sprint 12):**
+
+*2 Monitor Agent alerts filed; no User Agent feedback (T-133 blocked). Both alerts triaged by Manager.*
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-089 | Monitor Alert | Major | Tasked → Sprint 13 (T-131 re-execution) | Staging backend running on port 3000 instead of port 3001; pm2 not used; T-131 acceptance criteria not met |
+| FB-090 | Monitor Alert | Minor | Acknowledged (backlog) | `api-contracts.md` documents `/land-travels` (plural) but implementation uses `/land-travel` (singular); no functional impact — documentation correction only |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- All four implementation tasks (T-125 through T-128) passed Manager code review on the first attempt — zero rework, consistent with prior sprints.
+- The `.env.staging` isolation fix (T-125) was implemented correctly end-to-end: `backend/.env.staging` exists with correct staging values, excluded from git, `.env.staging.example` committed as template, deploy scripts and `ecosystem.config.cjs` updated. The root cause of FB-085 is fully resolved at the code level.
+- Frontend test coverage grew to 382 tests (up from 369 in Sprint 11), with 13 new targeted tests across T-126/T-127/T-128 covering scroll behavior, label rendering, and date initialization edge cases.
+- The Manager code review pass (MGR-S12) independently verified all four implementation tasks and confirmed QA findings — a strong secondary quality gate.
+
+**What Could Improve:**
+- T-131 failed acceptance criteria: the Deploy Engineer started the backend directly (`node src/index.js`) on port 3000 rather than using `pm2 start infra/ecosystem.config.cjs` from the project root. The pm2 ecosystem config is the canonical entry point for staging because it sets `NODE_ENV=staging`, which triggers `backend/src/index.js` to load `.env.staging` with `PORT=3001`. This is documented in the T-131 task description and T-125 setup — the Deploy Engineer must follow the pm2 start command exactly.
+- No Deploy Engineer → Monitor Agent handoff was logged in `handoff-log.md` for T-131. This is a rules violation (all agent-to-agent handoffs must be logged) and left the Monitor Agent without accurate context about staging state. Handoffs between Deploy and Monitor are mandatory.
+
+**Technical Debt Carried Forward:**
+- B-020: Rate limiting uses in-memory store (no Redis persistence)
+- B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 (no production impact)
+- B-024: Auth rate limit is IP-only (no per-account rate limiting)
+- No dedicated unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+- B-022: Production deployment pending — project owner must review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider before Sprint 13 can execute production deployment
+- FB-090: `api-contracts.md` documents `/land-travels` (plural) but implementation uses `/land-travel` (singular) — low-priority documentation fix
+
+**Resolved this sprint (at implementation level):**
+- FB-085 / T-125: `.env.staging` isolation implemented — `backend/.env` no longer mutated by deploy cycle (staging re-deployment must still complete in Sprint 13 to confirm on-system)
+- FB-086 / T-126: DayPopover scroll-close implemented and tested
+- FB-087 / T-127: Calendar check-in label added and tested
+- FB-088 / T-128: Calendar default month logic implemented and tested
+
+---
+
+**Next Sprint Focus (Sprint 13 Recommendations):**
+
+Sprint 13 must begin with immediate correction of the T-131 staging deployment failure before any other work proceeds.
+
+**P0 — Immediate (pipeline closure — no exceptions):**
+1. **T-131 (re-execution)** — Deploy Engineer: Stop PID 78079 (`kill 78079`); start backend via `pm2 start infra/ecosystem.config.cjs` from project root; verify `pm2 status` shows `triplanner-backend` online; confirm `curl -sk https://localhost:3001/api/v1/health` → 200; log explicit handoff to Monitor Agent in `handoff-log.md`.
+2. **T-132 (re-run)** — Monitor Agent: Re-run full Sprint 12 health check after T-131 is corrected and handoff is logged.
+3. **T-133** — User Agent: Sprint 12 feature walkthrough after T-132 passes clean.
+4. **Manager: Triage T-133 feedback** and plan Sprint 14 scope.
+
+**P1 — Production deployment (project owner decision required):**
+5. **B-022** — Project owner must review `.workflow/hosting-research.md` (T-124 output) and select a production hosting provider. Once a decision is made, Deploy Engineer can execute production deployment.
+
+**P2 — Tech debt (after P0/P1 close):**
+6. Fix `api-contracts.md`: change `/land-travels` to `/land-travel` (singular) per FB-090
+7. Add unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+8. B-020: Redis-backed rate limiting
+9. B-021: Resolve esbuild dev dependency vulnerability
+
+---
+
 *Add new sprint summaries above this line, newest first.*
