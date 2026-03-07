@@ -17,6 +17,58 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 13 — Design Agent → Frontend Engineer: Spec 20 — Rental Car Pick-Up/Drop-Off Time Chips (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Design Agent |
+| To | Frontend Engineer |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-138 |
+| Spec Reference | ui-spec.md → Spec 20 |
+
+**Spec 20: Rental Car Pick-Up / Drop-Off Time Chips on Calendar** is now Approved and ready for implementation.
+
+**Summary of spec:**
+- For `RENTAL_CAR` land travel entries in the calendar, add time chip prefixes that match the stay check-in/check-out convention.
+- Pick-up day (`departure_date`): chip reads `"pick-up Xp"` (e.g., `"pick-up 5p"`). If no time: `"pick-up"`.
+- Drop-off day (`arrival_date`): chip reads `"drop-off Xp"` (e.g., `"drop-off 2p"`). If no time: `"drop-off"`.
+- Same-day pickup + drop-off: show only `"pick-up Xp"` chip, no drop-off chip.
+- Affects two rendering paths: `DayCell` inline chips AND `DayPopover.getEventTime` (must match).
+- All non-RENTAL_CAR modes are completely unaffected.
+- 7 tests to add in `TripCalendar.test.jsx` (Tests 20.A–20.G). All existing tests must pass.
+
+See Spec 20 in `ui-spec.md` for full implementation details, pseudocode, edge cases, and complete test plan.
+
+---
+
+### Sprint 13 — Design Agent → Frontend Engineer: Spec 19 — DayPopover Stay-Open and Anchored on Scroll (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Design Agent |
+| To | Frontend Engineer |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-137 |
+| Spec Reference | ui-spec.md → Spec 19 |
+
+**Spec 19: DayPopover Stay-Open and Document-Anchored Behavior** is now Approved and ready for implementation. This spec supersedes Spec 16 (T-126 scroll-close approach).
+
+**Summary of spec:**
+- **Remove** the `window.addEventListener('scroll', close, ...)` listener added by T-126. Scroll must NOT close the popover.
+- **Switch** from `position: fixed` to `position: absolute` for the portal-rendered popover.
+- **Update** coordinate calculation: `top = rect.bottom + window.scrollY`, `left = rect.left + window.scrollX` (document-relative). Set once at open time — no ongoing recalculation needed.
+- Portal target remains `document.body` (no change to createPortal call).
+- Keep right-edge and bottom-edge viewport clamping logic (same as before, just add scroll offsets).
+- **All existing close behaviors are preserved:** Escape key, click-outside, explicit close button.
+- 6 tests to add/update (Tests 19.A–19.F). The scroll-closes-popover test from T-126 must be **deleted**. All other existing popover tests must pass.
+
+See Spec 19 in `ui-spec.md` for full implementation details, positioning model, pseudocode, lifecycle diagram, and complete test plan.
+
+---
+
 ### Sprint 13 — Manager Agent → All Agents: Sprint 13 Kickoff (2026-03-07)
 
 | Field | Value |

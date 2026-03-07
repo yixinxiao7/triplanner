@@ -6416,3 +6416,499 @@ All existing TripCalendar tests must continue to pass.
 ---
 
 *Sprint 12 Spec 18 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-06.*
+
+---
+
+### Spec 19: DayPopover Stay-Open and Document-Anchored Behavior (Sprint 13 — T-137)
+
+**Status:** Approved
+**Sprint:** 13
+**Related Task:** T-137
+**Feedback Source:** FB-091
+**Supersedes:** Spec 16 (scroll-close behavior — T-126 approach is reversed)
+
+---
+
+#### 19.1 Overview and Motivation
+
+Spec 16 (T-126) fixed the original drift problem (FB-086) by closing the DayPopover whenever the user scrolled. While this eliminated the visual artifact, it introduced new friction: users who accidentally scrolled slightly lost the popover and had to re-open it. FB-091 requests the preferred behavior: the popover should **stay open** when the user scrolls, and should remain **visually anchored** to the trigger button's document position so it does not drift.
+
+**Before (Spec 16 / T-126 approach — to be removed):**
+- Popover used `position: fixed` with viewport-relative coordinates captured at open time.
+- A `window.addEventListener('scroll', close, { capture: true })` listener was added on open and removed on close.
+- Effect: scrolling dismissed the popover immediately.
+
+**After (Spec 19 / T-137 approach):**
+- Popover uses `position: absolute` with document-relative coordinates (viewport offset + scroll offset).
+- No scroll-close listener. Scroll events are completely ignored by the popover.
+- Effect: the popover stays open, scrolling with the document, remaining pinned at the trigger's original document position.
+
+**No new screens or routes.** This spec describes a targeted behavior change to `DayPopover` only.
+
+---
+
+#### 19.2 Affected Component
+
+**Component:** `DayPopover` (located in `frontend/src/components/TripCalendar/` or equivalent)
+
+This is the portal-rendered dropdown that opens when the user clicks the "+X more" overflow indicator on a calendar day cell. It lists all events for that day that did not fit inline.
+
+---
+
+#### 19.3 Positioning Model Change
+
+##### 19.3.1 Current model (to be removed)
+
+```
+position: fixed
+top:  triggerRect.bottom  (viewport Y at time of open)
+left: triggerRect.left    (viewport X at time of open)
+```
+
+With `position: fixed`, the popover is anchored to the **viewport**. When the user scrolls, the viewport coordinates remain the same but the page content moves — causing the popover to visually detach from the trigger.
+
+##### 19.3.2 New model (to implement)
+
+```
+position: absolute
+top:  triggerRect.bottom + window.scrollY   (document Y)
+left: triggerRect.left   + window.scrollX   (document X)
+```
+
+With `position: absolute` on a child of `document.body` (via `createPortal`), the coordinates are **document-relative**. When the user scrolls, both the trigger button and the popover shift in the viewport by the same amount, so the popover remains visually pinned to the trigger location.
+
+##### 19.3.3 Portal target
+
+The portal target remains `document.body`. No change to the createPortal call itself — only the CSS positioning mode and coordinate calculation change.
+
+**Important:** If `document.body` or `html` has any transform, `position: fixed` override, or `will-change` applied globally, `position: absolute` may behave unexpectedly. The implementation should verify that no such global override exists (none is expected in the current codebase).
+
+##### 19.3.4 Position calculation pseudocode
+
+```js
+// Called once on open, inside the click handler or useLayoutEffect after mount
+function calculatePopoverPosition(triggerEl) {
+  const rect = triggerEl.getBoundingClientRect();
+  const scrollX = window.scrollX ?? window.pageXOffset;
+  const scrollY = window.scrollY ?? window.pageYOffset;
+
+  return {
+    top:  rect.bottom + scrollY,   // document-relative Y (below trigger)
+    left: rect.left   + scrollX,   // document-relative X (aligned with trigger left)
+  };
+}
+```
+
+The position is computed **once** at open time and set as inline styles on the popover element. No ongoing recalculation is needed — `position: absolute` handles the scroll tracking passively.
+
+##### 19.3.5 Edge case: viewport overflow (right/bottom)
+
+When the trigger is near the right edge of the viewport, the popover must not overflow off-screen. Apply the same right-edge clamping that existed previously:
+
+```js
+const viewportWidth = window.innerWidth;
+const popoverWidth = 240; // matches existing DayPopover max-width
+let left = rect.left + scrollX;
+if (left + popoverWidth > scrollX + viewportWidth - 16) {
+  // Align right edge of popover with right edge of viewport (with 16px margin)
+  left = scrollX + viewportWidth - popoverWidth - 16;
+}
+```
+
+If the trigger is near the bottom of the viewport and there is insufficient space below, the popover should appear above the trigger instead:
+
+```js
+const viewportHeight = window.innerHeight;
+const popoverEstimatedHeight = 200; // conservative estimate
+let top = rect.bottom + scrollY;
+if (rect.bottom + popoverEstimatedHeight > viewportHeight) {
+  top = rect.top + scrollY - popoverEstimatedHeight; // render above trigger
+}
+```
+
+These clamping behaviors mirror the existing logic — only the `position: absolute` + scroll-offset shift is new.
+
+---
+
+#### 19.4 Close Behaviors (Unchanged)
+
+The following close triggers must all continue to work exactly as before:
+
+| Trigger | Behavior |
+|---------|----------|
+| **Click outside** | Clicking anywhere outside the popover (including the trigger button when it's outside the popover bounds) closes the popover |
+| **Escape key** | `keydown` listener on `window` or the popover element — pressing `Escape` closes the popover |
+| **Explicit close button** | If a close (×) button exists inside the popover, clicking it closes the popover |
+| **Navigation** | If the user navigates away, the component unmounts and the popover is removed |
+
+**Scroll is NOT in this list.** Scroll must not close the popover.
+
+---
+
+#### 19.5 State and Lifecycle
+
+```
+Open state:
+  - Popover mounted via createPortal into document.body
+  - position: absolute; top: <docY>px; left: <docX>px
+  - Click-outside listener added to document
+  - Escape keydown listener added to window (or document)
+  - NO scroll listener
+
+Close trigger fires (any of: click-outside, Escape, close button):
+  - Popover unmounted (or hidden)
+  - Click-outside listener removed
+  - Escape keydown listener removed
+
+Cleanup (useEffect return):
+  - Remove click-outside listener
+  - Remove Escape keydown listener
+  (No scroll listener to remove)
+```
+
+---
+
+#### 19.6 Visual Appearance (No Change)
+
+The popover's visual style is unchanged from Spec 16.3 / Spec 7. For reference:
+
+| Property | Value |
+|----------|-------|
+| Background | `var(--surface)` (`#30292F`) |
+| Border | `1px solid rgba(93, 115, 126, 0.3)` |
+| Border radius | 4px |
+| Padding | 12px |
+| Min width | 200px |
+| Max width | 240px |
+| Font | IBM Plex Mono, 12px, `var(--text-primary)` |
+| Z-index | 1000 (or existing value — must render above all other page content) |
+| Shadow | None (Japandi aesthetic — no shadows) |
+
+The popover lists each event for the overflow day with the same chip styles used in the inline day cell. No visual changes are required for this spec.
+
+---
+
+#### 19.7 Accessibility (No Change)
+
+No accessibility changes are required. The existing roles, `aria-label`, focus management, and keyboard handling are preserved. The Escape-to-close behavior is maintained, which satisfies WCAG 2.1 SC 1.4.13 (Content on Hover or Focus).
+
+---
+
+#### 19.8 Test Plan
+
+Remove or update the test added in T-126:
+
+**Test to REMOVE (from Spec 16 / T-126):**
+```
+Given: DayPopover is open (trigger has been clicked)
+When: A scroll event fires on window
+Then: onClose IS called and popover is dismissed
+→ DELETE THIS TEST — behavior has changed
+```
+
+**Tests to ADD:**
+
+**Test 19.A — Popover stays open on scroll:**
+```
+Given: DayPopover is open (trigger has been clicked)
+When: A scroll event fires on window (simulate: window.dispatchEvent(new Event('scroll')))
+Then: onClose is NOT called
+And:  The popover remains mounted in the DOM
+```
+
+**Test 19.B — No scroll listener attached:**
+```
+Given: DayPopover is about to open
+When: The component mounts
+Then: window.addEventListener is NOT called with 'scroll' as the event type
+(Spy on window.addEventListener and assert no scroll call)
+```
+
+**Test 19.C — Position uses document-relative coordinates:**
+```
+Given: Trigger button has getBoundingClientRect() returning { bottom: 120, left: 50 }
+And:   window.scrollY = 300, window.scrollX = 0
+When:  DayPopover opens
+Then:  Popover element has inline style top: 420px (120 + 300), left: 50px (50 + 0)
+```
+
+**Regression tests (must continue to pass):**
+
+**Test 19.D — Escape closes popover:**
+```
+Given: DayPopover is open
+When: User presses Escape key
+Then: onClose IS called
+```
+
+**Test 19.E — Click outside closes popover:**
+```
+Given: DayPopover is open
+When: User clicks outside the popover bounds
+Then: onClose IS called
+```
+
+**Test 19.F — Cleanup removes all listeners on unmount:**
+```
+Given: DayPopover is open (listeners attached)
+When: The component unmounts
+Then: All event listeners (click-outside, Escape keydown) are removed
+And:  No scroll listener was ever added (so none to remove)
+```
+
+All existing DayPopover tests not related to scroll-close must continue to pass.
+
+---
+
+#### 19.9 Files Affected
+
+| File | Change |
+|------|--------|
+| `DayPopover.jsx` (or equivalent) | Remove `window.addEventListener('scroll', close, ...)` and its cleanup. Change `position: 'fixed'` to `position: 'absolute'`. Update coordinate calculation to add `window.scrollX`/`window.scrollY`. |
+| `DayPopover.test.jsx` (or equivalent) | Remove scroll-closes-popover test. Add Tests 19.A, 19.B, 19.C. Verify Tests 19.D, 19.E, 19.F pass. |
+
+**No CSS file changes.** No API changes. No backend changes. No new routes.
+
+---
+
+*Sprint 13 Spec 19 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
+
+---
+
+### Spec 20: Rental Car Pick-Up / Drop-Off Time Chips on Calendar (Sprint 13 — T-138)
+
+**Status:** Approved
+**Sprint:** 13
+**Related Task:** T-138
+**Feedback Source:** FB-092
+**Extends:** Spec 12 Addendum (CAL-1, CAL-1.5), Spec 13 (CAL-3)
+
+---
+
+#### 20.1 Overview
+
+When a user adds a rental car land travel entry, the calendar currently shows the car icon and destination label on the relevant days but does not clearly communicate when the car is picked up or dropped off. FB-092 requests time chips for rental car events that match the labeling convention established by stay check-in/check-out chips.
+
+**Pattern already established by stays:**
+- Check-in day: `"check-in 4p"` chip
+- Check-out day: `"check-out 11a"` chip
+
+**New pattern for rental cars:**
+- Pick-up day (`departure_date`): `"pick-up 5p"` chip
+- Drop-off day (`arrival_date`): `"drop-off 5p"` chip
+
+This change applies **only** to `RENTAL_CAR` mode land travel entries. All other land travel modes (BUS, TRAIN, RIDESHARE, FERRY, OTHER) are unaffected.
+
+---
+
+#### 20.2 Data Model Reference
+
+A land travel entry has the following relevant fields (from Spec 12):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `mode` | enum | `RENTAL_CAR \| BUS \| TRAIN \| RIDESHARE \| FERRY \| OTHER` |
+| `departure_date` | YYYY-MM-DD | The date the rental car is picked up |
+| `departure_time` | HH:MM (optional) | The time the rental car is picked up |
+| `arrival_date` | YYYY-MM-DD (optional) | The date the rental car is dropped off |
+| `arrival_time` | HH:MM (optional) | The time the rental car is dropped off |
+
+---
+
+#### 20.3 Chip Label Logic
+
+##### 20.3.1 Pick-up chip (departure_date)
+
+On the cell corresponding to `departure_date`, if the land travel entry's `mode === 'RENTAL_CAR'`:
+
+- If `departure_time` is present: render chip as `"pick-up Xp"` (e.g., `"pick-up 5p"` for 17:00, `"pick-up 9a"` for 09:00)
+- If `departure_time` is absent (null / empty): render chip as `"pick-up"` (no time suffix — same fallback as stays use when check_in_at time is absent)
+
+The time format follows the existing `formatCalendarTime` convention used throughout the calendar:
+- Format: single digit or double digit hour + "a" (AM) or "p" (PM), no `:00` suffix, no leading zero for single-digit hours.
+- Examples: `9a`, `11a`, `12p`, `1p`, `5p`
+
+##### 20.3.2 Drop-off chip (arrival_date)
+
+On the cell corresponding to `arrival_date`, if `mode === 'RENTAL_CAR'` and `arrival_date` is set:
+
+- If `arrival_time` is present: render chip as `"drop-off Xp"` (e.g., `"drop-off 5p"` for 17:00)
+- If `arrival_time` is absent: render chip as `"drop-off"` (no time suffix)
+
+If `arrival_date` is not set (single-day rental car with no explicit return), no drop-off chip is shown. The departure day shows only the pick-up chip.
+
+##### 20.3.3 Multi-day rental car (departure_date ≠ arrival_date)
+
+- `departure_date` cell: shows `"pick-up Xp"` chip
+- `arrival_date` cell: shows `"drop-off Xp"` chip
+- Intermediate days (if any between departure and arrival): show the event label (mode + destination) but **no time chip** — same behavior as intermediate days for multi-day stays
+
+##### 20.3.4 Same-day rental car (departure_date === arrival_date)
+
+If the rental car is picked up and dropped off on the same day:
+- Show `"pick-up Xp"` chip (departure time takes priority for a single-day entry)
+- Do NOT also show `"drop-off Xp"` on the same cell (avoid redundancy)
+
+---
+
+#### 20.4 Rendering Locations
+
+This change affects two rendering paths. Both must be updated consistently:
+
+##### 20.4.1 DayCell (inline calendar grid)
+
+In the `DayCell` component (or wherever inline calendar event chips are rendered per cell), for land travel events with `mode === 'RENTAL_CAR'`:
+
+```
+if (event.mode === 'RENTAL_CAR') {
+  if (cellDate === event.departure_date) {
+    // pick-up chip: prepend "pick-up " to the formatted time
+    timeLabel = event.departure_time
+      ? "pick-up " + formatCalendarTime(event.departure_time)
+      : "pick-up";
+  } else if (cellDate === event.arrival_date && cellDate !== event.departure_date) {
+    // drop-off chip: prepend "drop-off " to the formatted time
+    timeLabel = event.arrival_time
+      ? "drop-off " + formatCalendarTime(event.arrival_time)
+      : "drop-off";
+  }
+  // intermediate days: no time label (same as multi-day stays)
+}
+```
+
+##### 20.4.2 DayPopover.getEventTime (overflow popover)
+
+In the `DayPopover` component (or its `getEventTime` / `formatEventChip` helper), apply identical labeling for `RENTAL_CAR` events so the chip text inside the popover matches the inline day cell chip.
+
+The popover already lists all events for the overflow day with their time chips. This change ensures that when a rental car pick-up or drop-off day overflows into the "+X more" popover, the chip reads `"pick-up Xp"` or `"drop-off Xp"` there too.
+
+---
+
+#### 20.5 Visual Appearance
+
+The chip visual style is **not changed**. Rental car pick-up/drop-off chips use the same chip appearance as all other land travel time chips in the calendar.
+
+Per Spec 12 Addendum (CAL-1):
+- Chip background: `rgba(93, 115, 126, 0.2)` (accent tint — land travel chip color)
+- Chip text: `var(--accent)` (`#5D737E`)
+- Chip font: IBM Plex Mono, 10px, font-weight 500
+- Chip padding: 2px 6px, border-radius 2px
+
+The `"pick-up"` and `"drop-off"` prefixes are purely text — no new icons or colors.
+
+---
+
+#### 20.6 Non-RENTAL_CAR Modes
+
+All other land travel modes (`BUS`, `TRAIN`, `RIDESHARE`, `FERRY`, `OTHER`) are **unaffected** by this change:
+
+- Their departure day continues to show the departure time chip with no prefix (existing behavior).
+- Their arrival day continues to show the arrival time chip with no prefix (existing behavior per Spec 13 CAL-3).
+
+The `mode === 'RENTAL_CAR'` guard must be strictly applied. No other mode should receive the `"pick-up"` or `"drop-off"` prefix.
+
+---
+
+#### 20.7 Interaction with "+X more" Overflow
+
+When a rental car pick-up or drop-off falls on a day with many events, the pick-up/drop-off chip may appear inside the DayPopover overflow list rather than inline. In that case:
+
+- The chip inside the popover must read `"pick-up Xp"` / `"drop-off Xp"` (same label as the inline chip would show).
+- There must be no discrepancy between the inline display and the popover display.
+
+---
+
+#### 20.8 Empty / Edge States
+
+| Scenario | Behavior |
+|----------|----------|
+| RENTAL_CAR with `departure_time` = null | Pick-up day chip: `"pick-up"` (no time) |
+| RENTAL_CAR with `arrival_date` = null | No drop-off chip on any day |
+| RENTAL_CAR with `arrival_time` = null | Drop-off day chip: `"drop-off"` (no time) |
+| RENTAL_CAR with `departure_date === arrival_date` | Only `"pick-up Xp"` chip on that day (no drop-off chip) |
+| Non-RENTAL_CAR mode | No prefix added — existing behavior unchanged |
+| No land travel entries | No change — empty state is unaffected |
+
+---
+
+#### 20.9 Accessibility
+
+No additional accessibility changes. The chip text is already exposed via screen readers as part of the day cell content. The new labels `"pick-up"` and `"drop-off"` are plain text and will be read correctly by screen readers.
+
+If chips are wrapped in `aria-label` attributes (check existing implementation), update the `aria-label` of the affected chips to include the `"pick-up"` or `"drop-off"` prefix.
+
+---
+
+#### 20.10 Test Plan
+
+All tests belong in `TripCalendar.test.jsx` (or the equivalent test file for `DayCell` / `DayPopover`).
+
+**Test 20.A — RENTAL_CAR pick-up chip on departure day:**
+```
+Given: A land travel entry with mode=RENTAL_CAR, departure_date=2026-08-07, departure_time=17:00, arrival_date=2026-08-10
+When:  The calendar renders the cell for 2026-08-07
+Then:  A chip with text "pick-up 5p" is present in that cell
+```
+
+**Test 20.B — RENTAL_CAR drop-off chip on arrival day:**
+```
+Given: A land travel entry with mode=RENTAL_CAR, departure_date=2026-08-07, departure_time=10:00, arrival_date=2026-08-10, arrival_time=14:00
+When:  The calendar renders the cell for 2026-08-10
+Then:  A chip with text "drop-off 2p" is present in that cell
+```
+
+**Test 20.C — RENTAL_CAR no drop-off chip when arrival_date is null:**
+```
+Given: A land travel entry with mode=RENTAL_CAR, departure_date=2026-08-07, arrival_date=null
+When:  The calendar renders
+Then:  No chip containing "drop-off" appears on any day
+```
+
+**Test 20.D — RENTAL_CAR with no times shows label-only chips:**
+```
+Given: A land travel entry with mode=RENTAL_CAR, departure_time=null, arrival_time=null, arrival_date=2026-08-10
+When:  The calendar renders departure_date cell and arrival_date cell
+Then:  departure_date cell shows chip "pick-up" (no time)
+And:   arrival_date cell shows chip "drop-off" (no time)
+```
+
+**Test 20.E — Non-RENTAL_CAR is unaffected:**
+```
+Given: A land travel entry with mode=TRAIN, departure_date=2026-08-07, departure_time=09:00
+When:  The calendar renders the cell for 2026-08-07
+Then:  The chip does NOT contain "pick-up"
+And:   The chip shows the departure time in the standard format (e.g., "9a")
+```
+
+**Test 20.F — DayPopover shows matching labels:**
+```
+Given: A RENTAL_CAR pick-up day has more events than fit inline (triggers "+X more" overflow)
+When:  User opens the DayPopover for that day
+Then:  The rental car entry in the popover shows "pick-up Xp" (matching the inline chip label)
+```
+
+**Test 20.G — Same-day pickup and drop-off shows only pick-up:**
+```
+Given: A land travel entry with mode=RENTAL_CAR, departure_date=2026-08-07, arrival_date=2026-08-07
+When:  The calendar renders the cell for 2026-08-07
+Then:  A chip with text "pick-up" (with or without time) is present
+And:   No chip with text "drop-off" is present on that day
+```
+
+All existing `TripCalendar.test.jsx` tests must continue to pass.
+
+---
+
+#### 20.11 Files Affected
+
+| File | Change |
+|------|--------|
+| `DayCell.jsx` (or wherever inline calendar chips render per cell) | Add `mode === 'RENTAL_CAR'` guard; prepend `"pick-up "` on departure day and `"drop-off "` on arrival day for RENTAL_CAR entries |
+| `DayPopover.jsx` (or `getEventTime` helper) | Apply same `"pick-up "` / `"drop-off "` prefix logic for RENTAL_CAR events |
+| `TripCalendar.test.jsx` (or equivalent) | Add Tests 20.A through 20.G |
+
+**No CSS changes.** No API changes. No new routes. No backend changes.
+
+---
+
+*Sprint 13 Spec 20 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
