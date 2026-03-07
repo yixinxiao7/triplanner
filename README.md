@@ -228,6 +228,8 @@ claude "Act as the Orchestrator Ops Agent in .agents/orchestrator-ops.md"
 
 This meta-agent diagnoses hung processes, broken state files, and script errors. It follows a structured triage sequence documented in `.agents/orchestrator-ops.md`.
 
+**Important state files:** The orchestrator relies on `orchestrator/.state` (tracks the current sprint number) and `orchestrator/.sprint-state` (tracks phase completion within a sprint). These are auto-managed by the orchestrator scripts. If `.state` is missing or has a stale `SPRINT_NUMBER`, the orchestrator will start the wrong sprint. If lost, check `grep 'Sprint #' .workflow/active-sprint.md` and recreate manually.
+
 Common issues and quick fixes:
 - **Agent hangs on `npm test`** — ensure both `package.json` files use `"test": "vitest run"` (not `"vitest"`, which runs in watch mode)
 - **Wrong sprint number** — check `orchestrator/.state` and correct `SPRINT_NUMBER`

@@ -1466,4 +1466,93 @@ Sprint 11 is a **mandatory pipeline-closure sprint** with zero exceptions. No ne
 
 ---
 
+### Sprint #11 — 2026-03-04 to 2026-03-06
+
+**Goal:** Close the six-sprint-deep pipeline validation backlog. Execute T-108 (Monitor Sprint 7 health check) and T-094 (User Agent Sprint 6 walkthrough — 6th consecutive carry-over, P0 ABSOLUTE HARD-BLOCK) in parallel, then sequentially: T-109 → T-115 → T-116 → T-117 → T-118 → T-119 → T-120 → T-123. Triage all feedback. In parallel: T-124 (Deploy Engineer hosting research spike).
+
+**Goal Met:** ✅ YES — The pipeline validation backlog was closed. All four User Agent walkthroughs (T-094 Sprint 6, T-109 Sprint 7, T-120 Sprint 8, T-123 Sprint 10) completed with no Critical or Major bugs surfaced. All Integration Check tasks promoted to Done. Project owner submitted 4 new feedback items (FB-085 through FB-088) via direct manual testing — all triaged for Sprint 12.
+
+---
+
+**Tasks Completed:**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-108 | Monitor Agent: Sprint 7 + T-122 staging health check — all Sprint 7 regression checks pass, HTTPS ✅, pm2 ✅, migration 010 ✅, notes field ✅, stays timezone fix ✅, popover functional ✅, section order ✅, Playwright 4/4 ✅, print button visible ✅ | ✅ Done |
+| T-094 | User Agent: Sprint 6 feature walkthrough (6th carry-over, finally complete) — land travel CRUD ✅, calendar time chips ✅, "+X more" popover ✅, activity AM/PM fix ✅, FilterToolbar refetch ✅, ILIKE search ✅, Sprint 1–5 regression ✅ | ✅ Done |
+| T-109 | User Agent: Sprint 7 feature walkthrough — popover scroll ✅, stays timezone ✅, section order ✅, all-day sort ✅, calendar checkout/arrival times ✅, trip notes ✅, Sprint 6 regression ✅ | ✅ Done |
+| T-115 | QA: Playwright E2E expansion 4→7 tests — land travel edit, calendar overflow popover, mobile 375×812 viewport — 7/7 PASS | ✅ Done |
+| T-116 | QA: Sprint 8 staging E2E verification — Playwright 7/7 ✅, api-contracts.md notes doc current ✅ | ✅ Done |
+| T-117 | QA: Sprint 8 staging integration check — TZ abbreviations verified (EDT, JST, CEST), URL links functional, Sprint 7 regression clean | ✅ Done |
+| T-118 | Deploy: Sprint 8 staging re-deployment — frontend rebuilt with T-113/T-114 + T-115 Playwright tests, pm2 online, smoke tests pass | ✅ Done |
+| T-119 | Monitor: Sprint 8 staging health check — HTTPS ✅, pm2 ✅, TZ abbreviations ✅, URL links ✅, Playwright 7/7 ✅, Sprint 6+7 regression ✅ | ✅ Done |
+| T-120 | User Agent: Sprint 8 feature walkthrough — timezone abbreviations (EDT, JST, CEST) ✅, URL linkification ✅, XSS guard ✅, Sprint 7 regression ✅ | ✅ Done |
+| T-123 | User Agent: Sprint 10 feature walkthrough — print button visible ✅, print dialog opens ✅, print preview correct (all sections shown, navbar/calendar hidden) ✅, Sprint 8 regression ✅ | ✅ Done |
+| T-124 | Deploy Engineer: Production hosting provider research spike — `.workflow/hosting-research.md` published with provider comparison (Railway, Render, Fly.io, DigitalOcean App Platform) and final recommendation | ✅ Done |
+| BE-S11 | Backend Engineer: Sprint 11 pipeline review — 266/266 tests pass, zero API/schema drift, hotfix standby active | ✅ Done |
+
+**Integration Check → Done Promotions (after T-108 + T-119 staging confirmation):**
+
+| Task | Promoted |
+|------|----------|
+| T-097 | ✅ Done — popover portal fix confirmed on staging |
+| T-098 | ✅ Done — stays timezone fix confirmed on staging |
+| T-099 | ✅ Done — section order confirmed on staging |
+| T-100 | ✅ Done — all-day sort confirmed on staging |
+| T-101 | ✅ Done — calendar checkout/arrival confirmed on staging |
+| T-103 | ✅ Done — trip notes migration + API confirmed on staging |
+| T-104 | ✅ Done — trip notes UI confirmed on staging |
+| T-113 | ✅ Done — timezone abbreviations confirmed on staging |
+| T-114 | ✅ Done — URL linkification confirmed on staging |
+
+**Tasks Carried Over:** None. The pipeline is fully closed.
+
+---
+
+**Key Decisions:**
+- No new ADRs this sprint (pipeline-only; no implementation decisions required).
+- All nine tasks that were in Integration Check (T-097 through T-104, T-113, T-114) are now Done — the longest-standing technical debt in the project's tracking has been resolved.
+- T-124 hosting research published; project owner should review `.workflow/hosting-research.md` and make a production hosting decision before Sprint 13.
+
+---
+
+**Feedback Summary (Sprint 11):**
+
+*No Critical or Major bugs surfaced by the four User Agent walkthroughs. Project owner submitted 4 feedback items from direct manual testing.*
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-085 | UX Issue | Major | Tasked → T-125 | Deploy phase overwrites `backend/.env`, breaking `npm run dev` after sprint completes |
+| FB-086 | UX Issue | Minor | Tasked → T-126 | DayPopover detaches from trigger button on page scroll (position: fixed drift) |
+| FB-087 | UX Issue | Minor | Tasked → T-127 | Calendar check-in time chip shows no "check-in" label (inconsistent with "check-out" label) |
+| FB-088 | Feature Gap | Minor | Tasked → T-128 | Calendar defaults to current month instead of the month of the first planned event |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- The pipeline finally closed after seven consecutive sprints of carry-over. All four walkthroughs (Sprint 6, 7, 8, 10) completed without revealing any Critical or Major bugs — a testament to the quality of implementation work in those sprints.
+- Zero rework cycles required across all pipeline tasks (T-115 through T-124) — each task completed cleanly on the first pass.
+- All 9 Integration Check tasks (T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114) promoted to Done after staging confirmation — clearing the longest-running open debt in the project.
+- Playwright E2E coverage grew from 4 to 7 tests (T-115), including mobile viewport (375×812), land travel edit flow, and calendar overflow popover — meaningful coverage expansion.
+- Hosting research (T-124) published — the production deployment decision can now be made with concrete data.
+
+**What Could Improve:**
+- The 6-sprint carry-over of T-094 remains the single most significant process failure of this project. The pipeline-first rule must be enforced structurally, not just in the sprint plan.
+- Project owner feedback (FB-085) about `.env` clobbering indicates a deploy process gap that should have been caught earlier. Deploy Engineer agents should always use environment-isolated config files (`.env.staging`) and never mutate the primary development `.env`.
+
+**Technical Debt Carried Forward:**
+- ⚠️ B-020: Rate limiting uses in-memory store (no Redis persistence)
+- ⚠️ B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 (no production impact)
+- ⚠️ B-024: Auth rate limit is IP-only (no per-account limiting)
+- ⚠️ No dedicated unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+- ⚠️ B-022: Production deployment pending — project owner must review hosting-research.md and select a provider
+
+**Resolved this sprint:**
+- ✅ T-094 six-sprint pipeline gap — closed
+- ✅ T-097–T-104, T-113–T-114 Integration Check backlog — all promoted to Done
+
+---
+
 *Add new sprint summaries above this line, newest first.*
