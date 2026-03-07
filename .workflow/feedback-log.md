@@ -225,7 +225,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | FB-090 | Monitor Alert | Minor | **Tasked → T-139** | Backend Engineer to fix `api-contracts.md` — change `/land-travels` to `/land-travel` (singular). Documentation-only fix. P3, Sprint 13. |
 | FB-091 | Feature Gap | Minor | **Tasked → T-137** | Frontend Engineer to rework DayPopover: use `position: absolute` (document-anchored) so popover stays open and in place on scroll. Reverts T-126 scroll-close approach. P2, Sprint 13. |
 | FB-092 | Feature Gap | Minor | **Tasked → T-138** | Frontend Engineer to add "pick-up Xp" and "drop-off Xp" time chips for rental car entries on calendar (pick-up day and drop-off day respectively), matching stay check-in/check-out chip format. P2, Sprint 13. |
-| FB-093 | Monitor Alert | Major | **New** | JWT_SECRET in backend/.env.staging is the publicly-known placeholder value. Must be replaced with a cryptographically secure random secret before any external access. See FB-093 below. |
+| FB-093 | Monitor Alert | Major | **Tasked → Sprint 14 (T-145)** | JWT_SECRET in backend/.env.staging is the publicly-known placeholder value. Deploy Engineer must rotate before any external staging access. P1, Sprint 14. |
 
 ---
 
@@ -241,7 +241,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 13 |
 | Category | Monitor Alert |
 | Severity | Major |
-| Status | New |
+| Status | Tasked → Sprint 14 (T-145) |
 | Related Task | T-143 (health check that surfaced this), T-142 (staging deploy) |
 
 **Detected by:** Monitor Agent — T-143 Post-Deploy Health Check — 2026-03-07T16:00:00Z

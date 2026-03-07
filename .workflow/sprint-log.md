@@ -1651,4 +1651,121 @@ Sprint 13 must begin with immediate correction of the T-131 staging deployment f
 
 ---
 
+### Sprint #13 — 2026-03-07 to 2026-03-07
+
+**Goal:** Close the Sprint 12 pipeline (fix T-131 staging port misconfiguration via pm2, re-run Monitor health check, complete User Agent Sprint 12 walkthrough), then deliver two targeted UX improvements from feedback: rework DayPopover to stay open and anchored on scroll instead of closing (FB-091, reversing T-126), and add rental car pick-up/drop-off time chips to the calendar (FB-092). Fix api-contracts.md land-travel endpoint documentation inconsistency (FB-090).
+
+**Goal Met:** ⚠️ PARTIALLY MET — The full implementation track delivered cleanly with zero rework: T-137, T-138, T-139 all passed Manager code review on first attempt; QA (T-140, T-141) cleared all Sprint 13 changes; staging was deployed correctly (T-142, with pm2 port fix integrated), and the Monitor health check passed with Deploy Verified: Yes (T-143). However, the User Agent walkthroughs never ran for the second consecutive sprint: T-136 (User Agent Sprint 12 walkthrough) and T-144 (User Agent Sprint 13 walkthrough) both remain in Backlog. FB-093 (JWT_SECRET placeholder) was surfaced by the Monitor Agent as a security concern requiring Sprint 14 action.
+
+---
+
+**Tasks Completed (8/12):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-137 | Frontend: DayPopover stay-open on scroll — removed T-126 scroll-close listener; switched to `position: absolute` + `scrollX/Y` offsets; all close triggers (Escape, click-outside, ×) preserved; 6 new tests (19.A–F); all 392 frontend tests pass | ✅ Done |
+| T-138 | Frontend: Rental car pick-up/drop-off time chips — `mode === 'RENTAL_CAR'` guard in DayCell and DayPopover.getEventTime; pick-up day shows "pick-up Xp", drop-off day shows "drop-off Xp"; same-day and null arrival_date handled; non-RENTAL_CAR unaffected; 7 new tests (20.A–G); all 392 tests pass | ✅ Done |
+| T-139 | Backend: api-contracts.md /land-travel documentation fix — all 19 endpoint path occurrences changed from `/land-travels` (plural) to `/land-travel` (singular); documentation-only, no code changes | ✅ Done |
+| T-140 | QA: Security checklist + code review audit — no new vulnerabilities; scroll listener removal confirmed (zero grep matches); XSS prevention verified; pre-existing B-021 esbuild dev-dep vulns accepted | ✅ Done |
+| T-141 | QA: Integration testing — all Sprint 13 contract/code checks pass; Sprint 12 regression clean; config consistency confirmed; 266 backend + 392 frontend tests | ✅ Done |
+| T-142 | Deploy: Sprint 13 staging re-deployment — frontend rebuilt (122 modules, 0 errors); pm2 port fix applied (added `PORT: 3001` explicitly to `infra/ecosystem.config.cjs` to prevent env inheritance ambiguity); backend online via pm2 PID 87119 on `https://localhost:3001`; `backend/.env` unchanged; smoke tests pass; T-134 root cause resolved within this task | ✅ Done |
+| T-143 | Monitor: Sprint 13 staging health check — 15/15 health checks PASS; HTTPS on port 3001 ✅; pm2 confirmed ✅; all Sprint 13 + Sprint 12 regression checks pass ✅; **Deploy Verified: Yes**; FB-093 (JWT_SECRET placeholder) flagged as new monitor alert | ✅ Done |
+| MGR-S13 | Manager: Sprint 13 code review pass — all implementation tasks independently verified correct; T-137 document-relative positioning logic confirmed; T-138 RENTAL_CAR guard and same-day rental edge case confirmed; T-139 documentation scan confirmed; no rework dispatched | ✅ Done |
+
+**Tasks Resolved (absorbed into T-142/T-143):**
+
+| ID | Description | Resolution |
+|----|-------------|------------|
+| T-134 | Deploy: T-131 re-execution (pm2 port fix) | Root cause identified and fixed during T-142: `PORT: 3001` added explicitly to `infra/ecosystem.config.cjs`; backend confirmed on port 3001 via pm2. Effectively Done. |
+| T-135 | Monitor: Sprint 12 health check retry | Sprint 12 feature regression checks were subsumed into T-143's comprehensive health check. All Sprint 12 features verified passing. Effectively Done. |
+
+**Tasks Carried Over (2 tasks — Backlog into Sprint 14):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-136 | User Agent: Sprint 12 feature walkthrough (T-133 carry-over) | Never ran — **5th consecutive carry-over** for this User Agent slot. Note: T-126 scroll-close behavior (one of T-136's test points) was reversed by T-137. Sprint 14 should merge T-136 scope into T-144 with updated expected behavior (scroll keeps popover open, not closed). |
+| T-144 | User Agent: Sprint 13 feature walkthrough | Never ran — requires staging walkthrough of T-137 (DayPopover stay-open) and T-138 (rental car chips). Carry to Sprint 14 as P0. |
+
+---
+
+**Key Decisions:**
+- **T-137 reverses T-126:** Sprint 13 deliberately reversed Sprint 12's scroll-close behavior based on FB-091 feedback. The DayPopover now stays open on scroll and uses document-relative (`position: absolute`) anchoring. This is the desired long-term behavior.
+- **pm2 ecosystem.config.cjs hardened:** Deploy Engineer added `PORT: 3001` explicitly to `infra/ecosystem.config.cjs` env section to prevent inherited-environment `PORT` overrides from silently breaking staging. This resolves the root cause of the Sprint 12 T-131 failure (FB-089).
+- **T-134 merged into T-142:** The pm2 staging port fix was executed as part of the Sprint 13 deploy rather than as a standalone pre-step. This is acceptable in retrospect; future deploys should confirm pm2 config first.
+
+---
+
+**Feedback Summary (Sprint 13):**
+
+*1 Monitor Agent alert filed; User Agent walkthroughs (T-136, T-144) never ran — no User Agent feedback received.*
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-093 | Monitor Alert | Major | **Tasked → Sprint 14 (T-145)** | `backend/.env.staging` JWT_SECRET is the publicly-known template placeholder `CHANGE-ME-generate-with-openssl-rand-hex-32`. Auth endpoints work but tokens can be forged by anyone who knows the placeholder. Must be rotated before any external staging access. Does not block local testing. |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- All three implementation tasks (T-137, T-138, T-139) passed Manager code review on the first attempt — zero rework, consistent with all prior sprints.
+- The DayPopover position refactor (T-137) is architecturally cleaner than T-126: document-relative anchoring is the correct approach for portaled dropdowns that should stay anchored to their trigger location, not fixed to the viewport.
+- Frontend test coverage grew to 392 tests (up from 382 in Sprint 12), with 13 new targeted tests covering the scroll no-op behavior, RENTAL_CAR mode guards, edge cases (null arrival, same-day rental, no-time label-only chips).
+- T-142 correctly identified and fixed the root cause of the T-131 failure: the pm2 `ecosystem.config.cjs` did not have an explicit `PORT: 3001` entry, allowing inherited shell environment `PORT` variables to override the `.env.staging` value. Adding the explicit key prevents this ambiguity permanently.
+- Sprint 13 is the first sprint since Sprint 11 where staging is correctly deployed on `https://localhost:3001` via pm2, with Deploy Verified: Yes.
+
+**What Could Improve:**
+- **T-136 and T-144 have never run** — the User Agent walkthrough consistently fails to execute. This is now a 5-sprint pattern. Sprint 14 must treat the User Agent walkthrough as the sprint's primary deliverable and ensure dependencies (staging health, handoff-log entry) are in place before the User Agent phase begins.
+- **FB-093 (JWT_SECRET placeholder) was undetected since Sprint 12** — when `.env.staging` was created in T-125, the QA security checklist did not explicitly verify that placeholder values had been replaced with real secrets. Going forward, the QA security checklist must include: `[x] No placeholder values remain in .env.staging (JWT_SECRET, DATABASE_URL, etc. are real values)`.
+- **T-134/T-135 planning overhead** — separating the pm2 port fix into T-134 and a Monitor retry into T-135 created task-tracking duplication. In future sprints, a staging fix of this scope should be integrated directly into the deploy task description rather than as separate tasks.
+
+**Technical Debt Noted (Carried Forward to Sprint 14+):**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence, will not scale (deferred multiple sprints)
+- ⚠️ B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 — dev-only, no production impact
+- ⚠️ B-022: Production deployment — pending project owner hosting provider decision (12 consecutive sprints; escalated)
+- ⚠️ B-024: Auth rate limit is IP-only — aggressive on shared-IP environments
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests in `formatDate.test.js`
+
+*New from Sprint 13:*
+- ⚠️ FB-093 / T-145: JWT_SECRET in `backend/.env.staging` is a placeholder — must be rotated with `openssl rand -hex 32` before any external staging access
+- ⚠️ T-136 User Agent Sprint 12 walkthrough scope partially obsolete: T-126 (scroll-closes popover) behavior was reversed by T-137; Sprint 14's User Agent walkthrough (T-144 carry) must test the new stay-open behavior instead
+
+*Resolved this sprint:*
+- ✅ FB-089 / T-131 root cause: pm2 staging port misconfiguration — `PORT: 3001` now explicit in `infra/ecosystem.config.cjs`
+- ✅ FB-090 / T-139: api-contracts.md `/land-travels` → `/land-travel` documentation corrected
+- ✅ FB-091 / T-137: DayPopover stays open on scroll, anchored to document position
+- ✅ FB-092 / T-138: Rental car pick-up/drop-off time chips added to calendar
+
+---
+
+**Next Sprint Focus (Sprint 14 Recommendations):**
+
+*Priority order: User Agent walkthroughs → JWT_SECRET rotation → production deployment decision → backlog features.*
+
+**P0 — Immediate (User Agent pipeline closure — overdue 5 sprints):**
+1. **T-144 (carry-over) + T-136 scope merged** — User Agent: Conduct combined Sprint 12 + Sprint 13 feature walkthrough on staging. Updated expected behaviors: (a) `.env` isolation — `backend/.env` shows local-dev defaults; (b) DayPopover: scroll keeps popover OPEN (not closed, per T-137 reversal); (c) Calendar check-in label "check-in Xa"; (d) Calendar defaults to first event month; (e) Rental car: pick-up day shows "pick-up Xp", drop-off day shows "drop-off Xp"; (f) Sprint 11 regression clean.
+
+**P1 — Security (must complete before any external staging access):**
+2. **T-145 (FB-093)** — Deploy Engineer: Generate secure JWT_SECRET (`openssl rand -hex 32`); replace placeholder in `backend/.env.staging`; restart pm2 (`pm2 restart triplanner-backend`); confirm auth endpoints still issue valid tokens.
+
+**P1 — Production Deployment (blocked on project owner):**
+3. **B-022** — Project owner must review `.workflow/hosting-research.md` and select a hosting provider (Railway, Fly.io, Render, AWS). All infrastructure is complete and staging-validated. **12 consecutive sprints with no decision.** This is the single most critical outstanding item for the project.
+
+**P2 — QA Process Improvement:**
+4. Add explicit placeholder-value check to QA security checklist: `[x] No placeholder values in backend/.env.staging` — prevents recurrence of FB-093.
+5. Add `formatTimezoneAbbr()` dedicated unit tests to `formatDate.test.js` (minor debt from Sprint 7).
+
+**P3 — Tech Debt (if capacity allows):**
+6. B-020: Redis-backed rate limiting
+7. B-021: Resolve esbuild dev dependency vulnerability
+8. B-024: Per-account rate limiting
+
+---
+
+*Previous sprint (Sprint #12) archived 2026-03-07. Sprint #13 began and closed 2026-03-07.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*
