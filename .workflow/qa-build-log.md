@@ -411,3 +411,259 @@ No config mismatches found.
 All Sprint 12 tests pass on re-run. All code changes verified correct. Config consistency confirmed. No new security issues. **Sprint 12 remains CLEARED FOR STAGING DEPLOYMENT (T-131).**
 
 ---
+
+## Sprint 13 QA Report (T-140 + T-141)
+
+**Date:** 2026-03-07
+**QA Engineer:** QA Agent
+**Tasks in scope:** T-137, T-138, T-139
+**Related QA Tasks:** T-140 (Security/Code Audit), T-141 (Integration Testing)
+
+---
+
+### Test Run 1 — Unit Tests (T-140)
+
+| Field | Value |
+|-------|-------|
+| Test Run | Full unit test suite — backend + frontend |
+| Sprint | 13 |
+| Test Type | Unit Test |
+| Result | **Pass** |
+| Build Status | Success |
+| Environment | Local |
+| Deploy Verified | No |
+| Tested By | QA Engineer |
+| Error Summary | None |
+| Related Tasks | T-137, T-138, T-139, T-140 |
+
+#### Backend Results
+
+```
+Test Files  12 passed (12)
+     Tests  266 passed (266)
+  Duration  537ms
+```
+
+All 266 tests pass. No Sprint 13 backend changes (T-139 is documentation-only). Backend unit test suite unchanged and green.
+
+#### Frontend Results
+
+```
+Test Files  22 passed (22)
+     Tests  392 passed (392)
+  Duration  1.68s
+```
+
+**TripCalendar.test.jsx — 58 tests (up from 49 in Sprint 12):**
+
+| Group | Tests | Status |
+|-------|-------|--------|
+| T-137 19.A: Scroll event does NOT close popover | 1 | ✅ Pass |
+| T-137 19.B: No scroll listener registered on open | 1 | ✅ Pass |
+| T-137 19.C: Document-relative coordinates (scrollY offset) | 1 | ✅ Pass |
+| T-137 19.D: Escape still closes popover (regression) | 1 | ✅ Pass |
+| T-137 19.E: Click-outside still closes popover (regression) | 1 | ✅ Pass |
+| T-137 19.F: No scroll listener to remove on unmount | 1 | ✅ Pass |
+| T-138 20.A: RENTAL_CAR pick-up day shows "pick-up Xp" | 1 | ✅ Pass |
+| T-138 20.B: RENTAL_CAR drop-off day shows "drop-off Xp" | 1 | ✅ Pass |
+| T-138 20.C: arrival_date=null → no drop-off chip | 1 | ✅ Pass |
+| T-138 20.D: No times → "pick-up" / "drop-off" label-only | 1 | ✅ Pass |
+| T-138 20.E: Non-RENTAL_CAR unaffected (no pick-up prefix) | 1 | ✅ Pass |
+| T-138 20.F: DayPopover overflow shows "pick-up Xp" | 1 | ✅ Pass |
+| T-138 20.G: Same-day rental car → only pick-up, no drop-off | 1 | ✅ Pass |
+
+**Coverage verdict:** Happy-path and error-path tests present for all Sprint 13 changes. ✅
+
+---
+
+### Test Run 2 — Security Scan (T-140)
+
+| Field | Value |
+|-------|-------|
+| Test Run | Sprint 13 security checklist + npm audit |
+| Sprint | 13 |
+| Test Type | Security Scan |
+| Result | **Pass** |
+| Build Status | Success |
+| Environment | Local |
+| Deploy Verified | No |
+| Tested By | QA Engineer |
+| Error Summary | Pre-existing moderate vulns in dev deps (see below) |
+| Related Tasks | T-137, T-138, T-139, T-140 |
+
+#### Security Checklist — Sprint 13 Changes
+
+Sprint 13 consists of two frontend-only UI changes (T-137, T-138) and one documentation fix (T-139). No new backend endpoints, database queries, or auth logic. Checklist scoped to applicable items.
+
+| Item | Applicable | Status | Notes |
+|------|-----------|--------|-------|
+| XSS prevention — no dangerouslySetInnerHTML | ✅ | ✅ Pass | TripCalendar.jsx: no dangerouslySetInnerHTML or innerHTML or eval() found |
+| XSS prevention — React JSX rendering (auto-escaped) | ✅ | ✅ Pass | All string interpolation via JSX — safe by default |
+| Hardcoded secrets | ✅ | ✅ Pass | No secrets, tokens, or credentials in TripCalendar.jsx |
+| Dynamic code execution (eval, Function()) | ✅ | ✅ Pass | None found |
+| Scroll listener removal (T-137) | ✅ | ✅ Pass | Grep confirms zero `addEventListener('scroll', ...)` calls in TripCalendar.jsx |
+| Auth enforcement | N/A | — | No new API calls in Sprint 13 changes |
+| Input validation | N/A | — | No new form inputs or API endpoints |
+| SQL injection prevention | N/A | — | No backend changes |
+| API response leakage | N/A | — | No backend changes |
+| CORS configuration | N/A | — | Unchanged |
+| Security headers | N/A | — | Unchanged (Helmet still in place) |
+| Rate limiting | N/A | — | Pre-existing known accepted risk from Sprint 1 (auth endpoints) |
+| Env vars not committed | ✅ | ✅ Pass | backend/.env not committed; .gitignore in place |
+| HTTPS on staging | ✅ | ✅ Pass | Staging uses certs via ecosystem.config.cjs (unchanged) |
+
+#### npm audit — Backend
+
+```
+5 moderate severity vulnerabilities
+  esbuild ≤0.24.2 — dev server cross-origin request vulnerability
+  (affects: vite, @vitest/mocker, vitest, vite-node — all dev-only deps)
+```
+
+**Verdict:** Pre-existing B-021 (first noted Sprint 12). Dev toolchain only — not present in production build. Fix requires `npm audit fix --force` which is a breaking change to vitest. Accepted risk — dev environment only, no production exposure. **Not a P1.**
+
+#### npm audit — Frontend (same set)
+
+Same 5 moderate vulnerabilities in dev deps (esbuild/vite/vitest chain). Pre-existing and accepted.
+
+---
+
+### Test Run 3 — Integration Testing (T-141)
+
+| Field | Value |
+|-------|-------|
+| Test Run | Sprint 13 integration verification — code-level + contract check |
+| Sprint | 13 |
+| Test Type | Integration Test |
+| Result | **Pass** |
+| Build Status | Success |
+| Environment | Local |
+| Deploy Verified | No |
+| Tested By | QA Engineer |
+| Error Summary | None |
+| Related Tasks | T-137, T-138, T-139, T-141 |
+
+#### T-137 — DayPopover Stay-Open on Scroll
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Scroll listener removed | ✅ Pass | grep confirms zero `addEventListener('scroll', ...)` in TripCalendar.jsx |
+| Position is `absolute` (not `fixed`) | ✅ Pass | positionStyle IIFE returns `{ position: 'absolute', top, left, zIndex: 1000 }` (line 297) |
+| Top coordinate includes `scrollY` offset | ✅ Pass | `top = (position.bottom \|\| 0) + scrollY + 4` (line 283) |
+| Left coordinate includes `scrollX` offset | ✅ Pass | `left = (position.left \|\| 0) + scrollX` (line 284) |
+| Right-edge clamping preserved | ✅ Pass | Lines 287–290 unchanged |
+| Bottom-edge flip preserved | ✅ Pass | Lines 293–295 unchanged |
+| Escape-to-close useEffect intact | ✅ Pass | Lines 311–320: keydown listener on document |
+| Click-outside useEffect intact | ✅ Pass | Lines 322–334: mousedown listener on document |
+| Close (×) button intact | ✅ Pass | Lines 396–403: onClick calls onClose |
+| Test 19.A: scroll doesn't close | ✅ Pass | TripCalendar.test.jsx line 874 |
+| Test 19.B: no scroll listener spy | ✅ Pass | TripCalendar.test.jsx line 887 |
+| Test 19.C: document-relative coords | ✅ Pass | TripCalendar.test.jsx line 900 |
+
+#### T-138 — Rental Car Pick-Up/Drop-Off Time Chips
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| `mode === 'RENTAL_CAR'` guard in DayCell | ✅ Pass | TripCalendar.jsx lines 543–551 |
+| DayCell pick-up day: `pick-up ${calTime}` | ✅ Pass | Line 547 |
+| DayCell drop-off day: `drop-off ${calTime}` | ✅ Pass | Line 545 |
+| DayCell: no time → `"pick-up"` / `"drop-off"` labels | ✅ Pass | Lines 545, 547 (ternary with empty fallback) |
+| DayCell: non-RENTAL_CAR unchanged | ✅ Pass | Lines 549–551: falls through to `ev.item._calTime \|\| null` |
+| `mode === 'RENTAL_CAR'` guard in DayPopover.getEventTime | ✅ Pass | TripCalendar.jsx lines 372–380 |
+| Popover pick-up: `pick-up ${calTime}` | ✅ Pass | Line 376 |
+| Popover drop-off: `drop-off ${calTime}` | ✅ Pass | Line 374 |
+| Same-day rental (dep === arr): only pick-up chip | ✅ Pass | buildEventsMap line 234 guard skips arrival when dates match |
+| `arrival_date = null`: no drop-off entry | ✅ Pass | buildEventsMap line 234 null guard |
+| Non-RENTAL_CAR: unchanged dep./arr. labels | ✅ Pass | Lines 378–380 |
+
+#### T-139 — api-contracts.md Land Travel Path Fix
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| All Land Travel endpoint paths in api-contracts.md use `/land-travel` (singular) | ✅ Pass | grep scan: all 19 endpoint path occurrences are singular |
+| No `/land-travels` (plural) in actual endpoint specs | ✅ Pass | grep returns 0 plural matches outside T-139 meta section |
+| Frontend api.js uses `/land-travel` (singular) | ✅ Pass | api.js lines 152–156 |
+| Backend mounts at `/land-travel` (singular) | ✅ Pass | Confirmed via Manager code review + prior sprint audits |
+| No code changes — documentation only | ✅ Pass | T-139 is documentation-only as intended |
+
+#### Config Consistency Check
+
+| Item | Backend .env | vite.config.js | docker-compose.yml | Status |
+|------|-------------|----------------|-------------------|--------|
+| Backend port | PORT=3000 | BACKEND_PORT default=3000 → proxy http://localhost:3000 | PORT=3000 | ✅ Consistent |
+| SSL protocol | SSL disabled (certs commented out) | BACKEND_SSL not set → uses http:// | N/A (nginx proxy in Docker) | ✅ Consistent |
+| CORS origin | CORS_ORIGIN=http://localhost:5173 | Frontend dev server port=5173 | CORS_ORIGIN=http://localhost (Docker) | ✅ Consistent (Docker value is correct for containerized nginx) |
+| Frontend dev port | — | port: 5173 | — | ✅ Matches CORS_ORIGIN |
+
+**No config consistency issues found.**
+
+#### Sprint 12 Regression
+
+T-137/T-138 are both in TripCalendar.jsx. Sprint 12 tests that must not regress:
+
+| Sprint 12 Feature | Test Result |
+|-------------------|-------------|
+| Check-in label "check-in Xa" (T-127) | ✅ 392/392 pass |
+| Calendar default month from first event (T-128) | ✅ 392/392 pass |
+| T-126 scroll-close (now REVERSED by T-137) | ✅ Correctly removed; 2 old T-126 scroll tests replaced by T-137 tests |
+| backend/.env isolation (T-125) | ✅ backend/.env unchanged (PORT=3000, HTTP) |
+
+All Sprint 12 features remain functional.
+
+---
+
+### Final QA Verdict — Sprint 13
+
+| Task | Status | Notes |
+|------|--------|-------|
+| T-137 DayPopover stay-open on scroll | ✅ **PASS** | Implementation correct, 6 tests pass |
+| T-138 Rental car pick-up/drop-off chips | ✅ **PASS** | Implementation correct, 7 tests pass |
+| T-139 api-contracts.md doc fix | ✅ **PASS** | Documentation correct, no code changes |
+| T-140 Security checklist | ✅ **PASS** | No new vulnerabilities; pre-existing dev-dep audit warning accepted |
+| T-141 Integration testing | ✅ **PASS** | All contracts verified, config consistent, sprint 12 regression clean |
+
+**Backend unit tests:** 266/266 ✅
+**Frontend unit tests:** 392/392 ✅
+**Security issues (P1):** 0
+**Config mismatches:** 0
+
+**Sprint 13 is CLEARED FOR STAGING DEPLOYMENT (T-142).**
+
+---
+
+### Sprint 13 — QA Re-Verification Run (2026-03-07 — Orchestrator Cycle)
+
+| Field | Value |
+|-------|-------|
+| Test Run | Sprint 13 full re-verification — unit tests + security + integration |
+| Sprint | 13 |
+| Test Type | Unit Test / Security Scan / Integration Test |
+| Result | **Pass** |
+| Build Status | Success |
+| Environment | Local |
+| Deploy Verified | No (pending T-142 staging deploy) |
+| Tested By | QA Engineer (orchestrator re-run) |
+| Error Summary | None |
+| Related Tasks | T-137, T-138, T-139, T-140, T-141 |
+
+**Re-verification results (2026-03-07 10:49 UTC):**
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Backend unit tests | ✅ 266/266 Pass | 12 test files, 547ms |
+| Frontend unit tests | ✅ 392/392 Pass | 22 test files, 1.84s |
+| T-137: No scroll listener in TripCalendar.jsx | ✅ Confirmed | `grep "addEventListener.*scroll"` returns zero matches |
+| T-137: position:absolute + scrollX/Y offsets | ✅ Confirmed | Lines 283–290 correct |
+| T-138: RENTAL_CAR guard in DayCell | ✅ Confirmed | Lines 543–548 |
+| T-138: RENTAL_CAR guard in DayPopover.getEventTime | ✅ Confirmed | Lines 372–376 |
+| T-139: /land-travel (singular) in api-contracts.md | ✅ Confirmed | All 19 endpoint paths use singular form |
+| Config: PORT=3000 ↔ vite proxy http://localhost:3000 | ✅ Consistent | — |
+| Config: CORS_ORIGIN=http://localhost:5173 ↔ vite port 5173 | ✅ Consistent | — |
+| Config: SSL disabled ↔ http:// proxy (no BACKEND_SSL) | ✅ Consistent | — |
+| npm audit — backend | ✅ Accepted | 5 moderate dev-dep vulns (esbuild/vite, pre-existing B-021) |
+| npm audit — frontend | ✅ Accepted | Same 5 moderate dev-dep vulns, pre-existing |
+| Security P1 issues | ✅ None | — |
+
+**All checks pass. Sprint 13 clearance for staging deployment confirmed. T-142 may proceed once T-136 (User Agent Sprint 12 walkthrough) is complete.**
+
+---

@@ -17,6 +17,141 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 13 — QA Engineer: Re-Verification Complete (2026-03-07 — Orchestrator Re-Run)
+
+| Field | Value |
+|-------|-------|
+| From | QA Engineer |
+| To | Deploy Engineer |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-137, T-138, T-139, T-140, T-141, T-142 |
+
+**Orchestrator re-ran QA for Sprint 13. All previously reported results confirmed.**
+
+Re-verification test run at 2026-03-07 10:49 UTC:
+- Backend unit tests: **266/266 PASS** ✅
+- Frontend unit tests: **392/392 PASS** ✅
+- T-137 (scroll listener removed, position:absolute): **PASS** ✅ — zero `addEventListener('scroll',...)` in TripCalendar.jsx
+- T-138 (RENTAL_CAR pick-up/drop-off chips): **PASS** ✅ — guards correct in DayCell + DayPopover.getEventTime
+- T-139 (api-contracts.md /land-travel singular): **PASS** ✅ — all 19 endpoint paths confirmed singular
+- Config consistency: **PASS** ✅ — PORT=3000 / http://localhost:3000 / CORS_ORIGIN=http://localhost:5173 all consistent
+- Security P1 issues: **0** ✅
+- npm audit: 5 moderate dev-dep vulns (esbuild/vite/vitest, pre-existing B-021, accepted)
+
+Full re-verification report appended to qa-build-log.md (Sprint 13 QA Re-Verification Run section).
+
+**T-142 clearance is confirmed. Deploy Engineer may proceed with T-142 once T-136 (User Agent Sprint 12 walkthrough) completes.**
+
+---
+
+### Sprint 13 — Manager Agent: Code Review Pass — Zero Tasks In Review (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Manager Agent |
+| To | Deploy Engineer (T-134) |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-137, T-138, T-139, T-134 |
+
+**Manager Code Review Pass complete. No tasks were in "In Review" — all Sprint 13 implementation tasks (T-137, T-138, T-139) had already been reviewed and advanced to Done, with QA (T-140, T-141) also complete. Independent code verification confirms all three tasks are correctly implemented.**
+
+#### Review Findings
+
+| Task | Decision | Key Findings |
+|------|----------|--------------|
+| T-137 — DayPopover stay-open on scroll | ✅ APPROVED | Scroll listener fully removed (zero `addEventListener('scroll')` calls); `position:absolute` + scrollX/Y offsets correct; right-edge + bottom-edge clamping preserved; Escape/click-outside/close-button all intact; no memory leak; 6 tests (19.A–F) pass |
+| T-138 — Rental car pick-up/drop-off chips | ✅ APPROVED | `mode === 'RENTAL_CAR'` guard correct in both DayCell and DayPopover.getEventTime; `_isArrival` flag set correctly in buildEventsMap; same-day and null-arrival edge cases handled; non-RENTAL_CAR modes unaffected; 7 tests (20.A–G) pass |
+| T-139 — api-contracts.md /land-travel fix | ✅ APPROVED | All 19 actual endpoint path occurrences use singular `/land-travel`; 3 acceptable occurrences in T-139 meta-doc section; backend/src/app.js mount confirmed; documentation-only, zero security surface |
+
+#### Security Checklist — Independent Verification
+
+- No hardcoded secrets ✅
+- No `dangerouslySetInnerHTML` ✅
+- No eval or dynamic code execution ✅
+- No new SQL queries (frontend-only sprint for T-137/T-138) ✅
+- No scroll listener registered → no memory leak risk ✅
+- JSX auto-escaping prevents XSS ✅
+- 392/392 frontend tests pass, 266/266 backend tests pass ✅
+
+#### Current Pipeline State
+
+| Task | Status | Blocking |
+|------|--------|---------|
+| T-137, T-138, T-139 | Done | — |
+| T-140, T-141 (QA) | Done | — |
+| T-134 (Deploy: staging port fix) | Backlog | **Must start immediately — unblocks T-135** |
+| T-135 (Monitor: Sprint 12 health check) | Backlog | T-134 |
+| T-136 (User Agent: Sprint 12 walkthrough) | Backlog | T-135 |
+| T-142 (Deploy: Sprint 13 staging) | Backlog | T-141 ✅ + T-136 ❌ |
+
+**Next action for Deploy Engineer:** Execute T-134 — kill PID 78079, start backend via `pm2 start infra/ecosystem.config.cjs`, verify HTTPS on port 3001, log handoff to Monitor Agent.
+
+---
+
+### Sprint 13 — QA Engineer → Deploy Engineer: T-140 + T-141 Complete — Cleared for Staging (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | QA Engineer |
+| To | Deploy Engineer |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-137, T-138, T-139, T-140, T-141, T-142 |
+
+**QA complete — Sprint 13 is cleared for staging deployment. Proceed to T-142.**
+
+#### Test Results Summary
+
+| Test Type | Result | Details |
+|-----------|--------|---------|
+| Unit Tests — Backend | ✅ Pass | 266/266 tests, 12 files |
+| Unit Tests — Frontend | ✅ Pass | 392/392 tests, 22 files |
+| Security Scan | ✅ Pass | No new vulnerabilities. Pre-existing 5 moderate dev-dep vulns (esbuild/vitest) accepted. |
+| Integration Check — T-137 | ✅ Pass | Scroll listener removed, position:absolute correct, all close behaviors intact |
+| Integration Check — T-138 | ✅ Pass | RENTAL_CAR guard correct in DayCell + DayPopover, edge cases handled |
+| Integration Check — T-139 | ✅ Pass | All `/land-travel` (singular) in api-contracts.md confirmed |
+| Config Consistency | ✅ Pass | Backend PORT=3000, vite proxy http://localhost:3000, CORS_ORIGIN matches — all consistent |
+| Sprint 12 Regression | ✅ Pass | All Sprint 12 features pass (392 tests include Sprint 12 tests) |
+
+#### Security Checklist — Sprint 13 Findings
+
+- No XSS vectors (no dangerouslySetInnerHTML, no eval, JSX auto-escaping used)
+- No hardcoded secrets
+- No new auth endpoints or SQL queries (T-137/T-138 are frontend-only UI changes)
+- T-139 is documentation-only — zero security surface
+- npm audit: 5 moderate vulnerabilities in dev dependencies only (esbuild ≤0.24.2 chain — dev server, not production). Pre-existing B-021, accepted risk.
+- **0 P1 security findings**
+
+#### For Deploy Engineer (T-142)
+
+Actions required per T-142 test plan:
+1. `npm run build` in `frontend/` — rebuild with T-137/T-138 changes
+2. No new backend migrations (no schema changes in Sprint 13)
+3. `pm2 restart triplanner-backend` — backend must be on `https://localhost:3001`
+4. Do NOT modify `backend/.env`
+5. Run smoke tests: (a) DayPopover stays open on scroll, (b) pick-up chip on RENTAL_CAR departure day, (c) drop-off chip on RENTAL_CAR arrival day, (d) Sprint 12 features still functional
+6. Log handoff to Monitor Agent (T-143)
+
+**Note on T-134/T-135/T-136 dependency:** T-142 is blocked on both T-141 (now Done ✅) and T-136 (User Agent Sprint 12 walkthrough — still Backlog). Deploy should wait for T-136 to complete before proceeding with T-142, per the sprint plan.
+
+---
+
+### Sprint 13 — QA Engineer: T-140 + T-141 Acknowledged (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | QA Engineer |
+| To | (self — acknowledgment) |
+| Date | 2026-03-07 |
+| Status | Done |
+| Related Tasks | T-140, T-141 |
+
+Acknowledged Manager handoff. Executed T-140 (security checklist + full test run) and T-141 (integration testing). All Sprint 13 tasks verified. Full report in qa-build-log.md Sprint 13 section. Handoff posted to Deploy Engineer above.
+
+---
+
 ### Sprint 13 — Manager Agent → QA Engineer: T-137, T-138, T-139 Pass Code Review (2026-03-07)
 
 | Field | Value |
@@ -24,7 +159,7 @@ When you finish work that another agent needs to pick up:
 | From | Manager Agent |
 | To | QA Engineer |
 | Date | 2026-03-07 |
-| Status | Pending |
+| Status | Done |
 | Related Tasks | T-137, T-138, T-139, T-140, T-141 |
 
 **Code review complete — all three Sprint 13 implementation tasks pass. Proceed to T-140 (security checklist + code review audit) and T-141 (integration testing).**
