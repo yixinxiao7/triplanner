@@ -225,5 +225,46 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | FB-090 | Monitor Alert | Minor | **Tasked → T-139** | Backend Engineer to fix `api-contracts.md` — change `/land-travels` to `/land-travel` (singular). Documentation-only fix. P3, Sprint 13. |
 | FB-091 | Feature Gap | Minor | **Tasked → T-137** | Frontend Engineer to rework DayPopover: use `position: absolute` (document-anchored) so popover stays open and in place on scroll. Reverts T-126 scroll-close approach. P2, Sprint 13. |
 | FB-092 | Feature Gap | Minor | **Tasked → T-138** | Frontend Engineer to add "pick-up Xp" and "drop-off Xp" time chips for rental car entries on calendar (pick-up day and drop-off day respectively), matching stay check-in/check-out chip format. P2, Sprint 13. |
+| FB-093 | Monitor Alert | Major | **New** | JWT_SECRET in backend/.env.staging is the publicly-known placeholder value. Must be replaced with a cryptographically secure random secret before any external access. See FB-093 below. |
+
+---
+
+## Sprint 13 Monitor Agent Alerts
+
+---
+
+### FB-093 — Monitor Alert: Staging JWT_SECRET Is a Placeholder Value
+
+| Field | Value |
+|-------|-------|
+| Feedback | backend/.env.staging JWT_SECRET is the default placeholder — tokens can be forged |
+| Sprint | 13 |
+| Category | Monitor Alert |
+| Severity | Major |
+| Status | New |
+| Related Task | T-143 (health check that surfaced this), T-142 (staging deploy) |
+
+**Detected by:** Monitor Agent — T-143 Post-Deploy Health Check — 2026-03-07T16:00:00Z
+
+**Description:** During Sprint 13 post-deploy health check (T-143), the Monitor Agent read `backend/.env.staging` and found:
+
+```
+JWT_SECRET=CHANGE-ME-generate-with-openssl-rand-hex-32
+```
+
+This is the publicly documented placeholder value from the project template. Because this value is known, any party aware of the placeholder can forge valid JWT access tokens for the staging backend, bypassing authentication entirely. Auth endpoints (register/login) are responding correctly but the tokens they issue are signed with an insecure secret.
+
+**Impact:**
+- An attacker who knows the placeholder secret can craft arbitrary JWT tokens and authenticate as any user on staging.
+- If this secret is accidentally used in production (copy-paste of .env.staging), all production tokens are compromised.
+- No data confidentiality in staging — all accounts and trip data accessible without valid credentials.
+
+**Required action:**
+1. Generate a secure secret: `openssl rand -hex 32`
+2. Replace `JWT_SECRET` in `backend/.env.staging` with the generated value
+3. Restart the backend: `npx pm2 restart triplanner-backend`
+4. Invalidate all current staging tokens (restart suffices since token signatures will no longer validate)
+
+**This does not block staging testing** (all health checks passed), but must be resolved before any external user or third party accesses the staging environment.
 
 ---

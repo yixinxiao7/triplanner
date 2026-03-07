@@ -747,3 +747,117 @@ dist/assets/index-BJfBzr20.js   339.05 kB │ gzip: 103.00 kB
 **Deploy Engineer handoff to Monitor Agent (T-143) logged in handoff-log.md.**
 
 ---
+
+## Sprint 13 Monitor Agent — Post-Deploy Health Check (T-143) — 2026-03-07
+
+---
+
+### Config Consistency Validation
+
+**Test Run:** Sprint 13 Config Consistency — backend/.env, backend/.env.staging, frontend/vite.config.js, infra/docker-compose.yml
+**Sprint:** 13
+**Test Type:** Config Consistency
+**Result:** PASS
+**Environment:** Staging
+**Deploy Verified:** See Post-Deploy Health Check below
+**Tested By:** Monitor Agent
+**Related Tasks:** T-143
+
+#### Dev Config (backend/.env ↔ vite.config.js ↔ docker-compose.yml)
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Port match | backend PORT = vite proxy port | backend/.env PORT=3000; vite proxy default = `http://localhost:3000` | ✅ PASS |
+| Protocol match | SSL not set → HTTP; vite uses http:// | SSL_KEY_PATH and SSL_CERT_PATH are commented out in backend/.env; vite uses http:// (BACKEND_SSL unset) | ✅ PASS |
+| CORS match | CORS_ORIGIN includes http://localhost:5173 | backend/.env CORS_ORIGIN=http://localhost:5173; vite dev server port=5173 | ✅ PASS |
+| Docker port match | docker backend PORT = backend/.env PORT | docker-compose.yml backend env PORT=3000; backend/.env PORT=3000; docker healthcheck uses http://localhost:3000 | ✅ PASS |
+
+#### Staging Config (backend/.env.staging ↔ vite.config.js staging mode ↔ live checks)
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Port match | .env.staging PORT = staging backend port | PORT=3001; backend confirmed live on https://localhost:3001 | ✅ PASS |
+| SSL cert files | SSL_KEY_PATH and SSL_CERT_PATH set and files exist | infra/certs/localhost-key.pem ✅ infra/certs/localhost.pem ✅ — both exist | ✅ PASS |
+| Protocol match | SSL configured → backend HTTPS; vite staging proxy uses https:// | SSL set → HTTPS; vite.config.js uses `BACKEND_SSL=true` env var → backendProtocol='https' | ✅ PASS |
+| CORS match | CORS_ORIGIN includes https://localhost:4173 | .env.staging CORS_ORIGIN=https://localhost:4173; frontend preview at https://localhost:4173 | ✅ PASS |
+
+#### Security Note (Out of Scope for Config Consistency — Flagged Separately)
+
+- ⚠️ `backend/.env.staging` JWT_SECRET = `CHANGE-ME-generate-with-openssl-rand-hex-32` — placeholder value. See FB-093 Monitor Alert.
+
+**Config Consistency Result: PASS**
+
+---
+
+### Post-Deploy Health Check — Sprint 13 Staging (T-143)
+
+**Test Run:** Sprint 13 Post-Deploy Health Check — Staging
+**Sprint:** 13
+**Test Type:** Post-Deploy Health Check
+**Result:** PASS
+**Build Status:** Success
+**Environment:** Staging
+**Deploy Verified:** Yes
+**Tested By:** Monitor Agent
+**Related Tasks:** T-142, T-143
+
+#### Health Check Template
+
+```
+Environment: Staging
+Timestamp: 2026-03-07T16:00:00Z
+Staging Backend URL: https://localhost:3001
+Frontend URL: https://localhost:4173
+
+Checks:
+  - [x] App responds (GET /api/v1/health → 200)
+        → HTTP 200, body: {"status":"ok"} ✅
+        Note: health route intentionally returns {"status":"ok"} (not data-wrapped) — liveness-only per health.js contract.
+  - [x] Auth register works (POST /api/v1/auth/register → 201 with user + access_token)
+        → HTTP 201, data.user.id=c15b05d4, data.access_token present ✅
+  - [x] Auth login works (POST /api/v1/auth/login → 200 with user + access_token)
+        → HTTP 200, data.user.id=c15b05d4, fresh access_token ✅
+  - [x] GET /api/v1/trips → 200 with data array + pagination
+        → HTTP 200, body: {"data":[],"pagination":{"page":1,"limit":20,"total":0}} ✅
+  - [x] POST /api/v1/trips → 201 with full trip object
+        → HTTP 201, data.id=c8e998ce, destinations=["Test City"], status="PLANNING" ✅
+  - [x] GET /api/v1/trips/:id/flights → 200
+        → HTTP 200, body: {"data":[]} ✅
+  - [x] GET /api/v1/trips/:id/stays → 200
+        → HTTP 200, body: {"data":[]} ✅
+  - [x] GET /api/v1/trips/:id/activities → 200
+        → HTTP 200, body: {"data":[]} ✅
+  - [x] GET /api/v1/trips/:id/land-travel → 200 (singular path confirmed — T-139)
+        → HTTP 200, body: {"data":[]} ✅
+  - [x] No 5xx errors observed ✅
+  - [x] Database connected — trip creation returned UUID and timestamp from DB; confirms DB reads and writes healthy ✅
+  - [x] Frontend accessible — https://localhost:4173 → HTTP 200, valid HTML with React bundle ✅
+  - [x] Config consistency: staging PORT=3001 matches live backend ✅
+  - [x] Config consistency: HTTPS protocol consistent across stack ✅
+  - [x] Config consistency: CORS_ORIGIN=https://localhost:4173 matches frontend preview URL ✅
+```
+
+#### Endpoint Summary
+
+| Endpoint | Method | Status | Response Shape | Result |
+|----------|--------|--------|----------------|--------|
+| /api/v1/health | GET | 200 | {"status":"ok"} | ✅ PASS |
+| /api/v1/auth/register | POST | 201 | {data:{user,access_token}} | ✅ PASS |
+| /api/v1/auth/login | POST | 200 | {data:{user,access_token}} | ✅ PASS |
+| /api/v1/trips | GET | 200 | {data:[],pagination:{...}} | ✅ PASS |
+| /api/v1/trips | POST | 201 | {data:{id,name,destinations,...}} | ✅ PASS |
+| /api/v1/trips/:id/flights | GET | 200 | {data:[]} | ✅ PASS |
+| /api/v1/trips/:id/stays | GET | 200 | {data:[]} | ✅ PASS |
+| /api/v1/trips/:id/activities | GET | 200 | {data:[]} | ✅ PASS |
+| /api/v1/trips/:id/land-travel | GET | 200 | {data:[]} | ✅ PASS |
+
+#### Observations
+
+1. **pm2 not available in monitor shell PATH** — Cannot run `pm2 status` directly. Backend is confirmed running (health check passes on https://localhost:3001). Deploy Engineer report (qa-build-log.md) confirms pm2 PID 87119. Minor process observation only.
+2. **Deploy Engineer T-143 handoff** — Deploy Engineer logged completion in qa-build-log.md but no corresponding handoff-log.md entry was found at the top of the file (newest-first). Monitor Agent proceeded based on qa-build-log evidence and live health checks confirming backend is running.
+3. **JWT_SECRET placeholder in backend/.env.staging** — Value is `CHANGE-ME-generate-with-openssl-rand-hex-32`. Auth endpoints work (login/register return tokens) but this secret is publicly known and insecure. Flagged as FB-093 (Severity: Major). Does not block Deploy Verified for staging but must be rotated before any external access.
+
+**Result: PASS**
+**Deploy Verified: Yes**
+
+---
