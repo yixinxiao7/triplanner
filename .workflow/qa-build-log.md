@@ -1170,6 +1170,54 @@ All Sprint 12 features (check-in label, calendar default month T-128 unit tests,
 
 ---
 
+## Sprint 14 — Deploy Engineer Re-Invocation Verification — 2026-03-07
+
+**Deploy Engineer:** Automated (Sprint #14 orchestrator re-invocation)
+**Date:** 2026-03-07
+**Task:** T-150 (Sprint 14 staging re-deployment) — re-verification pass
+
+### Pre-Deploy Checks
+
+| Check | Result |
+|-------|--------|
+| QA handoff (T-149 → T-150) in handoff-log.md | ✅ FOUND — Status: "Acknowledged — T-150 complete" |
+| All Sprint 14 tasks Done (T-145–T-149) | ✅ CONFIRMED via dev-cycle-tracker.md |
+| Pending DB migrations (technical-context.md) | ✅ NONE — Sprint 14 is schema-stable; 10/10 migrations applied |
+
+### Build Re-Run
+
+| Step | Command | Result |
+|------|---------|--------|
+| Backend deps | `cd backend && npm install` | ✅ Already up-to-date |
+| Frontend deps | `cd frontend && npm install` | ✅ Already up-to-date |
+| Frontend build | `cd frontend && npm run build` | ✅ SUCCESS — 122 modules, 0 errors, 457ms |
+| Bundle output: index.js | 339.48 kB (gzip: 103.12 kB) | ✅ Matches prior build |
+| Bundle output: index.css | 74.46 kB (gzip: 11.89 kB) | ✅ Matches prior build |
+
+### Staging Verification
+
+| Check | Result |
+|-------|--------|
+| pm2 `triplanner-backend` status | ✅ online — PID 94787, ~10m uptime |
+| `GET https://localhost:3001/api/v1/health` | ✅ `{"status":"ok"}` |
+| Database migrations | ✅ `Already up to date` (0 pending) |
+| T-146/T-147 source markers in TripCalendar.jsx | ✅ 11 matches (hasNavigated, todayBtn, handleToday, Go to current month) |
+| Sprint 14 bundle identical to prior deploy | ✅ Same filenames and sizes |
+
+### Summary
+
+**RESULT: PASS — Staging environment confirmed healthy. No re-deployment action needed.**
+
+T-150 was completed in the prior Deploy Engineer invocation (PID 94787, built 2026-03-07 11:57). This re-invocation confirms:
+- Build artifacts are current and include T-146 + T-147 changes
+- Backend is online and serving health checks
+- No migrations are pending
+- The Deploy Engineer → Monitor Agent handoff is already logged in handoff-log.md (Status: Pending)
+
+**Monitor Agent (T-151) is cleared to proceed with the Sprint 14 staging health check.**
+
+---
+
 ## Sprint 14 QA Re-Verification — 2026-03-07
 
 **QA Engineer:** Automated (Sprint #14 orchestrator re-invocation)
