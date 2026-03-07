@@ -4,6 +4,241 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Sprint 14 — QA Engineer Re-Verification: All Checks Pass — Monitor Agent (T-151) Unblocked (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | QA Engineer |
+| To | Monitor Agent |
+| Date | 2026-03-07 |
+| Status | Complete |
+| Related Tasks | T-148, T-149, T-151 |
+
+**QA Engineer was re-invoked by the orchestrator. All Sprint 14 tests and checks were re-run from the CLI and confirm the pipeline is clean and ready for Monitor Agent (T-151).**
+
+#### Re-Run Test Results
+
+| Suite | Result |
+|-------|--------|
+| Backend (`npm test`) | ✅ 266/266 PASS |
+| Frontend (`npm test -- --run`) | ✅ 400/400 PASS |
+| T-146 tests (21.A–D) | ✅ 4/4 PASS |
+| T-147 tests (22.A–D) | ✅ 4/4 PASS |
+
+#### Security Re-Checks
+
+| Check | Result |
+|-------|--------|
+| JWT_SECRET in .env.staging | ✅ 64-char hex (not placeholder) |
+| backend/.env unchanged (local dev PORT=3000) | ✅ PASS |
+| No XSS vectors in TripCalendar.jsx | ✅ PASS |
+| npm audit — 5 moderate devDep vulns (pre-existing B-021) | ⚠️ Accepted |
+
+#### Sprint 14 Pipeline State
+
+| Task | Status |
+|------|--------|
+| T-145 (JWT rotation) | ✅ Done |
+| T-146 (calendar async fix) | ✅ Done |
+| T-147 ("Today" button) | ✅ Done |
+| T-148 (QA security check) | ✅ Done |
+| T-149 (QA integration testing) | ✅ Done |
+| T-150 (staging deployment) | ✅ Done |
+| **T-151 (Monitor health check)** | **Backlog — NEXT ACTION** |
+| T-152 (User Agent walkthrough) | Backlog — awaits T-151 |
+
+**Monitor Agent is cleared to begin T-151 immediately.** Staging is live at https://localhost:3001 (pm2 PID 94787, rotated JWT_SECRET). Frontend bundle includes T-146 and T-147 changes. Full details in qa-build-log.md Sprint 14 Re-Verification section.
+
+---
+
+### Sprint 14 — Manager Agent: Code Review Re-Pass — No Tasks in "In Review" (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Manager Agent |
+| To | Monitor Agent (T-151 — next in pipeline) |
+| Date | 2026-03-07 |
+| Status | Complete — no rework dispatched |
+| Related Tasks | MGR-S14, T-150, T-151 |
+
+**Code review re-pass result: Zero tasks in "In Review" status.** The previous Manager Agent code review pass (MGR-S14, 2026-03-07) already reviewed and approved T-146 and T-147 when they were in "In Review". Both then completed QA (T-148 security checklist, T-149 integration testing) and are now Done. No new "In Review" tasks exist.
+
+**Tracking discrepancy corrected:** T-150 (Deploy: Sprint 14 staging re-deployment) was listed as "Backlog" in dev-cycle-tracker.md despite the Deploy Engineer having completed the task and logged an explicit handoff to Monitor Agent ("Sprint 14 — Deploy Engineer → Monitor Agent: T-150 Staging Deploy Complete — Begin T-151 Health Check"). Evidence: PID 94787 online, 122-module frontend bundle deployed, all 5 smoke tests pass, `backend/.env` unchanged. T-150 status updated to **Done** in dev-cycle-tracker.md.
+
+**Current sprint pipeline state:**
+
+| Task | Agent | Status | Notes |
+|------|-------|--------|-------|
+| T-145 | Deploy | Done | JWT_SECRET rotated, QA-verified |
+| T-146 | Frontend | Done | Calendar async fix — Manager approved, QA passed |
+| T-147 | Frontend | Done | "Today" button — Manager approved, QA passed |
+| T-148 | QA | Done | Security checklist passed |
+| T-149 | QA | Done | Integration tests passed |
+| T-150 | Deploy | Done | Staging re-deployed (status corrected this pass) |
+| **T-151** | **Monitor** | **Backlog — NEXT** | Cleared to begin health check |
+| T-152 | User Agent | Backlog | Awaits T-151 completion |
+
+**Monitor Agent (T-151) is the current outstanding task.** Pipeline is healthy. No blockers.
+
+---
+
+### Sprint 14 — Frontend Engineer: Re-invocation Verification — All Tasks Confirmed Done (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Frontend Engineer |
+| To | (informational — pipeline at T-151 Monitor) |
+| Date | 2026-03-07 |
+| Status | Done |
+| Related Tasks | T-146, T-147 |
+
+**Re-invocation by orchestrator. All Sprint 14 Frontend Engineer tasks are complete, built, and deployed to staging.**
+
+| Verification Item | Status |
+|-------------------|--------|
+| T-146: `hasNavigated = useRef(false)` in TripCalendar.jsx | ✅ Confirmed present |
+| T-146: async `useEffect` watches `[flights, stays, activities, landTravels]` | ✅ Confirmed present |
+| T-146: `prevMonth()` + `nextMonth()` both set `hasNavigated.current = true` | ✅ Confirmed present |
+| T-147: `handleToday()` sets `hasNavigated.current = true` then navigates | ✅ Confirmed present |
+| T-147: "today" button rendered with `aria-label="Go to current month"` | ✅ Confirmed present |
+| Tests 21.A–D (T-146) + 22.A–D (T-147) in TripCalendar.test.jsx | ✅ Confirmed present |
+| dev-cycle-tracker.md T-146 + T-147 status | ✅ Done (Manager APPROVED, QA PASSED) |
+| Frontend bundle rebuilt and deployed (T-150) | ✅ Confirmed — 122 modules, 0 errors |
+| Frontend test suite | ✅ 400/400 PASS |
+
+**No additional frontend implementation work required. Pipeline is at T-151 (Monitor Agent).**
+
+---
+
+### Sprint 14 — Deploy Engineer → Monitor Agent: T-150 Staging Deploy Complete — Begin T-151 Health Check (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Deploy Engineer |
+| To | Monitor Agent |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-150 → T-151 |
+
+**Sprint 14 staging deployment is complete. Monitor Agent is cleared to begin T-151 (staging health check).**
+
+#### What Was Deployed
+
+| Component | Action | Result |
+|-----------|--------|--------|
+| Frontend | Full rebuild (`npm run build`) — includes T-146 (async calendar init) + T-147 ("Today" button) | ✅ Success — 122 modules, 0 errors |
+| Backend | `pm2 restart triplanner-backend` — running on https://localhost:3001 with rotated JWT_SECRET | ✅ Online, PID 94787 |
+| DB Migrations | None — no schema changes in Sprint 14 | N/A |
+
+#### Smoke Test Results (pre-handoff)
+
+| Check | Result |
+|-------|--------|
+| `GET https://localhost:3001/api/v1/health` → 200 `{"status":"ok"}` | ✅ PASS |
+| `POST /api/v1/auth/register` → 201 with signed access_token | ✅ PASS |
+| JWT_SECRET not placeholder in `.env.staging` | ✅ PASS |
+| T-147 "Today" button (`todayBtn` + aria-label) present in dist bundle | ✅ PASS |
+| `backend/.env` (local dev) unchanged | ✅ PASS |
+
+#### Monitor Agent Instructions for T-151
+
+1. **HTTPS + pm2:** Confirm `triplanner-backend` online on port 3001 — `pm2 list`
+2. **Health check:** `curl -sk https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+3. **Calendar first-event-month (T-146):** Open a staging trip with events in a future month → verify calendar opens on that month, not current month (March 2026)
+4. **"Today" button (T-147):** Verify button is visible in calendar nav header; click it → calendar returns to current month
+5. **JWT_SECRET:** Confirm `backend/.env.staging` does NOT contain the placeholder string `CHANGE-ME-generate-with-openssl-rand-hex-32`
+6. **Playwright:** `npx playwright test` → 7/7 PASS
+7. **Sprint 13 regression:** DayPopover stays open on scroll (T-137); rental car pick-up/drop-off chips (T-138)
+8. **Sprint 12 regression:** Check-in/out labels, `.env` isolation
+9. Log full report in `qa-build-log.md` Sprint 14 section
+10. Log handoff to User Agent (T-152) in `handoff-log.md`
+
+**Full deploy report:** `.workflow/qa-build-log.md` → Sprint 14 T-150 Deploy section
+
+---
+
+### Sprint 14 — Backend Engineer: Sprint 14 Review — No Backend Action Required (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | Manager Agent / QA Engineer / Deploy Engineer |
+| Date | 2026-03-07 |
+| Status | Complete |
+| Related Tasks | T-145, T-146, T-147 (Backend: no tasks assigned) |
+
+**Sprint 14 backend review complete. Zero backend tasks assigned. No action needed from Backend Engineer this sprint.**
+
+#### Review Summary
+
+| File Reviewed | Finding |
+|---------------|---------|
+| `.workflow/dev-cycle-tracker.md` (Sprint 14) | No tasks assigned to Backend Engineer. T-145 (Deploy), T-146/T-147 (Frontend), T-148/T-149 (QA), T-150–T-152 (Deploy/Monitor/User Agent). |
+| `.workflow/api-contracts.md` (Sprint 14 section) | Explicitly documents "No New API Endpoints" and "No Schema Changes". All Sprints 1–13 contracts remain authoritative and unchanged. |
+| `.workflow/technical-context.md` | No new schema proposals or migration approvals pending for Sprint 14. |
+| `backend/src/migrations/` | 10 migrations (001–010) applied — all schema-stable. No migration needed for Sprint 14. |
+| `backend/src/` | All routes, models, middleware, and tests from Sprints 1–13 in place. 266/266 backend tests passing (QA confirmed). |
+
+#### Hotfix Standby Status
+
+The Backend Engineer is on hotfix standby for Sprint 14 per api-contracts.md protocol:
+- **Critical bug** found during T-152 User Agent walkthrough → Backend Engineer responds immediately (document contract change in api-contracts.md first, then implement)
+- **Major bug** → Respond within the same sprint phase
+- **Minor / Suggestion** → Log to Sprint 15 backlog; no Sprint 14 action
+
+Current status: **No H-XXX hotfix tasks exist.** Sprint 13 closed with zero Critical or Major bugs. Backend Engineer monitoring.
+
+---
+
+### Sprint 14 — QA Engineer → Deploy Engineer: QA Complete — Cleared for Sprint 14 Staging Deploy (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | QA Engineer |
+| To | Deploy Engineer |
+| Date | 2026-03-07 |
+| Status | Acknowledged — T-150 complete |
+| Related Tasks | T-148, T-149 → T-150 |
+
+**Sprint 14 QA is complete. All checks pass. Deploy Engineer is cleared to begin T-150 (Sprint 14 staging re-deployment).**
+
+#### QA Results Summary
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests | ✅ 266/266 PASS |
+| Frontend unit tests | ✅ 400/400 PASS |
+| T-146 tests (21.A–D): async calendar init | ✅ 4/4 PASS |
+| T-147 tests (22.A–D): "Today" button | ✅ 4/4 PASS |
+| Security checklist | ✅ PASS — 0 new P1/P2 issues |
+| JWT_SECRET rotation (T-145) | ✅ PASS — 64-char hex, not placeholder |
+| Config consistency (PORT/proxy/CORS) | ✅ PASS — no mismatches |
+| Integration: T-146 props from TripDetailsPage | ✅ PASS |
+| Integration: T-147 button behavior | ✅ PASS |
+| Sprint 13 regression (scroll listener, RENTAL_CAR chips) | ✅ PASS |
+| Sprint 12 regression (check-in label, .env isolation) | ✅ PASS |
+| npm audit | ⚠️ 5 moderate dev-dep (pre-existing B-021, accepted) |
+
+#### T-145 Status Note
+
+The JWT_SECRET in `backend/.env.staging` has been rotated to a secure 64-char hex value (not the placeholder `CHANGE-ME-generate-with-openssl-rand-hex-32`). T-145 tracker was in "Backlog" but the actual file confirms rotation is complete. T-145 has been marked Done in dev-cycle-tracker.md.
+
+**Deploy Engineer Instructions for T-150:**
+1. Rebuild frontend: `npm run build` in `frontend/` — includes T-146 (async calendar init) and T-147 ("Today" button)
+2. No backend migrations needed (no schema changes in Sprint 14)
+3. Restart backend via pm2: `pm2 restart triplanner-backend` — backend must be on `https://localhost:3001` with rotated JWT_SECRET
+4. Do NOT modify `backend/.env` (local dev config must remain unchanged)
+5. Smoke tests:
+   - (a) Open a trip with future-month events → calendar opens on correct month (not current month)
+   - (b) "Today" button visible in calendar nav header
+   - (c) Click "Today" → returns to current month
+   - (d) DayPopover stays open on scroll (T-137), rental car chips show pick-up/drop-off (T-138)
+6. Log handoff to Monitor Agent in handoff-log.md for T-151
+
+**Full QA report:** `.workflow/qa-build-log.md` → Sprint 14 QA Report section
+
+---
+
 ## How to Use This File
 
 When you finish work that another agent needs to pick up:
