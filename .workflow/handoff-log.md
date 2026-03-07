@@ -17,6 +17,58 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 12 — Backend Engineer → QA Engineer: Sprint 12 API Contract Review — No New Contracts (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | QA Engineer |
+| Date | 2026-03-06 |
+| Status | Pending |
+| Related Tasks | T-129, T-130 |
+| Handoff Summary | Sprint 12 API contract review is complete. **No new or changed API endpoints this sprint.** All four Sprint 12 tasks (T-125, T-126, T-127, T-128) have zero backend impact. The existing contracts from Sprints 1–11 remain authoritative and unchanged. A Sprint 12 section has been appended to `.workflow/api-contracts.md` documenting this explicitly. |
+
+**QA notes for T-129 (security checklist + code review):**
+- **T-125 (.env staging isolation):** Verify `backend/.env.staging` is in `.gitignore` and no secrets are committed. Verify deploy scripts source `.env.staging` and do not overwrite `backend/.env`. No backend route or model changes to audit.
+- **T-126 (DayPopover scroll fix):** Frontend-only. Verify scroll listener is removed in `useEffect` cleanup (no memory leak). No backend surface.
+- **T-127 (check-in chip label):** Frontend-only render change. No backend surface.
+- **T-128 (calendar default month):** Frontend-only. Reads `departure_at`, `check_in_at`, `activity_date` from already-loaded in-memory state — no new API calls, no new query parameters. Verify graceful fallback on malformed/missing dates.
+- **Full test suite:** `npm test --run` in both `frontend/` and `backend/` must pass. No backend test changes expected this sprint; any backend test failures are regressions.
+
+**QA notes for T-130 (integration testing):**
+- `GET /api/v1/health` → 200 ✅ (smoke test — backend unchanged)
+- All existing Playwright E2E tests (7/7) must continue to pass
+- No new backend integration tests needed (no new endpoints)
+- Focus integration checks on the four frontend/config fixes per T-130 acceptance criteria
+
+---
+
+### Sprint 12 — Backend Engineer → Frontend Engineer: Sprint 12 API Contracts — No New Contracts, Existing Contracts Unchanged (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | Frontend Engineer |
+| Date | 2026-03-06 |
+| Status | Pending |
+| Related Tasks | T-126, T-127, T-128 |
+| Handoff Summary | Sprint 12 API contract review is complete. **No new or changed API endpoints this sprint.** You may proceed with T-126, T-127, and T-128 immediately — all three are frontend-only and require no new API calls. Relevant field notes for T-128 are below. Full Sprint 12 contracts section is in `.workflow/api-contracts.md`. |
+
+**Frontend Engineer notes by task:**
+
+- **T-126 (DayPopover scroll fix):** No API involvement. Pure component behavior change (`window` scroll listener in `useEffect`).
+
+- **T-127 (check-in chip label):** No API involvement. Pure render change — prepend `"check-in "` to the existing time string in the chip builder.
+
+- **T-128 (calendar default month):** No new API calls needed. Read the following fields from the data already in-memory (fetched by existing hooks on TripDetailsPage mount):
+  - `flights[].departure_at` — ISO 8601 UTC string (e.g., `"2026-08-07T10:00:00.000Z"`) → parse with `new Date(departure_at)` to get month/year
+  - `stays[].check_in_at` — ISO 8601 UTC string → parse with `new Date(check_in_at)` to get month/year
+  - `activities[].activity_date` — YYYY-MM-DD date string → **parse as local date** using `new Date(year, month-1, day)` to avoid UTC midnight offset (per UI spec Spec 18)
+  - Find the minimum date across all three arrays; use its month/year as the initial `currentMonth` state
+  - Fallback to current month if all arrays are empty
+
+---
+
 ### Sprint 12 — Design Agent → Frontend Engineer: Sprint 12 UI Specs Ready (2026-03-06)
 
 | Field | Value |

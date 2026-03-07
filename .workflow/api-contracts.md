@@ -4173,3 +4173,110 @@ As part of BE-S11, the Backend Engineer has reviewed all existing contract docum
 ---
 
 *Sprint 11 contract review complete — 2026-03-04. Backend Engineer (BE-S11): no new endpoints or schema changes this sprint. Sprint 11 is an absolute pipeline-closure sprint — all features through Sprint 10 are implemented, QA-approved, and deployed on staging. The Backend Engineer is on hotfix standby only. If H-XXX tasks are created by Manager following T-094, T-109, T-120, or T-123 walkthroughs, contract updates will be documented here immediately under a `Sprint 11 — Hotfix H-XXX` subsection before any implementation begins. All existing contracts (Sprints 1–10) remain authoritative and unchanged.*
+
+---
+
+## Sprint 12 Contracts
+
+**Date:** 2026-03-06
+**Reviewed by:** Backend Engineer
+**Sprint Goal:** Four targeted UX/infrastructure fixes (FB-085–FB-088): `.env` staging isolation (T-125), DayPopover scroll anchoring (T-126), check-in chip label (T-127), calendar default month (T-128). No new features. Clean QA/deploy/monitor/user-agent cycle.
+
+---
+
+### Sprint 12 — No New API Endpoints
+
+Sprint 12 contains zero backend changes. All four in-scope tasks are either purely frontend component fixes (T-126, T-127, T-128) or a deploy/infrastructure fix (T-125 — `.env` file isolation). No new or changed API endpoints are required.
+
+| Task | Agent | Reason — No API Contract Change |
+|------|-------|--------------------------------|
+| T-125 | Deploy Engineer | `.env` staging isolation — file system / deploy script change only. No route, model, or response shape changes. |
+| T-126 | Frontend Engineer | DayPopover scroll-close fix — `window.addEventListener` in a React `useEffect`. Pure frontend component change. No API calls added or modified. |
+| T-127 | Frontend Engineer | Check-in chip label — prepend `"check-in "` to the time string in the calendar chip builder. Pure render change. No API calls added or modified. |
+| T-128 | Frontend Engineer | Calendar default month — compute earliest event date from already-loaded `flights`, `stays`, and `activities` arrays (data already in-memory from existing API calls). No new API calls; no changes to existing endpoints. |
+
+---
+
+### Sprint 12 — Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–11 remain in force and unchanged. The complete authoritative state of all endpoint groups:
+
+| Sprint | Endpoint Group | Contract Status | Key Notes |
+|--------|---------------|----------------|-----------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7 (migration 010 ✅). `notes` is always `null \| non-empty string` — never `""` (Sprint 9 correction). |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field present; returns `null` if unset. |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` updatable; `""` input normalized to `null` at API layer (Sprint 9 correction). |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | `departure_tz` + `arrival_tz` fields present; used by T-113 timezone abbreviation display. Also used by T-128 (calendar default month) — `departure_at` is read client-side from in-memory state. |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | `check_in_tz` + `check_out_tz` fields present. `check_in_at` (ISO 8601 UTC) used by T-128 (calendar default month) — parsed client-side from in-memory state. |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | `location TEXT NULL` present (T-114). `start_time`/`end_time` nullable since Sprint 3. `activity_date` (YYYY-MM-DD string) used by T-128 (calendar default month) — parsed client-side as local date. |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
+| 6 | `POST /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+
+**Schema state on staging (as of T-118/T-122 deployment, 2026-03-04):** All 10 migrations applied (001–010). Database is fully current. No pending migrations.
+
+**Fields consumed by Sprint 12 frontend changes (T-128 — calendar default month):** No new fields. T-128 reads three existing fields from already-loaded in-memory state:
+- `flights[].departure_at` — ISO 8601 UTC timestamp; already returned by `GET /api/v1/trips/:id/flights`
+- `stays[].check_in_at` — ISO 8601 UTC timestamp; already returned by `GET /api/v1/trips/:id/stays`
+- `activities[].activity_date` — YYYY-MM-DD date string; already returned by `GET /api/v1/trips/:id/activities`
+
+No additional fetches, no new query parameters, no response shape changes.
+
+---
+
+### Sprint 12 — No Schema Changes
+
+No new database migrations are introduced in Sprint 12. The schema is complete and current for all implemented features.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (T-107, 2026-02-28) |
+| — | 8 | *(No new migrations)* | Sprint 8 features are frontend-only |
+| — | 9 | *(No new migrations)* | Sprint 9 is pipeline-only |
+| — | 10 | *(No new migrations)* | Sprint 10 is pipeline-only + frontend-only print |
+| — | 11 | *(No new migrations)* | Sprint 11 is pipeline-only |
+| — | **12** | *(No new migrations)* | **Sprint 12 is polish/UX-only. All four tasks are frontend or deploy-config changes. No schema work.** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+---
+
+### Sprint 12 — Hotfix Standby Protocol
+
+**Trigger:** If User Agent walkthrough T-133 reveals a **Critical or Major backend bug**, the Manager Agent will create an H-XXX hotfix task. The Backend Engineer is on standby to respond.
+
+| Severity | Backend Engineer Action |
+|----------|------------------------|
+| **Critical** | Respond immediately. Document contract change (if any) here under `Sprint 12 — Hotfix H-XXX` first, then implement. |
+| **Major** | Respond within the same sprint phase. Document contract change (if any) here first, then implement. |
+| **Minor / Suggestion** | Log to Sprint 13 backlog. No Backend Engineer action this sprint. |
+
+**Current status (Sprint 12 start — 2026-03-06):** No H-XXX tasks exist. T-133 walkthrough is pending. Backend Engineer is monitoring. Sprint 11 closed with zero Critical or Major bugs — no outstanding hotfix debt.
+
+---
+
+*Sprint 12 contract review complete — 2026-03-06. Backend Engineer: no new endpoints or schema changes this sprint. Sprint 12 is a focused polish sprint — all four tasks (T-125 deploy config, T-126/T-127/T-128 frontend component fixes) have zero backend impact. T-128 (calendar default month) reads `departure_at`, `check_in_at`, and `activity_date` from already-fetched in-memory data — no new API calls needed. All existing contracts (Sprints 1–11) remain authoritative and unchanged. Backend Engineer on hotfix standby only.*
