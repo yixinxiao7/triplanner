@@ -660,7 +660,9 @@ describe('TripCalendar', () => {
     expect(container.contains(dialog)).toBe(false);
   });
 
-  it('T-097: popover renders with position:fixed style (not absolute inside grid)', () => {
+  it('T-097/T-137: popover renders with position:absolute style (document-anchored, not fixed)', () => {
+    // T-137 changed position from fixed (T-097) to absolute (document-relative) so the
+    // popover stays visually anchored to the trigger when the user scrolls.
     const flight = {
       id: 'p1', flight_number: 'AA1', airline: 'AA',
       from_location: 'A', to_location: 'B',
@@ -693,8 +695,8 @@ describe('TripCalendar', () => {
     fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
 
     const dialog = screen.getByRole('dialog');
-    // position:fixed is set via inline style
-    expect(dialog.style.position).toBe('fixed');
+    // T-137: position:absolute (document-relative) so popover stays anchored on scroll
+    expect(dialog.style.position).toBe('absolute');
   });
 
   // ── T-101: Stay checkout time on last day ──────────────────────────────────
@@ -836,7 +838,7 @@ describe('TripCalendar', () => {
     expect(trainChips.length).toBeGreaterThanOrEqual(2);
   });
 
-  // ── T-126: DayPopover scroll-close behavior ───────────────────────────────
+  // ── T-137: DayPopover stay-open on scroll (Spec 19 — reverses T-126) ────────
 
   // Helper: set up 4 events on Aug 7 to produce overflow "+X more" button
   function renderWithOverflow() {
@@ -869,60 +871,101 @@ describe('TripCalendar', () => {
     );
   }
 
-  it('T-126: DayPopover closes when a scroll event fires on window', () => {
+  it('T-137 19.A: DayPopover stays open when a scroll event fires on window', () => {
+    // T-137 reverses T-126: scroll must NOT close the popover.
     renderWithOverflow();
 
-    // Open the popover
     fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
     expect(screen.getByRole('dialog')).toBeDefined();
 
-    // Fire a scroll event on window with capture
+    // Fire a scroll event — popover must remain mounted
     fireEvent.scroll(window);
 
-    // Popover should be gone
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('dialog')).toBeDefined();
   });
 
-  it('T-126: scroll listener is added and removed when DayPopover opens/closes', () => {
+  it('T-137 19.B: No scroll listener is added when DayPopover opens', () => {
+    // T-137: scroll listener must NOT be registered (confirms removal of T-126 code)
     const addSpy = vi.spyOn(window, 'addEventListener');
-    const removeSpy = vi.spyOn(window, 'removeEventListener');
 
     renderWithOverflow();
-
-    // Open the popover — scroll listener should be registered
     fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
 
-    const scrollCalls = addSpy.mock.calls.filter(([event, , opts]) =>
-      event === 'scroll' && opts?.capture === true
-    );
-    expect(scrollCalls.length).toBeGreaterThan(0);
-
-    // Close via Escape — scroll listener should be removed
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByRole('dialog')).toBeNull();
-
-    const removeScrollCalls = removeSpy.mock.calls.filter(([event, , opts]) =>
-      event === 'scroll' && opts?.capture === true
-    );
-    expect(removeScrollCalls.length).toBeGreaterThan(0);
+    const scrollCalls = addSpy.mock.calls.filter(([event]) => event === 'scroll');
+    expect(scrollCalls.length).toBe(0);
 
     addSpy.mockRestore();
-    removeSpy.mockRestore();
   });
 
-  it('T-126: Escape still closes DayPopover after scroll listener is attached', () => {
+  it('T-137 19.C: DayPopover position uses document-relative coordinates (scrollY offset)', () => {
+    // Spy before render so we can set scroll offsets
+    const originalScrollY = Object.getOwnPropertyDescriptor(window, 'scrollY');
+    const originalScrollX = Object.getOwnPropertyDescriptor(window, 'scrollX');
+
+    Object.defineProperty(window, 'scrollY', { value: 300, writable: true, configurable: true });
+    Object.defineProperty(window, 'scrollX', { value: 0, writable: true, configurable: true });
+
+    // Mock getBoundingClientRect for the overflow button
+    const originalGetBCR = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function () {
+      return { top: 100, bottom: 120, left: 50, right: 90, width: 40, height: 20, x: 50, y: 100 };
+    };
+
+    renderWithOverflow();
+    fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
+
+    const dialog = screen.getByRole('dialog');
+    // document-relative top = rect.bottom(120) + scrollY(300) + 4(gap) = 424
+    // document-relative left = rect.left(50) + scrollX(0) = 50
+    expect(dialog.style.position).toBe('absolute');
+    const topVal = parseInt(dialog.style.top, 10);
+    const leftVal = parseInt(dialog.style.left, 10);
+    // top should include the scrollY offset (300), so topVal should be ≥ 300
+    expect(topVal).toBeGreaterThanOrEqual(300);
+    // left aligns with trigger left
+    expect(leftVal).toBe(50);
+
+    // Restore
+    Element.prototype.getBoundingClientRect = originalGetBCR;
+    if (originalScrollY) Object.defineProperty(window, 'scrollY', originalScrollY);
+    if (originalScrollX) Object.defineProperty(window, 'scrollX', originalScrollX);
+  });
+
+  it('T-137 19.D: Escape still closes DayPopover (regression)', () => {
     renderWithOverflow();
 
-    // Open the popover
     fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
     expect(screen.getByRole('dialog')).toBeDefined();
 
-    // Press Escape — must still close the popover with no errors
     expect(() => {
       fireEvent.keyDown(document, { key: 'Escape' });
     }).not.toThrow();
 
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('T-137 19.E: Click outside still closes DayPopover (regression)', () => {
+    renderWithOverflow();
+
+    fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
+    expect(screen.getByRole('dialog')).toBeDefined();
+
+    // Click outside the dialog (on document.body)
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('T-137 19.F: No scroll listener to clean up on unmount', () => {
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+
+    const { unmount } = renderWithOverflow();
+    fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
+    unmount();
+
+    const scrollRemoveCalls = removeSpy.mock.calls.filter(([event]) => event === 'scroll');
+    expect(scrollRemoveCalls.length).toBe(0);
+
+    removeSpy.mockRestore();
   });
 
   // ── T-127: Check-in chip label ────────────────────────────────────────────
@@ -1153,5 +1196,169 @@ describe('TripCalendar', () => {
 
     // Malformed flight date is skipped; stay check-in Oct 1 determines the month
     expect(screen.getByText(/OCTOBER 2026/i)).toBeDefined();
+  });
+
+  // ── T-138: Rental car pick-up / drop-off time chips (Spec 20) ─────────────
+
+  it('T-138 20.A: RENTAL_CAR pick-up day shows "pick-up Xp" chip', () => {
+    // departure_date=2026-08-07, departure_time=17:00 → "5p", arrival_date=2026-08-10
+    const landTravel = {
+      id: 'rc-1',
+      mode: 'RENTAL_CAR',
+      from_location: 'LAX',
+      to_location: 'SFO',
+      departure_date: '2026-08-07',
+      departure_time: '17:00:00',
+      arrival_date: '2026-08-10',
+      arrival_time: null,
+    };
+    render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[landTravel]} />
+    );
+    // Aug 7 cell should contain "pick-up 5p"
+    const pickupChips = screen.getAllByText(/pick-up 5p/i);
+    expect(pickupChips.length).toBeGreaterThan(0);
+  });
+
+  it('T-138 20.B: RENTAL_CAR drop-off day shows "drop-off Xp" chip', () => {
+    // departure_date=2026-08-07, departure_time=10:00, arrival_date=2026-08-10, arrival_time=14:00
+    const landTravel = {
+      id: 'rc-2',
+      mode: 'RENTAL_CAR',
+      from_location: 'LAX',
+      to_location: 'SFO',
+      departure_date: '2026-08-07',
+      departure_time: '10:00:00',
+      arrival_date: '2026-08-10',
+      arrival_time: '14:00:00',
+    };
+    render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[landTravel]} />
+    );
+    // Aug 10 cell should contain "drop-off 2p"
+    const dropoffChips = screen.getAllByText(/drop-off 2p/i);
+    expect(dropoffChips.length).toBeGreaterThan(0);
+  });
+
+  it('T-138 20.C: RENTAL_CAR with arrival_date=null shows no drop-off chip', () => {
+    const landTravel = {
+      id: 'rc-3',
+      mode: 'RENTAL_CAR',
+      from_location: 'LAX',
+      to_location: 'SFO',
+      departure_date: '2026-08-07',
+      departure_time: '17:00:00',
+      arrival_date: null,
+      arrival_time: null,
+    };
+    render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[landTravel]} />
+    );
+    // No "drop-off" chip anywhere in the calendar
+    expect(screen.queryByText(/drop-off/i)).toBeNull();
+  });
+
+  it('T-138 20.D: RENTAL_CAR with no times shows label-only "pick-up" and "drop-off" chips', () => {
+    const landTravel = {
+      id: 'rc-4',
+      mode: 'RENTAL_CAR',
+      from_location: 'LAX',
+      to_location: 'SFO',
+      departure_date: '2026-08-07',
+      departure_time: null,
+      arrival_date: '2026-08-10',
+      arrival_time: null,
+    };
+    render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[landTravel]} />
+    );
+    // departure_date cell: "pick-up" (no time suffix)
+    // We look for exact "pick-up" without time; the chip splits name and time into separate spans.
+    // The time span text would be "pick-up" when no calTime, so match that.
+    const pickupNoTime = screen.getAllByText('pick-up');
+    expect(pickupNoTime.length).toBeGreaterThan(0);
+    // arrival_date cell: "drop-off" (no time suffix)
+    const dropoffNoTime = screen.getAllByText('drop-off');
+    expect(dropoffNoTime.length).toBeGreaterThan(0);
+  });
+
+  it('T-138 20.E: Non-RENTAL_CAR land travel is unaffected (no pick-up prefix)', () => {
+    const landTravel = {
+      id: 'rc-5',
+      mode: 'TRAIN',
+      from_location: 'BOS',
+      to_location: 'NYC',
+      departure_date: '2026-08-07',
+      departure_time: '09:00:00',
+      arrival_date: null,
+      arrival_time: null,
+    };
+    render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[landTravel]} />
+    );
+    // No "pick-up" prefix on non-RENTAL_CAR mode
+    expect(screen.queryByText(/pick-up/i)).toBeNull();
+    // Standard departure time "9a" should appear
+    expect(screen.getByText('9a')).toBeDefined();
+  });
+
+  it('T-138 20.F: DayPopover shows matching "pick-up Xp" label for RENTAL_CAR in overflow list', () => {
+    // Need 4+ events on Aug 7 to trigger overflow; include a RENTAL_CAR pick-up day
+    const flight = {
+      id: 'of1', flight_number: 'AA1', airline: 'AA',
+      from_location: 'A', to_location: 'B',
+      departure_at: '2026-08-07T09:00:00.000Z', departure_tz: 'UTC',
+      arrival_at: '2026-08-07T12:00:00.000Z', arrival_tz: 'UTC',
+    };
+    const stay = {
+      id: 'os1', name: 'Hotel X', category: 'HOTEL',
+      check_in_at: '2026-08-07T15:00:00.000Z', check_in_tz: 'UTC',
+      check_out_at: '2026-08-12T11:00:00.000Z', check_out_tz: 'UTC',
+    };
+    const activity = {
+      id: 'oa1', name: 'Tour A', activity_date: '2026-08-07', start_time: '10:00:00',
+    };
+    const rentalCar = {
+      id: 'rc-f', mode: 'RENTAL_CAR', from_location: 'LAX', to_location: 'SFO',
+      departure_date: '2026-08-07', departure_time: '17:00:00',
+      arrival_date: '2026-08-10', arrival_time: null,
+    };
+
+    render(
+      <TripCalendar
+        trip={mockTrip}
+        flights={[flight]}
+        stays={[stay]}
+        activities={[activity]}
+        landTravels={[rentalCar]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /events on this day/i }));
+
+    const dialog = screen.getByRole('dialog');
+    // DayPopover getEventTime should show "pick-up 5p" for the RENTAL_CAR entry
+    expect(dialog.textContent).toMatch(/pick-up 5p/i);
+  });
+
+  it('T-138 20.G: Same-day RENTAL_CAR shows only "pick-up" chip, no "drop-off" chip', () => {
+    // departure_date === arrival_date → only pick-up chip
+    const landTravel = {
+      id: 'rc-g',
+      mode: 'RENTAL_CAR',
+      from_location: 'LAX',
+      to_location: 'SFO',
+      departure_date: '2026-08-07',
+      departure_time: '17:00:00',
+      arrival_date: '2026-08-07', // same day
+      arrival_time: '22:00:00',
+    };
+    render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[landTravel]} />
+    );
+    // pick-up chip on that day
+    expect(screen.getAllByText(/pick-up/i).length).toBeGreaterThan(0);
+    // No drop-off chip (buildEventsMap only adds arrival when arrival_date !== departure_date)
+    expect(screen.queryByText(/drop-off/i)).toBeNull();
   });
 });

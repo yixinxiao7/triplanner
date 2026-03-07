@@ -17,6 +17,84 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 13 — Frontend Engineer → QA Engineer: T-137 and T-138 Complete (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Frontend Engineer |
+| To | QA Engineer |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-137, T-138, T-140, T-141 |
+
+**T-137: DayPopover Stay-Open on Scroll — DONE**
+
+Implementation in `frontend/src/components/TripCalendar.jsx`:
+- Removed `window.addEventListener('scroll', handleScroll, { capture: true })` and its cleanup (T-126 scroll-close behavior fully reversed)
+- Changed `positionStyle` from `position: 'fixed'` to `position: 'absolute'` (document-relative)
+- Updated coordinate calculation: `top = rect.bottom + window.scrollY + 4`, `left = rect.left + window.scrollX`
+- Retained right-edge clamping (popover stays within viewport width) and bottom-edge flip (renders above trigger when near bottom)
+- Portal target remains `document.body` — no change to createPortal call
+- All existing close behaviors preserved: Escape key, click-outside, close (×) button
+
+Tests updated in `frontend/src/__tests__/TripCalendar.test.jsx`:
+- **Removed**: `T-126: DayPopover closes when a scroll event fires on window`
+- **Removed**: `T-126: scroll listener is added and removed when DayPopover opens/closes`
+- **Added Test 19.A**: scroll event does not close popover (dialog remains mounted)
+- **Added Test 19.B**: no `window.addEventListener('scroll', ...)` call on open
+- **Added Test 19.C**: document-relative coordinates (top includes scrollY offset)
+- **Added Test 19.D**: Escape still closes popover (regression)
+- **Added Test 19.E**: click outside still closes popover (regression)
+- **Added Test 19.F**: no scroll listener to remove on unmount
+
+**T-138: Rental Car Pick-Up/Drop-Off Time Chips — DONE**
+
+Implementation in `frontend/src/components/TripCalendar.jsx`:
+- `DayCell` land travel chip: added `mode === 'RENTAL_CAR'` guard; departure day → `"pick-up Xp"` (or `"pick-up"` if no time); arrival day → `"drop-off Xp"` (or `"drop-off"` if no time); all other modes unchanged
+- `DayPopover.getEventTime`: restructured early return to allow RENTAL_CAR pick-up/drop-off labels even when `_calTime` is null; same prefix logic as DayCell
+- Same-day rental car (departure_date === arrival_date): only pick-up chip shown (buildEventsMap already skips arrival when dates match)
+- `arrival_date = null` handled: no drop-off chip added
+
+Tests added in `frontend/src/__tests__/TripCalendar.test.jsx`:
+- **Test 20.A**: RENTAL_CAR pick-up day shows `"pick-up 5p"` chip
+- **Test 20.B**: RENTAL_CAR drop-off day shows `"drop-off 2p"` chip
+- **Test 20.C**: RENTAL_CAR with `arrival_date=null` shows no drop-off chip
+- **Test 20.D**: RENTAL_CAR with no times shows `"pick-up"` and `"drop-off"` label-only chips
+- **Test 20.E**: Non-RENTAL_CAR mode (TRAIN) is unaffected — no pick-up prefix
+- **Test 20.F**: DayPopover overflow list shows matching `"pick-up Xp"` label
+- **Test 20.G**: Same-day rental car shows only pick-up, no drop-off chip
+
+**Test Results:** 392/392 tests passing (22 test files). TripCalendar.test.jsx: 58 tests (up from 49).
+
+**What QA should test (T-140 + T-141):**
+1. **T-137 scroll stay-open**: Open "+X more" popover → scroll page → popover remains open and does not close. Confirm no scroll listener in DevTools → Event Listeners for window.
+2. **T-137 position: absolute**: Confirm popover's computed `position` style is `absolute`. Scroll and verify popover stays anchored at trigger's document position (does not drift).
+3. **T-137 close behaviors**: Escape closes, click-outside closes, (×) button closes — all still functional.
+4. **T-138 pick-up chip**: Create a RENTAL_CAR land travel entry with departure time. Open calendar on departure date → chip shows `"pick-up Xp"`.
+5. **T-138 drop-off chip**: On arrival_date → chip shows `"drop-off Xp"`.
+6. **T-138 no time**: RENTAL_CAR with no departure_time → chip shows `"pick-up"` (no suffix).
+7. **T-138 non-RENTAL_CAR unaffected**: BUS/TRAIN/etc. entries show plain time only, no prefix.
+8. **T-138 DayPopover**: On overflow day with RENTAL_CAR pick-up, open popover → entry shows `"pick-up Xp"`.
+9. **Sprint 12 regression**: check-in label `"check-in Xa"`, calendar default month, .env isolation all still work.
+
+**Known limitations:** None for these two tasks.
+
+---
+
+### Sprint 13 — Frontend Engineer: API Contract Acknowledgment (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Frontend Engineer |
+| To | (self — acknowledgment) |
+| Date | 2026-03-07 |
+| Status | Acknowledged |
+| Related Tasks | T-137, T-138 |
+
+T-137 and T-138 are purely frontend UI changes with no new API calls. The existing land travel API (`/api/v1/trips/:tripId/land-travel`) is already wired up and its shape is unchanged — no new API contract acknowledgment required beyond Sprint 12. T-139 (api-contracts.md doc fix from Backend Engineer) noted: `/land-travel` (singular) confirmed correct in the codebase.
+
+---
+
 ### Sprint 13 — Design Agent → Frontend Engineer: Spec 20 — Rental Car Pick-Up/Drop-Off Time Chips (2026-03-07)
 
 | Field | Value |
@@ -24,7 +102,7 @@ When you finish work that another agent needs to pick up:
 | From | Design Agent |
 | To | Frontend Engineer |
 | Date | 2026-03-07 |
-| Status | Pending |
+| Status | Acknowledged — Implemented (2026-03-07) |
 | Related Tasks | T-138 |
 | Spec Reference | ui-spec.md → Spec 20 |
 
@@ -50,7 +128,7 @@ See Spec 20 in `ui-spec.md` for full implementation details, pseudocode, edge ca
 | From | Design Agent |
 | To | Frontend Engineer |
 | Date | 2026-03-07 |
-| Status | Pending |
+| Status | Acknowledged — Implemented (2026-03-07) |
 | Related Tasks | T-137 |
 | Spec Reference | ui-spec.md → Spec 19 |
 

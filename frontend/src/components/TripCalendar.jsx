@@ -264,16 +264,38 @@ function DayPopover({ day, events, onClose, triggerRef, position }) {
     ? `${DAYS_OF_WEEK[(new Date(`${day}T00:00:00`)).getDay()]}, ${MONTHS[parsed.month]} ${parsed.day}`
     : day;
 
-  // Build fixed positioning style from the stored bounding rect
-  // In JSDOM tests, getBoundingClientRect returns zeros → popover at top:4,left:0 (fine for tests)
-  const positionStyle = position
-    ? {
-        position: 'fixed',
-        top: (position.bottom || 0) + 4,
-        left: Math.max(0, position.left || 0),
-        zIndex: 1000,
-      }
-    : { position: 'fixed', top: 4, left: 0, zIndex: 1000 };
+  // T-137: Build document-relative positioning style (position: absolute).
+  // Computed once at mount time; position: absolute on a document.body child
+  // means the popover scrolls with the document and stays pinned to the trigger.
+  // In JSDOM tests, getBoundingClientRect/scrollX/scrollY all return zeros → top:4,left:0 (fine).
+  const positionStyle = (() => {
+    const scrollX = (typeof window !== 'undefined' ? (window.scrollX ?? window.pageXOffset) : 0) || 0;
+    const scrollY = (typeof window !== 'undefined' ? (window.scrollY ?? window.pageYOffset) : 0) || 0;
+    const viewportWidth = (typeof window !== 'undefined' ? window.innerWidth : 0) || 0;
+    const viewportHeight = (typeof window !== 'undefined' ? window.innerHeight : 0) || 0;
+    const popoverWidth = 240;
+    const popoverEstimatedHeight = 200;
+
+    if (!position) {
+      return { position: 'absolute', top: 4, left: 0, zIndex: 1000 };
+    }
+
+    let top = (position.bottom || 0) + scrollY + 4;
+    let left = (position.left || 0) + scrollX;
+
+    // Right-edge clamping: prevent overflow off the right side of the viewport
+    if (viewportWidth > 0 && left + popoverWidth > scrollX + viewportWidth - 16) {
+      left = scrollX + viewportWidth - popoverWidth - 16;
+    }
+    left = Math.max(scrollX, left);
+
+    // Bottom-edge: render above trigger if insufficient space below
+    if (viewportHeight > 0 && (position.bottom || 0) + popoverEstimatedHeight > viewportHeight) {
+      top = (position.top || 0) + scrollY - popoverEstimatedHeight;
+    }
+
+    return { position: 'absolute', top, left, zIndex: 1000 };
+  })();
 
   // Focus the popover on open
   useEffect(() => {
@@ -282,18 +304,8 @@ function DayPopover({ day, events, onClose, triggerRef, position }) {
     }
   }, []);
 
-  // T-126: Close popover when page is scrolled to prevent position drift
-  // Uses { capture: true } to catch scroll events on any scrollable ancestor, not just window
-  useEffect(() => {
-    const handleScroll = () => {
-      onClose();
-      triggerRef?.current?.focus();
-    };
-    window.addEventListener('scroll', handleScroll, { capture: true });
-    return () => {
-      window.removeEventListener('scroll', handleScroll, { capture: true });
-    };
-  }, [onClose, triggerRef]);
+  // T-137: Scroll does NOT close the popover (Spec 19 reverses T-126 scroll-close behavior).
+  // position: absolute keeps the popover anchored to the trigger's document position.
 
   // Close on Escape
   useEffect(() => {
@@ -344,19 +356,29 @@ function DayPopover({ day, events, onClose, triggerRef, position }) {
   }
 
   function getEventTime(type, item) {
-    if (!item._calTime) return null;
     if (type === 'flight') {
+      if (!item._calTime) return null;
       return item._isArrival ? `arrives ${item._calTime}` : `dep. ${item._calTime}`;
     }
     if (type === 'stay') {
+      if (!item._calTime) return null;
       if (item._isFirst) return `check-in ${item._calTime}`;
       return null;
     }
-    if (type === 'activity') return item._calTime;
+    if (type === 'activity') return item._calTime || null;
+    // T-138: RENTAL_CAR land travel shows "pick-up Xp" / "drop-off Xp" labels.
+    // Other modes fall through to standard arr./dep. labels.
     if (type === 'landTravel') {
+      if (item.mode === 'RENTAL_CAR') {
+        if (item._isArrival) {
+          return item._calTime ? `drop-off ${item._calTime}` : 'drop-off';
+        }
+        return item._calTime ? `pick-up ${item._calTime}` : 'pick-up';
+      }
+      if (!item._calTime) return null;
       return item._isArrival ? `arr. ${item._calTime}` : `dep. ${item._calTime}`;
     }
-    return item._calTime;
+    return item._calTime || null;
   }
 
   return (
@@ -515,6 +537,18 @@ function DayCell({ day, isOutsideMonth, isToday, events, openPopoverDay, onOpenP
           }
           if (ev.type === 'landTravel') {
             const chipLabel = `${ev.item._modeLabel} → ${ev.item.to_location}`;
+            // T-138: RENTAL_CAR shows "pick-up Xp" on pick-up day and "drop-off Xp" on drop-off day.
+            // All other modes show the plain departure/arrival time (existing behavior).
+            let timeLabel = null;
+            if (ev.item.mode === 'RENTAL_CAR') {
+              if (ev.item._isArrival) {
+                timeLabel = ev.item._calTime ? `drop-off ${ev.item._calTime}` : 'drop-off';
+              } else {
+                timeLabel = ev.item._calTime ? `pick-up ${ev.item._calTime}` : 'pick-up';
+              }
+            } else {
+              timeLabel = ev.item._calTime || null;
+            }
             return (
               <div
                 key={`lt-${i}`}
@@ -523,7 +557,7 @@ function DayCell({ day, isOutsideMonth, isToday, events, openPopoverDay, onOpenP
                 title={chipLabel}
               >
                 <span className={styles.eventName}>{chipLabel}</span>
-                {ev.item._calTime && <span className={styles.eventTime}>{ev.item._calTime}</span>}
+                {timeLabel && <span className={styles.eventTime}>{timeLabel}</span>}
               </div>
             );
           }
