@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import TripCalendar from '../components/TripCalendar';
 
 const mockTrip = {
@@ -1360,5 +1360,225 @@ describe('TripCalendar', () => {
     expect(screen.getAllByText(/pick-up/i).length).toBeGreaterThan(0);
     // No drop-off chip (buildEventsMap only adds arrival when arrival_date !== departure_date)
     expect(screen.queryByText(/drop-off/i)).toBeNull();
+  });
+
+  // ── T-146 (Spec 21): Async first-event-month fix ──────────────────────────
+
+  it('T-146 21.A: calendar auto-updates to first-event month when data arrives after mount', () => {
+    // Initial render with empty arrays → calendar shows current month (fallback)
+    const { rerender } = render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[]} />
+    );
+
+    // Simulate async data arrival: flights with a May 2026 event
+    const mayFlight = [{
+      id: 'f-may',
+      flight_number: 'AA100',
+      airline: 'American Airlines',
+      from_location: 'JFK',
+      to_location: 'LHR',
+      departure_at: '2026-05-10T09:00:00.000Z',
+      departure_tz: 'America/New_York',
+      arrival_at: '2026-05-10T21:00:00.000Z',
+      arrival_tz: 'Europe/London',
+    }];
+
+    act(() => {
+      rerender(
+        <TripCalendar trip={mockTrip} flights={mayFlight} stays={[]} activities={[]} landTravels={[]} />
+      );
+    });
+
+    // Calendar should automatically navigate to May 2026 without user interaction
+    expect(screen.getByText(/MAY 2026/i)).toBeDefined();
+  });
+
+  it('T-146 21.B: calendar does NOT override user navigation when data arrives after user navigated', () => {
+    // Initial render with empty arrays → current month
+    const { rerender } = render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[]} />
+    );
+
+    // User navigates to next month before data arrives
+    const nextBtn = screen.getByRole('button', { name: /next month/i });
+    fireEvent.click(nextBtn);
+
+    // Capture the month the user navigated to (one month ahead of now)
+    const now = new Date();
+    const expectedMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const expectedMonthName = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
+      'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'][expectedMonth.getMonth()];
+
+    // Verify we are on the user-navigated month
+    expect(screen.getByText(new RegExp(`${expectedMonthName} ${expectedMonth.getFullYear()}`, 'i'))).toBeDefined();
+
+    // Now data arrives with May 2026 events
+    const mayFlight = [{
+      id: 'f-may',
+      flight_number: 'AA100',
+      airline: 'American Airlines',
+      from_location: 'JFK',
+      to_location: 'LHR',
+      departure_at: '2026-05-10T09:00:00.000Z',
+      departure_tz: 'America/New_York',
+      arrival_at: '2026-05-10T21:00:00.000Z',
+      arrival_tz: 'Europe/London',
+    }];
+
+    act(() => {
+      rerender(
+        <TripCalendar trip={mockTrip} flights={mayFlight} stays={[]} activities={[]} landTravels={[]} />
+      );
+    });
+
+    // Calendar MUST remain on the user's chosen month, NOT jump to May 2026
+    expect(screen.queryByText(/MAY 2026/i)).toBeNull();
+    expect(screen.getByText(new RegExp(`${expectedMonthName} ${expectedMonth.getFullYear()}`, 'i'))).toBeDefined();
+  });
+
+  it('T-146 21.C: no spurious update when data arrives but all dates are null/invalid', () => {
+    const now = new Date();
+    const currentMonthName = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
+      'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'][now.getMonth()];
+
+    const { rerender } = render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[]} />
+    );
+
+    // Data arrives but with null departure_at → getInitialMonth falls back to current month
+    const invalidFlight = [{
+      id: 'f-invalid',
+      flight_number: 'XX999',
+      airline: 'Unknown',
+      from_location: 'A',
+      to_location: 'B',
+      departure_at: null,
+      departure_tz: 'UTC',
+      arrival_at: null,
+      arrival_tz: 'UTC',
+    }];
+
+    act(() => {
+      rerender(
+        <TripCalendar trip={mockTrip} flights={invalidFlight} stays={[]} activities={[]} landTravels={[]} />
+      );
+    });
+
+    // Calendar stays on current month (no erroneous navigation)
+    expect(screen.getByText(new RegExp(`${currentMonthName} ${now.getFullYear()}`, 'i'))).toBeDefined();
+  });
+
+  it('T-146 21.D: both prev AND next clicks set hasNavigated — data arrival does not override', () => {
+    // Test prev click variant: user clicks "<" then data arrives
+    const { rerender } = render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[]} />
+    );
+
+    const prevBtn = screen.getByRole('button', { name: /previous month/i });
+    fireEvent.click(prevBtn);
+
+    // Determine the month user navigated to (one month before now)
+    const now = new Date();
+    const expectedMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const expectedMonthName = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
+      'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'][expectedMonth.getMonth()];
+
+    expect(screen.getByText(new RegExp(`${expectedMonthName} ${expectedMonth.getFullYear()}`, 'i'))).toBeDefined();
+
+    // Data arrives with May 2026 events
+    const mayFlight = [{
+      id: 'f-may',
+      flight_number: 'AA100',
+      airline: 'American Airlines',
+      from_location: 'JFK',
+      to_location: 'LHR',
+      departure_at: '2026-05-10T09:00:00.000Z',
+      departure_tz: 'America/New_York',
+      arrival_at: '2026-05-10T21:00:00.000Z',
+      arrival_tz: 'Europe/London',
+    }];
+
+    act(() => {
+      rerender(
+        <TripCalendar trip={mockTrip} flights={mayFlight} stays={[]} activities={[]} landTravels={[]} />
+      );
+    });
+
+    // Calendar must NOT jump to May 2026 — user navigated, so hasNavigated.current === true
+    expect(screen.queryByText(/MAY 2026/i)).toBeNull();
+    expect(screen.getByText(new RegExp(`${expectedMonthName} ${expectedMonth.getFullYear()}`, 'i'))).toBeDefined();
+  });
+
+  // ── T-147 (Spec 22): "Today" button ────────────────────────────────────────
+
+  it('T-147 22.A: clicking "today" button navigates calendar to current month', () => {
+    // Start with flights in August 2026 → calendar opens on August 2026
+    render(
+      <TripCalendar trip={mockTrip} flights={mockFlights} stays={[]} activities={[]} landTravels={[]} />
+    );
+
+    // Confirm we're on August 2026
+    expect(screen.getByText(/AUGUST 2026/i)).toBeDefined();
+
+    // Click the today button
+    const todayBtn = screen.getByRole('button', { name: /go to current month/i });
+    fireEvent.click(todayBtn);
+
+    // Calendar should now show the actual current month
+    const now = new Date();
+    const currentMonthName = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
+      'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'][now.getMonth()];
+    expect(screen.getByText(new RegExp(`${currentMonthName} ${now.getFullYear()}`, 'i'))).toBeDefined();
+  });
+
+  it('T-147 22.B: "today" button is visible when viewing a past month', () => {
+    // Navigate to a past month via prev button
+    render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[]} />
+    );
+
+    // Click prev to go back a month
+    const prevBtn = screen.getByRole('button', { name: /previous month/i });
+    fireEvent.click(prevBtn);
+
+    // Today button must still be visible
+    const todayBtn = screen.getByRole('button', { name: /go to current month/i });
+    expect(todayBtn).toBeDefined();
+  });
+
+  it('T-147 22.C: "today" button is visible when viewing a future month', () => {
+    // Navigate to a future month (August 2026) via flights prop
+    render(
+      <TripCalendar trip={mockTrip} flights={mockFlights} stays={[]} activities={[]} landTravels={[]} />
+    );
+
+    // Today button must be visible even on a future month
+    const todayBtn = screen.getByRole('button', { name: /go to current month/i });
+    expect(todayBtn).toBeDefined();
+  });
+
+  it('T-147 22.D: prev/next navigation works correctly after clicking "today"', () => {
+    // Start on August 2026 (via mockFlights)
+    render(
+      <TripCalendar trip={mockTrip} flights={mockFlights} stays={[]} activities={[]} landTravels={[]} />
+    );
+
+    // Click "today" → returns to current month
+    const todayBtn = screen.getByRole('button', { name: /go to current month/i });
+    fireEvent.click(todayBtn);
+
+    const now = new Date();
+    const currentMonthName = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
+      'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'][now.getMonth()];
+    expect(screen.getByText(new RegExp(`${currentMonthName} ${now.getFullYear()}`, 'i'))).toBeDefined();
+
+    // Click next → should go to next month (prev/next still works after today click)
+    const nextBtn = screen.getByRole('button', { name: /next month/i });
+    fireEvent.click(nextBtn);
+
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const nextMonthName = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
+      'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'][nextMonth.getMonth()];
+    expect(screen.getByText(new RegExp(`${nextMonthName} ${nextMonth.getFullYear()}`, 'i'))).toBeDefined();
   });
 });

@@ -17,6 +17,57 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 14 — Frontend Engineer → QA Engineer: T-146 + T-147 Ready for Review (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Frontend Engineer |
+| To | QA Engineer |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-146, T-147, T-148, T-149 |
+
+**T-146 (Calendar async first-event-month fix) — DONE**
+
+- Added `hasNavigated = useRef(false)` inside `TripCalendar`.
+- Updated `prevMonth()` and `nextMonth()` to set `hasNavigated.current = true` before navigating.
+- Added `handleToday()` (T-147) that also sets `hasNavigated.current = true`.
+- Added `useEffect([flights, stays, activities, landTravels])`: when non-empty data arrives and `hasNavigated.current === false`, calls `getInitialMonth()` and updates `viewYear`/`viewMonth`. If `hasNavigated` is true, effect is a no-op.
+- All existing T-128 tests still pass (no changes to `getInitialMonth()`).
+- 4 new tests added: 21.A (async load auto-update), 21.B (user-navigated-before-load no override), 21.C (null dates no spurious update), 21.D (prev click sets hasNavigated).
+
+**T-147 ("Today" button) — DONE**
+
+- Added `handleToday()` function to `TripCalendar`.
+- Added `<button className={styles.todayBtn} onClick={handleToday} aria-label="Go to current month">today</button>` to the calendar nav header (to the right of the `>` arrow).
+- Added `.todayBtn` CSS class with full hover/focus-visible states and mobile responsive variant to `TripCalendar.module.css`.
+- 4 new tests added: 22.A (click today returns to current month), 22.B (button visible on past month), 22.C (button visible on future month), 22.D (prev/next still works after today click).
+
+**Files modified:**
+- `frontend/src/components/TripCalendar.jsx`
+- `frontend/src/components/TripCalendar.module.css`
+- `frontend/src/__tests__/TripCalendar.test.jsx`
+
+**Known limitations:** None. `hasNavigated` ref is reset on component unmount (re-mount = new trip = fresh init), which is the correct behavior.
+
+**QA: please verify per T-148 / T-149 test plans** — async data load scenario, no-events fallback, user-navigated-before-load no-reset, "Today" button accessibility (`aria-label`), and all existing TripCalendar tests passing.
+
+---
+
+### Sprint 14 — Frontend Engineer: API Contract Acknowledged (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Frontend Engineer |
+| To | Backend Engineer |
+| Date | 2026-03-07 |
+| Status | Acknowledged |
+| Related Tasks | T-146, T-147 |
+
+Sprint 14 API contract reviewed and acknowledged. No new endpoints needed. T-146 uses existing in-memory data (`flights`, `stays`, `activities`, `landTravels`) already fetched by `TripDetailsPage`. T-147 requires no API calls — pure client-side state. Proceeding with implementation.
+
+---
+
 ### Sprint 14 — Backend Engineer: API Contracts Ready — No Backend Changes (2026-03-07)
 
 | Field | Value |
@@ -24,7 +75,7 @@ When you finish work that another agent needs to pick up:
 | From | Backend Engineer |
 | To | Frontend Engineer |
 | Date | 2026-03-07 |
-| Status | Pending |
+| Status | Acknowledged |
 | Related Tasks | T-146, T-147 |
 
 **Sprint 14 API contract review complete. No new or changed endpoints this sprint.**

@@ -611,6 +611,10 @@ export default function TripCalendar({
     getInitialMonth(flights, stays, activities, landTravels).getMonth()
   );
 
+  // T-146: Track whether the user has manually navigated the calendar.
+  // Prevents the async data-arrival effect from overriding an explicit user choice.
+  const hasNavigated = useRef(false);
+
   // T-097: Popover state now includes bounding rect for portal positioning.
   // Shape: { day: "YYYY-MM-DD", triggerRef: React.RefObject, rect: DOMRect | null } | null
   const [openPopover, setOpenPopover] = useState(null);
@@ -652,7 +656,32 @@ export default function TripCalendar({
     return days;
   }, [viewYear, viewMonth]);
 
+  // T-146: Data-arrival effect — auto-initialize calendar to the first-event month
+  // the first time non-empty event data arrives, but only if the user has not
+  // already manually navigated (hasNavigated.current === false).
+  useEffect(() => {
+    if (hasNavigated.current) return;
+
+    const hasData =
+      flights.length > 0 ||
+      stays.length > 0 ||
+      activities.length > 0 ||
+      landTravels.length > 0;
+
+    if (!hasData) return;
+
+    const firstEventMonth = getInitialMonth(flights, stays, activities, landTravels);
+    const newYear = firstEventMonth.getFullYear();
+    const newMonth = firstEventMonth.getMonth();
+
+    // Only update if the computed month differs from what is already displayed
+    // (React will bail out automatically for primitives, but be explicit)
+    setViewYear(newYear);
+    setViewMonth(newMonth);
+  }, [flights, stays, activities, landTravels]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function prevMonth() {
+    hasNavigated.current = true; // T-146: mark user navigation
     setOpenPopover(null);
     if (viewMonth === 0) {
       setViewMonth(11);
@@ -663,6 +692,7 @@ export default function TripCalendar({
   }
 
   function nextMonth() {
+    hasNavigated.current = true; // T-146: mark user navigation
     setOpenPopover(null);
     if (viewMonth === 11) {
       setViewMonth(0);
@@ -670,6 +700,15 @@ export default function TripCalendar({
     } else {
       setViewMonth((m) => m + 1);
     }
+  }
+
+  // T-147: Navigate to current month. Sets hasNavigated so async init won't override.
+  function handleToday() {
+    hasNavigated.current = true;
+    const now = new Date();
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth());
+    setOpenPopover(null);
   }
 
   return (
@@ -692,6 +731,15 @@ export default function TripCalendar({
           aria-label="Next month"
         >
           ›
+        </button>
+
+        {/* T-147: "Today" button — always visible, returns calendar to current month */}
+        <button
+          className={styles.todayBtn}
+          onClick={handleToday}
+          aria-label="Go to current month"
+        >
+          today
         </button>
       </div>
 
