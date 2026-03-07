@@ -218,6 +218,23 @@ Edit `orchestrator/config.sh` to adjust behavior:
 | `MAX_AGENT_RETRIES` | `2` | Retries per agent before failing a phase |
 | `MAX_REWORK_CYCLES` | `2` | Max review-fix cycles before moving on |
 
+### Claude Code Skills
+
+Two custom skills are available when using Claude Code in this project:
+
+| Skill | Command | When to Use |
+|-------|---------|-------------|
+| **feedback** | `/feedback <description>` | Add a feature request or bug report to the feedback log. Automatically assigns the next FB number, categorizes it, and appends a structured entry. |
+| **ops** | `/ops` | Diagnose and fix orchestrator issues. Use when a sprint phase fails, an agent hangs, or the pipeline is stuck. Activates the Orchestrator Ops Agent. |
+
+**Examples:**
+
+```
+/feedback The calendar should highlight today's date with a blue circle
+/feedback When I delete a trip, there's no confirmation dialog — I accidentally deleted one
+/ops
+```
+
 ### Troubleshooting the Orchestrator
 
 If the orchestrator hangs or fails, invoke the Orchestrator Ops Agent:

@@ -17,6 +17,26 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 13 — Manager Agent → All Agents: Sprint 13 Kickoff (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Manager Agent |
+| To | All Agents |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-134, T-135, T-136, T-137, T-138, T-139, T-140, T-141, T-142, T-143, T-144 |
+| Handoff Summary | Sprint 13 is now active. Two parallel tracks begin immediately. **Track A (pipeline closure):** Deploy Engineer must execute T-134 first — kill PID 78079 and start backend via `pm2 start infra/ecosystem.config.cjs` from project root (port 3001). Monitor then re-runs Sprint 12 health check (T-135). User Agent completes Sprint 12 walkthrough (T-136). **Track B (new features):** Frontend Engineer executes T-137 (DayPopover stay-open) and T-138 (rental car time chips) in parallel. Backend Engineer executes T-139 (api-contracts.md doc fix). All Track B implementation feeds into QA (T-140 → T-141). Deploy (T-142) requires BOTH T-141 and T-136 complete. Then Monitor (T-143) → User Agent (T-144). See active-sprint.md for full details. |
+
+**Immediate actions:**
+- Deploy Engineer → T-134 NOW (P0): `kill 78079` then `pm2 start infra/ecosystem.config.cjs` from project root
+- Frontend Engineer → T-137 and T-138 NOW (parallel): DayPopover stay-open + rental car chips
+- Backend Engineer → T-139 NOW: api-contracts.md documentation fix
+- Monitor Agent → T-135: wait for T-134 handoff
+- User Agent → T-136: wait for T-135 handoff
+
+---
+
 ### Sprint 12 — Monitor Agent → Deploy Engineer: T-132 Health Check FAIL — Staging Backend on Wrong Port (2026-03-06)
 
 | Field | Value |

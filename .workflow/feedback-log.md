@@ -182,5 +182,48 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 |----------|----------|----------|-------------|-------|
 | FB-089 | Monitor Alert | Major | **Tasked → Sprint 13 (T-131 re-execution)** | Deploy Engineer must use `pm2 start infra/ecosystem.config.cjs` from project root. Backend must run on `https://localhost:3001` (PORT=3001 from `.env.staging`). P0, Sprint 13. |
 | FB-090 | Monitor Alert | Minor | **Acknowledged (backlog)** | Backend Engineer to fix `api-contracts.md` — change `/land-travels` to `/land-travel` (singular). No functional impact. Low priority. |
+| FB-091 | Feature Gap | Minor | **Tasked → T-137** | DayPopover should not close on scroll; should remain open and anchored at original position until user explicitly closes it. Frontend fix, P2, Sprint 13. |
+| FB-092 | Feature Gap | Minor | **Tasked → T-138** | Rental car calendar events should show "pick-up Xp" and "drop-off Xp" time labels, matching the stay check-in/check-out chip format. Frontend fix, P2, Sprint 13. |
+
+---
+
+### FB-091 — DayPopover: keep popover open and anchored on scroll
+
+| Field | Value |
+|-------|-------|
+| Feedback | DayPopover closes on scroll — should stay open and anchored |
+| Sprint | 12 |
+| Category | Feature Gap |
+| Severity | Minor |
+| Status | Tasked → T-137 |
+| Related Task | T-126, T-137 |
+
+**Description:** When clicking "+X more" on a calendar day, the DayPopover opens correctly. However, as soon as the user scrolls the page, the popover disappears. The desired behavior is: (1) The popover should remain open until the user explicitly closes it (click outside, press Escape, or click the close button). Scrolling should NOT dismiss it. (2) The popover should stay anchored at the position where it was originally opened — it should NOT move or drift when the user scrolls up or down on the page. In other words, the popover should use `position: absolute` (anchored to the document) rather than `position: fixed` (anchored to the viewport), and scroll events should not trigger a close.
+
+---
+
+### FB-092 — Rental car calendar events: show pick-up and drop-off time labels
+
+| Field | Value |
+|-------|-------|
+| Feedback | Rental car calendar events should display "pick-up" and "drop-off" time labels |
+| Sprint | 12 |
+| Category | Feature Gap |
+| Severity | Minor |
+| Status | Tasked → T-138 |
+| Related Task | T-138 |
+
+**Description:** Rental cars displayed on the calendar view do not clearly indicate pick-up and drop-off times. The desired behavior is to match the format used by stays (check-in/check-out chips). On the pick-up day, the calendar event should show a time chip reading "pick-up Xp" (e.g., "pick-up 5p" for a 5 PM pick-up on May 21st). On the drop-off day, the chip should read "drop-off Xp" (e.g., "drop-off 5p"). This makes it immediately obvious when the rental period starts and ends, consistent with how stays display "check-in 4p" and "check-out 11a".
+
+---
+
+## Sprint 13 Feedback Triage (Manager Agent — 2026-03-07)
+
+| FB Entry | Category | Severity | Disposition | Notes |
+|----------|----------|----------|-------------|-------|
+| FB-089 | Monitor Alert | Major | **Tasked → T-134 (T-131 re-execution)** | Deploy Engineer must use `pm2 start infra/ecosystem.config.cjs` from project root. Backend must serve on `https://localhost:3001`. P0, Sprint 13. Carried from Sprint 12. |
+| FB-090 | Monitor Alert | Minor | **Tasked → T-139** | Backend Engineer to fix `api-contracts.md` — change `/land-travels` to `/land-travel` (singular). Documentation-only fix. P3, Sprint 13. |
+| FB-091 | Feature Gap | Minor | **Tasked → T-137** | Frontend Engineer to rework DayPopover: use `position: absolute` (document-anchored) so popover stays open and in place on scroll. Reverts T-126 scroll-close approach. P2, Sprint 13. |
+| FB-092 | Feature Gap | Minor | **Tasked → T-138** | Frontend Engineer to add "pick-up Xp" and "drop-off Xp" time chips for rental car entries on calendar (pick-up day and drop-off day respectively), matching stay check-in/check-out chip format. P2, Sprint 13. |
 
 ---
