@@ -6912,3 +6912,516 @@ All existing `TripCalendar.test.jsx` tests must continue to pass.
 ---
 
 *Sprint 13 Spec 20 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
+
+---
+
+## Sprint 14 Specs
+
+---
+
+### Spec 21: TripCalendar — Async First-Event-Month Fix
+
+**Status:** Approved
+**Sprint:** 14
+**Related Task:** T-146
+**Feedback Source:** FB-095
+**Published:** 2026-03-07
+**Type:** Bug Fix
+
+---
+
+#### 21.1 Overview and Problem Statement
+
+T-128 (Sprint 12) implemented `getInitialMonth()` to compute the month of the first planned event and use it as the calendar's starting month. The implementation was correct in isolation, but a timing bug prevents it from working in practice:
+
+**Root cause:** `TripCalendar` receives `flights`, `stays`, `activities`, and `landTravel` as props. On first render, these props are **empty arrays** — the data has not yet arrived from the async API calls in `TripDetailsPage`. The lazy `useState` initializer fires immediately on mount with empty arrays, so `getInitialMonth()` falls through to its fallback (current month). When the data eventually loads and the props update, `useState`'s initializer does **not** re-run — `currentMonth` is stuck at the current month.
+
+**Fix:** Add a `useEffect` that watches the event data props and, the first time meaningful data arrives, updates `currentMonth` to the result of `getInitialMonth(flights, stays, activities, landTravel)` — but **only if the user has not manually navigated the calendar** (tracked via a `hasNavigated` ref).
+
+**No new screens or routes.** This spec describes an implementation change to `TripCalendar` (and related test file) only.
+
+---
+
+#### 21.2 Component Location
+
+**Component:** `TripCalendar.jsx` (located in `frontend/src/components/TripCalendar/` or `frontend/src/components/`)
+
+**Test file:** `TripCalendar.test.jsx` (or equivalent)
+
+---
+
+#### 21.3 Behavioral Specification
+
+##### 21.3.1 Happy Path — data loads after mount
+
+| Step | State | Calendar shows |
+|------|-------|---------------|
+| TripDetailsPage mounts | flights=[], stays=[], activities=[], landTravel=[] | Current month (fallback) |
+| API calls resolve — data arrives | flights=[...May events...], stays=[], activities=[], landTravel=[] | **Automatically updates to May 2026** |
+| User navigates prev/next | — | User's chosen month (no automatic reset) |
+| User opens a different trip | Component re-mounts | Correct first-event month for new trip |
+
+##### 21.3.2 User navigated before data arrived
+
+| Step | State | Calendar shows |
+|------|-------|---------------|
+| TripCalendar mounts | All props empty | Current month (fallback) |
+| User clicks `>` (next month) | `hasNavigated.current = true` | April 2026 (user's choice) |
+| Data arrives | flights=[...May events...] | **Stays on April 2026 — no override** |
+
+**Rationale:** The user has expressed intent by navigating. Overriding their choice when data arrives would be jarring and unexpected.
+
+##### 21.3.3 Empty trip (no events ever)
+
+| Step | State | Calendar shows |
+|------|-------|---------------|
+| TripCalendar mounts | All props empty | Current month |
+| API calls resolve | All props still empty (no events added) | Current month (no change) |
+
+The `useEffect` must NOT update `currentMonth` if `getInitialMonth()` returns the current month due to absence of events — it must only update when there are actual events to navigate to. This is naturally handled by tracking whether `hasNavigated` has been set and whether the data is non-empty.
+
+---
+
+#### 21.4 Implementation Specification
+
+##### 21.4.1 `hasNavigated` Ref
+
+Add a ref to `TripCalendar` to track whether the user has manually moved the calendar:
+
+```jsx
+const hasNavigated = useRef(false);
+```
+
+- Initialized to `false` on component mount.
+- Set to `true` in **every** handler that changes `currentMonth` due to user interaction:
+  - The `handlePrev` callback (click `<` arrow)
+  - The `handleNext` callback (click `>` arrow)
+  - The `handleToday` callback (click "Today" button — T-147)
+- **Never reset to `false`** once it becomes `true` — if the user has navigated even once, automatic initialization is permanently disabled for that component instance.
+- Not exposed to parent — internal implementation detail only.
+
+##### 21.4.2 Updated Navigation Handlers
+
+**Before (existing):**
+```jsx
+function handlePrev() {
+  setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+}
+function handleNext() {
+  setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+}
+```
+
+**After:**
+```jsx
+function handlePrev() {
+  hasNavigated.current = true;
+  setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+}
+function handleNext() {
+  hasNavigated.current = true;
+  setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+}
+```
+
+The `handleToday` function introduced in T-147 (Spec 22) must also set `hasNavigated.current = true` before calling `setCurrentMonth`.
+
+##### 21.4.3 Data-Arrival `useEffect`
+
+Add the following `useEffect` inside `TripCalendar`:
+
+```jsx
+useEffect(() => {
+  // Only auto-initialize if the user has not already navigated
+  if (hasNavigated.current) return;
+
+  // Check if any event data is now present
+  const hasData =
+    flights.length > 0 ||
+    stays.length > 0 ||
+    activities.length > 0 ||
+    landTravel.length > 0;
+
+  if (!hasData) return;
+
+  // Compute the first-event month from the now-available data
+  const firstEventMonth = getInitialMonth(flights, stays, activities, landTravel);
+
+  // Only update if we actually get a meaningful result
+  // (getInitialMonth returns current month when no valid dates found,
+  //  so we compare to avoid a no-op state update)
+  setCurrentMonth(prev => {
+    const same =
+      firstEventMonth.getFullYear() === prev.getFullYear() &&
+      firstEventMonth.getMonth() === prev.getMonth();
+    return same ? prev : firstEventMonth;
+  });
+}, [flights, stays, activities, landTravel]);
+```
+
+**Dependency array:** `[flights, stays, activities, landTravel]` — the effect re-runs any time the event data changes. After the first non-empty update, subsequent updates are still handled (e.g., if data is paginated or arrives in batches), but `hasNavigated.current` prevents interference once the user has navigated.
+
+**No cleanup needed** — this `useEffect` registers no listeners and creates no subscriptions.
+
+##### 21.4.4 `getInitialMonth()` — Unchanged
+
+The `getInitialMonth(flights, stays, activities, landTravel)` function implemented in T-128 is **correct as-is**. Do not modify its logic. The fix is exclusively in the calling code (the `useEffect` above). If `getInitialMonth` doesn't currently receive `landTravel` as a parameter, add it as an optional fourth argument with a default of `[]` — the function should include `landTravel` departure dates in its search for the earliest event.
+
+---
+
+#### 21.5 States
+
+| State | User Sees |
+|-------|-----------|
+| **Page loads, data loading** | Calendar shows current month (skeleton loading state in parent; TripCalendar itself shows the current month as placeholder) |
+| **Data arrives (first non-empty)** | Calendar automatically slides to first-event month — no user action required |
+| **Data arrives but user had already navigated** | Calendar stays on user's chosen month — no override |
+| **No events exist** | Calendar stays on current month — no update |
+| **User navigates freely** | Normal prev/next/Today navigation — no interference from the auto-init effect |
+
+---
+
+#### 21.6 Visual Design
+
+**No visual changes** to the calendar are introduced by this spec beyond the existing T-128 design. The calendar layout, chip styling, header navigation, and day cells are all unchanged.
+
+---
+
+#### 21.7 Responsive Behavior
+
+The data-arrival `useEffect` runs identically on all viewport sizes. No responsive-specific changes.
+
+---
+
+#### 21.8 Accessibility
+
+No additional accessibility changes. The calendar's keyboard navigation (arrow keys for prev/next, today button) is unchanged. The `hasNavigated` ref is invisible to screen readers.
+
+---
+
+#### 21.9 Test Plan (New Tests)
+
+Add the following tests to `TripCalendar.test.jsx`. All **existing T-128 tests must continue to pass** — the `getInitialMonth()` function is not changed, only the initialization mechanism.
+
+**Test 21.A — Async load: calendar updates when data arrives after mount**
+```
+Given: TripCalendar renders initially with flights=[], stays=[], activities=[], landTravel=[]
+And:   The calendar shows the current month on first render
+When:  flights prop updates to [{departure_at: "2026-05-10T...", ...}] (data arrives asynchronously)
+Then:  The calendar automatically navigates to May 2026
+And:   No user interaction was required
+```
+
+**Test 21.B — No override when user navigated before data arrived**
+```
+Given: TripCalendar renders with empty arrays (current month shown)
+When:  User clicks the ">" (next month) arrow
+And:   Then flights prop updates to [{departure_at: "2026-05-10T...", ...}]
+Then:  The calendar remains on April 2026 (the month user navigated to)
+And:   The calendar does NOT jump to May 2026
+```
+
+**Test 21.C — No spurious update when data arrives but no events have valid dates**
+```
+Given: TripCalendar renders with empty arrays
+When:  flights updates to [{departure_at: null, ...}] (data present but no valid date)
+Then:  getInitialMonth falls back to current month
+And:   currentMonth does not unnecessarily re-render (stays at current month)
+```
+
+**Test 21.D — Both prev and next clicks set hasNavigated**
+```
+Given: TripCalendar renders with empty arrays
+When:  User clicks "<" (previous month)
+And:   Data arrives with May 2026 events
+Then:  Calendar remains on the month the user navigated to (not May 2026)
+(Variant: same test for ">" click — both must set hasNavigated)
+```
+
+---
+
+#### 21.10 Files to Modify (T-146)
+
+| File | Change |
+|------|--------|
+| `TripCalendar.jsx` (or equivalent) | Add `hasNavigated` ref; set `hasNavigated.current = true` in `handlePrev` and `handleNext`; add data-arrival `useEffect` with `[flights, stays, activities, landTravel]` deps |
+| `TripCalendar.test.jsx` (or equivalent) | Add Tests 21.A through 21.D (4 new tests). All existing T-128 tests must still pass. |
+
+**No CSS changes.** No new components. No API changes. No backend changes.
+
+---
+
+*Sprint 14 Spec 21 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
+
+---
+
+### Spec 22: TripCalendar — "Today" Navigation Button
+
+**Status:** Approved
+**Sprint:** 14
+**Related Task:** T-147
+**Feedback Source:** FB-094
+**Published:** 2026-03-07
+**Type:** Feature
+
+---
+
+#### 22.1 Overview
+
+The TripCalendar navigation header currently contains only two controls: a `<` (previous month) button and a `>` (next month) button flanking the current month/year heading. Once a user navigates away from the current month — for example, to browse future trip events — there is no quick way to return to today's month.
+
+**Add:** A "Today" button in the calendar header that, when clicked, navigates the calendar to the current month (March 2026 at time of writing) and sets `hasNavigated.current = true` (per Spec 21).
+
+**No new screens, routes, or backend changes.** This spec describes a targeted addition to `TripCalendar` only.
+
+---
+
+#### 22.2 Component Location
+
+**Component:** `TripCalendar.jsx` (same file as Spec 21)
+**Test file:** `TripCalendar.test.jsx`
+
+---
+
+#### 22.3 Header Layout
+
+##### 22.3.1 Current Header Structure
+
+```
+[ < ]   March 2026   [ > ]
+```
+
+The `<` and `>` are icon buttons. The month/year heading is centered text (or a heading element).
+
+##### 22.3.2 Updated Header Structure
+
+```
+[ < ]   March 2026   [ > ]   [ today ]
+```
+
+The "today" button is placed **to the right of the `>` arrow**, outside the month/year heading area. The header row uses `display: flex; align-items: center; justify-content: space-between` (or equivalent). The "today" button sits at the far right of the navigation row with a small left margin separating it from the `>` arrow.
+
+**Alternative acceptable placement:** Immediately to the right of the `>` button in the same flex group, with `gap: 8px` between `>` and "today". The key requirement is that the button is always visible in the calendar header and does not displace the month/year heading.
+
+---
+
+#### 22.4 Button Specification
+
+| Property | Value |
+|----------|-------|
+| **Text** | `today` (lowercase, matches Japandi minimal aesthetic) |
+| **Element** | `<button>` |
+| **`aria-label`** | `"Go to current month"` |
+| **Background** | Transparent |
+| **Border** | `1px solid rgba(93, 115, 126, 0.4)` (subtle accent border — slightly less prominent than active/focus border) |
+| **Border-radius** | `var(--radius-sm)` (2px) |
+| **Text color** | `var(--text-muted)` (`rgba(252, 252, 252, 0.5)`) |
+| **Font** | IBM Plex Mono, 11px, font-weight 500, letter-spacing 0.05em |
+| **Padding** | `4px 10px` |
+| **Cursor** | `pointer` |
+| **Hover** | Border color: `var(--border-accent)` (`#5D737E`); text color: `var(--text-primary)` (`#FCFCFC`); background: `rgba(93, 115, 126, 0.08)` |
+| **Focus-visible** | `outline: 2px solid var(--border-accent); outline-offset: 2px` |
+| **Transition** | `all 150ms ease` |
+| **Visibility** | Always visible — no conditional show/hide based on current month |
+| **CSS class** | `.todayBtn` (added to `TripCalendar.module.css` or inline as a scoped style) |
+
+**Design rationale:** The muted text color and subtle border signal that this is a utility action, secondary to the main prev/next navigation. Hover restores full contrast to confirm interactivity. The lowercase `"today"` label is consistent with the Japandi lowercase/monospace aesthetic used throughout the application (e.g., section headers, button labels).
+
+---
+
+#### 22.5 Click Handler
+
+```jsx
+function handleToday() {
+  hasNavigated.current = true;  // user intent — disable async auto-init override
+  const now = new Date();
+  setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+}
+```
+
+- Sets `hasNavigated.current = true` **before** calling `setCurrentMonth` — consistent with all other user navigation actions (Spec 21).
+- Uses `new Date()` at click time — always reflects the actual current date.
+- Sets the day to `1` explicitly to normalize the date (avoids issues with months that have fewer days than the current day).
+
+---
+
+#### 22.6 JSX
+
+```jsx
+{/* Calendar header navigation row */}
+<div className={styles.calendarNav}>
+  <button
+    className={styles.navBtn}
+    onClick={handlePrev}
+    aria-label="Previous month"
+  >
+    ‹
+  </button>
+
+  <span className={styles.monthHeading} aria-live="polite">
+    {format(currentMonth, 'MMMM yyyy')}  {/* or equivalent date formatting */}
+  </span>
+
+  <button
+    className={styles.navBtn}
+    onClick={handleNext}
+    aria-label="Next month"
+  >
+    ›
+  </button>
+
+  {/* NEW: Today button */}
+  <button
+    className={styles.todayBtn}
+    onClick={handleToday}
+    aria-label="Go to current month"
+  >
+    today
+  </button>
+</div>
+```
+
+The `‹` and `›` glyphs (or `<` / `>` or SVG arrows) are whatever the existing implementation uses — do not change the existing arrow buttons. Only add the "today" button.
+
+---
+
+#### 22.7 CSS
+
+Add to `TripCalendar.module.css` (or equivalent):
+
+```css
+/* ── Today Button ── */
+.todayBtn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid rgba(93, 115, 126, 0.4);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  margin-left: 8px;   /* small separation from the ">" arrow */
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.todayBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-accent);
+  background: rgba(93, 115, 126, 0.08);
+}
+
+.todayBtn:focus-visible {
+  outline: 2px solid var(--border-accent);
+  outline-offset: 2px;
+}
+
+/* Responsive: on mobile, reduce padding slightly */
+@media (max-width: 640px) {
+  .todayBtn {
+    font-size: 10px;
+    padding: 3px 8px;
+    margin-left: 6px;
+  }
+}
+```
+
+---
+
+#### 22.8 States
+
+| State | Today Button Appearance |
+|-------|------------------------|
+| **Default (any month)** | Visible, subtle border, muted text |
+| **Viewing current month** | Still visible — no change. Button behavior is idempotent (clicking while on current month is a no-op visually). |
+| **Hover** | Accent border, full-brightness text, subtle bg tint |
+| **Focus (keyboard)** | Accent `outline` ring, 2px offset |
+| **Click** | Calendar navigates to current month. No loading state (state update is synchronous). |
+
+---
+
+#### 22.9 Responsive Behavior
+
+| Breakpoint | Behavior |
+|------------|----------|
+| **Desktop (≥ 768px)** | Full button with `today` label, 11px font, `4px 10px` padding |
+| **Mobile (< 640px)** | Reduced padding (`3px 8px`), slightly smaller font (10px), same label. The calendar header should use `flex-wrap: wrap` if the nav row gets too narrow, but `today` should remain on the same row as the arrows on typical mobile widths (320px+) |
+
+---
+
+#### 22.10 Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| **Button semantics** | Native `<button>` element — keyboard-focusable, activated by Enter and Space |
+| **Descriptive label** | `aria-label="Go to current month"` — explains the action beyond the visible `"today"` text |
+| **Focus ring** | `:focus-visible` outline with `--border-accent` color, 2px offset — meets WCAG focus indicator contrast requirement |
+| **Screen reader announcement** | When the month changes after clicking Today, `aria-live="polite"` on the month heading (if present) announces the new month name automatically |
+| **Color contrast** | `var(--text-muted)` (`rgba(252,252,252,0.5)`) on transparent over `--bg-primary` (`#02111B`) — meets WCAG AA at 11px bold for informational UI (button is also reachable via keyboard so color contrast for state communication is supplemented by other cues) |
+| **No motion** | The calendar month change is instantaneous state update with no animation. No `prefers-reduced-motion` changes needed. |
+
+---
+
+#### 22.11 Test Plan (New Tests)
+
+Add the following tests to `TripCalendar.test.jsx`. All **existing TripCalendar tests must pass** — no regressions.
+
+**Test 22.A — Clicking "Today" returns to current month**
+```
+Given: TripCalendar is rendered
+When:  User navigates to a future month (e.g., May 2026) via the ">" arrow
+And:   User clicks the "today" button
+Then:  The calendar navigates to the current month (March 2026)
+And:   The month heading updates to "March 2026" (or equivalent)
+```
+
+**Test 22.B — "Today" button is visible when viewing a past month**
+```
+Given: TripCalendar is rendered with currentMonth = January 2026 (a past month)
+Then:  A button with aria-label "Go to current month" (or text "today") is visible in the DOM
+```
+
+**Test 22.C — "Today" button is visible when viewing a future month**
+```
+Given: TripCalendar is rendered with currentMonth = December 2027 (a future month)
+Then:  A button with aria-label "Go to current month" (or text "today") is visible in the DOM
+```
+
+**Test 22.D — Prev/next navigation continues to work after clicking Today**
+```
+Given: TripCalendar is rendered
+When:  User navigates to May 2026 via ">"
+And:   User clicks "today" (returns to March 2026)
+And:   User clicks ">" once more
+Then:  Calendar shows April 2026 (prev/next navigation is not broken by Today click)
+```
+
+---
+
+#### 22.12 Interaction with Spec 21 (hasNavigated)
+
+The "Today" button click **must** set `hasNavigated.current = true` (via the `handleToday` handler shown in 22.5). This ensures:
+
+- After clicking "Today", if event data then arrives (or updates), the calendar will **not** be automatically re-initialized to the first-event month.
+- The user clicked "Today" intentionally — their intent overrides the auto-initialization.
+
+This is consistent with how prev/next navigation interacts with the async auto-init (Spec 21).
+
+---
+
+#### 22.13 Files to Modify (T-147)
+
+| File | Change |
+|------|--------|
+| `TripCalendar.jsx` (or equivalent) | Add `handleToday` function (sets `hasNavigated.current = true`, calls `setCurrentMonth` to current month); add `<button className={styles.todayBtn} onClick={handleToday} aria-label="Go to current month">today</button>` to calendar nav header |
+| `TripCalendar.module.css` (or equivalent) | Add `.todayBtn` CSS rule and responsive variant |
+| `TripCalendar.test.jsx` (or equivalent) | Add Tests 22.A through 22.D (4 new tests). All existing tests must still pass. |
+
+**No API changes.** No backend changes. No new routes. No new components.
+
+---
+
+*Sprint 14 Spec 22 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*

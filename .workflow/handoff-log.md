@@ -17,6 +17,45 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 14 — Design Agent: UI Specs Ready for T-146 and T-147 (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Design Agent |
+| To | Frontend Engineer |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-146, T-147 |
+
+**Sprint 14 UI specs complete. Both frontend tasks have detailed component-level specs in `.workflow/ui-spec.md`. Auto-approved per automated sprint cycle.**
+
+#### Spec 21 — TripCalendar Async First-Event-Month Fix (T-146)
+
+- **Problem:** `getInitialMonth()` fires before async data arrives; calendar defaults to current month even for trips with future-month events.
+- **Fix spec:** Add `hasNavigated` ref (initialized `false`; set `true` on any user navigation). Add `useEffect` watching `[flights, stays, activities, landTravel]` — when data first becomes non-empty and `hasNavigated.current === false`, call `getInitialMonth()` and update `currentMonth`.
+- **Key constraint:** `hasNavigated` must also be set to `true` in `handleToday` (T-147) to avoid conflict.
+- **T-128 tests:** All existing `getInitialMonth()` tests must still pass — the function itself is correct; only the initialization timing changes.
+- **4 new tests required:** async-load scenario (21.A), no-override after user navigated (21.B), no-op when data has no valid dates (21.C), both prev and next set hasNavigated (21.D).
+- **Full spec:** `.workflow/ui-spec.md` → Spec 21
+
+#### Spec 22 — TripCalendar "Today" Button (T-147)
+
+- **Feature:** Add a `<button class="todayBtn" aria-label="Go to current month">today</button>` to the calendar navigation header, to the right of the `>` arrow.
+- **On click:** Sets `hasNavigated.current = true`, calls `setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))`.
+- **Always visible:** No conditional hide/show. Idempotent (clicking while already on current month does nothing visually).
+- **Styling:** Transparent background, `1px solid rgba(93,115,126,0.4)` border, muted text, 11px IBM Plex Mono, 4px 10px padding, 2px border-radius. Hover: accent border + full text brightness. See Spec 22.7 for full CSS.
+- **4 new tests required:** clicking Today returns to current month (22.A), visible from past month (22.B), visible from future month (22.C), prev/next still works after Today (22.D).
+- **Full spec:** `.workflow/ui-spec.md` → Spec 22
+
+#### Implementation Notes for Frontend Engineer
+
+1. T-146 and T-147 are **tightly coupled** — `handleToday` (T-147) must set `hasNavigated.current = true` to integrate correctly with the async auto-init logic (T-146). Implement both in the same edit pass on `TripCalendar.jsx`.
+2. The `hasNavigated` ref is shared between both features. It should be defined once at the top of `TripCalendar` and used by `handlePrev`, `handleNext`, and `handleToday`.
+3. No new components, no CSS variables, no API changes, no backend changes.
+4. Test count target: current 392 frontend tests + 8 new tests (4 from T-146 + 4 from T-147) = 400 total.
+
+---
+
 ### Sprint 14 — Manager Agent: Sprint 14 Kickoff — All Agents Dispatched (2026-03-07)
 
 | Field | Value |

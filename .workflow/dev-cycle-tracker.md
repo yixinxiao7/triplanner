@@ -956,6 +956,8 @@ See `.workflow/sprint-log.md` Sprint #9 summary for full retrospective. See `.wo
 
 **Sprint 14 Kickoff (Manager Agent — 2026-03-07):** Sprint 13 implementation and staging pipeline completed successfully (T-137–T-143 all Done). Two carry-overs: T-136 (User Agent Sprint 12 walkthrough, 5th consecutive) and T-144 (User Agent Sprint 13 walkthrough) — both merged into T-152 for Sprint 14. Three feedback items drive implementation this sprint: FB-095 (P1 Bug — calendar not defaulting to first event month, T-128 regression on staging), FB-094 (P2 Feature — "Today" button on calendar), and FB-093 (P1 Security — JWT_SECRET placeholder in .env.staging). Sprint 14 is a focused 3-task implementation sprint with a full QA/Deploy/Monitor/User-Agent pipeline to follow.
 
+**Design Agent (2026-03-07):** No explicit Design Agent tasks assigned in Sprint 14 (all tasks are bug fixes / small feature additions to an existing component, not new screens). Per standing responsibility, the Design Agent has authored component-level behavior specs for both frontend tasks (T-146, T-147) and published them to `.workflow/ui-spec.md` as Spec 21 and Spec 22. Both specs are auto-approved. Handoff logged to Frontend Engineer in `.workflow/handoff-log.md`. Design Agent work for Sprint 14: Done.
+
 **Feedback Triage Sprint 13 → Sprint 14:**
 - FB-093 → T-145 (Deploy: Rotate JWT_SECRET, P1)
 - FB-094 → T-147 (Frontend: "Today" button, P2)
