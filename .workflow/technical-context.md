@@ -549,4 +549,48 @@ The schema is complete and current for all features through Sprint 10. No pendin
 
 ---
 
+---
+
+## Sprint 14 — No Schema Changes Required
+
+**Date:** 2026-03-07
+**Confirmed by:** Backend Engineer
+
+Sprint 14 is a focused regression-fix sprint with no backend implementation tasks assigned to the Backend Engineer. All in-scope tasks are frontend component changes (T-146, T-147) or a deploy/security operation (T-145). No schema changes are required.
+
+### Sprint 14 Task Analysis
+
+| Task | Agent | Schema Impact |
+|------|-------|--------------|
+| T-145 | Deploy Engineer | JWT_SECRET rotation in `backend/.env.staging` — environment variable change only. No tables, no columns, no migration. |
+| T-146 | Frontend Engineer | Calendar async fix — adds `useEffect` + `hasNavigated` ref inside `TripCalendar.jsx`. Pure frontend component change. All required data fields (`departure_at`, `check_in_at`, `activity_date`, `departure_date`) already exist in the current schema. |
+| T-147 | Frontend Engineer | "Today" button — adds a button to `TripCalendar.jsx` header. Pure render + state change. No new data requirements. |
+| T-148 | QA Engineer | Security checklist + code review audit — QA scope only. No schema work. |
+| T-149 | QA Engineer | Integration testing — QA scope only. No schema work. |
+| T-150 | Deploy Engineer | Sprint 14 staging re-deployment — explicitly confirms "No new backend migrations." |
+| T-151 | Monitor Agent | Sprint 14 health check — monitor scope only. No schema work. |
+| T-152 | User Agent | Comprehensive walkthrough — user testing scope only. No schema work. |
+
+### Current Schema State (Sprint 14 — 2026-03-07)
+
+**All 10 migrations applied on staging:**
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (T-107, 2026-02-28) |
+| — | 8–14 | *(No new migrations)* | Sprints 8–14 are all schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending. The migration log remains at 10 entries for Sprint 14.**
+
+---
+
 *This document is maintained by the Manager Agent and Backend Engineer. Update it whenever the stack or conventions change.*

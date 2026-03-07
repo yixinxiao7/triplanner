@@ -4332,3 +4332,108 @@ No new database migrations are introduced in Sprint 13. The schema is complete a
 ---
 
 *Sprint 13 contract review complete — 2026-03-07 (T-139). Backend Engineer: no new endpoints or schema changes this sprint. T-139 corrects documentation-only error in Land Travel path (plural → singular) in all summary tables. All existing endpoint contracts (Sprints 1–12) remain authoritative and unchanged. Backend Engineer on hotfix standby only.*
+
+---
+
+## Sprint 14 — API Contracts
+
+**Date:** 2026-03-07
+**Reviewed by:** Backend Engineer
+**Sprint Goal:** Fix T-128 calendar first-event-month regression (FB-095), add "Today" button to calendar (FB-094), rotate staging JWT_SECRET (FB-093), and complete User Agent comprehensive walkthrough covering Sprints 12–14.
+
+---
+
+### Sprint 14 — No New API Endpoints
+
+Sprint 14 contains zero backend API changes. All in-scope tasks are either purely frontend component changes (T-146, T-147) or a deploy/infrastructure operation (T-145 — JWT_SECRET rotation). The Design Agent's UI spec for this sprint (Specs 21 and 22) explicitly states: *"No new components, no CSS variables, no API changes, no backend changes."* The T-150 deploy task also explicitly notes: *"No new backend migrations (no schema changes)."*
+
+| Task | Agent | Reason — No API Contract Change |
+|------|-------|--------------------------------|
+| T-145 | Deploy Engineer | JWT_SECRET rotation in `backend/.env.staging` — environment variable change only. No route, model, middleware, or response shape changes. Auth endpoints continue to work identically after the secret is rotated (tokens issued before the rotation are invalidated by design). |
+| T-146 | Frontend Engineer | Calendar async first-event-month fix — adds a `useEffect` watching loaded data props and a `hasNavigated` ref inside `TripCalendar.jsx`. All data (`flights`, `stays`, `activities`, `landTravel`) is already fetched from existing endpoints and held in-memory. No new API calls, no new query parameters, no response shape changes. |
+| T-147 | Frontend Engineer | "Today" button in TripCalendar header — pure render + state change inside `TripCalendar.jsx`. Calls `setCurrentMonth()` with a computed date value. No API calls of any kind. |
+
+---
+
+### Sprint 14 — Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–13 remain in force and unchanged. The complete authoritative state of all endpoint groups:
+
+| Sprint | Endpoint Group | Contract Status | Key Notes |
+|--------|---------------|----------------|-----------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/health` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7. `notes` is always `null \| non-empty string` (Sprint 9 correction). |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | Destinations deduped case-insensitively (Sprint 4). |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field present; returns `null` if unset. |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` updatable; `""` normalized to `null` (Sprint 9). |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | `departure_tz` + `arrival_tz` present. `departure_at` read client-side for calendar. |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | `check_in_tz` + `check_out_tz` present. `check_in_at` read client-side for calendar. |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | `activity_date` (YYYY-MM-DD) read client-side for calendar. `start_time`/`end_time` nullable since Sprint 3. |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Singular path confirmed (T-139 Sprint 13 fix). |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+
+**Schema state on staging:** All 10 migrations applied (001–010). Database is fully current. No pending migrations for Sprint 14.
+
+**Fields consumed by Sprint 14 frontend changes:** No new fields. T-146 and T-147 operate purely on data already fetched and held in-memory by `useTripDetails.js` from existing endpoints:
+- `flights[].departure_at` — already returned by `GET /api/v1/trips/:id/flights`
+- `stays[].check_in_at` — already returned by `GET /api/v1/trips/:id/stays`
+- `activities[].activity_date` — already returned by `GET /api/v1/trips/:id/activities`
+- `landTravel[].departure_date` — already returned by `GET /api/v1/trips/:id/land-travel`
+
+No additional fetches, no new query parameters, no response shape changes.
+
+---
+
+### Sprint 14 — No Schema Changes
+
+No new database migrations are introduced in Sprint 14.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (T-107, 2026-02-28) |
+| — | 8–13 | *(No new migrations)* | Sprints 8–13 are all schema-stable |
+| — | **14** | *(No new migrations)* | **Sprint 14 is frontend-only + security rotation. Zero schema work.** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+---
+
+### Sprint 14 — Hotfix Standby Protocol
+
+**Trigger:** If User Agent walkthrough T-152 reveals a **Critical or Major backend bug**, the Manager Agent will create an H-XXX hotfix task. The Backend Engineer is on standby to respond.
+
+| Severity | Backend Engineer Action |
+|----------|------------------------|
+| **Critical** | Respond immediately. Document contract change (if any) here under `Sprint 14 — Hotfix H-XXX` first, then implement. |
+| **Major** | Respond within the same sprint phase. Document contract change (if any) here first, then implement. |
+| **Minor / Suggestion** | Log to Sprint 15 backlog. No Backend Engineer action this sprint. |
+
+**Current status (Sprint 14 start — 2026-03-07):** No H-XXX tasks exist. T-152 User Agent walkthrough is pending. Backend Engineer is monitoring. Sprint 13 closed with zero Critical or Major bugs — no outstanding hotfix debt.
+
+---
+
+*Sprint 14 contract review complete — 2026-03-07. Backend Engineer: no new endpoints or schema changes this sprint. Sprint 14 is a focused regression-fix sprint — T-146 (calendar async timing) and T-147 ("Today" button) are purely frontend component changes that consume data already fetched from existing endpoints. T-145 (JWT_SECRET rotation) is a deploy/security operation with no API surface impact. All existing contracts (Sprints 1–13) remain authoritative and unchanged. Backend Engineer on hotfix standby for T-152 User Agent walkthrough only.*

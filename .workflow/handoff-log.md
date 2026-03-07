@@ -17,6 +17,66 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 14 — Backend Engineer: API Contracts Ready — No Backend Changes (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | Frontend Engineer |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-146, T-147 |
+
+**Sprint 14 API contract review complete. No new or changed endpoints this sprint.**
+
+Sprint 14 is entirely frontend-driven (T-146 calendar async fix, T-147 "Today" button). Both tasks consume data that is already fetched and held in-memory from existing API endpoints — no new API calls, no new query parameters, no response shape changes are required.
+
+**Data fields consumed by T-146 and T-147 (all already available):**
+
+| Field | Source Endpoint | Used By |
+|-------|----------------|---------|
+| `flights[].departure_at` | `GET /api/v1/trips/:id/flights` | T-146 — `getInitialMonth()` date range computation |
+| `stays[].check_in_at` | `GET /api/v1/trips/:id/stays` | T-146 — `getInitialMonth()` date range computation |
+| `activities[].activity_date` | `GET /api/v1/trips/:id/activities` | T-146 — `getInitialMonth()` date range computation |
+| `landTravel[].departure_date` | `GET /api/v1/trips/:id/land-travel` | T-146 — `getInitialMonth()` date range computation |
+
+**T-147 ("Today" button):** No API calls at all — pure `setCurrentMonth()` state update on click.
+
+**All existing contracts (Sprints 1–13) remain authoritative and unchanged.** Full Sprint 14 contract review is documented in `.workflow/api-contracts.md` under "Sprint 14 — API Contracts".
+
+**Action required from Frontend Engineer:** None beyond acknowledging. Proceed with T-146 and T-147 per the Design Agent's UI spec (Specs 21 and 22). No backend dependency blocking you.
+
+---
+
+### Sprint 14 — Backend Engineer: API Contracts for QA Reference — No Backend Changes (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | QA Engineer |
+| Date | 2026-03-07 |
+| Status | Pending |
+| Related Tasks | T-148, T-149 |
+
+**Sprint 14 API contract review complete for QA reference.**
+
+Sprint 14 has zero backend API changes. The QA Engineer (T-148 security checklist + code review, T-149 integration testing) should note:
+
+**No new endpoints to test.** The complete API surface is unchanged from Sprint 13. QA scope for backend-related items in Sprint 14:
+
+| QA Check | What to Verify | Contract Reference |
+|----------|---------------|-------------------|
+| JWT_SECRET rotation (T-145) | After rotation: `GET /api/v1/health` → 200; `POST /api/v1/auth/register` → 201 with access token; old tokens are invalidated | Sprint 1 auth contracts |
+| T-146 calendar async fix | No new API calls introduced; `TripCalendar.jsx` still uses the same four data arrays passed as props (no direct `fetch`/`axios` calls added) | Sprint 1 + Sprint 6 endpoint contracts |
+| T-147 "Today" button | No API calls at all; pure component state change | N/A |
+| Sprint 14 regression check | All 19 existing API endpoint groups continue to return correct shapes | Sprints 1–13 contracts |
+
+**New QA checklist item (per active-sprint.md T-148 spec):** Verify `backend/.env.staging` JWT_SECRET is not the placeholder string `CHANGE-ME-generate-with-openssl-rand-hex-32`. This is a deploy-scope check — no contract impact.
+
+**Full contract details:** `.workflow/api-contracts.md` → "Sprint 14 — API Contracts" section.
+
+---
+
 ### Sprint 14 — Design Agent: UI Specs Ready for T-146 and T-147 (2026-03-07)
 
 | Field | Value |
