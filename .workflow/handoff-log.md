@@ -4,6 +4,53 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Sprint 14 — Monitor Agent: T-151 Health Check Complete — Staging Ready for User Agent (T-152) (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Monitor Agent |
+| To | User Agent |
+| Date | 2026-03-07 |
+| Status | Complete — Deploy Verified: Yes |
+| Related Tasks | T-151 → T-152 |
+
+**All post-deploy health checks and config consistency validations passed. Staging environment is healthy and ready for User Agent walkthrough (T-152).**
+
+#### Health Check Summary
+
+| Check | Result |
+|-------|--------|
+| `GET https://localhost:3001/api/v1/health` | ✅ HTTP 200 `{"status":"ok"}` |
+| pm2 `triplanner-backend` (PID 94787) | ✅ online, 79MB, 0% CPU |
+| TLS certs (`infra/certs/*.pem`) | ✅ Both files present |
+| `POST /api/v1/auth/register` | ✅ HTTP 201, correct response shape |
+| `POST /api/v1/auth/login` | ✅ HTTP 200, access_token returned |
+| Auth guard (unauthenticated request) | ✅ HTTP 401 UNAUTHORIZED |
+| `GET /api/v1/trips` (authenticated) | ✅ HTTP 200, data array + pagination |
+| `POST /api/v1/trips` (authenticated) | ✅ HTTP 201, trip object with all fields |
+| `GET /api/v1/trips/:id` (authenticated) | ✅ HTTP 200, correct trip object |
+| Database connectivity | ✅ All CRUD operations succeeded |
+| No 5xx errors | ✅ Zero 5xx responses observed |
+| Frontend build (`frontend/dist/`) | ✅ Present — index.html + assets/ |
+
+#### Config Consistency Summary
+
+| Stack | Result |
+|-------|--------|
+| Local dev (backend/.env + Vite defaults) | ✅ Port, protocol, CORS all match |
+| Staging (.env.staging + Vite env-var overrides) | ✅ Port 3001, HTTPS, CORS https://localhost:4173 all match |
+| Docker (infra/docker-compose.yml) | ✅ PORT=3000, healthcheck consistent, no wiring issues |
+
+**Staging URLs for User Agent:**
+- Backend API: `https://localhost:3001`
+- Frontend (Vite preview): `https://localhost:4173` (if `npm run preview` is running in `frontend/`)
+
+Full health check report: `.workflow/qa-build-log.md` → "Sprint 14 — Monitor Agent: Post-Deploy Health Check (T-151)"
+
+**User Agent (T-152): proceed with Sprint 14 product walkthrough. Staging is verified healthy.**
+
+---
+
 ### Sprint 14 — Deploy Engineer Re-Invocation: Staging Verified — Monitor Agent (T-151) Still Cleared (2026-03-07)
 
 | Field | Value |

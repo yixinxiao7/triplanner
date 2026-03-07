@@ -1271,3 +1271,119 @@ No regressions. All T-146 (21.A–D) and T-147 (22.A–D) tests pass. TripCalend
 **RE-VERIFICATION RESULT: PASS — All checks clean. Pipeline is ready for Monitor Agent (T-151).**
 
 ---
+
+## Sprint 14 — Monitor Agent: Post-Deploy Health Check (T-151) — 2026-03-07
+
+| Field | Value |
+|-------|-------|
+| Test Type | Post-Deploy Health Check + Config Consistency |
+| Environment | Staging |
+| Timestamp | 2026-03-07T17:11:10Z |
+| Agent | Monitor Agent |
+| Task | T-151 |
+| Deploy Verified | **Yes** |
+
+---
+
+### Config Consistency Results
+
+#### Local Dev Stack (backend/.env + vite.config.js defaults)
+
+| Check | Source A | Source B | Result |
+|-------|----------|----------|--------|
+| Port match | `backend/.env` PORT=3000 | Vite proxy default `http://localhost:3000` | ✅ PASS |
+| Protocol match | SSL_KEY_PATH/SSL_CERT_PATH commented out → HTTP | `BACKEND_SSL` unset → Vite uses `http://` | ✅ PASS |
+| CORS origin | `CORS_ORIGIN=http://localhost:5173` | Vite dev server `server.port=5173` | ✅ PASS |
+
+#### Staging Stack (backend/.env.staging + vite env-var overrides)
+
+| Check | Source A | Source B | Result |
+|-------|----------|----------|--------|
+| Port match | `.env.staging` PORT=3001 | Vite: `BACKEND_PORT=3001` → proxy `:3001` | ✅ PASS |
+| Protocol match | SSL_KEY_PATH + SSL_CERT_PATH set, cert files **exist** → HTTPS | Vite: `BACKEND_SSL=true` → proxy `https://` | ✅ PASS |
+| SSL cert files | `../infra/certs/localhost-key.pem` (1704 bytes) | `../infra/certs/localhost.pem` (1151 bytes) | ✅ Both files present |
+| CORS origin | `CORS_ORIGIN=https://localhost:4173` | Vite `preview.port=4173`, HTTPS via certs | ✅ PASS |
+| COOKIE_SECURE | `COOKIE_SECURE=true` | Backend serves HTTPS | ✅ PASS |
+
+#### Docker Compose (infra/docker-compose.yml)
+
+| Check | Value | Result |
+|-------|-------|--------|
+| Backend container PORT env | PORT=3000 | ✅ PASS |
+| Backend healthcheck | `http://localhost:3000/api/v1/health` (matches PORT=3000) | ✅ PASS |
+| Backend host port exposure | No host port mapping (internal-only — nginx proxies to it) | ✅ Intentional, no mismatch |
+| Frontend port | `${FRONTEND_PORT:-80}:80` | ✅ PASS |
+
+**Config Consistency Overall: PASS — No mismatches detected across local dev, staging, or Docker stacks.**
+
+---
+
+### Health Check Results
+
+| # | Check | Detail | Result |
+|---|-------|--------|--------|
+| 1 | App responds | `GET https://localhost:3001/api/v1/health` → HTTP 200 `{"status":"ok"}` | ✅ PASS |
+| 2 | pm2 process | `triplanner-backend` online, PID 94787, uptime 13m, CPU 0%, Mem 79MB | ✅ PASS |
+| 3 | TLS certs exist | `localhost-key.pem` (1704 B), `localhost.pem` (1151 B) present in `infra/certs/` | ✅ PASS |
+| 4 | Auth — Register | `POST /api/v1/auth/register` → HTTP 201, `{"data":{"user":{...},"access_token":"<JWT>"}}` | ✅ PASS |
+| 5 | Auth — Login | `POST /api/v1/auth/login` → HTTP 200, `{"data":{"user":{...},"access_token":"<JWT>"}}` | ✅ PASS |
+| 6 | Auth guard | `GET /api/v1/trips` (no token) → HTTP 401 `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS |
+| 7 | GET /api/v1/trips | Authenticated → HTTP 200 `{"data":[...],"pagination":{"page":1,"limit":20,"total":0}}` | ✅ PASS |
+| 8 | POST /api/v1/trips | Authenticated → HTTP 201, trip object with id, user_id, destinations array, status "PLANNING" | ✅ PASS |
+| 9 | GET /api/v1/trips/:id | Authenticated → HTTP 200, correct trip object matching created trip | ✅ PASS |
+| 10 | Database connected | CRUD operations (register, create trip, read trip) all succeeded without DB errors | ✅ PASS |
+| 11 | No 5xx errors | Zero 5xx responses observed across all test requests | ✅ PASS |
+| 12 | Frontend build | `frontend/dist/` exists: `index.html` + `assets/` directory (122-module bundle) | ✅ PASS |
+
+---
+
+### Sample Response Verification
+
+**GET /api/v1/health:**
+```json
+{"status":"ok"}
+```
+Per api-contracts.md: health is the only endpoint exempt from `{"data":...}` wrapper — using bare `{"status":"ok"}` is correct. ✅
+
+**POST /api/v1/auth/register (201):**
+```json
+{"data":{"user":{"id":"2033ab5d-e693-424d-96d3-65e1285bba66","name":"Monitor Test","email":"monitor-hc-s14@example.com","created_at":"2026-03-07T17:10:53.255Z"},"access_token":"<JWT>"}}
+```
+Response shape matches api-contracts.md contract. ✅
+
+**GET /api/v1/trips (200):**
+```json
+{"data":[],"pagination":{"page":1,"limit":20,"total":0}}
+```
+Correct pagination envelope. ✅
+
+**POST /api/v1/trips (201):**
+```json
+{"data":{"id":"6e5a5e80-4547-43e8-aa85-8ef8d581b42f","user_id":"2033ab5d...","name":"Monitor Test Trip","destinations":["Tokyo","Osaka"],"status":"PLANNING","notes":null,"start_date":null,"end_date":null,"created_at":"2026-03-07T17:11:02.142Z","updated_at":"2026-03-07T17:11:02.142Z"}}
+```
+All contract fields present. ✅
+
+---
+
+### Summary
+
+| Category | Status |
+|----------|--------|
+| Config Consistency — Local Dev | ✅ PASS |
+| Config Consistency — Staging | ✅ PASS |
+| Config Consistency — Docker | ✅ PASS |
+| Health Endpoint | ✅ PASS |
+| Auth Flow (register + login) | ✅ PASS |
+| Auth Guard (401 on unauthenticated request) | ✅ PASS |
+| Trips CRUD (GET list, POST create, GET by ID) | ✅ PASS |
+| Database Connectivity | ✅ PASS |
+| No 5xx Errors | ✅ PASS |
+| Frontend Build Present | ✅ PASS |
+| TLS Certs Present | ✅ PASS |
+| pm2 Process Online | ✅ PASS |
+
+**Deploy Verified: Yes**
+All 12 health checks and all config consistency checks passed. Staging environment is healthy and ready for User Agent testing.
+
+
+---
