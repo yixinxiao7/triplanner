@@ -1771,4 +1771,101 @@ Sprint 13 must begin with immediate correction of the T-131 staging deployment f
 
 ---
 
+### Sprint #14 — 2026-03-07 to 2026-03-07
+
+**Goal:** Fix the T-128 calendar first-event-month regression on staging (FB-095), add a "Today" button to TripCalendar (FB-094), rotate the staging JWT_SECRET placeholder (FB-093), and complete the long-overdue User Agent walkthrough (T-152) covering Sprint 12 + Sprint 13 + Sprint 14 features.
+
+**Goal Met:** Partially — all 7 implementation and infrastructure tasks completed with zero rework, but T-152 (User Agent comprehensive walkthrough) did not run. This is the **6th consecutive sprint** where the User Agent pipeline has not fully closed.
+
+---
+
+**Tasks Completed (7/8):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-145 | Deploy: Rotate JWT_SECRET in `backend/.env.staging` | ✅ Done |
+| T-146 | Frontend: Fix calendar first-event-month async loading bug (FB-095) | ✅ Done |
+| T-147 | Frontend: Add "Today" button to TripCalendar navigation (FB-094) | ✅ Done |
+| T-148 | QA: Security checklist + code review audit for Sprint 14 implementation | ✅ Done |
+| T-149 | QA: Integration testing for Sprint 14 changes + regression checks | ✅ Done |
+| T-150 | Deploy: Sprint 14 staging re-deployment | ✅ Done |
+| T-151 | Monitor: Sprint 14 staging health check (all checks passed) | ✅ Done |
+
+**Tasks Carried Over (1 task — Backlog into Sprint 15):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-152 | User Agent: Comprehensive Sprint 12 + 13 + 14 feature walkthrough | Never ran — **6th consecutive carry-over**. Staging is verified healthy (T-151 Done, pm2 PID 94787, HTTPS port 3001). No blockers remain. Must run as the first task of Sprint 15. |
+
+---
+
+**Key Decisions:**
+- **Calendar async initialization pattern (T-146):** `hasNavigated = useRef(false)` + `useEffect` watching `[flights, stays, activities, landTravels]` prop arrays — when data first becomes non-empty, re-compute `getInitialMonth()` and update `currentMonth`, but only if the user has not already navigated. This pattern should be reused for any similar async-load-then-initialize UI scenarios.
+- **QA security checklist expanded (T-148):** Added permanent checklist item: `[x] No placeholder values remain in backend/.env.staging (JWT_SECRET is a real 32-byte hex secret)`. This prevents future placeholder JWT_SECRET oversights from reaching staging.
+- **Frontend test suite:** Grew to 400 tests (up from 392 in Sprint 13) — 8 new tests for T-146 (21.A–D: async-load, user-nav-before-load, null-date, prev-click) and T-147 (22.A–D: today click, past-month visibility, future-month visibility, nav-after-today).
+
+---
+
+**Feedback Summary (Sprint 14):**
+
+*No new feedback received this sprint. T-152 (User Agent walkthrough) never ran — feedback from the walkthrough will be collected and triaged in Sprint 15.*
+
+*All three Sprint 13 feedback items (FB-093, FB-094, FB-095) were fully addressed and resolved by Sprint 14 implementation tasks.*
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| (none) | — | — | No "New" feedback entries submitted during Sprint 14 — T-152 User Agent walkthrough did not run. |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- All 7 implementation + infrastructure tasks completed in a single sprint day with zero rework — consistent with the zero-rework streak maintained since Sprint 10.
+- T-146 correctly identified and fixed the root cause of the FB-095 regression: `getInitialMonth()` was called synchronously during first render before async trip-detail API responses arrived, causing it to always fall back to the current month. The `hasNavigated` ref + `useEffect` pattern ensures data-driven initialization fires when data lands without overriding explicit user navigation.
+- T-145 (JWT rotation) completed cleanly — the secret was not exposed in any tracked file, and QA independently verified the `.env.staging` value changed from the placeholder.
+- Sprint 14 is the second consecutive sprint where staging is correctly deployed on `https://localhost:3001` via pm2, with Deploy Verified: Yes.
+- QA permanently improved the security checklist with the placeholder-value check — this closes the process gap that allowed the insecure JWT_SECRET to go undetected since Sprint 12.
+
+**What Could Improve:**
+- **T-152 has now failed to run for 6 consecutive sprints.** This is a critical process failure. Sprint 15 must treat T-152 as the only P0 deliverable and ensure the orchestrator runs the User Agent phase first (or immediately after confirming staging health) rather than scheduling it last.
+- **Consider a User Agent carry-over circuit-breaker:** If the User Agent walkthrough carry-over count reaches a threshold (e.g., 5), the orchestrator or Manager should pause the sprint pipeline and alert the project owner rather than silently carrying the task again.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence (deferred multiple sprints)
+- ⚠️ B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 — dev-only, no production impact
+- ⚠️ B-022: Production deployment — pending project owner hosting provider decision (**14 consecutive sprints; project owner action required**)
+- ⚠️ B-024: Auth rate limit is IP-only — aggressive on shared-IP environments
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests in `formatDate.test.js`
+
+*Resolved this sprint:*
+- ✅ FB-093 / T-145: `backend/.env.staging` JWT_SECRET rotated to real 32-byte hex secret — QA-verified
+- ✅ FB-095 / T-146: Calendar first-event-month async race condition fixed; calendar correctly initializes to first event's month when API data arrives after first render
+- ✅ FB-094 / T-147: "Today" button added to TripCalendar header; clicking navigates calendar to current month
+
+---
+
+**Next Sprint Focus (Sprint 15 Recommendations):**
+
+*Priority order: User Agent walkthrough → production deployment decision → tech debt.*
+
+**P0 — User Agent Walkthrough (T-152 — 6th carry-over; must run first):**
+1. **T-152** — User Agent: Run the comprehensive Sprint 12 + 13 + 14 feature walkthrough on HTTPS staging (`https://localhost:3001`). Staging is live and verified. Expected behaviors: calendar opens on first event's month (T-146); "Today" button visible and functional (T-147); DayPopover stays open on scroll (T-137); rental car pick-up/drop-off chips (T-138); Sprint 12/11 regression clean. Submit structured feedback to `feedback-log.md` under Sprint 14 header (since this covers Sprint 14 features, feedback goes in the Sprint 14 section or a dedicated Sprint 15 feedback section — Manager will triage immediately).
+
+**P1 — Production Deployment Decision (B-022 — 14 consecutive sprints):**
+2. **Project owner action required:** Review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. This decision has been blocked for 14 consecutive sprints.
+
+**P3 — Tech Debt (schedule if no new feedback-driven tasks emerge):**
+3. Add `formatTimezoneAbbr()` unit tests to `formatDate.test.js`
+4. B-020: Redis-backed rate limiting (if scale warrants)
+5. B-021: Monitor esbuild vulnerability for upstream fix
+
+---
+
+*Sprint #14 began and closed 2026-03-07.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

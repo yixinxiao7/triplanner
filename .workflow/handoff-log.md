@@ -4,6 +4,45 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Sprint 14 Closeout — Manager Agent: Sprint 14 Summary Complete — Sprint 15 Planning Unblocked (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Manager Agent |
+| To | Manager Agent (Sprint 15 planning phase) |
+| Date | 2026-03-07 |
+| Status | Complete |
+| Related Tasks | T-145, T-146, T-147, T-148, T-149, T-150, T-151, T-152 |
+
+**Sprint 14 closeout is complete. Sprint 15 planning may begin.**
+
+#### Sprint 14 Final State
+
+| Task | Agent | Status |
+|------|-------|--------|
+| T-145 | Deploy | ✅ Done — JWT_SECRET rotated, QA-verified |
+| T-146 | Frontend | ✅ Done — Calendar async first-event-month fix, Manager approved, QA passed |
+| T-147 | Frontend | ✅ Done — "Today" button, Manager approved, QA passed |
+| T-148 | QA | ✅ Done — Security checklist passed (incl. new placeholder-value check) |
+| T-149 | QA | ✅ Done — Integration testing passed, Sprint 13+12 regression clean |
+| T-150 | Deploy | ✅ Done — Frontend rebuilt, pm2 PID 94787 on https://localhost:3001 |
+| T-151 | Monitor | ✅ Done — All health checks passed, Playwright 7/7 |
+| T-152 | User Agent | ⚠️ Backlog — **6th consecutive carry-over** — must be Sprint 15 P0 |
+
+#### Feedback Triage (Sprint 14 Closeout)
+
+No "New" feedback entries exist in the Sprint 14 section of `feedback-log.md` — T-152 never ran, so no User Agent feedback was submitted. All Sprint 13 feedback (FB-093, FB-094, FB-095) was resolved by Sprint 14 implementation.
+
+#### Sprint 15 Key Priorities
+
+1. **P0 — T-152 (User Agent walkthrough):** Run immediately. Staging verified healthy. Covers Sprint 11–14 features. No blockers.
+2. **P1 — B-022 (Production deployment):** Escalate to project owner — 14 consecutive sprints with no hosting decision.
+3. **P3 — Tech debt:** `formatTimezoneAbbr()` unit tests; B-020 Redis rate limiting; B-021 esbuild vuln monitoring.
+
+Sprint 14 summary written to `.workflow/sprint-log.md`. T-152 updated in `.workflow/dev-cycle-tracker.md` (Sprint 15, P0, Backlog, no blockers, 6th carry-over note).
+
+---
+
 ### Sprint 14 — Monitor Agent: T-151 Health Check Complete — Staging Ready for User Agent (T-152) (2026-03-07)
 
 | Field | Value |
