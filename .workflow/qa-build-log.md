@@ -243,6 +243,107 @@ All 6 integration checks PASS. Sprint 11 regression clean. **T-130: PASS. Cleare
 
 ---
 
+## Sprint 12 — T-132: Post-Deploy Health Check (Monitor Agent — 2026-03-06)
+
+### T-132: Post-Deploy Health Check + Config Consistency
+
+**Test Run:** Sprint 12 Post-Deploy Health Check — Staging Environment (T-132)
+**Sprint:** 12
+**Test Type:** Post-Deploy Health Check + Config Consistency
+**Result:** PARTIAL PASS — API functional, config mismatch detected
+**Build Status:** Success (frontend dist built; backend serving)
+**Environment:** Staging
+**Deploy Verified:** No
+**Tested By:** Monitor Agent
+**Related Tasks:** T-131, T-132
+**Timestamp:** 2026-03-06T03:59:00Z
+
+---
+
+#### Config Consistency — Local Dev (backend/.env)
+
+| Check | backend/.env | vite.config.js | docker-compose.yml | Status |
+|-------|-------------|----------------|-------------------|--------|
+| Backend PORT | 3000 | proxy → `http://localhost:3000` (BACKEND_PORT unset → default 3000) | `PORT: 3000` (internal container) | ✅ PASS |
+| SSL/Protocol | Not set (HTTP) | `http://` (BACKEND_SSL not set → http default) | N/A (nginx internal) | ✅ PASS |
+| CORS_ORIGIN | `http://localhost:5173` | `server.port = 5173` | N/A | ✅ PASS |
+
+**Config Consistency — Local Dev: PASS.** All three configs consistent. No port, protocol, or CORS mismatches.
+
+---
+
+#### Config Consistency — Staging (backend/.env.staging vs actual runtime)
+
+| Check | backend/.env.staging | Actual Runtime | Status |
+|-------|---------------------|----------------|--------|
+| Backend PORT | `3001` | Node process listening on `:3000` (lsof -i :3001 → empty; lsof -i :3000 → PID 78079) | ❌ FAIL — PORT MISMATCH |
+| SSL/Protocol | `SSL_KEY_PATH=../infra/certs/localhost-key.pem` set; certs exist at `infra/certs/` | Backend responds to HTTPS (`curl -sk https://localhost:3000/api/v1/health → 200`); HTTP returns "Empty reply from server" (curl exit 52) | ✅ PASS — SSL active, but on wrong port |
+| CORS_ORIGIN | `https://localhost:4173` | Vite preview at `https://localhost:4173` (PID 78127 confirmed via lsof) | ✅ PASS |
+| T-131 Deploy handoff | Expected: Deploy Engineer → Monitor Agent | Not found in handoff-log.md. Manager → Deploy Engineer entry remains `Status: Pending` | ❌ FAIL — Handoff not logged |
+| pm2 process management | Expected: `pm2 start infra/ecosystem.config.cjs` | `pm2` command not found in PATH; backend runs as background process (PPID=1), not managed via pm2 | ❌ FAIL — pm2 not verifiable |
+
+**Config Consistency — Staging: FAIL.**
+
+**Root cause of PORT mismatch:** `backend/.env.staging` specifies `PORT=3001`, but the running backend process (PID 78079, `node src/index.js`) is bound to port 3000. The process IS serving HTTPS (certs present at `infra/certs/localhost-key.pem` and `infra/certs/localhost.pem`), but it loaded `PORT=3000` from an unknown source — not from `backend/.env.staging`. This indicates the backend was NOT started with `NODE_ENV=staging` or was started with a `PORT` environment variable override. The Sprint 11 staging backend at `https://localhost:3001` (pm2 PID 42784, per Sprint 11 handoff) is no longer running; port 3001 has no listener.
+
+**Impact:** If vite is run in staging mode (`BACKEND_PORT=3001 BACKEND_SSL=true npm run dev`), the dev proxy will target `https://localhost:3001` — which has no listener. Staging integration will break for any dev-mode usage. The frontend preview (which does not proxy) is unaffected.
+
+---
+
+#### Health Check Results
+
+**Environment:** Staging
+**Actual backend URL:** `https://localhost:3000` (Note: expected `https://localhost:3001` per `.env.staging`)
+**Frontend URL:** `https://localhost:4173`
+
+| Check | Endpoint / Check | Result | Details |
+|-------|-----------------|--------|---------|
+| App responds | `GET /api/v1/health` | ✅ HTTP 200 | Response: `{"status":"ok"}` — connection via `https://localhost:3000` (self-signed cert, `-k` flag) |
+| Auth — Register | `POST /api/v1/auth/register` | ✅ HTTP 201 | Response shape: `{ "data": { "user": { id, name, email, created_at }, "access_token": "<JWT>" } }` — correct per contract |
+| Auth — Login | `POST /api/v1/auth/login` | ✅ HTTP 200 | Valid JWT access token returned; user data shape correct |
+| Unauthenticated rejection | `GET /api/v1/trips` (no header) | ✅ HTTP 401 | `{ "error": { "message": "Authentication required", "code": "UNAUTHORIZED" } }` |
+| Trips — List | `GET /api/v1/trips` | ✅ HTTP 200 | `{ "data": [], "pagination": { "page": 1, "limit": 20, "total": 0 } }` — correct shape |
+| Trips — Create | `POST /api/v1/trips` | ✅ HTTP 201 | `{ "data": { id, user_id, name, destinations, status, notes, start_date, end_date, created_at, updated_at } }` — correct |
+| Trips — Delete | `DELETE /api/v1/trips/:id` | ✅ HTTP 204 | No body, correct |
+| Flights — List | `GET /api/v1/trips/:id/flights` | ✅ HTTP 200 | `{ "data": [] }` |
+| Stays — List | `GET /api/v1/trips/:id/stays` | ✅ HTTP 200 | `{ "data": [] }` |
+| Activities — List | `GET /api/v1/trips/:id/activities` | ✅ HTTP 200 | `{ "data": [] }` |
+| Land Travel — List | `GET /api/v1/trips/:id/land-travel` | ✅ HTTP 200 | `{ "data": [] }` — Note: route mounted at `/land-travel` (singular), not `/land-travels` (see note below) |
+| No 5xx errors | All endpoints tested | ✅ PASS | Zero 5xx responses across all endpoint tests |
+| Database connectivity | Implicit via auth + CRUD | ✅ PASS | User created (register), login returned data, trip created — all DB operations successful |
+| Frontend accessible | `https://localhost:4173` | ✅ HTTP 200 | Vite preview (PID 78127) responding |
+| Frontend dist | `frontend/dist/` | ✅ EXISTS | `assets/` + `index.html` present — frontend was built |
+
+**Health Checks: 14/14 PASS** (all API endpoints functional, database connected, no 5xx errors, frontend accessible and built)
+
+---
+
+#### Notes
+
+**Note 1 — Health endpoint response format:**
+`GET /api/v1/health` returns `{"status":"ok"}` without the standard `{ "data": ... }` API wrapper. This is pre-existing behavior (present since Sprint 1) and appears intentional for health endpoints. Not a Sprint 12 regression.
+
+**Note 2 — Pre-existing route name inconsistency (not a Sprint 12 regression):**
+`api-contracts.md` documents the land travel endpoint as `/api/v1/trips/:id/land-travels` (plural), but `backend/src/app.js` mounts it at `/api/v1/trips/:tripId/land-travel` (singular). The backend test suite (sprint6.test.js) uses singular URLs and all 266 tests pass. The frontend also uses singular URLs (application works end-to-end). This is a pre-existing documentation inconsistency from Sprint 6, not introduced in Sprint 12. Tested: `GET /land-travel` → 200; `GET /land-travels` → 404. No functional impact; flagging for contract doc correction.
+
+---
+
+#### Deploy Verified Summary
+
+**Deploy Verified: No**
+
+| Failure Reason | Severity | Responsible Agent |
+|---------------|----------|-------------------|
+| Staging backend running on PORT=3000, not PORT=3001 as specified in `backend/.env.staging` | Major | Deploy Engineer |
+| No Deploy Engineer → Monitor Agent handoff logged for T-131 (Manager → DE entry still `Status: Pending`) | Major | Deploy Engineer |
+| `pm2` not found in PATH; cannot verify pm2 process management; backend running as bare background process (PPID=1) | Major | Deploy Engineer |
+
+**All API endpoints are functionally healthy.** The application responds correctly to all tested routes. The deploy-verified failure is entirely a config/process-management issue, not an application code regression.
+
+**Required action:** Deploy Engineer must restart the backend using `backend/.env.staging` (PORT=3001, NODE_ENV=staging) via pm2 (`pm2 start infra/ecosystem.config.cjs` from the project root) and log the T-131 completion handoff to Monitor Agent. Monitor Agent will re-run T-132 health checks after the corrected deploy.
+
+---
+
 ## Sprint 12 QA Re-Verification — 2026-03-06 (Orchestrator Re-Run)
 
 ### Re-Verification: Unit Tests + Integration + Security + Config

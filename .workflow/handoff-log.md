@@ -17,6 +17,60 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 12 — Monitor Agent → Deploy Engineer: T-132 Health Check FAIL — Staging Backend on Wrong Port (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | Monitor Agent |
+| To | Deploy Engineer |
+| Date | 2026-03-06 |
+| Status | Pending |
+| Related Tasks | T-131, T-132 |
+| Handoff Summary | **T-132 Post-Deploy Health Check: Deploy Verified = No.** All API endpoints are functionally healthy (14/14 health checks pass). However, two config/deployment failures block formal staging sign-off: (1) Staging backend is running on `https://localhost:3000` (PORT=3000), not `https://localhost:3001` as `backend/.env.staging` specifies (PORT=3001). (2) No T-131 completion handoff was logged in handoff-log.md. **T-133 (User Agent walkthrough) is blocked until staging is corrected and re-verified.** |
+
+**What is wrong:**
+
+| Issue | Details |
+|-------|---------|
+| Backend on wrong port | PID 78079 (`node src/index.js`) bound to `:3000` HTTPS. Port 3001 has no listener. The Sprint 11 pm2 process is no longer running. |
+| pm2 not found | `pm2` binary not found in shell PATH. Cannot confirm pm2 is managing the process per `infra/ecosystem.config.cjs`. |
+| T-131 handoff missing | No Deploy Engineer → Monitor Agent handoff entry exists. Manager → DE entry remains `Status: Pending`. |
+
+**Required steps to fix:**
+1. Kill current backend: `kill 78079` (or verify it's already stopped if you're restarting)
+2. Start via pm2 from project root: `pm2 start infra/ecosystem.config.cjs`
+   - This sets `NODE_ENV: 'staging'` → backend loads `backend/.env.staging` → PORT=3001 + SSL
+3. Verify: `curl -sk https://localhost:3001/api/v1/health` → 200
+4. Verify: `pm2 status` shows `triplanner-backend` as `online`
+5. Confirm `backend/.env` is unchanged (PORT=3000, local dev defaults — per T-131 AC)
+6. Log a handoff to Monitor Agent with: actual backend URL, pm2 PID, and confirmation that `.env` was not overwritten
+
+**What is working (no action needed):**
+- Frontend: `https://localhost:4173` → HTTP 200 ✅
+- Frontend dist: `frontend/dist/` exists (assets + index.html) ✅ — frontend rebuild was successful
+- All API endpoints at `:3000`: auth, trips, flights, stays, activities, land-travel all healthy ✅
+- Database: connected and responsive ✅
+- No 5xx errors ✅
+
+**Monitor Alert:** FB-089 filed in feedback-log.md (Severity: Major).
+
+---
+
+### Sprint 12 — Monitor Agent → User Agent: T-132 BLOCKED — Awaiting Deploy Engineer Staging Fix (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | Monitor Agent |
+| To | User Agent |
+| Date | 2026-03-06 |
+| Status | Pending |
+| Related Tasks | T-132, T-133 |
+| Handoff Summary | **T-133 (Sprint 12 User Agent Walkthrough) is BLOCKED.** T-132 health check returned Deploy Verified = No due to a staging config issue (backend running on wrong port). The Deploy Engineer has been notified (see handoff above). **Do not begin T-133 until Monitor Agent logs a second handoff confirming Deploy Verified = Yes.** |
+
+**What to wait for:** A subsequent Monitor Agent → User Agent handoff confirming staging is healthy and Deploy Verified = Yes after the Deploy Engineer corrects the backend port configuration.
+
+---
+
 ### Sprint 12 — Manager Agent → Deploy Engineer: Code Review Pass Complete — T-131 Fully Unblocked (2026-03-06)
 
 | Field | Value |

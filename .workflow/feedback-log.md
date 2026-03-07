@@ -112,3 +112,64 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 **Requested by:** Project owner (manual feedback)
 
 ---
+
+## Sprint 12 Monitor Alerts — 2026-03-06
+
+### FB-089 — Monitor Alert: Staging Backend Running on Wrong Port (PORT=3000, Expected PORT=3001)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 12 |
+| Category | Monitor Alert |
+| Severity | Major |
+| Status | New |
+| Related Task | T-131, T-132 |
+
+**Description:** Sprint 12 post-deploy health check (T-132) found the staging backend running on `https://localhost:3000`, not `https://localhost:3001` as specified in `backend/.env.staging`. The backend is serving HTTPS (TLS certs loaded from `infra/certs/`), but `PORT=3000` was used instead of the staging-config value of `PORT=3001`. The Sprint 11 staging backend (pm2 PID 42784, `https://localhost:3001`) is no longer running — port 3001 has no listener.
+
+**Evidence:**
+- `lsof -i :3001` → empty (no listener)
+- `lsof -i :3000` → PID 78079, `node src/index.js`, TCP \*:hbci (LISTEN)
+- `curl -sk https://localhost:3000/api/v1/health -w "HTTP_STATUS:%{http_code}"` → `{"status":"ok"} HTTP_STATUS:200`
+- `curl -sk https://localhost:3001/api/v1/health` → connection refused (curl exit 7, HTTP_STATUS:000)
+- `pm2` binary not found in PATH — process management unverifiable
+- No Deploy Engineer → Monitor Agent handoff found in handoff-log.md for T-131
+
+**Impact:**
+- Staging vite dev proxy (configured with `BACKEND_PORT=3001 BACKEND_SSL=true`) would target `https://localhost:3001` — a dead port. Dev-mode integration with staging backend broken.
+- T-131 acceptance criteria not met: pm2 management not verified, staging config not correctly applied.
+- T-133 (User Agent walkthrough) is BLOCKED — staging is not in the correct state for formal verification.
+
+**Required Action:** Deploy Engineer must:
+1. Stop the current backend process (PID 78079): `kill 78079`
+2. Start backend via pm2 with staging config: `pm2 start infra/ecosystem.config.cjs` (from project root — this sets `NODE_ENV=staging`, which triggers `.env.staging` load with PORT=3001)
+3. Verify pm2 online: `pm2 status` shows `triplanner-backend` as `online`
+4. Confirm `curl -sk https://localhost:3001/api/v1/health` → 200
+5. Log T-131 completion handoff to Monitor Agent so T-132 re-check can proceed
+6. Do NOT touch `backend/.env` (T-131 AC)
+
+---
+
+### FB-090 — Monitor Alert: Pre-existing Route Documentation Inconsistency — /land-travel vs /land-travels
+
+| Field | Value |
+|-------|-------|
+| Sprint | 12 |
+| Category | Monitor Alert |
+| Severity | Minor |
+| Status | New |
+| Related Task | T-132 |
+
+**Description:** During T-132 health checks, Monitor Agent discovered that the land travel API route is mounted at `/api/v1/trips/:tripId/land-travel` (singular) in `backend/src/app.js`, but `api-contracts.md` documents it as `/land-travels` (plural). All 266 backend tests use the singular URL and pass. The frontend uses the singular URL (application works). This is a pre-existing documentation inconsistency from Sprint 6, not a Sprint 12 regression.
+
+**Evidence:**
+- `curl -sk https://localhost:3000/api/v1/trips/:id/land-travel` → HTTP 200 `{"data":[]}`
+- `curl -sk https://localhost:3000/api/v1/trips/:id/land-travels` → HTTP 404 (Express HTML error)
+- `backend/src/app.js` line 43: `app.use('/api/v1/trips/:tripId/land-travel', landTravelRoutes)`
+- `backend/src/__tests__/sprint6.test.js` line 281: uses `/land-travel` (singular) throughout
+
+**Impact:** No functional impact — application works correctly. Risk: future agents or external API consumers reading `api-contracts.md` may call the wrong URL. Should be corrected in api-contracts.md.
+
+**Required Action:** Backend Engineer to correct `api-contracts.md` to document the endpoint as `/land-travel` (singular) in a future sprint. Low priority.
+
+---
