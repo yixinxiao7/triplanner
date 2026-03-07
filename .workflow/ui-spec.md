@@ -5786,3 +5786,633 @@ Then: window.print() was called exactly once
 ---
 
 *Sprint 10 Spec 15 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-04.*
+
+---
+
+## Sprint 12 Specs
+
+---
+
+### Spec 16: DayPopover Scroll-Close Behavior Fix
+
+**Status:** Approved
+**Task:** T-126
+**Sprint:** 12
+**Published:** 2026-03-06
+**Type:** Bug Fix
+
+---
+
+#### 16.1 Overview
+
+The `DayPopover` component is a portal-rendered dropdown that opens when the user clicks the "+X more" overflow indicator on a calendar day. It currently uses `position: fixed` with coordinates derived from the trigger button's viewport position at the moment of click. Because the coordinates are captured once and never updated, scrolling the page causes the popover to visually detach ("drift") from its trigger.
+
+**Fix:** Close the popover automatically when a scroll event is detected (Option A from the task spec). This is the standard UX pattern for portaled dropdowns — it is simpler, more reliable, and avoids the complexity of recalculating position on every scroll frame.
+
+**No new screens or routes are introduced.** This spec describes the exact interaction behavior change for `DayPopover`.
+
+---
+
+#### 16.2 Current vs. Desired Behavior
+
+| Scenario | Current Behavior | Desired Behavior |
+|----------|-----------------|-----------------|
+| User opens popover, does NOT scroll | Popover stays anchored to trigger | Unchanged — popover stays open |
+| User opens popover, then scrolls | Popover drifts away from trigger (stays at original viewport coords while page moves) | Popover closes immediately on first scroll event |
+| User presses Escape | Popover closes; focus returns to trigger | Unchanged |
+| User clicks outside popover | Popover closes | Unchanged |
+| User closes popover via any method | Focus returns to trigger button | Unchanged |
+
+---
+
+#### 16.3 Component: DayPopover
+
+**Location:** `frontend/src/components/TripCalendar/` (or wherever DayPopover is currently defined).
+
+**Trigger:** `<button>` element labelled "+X more" inside a calendar day cell. Clicking it opens the popover.
+
+**Popover rendering:** Via `createPortal` to `document.body`. The portal renders with `position: fixed` at the trigger's viewport coordinates (`getBoundingClientRect()`).
+
+---
+
+#### 16.4 Scroll-Close Implementation Spec
+
+The scroll listener must be:
+
+1. **Added** when the popover opens (when `isOpen` transitions from `false` to `true`)
+2. **Removed** when the popover closes — whether closed by scroll, Escape, outside-click, or any other means — to prevent memory leaks
+3. **Using `{ capture: true }`** on the event listener so it fires for scroll events on any scrollable ancestor, not just the window's scroll event
+
+```js
+// Pseudocode — implement in DayPopover's useEffect
+useEffect(() => {
+  if (!isOpen) return;
+
+  const handleScroll = () => {
+    closePopover(); // call the existing close handler
+  };
+
+  window.addEventListener('scroll', handleScroll, { capture: true });
+
+  return () => {
+    window.removeEventListener('scroll', handleScroll, { capture: true });
+  };
+}, [isOpen]);
+```
+
+**Cleanup contract:** The `removeEventListener` call in the cleanup function MUST use the same options object (`{ capture: true }`) as `addEventListener` — otherwise the listener is not removed correctly. This is a browser requirement.
+
+**No race condition:** The scroll listener fires asynchronously after the popover opens. A scroll event cannot fire simultaneously with the click that opened the popover — the browser dispatches them in separate event loop ticks.
+
+---
+
+#### 16.5 Preserved Behaviors (Must Not Regress)
+
+| Behavior | Requirement |
+|----------|-------------|
+| Escape to close | Must still work. `keydown` listener for `Escape` key must be preserved alongside the scroll listener. |
+| Outside-click to close | Must still work. The existing click-outside detection logic is unchanged. |
+| Focus restoration | When the popover closes (by any method), focus must return to the trigger button (`"+X more"`). |
+| Popover content | The list of events shown inside the popover is unchanged. |
+| Trigger button label | "+X more" text and aria attributes are unchanged. |
+| Accessibility | Popover role, aria-modal, focus trap (if implemented) are all unchanged. |
+
+---
+
+#### 16.6 States
+
+| State | User Sees |
+|-------|-----------|
+| **Closed (default)** | "+X more" button visible on overflowed calendar day. No popover in DOM. |
+| **Open — no scroll** | Popover visible, anchored at trigger position. Events list displayed inside. |
+| **Open — user scrolls** | Popover immediately closes. Page scrolls normally. Focus returns to trigger button. |
+| **Open — Escape pressed** | Popover closes. Focus returns to trigger button. (Unchanged) |
+| **Open — outside click** | Popover closes. (Unchanged) |
+
+---
+
+#### 16.7 Visual Design (Unchanged)
+
+The popover's visual appearance is not changed by this fix. For reference, the DayPopover style must continue to follow the Design System:
+
+| Property | Value |
+|----------|-------|
+| Background | `var(--surface)` (`#30292F`) |
+| Border | `1px solid var(--border-subtle)` |
+| Border-radius | 4px |
+| Text color | `var(--text-primary)` (`#FCFCFC`) |
+| Font | IBM Plex Mono, 13px |
+| Max height | ~320px with internal scroll if needed |
+| z-index | High enough to appear above calendar cells (e.g., 1000) |
+
+---
+
+#### 16.8 Responsive Behavior
+
+The scroll-close behavior applies equally on all viewport sizes. Mobile users who scroll to reveal more content will have the popover close — consistent with desktop behavior. No breakpoint-specific changes.
+
+---
+
+#### 16.9 Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Focus restoration on scroll-close | When scroll closes the popover, focus returns to the `"+X more"` trigger button — same as Escape-close behavior |
+| Screen reader announcement | No special `aria-live` needed. The popover disappearing from DOM is sufficient — screen readers following focus to the trigger button will re-read its context |
+| Keyboard navigation unaffected | Tab, Escape, Enter/Space inside the popover — all existing keyboard interactions unchanged |
+
+---
+
+#### 16.10 Tests Required
+
+Minimum tests to add/update in the DayPopover test file:
+
+**New Test 1 — Scroll closes popover:**
+```
+Given: DayPopover is open (trigger has been clicked)
+When: A scroll event fires on window
+Then: The popover is removed from the DOM (or isOpen becomes false)
+  AND: Focus returns to the trigger button
+```
+
+**New Test 2 — Scroll listener is cleaned up on unmount:**
+```
+Given: DayPopover is open
+When: The component unmounts (or closes)
+Then: window.removeEventListener was called with ('scroll', handler, { capture: true })
+      (verify no dangling listener — use jest.spyOn on window.addEventListener / removeEventListener)
+```
+
+**Regression Test — Escape still works after scroll listener is added:**
+```
+Given: DayPopover is open (scroll listener is attached)
+When: User presses Escape
+Then: Popover closes
+  AND: Focus returns to trigger
+  AND: No errors thrown
+```
+
+All existing DayPopover tests must continue to pass.
+
+---
+
+#### 16.11 Files to Modify (T-126)
+
+| File | Change |
+|------|--------|
+| `DayPopover.jsx` (or equivalent component file) | Add `useEffect` with scroll listener; add to existing cleanup; no visual changes |
+| `DayPopover.test.jsx` (or equivalent test file) | Add scroll-close test, cleanup test, Escape regression test |
+
+**No CSS changes.** No new components. No API changes.
+
+---
+
+*Sprint 12 Spec 16 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-06.*
+
+---
+
+### Spec 17: Calendar Check-in Chip Label Addition
+
+**Status:** Approved
+**Task:** T-127
+**Sprint:** 12
+**Published:** 2026-03-06
+**Type:** Bug Fix
+
+---
+
+#### 17.1 Overview
+
+The calendar view renders "event chips" inside each day cell to indicate what travel events fall on that day. For stays, the current behavior is asymmetric:
+
+- **Check-out day:** chip reads `"check-out Xa"` (e.g., `"check-out 11a"`) — label prefix present
+- **Check-in day:** chip reads only `"Xa"` (e.g., `"4p"`) — no label prefix
+
+This creates a confusing inconsistency. Users can see "check-out" but not "check-in", making it ambiguous whether the check-in time chip is a flight arrival, an activity start, or something else.
+
+**Fix:** Prepend the string `"check-in "` to the check-in time chip label, matching the exact format of the check-out chip. No other visual changes.
+
+---
+
+#### 17.2 Current vs. Desired Label Format
+
+| Event Type | Day | Current Chip Text | Desired Chip Text |
+|-----------|-----|------------------|------------------|
+| Stay check-in | Check-in date | `"4p"` | `"check-in 4p"` |
+| Stay check-out | Check-out date | `"check-out 11a"` | `"check-out 11a"` (unchanged) |
+| Flight departure | Departure date | `"departs 6a"` (or similar) | Unchanged |
+| Flight arrival | Arrival date | `"arrives 2:30p"` (or similar) | Unchanged |
+| Activity | Activity date | Activity name or time | Unchanged |
+
+---
+
+#### 17.3 Chip Format Specification
+
+The time abbreviation format is already established by the existing check-out chip implementation. The check-in chip must follow the same rules:
+
+**Format:** `"check-in "` + formatted time
+
+**Time formatting rules (match existing check-out format):**
+- Hours without leading zero: `4` not `04`
+- Minutes omitted if zero: `"4p"` not `"4:00p"`, `"2:30p"` for non-zero minutes
+- AM/PM: lowercase `"a"` and `"p"` (not `"AM"` / `"PM"`)
+- Combined: `"check-in 4p"`, `"check-in 2:30p"`, `"check-in 11a"`
+
+**Examples:**
+
+| Check-in time (local) | Chip text |
+|----------------------|-----------|
+| 4:00 PM | `"check-in 4p"` |
+| 3:30 PM | `"check-in 3:30p"` |
+| 10:00 AM | `"check-in 10a"` |
+| 11:30 AM | `"check-in 11:30a"` |
+| 12:00 PM (noon) | `"check-in 12p"` |
+| 12:00 AM (midnight) | `"check-in 12a"` |
+
+---
+
+#### 17.4 Component Location
+
+The chip text is rendered inside the calendar event chip renderer — wherever the stay check-in chip is currently constructed. Based on the project's architecture, look for:
+
+- The `TripCalendar` component's event-mapping logic
+- A function like `buildCalendarEvents()`, `getChipLabel()`, or similar
+- The section that maps over `stays` and generates chip objects for check-in and check-out dates
+
+The fix is a one-line string change: wherever the check-in chip's label is assembled, prepend `"check-in "` before the formatted time string.
+
+**Pseudocode (current):**
+```js
+{ label: formatChipTime(stay.check_in_at, stay.check_in_tz), type: 'check-in' }
+```
+
+**Pseudocode (desired):**
+```js
+{ label: `check-in ${formatChipTime(stay.check_in_at, stay.check_in_tz)}`, type: 'check-in' }
+```
+
+---
+
+#### 17.5 Overflow Popover Behavior
+
+When a calendar day has more events than fit in the cell, a "+X more" overflow chip is shown. Clicking it opens the `DayPopover` which lists all events for that day, including check-in chips. The `"check-in Xa"` label must appear consistently **both** in the inline day cell chip AND in the DayPopover event list. The same label string should be used in both rendering paths — there should be no divergence between the two.
+
+---
+
+#### 17.6 States
+
+| State | Check-in Chip Appearance |
+|-------|--------------------------|
+| **Check-in day, chip visible in day cell** | `"check-in 4p"` (or appropriate time) |
+| **Check-in day, chip in DayPopover overflow list** | `"check-in 4p"` — same label, same format |
+| **No stays (empty trip)** | No check-in chip exists — no change |
+| **Stay with no check-in time (null check_in_at)** | No chip rendered (existing guard unchanged) |
+| **Check-out day** | `"check-out 11a"` — unchanged |
+
+---
+
+#### 17.7 Visual Design (Unchanged)
+
+The chip's visual appearance — background color, text color, font size, border radius, padding — is not changed. Only the text content changes.
+
+For reference, stay check-in chips should use the same visual style as check-out chips:
+
+| Property | Value |
+|----------|-------|
+| Background | `rgba(93, 115, 126, 0.15)` or the existing stay chip color |
+| Text color | `var(--text-primary)` or muted variant (match existing check-out chip) |
+| Font size | 11px (match existing calendar chips) |
+| Padding | 2px 6px (match existing) |
+| Border-radius | 2px (match existing) |
+| Max width | Truncate with ellipsis if chip overflows cell width — existing behavior unchanged |
+
+---
+
+#### 17.8 Responsive Behavior
+
+No breakpoint-specific changes. The chip text is slightly longer (adds 10 characters: `"check-in "`). On narrow viewports or smaller calendar cells, the existing ellipsis truncation handles overflow gracefully. No layout changes are needed.
+
+If the chip is already constrained to a max width with CSS `overflow: hidden; text-overflow: ellipsis`, the longer label will truncate consistently. Verify on mobile viewport that `"check-in 4p"` does not overflow its cell — the existing truncation logic handles this.
+
+---
+
+#### 17.9 Accessibility
+
+The chip text is the visible label that screen readers will announce. The change from `"4p"` to `"check-in 4p"` is a strict improvement for accessibility — the label is now self-describing and unambiguous. No additional ARIA attributes are needed.
+
+If the chip element has an `aria-label` attribute that was overriding the visible text, that override must also be updated to match the new visible text.
+
+---
+
+#### 17.10 Tests Required
+
+**Test 1 — Check-in chip shows "check-in" prefix:**
+```
+Given: A trip with a stay (check_in_at: "2026-08-07T20:00:00.000Z", check_in_tz: "America/New_York")
+When: TripCalendar renders the calendar for August 2026
+Then: The chip on August 7 reads "check-in 4p"
+  AND: No chip on August 7 reads just "4p" (without the prefix)
+```
+
+**Test 2 — Check-out chip is unchanged:**
+```
+Given: A trip with a stay (check_out_at: "2026-08-09T15:00:00.000Z", check_out_tz: "America/New_York")
+When: TripCalendar renders
+Then: The chip on August 9 still reads "check-out 11a"
+  AND: The check-out format is not affected by this change
+```
+
+**Test 3 — Check-in chip in DayPopover matches day cell chip:**
+```
+Given: A calendar day with check-in chip in overflow (DayPopover)
+When: User opens the DayPopover for that day
+Then: The check-in label inside the popover reads "check-in Xa" (same prefix)
+```
+
+All existing calendar chip tests must be updated if they assert the old `"4p"` format — snapshot tests especially. All tests must pass.
+
+---
+
+#### 17.11 Files to Modify (T-127)
+
+| File | Change |
+|------|--------|
+| Calendar event chip label assembly (e.g., `TripCalendar.jsx` or chip builder utility) | Prepend `"check-in "` to the check-in time string |
+| Calendar test file(s) | Update assertions for check-in chip text from `"4p"` → `"check-in 4p"` (and similar). Update snapshots if used. |
+
+**No CSS changes.** No API changes. No new components.
+
+---
+
+*Sprint 12 Spec 17 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-06.*
+
+---
+
+### Spec 18: Calendar Default Month — First Planned Event
+
+**Status:** Approved
+**Task:** T-128
+**Sprint:** 12
+**Published:** 2026-03-06
+**Type:** Feature / UX Improvement
+
+---
+
+#### 18.1 Overview
+
+The `TripCalendar` component initializes its `currentMonth` state to the current calendar month (e.g., March 2026 when the sprint runs). For a trip planned in August 2026, the user must manually navigate forward 5 months every time they open the trip details page — a significant friction point.
+
+**Fix:** Initialize `currentMonth` to the month/year of the trip's **earliest planned event** across all event types (flights, stays, activities). If no events exist, fall back to the current month.
+
+This is a state initialization change only. No API calls are added, no visual design changes, and month navigation (prev/next arrows) continues to work normally from whatever month the calendar opens on.
+
+---
+
+#### 18.2 Event Date Sources
+
+The `TripCalendar` component already receives (or has access to) all trip event data. The following fields must be inspected to find the earliest date:
+
+| Data Source | Field to Inspect | Field Type |
+|------------|-----------------|-----------|
+| `flights` array | `departure_at` | ISO 8601 UTC string (e.g., `"2026-08-07T10:00:00.000Z"`) |
+| `stays` array | `check_in_at` | ISO 8601 UTC string |
+| `activities` array | `activity_date` | DATE string (e.g., `"2026-08-08"`) |
+
+**Note on land travel:** Land travel entries use `departure_date` (a DATE string). If the `TripCalendar` already maps land travel events onto the calendar, include `departure_date` as well. If land travel is not currently rendered on the calendar, do NOT include it — only include date sources that are already used by the calendar's event-building logic.
+
+**Note on field availability:** The component receives these arrays as props (or via context). All three arrays are already fetched by `useTripDetails` (parallel fetch). No new API calls are needed.
+
+---
+
+#### 18.3 Earliest Event Date Algorithm
+
+```js
+/**
+ * Find the earliest event date across flights, stays, and activities.
+ * Returns a Date object set to the first day of the earliest event's month,
+ * or the first day of the current month if no events exist.
+ *
+ * @param {Array} flights - flight objects with departure_at (ISO string)
+ * @param {Array} stays   - stay objects with check_in_at (ISO string)
+ * @param {Array} activities - activity objects with activity_date (YYYY-MM-DD string)
+ * @returns {Date} - a Date object representing the start of the target month
+ */
+function getInitialMonth(flights = [], stays = [], activities = []) {
+  const dates = [];
+
+  // Collect flight departure dates
+  flights.forEach(f => {
+    if (f.departure_at) {
+      const d = new Date(f.departure_at);
+      if (!isNaN(d)) dates.push(d);
+    }
+  });
+
+  // Collect stay check-in dates
+  stays.forEach(s => {
+    if (s.check_in_at) {
+      const d = new Date(s.check_in_at);
+      if (!isNaN(d)) dates.push(d);
+    }
+  });
+
+  // Collect activity dates — parse as local date to avoid UTC-midnight offset issues
+  activities.forEach(a => {
+    if (a.activity_date) {
+      // YYYY-MM-DD: parse with explicit components to treat as local date
+      const [year, month, day] = a.activity_date.split('-').map(Number);
+      const d = new Date(year, month - 1, day);
+      if (!isNaN(d)) dates.push(d);
+    }
+  });
+
+  if (dates.length === 0) {
+    // Fallback: current month
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
+  // Find the earliest date
+  const earliest = dates.reduce((min, d) => d < min ? d : min, dates[0]);
+
+  // Return first day of that month
+  return new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+}
+```
+
+**Key design decisions:**
+
+1. **Activity dates parsed as local time:** `new Date("2026-08-08")` interprets the date as midnight UTC, which can shift to the previous day in timezones west of UTC. Parsing with `new Date(year, month - 1, day)` uses local time and avoids this off-by-one error.
+
+2. **Flight/stay dates parsed as UTC ISO strings:** `departure_at` and `check_in_at` are full ISO 8601 UTC timestamps. `new Date(isoString)` correctly parses these as UTC. The resulting local Date object may show a different calendar date depending on the user's timezone, but for the purpose of "which month to open the calendar on", this is acceptable — the calendar operates in the user's local timezone.
+
+3. **Graceful handling of missing/invalid dates:** `isNaN(d)` guards prevent `Invalid Date` objects from entering the comparison. Entries with null or malformed date fields are silently skipped.
+
+4. **Returns a Date, not a `{month, year}` object:** The returned Date should be stored in `currentMonth` state in whatever format the component already uses. If `currentMonth` is stored as `{ month: number, year: number }`, extract those values from the returned Date:
+   ```js
+   const initial = getInitialMonth(flights, stays, activities);
+   const [currentMonth, setCurrentMonth] = useState({
+     month: initial.getMonth(), // 0-indexed
+     year: initial.getFullYear()
+   });
+   ```
+   If `currentMonth` is stored as a Date directly, use the Date object as-is.
+
+---
+
+#### 18.4 State Initialization Timing
+
+The `getInitialMonth` call must happen **at component initialization** — it determines the initial value of `currentMonth` state. It should NOT be inside a `useEffect` that runs after mount (which would cause a visible flash from the current month to the correct month).
+
+**Correct pattern (no flash):**
+```jsx
+// Props/context: flights, stays, activities passed in from TripDetailsPage
+const TripCalendar = ({ flights, stays, activities }) => {
+  const [currentMonth, setCurrentMonth] = useState(() =>
+    getInitialMonth(flights, stays, activities)
+  );
+  // ...
+};
+```
+
+The lazy initializer (`useState(() => fn())`) ensures the function runs only once at mount, avoiding re-computation on re-renders.
+
+**Note on data availability:** If `TripCalendar` is rendered before the flights/stays/activities data has loaded (during the loading state), the arrays passed as props will be empty (`[]`). In this case, `getInitialMonth` correctly returns the current month fallback. When data loads and the parent re-renders, the component has already mounted — `useState` initial value does not re-run. The calendar will remain on the current month until the user navigates.
+
+**Preferred approach:** Render `TripCalendar` only after all three data sets have loaded. The existing `TripDetailsPage` loading skeleton pattern already defers rendering sub-components until data is ready. Verify that `TripCalendar` is rendered inside the loaded state branch (not in the skeleton/loading branch). If it is already conditional on data being present, `getInitialMonth` will always receive populated arrays.
+
+---
+
+#### 18.5 Month Navigation (Must Not Regress)
+
+The existing prev/next month navigation must continue to work normally after this change. The only change is the **initial** `currentMonth` value — once the user navigates, `setCurrentMonth` is called with the new month/year as usual. Navigation logic is completely unaffected.
+
+**Verify:**
+- Clicking "next month" from August 2026 moves to September 2026
+- Clicking "prev month" from August 2026 moves to July 2026
+- Navigation from any month continues indefinitely in both directions
+
+---
+
+#### 18.6 User Flow
+
+**Trip with future events:**
+1. User opens `TripDetailsPage` for a trip with events in August 2026 (e.g., a flight departing August 7, a stay checking in August 7, activities on August 8–9)
+2. `TripCalendar` initializes — `getInitialMonth` finds August 7, 2026 as the earliest date
+3. Calendar renders with August 2026 visible immediately — no current-month flash, no navigation required
+4. User sees their August flights, stays, and activities populated on the calendar
+5. User clicks "next" arrow → September 2026 displayed (navigation works normally)
+
+**Trip with no events (empty trip):**
+1. User opens `TripDetailsPage` for a newly created trip with no flights, stays, or activities
+2. `TripCalendar` initializes — `getInitialMonth` receives three empty arrays, returns current month (March 2026)
+3. Calendar renders with March 2026 (current month) — same as the previous behavior
+
+**Existing trip with events in current month:**
+1. User's trip has events in March 2026 (the current month as of 2026-03-06)
+2. `getInitialMonth` returns March 2026 — calendar opens on March 2026
+3. Visually identical to previous behavior (no perceptible change for current-month trips)
+
+---
+
+#### 18.7 States
+
+| State | Calendar Opening Month |
+|-------|----------------------|
+| **Trip has events in a future month** | Opens on the month of the earliest event |
+| **Trip has events in a past month** | Opens on the month of the earliest event (past month) — user can navigate forward |
+| **Trip has events spanning multiple months** | Opens on the month of the earliest event |
+| **Trip has events only in the current month** | Opens on current month (same as before) |
+| **Trip has no events (all arrays empty)** | Opens on current month (fallback) |
+| **Data loading (arrays not yet fetched)** | Opens on current month (fallback) — corrected after data loads IF calendar is conditionally rendered post-load |
+| **Malformed date in one event** | Malformed entry is skipped; other events still determine the month |
+| **All events have null date fields** | Falls back to current month |
+
+---
+
+#### 18.8 Visual Design (Unchanged)
+
+The calendar's visual layout, chip styles, day cell styles, header (month/year label + navigation arrows), and color scheme are all unchanged. The only difference is which month is visible when the calendar first renders.
+
+---
+
+#### 18.9 Responsive Behavior
+
+No changes to responsive behavior. The calendar already adapts to different viewport widths. This change is purely a state initialization logic change.
+
+---
+
+#### 18.10 Accessibility
+
+No accessibility changes required. The month/year header text (e.g., "August 2026") that screen readers announce is determined by `currentMonth` state — it will now read the correct month for the trip rather than the current month. This is a strict accessibility improvement: users navigating with screen readers will land directly on the relevant month.
+
+---
+
+#### 18.11 Tests Required
+
+**Test 1 — Defaults to earliest event month when events exist:**
+```
+Given: TripCalendar receives:
+  - flights: [{ departure_at: "2026-08-07T10:00:00.000Z" }]
+  - stays: [{ check_in_at: "2026-08-07T20:00:00.000Z" }]
+  - activities: [{ activity_date: "2026-08-08" }]
+When: TripCalendar mounts
+Then: The calendar header shows "August 2026" (not the current month)
+  AND: The August 2026 grid is visible
+```
+
+**Test 2 — No events falls back to current month:**
+```
+Given: TripCalendar receives:
+  - flights: []
+  - stays: []
+  - activities: []
+When: TripCalendar mounts
+Then: The calendar header shows the current month (e.g., "March 2026")
+```
+
+**Test 3 — Earliest across mixed event types:**
+```
+Given: TripCalendar receives:
+  - flights: [{ departure_at: "2026-09-15T06:00:00.000Z" }]
+  - stays: [{ check_in_at: "2026-09-15T20:00:00.000Z" }]
+  - activities: [{ activity_date: "2026-08-20" }]  // ← earlier than flights/stays
+When: TripCalendar mounts
+Then: The calendar header shows "August 2026" (the activity date is the earliest)
+```
+
+**Test 4 — Month navigation works from initial month:**
+```
+Given: TripCalendar mounts showing August 2026
+When: User clicks the "next month" button
+Then: The calendar header shows "September 2026"
+When: User clicks "prev month"
+Then: The calendar header shows "August 2026" again
+```
+
+**Test 5 — Malformed date is skipped gracefully:**
+```
+Given: TripCalendar receives:
+  - flights: [{ departure_at: "not-a-date" }]
+  - stays: [{ check_in_at: "2026-10-01T12:00:00.000Z" }]
+When: TripCalendar mounts
+Then: No error is thrown
+  AND: The calendar header shows "October 2026" (the valid date wins)
+```
+
+All existing TripCalendar tests must continue to pass.
+
+---
+
+#### 18.12 Files to Modify (T-128)
+
+| File | Change |
+|------|--------|
+| `TripCalendar.jsx` (or equivalent) | Add `getInitialMonth(flights, stays, activities)` utility; use as lazy initial state for `currentMonth` |
+| `TripCalendar.test.jsx` (or equivalent) | Add 5 tests covering the scenarios above |
+
+**No CSS changes.** No API changes. No new routes. No backend changes.
+
+---
+
+*Sprint 12 Spec 18 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-06.*

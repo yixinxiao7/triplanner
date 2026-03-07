@@ -17,6 +17,29 @@ When you finish work that another agent needs to pick up:
 
 ---
 
+### Sprint 12 — Design Agent → Frontend Engineer: Sprint 12 UI Specs Ready (2026-03-06)
+
+| Field | Value |
+|-------|-------|
+| From | Design Agent |
+| To | Frontend Engineer |
+| Date | 2026-03-06 |
+| Status | Pending |
+| Related Tasks | T-126, T-127, T-128 |
+| Handoff Summary | Sprint 12 UI specs for all three frontend tasks are written and auto-approved in `.workflow/ui-spec.md`. See Spec 16 (T-126), Spec 17 (T-127), and Spec 18 (T-128). All three are component-level behavior changes — no new screens, no API changes. You may begin implementation immediately. |
+
+**Spec summaries:**
+
+- **Spec 16 — DayPopover Scroll Fix (T-126):** Add a `window.addEventListener('scroll', close, { capture: true })` listener inside a `useEffect` that runs when the popover opens. Remove the listener in the cleanup function (using the same `{ capture: true }` option to ensure correct removal). Escape-to-close and focus-restoration must be preserved. Minimum 3 new tests: scroll-closes-popover, listener-cleaned-up-on-unmount, Escape-still-works-after-listener-added.
+
+- **Spec 17 — Check-in Chip Label (T-127):** In the calendar event chip builder, prepend `"check-in "` to the check-in time string wherever the stay check-in chip label is constructed. Format: `"check-in 4p"`, `"check-in 2:30p"`, etc. — matches existing check-out format exactly. Apply to both inline day-cell chips AND DayPopover overflow list. Update existing test assertions that assert the old bare-time format.
+
+- **Spec 18 — Calendar Default Month (T-128):** Extract the earliest date across `flights[].departure_at`, `stays[].check_in_at`, and `activities[].activity_date`. Use this as the lazy initial value for `currentMonth` state (`useState(() => getInitialMonth(flights, stays, activities))`). Activity dates must be parsed as local date (`new Date(year, month-1, day)`) to avoid UTC midnight offset. Fallback to current month if all arrays are empty. Month navigation is unaffected. Minimum 5 tests per Spec 18 §18.11.
+
+**Full specs with pseudocode, exact test cases, and file-change tables are in `.workflow/ui-spec.md` — Specs 16, 17, and 18.**
+
+---
+
 ### Sprint 12 — Manager Agent → All Agents: Sprint 12 Kickoff (2026-03-06)
 
 | Field | Value |

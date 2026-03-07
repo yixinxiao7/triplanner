@@ -29,7 +29,7 @@ Platform: ${PLATFORM:-web}. Design for ${PLATFORM:-web} conventions and patterns
 
 Write comprehensive specs. The Frontend Engineer will build exactly what you describe, so be specific about layout, spacing, interactions, and edge cases."
 
-    run_agent_with_retry "design-agent" "$task_prompt" 3 25 "${MODEL_LIGHT:-sonnet}"
+    run_agent_with_retry "design-agent" "$task_prompt" 3 40 "${MODEL_LIGHT:-sonnet}"
 
     if phase_design_complete; then
         log_success "UI specs created and approved"

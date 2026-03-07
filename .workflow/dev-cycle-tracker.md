@@ -851,6 +851,8 @@ See `.workflow/sprint-log.md` Sprint #9 summary for full retrospective. See `.wo
 
 **Sprint 12 Kickoff (Manager Agent — 2026-03-06):** Sprint 12 begins. The pipeline validation backlog is fully closed (T-094 through T-123 all Done). All Integration Check tasks (T-097–T-104, T-113–T-114) promoted to Done after T-108/T-119 staging confirmation. Sprint 12 is a focused UX polish + infrastructure fix sprint addressing all four "New" feedback entries from Sprint 11 (FB-085 through FB-088). No new MVP features are needed — the project brief core features are complete. After this sprint's QA/deploy/monitor/user-agent cycle closes, Sprint 13 can address production deployment (pending project owner's hosting decision from T-124 research).
 
+**Design Agent (2026-03-06):** No explicit Design Agent tasks assigned in Sprint 12 (all tasks are bug fixes / small feature improvements, not new screens). Per standing responsibility, the Design Agent has authored component-level behavior specs for all three frontend tasks (T-126, T-127, T-128) and published them to `.workflow/ui-spec.md` as Spec 16, Spec 17, and Spec 18. All three specs are auto-approved. Handoff logged to Frontend Engineer in `.workflow/handoff-log.md`. Design Agent work for Sprint 12: Done.
+
 ---
 
 ### Phase 1 — Infrastructure Fix + Frontend Polish (parallel — no dependencies between T-125/T-126/T-127/T-128)
