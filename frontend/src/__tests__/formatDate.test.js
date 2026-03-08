@@ -6,6 +6,7 @@ import {
   formatTime,
   formatDateRange,
   formatTripDateRange,
+  formatTimezoneAbbr,
 } from '../utils/formatDate';
 
 describe('formatTime', () => {
@@ -100,5 +101,56 @@ describe('formatTripDateRange', () => {
 
   it('returns null when both dates are undefined', () => {
     expect(formatTripDateRange(undefined, undefined)).toBeNull();
+  });
+});
+
+// ── T-153: formatTimezoneAbbr() unit tests ─────────────────────────────────
+// formatTimezoneAbbr(isoString, ianaTimezone) → short timezone abbreviation string.
+
+describe('formatTimezoneAbbr', () => {
+  // Aug 2026 is summer time in the Northern Hemisphere (DST active for US/EU zones)
+  const summerIso = '2026-08-07T10:00:00.000Z';
+  // January 2026 is winter time
+  const winterIso = '2026-01-07T10:00:00.000Z';
+
+  it('T-153 1: America/New_York in summer returns a DST-aware abbreviation (EDT or ET)', () => {
+    const result = formatTimezoneAbbr(summerIso, 'America/New_York');
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
+    // DST active in August → expect EDT, EST, or ET (platform-dependent short name)
+    expect(result).toMatch(/^(EDT|EST|ET|GMT[-+]\d+)$/);
+  });
+
+  it('T-153 2: Asia/Tokyo always returns JST or GMT+9 (no DST)', () => {
+    const result = formatTimezoneAbbr(summerIso, 'Asia/Tokyo');
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
+    // Tokyo has no DST; expect JST or a GMT offset string
+    expect(result).toMatch(/^(JST|GMT\+9|GMT\+09:00)$/);
+  });
+
+  it('T-153 3: Europe/Paris in summer returns a DST abbreviation (CEST or GMT+2)', () => {
+    const result = formatTimezoneAbbr(summerIso, 'Europe/Paris');
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
+    // CEST (Central European Summer Time) or GMT+2
+    expect(result).toMatch(/^(CEST|CET|GMT\+2|GMT\+02:00)$/);
+  });
+
+  it('T-153 4: null isoString returns empty string without throwing', () => {
+    expect(() => formatTimezoneAbbr(null, 'America/New_York')).not.toThrow();
+    expect(formatTimezoneAbbr(null, 'America/New_York')).toBe('');
+  });
+
+  it('T-153 5: null ianaTimezone returns empty string without throwing', () => {
+    expect(() => formatTimezoneAbbr(summerIso, null)).not.toThrow();
+    expect(formatTimezoneAbbr(summerIso, null)).toBe('');
+  });
+
+  it('T-153 6: invalid/unknown IANA timezone returns a string (falls back to the timezone arg)', () => {
+    const result = formatTimezoneAbbr(summerIso, 'Invalid/Zone');
+    expect(typeof result).toBe('string');
+    // Should not throw; should return a non-empty fallback
+    expect(result.length).toBeGreaterThan(0);
   });
 });

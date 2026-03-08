@@ -4,6 +4,38 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Sprint 15 — Backend Engineer: BE-S15 Implementation Phase Complete — 266/266 Tests Pass (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | QA Engineer, Deploy Engineer |
+| Date | 2026-03-07 |
+| Status | Done — No Backend Implementation Required |
+| Related Tasks | BE-S15 |
+
+**BE-S15 is Done.** Sprint 15 contains zero backend implementation tasks. The Backend Engineer sprint review is complete.
+
+#### Verified This Sprint
+
+| Check | Result |
+|-------|--------|
+| Backend tests | **266/266 PASS** (12 test files, 535ms) — 2026-03-07 |
+| Schema / migrations | All 10 migrations (001–010) applied on staging. No new migrations for Sprint 15. |
+| New endpoints | **None.** Zero new or changed API endpoints. |
+| api-contracts.md | Sprint 15 section published. No new contracts. T-155 field reference documented. |
+| Hotfix standby | Active — monitoring T-152 and T-160 walkthroughs for Critical/Major bugs. |
+
+#### For QA (T-156, T-157)
+
+No backend code changed this sprint. QA only needs to verify frontend changes (T-154, T-155). Backend regression risk is zero — all 266/266 backend tests continue to pass. Full API surface reference is in the earlier Sprint 15 handoff entry below.
+
+#### For Deploy (T-158)
+
+**No migrations to run.** The backend is unchanged. T-158 only needs to rebuild and redeploy the frontend. pm2 restart of `triplanner-backend` may be performed for a clean restart, but no migration step is required.
+
+---
+
 ### Sprint 15 — Backend Engineer: API Contracts Complete — No New Endpoints — Frontend Engineer Cleared (2026-03-07)
 
 | Field | Value |
@@ -773,3 +805,119 @@ Sprint 14 has zero backend API changes. The QA Engineer (T-148 security checklis
 
 **Sprint 15 plan:** `.workflow/active-sprint.md` updated. Tasks T-154–T-160 added to `.workflow/dev-cycle-tracker.md` Sprint 15 section. Feedback-log FB-096, FB-097, FB-098 updated to Tasked.
 
+---
+
+### Sprint 15 — Deploy Engineer: T-158 Blocked — Awaiting QA Confirmation (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Deploy Engineer |
+| To | Manager Agent |
+| Date | 2026-03-07 |
+| Status | **Blocked** |
+| Related Tasks | T-158 (blocked by T-157) |
+
+**T-158 (Sprint 15 staging re-deployment) cannot proceed — upstream dependencies not yet complete.**
+
+#### Blocker Chain
+
+| Task | Assignee | Status | Blocking |
+|------|----------|--------|---------|
+| T-154 | Frontend Engineer | Backlog | `frontend/index.html` still has `<title>App</title>` — changes not yet committed |
+| T-155 | Frontend Engineer | Backlog | `TripCalendar.jsx` line 539 still renders `ev.item.to_location` for both pick-up and drop-off chips — `_location` fix not applied |
+| T-156 | QA Engineer | Backlog | Security checklist + code review for T-154/T-155 — not yet started |
+| T-157 | QA Engineer | Backlog | Integration testing — not yet started |
+| **T-158** | **Deploy Engineer** | **Blocked** | **Cannot deploy without QA sign-off in handoff-log.md (per deploy rules)** |
+
+#### Evidence Gathered
+
+- `frontend/index.html`: `<title>App</title>` — T-154 NOT applied
+- `frontend/public/favicon.png`: file exists — only the `<link>` tag in `index.html` is missing
+- `TripCalendar.jsx` line 539: `const chipLabel = \`${ev.item._modeLabel} → ${ev.item.to_location}\`` — T-155 NOT applied (`from_location` not used for pick-up day)
+- `dev-cycle-tracker.md`: T-154, T-155, T-156, T-157 all show status **Backlog**
+- `handoff-log.md`: No QA sign-off entry for Sprint 15 T-157
+
+#### Current Staging State
+
+- pm2 `triplanner-backend` was online (PID 94787, per T-151 Sprint 14 health check — 2026-03-07)
+- Backend on `https://localhost:3001` — unchanged
+- `backend/.env` and `backend/.env.staging` — NOT modified (correct per T-158 rules)
+- No new migrations pending (Sprint 15 has zero schema changes — confirmed in api-contracts.md)
+
+#### Required Actions (for other agents before T-158 can proceed)
+
+1. **Frontend Engineer**: Implement T-154 (`index.html` title + favicon link) and T-155 (`TripCalendar.jsx` `_location` fix) — commit to branch
+2. **QA Engineer**: Run T-156 (security checklist + full test suite) then T-157 (integration testing) — log pass confirmation in `handoff-log.md` with status "Ready for Deploy"
+3. **Deploy Engineer**: Will proceed with T-158 immediately upon receiving T-157 QA confirmation
+
+#### T-158 Readiness Checklist (will verify before deploying)
+
+- [ ] `frontend/index.html` `<title>triplanner</title>` present
+- [ ] `frontend/index.html` `<link rel="icon" type="image/png" href="/favicon.png">` present
+- [ ] `TripCalendar.jsx` `_location` used for pick-up/drop-off chip rendering
+- [ ] QA T-157 sign-off present in handoff-log.md
+- [ ] Full test suite passing (frontend 404+, backend 266+)
+
+
+---
+
+## Sprint 15 — Frontend Engineer → QA Engineer: T-154 + T-155 + T-153 Complete
+
+| Field | Value |
+|-------|-------|
+| From | Frontend Engineer |
+| To | QA Engineer |
+| Date | 2026-03-07 |
+| Status | **Ready for QA** |
+| Related Tasks | T-153, T-154, T-155 |
+
+### API Contract Acknowledgment
+
+Sprint 15 frontend tasks (T-154, T-155, T-153) involve **no new API endpoints**. They are pure frontend changes (static HTML, component logic, and tests). No api-contracts.md entries are applicable. Acknowledged.
+
+### Work Completed
+
+#### T-154: Browser tab title + favicon (P3, Done)
+- **`frontend/index.html`**: Changed `<title>App</title>` → `<title>triplanner</title>`
+- **`frontend/index.html`**: Added `<link rel="icon" type="image/png" href="/favicon.png" />` inside `<head>`
+- `frontend/public/favicon.png` already existed — only the `<link>` tag was missing
+- No test changes required (static HTML)
+
+#### T-155: Fix land travel chip location display (P1, Done)
+- **Root cause**: `buildEventsMap` in `TripCalendar.jsx` was not propagating distinct location fields for departure vs. arrival day events
+- **Fix in `buildEventsMap`**: Added `_location: lt.from_location` on departure-day events; `_location: lt.to_location` on arrival-day events
+- **Fix in `DayCell`**: Changed chip label from `ev.item.to_location` → `ev.item._location || ev.item.to_location`
+- **Fix in `DayPopover.getEventLabel`**: Changed label from `item.to_location` → `item._location || item.to_location`
+- **T-138 rental-car label prefixes** ("pick-up"/"drop-off") preserved — only location text changed
+- **Tests added** (4 new tests: T-155 A–D):
+  - A: pick-up day chip shows `from_location`
+  - B: drop-off day chip shows `to_location`
+  - C: same-day land travel shows `from_location` only (no arrival chip)
+  - D: RENTAL_CAR "pick-up"/"drop-off" prefixes still present alongside corrected location
+- **Existing tests updated** (2 tests) to reflect correct T-155 behavior:
+  - "renders land travel chip on departure_date" → now asserts `from_location` on pick-up day
+  - "T-101 land travel arrival chip" → now asserts separate titles for departure (`from_location`) and arrival (`to_location`)
+
+#### T-153: Unit tests for `formatTimezoneAbbr()` (P3, Done)
+- **`frontend/src/__tests__/formatDate.test.js`**: Added 6 new unit tests covering:
+  1. `America/New_York` summer (DST) → EDT/ET
+  2. `Asia/Tokyo` (no DST) → JST/GMT+9
+  3. `Europe/Paris` summer → CEST/GMT+2
+  4. `null` isoString → returns `''` without throwing
+  5. `null` ianaTimezone → returns `''` without throwing
+  6. Invalid/unknown IANA timezone → graceful fallback (no throw)
+
+### Test Results
+- **Frontend**: **410 / 410 tests pass** (22 test files, 0 failures)
+- **Backend**: not re-run (no backend changes in Sprint 15)
+
+### What QA Should Test (T-156 + T-157)
+1. **T-154**: `frontend/index.html` `<title>` is `triplanner` ✅; `<link rel="icon" type="image/png" href="/favicon.png">` present ✅
+2. **T-155**: Create land travel with `from_location = "LAX Airport"`, `to_location = "SFO Airport"`. Pick-up day chip shows "LAX Airport"; drop-off day chip shows "SFO Airport". RENTAL_CAR labels ("pick-up"/"drop-off") still present alongside location text.
+3. **T-153**: No production code changed — tests only. `formatDate.test.js` 20 tests pass.
+4. **T-138 regression**: RENTAL_CAR pick-up/drop-off time chips still work
+5. **Sprint 14 regression**: "Today" button, first-event-month fix
+6. **Run full test suite**: `npm test --run` in `frontend/` → 410/410
+
+### Known Limitations
+- None. Changes are minimal and targeted.

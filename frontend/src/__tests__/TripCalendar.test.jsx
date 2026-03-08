@@ -321,7 +321,7 @@ describe('TripCalendar', () => {
 
   // ── T-089: Land travel events ─────────────────────────────────────────────
 
-  it('renders land travel chip on departure_date with mode label and destination', () => {
+  it('renders land travel chip on departure_date with mode label and from_location (T-155)', () => {
     const landTravels = [
       {
         id: 'lt-t89',
@@ -338,8 +338,8 @@ describe('TripCalendar', () => {
     render(
       <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={landTravels} />
     );
-    // Chip title is "train → NYC"
-    expect(screen.getByTitle('train → NYC')).toBeDefined();
+    // T-155: pick-up day chip uses from_location → title is "train → Boston"
+    expect(screen.getByTitle('train → Boston')).toBeDefined();
   });
 
   it('renders land travel chip with departure time when departure_time is set', () => {
@@ -830,12 +830,11 @@ describe('TripCalendar', () => {
     );
 
     // Arrival day (Aug 8) should show "arr. 12p" in popover or chip
-    // The arrival chip is created in buildEventsMap for land travel
-    // It renders with _isArrival: true → popoverItemTime shows "arr. 12p"
-    // The arrival chip title is "train → NYC" (same as departure)
-    const trainChips = screen.getAllByTitle('train → NYC');
-    // Should have at least 2 chips: one for departure day and one for arrival day
-    expect(trainChips.length).toBeGreaterThanOrEqual(2);
+    // T-155: departure chip uses from_location ("Boston"), arrival chip uses to_location ("NYC")
+    const departureChip = screen.getByTitle('train → Boston');
+    expect(departureChip).toBeDefined();
+    const arrivalChip = screen.getByTitle('train → NYC');
+    expect(arrivalChip).toBeDefined();
   });
 
   // ── T-137: DayPopover stay-open on scroll (Spec 19 — reverses T-126) ────────
@@ -1580,5 +1579,92 @@ describe('TripCalendar', () => {
     const nextMonthName = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
       'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'][nextMonth.getMonth()];
     expect(screen.getByText(new RegExp(`${nextMonthName} ${nextMonth.getFullYear()}`, 'i'))).toBeDefined();
+  });
+
+  // ── T-155 (FB-098): Land travel chip shows correct location (from_location on pick-up day, to_location on drop-off day) ──
+
+  it('T-155 A: pick-up day chip shows from_location text', () => {
+    const landTravel = {
+      id: 'lt-155-a',
+      mode: 'BUS',
+      from_location: 'LAX Airport',
+      to_location: 'SFO Airport',
+      departure_date: '2026-08-07',
+      departure_time: '09:00:00',
+      arrival_date: '2026-08-08',
+      arrival_time: '12:00:00',
+    };
+    render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[landTravel]} />
+    );
+    // Pick-up day chip should show from_location ("LAX Airport"), not to_location ("SFO Airport")
+    const chipTexts = screen.getAllByText(/LAX Airport/i);
+    expect(chipTexts.length).toBeGreaterThan(0);
+  });
+
+  it('T-155 B: drop-off day chip shows to_location text', () => {
+    const landTravel = {
+      id: 'lt-155-b',
+      mode: 'BUS',
+      from_location: 'LAX Airport',
+      to_location: 'SFO Airport',
+      departure_date: '2026-08-07',
+      departure_time: '09:00:00',
+      arrival_date: '2026-08-08',
+      arrival_time: '12:00:00',
+    };
+    render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[landTravel]} />
+    );
+    // Drop-off day chip should show to_location ("SFO Airport"), not from_location ("LAX Airport")
+    const chipTexts = screen.getAllByText(/SFO Airport/i);
+    expect(chipTexts.length).toBeGreaterThan(0);
+  });
+
+  it('T-155 C: same-day land travel shows from_location only (no arrival chip)', () => {
+    const landTravel = {
+      id: 'lt-155-c',
+      mode: 'RENTAL_CAR',
+      from_location: 'LAX Airport',
+      to_location: 'SFO Airport',
+      departure_date: '2026-08-07',
+      departure_time: '10:00:00',
+      arrival_date: '2026-08-07', // same day — no arrival chip added
+      arrival_time: '17:00:00',
+    };
+    render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[landTravel]} />
+    );
+    // Only one chip exists (same-day) and it should show from_location
+    const fromChips = screen.queryAllByText(/LAX Airport/i);
+    expect(fromChips.length).toBeGreaterThan(0);
+    // to_location should NOT appear as chip text since there is no arrival chip
+    expect(screen.queryByText(/SFO Airport/i)).toBeNull();
+  });
+
+  it('T-155 D: RENTAL_CAR "pick-up"/"drop-off" label prefixes still present alongside corrected location', () => {
+    const landTravel = {
+      id: 'lt-155-d',
+      mode: 'RENTAL_CAR',
+      from_location: 'LAX Airport',
+      to_location: 'SFO Airport',
+      departure_date: '2026-08-07',
+      departure_time: '17:00:00',
+      arrival_date: '2026-08-10',
+      arrival_time: '14:00:00',
+    };
+    render(
+      <TripCalendar trip={mockTrip} flights={[]} stays={[]} activities={[]} landTravels={[landTravel]} />
+    );
+    // Pick-up day: chip name shows from_location, time label shows "pick-up"
+    const fromChips = screen.queryAllByText(/LAX Airport/i);
+    expect(fromChips.length).toBeGreaterThan(0);
+    const pickupLabels = screen.queryAllByText(/pick-up 5p/i);
+    expect(pickupLabels.length).toBeGreaterThan(0);
+    // Drop-off day: chip name shows to_location, time label shows "drop-off"
+    const toChips = screen.queryAllByText(/SFO Airport/i);
+    expect(toChips.length).toBeGreaterThan(0);
+    const dropoffLabels = screen.queryAllByText(/drop-off 2p/i);
+    expect(dropoffLabels.length).toBeGreaterThan(0);
   });
 });

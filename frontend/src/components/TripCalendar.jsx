@@ -229,15 +229,23 @@ function buildEventsMap(flights, stays, activities, landTravels) {
     // Land travel appears on departure_date
     const calTime = lt.departure_time ? formatCalendarTime(lt.departure_time) : null;
     const modeLabel = LAND_TRAVEL_MODE_LABELS[lt.mode] || lt.mode.toLowerCase();
-    addEvent(lt.departure_date, 'landTravels', { ...lt, _calTime: calTime, _modeLabel: modeLabel });
+    // T-155: _location for departure day = from_location (pick-up/origin)
+    addEvent(lt.departure_date, 'landTravels', {
+      ...lt,
+      _calTime: calTime,
+      _modeLabel: modeLabel,
+      _location: lt.from_location,
+    });
     // Also on arrival_date if different from departure_date (Sprint 6 T-088)
     if (lt.arrival_date && lt.arrival_date !== lt.departure_date) {
       const arrCalTime = lt.arrival_time ? formatCalendarTime(lt.arrival_time) : null;
+      // T-155: _location for arrival day = to_location (drop-off/destination)
       addEvent(lt.arrival_date, 'landTravels', {
         ...lt,
         _calTime: arrCalTime,
         _modeLabel: modeLabel,
         _isArrival: true,
+        _location: lt.to_location,
       });
     }
   }
@@ -349,8 +357,9 @@ function DayPopover({ day, events, onClose, triggerRef, position }) {
     if (type === 'stay') return item.name || 'stay';
     if (type === 'activity') return item.name || 'activity';
     if (type === 'landTravel') {
+      // T-155: use _location (from_location on pick-up day, to_location on drop-off day)
       const prefix = item._isArrival ? 'arr.' : 'dep.';
-      return `${item._modeLabel} ${prefix} ${item.to_location || ''}`.trim();
+      return `${item._modeLabel} ${prefix} ${item._location || item.to_location || ''}`.trim();
     }
     return 'event';
   }
@@ -536,7 +545,8 @@ function DayCell({ day, isOutsideMonth, isToday, events, openPopoverDay, onOpenP
             );
           }
           if (ev.type === 'landTravel') {
-            const chipLabel = `${ev.item._modeLabel} → ${ev.item.to_location}`;
+            // T-155: use _location (from_location on pick-up day, to_location on drop-off day)
+            const chipLabel = `${ev.item._modeLabel} → ${ev.item._location || ev.item.to_location}`;
             // T-138: RENTAL_CAR shows "pick-up Xp" on pick-up day and "drop-off Xp" on drop-off day.
             // All other modes show the plain departure/arrival time (existing behavior).
             let timeLabel = null;
