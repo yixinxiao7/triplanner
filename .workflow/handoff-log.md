@@ -4,6 +4,163 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Sprint 15 — Manager Agent: Code Review Pass Complete — Zero Rework — Monitor Agent Cleared for T-159 (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Manager Agent |
+| To | Monitor Agent (primary) / User Agent (secondary) |
+| Date | 2026-03-07 |
+| Status | Review Pass Complete — No Rework — T-159 Unblocked |
+| Related Tasks | T-152, T-153, T-154, T-155, T-159, T-160 |
+
+**Sprint 15 Manager code review pass is complete. Zero tasks were in "In Review" status — all Sprint 15 implementation tasks were reviewed and approved earlier in this sprint and are now Done. The pipeline is healthy and unblocked.**
+
+#### Review Pass Summary
+
+| Task | Status | Review Result |
+|------|--------|--------------|
+| T-153 — formatTimezoneAbbr() unit tests | Done | ✅ APPROVED (confirmed) — 6 tests covering all spec cases, regex patterns correct, no production code changed |
+| T-154 — Browser title + favicon | Done | ✅ APPROVED (confirmed) — `<title>triplanner</title>` + `<link rel="icon">` in index.html, root-relative href, XSS-safe |
+| T-155 — Land travel chip location fix | Done | ✅ APPROVED (confirmed) — `_location` field correctly sourced from `from_location`/`to_location`, React text node rendering, T-138 prefixes intact, 4 A–D tests pass |
+| T-156 — QA security checklist | Done | ✅ Passed (QA complete) |
+| T-157 — QA integration testing | Done | ✅ Passed (QA complete) |
+| T-158 — Deploy | Done | ✅ Deployed (pm2 PID 9274, HTTPS port 3001, all smoke tests pass) |
+
+#### Zero Rework Dispatched
+
+No tasks were sent back to In Progress. No engineers need to take action for the code review pass.
+
+#### Instructions for Monitor Agent (T-159) — UNBLOCKED — START IMMEDIATELY
+
+T-158 (Deploy) is Done. T-159 is now unblocked. Proceed with Sprint 15 staging health check:
+
+1. `pm2 list` → confirm `triplanner-backend` online, PID 9274, 0 restarts
+2. `curl -sk https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+3. Check `frontend/dist/index.html`: `<title>triplanner</title>` present ✅
+4. Check `frontend/dist/index.html`: `<link rel="icon" type="image/png" href="/favicon.png" />` present ✅
+5. Create a test land travel entry with distinct from/to locations — verify pick-up day chip shows `from_location`, drop-off day chip shows `to_location`
+6. `npx playwright test` → expect 7/7 PASS
+7. Sprint 14 regression: calendar first-event-month (T-146), "Today" button (T-147)
+8. Sprint 13 regression: DayPopover stay-open on scroll (T-137), rental car time chips (T-138)
+9. Log results in `qa-build-log.md` Sprint 15 section
+10. Update T-159 status to Done in `dev-cycle-tracker.md`
+11. Log handoff to User Agent (T-160) in `handoff-log.md`
+
+#### Circuit-Breaker Notice — User Agent (T-152)
+
+**T-152 (User Agent comprehensive Sprint 12+13+14 walkthrough) is at Backlog with ZERO blockers and must execute this sprint.** This is the 6th consecutive carry-over. The circuit-breaker is active: if T-152 does not run in Sprint 15, the Manager Agent must escalate to the project owner and halt Sprint 16 planning.
+
+- Staging is verified healthy: `https://localhost:3001`, pm2 PID 9274, HTTPS confirmed
+- T-152 can run in parallel with T-159 (separate walkthrough scope — T-152 tests Sprint 12+13+14 features, T-159 does infrastructure health checks)
+- Full task description in dev-cycle-tracker.md Sprint 14 section
+
+---
+
+### Sprint 15 — Deploy Engineer: T-158 Complete — Staging Deployed → Monitor Agent Cleared for T-159 (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Deploy Engineer |
+| To | Monitor Agent |
+| Date | 2026-03-07 |
+| Status | Deploy Complete — T-159 Unblocked |
+| Related Tasks | T-154, T-155, T-158, T-159 |
+
+**Sprint 15 staging deployment is complete. T-158 is Done. Monitor Agent is cleared to proceed with T-159 (staging health check) immediately.**
+
+#### Deployment Summary
+
+| Item | Result |
+|------|--------|
+| Frontend build | ✅ Success — `npm run build` in `frontend/` (465ms, 122 modules) |
+| Migrations | ✅ None required — zero schema changes in Sprint 15 |
+| pm2 process | ✅ `triplanner-backend` online — PID 9274, 0 restarts |
+| Backend URL | `https://localhost:3001` |
+| Frontend dist | `frontend/dist/` rebuilt with T-154 + T-155 changes |
+| `.env` isolation | ✅ `backend/.env` unchanged; staging loads `.env.staging` |
+
+#### Smoke Test Results
+
+| Smoke Test | Result |
+|------------|--------|
+| `https://localhost:3001/api/v1/health` → `{"status":"ok"}` | ✅ PASS |
+| HTTPS on port 3001 confirmed in pm2 startup log | ✅ PASS |
+| `dist/index.html` title = `triplanner` | ✅ PASS |
+| `dist/index.html` favicon link = `/favicon.png` | ✅ PASS |
+| `frontend/public/favicon.png` exists | ✅ PASS |
+| T-155 `_location` wired correctly (departure=`from_location`, arrival=`to_location`) | ✅ PASS |
+| pm2 stability — 0 restarts, 0 unstable restarts | ✅ PASS |
+
+#### Instructions for Monitor Agent (T-159)
+
+1. Verify `pm2 list` shows `triplanner-backend` online, PID 9274, 0 restarts
+2. Confirm HTTPS health: `curl -sk https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+3. Confirm browser title: check `frontend/dist/index.html` contains `<title>triplanner</title>`
+4. Confirm favicon link: check `frontend/dist/index.html` contains `<link rel="icon" type="image/png" href="/favicon.png" />`
+5. Run Playwright suite: `npx playwright test` from project root — expect 7/7 PASS
+6. Verify Sprint 14 regression: calendar first-event-month (T-146), "Today" button (T-147) operational
+7. Verify T-155 land travel chip location (pick-up shows `from_location`, drop-off shows `to_location`)
+8. Log results in `qa-build-log.md` Sprint 15 section and update T-159 status to Done
+9. Log handoff to User Agent (T-160) in `handoff-log.md`
+
+**Full deploy log in `.workflow/qa-build-log.md` Sprint 15 section.**
+
+---
+
+### Sprint 15 — QA Engineer: T-156 + T-157 Complete — All Checks Pass → Deploy Engineer Cleared for T-158 (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | QA Engineer |
+| To | Deploy Engineer |
+| Date | 2026-03-07 |
+| Status | QA Complete — T-158 Unblocked |
+| Related Tasks | T-153, T-154, T-155, T-156, T-157, T-158 |
+
+**Sprint 15 QA is complete. T-156 (security checklist + code review) and T-157 (integration testing) both pass. Deploy Engineer is cleared to proceed with T-158 immediately.**
+
+#### QA Results Summary
+
+| Task | QA Result | Notes |
+|------|-----------|-------|
+| T-153 — formatTimezoneAbbr tests | ✅ PASS | 6 new tests verified in `src/__tests__/formatDate.test.js` (lines 107–156). All 6 cases pass. |
+| T-154 — Browser title + favicon | ✅ PASS | `frontend/index.html` line 6: `<title>triplanner</title>` ✅; line 7: favicon link ✅. favicon.png exists in `public/`. |
+| T-155 — Land travel chip location fix | ✅ PASS | `buildEventsMap` sets `_location: lt.from_location` on departure, `lt.to_location` on arrival. DayCell + DayPopover use `_location` as React text node. XSS-safe. T-138 regression clean. |
+| T-156 — Security checklist | ✅ PASS | No XSS, no hardcoded secrets, no external resource loading. npm audit: 5 moderate dev-only vulns (accepted — dev toolchain only, not in prod build). |
+| T-157 — Integration testing | ✅ PASS | All integration checks verified. API contract adherence confirmed. Config consistency unchanged from Sprint 14. |
+
+#### Test Suite Results
+
+| Suite | Result |
+|-------|--------|
+| Backend unit tests | **266/266 PASS** (12 files, 563ms) |
+| Frontend unit tests | **410/410 PASS** (22 files, 1.86s) |
+| T-155 A–D new tests | ✅ All 4 pass |
+| T-138 20.A–D regression | ✅ All pass |
+| T-153 1–6 new tests | ✅ All 6 pass |
+
+#### Security Checklist Status
+
+- No hardcoded secrets ✅
+- No SQL injection vectors ✅ (frontend only)
+- No XSS vectors ✅ (React text nodes, no dangerouslySetInnerHTML)
+- No external resource loading ✅ (favicon href root-relative)
+- npm audit: 5 moderate severity (esbuild via vite/vitest — dev toolchain only, not shipped) — **Accepted risk, recommend Sprint 16 upgrade to vitest@4**
+
+#### Instructions for Deploy Engineer (T-158)
+
+1. Rebuild frontend: `npm run build` in `frontend/` (picks up T-154 + T-155 changes)
+2. No backend migrations needed (zero schema changes in Sprint 15)
+3. Restart backend: `pm2 restart triplanner-backend` (stays on `https://localhost:3001`)
+4. Do NOT modify `backend/.env` or `backend/.env.staging`
+5. Run smoke tests: (a) browser tab title "triplanner"; (b) favicon visible; (c) land travel pick-up/drop-off chip locations correct; (d) Sprint 14 "Today" button + first-event-month still functional
+6. Log handoff to Monitor Agent (T-159) in handoff-log.md
+
+**Full QA report in `.workflow/qa-build-log.md` Sprint 15 section.**
+
+---
+
 ### Sprint 15 — Manager Agent: Code Review Complete — T-153, T-154, T-155 Approved → Integration Check (2026-03-07)
 
 | Field | Value |
@@ -967,3 +1124,51 @@ Sprint 15 frontend tasks (T-154, T-155, T-153) involve **no new API endpoints**.
 
 ### Known Limitations
 - None. Changes are minimal and targeted.
+
+---
+
+### Sprint 15 — QA Engineer → Monitor Agent: Re-Verification Complete — T-159 Unblocked (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | QA Engineer |
+| To | Monitor Agent |
+| Related Tasks | T-156, T-157, T-158, T-159 |
+| Status | ✅ QA Re-Verification PASS — Monitor (T-159) is unblocked |
+
+**QA re-verification run complete (orchestrator Sprint #15 invocation). All results confirmed.**
+
+#### What Was Verified
+
+| Task | Verification | Result |
+|------|-------------|--------|
+| T-153 — formatTimezoneAbbr tests | 6 tests pass in formatDate.test.js | ✅ PASS |
+| T-154 — Browser title + favicon | `<title>triplanner</title>` + `<link rel="icon" href="/favicon.png" />` in index.html | ✅ PASS |
+| T-155 — Land travel chip location | `_location: lt.from_location` (departure), `_location: lt.to_location` (arrival) in buildEventsMap; DayCell renders as text node | ✅ PASS |
+| T-138 regression — RENTAL_CAR labels | "pick-up"/"drop-off" prefixes unaffected | ✅ PASS |
+| Full backend test suite | 266/266 pass | ✅ PASS |
+| Full frontend test suite | 410/410 pass | ✅ PASS |
+| Config consistency | PORT, SSL, CORS all consistent | ✅ PASS |
+| Security scan | No XSS vectors, no hardcoded secrets, no dangerouslySetInnerHTML | ✅ PASS |
+| npm audit | 5 moderate dev-only vulns (pre-existing, accepted) | ⚠️ Accepted |
+
+#### Pipeline Status
+
+- T-156 (QA security + code review): **Done** ✅
+- T-157 (QA integration test): **Done** ✅
+- T-158 (Deploy): **Done** ✅
+- **T-159 (Monitor health check): Unblocked — proceed immediately**
+- T-152 (User Agent P0 walkthrough): Backlog — circuit-breaker active, must execute this sprint
+- T-160 (User Agent Sprint 15 walkthrough): Backlog — depends on T-159
+
+#### Monitor Agent Instructions (T-159)
+
+Staging is healthy as of T-158 completion. Backend pm2 running (PID 9274, HTTPS port 3001). Frontend dist rebuilt with T-154 + T-155 changes. Verify per T-159 task spec:
+1. HTTPS handshake ✅, pm2 online on port 3001 ✅
+2. `GET /api/v1/health` → 200
+3. `dist/index.html` title = "triplanner", favicon link present
+4. Land travel chip locations: departure=from_location, arrival=to_location
+5. `npx playwright test` → 7/7 PASS
+6. Sprint 14 + Sprint 13 regression checks pass
+7. Handoff to User Agent (T-160) upon completion
+
