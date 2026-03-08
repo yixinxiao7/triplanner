@@ -1868,4 +1868,115 @@ Sprint 13 must begin with immediate correction of the T-131 staging deployment f
 
 ---
 
+### Sprint #15 — 2026-03-07 to 2026-03-07
+
+**Goal:** Close the 6th consecutive User Agent walkthrough carry-over (T-152). Fix three project-owner-reported issues: browser tab title ("App" → "triplanner", FB-096), missing favicon link (FB-097), and calendar land travel chips showing wrong location (FB-098). Ship a full QA → Deploy → Monitor → User Agent pipeline for the new fixes. Optional: add `formatTimezoneAbbr()` unit tests (T-153, P3).
+
+**Goal Met:** Partially — all implementation, QA, and deploy tasks completed with zero rework. T-154, T-155, and T-153 are Done; staging is re-deployed and smoke-tested. However, T-152 (User Agent comprehensive walkthrough) did not run — the **7th consecutive carry-over**. T-159 (Monitor health check) and T-160 (User Agent Sprint 15 walkthrough) also remain Backlog pending the T-152 resolution. **Circuit-breaker triggered: Manager must escalate T-152 to project owner.**
+
+---
+
+**Tasks Completed (8/11):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-153 | Frontend: Add `formatTimezoneAbbr()` unit tests (6 tests; all 410 pass) | ✅ Done |
+| T-154 | Frontend: Fix browser tab title ("triplanner") + favicon link in index.html (FB-096, FB-097) | ✅ Done |
+| T-155 | Frontend: Fix calendar land travel chip location — pick-up shows `from_location`, drop-off shows `to_location` (FB-098) | ✅ Done |
+| T-156 | QA: Security checklist + code review audit for T-154, T-155 (all checks passed; 266 backend + 410 frontend tests pass) | ✅ Done |
+| T-157 | QA: Integration testing — title/favicon, chip locations, T-138 regression, Sprint 14/13/11 regression clean | ✅ Done |
+| T-158 | Deploy: Sprint 15 staging re-deployment (frontend rebuilt, pm2 PID 9274, HTTPS port 3001) | ✅ Done |
+| MGR-S15 | Manager: Sprint 15 code review pass — T-153, T-154, T-155 all APPROVED | ✅ Done |
+| BE-S15 | Backend Engineer: Sprint 15 standby review — 266/266 backend tests pass, no backend tasks required | ✅ Done |
+
+**Tasks Carried Over (3 tasks — Backlog into Sprint 16):**
+
+| ID | Description | Carry-Over Reason | Circuit-Breaker |
+|----|-------------|-------------------|-----------------|
+| T-152 | User Agent: Comprehensive Sprint 12+13+14 feature walkthrough | Never ran — **7th consecutive carry-over**. Staging is verified healthy (T-158 Done, pm2 PID 9274, HTTPS port 3001). Zero blockers remain. | ⚠️ CIRCUIT-BREAKER TRIGGERED — Manager must escalate to project owner and halt Sprint 17 planning if T-152 does not execute in Sprint 16. |
+| T-159 | Monitor: Sprint 15 staging health check | T-158 completed and handoff was logged, but Monitor Agent did not run this phase. T-159 is unblocked. | — |
+| T-160 | User Agent: Sprint 15 feature walkthrough (title/favicon/chip location verification) | Blocked by T-159 which did not run. | — |
+
+---
+
+**Feedback Triage (Sprint 15):**
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-096 | UX Issue | Minor | **Resolved** — T-154 Done. Browser tab title corrected to "triplanner" in `frontend/index.html`. |
+| FB-097 | UX Issue | Minor | **Resolved** — T-154 Done. Favicon `<link>` tag added to `frontend/index.html`. |
+| FB-098 | Bug | Major | **Resolved** — T-155 Done. Calendar land travel chips now display `from_location` on pick-up day and `to_location` on drop-off day. 4 new tests (T-155 A–D) pass. |
+
+*All 3 Sprint 15 feedback entries are Resolved. No new feedback was received (T-152 and T-160 walkthroughs did not run).*
+
+---
+
+**Key Decisions:**
+
+- **Land travel chip location pattern (T-155):** `buildEventsMap` now sets `_location: lt.from_location` for the departure-day event and `_location: lt.to_location` for the arrival-day event. Both `DayCell` and `DayPopover.getEventLabel` consume `ev.item._location` as a React text node — no `dangerouslySetInnerHTML`, XSS-safe. T-138 RENTAL_CAR label prefixes ("pick-up", "drop-off") are independent of the location field and were unaffected.
+- **Static HTML changes need no tests (T-154):** `<title>` and `<link rel="icon">` changes to `index.html` are pure markup — no JS behavior is exercised. No unit tests added or required; change verified via `npm run build` + `npm run preview` smoke test.
+- **formatTimezoneAbbr() unit tests (T-153):** 6 tests added with regex matchers that accommodate platform-dependent DST abbreviation strings (e.g., `EDT|EST|ET`, `JST|GMT+9`, `CEST|CET|GMT+2`). Frontend test suite now at 410 tests.
+- **T-152 circuit-breaker policy (updated):** After 7 consecutive carry-overs, silent re-scheduling is no longer acceptable. Sprint 16 planning must treat T-152 as the exclusive P0 gate — no new implementation tasks should be scoped until T-152 confirms execution.
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- All 3 Sprint 15 implementation tasks (T-153, T-154, T-155) completed with zero rework for the 5th consecutive sprint — consistent with the team's strong zero-rework streak since Sprint 10.
+- T-155 fix was surgical and correct: the `_location` field propagation in `buildEventsMap` resolved the bug cleanly without touching T-138 rental-car label prefix logic. QA independently confirmed no regression on T-138 tests (20.A–D all pass).
+- T-154 was a minimal two-line HTML fix — no over-engineering, no unnecessary abstraction. Correct scoping.
+- T-153 (optional P3 tech debt) was completed — closing a long-standing gap in `formatTimezoneAbbr()` test coverage that had been deferred since Sprint 7.
+- QA security checklist (T-156) correctly identified that the favicon `href` is root-relative and safe, and that `_location` renders as a React text node (no XSS vector). Both calls were correct.
+- Staging deploy (T-158) succeeded cleanly: 465ms build, 122 modules, pm2 PID 9274 online, smoke tests passed.
+
+**What Could Improve:**
+- **T-152 has now failed to run for 7 consecutive sprints.** This represents a sustained process failure in the orchestrator pipeline. Sprint 16 must change the sequencing: User Agent walkthrough (T-152) must run as the very first task, before any new implementation begins — not scheduled at the end after the full pipeline completes.
+- **T-159 and T-160 also did not run.** The Monitor → User Agent tail of the Sprint 15 pipeline was left incomplete. The deploy (T-158) completed and the handoff to Monitor was logged, but the Monitor Agent did not execute. Sprint 16 should begin by completing T-159 → T-160 before starting new work.
+- **Escalation cadence:** After 5+ carry-overs, the Manager Agent should have formally escalated to the project owner. The circuit-breaker policy was documented but not acted upon with a visible owner notification. Sprint 16 must include an explicit escalation notice in the handoff-log.
+
+**Technical Debt Noted:**
+
+*Resolved this sprint:*
+- ✅ FB-096 / T-154: Browser tab title fixed to "triplanner"
+- ✅ FB-097 / T-154: Favicon linked in `frontend/index.html`
+- ✅ FB-098 / T-155: Calendar land travel chip location fixed (pick-up = origin, drop-off = destination)
+- ✅ T-153: `formatTimezoneAbbr()` now has 6 dedicated unit tests (deferred since Sprint 7)
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence (deferred multiple sprints)
+- ⚠️ B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 — dev-only, no production impact
+- ⚠️ B-022: Production deployment — pending project owner hosting provider decision (**15 consecutive sprints; project owner action required**)
+- ⚠️ B-024: Auth rate limit is IP-only — aggressive on shared-IP environments
+
+---
+
+**Next Sprint Focus (Sprint 16 Recommendations):**
+
+*Priority order: complete carry-over pipeline → User Agent walkthroughs → new features.*
+
+**P0 — Complete Carry-Over Pipeline (start immediately, in order):**
+1. **T-159** — Monitor: Sprint 15 staging health check (HTTPS, pm2 port 3001, title/favicon, land travel chip locations, Playwright 7/7, regression). Staging is live and has been deploy-verified (T-158 Done). Zero blockers.
+2. **T-152** — User Agent: Comprehensive Sprint 12+13+14 feature walkthrough. **⚠️ Circuit-breaker: if T-152 does not execute in Sprint 16, Manager must escalate to project owner in the handoff-log and halt new Sprint 17 scoping until resolved.** This is the 7th consecutive carry-over — no further silent re-scheduling.
+3. **T-160** — User Agent: Sprint 15 feature walkthrough (title/favicon/chip location verification). Blocked by T-159; runs after Monitor confirms health.
+
+**P1 — Triage Walkthrough Feedback (after T-152 + T-160 complete):**
+4. Triage all feedback from T-152 and T-160 walkthroughs. Create hotfix tasks (H-xxx) immediately for any Critical/Major bugs found.
+
+**P1 — Production Deployment Decision (B-022 — 15 consecutive sprints):**
+5. **Project owner action required:** Review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. This decision has been pending for 15 consecutive sprints with no action.
+
+**P2 — New Features (after walkthroughs clear with no Critical bugs):**
+6. Scope new feature work based on MVP project-brief.md. Core MVP is complete (auth, trip CRUD, flights, stays, activities, calendar, land travel). Candidate sprint themes include: print/export improvements, trip destinations UI enhancement (B-007: multi-destination structured UI), or UX polish based on User Agent feedback.
+
+**P3 — Tech Debt (schedule if sprint capacity allows):**
+7. B-020: Redis-backed rate limiting (if scale warrants)
+8. B-021: Monitor esbuild vulnerability for upstream fix
+
+---
+
+*Sprint #15 began and closed 2026-03-07.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

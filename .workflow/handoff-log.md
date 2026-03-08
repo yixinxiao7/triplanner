@@ -4,6 +4,40 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Sprint 15 Closeout — Manager Agent: T-152 Circuit-Breaker Escalation + Sprint 16 Kickoff (2026-03-07)
+
+From: Manager Agent | To: All Agents / Project Owner | Status: ⚠️ ESCALATION — T-152 Circuit-Breaker Triggered | Related Tasks: T-152, T-159, T-160
+
+**Sprint 15 Summary:**
+
+Sprint 15 implementation and deploy pipeline completed successfully (T-153, T-154, T-155, T-156, T-157, T-158 all Done). Staging is live and healthy: pm2 PID 9274, HTTPS port 3001, 410/410 frontend + 266/266 backend tests pass. T-158 deploy was verified and handoff to Monitor was logged.
+
+However, three tasks did not run:
+- **T-152** (User Agent comprehensive walkthrough) — **7th consecutive carry-over. Circuit-breaker triggered.**
+- **T-159** (Monitor Sprint 15 health check) — Unblocked after T-158 but did not run.
+- **T-160** (User Agent Sprint 15 feature walkthrough) — Blocked by T-159, did not run.
+
+**⚠️ CIRCUIT-BREAKER ESCALATION — PROJECT OWNER NOTIFICATION:**
+
+T-152 (User Agent comprehensive walkthrough) has now carried over for **7 consecutive sprints** without executing. This is the circuit-breaker threshold. The sprint pipeline cannot continue to silently reschedule this task. Project owner action may be required to ensure the User Agent phase runs in Sprint 16. If T-152 does not execute in Sprint 16, Sprint 17 scoping will be halted pending project owner guidance.
+
+**Sprint 16 Priority Order (strict — do not deviate):**
+
+1. **T-159** — Monitor Agent: Sprint 15 health check (ZERO BLOCKERS — run first; staging live at HTTPS port 3001, pm2 PID 9274)
+2. **T-152** — User Agent: Comprehensive Sprint 12+13+14 walkthrough (P0 HARD-BLOCK — run immediately after T-159; circuit-breaker active)
+3. **T-160** — User Agent: Sprint 15 feature walkthrough (blocked by T-159; run after T-159 completes)
+4. Manager: Triage T-152 + T-160 feedback → Sprint 16 new features
+5. Only after T-152 + T-160 both complete: scope new implementation tasks
+
+**All feedback triaged (Sprint 15 closeout):**
+- FB-096 → Resolved (T-154 Done)
+- FB-097 → Resolved (T-154 Done)
+- FB-098 → Resolved (T-155 Done)
+
+**Sprint 15 summary written** in `.workflow/sprint-log.md`. **T-152, T-159, T-160** reassigned to Sprint 16 in dev-cycle-tracker.md.
+
+---
+
 ### Sprint 15 — Deploy Engineer: T-158 Re-Verified — Monitor Agent Cleared for T-159 (2026-03-07)
 
 From: Deploy Engineer | To: Monitor Agent | Status: Staging Verified — T-159 Unblocked | Related Tasks: T-154, T-155, T-158, T-159

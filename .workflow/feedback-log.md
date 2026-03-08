@@ -137,8 +137,8 @@ This is the publicly documented placeholder value from the project template. Bec
 | Sprint | 15 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
-| Related Task | — |
+| Status | Resolved — T-154 Done (2026-03-07) |
+| Related Task | T-154 |
 
 **Description:** The browser tab title currently shows "App" (likely the default Vite/React template title). It should display "triplanner" to match the product name. This is a simple fix — update the `<title>` tag in `frontend/index.html` (or equivalent) from "App" to "triplanner".
 
@@ -154,8 +154,8 @@ This is the publicly documented placeholder value from the project template. Bec
 | Sprint | 15 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
-| Related Task | — |
+| Status | Resolved — T-154 Done (2026-03-07) |
+| Related Task | T-154 |
 
 **Description:** A favicon file exists at `frontend/public/favicon.png` but the browser tab displays the default browser icon instead of it. The `<link rel="icon">` tag is likely missing from `frontend/index.html`. Add `<link rel="icon" type="image/png" href="/favicon.png">` to the `<head>` section of `frontend/index.html` so the favicon appears in the browser tab.
 
@@ -171,8 +171,8 @@ This is the publicly documented placeholder value from the project template. Bec
 | Sprint | 15 |
 | Category | Bug |
 | Severity | Major |
-| Status | New |
-| Related Task | T-138 |
+| Status | Resolved — T-155 Done (2026-03-07) |
+| Related Task | T-138, T-155 |
 
 **Description:** On the calendar view, land travel entries (e.g., rental cars) display location chips on both the pick-up day and the drop-off day. Currently, both chips show the drop-off destination location, which is incorrect and confusing. The expected behavior is:
 
