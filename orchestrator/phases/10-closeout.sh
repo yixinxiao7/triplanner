@@ -12,7 +12,7 @@ run_phase_closeout() {
 Your task: Triage feedback and write the sprint summary.
 
 FEEDBACK TRIAGE:
-1. Read .workflow/feedback-log.md for all entries from Sprint #${sprint_num}
+1. Read .workflow/feedback-log.md — only the Sprint #${sprint_num} section — for all entries from this sprint
 2. For each feedback entry with Status 'New':
    - Critical/Major bugs: set Status to 'Tasked' (these go into the next sprint)
    - Minor bugs: set Status to 'Acknowledged' (backlog for a future sprint)
@@ -41,7 +41,7 @@ PREPARATION FOR NEXT SPRINT:
 
 This summary will be used by the planning phase of the next sprint."
 
-    run_agent_with_retry "manager" "$task_prompt" 3
+    run_agent_with_retry "manager" "$task_prompt" 3 20 "${MODEL_LIGHT:-sonnet}"
 
     sprint_state_set "phase" "closeout"
     sprint_state_set "closeout_status" "complete"

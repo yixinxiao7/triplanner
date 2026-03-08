@@ -1,0 +1,399 @@
+.main {
+  flex: 1;
+  padding-top: 40px;
+  padding-bottom: 64px;
+}
+
+.container {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+  padding: 0 var(--content-padding);
+}
+
+/* ── Page Header ── */
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.pageHeaderLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backLink {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.backLink:hover {
+  color: var(--text-primary);
+}
+
+.pageTitle {
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Save Banner ── */
+.saveBanner {
+  background: rgba(220, 80, 80, 0.1);
+  border: 1px solid rgba(220, 80, 80, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+/* ── Entry List ── */
+.entryList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* ── Entry Card ── */
+.entryCard {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  transition: border-color 150ms ease;
+}
+
+.entryCardNew {
+  border-left: 3px solid rgba(93, 115, 126, 0.4);
+}
+
+.entryCardError {
+  border-left: 3px solid rgba(220, 80, 80, 0.6);
+}
+
+/* ── Card Header ── */
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.cardIndex {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.deleteCardBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: color 150ms ease;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.deleteCardBtn:hover {
+  color: rgba(220, 80, 80, 0.8);
+}
+
+/* ── Card Grid (2-column) ── */
+.cardGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 24px;
+}
+
+/* ── Field Group ── */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldGroupFull {
+  grid-column: 1 / -1;
+}
+
+.fieldLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.fieldInput {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 6px 0;
+  outline: none;
+  transition: border-bottom-color 150ms ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fieldInput:focus {
+  border-bottom-color: var(--accent);
+}
+
+.fieldInput::placeholder {
+  color: var(--text-muted);
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+.fieldSelect {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 6px 0;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-bottom-color 150ms ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.fieldSelect:focus {
+  border-bottom-color: var(--accent);
+}
+
+.fieldSelect option {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.fieldTextarea {
+  resize: vertical;
+  min-height: 54px;
+  line-height: 1.5;
+}
+
+.fieldInputError {
+  border-bottom-color: rgba(220, 80, 80, 0.6);
+}
+
+.fieldError {
+  font-size: 11px;
+  color: rgba(220, 80, 80, 0.9);
+  margin-top: 2px;
+}
+
+/* ── Add Entry Button ── */
+.addEntryBtn {
+  display: block;
+  width: 100%;
+  border: 1px dashed rgba(93, 115, 126, 0.5);
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  margin-top: 8px;
+  transition: all 150ms ease;
+}
+
+.addEntryBtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.addEntryBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Empty State ── */
+.emptyState {
+  border: 1px dashed rgba(93, 115, 126, 0.3);
+  padding: 24px;
+  border-radius: var(--radius-md);
+  text-align: center;
+  margin: 8px 0 16px;
+}
+
+.emptyText {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 4px;
+}
+
+.emptySubtext {
+  font-size: 11px;
+  color: rgba(252, 252, 252, 0.3);
+  margin: 0;
+}
+
+/* ── Load Error ── */
+.loadError {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 24px 0;
+}
+
+.retryLink {
+  font-size: 12px;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  text-decoration: underline;
+  padding: 0;
+}
+
+/* ── Skeleton ── */
+.skeletonList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeletonCard {
+  height: 220px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.3; }
+}
+
+/* ── Buttons ── */
+.primaryBtn {
+  background: var(--accent);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 10px 24px;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 150ms ease;
+}
+
+.primaryBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.secondaryBtn {
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  padding: 10px 24px;
+  border: 1px solid rgba(93, 115, 126, 0.5);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.secondaryBtn:hover:not(:disabled) {
+  background: rgba(252, 252, 252, 0.05);
+}
+
+.secondaryBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Page Footer ── */
+.pageFooter {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* ── Responsive (Mobile) ── */
+@media (max-width: 767px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  .main {
+    padding-top: 24px;
+  }
+
+  .pageHeader {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fieldGroupFull {
+    grid-column: 1;
+  }
+}

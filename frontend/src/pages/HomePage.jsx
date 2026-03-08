@@ -159,7 +159,8 @@ export default function HomePage() {
   }, [buildApiParams, fetchTrips]);
 
   // Determine which content to render
-  const showToolbar = initialLoadDone && !isLoading && (hasTripsBefore || trips.length > 0);
+  // NOTE: !isLoading intentionally removed so toolbar stays mounted during refetch (T-084, B-034, FB-067)
+  const showToolbar = initialLoadDone && (hasTripsBefore || trips.length > 0);
   const isEmptyDatabase = initialLoadDone && !isLoading && !error && trips.length === 0 && !hasActiveFilters && !hasTripsBefore;
   const isEmptySearchResults = initialLoadDone && !isLoading && !error && trips.length === 0 && (hasActiveFilters || hasTripsBefore);
 

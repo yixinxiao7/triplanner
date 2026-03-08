@@ -12,7 +12,7 @@ run_phase_test() {
 Your task: Test every feature delivered this sprint from a real user's perspective.
 
 PRE-TESTING:
-1. Read .workflow/handoff-log.md — confirm Monitor Agent verified the staging environment
+1. Read .workflow/handoff-log.md — only the Sprint #${sprint_num} section — confirm Monitor Agent verified the staging environment
 2. Read .workflow/active-sprint.md for what was built this sprint
 3. Read .workflow/ui-spec.md for the expected behavior of each screen
 4. Read .workflow/api-contracts.md for the expected API behavior
@@ -49,7 +49,7 @@ POST-TESTING:
 Be specific. Good feedback: 'POST /api/v1/auth/register — sending empty email returns 500 instead of 400 validation error. Expected: 400 with message about email required.'
 Bad feedback: 'Registration is broken.'"
 
-    run_agent_with_retry "user-agent" "$task_prompt" 3
+    run_agent_with_retry "user-agent" "$task_prompt" 3 35 "${MODEL_LIGHT:-sonnet}"
 
     sprint_state_set "phase" "test"
     sprint_state_set "test_status" "complete"

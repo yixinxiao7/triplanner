@@ -134,6 +134,29 @@ export function formatTime(timeStr) {
 }
 
 /**
+ * Parse a location string, detecting HTTP/HTTPS URLs and splitting the text
+ * into typed segments: 'text' (plain) or 'link' (URL).
+ *
+ * Only http:// and https:// schemes create links. All other content,
+ * including javascript:, data:, and vbscript: URIs, is returned as 'text'.
+ * No dangerouslySetInnerHTML — returns an array of typed segments for React rendering.
+ *
+ * @param {string|null|undefined} text - The location string to parse
+ * @returns {Array<{type: 'text'|'link', content: string}>}
+ */
+export function parseLocationWithLinks(text) {
+  if (!text) return [];
+  const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(URL_REGEX);
+  return parts
+    .filter((part) => part.length > 0)
+    .map((part) => ({
+      type: /^https?:\/\//.test(part) ? 'link' : 'text',
+      content: part,
+    }));
+}
+
+/**
  * Format a trip card date range from departure/arrival ISO strings.
  * Example output: "Aug 7, 2026 — Aug 14, 2026"
  *

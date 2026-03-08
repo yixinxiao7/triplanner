@@ -75,10 +75,22 @@ fi
 
 # ── Reset Command ────────────────────────────────────────────────────
 if [[ "$MODE" == "reset" ]]; then
-    log_warn "Resetting orchestrator state..."
-    state_clear
+    local_sprint=$(state_get "SPRINT_NUMBER" "1")
+    log_warn "Killing any running orchestrator/agent processes..."
+
+    # Kill claude --print agents and orchestrator subprocesses (but not this process)
+    local_pids=$(ps aux | grep -E 'claude --print|orchestrate\.sh' | grep -v grep | grep -v "$$" | awk '{print $2}' || true)
+    if [[ -n "$local_pids" ]]; then
+        echo "$local_pids" | xargs kill 2>/dev/null || true
+        log_info "Killed processes: $(echo $local_pids | tr '\n' ' ')"
+    else
+        log_info "No running orchestrator/agent processes found."
+    fi
+
+    log_warn "Resetting sprint #${local_sprint} phase flags..."
     sprint_state_clear
-    log_success "State cleared. Run orchestrate.sh to start fresh."
+
+    log_success "Sprint #${local_sprint} reset. Run orchestrate.sh to re-run it from the beginning."
     exit 0
 fi
 
@@ -99,6 +111,11 @@ run_sprint() {
     timer_start
 
     log_phase "Starting Sprint #${sprint_num}"
+
+    # Archive old sprint data from workflow files to reduce agent token usage
+    if [[ "$sprint_num" -gt 2 ]]; then
+        archive_old_sprints "$sprint_num"
+    fi
 
     # Determine where to start (for --continue mode)
     local start_phase
@@ -220,6 +237,7 @@ case "$MODE" in
     single|continue)
         run_sprint
         print_final_summary
+        increment_sprint
         ;;
 
     loop)

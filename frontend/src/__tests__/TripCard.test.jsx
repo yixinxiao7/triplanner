@@ -77,4 +77,43 @@ describe('TripCard', () => {
     const skeletonElements = container.querySelectorAll('.skeleton');
     expect(skeletonElements.length).toBeGreaterThan(0);
   });
+
+  // ── T-104: Trip notes preview on TripCard ────────────────────────────────────
+  it('[T-104] shows truncated notes (>100 chars) with trailing ellipsis', () => {
+    const longNotes = 'a'.repeat(150);
+    const tripWithNotes = { ...mockTrip, notes: longNotes };
+    renderCard(tripWithNotes);
+
+    // First 100 chars + unicode ellipsis (\u2026)
+    const expected = longNotes.slice(0, 100) + '\u2026';
+    expect(screen.getByText(expected)).toBeDefined();
+  });
+
+  it('[T-104] shows full notes without ellipsis when notes are 100 chars or fewer', () => {
+    const shortNotes = 'Short trip note.';
+    const tripWithShortNotes = { ...mockTrip, notes: shortNotes };
+    renderCard(tripWithShortNotes);
+
+    // Full notes text shown, no ellipsis appended
+    expect(screen.getByText('Short trip note.')).toBeDefined();
+    // Should not show an ellipsis after the text
+    expect(screen.queryByText('Short trip note.\u2026')).toBeNull();
+  });
+
+  it('[T-104] notes section hidden when trip.notes is null', () => {
+    const tripNoNotes = { ...mockTrip, notes: null };
+    const { container } = renderCard(tripNoNotes);
+
+    // notes preview class should not render any notes element
+    const notesPreview = container.querySelector('[class*="notesPreview"]');
+    expect(notesPreview).toBeNull();
+  });
+
+  it('[T-104] notes section hidden when trip.notes is empty string', () => {
+    const tripEmptyNotes = { ...mockTrip, notes: '' };
+    const { container } = renderCard(tripEmptyNotes);
+
+    const notesPreview = container.querySelector('[class*="notesPreview"]');
+    expect(notesPreview).toBeNull();
+  });
 });

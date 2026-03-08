@@ -8,9 +8,110 @@ import styles from './StaysEditPage.module.css';
 
 // ── Helpers ─────────────────────────────────────────────────
 
-function toDatetimeLocal(isoString) {
+/**
+ * Convert a UTC ISO string to a "YYYY-MM-DDTHH:MM" datetime-local string
+ * expressed in the given IANA timezone.
+ *
+ * Used when pre-populating the edit form so the user sees their original
+ * intended local time, not the UTC equivalent.
+ *
+ * @param {string} isoString  — UTC ISO 8601 string (e.g. "2026-08-07T20:00:00.000Z")
+ * @param {string} [ianaTimezone] — IANA timezone (e.g. "America/New_York")
+ * @returns {string} — e.g. "2026-08-07T16:00"
+ */
+function toDatetimeLocal(isoString, ianaTimezone) {
   if (!isoString) return '';
-  return isoString.replace('Z', '').replace(/\.\d{3}$/, '').slice(0, 16);
+  if (!ianaTimezone) {
+    // Fallback: strip Z (old behaviour, shows UTC time — acceptable when tz unknown)
+    return isoString.replace('Z', '').replace(/\.\d{3}$/, '').slice(0, 16);
+  }
+  try {
+    const date = new Date(isoString);
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: ianaTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(date);
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+    // en-CA gives "YYYY-MM-DD" date format; hour can be "24" for midnight in some impls
+    const hour = p.hour === '24' ? '00' : p.hour;
+    return `${p.year}-${p.month}-${p.day}T${hour}:${p.minute}`;
+  } catch {
+    return isoString.replace('Z', '').replace(/\.\d{3}$/, '').slice(0, 16);
+  }
+}
+
+/**
+ * Convert a "YYYY-MM-DDTHH:MM" datetime-local string (representing the user's
+ * intended local time in ianaTimezone) into a proper UTC ISO 8601 string.
+ *
+ * Algorithm:
+ *  1. Parse the input as UTC (naiveUTCMs).
+ *  2. Format naiveUTCMs in the target timezone to find the "apparent" local time.
+ *  3. offsetMs = apparent – naiveUTCMs  (how far the timezone is ahead/behind UTC).
+ *  4. correctUTCMs = naiveUTCMs – offsetMs  (adjusts so the result "looks like"
+ *     the input when formatted in the target timezone).
+ *
+ * Example:  "2026-08-07T16:00" + "America/New_York" (EDT, UTC-4)
+ *   naiveUTC    = 2026-08-07T16:00:00Z
+ *   apparent    = 2026-08-07T12:00 (16:00 UTC in New York = 12:00 EDT)
+ *   offset      = -4 h = -14 400 000 ms
+ *   correctUTC  = 2026-08-07T16:00Z - (-4h) = 2026-08-07T20:00:00.000Z  ✓
+ *
+ * @param {string} datetimeLocalStr — "YYYY-MM-DDTHH:MM"
+ * @param {string} ianaTimezone     — IANA timezone string
+ * @returns {string} UTC ISO 8601 string ending in ".000Z"
+ */
+export function localDatetimeToUTC(datetimeLocalStr, ianaTimezone) {
+  if (!datetimeLocalStr) return '';
+  if (!ianaTimezone) return `${datetimeLocalStr}:00.000Z`;
+
+  try {
+    const [datePart, timePart] = datetimeLocalStr.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, min] = timePart.split(':').map(Number);
+
+    // Step 1: naïve UTC milliseconds (treating input as UTC)
+    const naiveUTCMs = Date.UTC(year, month - 1, day, hour, min, 0, 0);
+
+    // Step 2: what time does naiveUTCMs look like in the target timezone?
+    const tzFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: ianaTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const parts = tzFormatter.formatToParts(new Date(naiveUTCMs));
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+    const apparentHour = p.hour === '24' ? 0 : parseInt(p.hour, 10);
+    const apparentMs = Date.UTC(
+      parseInt(p.year, 10),
+      parseInt(p.month, 10) - 1,
+      parseInt(p.day, 10),
+      apparentHour,
+      parseInt(p.minute, 10),
+      0, 0
+    );
+
+    // Step 3: offset = apparent − naive
+    const offsetMs = apparentMs - naiveUTCMs;
+
+    // Step 4: correct UTC = naive − offset
+    const correctUTCMs = naiveUTCMs - offsetMs;
+    return new Date(correctUTCMs).toISOString();
+  } catch {
+    return `${datetimeLocalStr}:00.000Z`;
+  }
 }
 
 // ── Toast Component ─────────────────────────────────────────
@@ -196,9 +297,10 @@ function StayForm({ tripId, editStay, onSaved, onCancelEdit }) {
         category: editStay.category || '',
         name: editStay.name || '',
         address: editStay.address || '',
-        check_in_at: toDatetimeLocal(editStay.check_in_at),
+        // T-098: Pass the stored timezone so we convert UTC → local time for the input
+        check_in_at: toDatetimeLocal(editStay.check_in_at, editStay.check_in_tz),
         check_in_tz: editStay.check_in_tz || '',
-        check_out_at: toDatetimeLocal(editStay.check_out_at),
+        check_out_at: toDatetimeLocal(editStay.check_out_at, editStay.check_out_tz),
         check_out_tz: editStay.check_out_tz || '',
       });
       setErrors({});
@@ -249,13 +351,15 @@ function StayForm({ tripId, editStay, onSaved, onCancelEdit }) {
 
     setSaving(true);
     try {
+      // T-098: Convert datetime-local + timezone to proper UTC ISO string.
+      // e.g. "2026-08-07T16:00" + "America/New_York" (EDT, UTC-4) → "2026-08-07T20:00:00.000Z"
       const payload = {
         category: form.category,
         name: form.name.trim(),
         address: form.address.trim() || null,
-        check_in_at: form.check_in_at + ':00.000Z',
+        check_in_at: localDatetimeToUTC(form.check_in_at, form.check_in_tz),
         check_in_tz: form.check_in_tz,
-        check_out_at: form.check_out_at + ':00.000Z',
+        check_out_at: localDatetimeToUTC(form.check_out_at, form.check_out_tz),
         check_out_tz: form.check_out_tz,
       };
 

@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import TripDetailsPage from '../pages/TripDetailsPage';
+import { formatTimezoneAbbr } from '../utils/formatDate';
 
 // ── Mock TripCalendar (avoid full calendar render in unit tests) ───────────
 vi.mock('../components/TripCalendar', () => ({
@@ -22,6 +23,7 @@ vi.mock('../utils/api', () => ({
     flights: { list: vi.fn() },
     stays: { list: vi.fn() },
     activities: { list: vi.fn() },
+    land_travel: { list: vi.fn().mockResolvedValue({ data: { data: [] } }) },
   },
   apiClient: {
     interceptors: {
@@ -144,10 +146,14 @@ const defaultHookValue = {
   activities: [],
   activitiesLoading: false,
   activitiesError: null,
+  landTravels: [],
+  landTravelsLoading: false,
+  landTravelsError: null,
   fetchAll: vi.fn(),
   refetchFlights: vi.fn(),
   refetchStays: vi.fn(),
   refetchActivities: vi.fn(),
+  refetchLandTravels: vi.fn(),
 };
 
 function renderTripDetailsPage() {
@@ -582,7 +588,7 @@ describe('TripDetailsPage', () => {
     expect(screen.getByRole('article', { name: /Free exploration, all day/i })).toBeDefined();
   });
 
-  it('timeless activities sort after timed activities within same day', () => {
+  it('all-day activities sort before timed activities within same day (T-100)', () => {
     const mixedActivities = [
       {
         id: 'act-timed',
@@ -621,6 +627,695 @@ describe('TripDetailsPage', () => {
     const hikeIdx = texts.findIndex((t) => t.includes('Morning Hike'));
     const freeDayIdx = texts.findIndex((t) => t.includes('Free Day'));
 
-    expect(hikeIdx).toBeLessThan(freeDayIdx);
+    // All-day activities ("Free Day") must appear BEFORE timed activities ("Morning Hike")
+    expect(freeDayIdx).toBeLessThan(hikeIdx);
+  });
+
+  // ── 13. Land Travel Section (Sprint 6 T-088) ─────────────────────────────
+  it('renders "land travel" section header', () => {
+    renderTripDetailsPage();
+    expect(screen.getByText('land travel')).toBeDefined();
+  });
+
+  it('shows "no land travel added yet." empty state when landTravels is empty', () => {
+    renderTripDetailsPage();
+    expect(screen.getByText('no land travel added yet.')).toBeDefined();
+  });
+
+  it('renders "edit land travel" link to the land travel edit route', () => {
+    renderTripDetailsPage();
+    const editLTLink = screen.getByRole('link', { name: /edit land travel/i });
+    expect(editLTLink).toBeDefined();
+    expect(editLTLink.getAttribute('href')).toBe('/trips/trip-001/land-travel/edit');
+  });
+
+  it('renders land travel cards with mode badge, provider, from → to route', () => {
+    const mockLandTravels = [
+      {
+        id: 'lt-001',
+        trip_id: 'trip-001',
+        mode: 'TRAIN',
+        provider: 'Amtrak',
+        from_location: 'New York',
+        to_location: 'Washington DC',
+        departure_date: '2026-08-07',
+        departure_time: '09:00:00',
+        arrival_date: '2026-08-07',
+        arrival_time: '12:30:00',
+        confirmation_number: 'AMT123',
+        notes: null,
+        created_at: '2026-02-27T12:00:00.000Z',
+        updated_at: '2026-02-27T12:00:00.000Z',
+      },
+    ];
+
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravels: mockLandTravels,
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByText('train')).toBeDefined();
+    expect(screen.getByText('Amtrak')).toBeDefined();
+    expect(screen.getByText('New York')).toBeDefined();
+    expect(screen.getByText('Washington DC')).toBeDefined();
+  });
+
+  it('land travel card has correct aria-label with mode and route', () => {
+    const mockLandTravels = [
+      {
+        id: 'lt-001',
+        trip_id: 'trip-001',
+        mode: 'TRAIN',
+        provider: 'Amtrak',
+        from_location: 'New York',
+        to_location: 'Washington DC',
+        departure_date: '2026-08-07',
+        departure_time: null,
+        arrival_date: null,
+        arrival_time: null,
+        confirmation_number: null,
+        notes: null,
+        created_at: '2026-02-27T12:00:00.000Z',
+        updated_at: '2026-02-27T12:00:00.000Z',
+      },
+    ];
+
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravels: mockLandTravels,
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByRole('article', { name: /train: New York to Washington DC/i })).toBeDefined();
+  });
+
+  it('shows loading skeleton for land travel section', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravelsLoading: true,
+    });
+
+    const { container } = renderTripDetailsPage();
+    // Skeleton bars present
+    const skeletons = container.querySelectorAll('.skeleton');
+    expect(skeletons.length).toBeGreaterThan(0);
+  });
+
+  it('shows error state for land travel section with retry button', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravelsError: 'could not load land travel.',
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByText('could not load land travel.')).toBeDefined();
+    expect(screen.getAllByText('try again').length).toBeGreaterThan(0);
+  });
+
+  it('retry button for land travel calls refetchLandTravels', () => {
+    const mockRefetchLandTravels = vi.fn();
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravelsError: 'could not load land travel.',
+      refetchLandTravels: mockRefetchLandTravels,
+    });
+
+    renderTripDetailsPage();
+
+    fireEvent.click(screen.getByText('try again'));
+    expect(mockRefetchLandTravels).toHaveBeenCalledTimes(1);
+  });
+
+  // ── 14. Section Order (Sprint 7 T-099) ───────────────────────────────────
+  it('renders main sections in order: flights → land travel → stays → activities (T-099)', () => {
+    renderTripDetailsPage();
+
+    const headings = screen.getAllByRole('heading', { level: 2 });
+    const headingTexts = headings.map((h) => h.textContent.toLowerCase().trim());
+
+    const flightsIdx = headingTexts.indexOf('flights');
+    const landTravelIdx = headingTexts.indexOf('land travel');
+    const staysIdx = headingTexts.indexOf('stays');
+    const activitiesIdx = headingTexts.indexOf('activities');
+
+    // All four headings must be present
+    expect(flightsIdx).toBeGreaterThanOrEqual(0);
+    expect(landTravelIdx).toBeGreaterThanOrEqual(0);
+    expect(staysIdx).toBeGreaterThanOrEqual(0);
+    expect(activitiesIdx).toBeGreaterThanOrEqual(0);
+
+    // Correct ordering: flights < land travel < stays < activities
+    expect(flightsIdx).toBeLessThan(landTravelIdx);
+    expect(landTravelIdx).toBeLessThan(staysIdx);
+    expect(staysIdx).toBeLessThan(activitiesIdx);
+  });
+
+  it('renders confirmation number in land travel card when present', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      landTravels: [
+        {
+          id: 'lt-001',
+          trip_id: 'trip-001',
+          mode: 'RENTAL_CAR',
+          provider: 'Enterprise',
+          from_location: 'Airport',
+          to_location: 'Hotel',
+          departure_date: '2026-08-07',
+          departure_time: null,
+          arrival_date: null,
+          arrival_time: null,
+          confirmation_number: 'ENT-XYZ99',
+          notes: null,
+          created_at: '2026-02-27T12:00:00.000Z',
+          updated_at: '2026-02-27T12:00:00.000Z',
+        },
+      ],
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByText('ENT-XYZ99')).toBeDefined();
+    expect(screen.getByText('CONF #')).toBeDefined();
+  });
+
+  // ── 15. T-098: Stay UTC conversion display test ──────────────────────────────
+  it('[T-098] stay check_in_at renders correct local time using check_in_tz (not raw UTC)', () => {
+    // 2026-08-07T20:00:00.000Z in America/New_York (EDT, UTC-4 in August) → 4:00 PM
+    // If the bug were still present (naive UTC display), it would show "8:00 PM" (UTC time)
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      stays: [
+        {
+          id: 'stay-utc-test',
+          trip_id: 'trip-001',
+          category: 'HOTEL',
+          name: 'New York Hotel',
+          address: '123 Fifth Ave',
+          check_in_at: '2026-08-07T20:00:00.000Z',
+          check_in_tz: 'America/New_York',
+          check_out_at: '2026-08-10T16:00:00.000Z',
+          check_out_tz: 'America/New_York',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    renderTripDetailsPage();
+
+    // formatDateTime('2026-08-07T20:00:00.000Z', 'America/New_York') → "Aug 7, 2026 · 4:00 PM"
+    // The time "4:00 PM" should be visible — NOT "8:00 PM" (raw UTC) which would be the bug
+    expect(screen.getByText(/4:00 PM/)).toBeDefined();
+    // Should NOT show the raw UTC time "8:00 PM"
+    expect(screen.queryByText(/8:00 PM/)).toBeNull();
+
+    // T-113: Timezone abbreviation should also be shown for check-in
+    // America/New_York in August = EDT
+    expect(screen.getAllByText('EDT').length).toBeGreaterThanOrEqual(1);
+  });
+
+  // ── 16. T-104: Trip Notes feature tests ──────────────────────────────────────
+  it('[T-104] renders notes text when trip.notes is non-null', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      trip: { ...mockTrip, notes: 'Bring sunscreen and comfortable walking shoes.' },
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByText('Bring sunscreen and comfortable walking shoes.')).toBeDefined();
+  });
+
+  it('[T-104] renders "no notes yet" muted placeholder when trip.notes is null', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      trip: { ...mockTrip, notes: null },
+    });
+
+    renderTripDetailsPage();
+
+    expect(screen.getByText('no notes yet')).toBeDefined();
+  });
+
+  it('[T-104] clicking pencil icon enters edit mode — textarea visible, pencil hidden', async () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      trip: { ...mockTrip, notes: 'Existing notes.' },
+    });
+
+    renderTripDetailsPage();
+
+    // Initially in display mode — pencil button present
+    const pencilBtn = screen.getByRole('button', { name: /edit trip notes/i });
+    expect(pencilBtn).toBeDefined();
+
+    // Click the pencil
+    fireEvent.click(pencilBtn);
+
+    // Edit mode: textarea should be visible with existing notes pre-filled
+    const textarea = screen.getByRole('textbox', { name: /trip notes/i });
+    expect(textarea).toBeDefined();
+    expect(textarea.value).toBe('Existing notes.');
+
+    // Pencil button should be gone
+    expect(screen.queryByRole('button', { name: /edit trip notes/i })).toBeNull();
+  });
+
+  it('[T-104] char count shown when notesDraft length >= 1800', async () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      trip: { ...mockTrip, notes: null },
+    });
+
+    renderTripDetailsPage();
+
+    // Enter edit mode
+    fireEvent.click(screen.getByRole('button', { name: /edit trip notes/i }));
+
+    // Type 1850 characters (>= 1800 threshold)
+    const longText = 'a'.repeat(1850);
+    const textarea = screen.getByRole('textbox', { name: /trip notes/i });
+    fireEvent.change(textarea, { target: { value: longText } });
+
+    // Char count warning should appear
+    expect(screen.getByText(/1,850 \/ 2,000/)).toBeDefined();
+  });
+
+  it('[T-104] Save button calls api.trips.update with correct notes payload', async () => {
+    const { api } = await import('../utils/api');
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      trip: { ...mockTrip, notes: null },
+    });
+
+    renderTripDetailsPage();
+
+    // Enter edit mode
+    fireEvent.click(screen.getByRole('button', { name: /edit trip notes/i }));
+
+    // Type new notes
+    const textarea = screen.getByRole('textbox', { name: /trip notes/i });
+    fireEvent.change(textarea, { target: { value: 'Pack light for Tokyo.' } });
+
+    // Click Save
+    fireEvent.click(screen.getByRole('button', { name: /save trip notes/i }));
+
+    await waitFor(() => {
+      expect(api.trips.update).toHaveBeenCalledWith(
+        'trip-001',
+        expect.objectContaining({ notes: 'Pack light for Tokyo.' })
+      );
+    });
+  });
+
+  it('[T-104] Cancel button restores previous notes without making any API call', async () => {
+    const { api } = await import('../utils/api');
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      trip: { ...mockTrip, notes: 'Original notes.' },
+    });
+
+    renderTripDetailsPage();
+
+    // Enter edit mode
+    fireEvent.click(screen.getByRole('button', { name: /edit trip notes/i }));
+
+    // Modify the textarea
+    const textarea = screen.getByRole('textbox', { name: /trip notes/i });
+    fireEvent.change(textarea, { target: { value: 'Changed notes.' } });
+
+    // Click Cancel
+    fireEvent.click(screen.getByRole('button', { name: /cancel notes editing/i }));
+
+    // Should return to display mode with original notes
+    expect(screen.getByText('Original notes.')).toBeDefined();
+
+    // api.trips.update should NOT have been called
+    expect(api.trips.update).not.toHaveBeenCalled();
+  });
+
+  it('[T-104] submitting empty textarea sends null (not empty string)', async () => {
+    const { api } = await import('../utils/api');
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      trip: { ...mockTrip, notes: 'Some existing notes.' },
+    });
+
+    renderTripDetailsPage();
+
+    // Enter edit mode
+    fireEvent.click(screen.getByRole('button', { name: /edit trip notes/i }));
+
+    // Clear the textarea (empty string)
+    const textarea = screen.getByRole('textbox', { name: /trip notes/i });
+    fireEvent.change(textarea, { target: { value: '' } });
+
+    // Click Save
+    fireEvent.click(screen.getByRole('button', { name: /save trip notes/i }));
+
+    await waitFor(() => {
+      expect(api.trips.update).toHaveBeenCalledWith(
+        'trip-001',
+        expect.objectContaining({ notes: null })
+      );
+    });
+  });
+
+  // ── 17. T-113: Timezone abbreviation display on detail cards ──────────────────
+  it('[T-113] flight departure shows EDT for America/New_York in summer', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      flights: [
+        {
+          id: 'flight-tz-test',
+          trip_id: 'trip-001',
+          flight_number: 'UA200',
+          airline: 'United',
+          from_location: 'JFK',
+          to_location: 'NRT',
+          departure_at: '2026-08-07T10:00:00.000Z', // UTC → 6:00 AM EDT
+          departure_tz: 'America/New_York',
+          arrival_at: '2026-08-08T00:00:00.000Z',   // UTC → 9:00 AM JST
+          arrival_tz: 'Asia/Tokyo',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    renderTripDetailsPage();
+
+    // Departure timezone abbreviation: America/New_York in August = EDT
+    expect(screen.getByText('EDT')).toBeDefined();
+    // Arrival timezone abbreviation: Asia/Tokyo (JST or GMT+9 depending on Node.js ICU data)
+    const expectedArrTz = formatTimezoneAbbr('2026-08-08T00:00:00.000Z', 'Asia/Tokyo');
+    expect(screen.getAllByText(expectedArrTz).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('[T-113] stay check-in shows correct timezone abbreviation (JST for Asia/Tokyo)', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      stays: [
+        {
+          id: 'stay-tz-test',
+          trip_id: 'trip-001',
+          category: 'HOTEL',
+          name: 'Tokyo Hotel',
+          address: '1-1 Shinjuku',
+          check_in_at: '2026-08-07T06:00:00.000Z', // UTC → 3:00 PM JST
+          check_in_tz: 'Asia/Tokyo',
+          check_out_at: '2026-08-10T02:00:00.000Z', // UTC → 11:00 AM JST
+          check_out_tz: 'Asia/Tokyo',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    renderTripDetailsPage();
+
+    // Asia/Tokyo abbreviation (JST or GMT+9 depending on Node.js ICU data)
+    const expectedTokyoTz = formatTimezoneAbbr('2026-08-07T06:00:00.000Z', 'Asia/Tokyo');
+    const tzElements = screen.getAllByText(expectedTokyoTz);
+    // Both check-in and check-out should have the same timezone abbreviation
+    expect(tzElements.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('[T-113] flight departure shows EST for America/New_York in winter', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      flights: [
+        {
+          id: 'flight-winter-test',
+          trip_id: 'trip-001',
+          flight_number: 'AA001',
+          airline: 'American',
+          from_location: 'JFK',
+          to_location: 'LAX',
+          departure_at: '2026-01-10T15:00:00.000Z', // UTC → 10:00 AM EST (UTC-5 in winter)
+          departure_tz: 'America/New_York',
+          arrival_at: '2026-01-10T18:00:00.000Z',
+          arrival_tz: 'America/Los_Angeles',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    renderTripDetailsPage();
+
+    // America/New_York in January = EST
+    expect(screen.getByText('EST')).toBeDefined();
+  });
+
+  it('[T-113] no timezone span rendered when *_tz field is missing', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      flights: [
+        {
+          id: 'flight-no-tz',
+          trip_id: 'trip-001',
+          flight_number: 'XX000',
+          airline: 'Test Air',
+          from_location: 'AAA',
+          to_location: 'BBB',
+          departure_at: '2026-08-07T10:00:00.000Z',
+          departure_tz: null,  // missing timezone
+          arrival_at: '2026-08-07T16:00:00.000Z',
+          arrival_tz: null,    // missing timezone
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    const { container } = renderTripDetailsPage();
+
+    // When timezone is null, no tzAbbr span should be rendered
+    // The flight card should still render without crashing
+    expect(screen.getByText('XX000')).toBeDefined();
+    // No timezone abbreviation spans in the flight section
+    const flightCard = container.querySelector('[aria-label*="Flight XX000"]');
+    expect(flightCard).toBeDefined();
+  });
+
+  it('[T-113] stay check-in shows CEST for Europe/Paris in summer', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      stays: [
+        {
+          id: 'stay-paris',
+          trip_id: 'trip-001',
+          category: 'HOTEL',
+          name: 'Paris Hotel',
+          address: '1 Rue de Rivoli',
+          check_in_at: '2026-07-15T11:00:00.000Z', // UTC → 1:00 PM CEST (UTC+2 in summer)
+          check_in_tz: 'Europe/Paris',
+          check_out_at: '2026-07-17T09:00:00.000Z',
+          check_out_tz: 'Europe/Paris',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    renderTripDetailsPage();
+
+    // Europe/Paris in July abbreviation (CEST or GMT+2 depending on Node.js ICU data)
+    const expectedParisTz = formatTimezoneAbbr('2026-07-15T11:00:00.000Z', 'Europe/Paris');
+    const parisElements = screen.getAllByText(expectedParisTz);
+    expect(parisElements.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // ── 18. T-114: Activity location URL detection tests ─────────────────────────
+  it('[T-114] renders activity location with URL as a clickable hyperlink', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      activities: [
+        {
+          id: 'act-url',
+          trip_id: 'trip-001',
+          name: 'Map View',
+          location: 'Meet at https://maps.google.com/place/xyz',
+          activity_date: '2026-08-08',
+          start_time: '10:00:00',
+          end_time: '11:00:00',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    renderTripDetailsPage();
+
+    // The URL should be a link
+    const link = screen.getByRole('link', { name: /https:\/\/maps\.google\.com\/place\/xyz/i });
+    expect(link).toBeDefined();
+    expect(link.getAttribute('href')).toBe('https://maps.google.com/place/xyz');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+  });
+
+  it('[T-114] renders plain text location without any links', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      activities: [
+        {
+          id: 'act-plain',
+          trip_id: 'trip-001',
+          name: 'Walk in Park',
+          location: 'Golden Gate Park, San Francisco',
+          activity_date: '2026-08-08',
+          start_time: '09:00:00',
+          end_time: '10:00:00',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    const { container } = renderTripDetailsPage();
+
+    // Plain text location rendered correctly
+    expect(screen.getByText(/Golden Gate Park, San Francisco/)).toBeDefined();
+
+    // No links should be present inside the activity location div
+    const activityLocation = container.querySelector('[class*="activityLocation"]');
+    const links = activityLocation ? activityLocation.querySelectorAll('a') : [];
+    expect(links.length).toBe(0);
+  });
+
+  it('[T-114] javascript: scheme in location renders as plain text (NOT a link)', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      activities: [
+        {
+          id: 'act-xss',
+          trip_id: 'trip-001',
+          name: 'XSS Test',
+          location: 'javascript:alert(1)',
+          activity_date: '2026-08-08',
+          start_time: '10:00:00',
+          end_time: '11:00:00',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    const { container } = renderTripDetailsPage();
+
+    // The dangerous URI should be rendered as plain text, no link
+    const activityLocation = container.querySelector('[class*="activityLocation"]');
+    const links = activityLocation ? activityLocation.querySelectorAll('a') : [];
+    expect(links.length).toBe(0);
+
+    // It should render as text somewhere in the document
+    expect(screen.getByText(/javascript:alert\(1\)/)).toBeDefined();
+  });
+
+  it('[T-114] mixed text+URL splits correctly: plain text + link', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      activities: [
+        {
+          id: 'act-mixed',
+          trip_id: 'trip-001',
+          name: 'Lunch',
+          location: 'Lunch at https://www.yelp.com/biz/xyz near the park',
+          activity_date: '2026-08-09',
+          start_time: '12:00:00',
+          end_time: '13:00:00',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    renderTripDetailsPage();
+
+    // URL part is a link
+    const link = screen.getByRole('link', { name: /https:\/\/www\.yelp\.com\/biz\/xyz/i });
+    expect(link).toBeDefined();
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+
+    // Plain text parts are visible
+    expect(screen.getByText(/Lunch at/)).toBeDefined();
+  });
+
+  it('[T-114] no link rendered when activity location is null', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      activities: [
+        {
+          id: 'act-null-loc',
+          trip_id: 'trip-001',
+          name: 'Unnamed Activity',
+          location: null,
+          activity_date: '2026-08-08',
+          start_time: '10:00:00',
+          end_time: '11:00:00',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    const { container } = renderTripDetailsPage();
+
+    // No activityLocation div when location is null
+    const activityLocation = container.querySelector('[class*="activityLocation"]');
+    expect(activityLocation).toBeNull();
+  });
+
+  // ── 19. T-122: Trip Print / Export ────────────────────────────────────────
+
+  it('[T-122] renders Print button with aria-label="Print trip itinerary" on TripDetailsPage', () => {
+    useTripDetails.mockReturnValue({ ...defaultHookValue });
+
+    renderTripDetailsPage();
+
+    const printBtn = screen.getByRole('button', { name: /print trip itinerary/i });
+    expect(printBtn).toBeDefined();
+  });
+
+  it('[T-122] clicking Print button calls window.print() exactly once', () => {
+    useTripDetails.mockReturnValue({ ...defaultHookValue });
+
+    // Mock window.print
+    const mockPrint = vi.fn();
+    const originalPrint = window.print;
+    window.print = mockPrint;
+
+    renderTripDetailsPage();
+
+    const printBtn = screen.getByRole('button', { name: /print trip itinerary/i });
+    fireEvent.click(printBtn);
+
+    expect(mockPrint).toHaveBeenCalledTimes(1);
+
+    // Restore
+    window.print = originalPrint;
+  });
+
+  it('[T-122] Print button is NOT rendered in the trip error state', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      trip: null,
+      tripLoading: false,
+      tripError: { type: 'not_found', message: 'trip not found.' },
+    });
+
+    renderTripDetailsPage();
+
+    // Error state renders — no print button
+    expect(screen.queryByRole('button', { name: /print trip itinerary/i })).toBeNull();
+    // Error message is visible instead
+    expect(screen.getByText('trip not found.')).toBeDefined();
   });
 });

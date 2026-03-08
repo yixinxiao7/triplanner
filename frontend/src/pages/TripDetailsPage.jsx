@@ -3,10 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import DestinationChipInput from '../components/DestinationChipInput';
 import { useTripDetails } from '../hooks/useTripDetails';
-import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatTripDateRange } from '../utils/formatDate';
+import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatTripDateRange, parseLocationWithLinks } from '../utils/formatDate';
 import TripCalendar from '../components/TripCalendar';
 import { api } from '../utils/api';
 import styles from './TripDetailsPage.module.css';
+import '../styles/print.css';
 
 // ── Small Calendar Icon ───────────────────────────────────────
 function CalendarIconSmall() {
@@ -106,7 +107,8 @@ function FlightCard({ flight }) {
         <div className={styles.flightCol}>
           <div className={styles.airportCode}>{flight.from_location}</div>
           <div className={styles.flightDateTime}>
-            {depDisplay}{depTz ? ` ${depTz}` : ''}
+            {depDisplay}
+            {depTz && <span className={styles.tzAbbr}>{depTz}</span>}
           </div>
         </div>
         <div className={styles.flightCenter}>
@@ -117,7 +119,8 @@ function FlightCard({ flight }) {
         <div className={`${styles.flightCol} ${styles.flightColRight}`}>
           <div className={styles.airportCode}>{flight.to_location}</div>
           <div className={styles.flightDateTime}>
-            {arrDisplay}{arrTz ? ` ${arrTz}` : ''}
+            {arrDisplay}
+            {arrTz && <span className={styles.tzAbbr}>{arrTz}</span>}
           </div>
         </div>
       </div>
@@ -129,6 +132,9 @@ function FlightCard({ flight }) {
 function StayCard({ stay }) {
   const checkInDisplay = formatDateTime(stay.check_in_at, stay.check_in_tz);
   const checkOutDisplay = formatDateTime(stay.check_out_at, stay.check_out_tz);
+  // T-113: DST-aware timezone abbreviations for check-in and check-out
+  const checkInTz = formatTimezoneAbbr(stay.check_in_at, stay.check_in_tz);
+  const checkOutTz = formatTimezoneAbbr(stay.check_out_at, stay.check_out_tz);
 
   return (
     <article className={styles.stayCard} aria-label={`Stay: ${stay.name}`}>
@@ -152,11 +158,17 @@ function StayCard({ stay }) {
       <div className={styles.stayDates}>
         <div className={styles.stayDateBlock}>
           <div className={styles.stayDateLabel}>CHECK IN</div>
-          <div className={styles.stayDateValue}>{checkInDisplay}</div>
+          <div className={styles.stayDateValue}>
+            {checkInDisplay}
+            {checkInTz && <span className={styles.tzAbbr}>{checkInTz}</span>}
+          </div>
         </div>
         <div className={styles.stayDateBlock}>
           <div className={styles.stayDateLabel}>CHECK OUT</div>
-          <div className={styles.stayDateValue}>{checkOutDisplay}</div>
+          <div className={styles.stayDateValue}>
+            {checkOutDisplay}
+            {checkOutTz && <span className={styles.tzAbbr}>{checkOutTz}</span>}
+          </div>
         </div>
       </div>
     </article>
@@ -198,7 +210,22 @@ function ActivityEntry({ activity }) {
               <path d="M5 .833A2.917 2.917 0 017.917 3.75C7.917 6.25 5 9.167 5 9.167S2.083 6.25 2.083 3.75A2.917 2.917 0 015 .833z" stroke="currentColor" strokeWidth="1" />
               <circle cx="5" cy="3.75" r=".833" fill="currentColor" />
             </svg>
-            {activity.location}
+            {/* T-114: Render URLs as secure hyperlinks, plain text stays as-is */}
+            {parseLocationWithLinks(activity.location).map((segment, idx) =>
+              segment.type === 'link' ? (
+                <a
+                  key={idx}
+                  href={segment.content}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.locationLink}
+                >
+                  {segment.content}
+                </a>
+              ) : (
+                <span key={idx}>{segment.content}</span>
+              )
+            )}
           </div>
         )}
       </div>
@@ -206,15 +233,15 @@ function ActivityEntry({ activity }) {
   );
 }
 
-// ── Activity Day Group (timeless activities sort after timed) ─
+// ── Activity Day Group (all-day activities sort to top — T-100) ─
 function ActivityDayGroup({ date, activities }) {
   const dateDisplay = formatActivityDate(date);
   const sortedActivities = [...activities].sort((a, b) => {
-    // Timed activities first, then timeless; within same group sort by start_time/name
+    // T-100: All-day activities first, then timed; within same group sort by start_time/name
     const aIsAllDay = !a.start_time && !a.end_time;
     const bIsAllDay = !b.start_time && !b.end_time;
-    if (aIsAllDay && !bIsAllDay) return 1;
-    if (!aIsAllDay && bIsAllDay) return -1;
+    if (aIsAllDay && !bIsAllDay) return -1;  // all-day before timed
+    if (!aIsAllDay && bIsAllDay) return 1;   // timed after all-day
     if (aIsAllDay && bIsAllDay) return a.name.localeCompare(b.name);
     // Both timed
     if ((a.start_time || '') < (b.start_time || '')) return -1;
@@ -237,6 +264,96 @@ function ActivityDayGroup({ date, activities }) {
   );
 }
 
+// ── Land Travel Mode Labels ───────────────────────────────────
+const LAND_TRAVEL_MODE_LABELS = {
+  RENTAL_CAR: 'rental car',
+  BUS: 'bus',
+  TRAIN: 'train',
+  RIDESHARE: 'rideshare',
+  FERRY: 'ferry',
+  OTHER: 'other',
+};
+
+// ── Land Travel Card ──────────────────────────────────────────
+function LandTravelCard({ entry }) {
+  const modeLabel = LAND_TRAVEL_MODE_LABELS[entry.mode] || entry.mode.toLowerCase().replace('_', ' ');
+
+  function formatDate(dateStr) {
+    if (!dateStr) return null;
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+      });
+    } catch {
+      return dateStr;
+    }
+  }
+
+  function formatTime12h(timeStr) {
+    if (!timeStr) return null;
+    try {
+      const [h, min] = timeStr.split(':').map(Number);
+      const suffix = h >= 12 ? 'PM' : 'AM';
+      const hour = ((h + 11) % 12) + 1;
+      return `${hour}:${String(min).padStart(2, '0')} ${suffix}`;
+    } catch {
+      return timeStr;
+    }
+  }
+
+  const depDate = formatDate(entry.departure_date);
+  const depTime = formatTime12h(entry.departure_time);
+  const arrDate = formatDate(entry.arrival_date);
+  const arrTime = formatTime12h(entry.arrival_time);
+
+  return (
+    <article
+      className={styles.landTravelCard}
+      aria-label={`${modeLabel}: ${entry.from_location} to ${entry.to_location}`}
+    >
+      <div className={styles.landTravelTopRow}>
+        <span className={styles.landTravelModeBadge}>{modeLabel}</span>
+        {entry.provider && (
+          <span className={styles.landTravelProvider}>{entry.provider}</span>
+        )}
+      </div>
+      <div className={styles.landTravelRoute}>
+        <span className={styles.landTravelLocation}>{entry.from_location}</span>
+        <span className={styles.landTravelArrow} aria-hidden="true"> → </span>
+        <span className={styles.landTravelLocation}>{entry.to_location}</span>
+      </div>
+      <div className={styles.landTravelTimes}>
+        {depDate && (
+          <div className={styles.landTravelTimeBlock}>
+            <div className={styles.landTravelTimeLabel}>DEPARTURE</div>
+            <div className={styles.landTravelTimeValue}>
+              {depDate}{depTime ? `, ${depTime}` : ''}
+            </div>
+          </div>
+        )}
+        {arrDate && (
+          <div className={styles.landTravelTimeBlock}>
+            <div className={styles.landTravelTimeLabel}>ARRIVAL</div>
+            <div className={styles.landTravelTimeValue}>
+              {arrDate}{arrTime ? `, ${arrTime}` : ''}
+            </div>
+          </div>
+        )}
+      </div>
+      {entry.confirmation_number && (
+        <div className={styles.landTravelConfirmation}>
+          <span className={styles.landTravelConfLabel}>CONF #</span>
+          <span className={styles.landTravelConfValue}>{entry.confirmation_number}</span>
+        </div>
+      )}
+      {entry.notes && (
+        <div className={styles.landTravelNotes}>{entry.notes}</div>
+      )}
+    </article>
+  );
+}
+
 // ── Main Page Component ──────────────────────────────────────
 export default function TripDetailsPage() {
   const { id: tripId } = useParams();
@@ -253,10 +370,14 @@ export default function TripDetailsPage() {
     activities,
     activitiesLoading,
     activitiesError,
+    landTravels,
+    landTravelsLoading,
+    landTravelsError,
     fetchAll,
     refetchFlights,
     refetchStays,
     refetchActivities,
+    refetchLandTravels,
   } = useTripDetails(tripId);
 
   // ── Trip Date Range State ─────────────────────────────────
@@ -274,6 +395,15 @@ export default function TripDetailsPage() {
   const [destSaving, setDestSaving] = useState(false);
   const [destError, setDestError] = useState('');
   const [savedDestinations, setSavedDestinations] = useState([]);
+
+  // ── Trip Notes State (T-104) ────────────────────────────────
+  const [notesMode, setNotesMode] = useState('display'); // 'display' | 'edit'
+  const [notesDraft, setNotesDraft] = useState('');
+  const [savedNotes, setSavedNotes] = useState(null);
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesError, setNotesError] = useState('');
+  const NOTES_MAX = 2000;
+  const NOTES_WARN_THRESHOLD = 1800;
 
   useEffect(() => {
     fetchAll();
@@ -305,6 +435,13 @@ export default function TripDetailsPage() {
           ? trip.destinations.split(',').map((d) => d.trim()).filter(Boolean)
           : [];
       setSavedDestinations(dests);
+    }
+  }, [trip, tripLoading]);
+
+  // Initialize notes from trip data (T-104)
+  useEffect(() => {
+    if (!tripLoading && trip) {
+      setSavedNotes(trip.notes ?? null);
     }
   }, [trip, tripLoading]);
 
@@ -393,6 +530,43 @@ export default function TripDetailsPage() {
     }
   }
 
+  // ── Notes handlers (T-104) ────────────────────────────────
+  function handleEditNotes() {
+    setNotesDraft(savedNotes || '');
+    setNotesError('');
+    setNotesMode('edit');
+  }
+
+  function handleCancelNotes() {
+    setNotesMode('display');
+    setNotesError('');
+  }
+
+  async function handleSaveNotes() {
+    setNotesError('');
+    if (notesDraft.length > NOTES_MAX) {
+      setNotesError(`notes must be ${NOTES_MAX} characters or fewer.`);
+      return;
+    }
+    // Send null when empty (to clear notes)
+    const notesPayload = notesDraft.trim() ? notesDraft : null;
+    // Skip API call if nothing changed
+    if (notesPayload === savedNotes) {
+      setNotesMode('display');
+      return;
+    }
+    setNotesSaving(true);
+    try {
+      await api.trips.update(tripId, { notes: notesPayload });
+      setSavedNotes(notesPayload);
+      setNotesMode('display');
+    } catch {
+      setNotesError('could not save notes. please try again.');
+    } finally {
+      setNotesSaving(false);
+    }
+  }
+
   // Group activities by date
   const activitiesByDate = activities.reduce((acc, activity) => {
     const date = activity.activity_date;
@@ -452,7 +626,37 @@ export default function TripDetailsPage() {
               </>
             ) : (
               <>
-                <h1 className={styles.tripName}>{trip?.name}</h1>
+                {/* ── Trip Name Row (T-122: trip name + print button) ── */}
+                <div className={styles.tripNameRow}>
+                  <h1 className={styles.tripName}>{trip?.name}</h1>
+
+                  <button
+                    className={styles.printBtn}
+                    onClick={() => window.print()}
+                    aria-label="Print trip itinerary"
+                  >
+                    {/* Printer SVG icon */}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      {/* Paper feed (top sheet) */}
+                      <rect x="3" y="1" width="8" height="4" rx="0.5" />
+                      {/* Printer body */}
+                      <rect x="1" y="5" width="12" height="6" rx="1" />
+                      {/* Output tray / printed page */}
+                      <rect x="3" y="9" width="8" height="4" rx="0.5" />
+                    </svg>
+                    Print
+                  </button>
+                </div>
 
                 {/* ── Destinations (editable chips — Sprint 3 T-046) ── */}
                 {destMode === 'display' && (
@@ -511,6 +715,73 @@ export default function TripDetailsPage() {
               </>
             )}
           </div>
+
+          {/* ── Trip Notes Section (T-104) ── */}
+          {!tripLoading && (
+            <div className={styles.notesSection}>
+              {notesMode === 'display' && (
+                <div className={styles.notesDisplay}>
+                  {savedNotes ? (
+                    <p className={styles.notesText}>{savedNotes}</p>
+                  ) : (
+                    <p className={styles.notesPlaceholder}>no notes yet</p>
+                  )}
+                  <button
+                    className={styles.notesPencilBtn}
+                    onClick={handleEditNotes}
+                    aria-label="Edit trip notes"
+                    title="Edit notes"
+                  >
+                    {/* Pencil icon */}
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                      <path d="M9.667 1.667a1.571 1.571 0 012.222 2.222L4.333 11.333 1.333 12l.667-3L9.667 1.667z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+
+              {notesMode === 'edit' && (
+                <div className={styles.notesEditContainer}>
+                  <textarea
+                    className={styles.notesTextarea}
+                    value={notesDraft}
+                    onChange={(e) => { setNotesDraft(e.target.value); setNotesError(''); }}
+                    placeholder="add trip notes…"
+                    maxLength={NOTES_MAX}
+                    disabled={notesSaving}
+                    aria-label="Trip notes"
+                    autoFocus
+                  />
+                  {notesDraft.length >= NOTES_WARN_THRESHOLD && (
+                    <span className={`${styles.notesCharCount} ${notesDraft.length >= NOTES_MAX ? styles.notesCharCountWarn : ''}`}>
+                      {notesDraft.length.toLocaleString()} / {NOTES_MAX.toLocaleString()}
+                    </span>
+                  )}
+                  {notesError && (
+                    <span className={styles.notesError} role="alert">{notesError}</span>
+                  )}
+                  <div className={styles.notesEditActions}>
+                    <button
+                      className={styles.saveDatesBtn}
+                      onClick={handleSaveNotes}
+                      disabled={notesSaving}
+                      aria-label="Save trip notes"
+                    >
+                      {notesSaving ? <span className="spinner" /> : 'Save'}
+                    </button>
+                    <button
+                      className={styles.cancelDatesLink}
+                      onClick={handleCancelNotes}
+                      disabled={notesSaving}
+                      aria-label="Cancel notes editing"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Trip Date Range Section ── */}
           {!tripLoading && dateMode !== 'loading' && (
@@ -618,11 +889,13 @@ export default function TripDetailsPage() {
               flights={flights}
               stays={stays}
               activities={activities}
-              isLoading={flightsLoading || staysLoading || activitiesLoading}
+              landTravels={landTravels}
+              isLoading={flightsLoading || staysLoading || activitiesLoading || landTravelsLoading}
             />
           </div>
 
           {/* ── Flights Section ── */}
+          {/* T-099: Section order is Flights → Land Travel → Stays → Activities */}
           <section className={styles.section}>
             <SectionHeader title="flights" actionLabel="edit flights" actionHref={`/trips/${tripId}/edit/flights`} />
             {flightsLoading ? (
@@ -638,6 +911,39 @@ export default function TripDetailsPage() {
             ) : (
               <div className={styles.cardList}>
                 {flights.map((flight) => <FlightCard key={flight.id} flight={flight} />)}
+              </div>
+            )}
+          </section>
+
+          {/* ── Land Travel Section ── */}
+          {/* T-099: Moved to between Flights and Stays for logical travel flow */}
+          <section className={styles.section}>
+            <SectionHeader title="land travel" actionLabel="edit land travel" actionHref={`/trips/${tripId}/land-travel/edit`} />
+            {landTravelsLoading ? (
+              <div>
+                <SkeletonBar width="100%" height="80px" />
+                <div style={{ marginTop: 8 }}><SkeletonBar width="100%" height="80px" /></div>
+              </div>
+            ) : landTravelsError ? (
+              <SectionError resourceName="land travel" onRetry={refetchLandTravels} />
+            ) : landTravels.length === 0 ? (
+              <EmptyState
+                icon={
+                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ color: 'var(--accent)', opacity: 0.3 }}>
+                    <rect x="2" y="10" width="24" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                    <circle cx="7" cy="21" r="2" stroke="currentColor" strokeWidth="1.2" />
+                    <circle cx="21" cy="21" r="2" stroke="currentColor" strokeWidth="1.2" />
+                    <path d="M2 14h4M22 14h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                }
+                text="no land travel added yet."
+                subtext="add rental cars, trains, buses, or other ground transport here."
+              />
+            ) : (
+              <div className={styles.cardList}>
+                {landTravels.map((entry) => (
+                  <LandTravelCard key={entry.id} entry={entry} />
+                ))}
               </div>
             )}
           </section>
@@ -663,6 +969,7 @@ export default function TripDetailsPage() {
           </section>
 
           {/* ── Activities Section ── */}
+          {/* T-099: Activities is now last; moved sectionLast class here from Land Travel */}
           <section className={`${styles.section} ${styles.sectionLast}`}>
             <SectionHeader title="activities" actionLabel="edit activities" actionHref={`/trips/${tripId}/edit/activities`} />
             {activitiesLoading ? (

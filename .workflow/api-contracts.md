@@ -2728,3 +2728,1839 @@ The following Sprint 5 tasks require **no new or changed API contracts** from th
 ---
 
 *Sprint 5 contracts above are marked Agreed and approved for implementation. The T-072 contract documents the only backend API change this sprint. The GET /trips endpoint gains search, filter, and sort query parameters — all other endpoints are unchanged. Frontend Engineer and QA Engineer should reference this contract for integration and testing.*
+
+---
+
+## Sprint 6 Contracts
+
+---
+
+## T-085 — ILIKE Wildcard Escaping Fix (GET /api/v1/trips — search behavior correction)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| Task | T-085 |
+| Status | Agreed |
+| Auth Required | Bearer token |
+| Feedback Source | FB-062 |
+
+**Description:** Bug fix to the existing `GET /api/v1/trips?search=<term>` endpoint documented in T-072. The search parameter is used in a PostgreSQL `ILIKE` query, but special SQL wildcard characters in the user's search string (`%`, `_`, `\`) were not being escaped. As a result, `search=%` matched all trips (because `%` is the SQL wildcard for "any sequence of characters"), and `search=_` matched any single-character trip name, both leaking data the user did not intend to search for.
+
+**Change:** Before interpolating the search string into the ILIKE pattern, the backend must escape:
+- `\` → `\\` (backslash, must be escaped first to avoid double-escaping)
+- `%` → `\%`
+- `_` → `\_`
+
+The ESCAPE clause must be used in the ILIKE expression: `name ILIKE ? ESCAPE '\'`
+
+**No endpoint signature change.** Route, method, query parameters, response shape, auth, and error codes are identical to the T-072 contract. Only the internal query behavior changes.
+
+**Before (Sprint 5 behavior):**
+```sql
+-- search=% matched all rows (% is SQL wildcard)
+name ILIKE '%' || search || '%'
+-- equivalent to ILIKE '%%%' → matches everything
+```
+
+**After (Sprint 6 corrected behavior):**
+```sql
+-- search=% is escaped to \%, treated as a literal percent sign
+-- escape function applied before interpolation
+escaped_search = search
+  .replace(/\\/g, '\\\\')  -- escape backslash first
+  .replace(/%/g, '\\%')    -- escape percent
+  .replace(/_/g, '\\_')    -- escape underscore
+
+name ILIKE '%' || escaped_search || '%' ESCAPE '\'
+-- search=% → ILIKE '%\%%' ESCAPE '\' → matches literal '%' in name
+-- search=_ → ILIKE '%\_%' ESCAPE '\' → matches literal '_' in name
+```
+
+**Verified behavioral changes:**
+
+| Search Term | Sprint 5 Result | Sprint 6 Result (Correct) |
+|-------------|----------------|--------------------------|
+| `%` | All trips (wildcard matches everything) | 0 trips (or only trips with `%` in name/destinations) |
+| `_` | All trips with a single-character name | Only trips containing literal `_` |
+| `Paris` | Trips containing "Paris" | Trips containing "Paris" (unchanged — no special chars) |
+| `100%` | Trips containing "100" followed by anything | Trips containing literal "100%" |
+| `New_York` | Trips with names matching "New" + any single char + "York" | Trips containing literal "New_York" |
+
+**Applies to both search targets:**
+- `name ILIKE '%<escaped_search>%' ESCAPE '\'`
+- `array_to_string(destinations, ',') ILIKE '%<escaped_search>%' ESCAPE '\'`
+
+**No schema changes required.**
+
+---
+
+## T-086 — Land Travel CRUD Endpoints
+
+| Field | Value |
+|-------|-------|
+| Sprint | 6 |
+| Task | T-086 |
+| Status | Agreed |
+| Auth Required | Bearer token (all endpoints) |
+| Schema Change | Migration 009 — Creates `land_travels` table (Manager Pre-Approved) |
+
+**Description:** Full CRUD for a new `land_travels` sub-resource nested under trips. Land travel captures ground transportation entries (rental cars, buses, trains, rideshares, ferries, and other modes) for a trip. All endpoints require authentication and enforce trip ownership (the authenticated user must own the parent trip).
+
+---
+
+### Land Travel Object Shape
+
+The canonical land travel resource object returned in all success responses:
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440001",
+  "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+  "mode": "RENTAL_CAR",
+  "provider": "Hertz",
+  "from_location": "San Francisco",
+  "to_location": "Los Angeles",
+  "departure_date": "2026-08-07",
+  "departure_time": "09:00:00",
+  "arrival_date": "2026-08-07",
+  "arrival_time": "14:30:00",
+  "confirmation_number": "XYZ-123456",
+  "notes": "Pick up at airport terminal 2. Return same location.",
+  "created_at": "2026-08-01T10:00:00.000Z",
+  "updated_at": "2026-08-01T10:00:00.000Z"
+}
+```
+
+**Field Descriptions:**
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `id` | UUID string | No | Primary key, UUID v4 |
+| `trip_id` | UUID string | No | Parent trip's ID |
+| `mode` | string (enum) | No | One of: `RENTAL_CAR`, `BUS`, `TRAIN`, `RIDESHARE`, `FERRY`, `OTHER` |
+| `provider` | string | Yes | Carrier/company name (e.g., `"Hertz"`, `"Amtrak"`, `"Uber"`). `null` if not set. |
+| `from_location` | string | No | Origin location name (e.g., `"San Francisco"`, `"SFO Airport"`) |
+| `to_location` | string | No | Destination location name |
+| `departure_date` | string (`YYYY-MM-DD`) | No | Departure date in ISO 8601 date format |
+| `departure_time` | string (`HH:MM:SS`) | Yes | Departure local time in 24h format. `null` if not set. |
+| `arrival_date` | string (`YYYY-MM-DD`) | Yes | Arrival date in ISO 8601 date format. `null` if not set. |
+| `arrival_time` | string (`HH:MM:SS`) | Yes | Arrival local time in 24h format. `null` if not set. |
+| `confirmation_number` | string | Yes | Booking/confirmation code. `null` if not set. |
+| `notes` | string | Yes | Free-text notes. `null` if not set. |
+| `created_at` | ISO 8601 UTC string | No | Record creation timestamp |
+| `updated_at` | ISO 8601 UTC string | No | Last update timestamp |
+
+**Notes on time fields:**
+- `departure_time` and `arrival_time` are stored as PostgreSQL `TIME` and returned as `HH:MM:SS` strings (24-hour format with seconds). E.g., `"09:00:00"`, `"14:30:00"`. The PostgreSQL `pg` driver returns `TIME` columns as `HH:MM:SS`; the backend normalises to this format via `TO_CHAR(departure_time, 'HH24:MI:SS')`.
+- There are no timezone fields for land travel times — times are stored and returned as local (wall-clock) times, matching how the user entered them. The frontend renders them directly without timezone conversion.
+- `arrival_time` is only meaningful if `arrival_date` is also set. The API enforces: if `arrival_time` is provided, `arrival_date` must also be provided (400 error otherwise).
+- If `arrival_date` is provided, it must be greater than or equal to `departure_date`. (Same-day arrivals are valid.)
+
+---
+
+### GET /api/v1/trips/:tripId/land-travel
+
+| Field | Value |
+|-------|-------|
+| Method | GET |
+| Path | `/api/v1/trips/:tripId/land-travel` |
+| Auth Required | Bearer token |
+| Pagination | No (returns all entries for the trip) |
+
+**Description:** Returns all land travel entries for a trip, sorted by `departure_date` ASC, then `departure_time` ASC NULLS LAST (entries without a departure time appear after timed entries on the same date).
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tripId` | UUID | The parent trip's ID |
+
+**Request Body:** None
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+      "mode": "TRAIN",
+      "provider": "Amtrak",
+      "from_location": "San Francisco",
+      "to_location": "Los Angeles",
+      "departure_date": "2026-08-07",
+      "departure_time": "09:00:00",
+      "arrival_date": "2026-08-07",
+      "arrival_time": "20:45:00",
+      "confirmation_number": "AMTK-789012",
+      "notes": null,
+      "created_at": "2026-08-01T10:00:00.000Z",
+      "updated_at": "2026-08-01T10:00:00.000Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+      "mode": "RENTAL_CAR",
+      "provider": "Hertz",
+      "from_location": "Los Angeles",
+      "to_location": "San Diego",
+      "departure_date": "2026-08-08",
+      "departure_time": null,
+      "arrival_date": null,
+      "arrival_time": null,
+      "confirmation_number": null,
+      "notes": "Compact car, unlimited mileage",
+      "created_at": "2026-08-01T10:05:00.000Z",
+      "updated_at": "2026-08-01T10:05:00.000Z"
+    }
+  ]
+}
+```
+
+**Empty list (no entries yet — 200 OK):**
+```json
+{
+  "data": []
+}
+```
+
+**Error Responses:**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 400 | `VALIDATION_ERROR` | `tripId` is not a valid UUID v4 |
+| 401 | `UNAUTHORIZED` | Missing or invalid/expired access token |
+| 403 | `FORBIDDEN` | Authenticated user does not own the trip |
+| 404 | `NOT_FOUND` | Trip with `tripId` does not exist |
+| 500 | `INTERNAL_ERROR` | Unexpected server error |
+
+**Error shapes:**
+```json
+{ "error": { "message": "Invalid ID format", "code": "VALIDATION_ERROR" } }
+{ "error": { "message": "Authentication required", "code": "UNAUTHORIZED" } }
+{ "error": { "message": "You do not have access to this trip", "code": "FORBIDDEN" } }
+{ "error": { "message": "Trip not found", "code": "NOT_FOUND" } }
+```
+
+---
+
+### POST /api/v1/trips/:tripId/land-travel
+
+| Field | Value |
+|-------|-------|
+| Method | POST |
+| Path | `/api/v1/trips/:tripId/land-travel` |
+| Auth Required | Bearer token |
+
+**Description:** Creates a new land travel entry for the specified trip. Returns the created entry with its server-assigned `id`, `created_at`, and `updated_at`.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tripId` | UUID | The parent trip's ID |
+
+**Request Body:**
+```json
+{
+  "mode": "RENTAL_CAR",
+  "provider": "Hertz",
+  "from_location": "San Francisco",
+  "to_location": "Los Angeles",
+  "departure_date": "2026-08-07",
+  "departure_time": "09:00:00",
+  "arrival_date": "2026-08-07",
+  "arrival_time": "14:30:00",
+  "confirmation_number": "XYZ-123456",
+  "notes": "Pick up at airport terminal 2."
+}
+```
+
+**Field Validation Rules:**
+
+| Field | Required | Type | Rules |
+|-------|----------|------|-------|
+| `mode` | Yes | string (enum) | Must be one of: `RENTAL_CAR`, `BUS`, `TRAIN`, `RIDESHARE`, `FERRY`, `OTHER`. Case-sensitive. |
+| `provider` | No | string \| null | Optional. If provided: trimmed, max length 255. Send `null` or omit to leave empty. |
+| `from_location` | Yes | string | Trimmed. Min length 1 after trim. Max length 500. |
+| `to_location` | Yes | string | Trimmed. Min length 1 after trim. Max length 500. |
+| `departure_date` | Yes | string (`YYYY-MM-DD`) | Required. Must be a valid calendar date in ISO 8601 format. |
+| `departure_time` | No | string \| null | Optional. If provided: must match `HH:MM` or `HH:MM:SS` (24h format). Send `null` or omit to leave empty. |
+| `arrival_date` | No | string \| null | Optional. If provided: must be a valid `YYYY-MM-DD` date >= `departure_date`. Send `null` or omit to leave empty. |
+| `arrival_time` | No | string \| null | Optional. If provided: `arrival_date` must also be provided. Must match `HH:MM` or `HH:MM:SS`. If `arrival_date` == `departure_date`, `arrival_time` must be > `departure_time` (when both are provided). |
+| `confirmation_number` | No | string \| null | Optional. Trimmed. Max length 255. |
+| `notes` | No | string \| null | Optional. Max length 2000. |
+
+**Cross-field validation rules:**
+1. If `arrival_time` is provided, `arrival_date` must also be provided. (400 error: "arrival_date is required when arrival_time is provided")
+2. If `arrival_date` is provided, it must be >= `departure_date`. (400 error: "arrival_date cannot be before departure_date")
+3. If `arrival_date` == `departure_date` and both `departure_time` and `arrival_time` are provided, `arrival_time` must be > `departure_time`. (400 error: "arrival_time must be after departure_time on the same day")
+
+**Response (Success — 201 Created):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+    "mode": "RENTAL_CAR",
+    "provider": "Hertz",
+    "from_location": "San Francisco",
+    "to_location": "Los Angeles",
+    "departure_date": "2026-08-07",
+    "departure_time": "09:00:00",
+    "arrival_date": "2026-08-07",
+    "arrival_time": "14:30:00",
+    "confirmation_number": "XYZ-123456",
+    "notes": "Pick up at airport terminal 2.",
+    "created_at": "2026-08-01T10:00:00.000Z",
+    "updated_at": "2026-08-01T10:00:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 400 | `VALIDATION_ERROR` | `tripId` is not a valid UUID v4 |
+| 400 | `VALIDATION_ERROR` | Missing required field (`mode`, `from_location`, `to_location`, `departure_date`) |
+| 400 | `VALIDATION_ERROR` | `mode` is not one of the allowed enum values |
+| 400 | `VALIDATION_ERROR` | `departure_date` is not a valid `YYYY-MM-DD` date |
+| 400 | `VALIDATION_ERROR` | `departure_time` / `arrival_time` is not a valid `HH:MM` or `HH:MM:SS` time |
+| 400 | `VALIDATION_ERROR` | `arrival_time` provided without `arrival_date` |
+| 400 | `VALIDATION_ERROR` | `arrival_date` before `departure_date` |
+| 400 | `VALIDATION_ERROR` | `arrival_time` not after `departure_time` on same day |
+| 401 | `UNAUTHORIZED` | Missing or invalid/expired access token |
+| 403 | `FORBIDDEN` | Authenticated user does not own the trip |
+| 404 | `NOT_FOUND` | Trip with `tripId` does not exist |
+| 500 | `INTERNAL_ERROR` | Unexpected server error |
+
+**Validation error shape (field-level):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "mode": "mode must be one of: RENTAL_CAR, BUS, TRAIN, RIDESHARE, FERRY, OTHER",
+      "departure_date": "departure_date is required"
+    }
+  }
+}
+```
+
+---
+
+### PATCH /api/v1/trips/:tripId/land-travel/:ltId
+
+| Field | Value |
+|-------|-------|
+| Method | PATCH |
+| Path | `/api/v1/trips/:tripId/land-travel/:ltId` |
+| Auth Required | Bearer token |
+
+**Description:** Partially updates an existing land travel entry. At least one updatable field must be provided. For cross-field validation (e.g., arrival before departure), the merged values (existing fields + incoming changes) are used for comparison — the client does not need to re-send unchanged fields.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tripId` | UUID | The parent trip's ID |
+| `ltId` | UUID | The land travel entry's ID |
+
+**Request Body:** One or more updatable fields:
+```json
+{
+  "mode": "TRAIN",
+  "provider": "Amtrak",
+  "from_location": "San Francisco",
+  "to_location": "Los Angeles",
+  "departure_date": "2026-08-07",
+  "departure_time": "10:00:00",
+  "arrival_date": "2026-08-07",
+  "arrival_time": "21:00:00",
+  "confirmation_number": "AMTK-789012",
+  "notes": "Quiet car reserved."
+}
+```
+
+**Updatable Fields:** All fields from POST except `id`, `trip_id`, `created_at`, `updated_at` are updatable via PATCH. Fields not included in the request body are left unchanged.
+
+**Field Validation Rules (same as POST, applied only to provided fields):**
+
+| Field | Rules |
+|-------|-------|
+| `mode` | If provided: must be one of the valid enum values. |
+| `provider` | If provided: string or `null`. Trimmed, max 255. |
+| `from_location` | If provided: trimmed, min 1 char, max 500. |
+| `to_location` | If provided: trimmed, min 1 char, max 500. |
+| `departure_date` | If provided: valid `YYYY-MM-DD` date. |
+| `departure_time` | If provided: valid `HH:MM` or `HH:MM:SS`, or `null`. |
+| `arrival_date` | If provided: valid `YYYY-MM-DD` >= merged departure_date, or `null`. Setting to `null` also clears `arrival_time`. |
+| `arrival_time` | If provided: valid `HH:MM` or `HH:MM:SS`, or `null`. Merged `arrival_date` must exist. |
+| `confirmation_number` | If provided: string or `null`. Trimmed, max 255. |
+| `notes` | If provided: string or `null`. Max 2000. |
+
+**Cross-field validation (using merged existing + incoming values):**
+1. If merged `arrival_time` is non-null, merged `arrival_date` must be non-null.
+2. If merged `arrival_date` is non-null, merged `arrival_date` >= merged `departure_date`.
+3. If merged `arrival_date` == merged `departure_date` and both times are non-null, merged `arrival_time` > merged `departure_time`.
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+    "mode": "TRAIN",
+    "provider": "Amtrak",
+    "from_location": "San Francisco",
+    "to_location": "Los Angeles",
+    "departure_date": "2026-08-07",
+    "departure_time": "10:00:00",
+    "arrival_date": "2026-08-07",
+    "arrival_time": "21:00:00",
+    "confirmation_number": "AMTK-789012",
+    "notes": "Quiet car reserved.",
+    "created_at": "2026-08-01T10:00:00.000Z",
+    "updated_at": "2026-08-02T08:30:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 400 | `VALIDATION_ERROR` | `tripId` or `ltId` is not a valid UUID v4 |
+| 400 | `VALIDATION_ERROR` | No updatable fields provided in request body |
+| 400 | `VALIDATION_ERROR` | Any field fails its validation rule (type, format, enum, cross-field) |
+| 401 | `UNAUTHORIZED` | Missing or invalid/expired access token |
+| 403 | `FORBIDDEN` | Authenticated user does not own the trip |
+| 404 | `NOT_FOUND` | Trip with `tripId` does not exist |
+| 404 | `NOT_FOUND` | Land travel entry with `ltId` does not exist under this trip |
+| 500 | `INTERNAL_ERROR` | Unexpected server error |
+
+---
+
+### DELETE /api/v1/trips/:tripId/land-travel/:ltId
+
+| Field | Value |
+|-------|-------|
+| Method | DELETE |
+| Path | `/api/v1/trips/:tripId/land-travel/:ltId` |
+| Auth Required | Bearer token |
+
+**Description:** Permanently deletes a land travel entry. Returns 204 No Content on success.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tripId` | UUID | The parent trip's ID |
+| `ltId` | UUID | The land travel entry's ID |
+
+**Request Body:** None
+
+**Response (Success — 204 No Content):** Empty body.
+
+**Error Responses:**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 400 | `VALIDATION_ERROR` | `tripId` or `ltId` is not a valid UUID v4 |
+| 401 | `UNAUTHORIZED` | Missing or invalid/expired access token |
+| 403 | `FORBIDDEN` | Authenticated user does not own the trip |
+| 404 | `NOT_FOUND` | Trip with `tripId` does not exist |
+| 404 | `NOT_FOUND` | Land travel entry with `ltId` does not exist under this trip |
+| 500 | `INTERNAL_ERROR` | Unexpected server error |
+
+---
+
+### T-086 — Migration 009: Create `land_travels` Table
+
+**Manager Pre-Approved:** Schema approved in Sprint 6 planning (2026-02-27). Backend Engineer may implement migration 009 immediately following the design spec review (T-081 is Done).
+
+**File:** `backend/src/migrations/20260227_009_create_land_travels.js`
+
+**up():**
+```sql
+CREATE TABLE land_travels (
+  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  trip_id             UUID        NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  mode                TEXT        NOT NULL CHECK (mode IN ('RENTAL_CAR','BUS','TRAIN','RIDESHARE','FERRY','OTHER')),
+  provider            TEXT        NULL,
+  from_location       TEXT        NOT NULL,
+  to_location         TEXT        NOT NULL,
+  departure_date      DATE        NOT NULL,
+  departure_time      TIME        NULL,
+  arrival_date        DATE        NULL,
+  arrival_time        TIME        NULL,
+  confirmation_number TEXT        NULL,
+  notes               TEXT        NULL,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX land_travels_trip_id_idx ON land_travels(trip_id);
+```
+
+**down():**
+```sql
+DROP TABLE IF EXISTS land_travels;
+```
+
+**Notes:**
+- `CHECK` constraint on `mode` enforces the enum at the DB level.
+- `ON DELETE CASCADE` on `trip_id` ensures all land travel entries are automatically deleted when the parent trip is deleted.
+- `arrival_time` allowed even when `arrival_date` is NULL at the DB level — cross-field validation is enforced at the application layer (API routes) to keep the migration simple and reversible.
+- `TEXT` used for `from_location`, `to_location`, `notes` (no hard length cap at DB level); length limits enforced at application layer.
+- Index on `trip_id` for performant per-trip queries.
+- `updated_at` is not automatically maintained by a trigger; the application layer must set it explicitly on every PATCH.
+
+---
+
+### T-086 — Test Plan
+
+Minimum tests required:
+
+**Happy paths:**
+- `GET /trips/:id/land-travel` with no entries → 200, `data: []`
+- `GET /trips/:id/land-travel` with multiple entries → 200, sorted by departure_date ASC, departure_time NULLS LAST
+- `POST /trips/:id/land-travel` with all fields → 201, returns full object with server-assigned id + timestamps
+- `POST /trips/:id/land-travel` with only required fields (mode, from_location, to_location, departure_date) → 201, nullable fields are null
+- `PATCH /trips/:id/land-travel/:ltId` with one field → 200, only that field changes, updated_at updated
+- `PATCH /trips/:id/land-travel/:ltId` with mode change → 200, mode updated
+- `DELETE /trips/:id/land-travel/:ltId` → 204, subsequent GET no longer includes that entry
+
+**Error paths:**
+- `POST` with invalid mode (e.g., `"BIKE"`) → 400 `VALIDATION_ERROR`
+- `POST` with missing `from_location` → 400 `VALIDATION_ERROR`
+- `POST` with `arrival_date` before `departure_date` → 400 `VALIDATION_ERROR`
+- `POST` with `arrival_time` but no `arrival_date` → 400 `VALIDATION_ERROR`
+- `GET/POST/PATCH/DELETE` with non-UUID `tripId` → 400 `VALIDATION_ERROR`
+- `GET/POST/PATCH/DELETE` without auth token → 401 `UNAUTHORIZED`
+- `GET/POST/PATCH/DELETE` with valid token but different user's trip → 403 `FORBIDDEN`
+- `GET/POST` with non-existent `tripId` → 404 `NOT_FOUND`
+- `PATCH/DELETE` with non-existent `ltId` → 404 `NOT_FOUND`
+
+---
+
+## Sprint 6 — No Backend Contract Changes Required for Other Tasks
+
+The following Sprint 6 tasks require **no new or changed API contracts** from the Backend Engineer:
+
+| Task | Reason |
+|------|--------|
+| T-081 (Design: Land Travel Spec) | Design spec only. Unblocks T-086. |
+| T-082 (Design: Calendar Enhancements) | Design spec only. No backend changes. |
+| T-083 (FE: Activity Edit Bugs) | Frontend-only bug fix. No API changes. |
+| T-084 (FE: FilterToolbar Flicker Fix) | Frontend-only bug fix. No API changes. |
+| T-087 (FE: Land Travel Edit Page) | Frontend-only. Consumes T-086 API contract. |
+| T-088 (FE: Land Travel Section + Calendar Integration) | Frontend-only. Consumes T-086 API contract. |
+| T-089 (FE: Calendar Enhancements) | Frontend-only. Uses existing sub-resource data. |
+| T-090 (QA: Security Checklist) | QA review only. |
+| T-091 (QA: Integration Testing) | QA testing only. |
+| T-092 (Deploy: Staging Re-deploy) | Deploy scope. |
+| T-093 (Monitor: Health Check) | Monitor scope. |
+| T-094 (User Agent: Walkthrough) | User testing only. |
+
+---
+
+*Sprint 6 contracts above are marked Agreed and approved for implementation. Two backend changes this sprint: (1) T-085 escapes ILIKE wildcard characters in the search parameter of GET /trips — no endpoint signature change, behavior-only fix. (2) T-086 introduces the full land travel sub-resource with four new endpoints nested under /trips/:tripId/land-travel, backed by migration 009 (pre-approved). Frontend Engineer and QA Engineer should reference this contract for integration and testing.*
+
+---
+
+## Sprint 7 Contracts
+
+**Sprint 7 — 2026-02-27**
+
+Backend Engineer scope this sprint:
+
+| Task | Contract Summary |
+|------|-----------------|
+| T-098 | Bug fix — stays `check_in_at` / `check_out_at` UTC serialization. No endpoint signature changes. Clarification note added to stays contracts. |
+| T-103 | Feature — trip notes field. Migration 010 adds `notes TEXT NULL` to `trips`. `GET /trips`, `GET /trips/:id`, and `PATCH /trips/:id` all updated to include `notes`. |
+
+No new endpoints are introduced in Sprint 7. All changes are additive (notes field) or correctness fixes (UTC serialization).
+
+---
+
+### T-098 — Stays UTC Timestamp Serialization Fix (FB-081)
+
+**Sprint:** 7
+**Task:** T-098
+**Status:** Agreed
+**Type:** Bug Fix — no endpoint signature change
+
+#### Root Cause
+
+The `check_in_at` and `check_out_at` columns on the `stays` table are `TIMESTAMPTZ` (timestamp with time zone) in PostgreSQL. The Node.js `pg` driver, by default, parses `TIMESTAMPTZ` values using the Node.js process local timezone before handing the JS `Date` object back to Knex. When that `Date` is serialized to JSON (via `JSON.stringify`), it emits a local-timezone ISO string — **not UTC** — unless the process is running in UTC.
+
+On staging, the server process runs in a timezone that differs from UTC (e.g., `America/New_York` = UTC−4 during EDT). A stay with check-in at 4:00 PM local time is stored correctly as `2026-08-07T20:00:00.000Z` in the DB, but when returned it becomes `2026-08-07T16:00:00-04:00` — which clients may mis-interpret as 4 PM UTC, shifting the displayed time by 4 hours.
+
+#### Fix Approach (Implementation Reference Only — No Contract Shape Change)
+
+The fix is **applied at the `pg` driver level** before Knex processes the result. PostgreSQL type OID 1184 (`TIMESTAMPTZ`) and 1114 (`TIMESTAMP`) must be overridden to return the raw string from the database driver without automatic JS Date conversion:
+
+```js
+// In backend/src/config/database.js (or a separate pg-types setup file)
+import pg from 'pg';
+
+// Override TIMESTAMPTZ (1184) parsing — return raw UTC string from PostgreSQL
+pg.types.setTypeParser(1184, (val) => val);
+// Override TIMESTAMP (1114) parsing — return raw string (no tz conversion)
+pg.types.setTypeParser(1114, (val) => val);
+```
+
+PostgreSQL always returns `TIMESTAMPTZ` in UTC ISO 8601 format when no client timezone is set (i.e., `SET TIME ZONE 'UTC'` is the default session). With this override, the raw string passes through unchanged and is serialized by `JSON.stringify` as-is.
+
+**No application-layer changes required to routes or models.** The contract shape below was already the intended shape — this fix makes the implementation honor the contract.
+
+#### Confirmed Contract (No Change to Shape)
+
+All stays endpoints return `check_in_at` and `check_out_at` as **ISO 8601 UTC strings**. This was the original Sprint 1 contract; T-098 makes it correct in practice.
+
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440020",
+    "trip_id": "550e8400-e29b-41d4-a716-446655440001",
+    "category": "HOTEL",
+    "name": "Hyatt Regency San Francisco",
+    "address": "5 Embarcadero Center, San Francisco, CA 94111",
+    "check_in_at": "2026-08-07T20:00:00.000Z",
+    "check_in_tz": "America/Los_Angeles",
+    "check_out_at": "2026-08-09T15:00:00.000Z",
+    "check_out_tz": "America/Los_Angeles",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-24T12:00:00.000Z"
+  }
+}
+```
+
+**`check_in_at`:** UTC ISO 8601 timestamp of check-in moment. Displayed in local time by converting with `check_in_tz`.
+**`check_out_at`:** UTC ISO 8601 timestamp of checkout moment. Displayed in local time by converting with `check_out_tz`.
+
+#### Frontend Integration Note (T-098)
+
+The Frontend Engineer must ensure that when displaying `check_in_at` / `check_out_at`, the local time is derived by converting the UTC string using the accompanying `_tz` field:
+
+```js
+// Correct — uses IANA timezone to convert UTC → local display time
+const localTime = new Date(check_in_at).toLocaleTimeString('en-US', {
+  timeZone: check_in_tz,
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+// WRONG — do not display UTC hours directly as if they were local
+const wrongTime = new Date(check_in_at).getHours(); // UTC hours only
+```
+
+If the frontend was previously relying on the incorrectly-serialized local timestamp string from the backend, it must be updated to use proper UTC → local conversion via the `_tz` field.
+
+#### Test Plan — T-098
+
+**Happy path:**
+- Create a stay with `check_in_at: "2026-08-07T20:00:00.000Z"` (`check_in_tz: "America/Los_Angeles"`) → GET stay returns `"check_in_at": "2026-08-07T20:00:00.000Z"` (UTC, not shifted)
+- The displayed local time from converting this with `America/Los_Angeles` = 4:00 PM — must match what was entered
+- Create a stay in a UTC+9 timezone (e.g., `check_in_at: "2026-08-07T03:00:00.000Z"`, `check_in_tz: "Asia/Tokyo"`) → local time = 12:00 PM JST
+
+**Error path (regression):**
+- After fix: confirm `check_in_at` string in API response ends with `Z` (UTC) or includes explicit `+00:00` offset — never a non-UTC offset like `-04:00` or `-05:00`
+
+---
+
+### T-103 — Trip Notes Field
+
+**Sprint:** 7
+**Task:** T-103
+**Status:** Agreed
+**Schema Change:** Migration 010 — adds `notes TEXT NULL` to `trips` table (Manager Pre-Approved 2026-02-27)
+**Auth Required:** Bearer token (all endpoints below)
+
+#### Overview
+
+The `notes` field is a freeform text field on the trip resource. It is stored as `TEXT NULL` in the database (nullable, no DB-level length cap). The API enforces a 2000-character maximum. All existing trip endpoints (`GET /trips`, `GET /trips/:id`, `PATCH /trips/:id`) are updated to include the `notes` field.
+
+No new endpoints are introduced.
+
+---
+
+#### Migration 010 — Add `notes` to `trips` Table
+
+**File:** `backend/src/migrations/20260227_010_add_notes_to_trips.js`
+
+**up():**
+```sql
+ALTER TABLE trips ADD COLUMN notes TEXT NULL;
+```
+
+**down():**
+```sql
+ALTER TABLE trips DROP COLUMN IF EXISTS notes;
+```
+
+**Notes:**
+- Nullable addition — fully backward-compatible. Existing trips get `notes = NULL` automatically.
+- No DB-level length constraint — max length enforced at the API validation layer (2000 chars).
+- `updated_at` is NOT touched by this migration — the column already exists and is managed by the application layer.
+
+---
+
+#### Updated: GET /api/v1/trips (List)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 (extends Sprint 1 T-005) |
+| Task | T-103 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+
+**Change:** The `notes` field is now included in every trip object in the list response. Existing query parameters (`?search`, `?status`, `?sort_by`, `?sort_order`, `?page`, `?limit`) are unchanged.
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Japan 2026",
+      "destinations": ["Tokyo", "Osaka", "Kyoto"],
+      "status": "PLANNING",
+      "start_date": "2026-08-07",
+      "end_date": "2026-08-21",
+      "notes": "We fly into Narita on August 7th...",
+      "created_at": "2026-02-24T12:00:00.000Z",
+      "updated_at": "2026-02-24T12:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1
+  }
+}
+```
+
+**`notes` field:**
+- Type: `string | null`
+- `null` when no notes have been set
+- Non-null string (up to 2000 chars) when notes exist
+- Empty string `""` is treated as `null` at the display layer (frontend) — the API may return `""` or `null` when notes are cleared; frontend treats both as "no notes"
+
+**All error responses are unchanged from Sprint 1.**
+
+---
+
+#### Updated: GET /api/v1/trips/:id
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 (extends Sprint 1 T-005) |
+| Task | T-103 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+
+**Change:** The `notes` field is now included in the single-trip response.
+
+**Path Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Trip ID |
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-21",
+    "notes": "We fly into Narita on August 7th and spend 10 days exploring Tokyo, Kyoto, and Osaka.",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-24T13:00:00.000Z"
+  }
+}
+```
+
+**`notes` field:**
+- Type: `string | null`
+- `null` when no notes exist
+- Non-null string (up to 2000 chars) when notes have been saved
+
+**All error responses are unchanged from Sprint 1 (401, 403, 404).**
+
+---
+
+#### Updated: PATCH /api/v1/trips/:id
+
+| Field | Value |
+|-------|-------|
+| Sprint | 7 (extends Sprint 1 T-005) |
+| Task | T-103 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+
+**Change:** `notes` is now an accepted field in the PATCH request body.
+
+**Path Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Trip ID |
+
+**Request Body (all fields optional — PATCH semantics):**
+```json
+{
+  "name": "string",
+  "destinations": ["string"],
+  "status": "PLANNING | ONGOING | COMPLETED",
+  "notes": "string | null"
+}
+```
+
+**Field Validation Rules (applied only to provided fields):**
+| Field | Rules |
+|-------|-------|
+| `name` | String. Trimmed. Min length 1 after trim. Max length 255. |
+| `destinations` | Array of strings. Min 1 element. Each element: non-empty string after trim. |
+| `status` | Must be one of: `"PLANNING"`, `"ONGOING"`, `"COMPLETED"`. |
+| `notes` | String or null. If string: max length 2000 characters (after no trimming — whitespace is preserved). If null: clears the notes field. Empty string `""` is accepted and stored as-is (equivalent to null at the display layer). |
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-21",
+    "notes": "My updated notes.",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-27T09:00:00.000Z"
+  }
+}
+```
+
+**Response (Error — 400 Bad Request — notes exceeds max length):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "notes": "Notes must not exceed 2000 characters"
+    }
+  }
+}
+```
+
+**Response (Error — 400 Bad Request — notes is not a string or null):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "notes": "Notes must be a string or null"
+    }
+  }
+}
+```
+
+**All other error responses are unchanged from Sprint 1 (400 NO_UPDATABLE_FIELDS, 401, 403, 404).**
+
+**Notes:**
+- Sending `{ "notes": null }` explicitly clears the notes field (sets DB column to NULL).
+- Sending `{ "notes": "" }` stores an empty string in the DB (treated as "no notes" in the frontend display layer).
+- `notes` participates in the existing `NO_UPDATABLE_FIELDS` check — if the ONLY field sent is `notes`, it is a valid update (not a `NO_UPDATABLE_FIELDS` error) because `notes` is now an accepted updatable field.
+- `updated_at` is bumped on every successful PATCH that includes `notes`.
+
+---
+
+#### Test Plan — T-103
+
+**Happy paths:**
+- `GET /trips` with no notes → each trip has `"notes": null`
+- `GET /trips` after notes are set → trip includes `"notes": "text"`
+- `GET /trips/:id` with no notes → `"notes": null` in response
+- `GET /trips/:id` after `PATCH` sets notes → `"notes": "text"` in response
+- `PATCH /trips/:id` with `{ "notes": "My Tokyo trip notes" }` → 200, response includes `"notes": "My Tokyo trip notes"`
+- `PATCH /trips/:id` with `{ "notes": null }` → 200, response includes `"notes": null`
+- `PATCH /trips/:id` with `{ "notes": "" }` → 200, response includes `"notes": ""`
+- `PATCH /trips/:id` with exactly 2000 characters → 200 (boundary: accepted)
+- `PATCH /trips/:id` with `notes` as only field → 200 (not a NO_UPDATABLE_FIELDS error)
+- `PATCH /trips/:id` combining `notes` with `name` → 200, both fields updated
+
+**Error paths:**
+- `PATCH /trips/:id` with notes > 2000 characters → 400 `VALIDATION_ERROR`, `fields.notes` present
+- `PATCH /trips/:id` with `{ "notes": 12345 }` (number, not string/null) → 400 `VALIDATION_ERROR`
+- `PATCH /trips/:id` with `{ "notes": ["array"] }` → 400 `VALIDATION_ERROR`
+- `PATCH /trips/:id` with notes field without auth → 401 `UNAUTHORIZED`
+- `PATCH /trips/:id` with notes field on another user's trip → 403 `FORBIDDEN`
+- `PATCH /trips/:id` on non-existent trip → 404 `NOT_FOUND`
+
+---
+
+## Sprint 7 — No Backend Contract Changes Required for Other Tasks
+
+The following Sprint 7 tasks require **no new or changed API contracts** from the Backend Engineer:
+
+| Task | Reason |
+|------|--------|
+| T-094 (User Agent: Sprint 6 carry-over) | User testing only. No API changes. |
+| T-095 (Deploy: HTTPS + pm2 re-enable) | Infrastructure only. No API changes. |
+| T-096 (Design: Calendar + Notes spec) | Design spec only. Unblocks T-103. |
+| T-097 (FE: +X more popover fix) | Frontend-only visual bug fix. No API changes. |
+| T-099 (FE: Section reorder) | Frontend-only layout change. No API changes. |
+| T-100 (FE: All-day sort to top) | Frontend-only sort change. No API changes. |
+| T-101 (FE: Calendar checkout/arrival time display) | Frontend-only calendar chip enhancement. Uses existing sub-resource data already returned by API. |
+| T-104 (FE: Trip notes frontend) | Frontend-only. Consumes T-103 updated API contracts above. |
+| T-105 (QA: Security checklist) | QA review only. |
+| T-106 (QA: Integration testing) | QA testing only. |
+| T-107 (Deploy: Staging re-deploy) | Deploy scope. Migration 010 must be applied. |
+| T-108 (Monitor: Health check) | Monitor scope. |
+| T-109 (User Agent: Sprint 7 walkthrough) | User testing only. |
+
+---
+
+*Sprint 7 contracts above are Agreed and pre-approved for implementation. Two backend changes this sprint: (1) T-098 fixes the UTC timestamp serialization bug in stays endpoints — no API signature change, implementation-only fix at the pg driver level. (2) T-103 adds the `notes` field to all three trips endpoints (GET list, GET single, PATCH) backed by migration 010 (pre-approved by Manager). The `notes` field is nullable, max 2000 chars, and follows PATCH semantics (optional field). Frontend Engineer and QA Engineer should reference this contract for integration and testing.*
+
+---
+
+## Sprint 8 Contracts
+
+**Backend Engineer Contract Review — Sprint 8 (2026-02-27)**
+
+After reviewing the full Sprint 8 scope in `active-sprint.md` and all assigned tasks in `dev-cycle-tracker.md`, the Backend Engineer has determined that **Sprint 8 requires no new or changed API endpoints**. Both new features (T-113 and T-114) are purely frontend rendering enhancements that consume existing API fields already documented and agreed in prior sprints.
+
+No schema migrations are planned this sprint. Migration 010 (`notes TEXT NULL`) was shipped in Sprint 7 (T-103) and awaits staging deployment via T-107.
+
+---
+
+### Sprint 8 — No New Backend Contracts Required
+
+The following Sprint 8 tasks require **no new or changed API contracts** from the Backend Engineer:
+
+| Task | Reason |
+|------|--------|
+| T-110 (FE: Fix T-098 UTC test) | Test fix only. No API changes. |
+| T-111 (FE: Write T-104 notes tests) | Test authoring only. No API changes. |
+| T-112 (Design: Spec 14 — TZ abbreviations + URL links) | Design spec only. Unblocks T-113, T-114. No API changes. |
+| T-113 (FE: Timezone abbreviations on detail cards) | Frontend-only rendering enhancement. Uses existing `*_at` + `*_tz` fields already returned by Flights, Stays, and Land Travels APIs. See field reference below. |
+| T-114 (FE: Activity location clickable URL) | Frontend-only rendering enhancement. Uses existing `location` field already returned by Activities API. See field reference below. |
+| T-105 (QA: Sprint 7 security checklist) | QA audit only. No API changes. |
+| T-106 (QA: Sprint 7 integration testing) | QA testing only. No API changes. |
+| T-107 (Deploy: Staging re-deploy Sprint 7) | Deploy scope. Migration 010 must be applied. No new migrations. |
+| T-108 (Monitor: Sprint 7 health check) | Monitor scope. No API changes. |
+| T-109 (User Agent: Sprint 7 walkthrough) | User testing only. No API changes. |
+| T-094 (User Agent: Sprint 6 carry-over walkthrough) | User testing only. No API changes. |
+| T-115 (QA: Playwright E2E expansion) | Test authoring only. No API changes. |
+| T-116 (QA: Sprint 8 security + code review) | QA audit only. No API changes. |
+| T-117 (QA: Sprint 8 integration testing) | QA testing only. No API changes. |
+| T-118 (Deploy: Staging re-deploy Sprint 8) | Deploy scope only. No new migrations. |
+| T-119 (Monitor: Sprint 8 health check) | Monitor scope. No API changes. |
+| T-120 (User Agent: Sprint 8 walkthrough) | User testing only. No API changes. |
+
+---
+
+### Existing API Fields Reference for Sprint 8 Frontend Features
+
+The following is a summary of **existing, already-implemented API fields** that T-113 and T-114 will consume. These are not new — they were agreed in Sprints 1 and 6 respectively. This reference is provided as a convenience so the Frontend Engineer does not need to search prior contract sections.
+
+---
+
+#### T-113 — Timezone Abbreviation Display: Existing Fields Used
+
+**Purpose:** The Frontend Engineer will use `Intl.DateTimeFormat` with `{ timeZoneName: 'short' }` to derive a DST-aware timezone abbreviation (e.g., `"EDT"`, `"JST"`, `"CEST"`) from each card's UTC timestamp + IANA timezone string pair. No backend changes are required.
+
+##### Flights (existing, Sprint 1 — T-006)
+
+Endpoint: `GET /api/v1/trips/:tripId/flights` and `GET /api/v1/trips/:tripId/flights/:id`
+
+Relevant fields already returned:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `departure_at` | ISO 8601 UTC string | Departure datetime in UTC. Example: `"2026-08-07T10:00:00.000Z"` |
+| `departure_tz` | IANA timezone string | Departure timezone. Example: `"America/New_York"` |
+| `arrival_at` | ISO 8601 UTC string | Arrival datetime in UTC. Example: `"2026-08-08T00:00:00.000Z"` |
+| `arrival_tz` | IANA timezone string | Arrival timezone. Example: `"Asia/Tokyo"` |
+
+**Frontend usage for T-113:**
+```
+// Derive "EDT" from departure_at + departure_tz:
+const abbr = new Intl.DateTimeFormat('en-US', {
+  timeZone: departure_tz,
+  timeZoneName: 'short'
+}).formatToParts(new Date(departure_at))
+  .find(p => p.type === 'timeZoneName')?.value ?? departure_tz;
+// Result: "EDT" (America/New_York, August) or "EST" (January)
+```
+
+Fallback: if `Intl.DateTimeFormat` throws (unsupported timezone), display the IANA string (`departure_tz`) in muted text.
+
+##### Stays (existing, Sprint 1 — T-006; bug-fixed UTC serialization in Sprint 7 — T-098)
+
+Endpoint: `GET /api/v1/trips/:tripId/stays` and `GET /api/v1/trips/:tripId/stays/:id`
+
+Relevant fields already returned:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `check_in_at` | ISO 8601 UTC string | Check-in datetime in UTC. Example: `"2026-08-07T20:00:00.000Z"` |
+| `check_in_tz` | IANA timezone string | Check-in timezone. Example: `"America/New_York"` |
+| `check_out_at` | ISO 8601 UTC string | Check-out datetime in UTC. Example: `"2026-08-14T20:00:00.000Z"` |
+| `check_out_tz` | IANA timezone string | Check-out timezone. Example: `"America/New_York"` |
+
+**Important:** T-098 (Sprint 7) fixed the UTC serialization bug — `check_in_at` and `check_out_at` are now returned as correct UTC ISO strings (no unwanted UTC offset applied on read). This fix is a prerequisite for T-113 timezone abbreviation accuracy on stay cards.
+
+##### Land Travels (existing, Sprint 6 — T-086)
+
+Endpoint: `GET /api/v1/trips/:tripId/land-travel` and `GET /api/v1/trips/:tripId/land-travel/:id`
+
+Relevant fields already returned:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `departure_at` | ISO 8601 UTC string | Departure datetime in UTC. Example: `"2026-01-15T10:00:00.000Z"` |
+| `departure_tz` | IANA timezone string | Departure timezone. Example: `"Europe/London"` |
+| `arrival_at` | ISO 8601 UTC string | Arrival datetime in UTC. Example: `"2026-01-15T13:30:00.000Z"` |
+| `arrival_tz` | IANA timezone string | Arrival timezone. Example: `"Europe/Paris"` |
+
+**Frontend usage for T-113:** Same `Intl.DateTimeFormat` pattern as flights above. `"Europe/London"` in January → `"GMT"`. `"Europe/Paris"` in July → `"CEST"`.
+
+---
+
+#### T-114 — Activity Location Clickable URL: Existing Field Used
+
+**Purpose:** The Frontend Engineer will parse the `location` string using a URL-detection regex and render detected http/https URLs as `<a>` elements with `target="_blank" rel="noopener noreferrer"`. Non-http/https schemes (e.g., `javascript:`, `data:`, `vbscript:`) must never be rendered as links. No backend changes are required — validation and sanitization happens entirely at the frontend rendering layer.
+
+##### Activities (existing, Sprint 1 — T-006)
+
+Endpoint: `GET /api/v1/trips/:tripId/activities` and `GET /api/v1/trips/:tripId/activities/:id`
+
+Relevant field already returned:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `location` | string \| null | Optional freeform location string. May contain plain text, an address, a URL, or a combination. Example: `"Lunch at https://www.yelp.com/biz/xyz"`, `"Golden Gate Park"`, `null` |
+
+**Frontend rendering contract for T-114:**
+
+| Input | Expected Render |
+|-------|----------------|
+| `null` or `""` | Render nothing (no location row) |
+| `"Golden Gate Park"` | Plain text only — no `<a>` element |
+| `"https://www.yelp.com/biz/xyz"` | Single `<a href="https://..." target="_blank" rel="noopener noreferrer">` |
+| `"Lunch at https://www.yelp.com/biz/xyz"` | `"Lunch at "` as plain text + URL as `<a>` |
+| `"javascript:alert(1)"` | Plain text only — scheme is not http/https, do NOT linkify |
+| `"data:text/html,<h1>XSS</h1>"` | Plain text only — scheme not allowed |
+| Multiple URLs in one string | Each http/https URL becomes its own `<a>` element; text segments remain plain |
+
+**Regex pattern (reference only — Frontend Engineer implements):**
+```
+/(https?:\/\/[^\s]+)/g
+```
+
+**Security note:** The backend stores and returns `location` verbatim — no server-side URL validation is applied on this field (it is optional, freeform text). XSS protection relies on React's default escaping (do NOT use `dangerouslySetInnerHTML`). The Frontend Engineer must split the string into text/url tokens and render each as a React element, never as raw HTML.
+
+---
+
+### Sprint 8 — Confirmed: No Schema Changes
+
+Per the Manager pre-approval note in `active-sprint.md`:
+
+> **Manager Pre-Approved Schema Change:** None new this sprint. Migration 010 (trip notes `TEXT NULL`) was pre-approved in Sprint 7 and will be applied in T-107.
+
+The Backend Engineer confirms no new database migrations are required for Sprint 8. The existing schema (migrations 001–010) fully supports both new frontend features:
+- T-113 timezone abbreviations use existing `*_at` (UTC timestamp) and `*_tz` (IANA string) columns already present in `flights`, `stays`, and `land_travels`
+- T-114 activity URL links use the existing `location TEXT NULL` column in `activities`
+
+*Sprint 8 contract review complete — 2026-02-27. Backend Engineer: no implementation work this sprint. All Sprint 8 features are frontend-only. Existing API contracts (Sprint 1 and Sprint 6) are Agreed and sufficient. Frontend Engineer and QA Engineer should reference this section alongside the original Sprint 1 T-006 and Sprint 6 land travels contracts for integration and testing.*
+
+---
+
+## Sprint 9 Contracts
+
+**Backend Engineer Contract Review — Sprint 9 (2026-02-27)**
+
+Sprint 9 is a **pipeline-only sprint** per `active-sprint.md`. There are zero new backend implementation tasks. The Backend Engineer is on standby for hotfixes (H-XXX) only, which will be scoped here if T-094, T-109, or T-120 User Agent walkthroughs surface Critical or Major bugs. No hotfixes have been created at sprint start.
+
+This section serves two purposes:
+1. **Confirm** no new or changed endpoints are needed for any Sprint 9 task
+2. **Correct** a documentation error in the Sprint 7 T-103 `notes` field contract (flagged by T-116 QA audit)
+
+---
+
+### Sprint 9 — No New API Endpoints
+
+All Sprint 9 tasks are pipeline work (deploys, health checks, QA audits, E2E test expansion, User Agent walkthroughs). No task requires a new or changed API endpoint:
+
+| Task | Reason — No API Contract Change |
+|------|--------------------------------|
+| T-094 (User Agent: Sprint 6 walkthrough) | User testing only. No API changes. |
+| T-107 (Deploy: Sprint 7 staging re-deploy) | Deploy scope. Applies existing migration 010. No new API changes. |
+| T-108 (Monitor: Sprint 7 health check) | Monitor scope. No API changes. |
+| T-109 (User Agent: Sprint 7 walkthrough) | User testing only. No API changes. |
+| T-115 (QA: Playwright E2E expansion 4→7) | Test authoring only. Tests existing endpoints. No API changes. |
+| T-116 (QA: Sprint 8 security + code review) | QA audit only. Flagged the `notes` field documentation error — corrected below. |
+| T-117 (QA: Sprint 8 integration testing) | QA testing only. No API changes. |
+| T-118 (Deploy: Sprint 8 frontend rebuild) | Deploy scope only. No new migrations. No API changes. |
+| T-119 (Monitor: Sprint 8 health check) | Monitor scope. No API changes. |
+| T-120 (User Agent: Sprint 8 walkthrough) | User testing only. No API changes. |
+| H-XXX (Hotfix, if needed) | If created: will be scoped here at that time. Not currently needed. |
+
+---
+
+### Sprint 9 — Documentation Correction: `notes` Field `""` → `null` Normalization
+
+**Flagged by:** T-116 (QA: Sprint 8 security + code review)
+**Correction date:** 2026-02-27
+**Contract sections affected:** `PATCH /api/v1/trips/:id` (T-103, Sprint 7), `GET /api/v1/trips` (T-103, Sprint 7)
+
+#### What Was Wrong
+
+The Sprint 7 T-103 contract contained three documentation statements that incorrectly described how empty-string (`""`) notes values are handled:
+
+1. **`GET /api/v1/trips` — `notes` field note (line ~3453):**
+   > "Empty string `""` is treated as `null` at the display layer (frontend) — the API may return `""` or `null` when notes are cleared; frontend treats both as 'no notes'"
+
+2. **`PATCH /api/v1/trips/:id` — Field Validation Table (line ~3534):**
+   > "Empty string `""` is accepted and stored as-is (equivalent to null at the display layer)."
+
+3. **`PATCH /api/v1/trips/:id` — Notes section (line ~3584):**
+   > "Sending `{ "notes": "" }` stores an empty string in the DB (treated as 'no notes' in the frontend display layer)."
+
+**The problem:** These statements described `""` normalization as a **frontend display concern** and implied the API might store `""` in the database. This is incorrect. The normalization belongs at the **API layer** — the backend must normalize `""` to `null` before writing to the database and must never return `""` from the GET endpoints.
+
+#### Corrected Behavior (Authoritative from Sprint 9 Forward)
+
+**Rule:** The API normalizes empty string (`""`) to `null` at the input boundary. The database column `notes TEXT NULL` only ever holds `null` or a non-empty string. The API response only ever returns `null` or a non-empty string for the `notes` field. The frontend does **not** need to treat `""` and `null` as equivalent — the API guarantees `notes` is always `null | non-empty string`.
+
+---
+
+#### Corrected: `PATCH /api/v1/trips/:id` — `notes` Field Validation Rule
+
+**Replaces** the Sprint 7 T-103 field validation table entry for `notes`.
+
+| Field | Rules |
+|-------|-------|
+| `notes` | String or null. If string: max length 2000 characters (whitespace preserved — no trimming). If string is empty (`""`): **normalized to `null` at the API layer — stored as NULL in the database**. If null: clears the notes field (sets DB column to NULL). |
+
+**Corrected behavior table:**
+
+| Request value | API action | DB stored | Response value |
+|---------------|-----------|-----------|----------------|
+| `"My notes text"` | Store as-is | `"My notes text"` | `"My notes text"` |
+| `""` (empty string) | Normalize to null | `NULL` | `null` |
+| `null` | Clear field | `NULL` | `null` |
+| *(field omitted)* | No change | *(unchanged)* | *(current value)* |
+
+**Corrected Notes section (replaces Sprint 7 bullets):**
+- Sending `{ "notes": null }` explicitly clears the notes field (sets DB column to NULL). Response returns `"notes": null`.
+- Sending `{ "notes": "" }` is **normalized by the API to null** — stored as NULL in DB, response returns `"notes": null`. The frontend does not need special-case handling for `""`.
+- Sending `{ "notes": "text" }` stores the non-empty string. Response returns `"notes": "text"`.
+- `notes` participates in the existing `NO_UPDATABLE_FIELDS` check — if the ONLY field sent is `notes`, it is a valid update (not a `NO_UPDATABLE_FIELDS` error) because `notes` is an accepted updatable field.
+- `updated_at` is bumped on every successful PATCH that includes `notes` (including `""` → null normalization).
+
+---
+
+#### Corrected: `GET /api/v1/trips` and `GET /api/v1/trips/:id` — `notes` Field Contract
+
+**Replaces** the Sprint 7 T-103 `notes` field description in both GET endpoints.
+
+**`notes` field (all GET trip endpoints):**
+- Type: `string | null`
+- `null` when no notes have been set, or when notes were cleared (including via `""` input)
+- Non-null, non-empty string (1–2000 chars) when notes exist
+- The API **never** returns `""` for the `notes` field — only `null` or a non-empty string
+
+**Frontend integration note:** Frontend components rendering `notes` should check `if (notes)` (falsy check) — both `null` and an empty string (which the API now guarantees won't appear) are handled correctly this way. No special `notes === ""` branch is needed.
+
+---
+
+#### Corrected: Test Plan Entries for T-103
+
+The following test plan entries from Sprint 7 T-103 are **amended** (additions in bold):
+
+**Happy paths (corrected):**
+- `PATCH /trips/:id` with `{ "notes": "My Tokyo trip notes" }` → 200, response includes `"notes": "My Tokyo trip notes"`
+- `PATCH /trips/:id` with `{ "notes": null }` → 200, response includes `"notes": null`
+- ~~`PATCH /trips/:id` with `{ "notes": "" }` → 200, response includes `"notes": ""`~~ **CORRECTED:** `PATCH /trips/:id` with `{ "notes": "" }` → 200, **response includes `"notes": null`** (empty string normalized to null at API layer)
+- `GET /trips` after notes are cleared via `""` → `"notes": null` in response *(not `""`)* **[NEW]**
+- `GET /trips/:id` after notes cleared via `""` → `"notes": null` *(not `""`)* **[NEW]**
+
+**Invariant (must always hold):**
+- The API never returns `"notes": ""` — only `null` or a non-empty string
+
+---
+
+#### Migration Impact
+
+No migration changes required. The `notes TEXT NULL` column (migration 010) already allows NULL, which is the normalized storage value for both `null` and `""` inputs. The normalization is applied at the application validation layer in `backend/src/models/tripModel.js` (or the route handler), not at the DB schema level.
+
+---
+
+### Sprint 9 — No Schema Changes
+
+No new database migrations are introduced in Sprint 9. The outstanding pending migration is still migration 010 (`notes TEXT NULL`) from Sprint 7, which will be applied by the Deploy Engineer as part of T-107.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | Pending staging deploy (T-107) — pre-approved |
+| — | 9 | *(No new migrations)* | Sprint 9 is pipeline-only |
+
+---
+
+*Sprint 9 contract review complete — 2026-02-27. Backend Engineer: no new endpoints or schema changes this sprint. One documentation correction applied to the Sprint 7 T-103 `notes` field contract: empty string `""` is now documented as API-layer normalized to `null` (not a frontend display concern). This correction has no impact on already-deployed behavior since migration 010 has not yet reached staging — T-107 will apply it fresh with the correct normalization semantics. Frontend Engineer: update your `notes` handling to rely on the API guarantee (never returns `""`). QA Engineer: update T-103 test plan line for `{ "notes": "" }` — expect `"notes": null` in response, not `"notes": ""`.*
+
+---
+
+## Sprint 10 Contracts
+
+**Date:** 2026-03-04
+**Reviewed by:** Backend Engineer
+**Sprint Goal:** Pipeline closure — execute T-094/T-108 → T-109 → T-115 → T-116 → T-117 → T-118 → T-119 → T-120 → feedback triage → Sprint 11 plan. Phase 5 (T-121/T-122 trip export/print) contingent on clean pipeline closure.
+
+---
+
+### Sprint 10 — No New API Endpoints
+
+All Sprint 10 tasks are either pipeline work (User Agent walkthroughs, QA E2E verification, Monitor health checks, staging deploy) or a purely frontend feature (trip print/export). No new or changed API endpoints are needed this sprint.
+
+| Task | Reason — No API Contract Change |
+|------|--------------------------------|
+| T-094 (User Agent: Sprint 6 walkthrough — 5th carry-over) | User testing only. No API changes. |
+| T-108 (Monitor: Sprint 7 health check) | Monitor scope. No API changes. |
+| T-109 (User Agent: Sprint 7 walkthrough) | User testing only. No API changes. |
+| T-115 (QA: Playwright E2E expansion 4→7 tests) | Test authoring only. Tests existing endpoints. No API changes. |
+| T-116 (QA: Sprint 8 staging E2E verification) | QA audit only. Existing contracts in use. No API changes. |
+| T-117 (QA: Sprint 8 staging integration check) | QA testing only. No API changes. |
+| T-118 (Deploy: Sprint 8 frontend rebuild + staging re-deploy) | Deploy scope only. No new migrations. No API changes. |
+| T-119 (Monitor: Sprint 8 health check) | Monitor scope. No API changes. |
+| T-120 (User Agent: Sprint 8 walkthrough) | User testing only. No API changes. |
+| T-121 (Design: trip export/print spec — Phase 5, contingent) | Design spec authoring only. UI spec Spec 15 explicitly confirms: "No backend changes required." No API changes. |
+| T-122 (Frontend: trip print implementation — Phase 5, contingent) | `window.print()` invocation — 100% frontend-only. UI spec Spec 15 confirms: "No new routes. No new API calls. No migration." No API changes. |
+
+---
+
+### Sprint 10 — Trip Export/Print Feature (T-121/T-122): Backend Confirmation
+
+**Feature:** "Print trip itinerary" — adds a Print button to TripDetailsPage that calls `window.print()`. The browser's native print dialog renders all trip data from the already-loaded page state using `@media print` CSS rules.
+
+**Backend impact:** **Zero.** This feature requires no new API endpoints, no changes to existing endpoints, no schema migrations, and no backend code changes of any kind.
+
+**Rationale:** All data needed for the print view (trip name, destinations, date range, notes, flights, land travels, stays, activities) is already fetched by the existing TripDetailsPage data-loading hooks. `window.print()` captures the current DOM — no additional server requests are made at print time.
+
+**Authoritative reference:** UI spec Spec 15, Section 15.12 (Files to Create/Modify): "No backend changes required."
+
+---
+
+### Sprint 10 — Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–9 remain in force and unchanged. The following table summarises the current authoritative state of all endpoint groups:
+
+| Sprint | Endpoint Group | Contract Status | Key Notes |
+|--------|---------------|----------------|-----------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7 (migration 010 ✅ on staging). `notes` is always `null \| non-empty string` — never `""` (Sprint 9 correction). |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field added Sprint 7. |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` updatable field added Sprint 7. `""` input normalized to `null` at API layer (Sprint 9 correction). |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | `departure_tz` + `arrival_tz` fields present and returned (used by T-113 timezone abbreviation display). |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | `check_in_tz` + `check_out_tz` fields present and returned (used by T-113 timezone abbreviation display). |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | `location TEXT NULL` field present (used by T-114 URL linkification). `start_time` + `end_time` nullable since Sprint 3 (migration 008). |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+
+**Schema state on staging (as of T-107 deployment, 2026-02-28):** All 10 migrations applied (001–010). Database is current. No pending migrations for Sprint 10.
+
+---
+
+### Sprint 10 — Hotfix Standby Protocol
+
+**Trigger:** If User Agent walkthroughs T-094, T-109, or T-120 reveal a **Critical or Major bug**, the Manager Agent will immediately create an H-XXX hotfix task. The Backend Engineer is on standby to respond.
+
+**Backend Engineer hotfix protocol:**
+1. Read the H-XXX task definition created by Manager in `dev-cycle-tracker.md`
+2. If the hotfix requires a **new or changed endpoint:** document the new/changed contract here (under a `Sprint 10 — Hotfix H-XXX` subsection) before writing any code
+3. If the hotfix requires a **schema change:** propose the migration in `technical-context.md` and log a handoff to Manager for approval before implementing
+4. If the hotfix requires **only code changes to existing endpoints** (no schema, no contract change): implement immediately and log the fix in `handoff-log.md`
+5. All hotfix implementations must include tests, pass the security checklist, and be logged to `handoff-log.md` for QA and Deploy
+
+**Current status (Sprint 10 start — 2026-03-04):** No H-XXX tasks exist. All three walkthroughs (T-094, T-109, T-120) are pending. Backend Engineer is monitoring.
+
+---
+
+### Sprint 10 — No Schema Changes
+
+No new database migrations are introduced in Sprint 10. The schema is current and complete for all Sprint 10 features.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (2026-02-28, T-107) |
+| — | 8 | *(No new migrations)* | Sprint 8 features (timezone abbreviations, URL links) are frontend-only |
+| — | 9 | *(No new migrations)* | Sprint 9 is pipeline-only |
+| — | 10 | *(No new migrations)* | Sprint 10 is pipeline-only + frontend-only print (T-122) |
+
+The `land_travels` table (migration 009, Sprint 6) is confirmed applied on staging (T-107 deployment report, 2026-02-28). All 10 migrations (001–010) are applied and current.
+
+---
+
+*Sprint 10 contract review complete — 2026-03-04. Backend Engineer: no new endpoints or schema changes this sprint. Trip print/export (T-121/T-122) is confirmed frontend-only with zero backend impact. All existing contracts (Sprints 1–9) remain authoritative and unchanged. Backend Engineer on hotfix standby — if H-XXX tasks are created by Manager following T-094/T-109/T-120 walkthroughs, contract updates will be documented here immediately before any implementation begins.*
+
+---
+
+## Sprint 11 Contracts
+
+**Date:** 2026-03-04
+**Reviewed by:** Backend Engineer (BE-S11)
+**Sprint Goal:** Pipeline closure — execute the full validation backlog: T-108 (Monitor Sprint 7+T-122 health) → T-094 (User Agent Sprint 6 walkthrough — 6th carry-over, P0 HARD-BLOCK) → T-109 (Sprint 7 walkthrough) → T-115 (Playwright 4→7) → T-116/T-117 (Sprint 8 QA staging E2E) → T-118 (Sprint 8 deploy) → T-119 (Monitor Sprint 8 health) → T-120 (Sprint 8 walkthrough) → T-123 (Sprint 10 walkthrough) → feedback triage → Sprint 12 plan. T-124 (Deploy hosting research) runs in parallel after T-108. **No new implementation tasks this sprint.**
+
+---
+
+### Sprint 11 — No New API Endpoints
+
+Sprint 11 is an absolute pipeline-closure sprint. The Pipeline-Only Rule prohibits all new backend (and frontend) implementation until T-120 AND T-123 both complete and all feedback is triaged. No new or changed API endpoints are needed this sprint.
+
+| Task | Agent | Reason — No API Contract Change |
+|------|-------|--------------------------------|
+| T-108 | Monitor Agent | Health check only. No API changes. |
+| T-094 | User Agent | Sprint 6 feature walkthrough. User testing only. No API changes. |
+| T-109 | User Agent | Sprint 7 feature walkthrough. User testing only. No API changes. |
+| T-115 | QA Engineer | Playwright E2E test expansion (4→7 tests). Test authoring only. Exercises existing endpoints. No API changes. |
+| T-116 | QA Engineer | Sprint 8 staging E2E verification. QA audit only. No API changes. |
+| T-117 | QA Engineer | Sprint 8 staging integration check. QA testing only. No API changes. |
+| T-118 | Deploy Engineer | Sprint 8 frontend rebuild + staging re-deploy. Deploy scope only. No new migrations. No API changes. |
+| T-119 | Monitor Agent | Sprint 8 staging health check. Monitor scope. No API changes. |
+| T-120 | User Agent | Sprint 8 feature walkthrough. User testing only. No API changes. |
+| T-123 | User Agent | Sprint 10 feature walkthrough (print/export). T-122 confirmed frontend-only in Sprint 10 — zero backend impact. No API changes. |
+| T-124 | Deploy Engineer | Hosting provider research spike. Documentation only — no code changes, no deployments, no API changes. |
+| BE-S11 | Backend Engineer | Test suite verification + hotfix standby. No new endpoints or schema changes unless H-XXX tasks are triggered. |
+
+---
+
+### Sprint 11 — Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–10 remain in force and unchanged. The complete authoritative state of all endpoint groups:
+
+| Sprint | Endpoint Group | Contract Status | Key Notes |
+|--------|---------------|----------------|-----------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7 (migration 010 ✅). `notes` is always `null \| non-empty string` — never `""` (Sprint 9 correction). |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field present; returns `null` if unset. |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` updatable; `""` input normalized to `null` at API layer (Sprint 9 correction). |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | `departure_tz` + `arrival_tz` fields present; used by T-113 timezone abbreviation display. |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | `check_in_tz` + `check_out_tz` fields present; used by T-113 timezone abbreviation display. |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | `location TEXT NULL` present (T-114 URL linkification). `start_time`/`end_time` nullable since Sprint 3 (migration 008). `ORDER BY activity_date ASC, start_time ASC NULLS LAST, name ASC`. |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+
+**Schema state on staging (as of T-107 deployment, 2026-02-28 + T-122 deployment, 2026-03-04):** All 10 migrations applied (001–010). Database is current. No pending migrations for Sprint 11.
+
+**Sprint 9 correction still in force:** `notes` field on trips resource is always returned as `null` (when unset) or a non-empty string. It is **never** returned as `""`. Any PATCH with `notes: ""` normalizes to `null` at the API validation layer. This is documented in the Sprint 9 contracts section and remains the authoritative behaviour.
+
+---
+
+### Sprint 11 — No Schema Changes
+
+No new database migrations are introduced in Sprint 11. The schema is current and complete for all implemented features through Sprint 10.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (T-107, 2026-02-28) |
+| — | 8 | *(No new migrations)* | Sprint 8 features are frontend-only |
+| — | 9 | *(No new migrations)* | Sprint 9 is pipeline-only |
+| — | 10 | *(No new migrations)* | Sprint 10 is pipeline-only + frontend-only print (T-122) |
+| — | **11** | *(No new migrations)* | **Sprint 11 is pipeline-only. Schema is complete and current.** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+---
+
+### Sprint 11 — Hotfix Standby Protocol
+
+**Trigger:** If User Agent walkthroughs T-094, T-109, T-120, or T-123 reveal a **Critical or Major backend bug**, the Manager Agent will immediately create an H-XXX hotfix task. The Backend Engineer is on standby to respond.
+
+**Hotfix classification (backend relevance):**
+
+| Severity | Examples | Backend Engineer Action |
+|----------|----------|------------------------|
+| **Critical** | Data loss, auth bypass, crash on core endpoint, incorrect data returned | Respond immediately. Document contract change (if any) here first, then implement. |
+| **Major** | Wrong response shape, missing field, validation gap causing data corruption | Respond within the same sprint phase. Document contract change (if any) here first, then implement. |
+| **Minor / Suggestion** | UI text, minor display quirk, non-data-impacting UX issue | Log to Sprint 12 backlog. No Backend Engineer action this sprint. |
+
+**Backend Engineer hotfix protocol (Sprint 11):**
+1. Read the H-XXX task definition created by Manager in `dev-cycle-tracker.md`
+2. If the hotfix requires a **new or changed endpoint:** document the new/changed contract here under a `Sprint 11 — Hotfix H-XXX` subsection **before** writing any code
+3. If the hotfix requires a **schema change:** propose the migration in `technical-context.md`, log a handoff to Manager for approval, wait for approval note before implementing
+4. If the hotfix requires **only code changes to existing endpoints** (no schema, no contract change): implement immediately, self-check against `security-checklist.md`, write tests, log the fix in `handoff-log.md` for QA and Deploy
+5. Commit message must reference the H-XXX task ID
+
+**Current status (Sprint 11 start — 2026-03-04):** No H-XXX tasks exist. T-094, T-109, T-120, and T-123 walkthroughs are all pending. Backend Engineer is monitoring.
+
+---
+
+### Sprint 11 — API Contract Documentation Correction Audit
+
+As part of BE-S11, the Backend Engineer has reviewed all existing contract documentation for correctness. **No corrections are needed** beyond those already applied in Sprint 9 (the `notes: "" → null` normalization note). All endpoint descriptions, field types, validation rules, and response shapes in Sprints 1–10 remain accurate and match the deployed implementation.
+
+**Specific items verified:**
+- Sprint 9 correction (`notes` empty string → `null`) is clearly documented in the Sprint 9 section and the Sprint 10 summary table. ✅
+- `departure_tz` / `arrival_tz` fields are documented on flight contracts (Sprint 1 section) and confirmed present in staging responses. ✅
+- `check_in_tz` / `check_out_tz` fields are documented on stays contracts and confirmed present in staging responses. ✅
+- `location TEXT NULL` on activities is documented; URL linkification is frontend-only (T-114) — no API contract change needed. ✅
+- `notes TEXT NULL` on trips is documented across Sprint 7, Sprint 9, and Sprint 10 sections. ✅
+- `land_travels` CRUD contracts (Sprint 6 section) match the deployed implementation. ✅
+- All error response shapes follow the `{ "error": { "message": "...", "code": "..." } }` convention. ✅
+- All success response shapes follow the `{ "data": <payload> }` convention. ✅
+- Pagination shape (`{ "data": [...], "pagination": { "page", "limit", "total" } }`) is consistent across all list endpoints. ✅
+
+---
+
+*Sprint 11 contract review complete — 2026-03-04. Backend Engineer (BE-S11): no new endpoints or schema changes this sprint. Sprint 11 is an absolute pipeline-closure sprint — all features through Sprint 10 are implemented, QA-approved, and deployed on staging. The Backend Engineer is on hotfix standby only. If H-XXX tasks are created by Manager following T-094, T-109, T-120, or T-123 walkthroughs, contract updates will be documented here immediately under a `Sprint 11 — Hotfix H-XXX` subsection before any implementation begins. All existing contracts (Sprints 1–10) remain authoritative and unchanged.*
+
+---
+
+## Sprint 12 Contracts
+
+**Date:** 2026-03-06
+**Reviewed by:** Backend Engineer
+**Sprint Goal:** Four targeted UX/infrastructure fixes (FB-085–FB-088): `.env` staging isolation (T-125), DayPopover scroll anchoring (T-126), check-in chip label (T-127), calendar default month (T-128). No new features. Clean QA/deploy/monitor/user-agent cycle.
+
+---
+
+### Sprint 12 — No New API Endpoints
+
+Sprint 12 contains zero backend changes. All four in-scope tasks are either purely frontend component fixes (T-126, T-127, T-128) or a deploy/infrastructure fix (T-125 — `.env` file isolation). No new or changed API endpoints are required.
+
+| Task | Agent | Reason — No API Contract Change |
+|------|-------|--------------------------------|
+| T-125 | Deploy Engineer | `.env` staging isolation — file system / deploy script change only. No route, model, or response shape changes. |
+| T-126 | Frontend Engineer | DayPopover scroll-close fix — `window.addEventListener` in a React `useEffect`. Pure frontend component change. No API calls added or modified. |
+| T-127 | Frontend Engineer | Check-in chip label — prepend `"check-in "` to the time string in the calendar chip builder. Pure render change. No API calls added or modified. |
+| T-128 | Frontend Engineer | Calendar default month — compute earliest event date from already-loaded `flights`, `stays`, and `activities` arrays (data already in-memory from existing API calls). No new API calls; no changes to existing endpoints. |
+
+---
+
+### Sprint 12 — Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–11 remain in force and unchanged. The complete authoritative state of all endpoint groups:
+
+| Sprint | Endpoint Group | Contract Status | Key Notes |
+|--------|---------------|----------------|-----------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7 (migration 010 ✅). `notes` is always `null \| non-empty string` — never `""` (Sprint 9 correction). |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field present; returns `null` if unset. |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` updatable; `""` input normalized to `null` at API layer (Sprint 9 correction). |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | `departure_tz` + `arrival_tz` fields present; used by T-113 timezone abbreviation display. Also used by T-128 (calendar default month) — `departure_at` is read client-side from in-memory state. |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | `check_in_tz` + `check_out_tz` fields present. `check_in_at` (ISO 8601 UTC) used by T-128 (calendar default month) — parsed client-side from in-memory state. |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | `location TEXT NULL` present (T-114). `start_time`/`end_time` nullable since Sprint 3. `activity_date` (YYYY-MM-DD string) used by T-128 (calendar default month) — parsed client-side as local date. |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+
+**Schema state on staging (as of T-118/T-122 deployment, 2026-03-04):** All 10 migrations applied (001–010). Database is fully current. No pending migrations.
+
+**Fields consumed by Sprint 12 frontend changes (T-128 — calendar default month):** No new fields. T-128 reads three existing fields from already-loaded in-memory state:
+- `flights[].departure_at` — ISO 8601 UTC timestamp; already returned by `GET /api/v1/trips/:id/flights`
+- `stays[].check_in_at` — ISO 8601 UTC timestamp; already returned by `GET /api/v1/trips/:id/stays`
+- `activities[].activity_date` — YYYY-MM-DD date string; already returned by `GET /api/v1/trips/:id/activities`
+
+No additional fetches, no new query parameters, no response shape changes.
+
+---
+
+### Sprint 12 — No Schema Changes
+
+No new database migrations are introduced in Sprint 12. The schema is complete and current for all implemented features.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (T-107, 2026-02-28) |
+| — | 8 | *(No new migrations)* | Sprint 8 features are frontend-only |
+| — | 9 | *(No new migrations)* | Sprint 9 is pipeline-only |
+| — | 10 | *(No new migrations)* | Sprint 10 is pipeline-only + frontend-only print |
+| — | 11 | *(No new migrations)* | Sprint 11 is pipeline-only |
+| — | **12** | *(No new migrations)* | **Sprint 12 is polish/UX-only. All four tasks are frontend or deploy-config changes. No schema work.** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+---
+
+### Sprint 12 — Hotfix Standby Protocol
+
+**Trigger:** If User Agent walkthrough T-133 reveals a **Critical or Major backend bug**, the Manager Agent will create an H-XXX hotfix task. The Backend Engineer is on standby to respond.
+
+| Severity | Backend Engineer Action |
+|----------|------------------------|
+| **Critical** | Respond immediately. Document contract change (if any) here under `Sprint 12 — Hotfix H-XXX` first, then implement. |
+| **Major** | Respond within the same sprint phase. Document contract change (if any) here first, then implement. |
+| **Minor / Suggestion** | Log to Sprint 13 backlog. No Backend Engineer action this sprint. |
+
+**Current status (Sprint 12 start — 2026-03-06):** No H-XXX tasks exist. T-133 walkthrough is pending. Backend Engineer is monitoring. Sprint 11 closed with zero Critical or Major bugs — no outstanding hotfix debt.
+
+---
+
+*Sprint 12 contract review complete — 2026-03-06. Backend Engineer: no new endpoints or schema changes this sprint. Sprint 12 is a focused polish sprint — all four tasks (T-125 deploy config, T-126/T-127/T-128 frontend component fixes) have zero backend impact. T-128 (calendar default month) reads `departure_at`, `check_in_at`, and `activity_date` from already-fetched in-memory data — no new API calls needed. All existing contracts (Sprints 1–11) remain authoritative and unchanged. Backend Engineer on hotfix standby only.*
+
+---
+
+## Sprint 13 — API Contracts
+
+**Date:** 2026-03-07
+**Backend Engineer task:** T-139 — Documentation-only fix: correct Land Travel endpoint paths from plural (`/land-travels`) to singular (`/land-travel`) throughout this file.
+
+### T-139 — Land Travel Path Correction (Documentation Only)
+
+**Problem (FB-090):** All Land Travel endpoint rows in the sprint contract summary tables incorrectly used the plural path `/land-travels`. The actual backend route is mounted at the singular path `/land-travel` (confirmed in `backend/src/app.js` line 43: `app.use('/api/v1/trips/:tripId/land-travel', landTravelRoutes)`). The detailed Sprint 6 endpoint specs (Section "Sprint 6 — Land Travel") were already correct; only the consolidated summary tables were wrong.
+
+**Fix applied (T-139):** All occurrences of `/land-travels` corrected to `/land-travel` in this file. No code, schema, or behaviour changes — documentation only.
+
+**Corrected endpoint paths (authoritative — match backend/src/app.js mount):**
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/trips/:tripId/land-travel` | Bearer token | List all land travel entries for a trip |
+| POST | `/api/v1/trips/:tripId/land-travel` | Bearer token | Create a new land travel entry |
+| GET | `/api/v1/trips/:tripId/land-travel/:ltId` | Bearer token | Get a single land travel entry |
+| PATCH | `/api/v1/trips/:tripId/land-travel/:ltId` | Bearer token | Update a land travel entry |
+| DELETE | `/api/v1/trips/:tripId/land-travel/:ltId` | Bearer token | Delete a land travel entry |
+
+Full request/response schemas and error cases remain as documented in the Sprint 6 section above. No changes to request bodies, response shapes, auth requirements, or error codes.
+
+### Sprint 13 — No Schema Changes
+
+No new database migrations are introduced in Sprint 13. The schema is complete and current.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–010 | 1–10 | All previously applied migrations | ✅ Applied on Staging |
+| — | **13** | *(No new migrations)* | **Sprint 13 is pipeline closure + UX polish + documentation fix. Zero schema work.** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+### Sprint 13 — Hotfix Standby Protocol
+
+**Trigger:** If User Agent walkthroughs T-136 or T-144 reveal a **Critical or Major backend bug**, the Manager Agent will create an H-XXX hotfix task. The Backend Engineer is on standby to respond.
+
+| Severity | Backend Engineer Action |
+|----------|------------------------|
+| **Critical** | Respond immediately. Document contract change (if any) here under `Sprint 13 — Hotfix H-XXX` first, then implement. |
+| **Major** | Respond within the same sprint phase. Document contract change (if any) here first, then implement. |
+| **Minor / Suggestion** | Log to Sprint 14 backlog. No Backend Engineer action this sprint. |
+
+**Current status (Sprint 13 start — 2026-03-07):** No H-XXX tasks exist. Backend Engineer is monitoring. Sprint 12 closed with zero Critical or Major bugs — no outstanding hotfix debt.
+
+---
+
+*Sprint 13 contract review complete — 2026-03-07 (T-139). Backend Engineer: no new endpoints or schema changes this sprint. T-139 corrects documentation-only error in Land Travel path (plural → singular) in all summary tables. All existing endpoint contracts (Sprints 1–12) remain authoritative and unchanged. Backend Engineer on hotfix standby only.*
+
+---
+
+## Sprint 14 — API Contracts
+
+**Date:** 2026-03-07
+**Reviewed by:** Backend Engineer
+**Sprint Goal:** Fix T-128 calendar first-event-month regression (FB-095), add "Today" button to calendar (FB-094), rotate staging JWT_SECRET (FB-093), and complete User Agent comprehensive walkthrough covering Sprints 12–14.
+
+---
+
+### Sprint 14 — No New API Endpoints
+
+Sprint 14 contains zero backend API changes. All in-scope tasks are either purely frontend component changes (T-146, T-147) or a deploy/infrastructure operation (T-145 — JWT_SECRET rotation). The Design Agent's UI spec for this sprint (Specs 21 and 22) explicitly states: *"No new components, no CSS variables, no API changes, no backend changes."* The T-150 deploy task also explicitly notes: *"No new backend migrations (no schema changes)."*
+
+| Task | Agent | Reason — No API Contract Change |
+|------|-------|--------------------------------|
+| T-145 | Deploy Engineer | JWT_SECRET rotation in `backend/.env.staging` — environment variable change only. No route, model, middleware, or response shape changes. Auth endpoints continue to work identically after the secret is rotated (tokens issued before the rotation are invalidated by design). |
+| T-146 | Frontend Engineer | Calendar async first-event-month fix — adds a `useEffect` watching loaded data props and a `hasNavigated` ref inside `TripCalendar.jsx`. All data (`flights`, `stays`, `activities`, `landTravel`) is already fetched from existing endpoints and held in-memory. No new API calls, no new query parameters, no response shape changes. |
+| T-147 | Frontend Engineer | "Today" button in TripCalendar header — pure render + state change inside `TripCalendar.jsx`. Calls `setCurrentMonth()` with a computed date value. No API calls of any kind. |
+
+---
+
+### Sprint 14 — Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–13 remain in force and unchanged. The complete authoritative state of all endpoint groups:
+
+| Sprint | Endpoint Group | Contract Status | Key Notes |
+|--------|---------------|----------------|-----------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/health` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7. `notes` is always `null \| non-empty string` (Sprint 9 correction). |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | Destinations deduped case-insensitively (Sprint 4). |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field present; returns `null` if unset. |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` updatable; `""` normalized to `null` (Sprint 9). |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | `departure_tz` + `arrival_tz` present. `departure_at` read client-side for calendar. |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | `check_in_tz` + `check_out_tz` present. `check_in_at` read client-side for calendar. |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | `activity_date` (YYYY-MM-DD) read client-side for calendar. `start_time`/`end_time` nullable since Sprint 3. |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Singular path confirmed (T-139 Sprint 13 fix). |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+
+**Schema state on staging:** All 10 migrations applied (001–010). Database is fully current. No pending migrations for Sprint 14.
+
+**Fields consumed by Sprint 14 frontend changes:** No new fields. T-146 and T-147 operate purely on data already fetched and held in-memory by `useTripDetails.js` from existing endpoints:
+- `flights[].departure_at` — already returned by `GET /api/v1/trips/:id/flights`
+- `stays[].check_in_at` — already returned by `GET /api/v1/trips/:id/stays`
+- `activities[].activity_date` — already returned by `GET /api/v1/trips/:id/activities`
+- `landTravel[].departure_date` — already returned by `GET /api/v1/trips/:id/land-travel`
+
+No additional fetches, no new query parameters, no response shape changes.
+
+---
+
+### Sprint 14 — No Schema Changes
+
+No new database migrations are introduced in Sprint 14.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (T-107, 2026-02-28) |
+| — | 8–13 | *(No new migrations)* | Sprints 8–13 are all schema-stable |
+| — | **14** | *(No new migrations)* | **Sprint 14 is frontend-only + security rotation. Zero schema work.** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+---
+
+### Sprint 14 — Hotfix Standby Protocol
+
+**Trigger:** If User Agent walkthrough T-152 reveals a **Critical or Major backend bug**, the Manager Agent will create an H-XXX hotfix task. The Backend Engineer is on standby to respond.
+
+| Severity | Backend Engineer Action |
+|----------|------------------------|
+| **Critical** | Respond immediately. Document contract change (if any) here under `Sprint 14 — Hotfix H-XXX` first, then implement. |
+| **Major** | Respond within the same sprint phase. Document contract change (if any) here first, then implement. |
+| **Minor / Suggestion** | Log to Sprint 15 backlog. No Backend Engineer action this sprint. |
+
+**Current status (Sprint 14 start — 2026-03-07):** No H-XXX tasks exist. T-152 User Agent walkthrough is pending. Backend Engineer is monitoring. Sprint 13 closed with zero Critical or Major bugs — no outstanding hotfix debt.
+
+---
+
+*Sprint 14 contract review complete — 2026-03-07. Backend Engineer: no new endpoints or schema changes this sprint. Sprint 14 is a focused regression-fix sprint — T-146 (calendar async timing) and T-147 ("Today" button) are purely frontend component changes that consume data already fetched from existing endpoints. T-145 (JWT_SECRET rotation) is a deploy/security operation with no API surface impact. All existing contracts (Sprints 1–13) remain authoritative and unchanged. Backend Engineer on hotfix standby for T-152 User Agent walkthrough only.*
+
+---
+
+## Sprint 15 Contracts
+
+**Date:** 2026-03-07
+**Reviewed by:** Backend Engineer
+**Sprint Goal:** Fix browser tab title + favicon (FB-096, FB-097 → T-154), fix calendar land travel chip location display (FB-098 → T-155), add `formatTimezoneAbbr()` unit tests (T-153), and complete User Agent comprehensive walkthroughs (T-152, T-160).
+
+---
+
+### Sprint 15 — No New API Endpoints
+
+Sprint 15 contains zero backend API changes. All in-scope tasks are purely frontend bug fixes or test additions. The active-sprint.md explicitly states: *"Backend Engineer | Standby — no backend tasks this sprint"* and *"No new migrations (no schema changes in Sprint 15)."*
+
+| Task | Agent | Reason — No API Contract Change |
+|------|-------|--------------------------------|
+| T-154 | Frontend Engineer | Browser title + favicon fix — static HTML change only (`frontend/index.html`). Updates `<title>` text and adds a `<link rel="icon">` tag. No API calls, no data fetching, no component changes. |
+| T-155 | Frontend Engineer | Calendar land travel chip location fix — corrects the `_location` field assignment in `buildEventsMap`. The fix reads `from_location` (pick-up) and `to_location` (drop-off) from the land travel records already returned by `GET /api/v1/trips/:id/land-travel`. Both fields are present in all land travel responses since Sprint 6. No new API calls, no new query parameters, no request or response shape changes. |
+| T-153 | Frontend Engineer | `formatTimezoneAbbr()` unit tests — test-only task. No production code changes. No API calls. |
+| T-152 / T-160 | User Agent | Comprehensive feature walkthroughs — read-only browsing of existing staging app. No API changes. |
+
+---
+
+### Sprint 15 — Field Reference for T-155 (Land Travel Chip Location Fix)
+
+The T-155 bug fix relies entirely on fields **already present** in the existing land travel response shape (established Sprint 6, confirmed applied on staging). No backend changes are needed. This section documents the specific fields the Frontend Engineer must reference when implementing the fix.
+
+**Endpoint:** `GET /api/v1/trips/:tripId/land-travel` (and `GET /api/v1/trips/:tripId/land-travel/:lid`)
+
+**Fields consumed by T-155:**
+
+| Field | Type | Present Since | Usage in T-155 Fix |
+|-------|------|--------------|-------------------|
+| `from_location` | `string \| null` | Sprint 6 | Displayed on **pick-up / departure day** chip (`_isArrival = false`) |
+| `to_location` | `string \| null` | Sprint 6 | Displayed on **drop-off / arrival day** chip (`_isArrival = true`) |
+
+**Correct chip → field mapping (per Design Agent Spec 23):**
+
+| Calendar Day | `_isArrival` | Field to Display | Example |
+|---|---|---|---|
+| Departure / pick-up day | `false` | `from_location` | `"LAX Airport"` |
+| Arrival / drop-off day | `true` | `to_location` | `"SFO Airport"` |
+| Same-day travel (departure = arrival) | `false` (pick-up only) | `from_location` | `"LAX Airport"` |
+
+**Null/empty handling:** If `from_location` or `to_location` is `null` or `""`, omit the ` · ` separator — never render the string `"null"` or `"undefined"` to the user.
+
+**No response shape change:** The backend already returns `from_location` and `to_location` on every land travel object. T-155 is a frontend-only fix — it corrects which field is read by `buildEventsMap` when constructing the `_location` property on calendar event objects.
+
+---
+
+### Sprint 15 — Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–14 remain in force and unchanged. The complete authoritative state of all endpoint groups:
+
+| Sprint | Endpoint Group | Contract Status | Key Notes |
+|--------|---------------|----------------|-----------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/health` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7. `notes` is always `null \| non-empty string` (Sprint 9 correction). |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | Destinations deduped case-insensitively (Sprint 4). |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field present; returns `null` if unset. |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` updatable; `""` normalized to `null` (Sprint 9). |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | `departure_tz` + `arrival_tz` present. `departure_at` read client-side for calendar. |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | `check_in_tz` + `check_out_tz` present. `check_in_at` read client-side for calendar. |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | `activity_date` (YYYY-MM-DD) read client-side for calendar. `start_time`/`end_time` nullable since Sprint 3. |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Singular path confirmed (T-139 Sprint 13 fix). `from_location` + `to_location` consumed by T-155 fix. |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+
+**Schema state on staging:** All 10 migrations applied (001–010). Database is fully current. No pending migrations for Sprint 15.
+
+**Fields consumed by Sprint 15 frontend changes:** T-155 reads `from_location` and `to_location` from land travel records already returned by `GET /api/v1/trips/:id/land-travel`. No new fields, no new fetches, no query parameter changes.
+
+---
+
+### Sprint 15 — No Schema Changes
+
+No new database migrations are introduced in Sprint 15.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (T-107, 2026-02-28) |
+| — | 8–14 | *(No new migrations)* | Sprints 8–14 are all schema-stable |
+| — | **15** | *(No new migrations)* | **Sprint 15 is frontend bug fixes only. Zero schema work.** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+---
+
+### Sprint 15 — Hotfix Standby Protocol
+
+**Trigger:** If User Agent walkthroughs (T-152 or T-160) reveal a **Critical or Major backend bug**, the Manager Agent will create an H-XXX hotfix task. The Backend Engineer is on standby.
+
+| Severity | Backend Engineer Action |
+|----------|------------------------|
+| **Critical** | Respond immediately. Document contract change (if any) here under `Sprint 15 — Hotfix H-XXX` first, then implement. |
+| **Major** | Respond within the same sprint phase. Document contract change (if any) here first, then implement. |
+| **Minor / Suggestion** | Log to Sprint 16 backlog. No Backend Engineer action this sprint. |
+
+**Current status (Sprint 15 start — 2026-03-07):** No H-XXX tasks exist. T-152 User Agent walkthrough is pending (6th carry-over — circuit-breaker applies). Backend Engineer is monitoring. Sprint 14 closed with zero Critical or Major bugs — no outstanding hotfix debt.
+
+---
+
+*Sprint 15 contract review complete — 2026-03-07. Backend Engineer: no new endpoints or schema changes this sprint. Sprint 15 is a focused frontend bug-fix sprint — T-154 (browser title + favicon) is a static HTML change, T-155 (land travel chip location) is a frontend-only fix consuming `from_location`/`to_location` fields already present in existing land travel API responses since Sprint 6, and T-153 (formatTimezoneAbbr unit tests) adds tests with zero production code changes. All existing contracts (Sprints 1–14) remain authoritative and unchanged. Backend Engineer on hotfix standby for T-152 and T-160 User Agent walkthroughs only.*

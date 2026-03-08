@@ -725,4 +725,1258 @@ Summary of each completed development cycle. Written by the Manager Agent at the
 
 ---
 
+### Sprint #6 — 2026-02-27 to 2026-02-27
+
+**Goal:** Deliver the land travel sub-resource (rental cars, buses, trains, rideshares, ferries) as a full new section on the trip details page with a dedicated edit experience. Enhance the calendar with event time display and a clickable "+X more" day overflow popover. Fix two project-owner-reported activity edit page bugs (AM/PM cutoff, clock icon color). Close the spec compliance gap on the FilterToolbar refetch flicker. Ship the ILIKE wildcard search escaping fix.
+
+**Goal Met:** ✅ SUBSTANTIALLY MET — All 12 implementation, QA, deploy, and monitor tasks (T-081–T-093) completed and verified. Monitor Agent confirmed 16/16 staging health checks pass and Sprint 6 features are operational. One task carried to Sprint 7: T-094 (User Agent: Feature walkthrough + feedback). Sprint closeout was triggered before User Agent testing completed, so the feedback loop is incomplete but the implementation is fully deployed and verified.
+
+---
+
+**Tasks Completed (13/14):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-081 | Design spec: Land travel sub-resource (Spec 12 — edit page + trip details display + calendar integration) | ✅ Done |
+| T-082 | Design spec addendum: Calendar enhancements (event times + "+X more" popover spec) | ✅ Done |
+| T-083 | Frontend: Fix activity edit page bugs (AM/PM cutoff resolved; clock icon color set to white) | ✅ Done |
+| T-084 | Frontend: Fix FilterToolbar refetch flicker (remove `!isLoading` from `showToolbar` condition — Spec 11.7.4 compliance) | ✅ Done |
+| T-085 | Backend: ILIKE wildcard escaping — escape `%` and `_` with `!` escape character in search (required P1 fix + re-review) | ✅ Done |
+| T-086 | Backend: Land travel API + migration 009 (`land_travels` table, full CRUD, ownership checks, same-day time validation) | ✅ Done |
+| T-087 | Frontend: Land travel edit page (`/trips/:id/land-travel/edit`, multi-row form, batch save/delete) | ✅ Done |
+| T-088 | Frontend: Land travel section on trip details page + calendar integration (4th event type, `--color-land-travel: #7B6B8E`) | ✅ Done |
+| T-089 | Frontend: Calendar enhancements — event times on chips (compact 12h: "9a", "2:30p") + clickable "+X more" popover with `role="dialog"`, Escape-to-close | ✅ Done |
+| T-090 | QA: Security checklist + code review audit (18/19 items PASS, 1 deferred — in-memory rate limiting known risk) | ✅ Done |
+| T-091 | QA: Integration testing (247/247 backend + 332/332 frontend tests pass; all Sprint 5 regression checks pass) | ✅ Done |
+| T-092 | Deploy: Staging re-deployment (migration 009 applied, Sprint 6 code running, 16 smoke tests pass) | ✅ Done |
+| T-093 | Monitor: Staging health check (16/16 endpoint checks PASS, T-085 ILIKE fix + T-086 land travel CRUD verified on real PostgreSQL) | ✅ Done |
+| T-094 | User Agent: Feature walkthrough + feedback | ⏭ Carried to Sprint 7 |
+
+**Tasks Carried Over (1/14):**
+- **T-094** (User Agent: Feature walkthrough + structured feedback) — Not completed. Sprint closeout triggered before User Agent testing cycle ran. T-093 Monitor Agent confirmed staging is ready for User Agent testing. Carry to Sprint 7 as the **first action**: User Agent tests all Sprint 6 features and submits feedback before Sprint 7 planning finalizes scope.
+
+---
+
+**Key Decisions (ADRs / Approvals This Sprint):**
+
+- **Schema Change Pre-Approval (migration 009):** Manager pre-approved the `land_travels` table during sprint planning, specifying all 14 columns with types, nullability, and enum values (`RENTAL_CAR|BUS|TRAIN|RIDESHARE|FERRY|OTHER`). This enabled T-086 to start immediately after T-081 design spec was approved — no mid-sprint approval cycle needed.
+
+- **ILIKE Escape Character = `!` (not `\`):** Initial T-085 implementation used `\` as the ESCAPE character. QA caught a PostgreSQL `ERROR: invalid escape string` on staging — `standard_conforming_strings=on` (default since PG 9.1) treats `'\\'` as the 2-character literal `\\`, violating the single-character ESCAPE requirement. Fixed to `!` — a single safe literal character never present in normal trip names. Escaping order: `!→!!`, `%→!%`, `_→!_`. **Key learning:** ESCAPE clause behavior must be verified against real PostgreSQL, not just Knex mocks in unit tests.
+
+- **Same-Day Arrival Time Validation (Land Travel):** Manager code review of T-086 required adding: when `arrival_date == departure_date` and both times provided, `arrival_time > departure_time`. This was specified in the API contract but missing from the initial implementation. Fixed before QA.
+
+- **Land Travel Calendar Color:** Design Agent chose `--color-land-travel: #7B6B8E` (muted purple) to distinguish land travel from flights (blue `#5D737E`), stays (teal `#3D8F82`), and activities (amber `#C47A2E`) on the calendar event chips.
+
+- **Calendar "+X more" Accessibility Pattern:** Spec 12 addendum specified a full accessibility model for the overflow popover: `<button aria-haspopup="dialog">` trigger, `role="dialog" aria-modal="true"` popover, Escape-to-close via `keydown` listener, focus return to trigger button, fixed-bottom-sheet layout on mobile. Consistent with WAI-ARIA dialog pattern.
+
+- **Deployment Mode (pm2 gap):** Backend deployed as direct `node src/index.js` process (PID 16962) rather than under pm2 — pm2 process table was empty after system restart. Monitor confirmed all 16 health checks pass regardless. pm2 re-registration flagged for Sprint 7. Backend serves HTTP on port 3000 (not HTTPS) this sprint — CORS aligned to Vite dev server port 5173.
+
+---
+
+**Feedback Summary (Sprint 6):**
+
+*No Sprint 6 User Agent feedback — T-094 not completed before sprint closeout.*
+
+*All pre-sprint project owner feedback (FB-073–FB-077) was triaged to "Tasked" at Sprint 6 planning. All five items were implemented and verified this sprint.*
+
+| FB Entry | Category | Severity | Disposition | Description |
+|----------|----------|----------|-------------|-------------|
+| FB-073 | Feature Request | — | Implemented ✅ (T-081, T-086, T-087, T-088) | Land travel sub-resource — full stack delivery |
+| FB-074 | Feature Request | Minor | Implemented ✅ (T-089) | Clickable "+X more" calendar overflow popover |
+| FB-075 | Feature Request | Minor | Implemented ✅ (T-089) | Event times on calendar chips |
+| FB-076 | Bug | Minor | Implemented ✅ (T-083) | AM/PM cutoff on activity edit page |
+| FB-077 | Bug | Minor | Implemented ✅ (T-083) | Clock icon color on activity edit page |
+
+---
+
+**What Went Well:**
+- **Land travel delivered end-to-end in one sprint:** The largest feature addition since Sprint 1 — full backend (migration 009, full CRUD API with ownership checks, same-day time validation, 42 tests), full frontend (multi-row edit page, trip details section, calendar integration with distinct `--color-land-travel` color) — delivered, QA verified on code, and Monitor confirmed operational on staging against real PostgreSQL.
+- **Calendar enhancements shipped cleanly:** All four resource types (flights, stays, activities, land travel) now display times in compact 12h format on event chips. "+X more" is now a keyboard-navigable `<button>` opening an accessible `role="dialog"` popover — a significant UX improvement for days with many events.
+- **Three quick bug fixes delivered without rework (T-083, T-084, T-085 on second pass):** Activity edit AM/PM cutoff, clock icon color, and FilterToolbar spec violation all resolved. FilterToolbar fix was literally a one-line change (removing `!isLoading` from `showToolbar`) that closed a long-standing Spec 11.7.4 compliance gap.
+- **Code review caught real issues:** T-085 (ESCAPE clause `\` vs `!` bug) and T-086 (missing same-day time validation) both required fix cycles — and both were substantive improvements that prevented production bugs. Manager code review is functioning as intended.
+- **Test coverage grew substantially:** Backend grew from 196 → 247 tests (+51, +26%), frontend from 296 → 332 tests (+36, +12%). Total test count: 583 (247 backend + 332 frontend + 4 E2E) — up from 500 in Sprint 5.
+- **Monitor confirmed staging integrity:** 16/16 endpoint checks passed. T-085 ILIKE fix (`search=%` returns `{data:[]}`, not 500, not all trips) and T-086 land travel full CRUD (POST 201, GET 200 sorted, PATCH 200, DELETE 204, cross-user 403, invalid mode 400) both verified against real PostgreSQL on staging.
+- **Fifth consecutive sprint with zero Major/Critical bugs:** QA security audit: 18/19 items PASS, 1 deferred (in-memory rate limiting — known accepted risk since Sprint 2). Zero production npm vulnerabilities. Zero `dangerouslySetInnerHTML`. Zero SQL injection vectors.
+
+**What Could Improve:**
+- **ESCAPE clause not verified against real PostgreSQL before submission:** T-085's initial `\` escape character approach failed in real PostgreSQL even though unit tests passed (unit tests mock the Knex query layer, which does not exercise PostgreSQL's `standard_conforming_strings` behavior). Future tasks involving DB-level escaping, string functions, or non-standard SQL clauses should include an explicit note to verify against real PostgreSQL, not just mock-based unit tests.
+- **T-086 contract-to-code gap:** The same-day arrival_time > departure_time constraint was clearly specified in the API contract published before implementation, but was not included in the initial code submission. This required a Manager code review fix cycle. Backend Engineers should self-check implementation against all contract edge cases before moving a task to In Review.
+- **T-087 test assertion quality:** LandTravelEditPage.test.jsx had two failing assertions due to `getByDisplayValue` matching option `value` attributes (e.g., `"TRAIN"`) instead of option text content (e.g., `"Train"`), and ambiguous selectors returning multiple elements. These are avoidable with a pre-submit test run against real DOM output.
+- **pm2 gap in Sprint 6 deployment:** Backend ended up running as a direct `node` process rather than under pm2 (pm2 process table was empty after system restart). Monitor confirmed health, but pm2 provides crash recovery and timestamped log management. Sprint 7 should immediately re-register the backend under pm2.
+- **T-094 not completed:** Sprint closeout ran before User Agent testing finished. This is the second consecutive sprint where the User Agent is the trailing task. Sprint 7 must start with T-094 completion — no new implementation should be scoped until User Agent feedback is submitted and triaged.
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 7+):**
+
+*From Sprint 1 (still outstanding):*
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (no production impact, B-021)
+
+*From Sprint 2 (still outstanding):*
+- ⚠️ Rate limiting uses in-memory store — will not persist across restarts or scale across processes (B-020)
+
+*From Sprint 3 (still outstanding):*
+- ⚠️ Auth rate limit is IP-based only — aggressive on shared-IP environments (B-024)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+
+*From Sprint 5 (still outstanding):*
+- ⚠️ Sort logic duplicated across status-filter vs non-status-filter code paths in tripModel.js (minor DRY violation)
+
+*New from Sprint 6:*
+- ⚠️ Backend running as direct `node` process (not pm2) after Sprint 6 deployment — crash would require manual restart; no log rotation (must re-register under pm2 in Sprint 7)
+- ⚠️ HTTPS disabled for Sprint 6 staging run — backend serves HTTP on port 3000 (CORS configured for port 5173 dev server, not 4173 preview) — needs to be re-enabled for full HTTPS staging before User Agent T-094 testing
+- ⚠️ T-094 (User Agent testing) not completed — Sprint 7 has incomplete feedback loop from Sprint 6
+
+*Resolved this sprint (from prior debt):*
+- ✅ ILIKE wildcard characters (`%`, `_`) not escaped in search parameter → resolved by T-085 (Sprint 5 FB-062 / B-033)
+- ✅ FilterToolbar refetch flicker (toolbar unmounts during API refetch, violating Spec 11.7.4) → resolved by T-084 (Sprint 5 FB-067 / B-034)
+- ✅ Activity edit page AM/PM cutoff in time columns → resolved by T-083 (Project owner FB-076)
+- ✅ Activity edit page clock icon black on dark background → resolved by T-083 (Project owner FB-077)
+
+---
+
+**Next Sprint Focus (Sprint 7 Recommendations):**
+
+*Priority order: complete Sprint 6 unfinished business → triage T-094 feedback → feature enhancements → production deployment.*
+
+**P0 — Sprint 7 Must-Do First (Complete Sprint 6 Closeout):**
+1. **Run T-094 IMMEDIATELY** — User Agent tests all Sprint 6 features (land travel CRUD via UI, calendar enhancements, bug fix verification, Sprint 5 regression) and submits feedback to feedback-log.md. **No new implementation tasks should be scoped until T-094 feedback is triaged.**
+2. **Re-register backend under pm2** — Backend is running as a direct node process after Sprint 6. Register under pm2 (`pm2 start src/index.js --name triplanner-backend`) for crash recovery and log management.
+3. **Re-enable HTTPS** — Restore SSL cert paths in `backend/.env` and rebuild frontend with HTTPS VITE_API_URL. Required for full staging parity and before T-094 testing if running against staging.
+
+**P0 — Production Deployment (Blocked on Human Decision — Sprint 3+):**
+4. **B-022** — Production deployment to hosting provider: Blocked since Sprint 3 on the project owner selecting a hosting provider (Railway, Fly.io, Render, AWS), configuring DNS, approving budget, and provisioning production PostgreSQL. **All deployment preparation is complete: Docker Compose, CI/CD pipeline, deployment runbook, nginx config, Dockerfiles, E2E tests.** The application is fully production-ready. **Escalated to project owner since Sprint 3 — now entering Sprint 7 with no decision.**
+5. Production TLS: Replace self-signed certificates with proper certificates (Let's Encrypt or provider-managed).
+6. Docker runtime validation: Build and test all Docker images + Docker Compose stack on a real Docker environment.
+
+**P1 — Feature Enhancements (from project brief backlog, after T-094 feedback triaged):**
+7. **B-030** — Trip notes/description field: Freeform notes on each trip (schema migration + API + frontend UI). Useful enhancement deferred from Sprint 6.
+8. **B-032** — Trip export/print: Printable itinerary view of the trip details page.
+9. **B-031** — Activity location links: Detect URLs in activity locations and make them clickable.
+10. Expand E2E coverage: Add Playwright tests for land travel edit flows, calendar interactions, and mobile viewport.
+
+**P2 — Tech Debt (if capacity allows):**
+11. **B-020** — Rate limiting persistence: Move from in-memory store to Redis-backed store.
+12. **B-024** — Per-account rate limiting alongside IP-based.
+13. **B-021** — Resolve dev dependency esbuild vulnerability.
+14. Refactor sort logic duplication in `tripModel.js`.
+
+**Out of Scope (per project brief):**
+- MFA login
+- Home page summary calendar
+- Auto-generated itinerary suggestions
+
+---
+
+### Sprint #7 — 2026-02-27 to 2026-02-27
+
+**Goal:** Fix two Major bugs from Sprint 6 feedback — "+X more" calendar popover visual corruption (FB-080/T-097) and stays check-in time UTC offset bug (FB-081/T-098). Complete Sprint 6 User Agent carry-over (T-094). Deliver five UX improvements: land travel section ordering (FB-078/T-099), all-day activity sort to top of each day (FB-079/T-100), calendar checkout time on last stay day (FB-082/T-101), calendar arrival time on arrival day for flights and land travel (FB-083/T-101). Ship the trip notes/description field as the first backlog feature from the project brief (T-103/T-104).
+
+**Goal Met:** ⚠️ SUBSTANTIALLY INCOMPLETE — The implementation phase was largely completed (3 tasks fully Done; 5 tasks in Integration Check having passed Manager code review). However, two implementation tasks (T-098 and T-104) remained In Progress due to failing/missing frontend tests, which blocked the entire QA → Deploy → Monitor → User Agent pipeline. T-094 (User Agent Sprint 6 carry-over) did not execute for the third consecutive sprint closeout. No User Agent or Monitor feedback was collected this sprint.
+
+---
+
+**Tasks Done — Fully Complete (3):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-095 | Deploy/Infra: HTTPS + pm2 re-enabled on staging (port 3001, CORS, Secure cookie) | ✅ Done |
+| T-096 | Design spec addendum: Calendar checkout/arrival time display + trip notes field (Spec 13 addendum to ui-spec.md) | ✅ Done |
+| T-102 | Design spec: Trip notes field (pre-collapsed into T-096 per Manager approval) | ✅ Done |
+
+**Tasks in Integration Check — Implementation Complete, Awaiting QA (5):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-097 | Frontend: "+X more" calendar popover portal fix — `createPortal` to `document.body` eliminates CSS grid layout corruption | Integration Check |
+| T-099 | Frontend: Trip details section reorder — Flights → Land Travel → Stays → Activities | Integration Check |
+| T-100 | Frontend: All-day activities sort to top of each activity day group | Integration Check |
+| T-101 | Frontend: Calendar checkout/arrival time display — stay checkout on last day, flight/land travel arrival time on arrival day | Integration Check |
+| T-103 | Backend: Trip notes — migration 010 (`notes TEXT NULL`), PATCH/GET updates, 13 new tests | Integration Check |
+
+**Tasks Carried Over — In Progress / Not Completed (8):**
+
+| ID | Description | Status | Carry-Over Reason |
+|----|-------------|--------|-------------------|
+| T-094 | User Agent: Sprint 6 feature walkthrough (3rd carry-over) | Backlog | T-098/T-104 blocked QA → pipeline never reached User Agent phase |
+| T-098 | Backend + Frontend: Stays UTC timezone fix | In Progress → Backlog | Backend approved; frontend UTC conversion logic correct; 1 test failing (UTC not in TIMEZONES dropdown) + 1 TripDetailsPage test missing |
+| T-104 | Frontend: Trip notes UI (TripDetailsPage + TripCard) | In Progress → Backlog | Code complete and approved; 0 of 8 required tests written |
+| T-105 | QA: Security checklist + code review audit | Backlog | T-098 and T-104 still In Progress — QA could not start |
+| T-106 | QA: Integration testing | Backlog | T-105 not started |
+| T-107 | Deploy: Staging re-deployment (migration 010) | Blocked | QA not cleared; Deploy Engineer correctly enforced the dependency gate |
+| T-108 | Monitor: Staging health check | Backlog | T-107 not started |
+| T-109 | User Agent: Sprint 7 feature walkthrough | Backlog | T-108 not started |
+
+---
+
+**Key Decisions (ADRs / Approvals This Sprint):**
+
+- **Calendar Popover Portal Pattern (T-097 — Approved):** `DayPopover` now renders via `ReactDOM.createPortal` to `document.body` with `position:fixed` coordinates from `getBoundingClientRect()`. This eliminates the CSS grid layout corruption root cause — the popover no longer exists inside the constrained day cell's layout flow. Accessibility (role="dialog", Escape-to-close, click-outside, focus return to trigger) maintained. 3 dedicated portal tests added to `TripCalendar.test.jsx`.
+- **T-102 Collapsed into T-096:** Trip notes design spec was manageable in a single Spec 13 document alongside the calendar enhancements spec. Manager pre-approved the collapse during sprint planning. T-102 marked Done.
+- **Frontend UTC Conversion Helper (T-098 partial — Approved):** `localDatetimeToUTC` helper correctly converts datetime-local input + IANA timezone string to UTC ISO 8601 for API submission. Backend `pg` type parser override (OID 1184 → `new Date(val).toISOString()`) resolves server-side TIMESTAMPTZ serialization drift. Both implementation changes approved in Manager review. Remaining blocker is test fixture issue only (UTC not in TIMEZONES dropdown).
+- **Trip Notes API Design (T-103 — Approved):** `notes TEXT NULL` added via migration 010 with clean rollback. Whitespace-only input normalized to `null` before storage. `TRIP_COLUMNS` array propagates `notes` to all GET responses automatically. 2000-char max enforced via middleware. Empty string `''` normalized to `null` (preferable to contract doc; QA to verify behavior in T-106).
+- **Deploy Gate Enforced (T-107 — Blocked Correctly):** Deploy Engineer verified QA sign-off was absent and did not proceed with deployment. All 4 blockers were documented in handoff-log.md before blocking. This is the correct behavior per workspace rules.
+
+---
+
+**Feedback Summary (Sprint 7):**
+
+*No Sprint 7 feedback entries. T-094 (User Agent Sprint 6 carry-over) remained in Backlog. T-109 (User Agent Sprint 7 walkthrough) also did not run — the full QA pipeline was blocked by T-098/T-104 test issues. Zero feedback entries to triage.*
+
+*All Sprint 6 project-owner feedback (FB-078 through FB-084) was triaged at Sprint 7 planning and remains at its triaged status. No entries are "New." FB-084 (timezone abbreviation display) remains "Acknowledged" and deferred to Sprint 8 after T-098 lands fully.*
+
+---
+
+**What Went Well:**
+
+- **Five implementation tasks passed Manager code review cleanly:** T-097, T-099, T-100, T-101, T-103 all reached Integration Check with solid, production-ready implementations. The popover portal fix, section reorder, all-day sort, calendar checkout/arrival display, and trip notes backend are all correct pending QA sign-off.
+- **T-097 (popover) root cause correctly identified and fixed:** Using `createPortal` to render the `DayPopover` at `document.body` with `position:fixed` is the architecturally correct solution to CSS grid containment. Accessibility model maintained across all 4 close triggers.
+- **T-103 backend trip notes is comprehensive:** 13 tests cover all boundary cases — GET null/string, list includes notes, PATCH set/clear/omit/whitespace/2000-char boundary/overflow/POST-with-notes. Migration 010 includes proper rollback.
+- **T-098 backend side is correct:** The pg type parser override and `localDatetimeToUTC` helper are both approved. The remaining issue is a test fixture problem (UTC not in dropdown), not a logic error in the fix.
+- **T-095 infrastructure restored immediately:** HTTPS re-enabled, pm2 re-registered, CORS and Secure cookie flags verified on Day 1 of the sprint. Staging infrastructure is fully ready for testing.
+- **Deploy Engineer correctly blocked T-107:** Pre-deploy verification found 4 blockers and refused to deploy without QA sign-off. The dependency chain is working as designed — no partial deployments were made.
+- **Test count grew:** Backend grew from 247 → 265 tests (+18). Frontend has 343 tests (1 failing T-098 UTC fixture; 342 passing from T-097/T-099/T-100/T-101 additions).
+
+**What Could Improve:**
+
+- **Pre-submission test runs must be mandatory:** T-104's code was complete but had zero tests submitted for review — the In Review submission should have been blocked by a pre-submission checklist. T-098's test had a broken fixture (UTC not in TIMEZONES dropdown) that a local `npm test` run would have caught immediately. **Action: Engineers must run the full test suite locally before moving any task to In Review.**
+- **T-094 has carried over three consecutive sprints:** The User Agent Sprint 6 walkthrough has been blocked for two full sprint closeouts (Sprint 6 and Sprint 7). Sprint 6 features have never been tested by the User Agent. This is a widening quality blindspot. Sprint 8 must treat T-094 as a P0 hard-block — no new feature implementation starts until T-094 completes and its feedback is triaged.
+- **Sprint scope was too wide for reliable pipeline closure:** 16 tasks were planned; only 3 reached Done. The sprint needed the full QA-Deploy-Monitor-User chain to close, but two late-stage test failures blocked the entire second half of the pipeline. Reducing implementation scope (6–8 implementation tasks) to guarantee the full pipeline completes within the sprint boundary would produce better outcomes.
+- **T-103 contract doc slightly misleading:** `api-contracts.md` states `{ "notes": "" }` stores an empty string, but code normalizes `''` to `null`. Behavior is correct and preferable, but the contract doc should be updated when QA runs T-106.
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 8+):**
+
+*From Sprint 1 (still outstanding):*
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (no production impact, B-021)
+
+*From Sprint 2 (still outstanding):*
+- ⚠️ Rate limiting uses in-memory store — will not persist across restarts or scale across processes (B-020)
+
+*From Sprint 3 (still outstanding):*
+- ⚠️ Auth rate limit is IP-based only — aggressive on shared-IP environments (B-024)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+
+*From Sprint 5 (still outstanding):*
+- ⚠️ Sort logic duplicated across status-filter vs non-status-filter code paths in tripModel.js (minor DRY violation)
+
+*New from Sprint 7:*
+- ⚠️ T-098 frontend test broken: UTC not in TIMEZONES array → test fixture fails; `api.stays.create` never called (fix: add UTC to dropdown OR rewrite test to use a timezone already in the array)
+- ⚠️ T-104 has 0 of 8 required tests written despite complete code implementation
+- ⚠️ T-094 User Agent Sprint 6 walkthrough has never run — Sprint 6 features (land travel, calendar enhancements, bug fixes) are untested by the User Agent (3rd consecutive carry-over)
+- ⚠️ 5 tasks in Integration Check (T-097, T-099, T-100, T-101, T-103) have not passed formal QA — carry to Sprint 8 QA queue as first priority
+- ⚠️ api-contracts.md notes section: `{ "notes": "" }` described as storing empty string, but code normalizes to null — minor doc inconsistency; update in Sprint 8 QA
+
+*Resolved this sprint (from prior debt):*
+- ✅ HTTPS disabled on staging (Sprint 6 deployment gap) → resolved by T-095
+- ✅ Backend not running under pm2 (Sprint 6 deployment gap) → resolved by T-095
+
+---
+
+**Next Sprint Focus (Sprint 8 Recommendations):**
+
+*Priority order: unblock the pipeline → complete T-094 carry-over → full QA-Deploy-Monitor-User cycle → production deployment decision → feature enhancements.*
+
+**P0 — Sprint 8 Must-Do First (Unblock the Pipeline):**
+1. **Fix T-098 frontend tests** — Either add `{ label: 'UTC — Coordinated Universal Time', value: 'UTC' }` to `frontend/src/utils/timezones.js` (expected `check_in_at` stays `'2026-09-01T12:00:00.000Z'` with zero offset), OR rewrite the UTC test to use a timezone already in the dropdown (e.g., `'Europe/London'` in winter). Also add the missing `TripDetailsPage.test.jsx` T-098 test (stay with `check_in_at: '2026-08-07T20:00:00.000Z'` + `check_in_tz: 'America/New_York'` → displays "4:00 PM"). Move to In Review after both tests pass.
+2. **Fix T-104 tests** — Write 8+ tests: `TripDetailsPage.test.jsx` (renders notes text, "no notes yet" placeholder, pencil→edit mode, char count ≥1800, save calls `api.trips.update`, cancel restores, empty notes sends `null`) + `TripCard.test.jsx` (truncated notes >100 chars with ellipsis, full notes ≤100 chars, notes hidden when null). Move to In Review when all tests pass.
+3. **Run T-094 IMMEDIATELY (P0 hard-block)** — User Agent tests all Sprint 6 features (land travel CRUD via UI, calendar enhancements, bug fix verification, Sprint 1–5 regression). Third carry-over — no new features are scoped for Sprint 9 until T-094 feedback is triaged.
+4. **QA: Run T-105 + T-106** — Security checklist and integration testing for all Sprint 7 implementation tasks (T-097, T-098, T-099, T-100, T-101, T-103, T-104). QA handoff already in handoff-log.md (Status: Pending from Manager).
+5. **Deploy + Monitor: T-107 + T-108** — Apply migration 010, rebuild frontend, verify all Sprint 7 features on staging.
+6. **User Agent Sprint 7 walkthrough: T-109** — Full feature verification + Sprint 6 regression. Triage T-109 feedback before Sprint 9 planning.
+
+**P0 — Production Deployment (Blocked on Human Decision — Sprint 3+):**
+7. **B-022** — Production deployment to hosting provider. Blocked since Sprint 3 on the project owner selecting a hosting provider (Railway, Fly.io, Render, AWS), configuring DNS, and provisioning production PostgreSQL. All infrastructure is complete: Docker Compose, CI/CD pipeline, Dockerfiles, nginx config, deployment runbook. **Escalated for 5 consecutive sprints. No decision received. Escalating again — this is now the single most critical outstanding item.**
+
+**P1 — Feature Enhancements (after T-094 and T-109 feedback triaged):**
+8. **FB-084 / Timezone abbreviations** — Deferred from Sprint 7. Now unblocked after T-098 timezone fix lands fully. Ready for Sprint 8 implementation after T-098 QA sign-off.
+9. **B-032** — Trip export/print: Printable itinerary view of trip details page.
+10. **B-031** — Activity location links: Detect URLs in activity locations and make them clickable.
+11. Expand E2E coverage: Add Playwright tests for land travel edit flows, calendar overflow interactions, and mobile viewport.
+
+**P2 — Tech Debt (if capacity allows):**
+12. **B-020** — Rate limiting persistence: Move from in-memory to Redis-backed store.
+13. **B-024** — Per-account rate limiting alongside IP-based.
+14. **B-021** — Resolve dev dependency esbuild vulnerability.
+15. Refactor sort logic duplication in tripModel.js (status-filter vs non-filter code paths).
+
+**Out of Scope (per project brief):**
+- MFA login
+- Home page summary calendar
+- Auto-generated itinerary suggestions
+
+---
+
+### Sprint #8 — 2026-02-27 to 2026-02-27
+
+**Goal:** Unblock the Sprint 7 QA pipeline by fixing two broken test files (T-110 fixes T-098's UTC fixture, T-111 writes the missing T-104 tests). Complete the long-overdue Sprint 6 User Agent walkthrough (T-094). Close the full QA → Deploy → Monitor → User Agent cycle for all Sprint 7 integration-check tasks. Deliver two user-visible enhancements: timezone abbreviation display on flight/stay detail cards (T-113, from FB-084) and clickable activity location URLs (T-114, from B-031). Expand Playwright E2E coverage to 7+ tests.
+
+**Goal Met:** ⚠️ PARTIALLY MET — Implementation goals were achieved: both test-fix tasks (T-110, T-111), the design spec (T-112), the Sprint 7 QA audit (T-105, T-106), and both new feature implementations (T-113, T-114) are Done. Sprint 7 implementation tasks (T-097, T-099, T-100, T-101, T-103, T-098, T-104) advanced to Integration Check. However, the pipeline from Deploy onward never closed: T-094 (User Agent Sprint 6) did not run for the fourth consecutive sprint, T-107 Deploy was not triggered despite QA clearing, and T-109, T-115–T-120 all remain in Backlog.
+
+---
+
+**Tasks Completed (7 tasks fully Done this sprint):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-110 | Fix T-098 frontend tests: UTC entry added to timezones.js; TripDetailsPage display test for T-098 added. All 344 frontend tests pass. | ✅ Done |
+| T-111 | Write T-104 tests: 11 total tests written for TripDetailsPage (notes text, placeholder, edit mode, char count, save/cancel/null) and TripCard (truncation, full text, null hidden). All 344+ tests pass. | ✅ Done |
+| T-112 | Design spec: Spec 14 — timezone abbreviation display (Intl.DateTimeFormat, DST-aware, fallback) + activity URL linkification (parseLocationWithLinks, security attrs, scheme allowlist). Published to ui-spec.md. | ✅ Done |
+| T-105 | QA: Security checklist + code review audit for all Sprint 7 implementation tasks (T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-110, T-111). All items verified. Report in qa-build-log.md. | ✅ Done |
+| T-106 | QA: Integration testing for all Sprint 7 tasks — stays timezone, trip notes CRUD, calendar popover portal, section order, all-day sort, calendar checkout/arrival times. 30+ checks. Full report in qa-build-log.md. | ✅ Done |
+| T-113 | Frontend: Timezone abbreviation display — `formatTimezoneAbbr()` utility added to formatDate.js; FlightCard shows departure + arrival abbreviations; StayCard shows check-in + check-out abbreviations. DST-aware. Fallback to IANA string. 5 tests (6+ scenarios). 366/366 tests pass. Manager APPROVED → Integration Check. | ✅ Done |
+| T-114 | Frontend: Activity location clickable URL detection — `parseLocationWithLinks()` utility splits on `/(https?:\/\/[^\s]+)/g`; ActivityEntry renders `<a target="_blank" rel="noopener noreferrer">` for links; `javascript:` scheme blocked as plain text; no dangerouslySetInnerHTML. 5+ tests pass. Manager APPROVED → Integration Check. | ✅ Done |
+
+**Sprint 7 Tasks Advanced to Integration Check (implementation complete, QA cleared via T-105/T-106):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-097 | Calendar "+X more" popover portal fix — `createPortal` to `document.body` with `position:fixed` eliminates CSS grid layout corruption | Integration Check |
+| T-098 | Stays check-in/checkout UTC timezone fix — `localDatetimeToUTC` helper, pg type parser override. Tests now complete via T-110. | Integration Check |
+| T-099 | Trip details section reorder — Flights → Land Travel → Stays → Activities | Integration Check |
+| T-100 | All-day activities sort to top of each activity day group | Integration Check |
+| T-101 | Calendar checkout/arrival time display — stay checkout on last day, flight/land travel arrival time on arrival day | Integration Check |
+| T-103 | Backend: Trip notes — migration 010 (`notes TEXT NULL`), PATCH/GET, 13 tests | Integration Check |
+| T-104 | Frontend: Trip notes UI (TripDetailsPage + TripCard). Tests complete via T-111. | Integration Check |
+
+**Tasks Carried Over (10 tasks — Backlog):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-094 | User Agent: Sprint 6 feature walkthrough (**4th consecutive carry-over**) | Deploy/Monitor pipeline never reached; staging was ready but T-107 not triggered after QA cleared |
+| T-107 | Deploy: Sprint 7 staging re-deployment (migration 010 + Sprint 7 frontend rebuild) | QA (T-106) is now Done — deploy is unblocked. Carry to Sprint 9 as immediate P0. |
+| T-108 | Monitor: Sprint 7 staging health check | T-107 not deployed |
+| T-109 | User Agent: Sprint 7 feature walkthrough | T-108 not run |
+| T-115 | E2E: Playwright expansion from 4 → 7 tests (land travel edit, calendar overflow, mobile viewport) | T-109 not completed — T-115 was blocked by T-109 |
+| T-116 | QA: Sprint 8 security checklist + code review audit | T-113, T-114 in Integration Check but T-115 not started; pipeline didn't reach this phase |
+| T-117 | QA: Sprint 8 integration testing | T-116 not started |
+| T-118 | Deploy: Sprint 8 staging re-deployment (no new migrations) | T-117 not started |
+| T-119 | Monitor: Sprint 8 health check (TZ abbreviations, URL links, Playwright 7/7) | T-118 not deployed |
+| T-120 | User Agent: Sprint 8 feature walkthrough (TZ abbreviations, URL links, Sprint 7 regression) | T-119 not run |
+
+---
+
+**Key Decisions (ADRs / Approvals This Sprint):**
+
+- **UTC Entry Added to Timezones List (T-110):** Adding `{ label: 'UTC — Coordinated Universal Time', value: 'UTC' }` to `frontend/src/utils/timezones.js` was the cleaner fix for T-098's failing test (vs. rewriting the test to use Europe/London). UTC is a valid timezone selection that users may legitimately need; adding it improves both test correctness and UX simultaneously.
+
+- **Dynamic formatTimezoneAbbr() in Test Assertions (T-113 fix):** Hardcoded timezone abbreviation strings (`'JST'`, `'CEST'`) caused test failures when Node.js ICU data returned `'GMT+9'` and `'GMT+2'` instead. The correct fix was to import `formatTimezoneAbbr` in the test file and call it dynamically, making tests environment-agnostic across small-ICU and full-ICU Node.js builds. Only `'EDT'` (America/New_York in summer) was kept as a hardcoded assertion — it is reliable across all ICU builds.
+
+- **LandTravelCard Correctly Excluded from TZ Abbreviation (T-113):** The `land_travels` schema has no IANA timezone fields (`*_tz`) — only dates and times without timezone context. Per Spec 14, LandTravelCard was NOT modified. This is consistent with the original DB schema design.
+
+- **T-102 (Design Spec for Notes) Already Collapsed into T-096 (Sprint 7 Decision):** Noted for Sprint 9 context — T-102 was pre-closed by Manager approval in Sprint 7 as part of T-096/Spec 13.
+
+---
+
+**Feedback Summary (Sprint 8):**
+
+*No new Sprint 8 User Agent or Monitor Agent feedback entries. T-094, T-109, and T-120 all remained in Backlog — the deploy/monitor/user pipeline never executed. FB-084 (the only Sprint 8 feedback item) was already "Tasked → T-113" at sprint start and is now Resolved (T-113 Done, pending staging deploy via T-118).*
+
+| FB Entry | Category | Severity | Disposition | Description |
+|----------|----------|----------|-------------|-------------|
+| FB-084 | Feature Gap | Minor | **Resolved** (T-113 Done) | Timezone abbreviation display on flight/stay detail cards — implemented and manager-approved. Staging deploy pending T-118. |
+
+---
+
+**What Went Well:**
+
+- **Test debt cleared completely:** T-110 and T-111 resolved the two long-standing test blockers from Sprint 7. The UTC timezone entry addition to timezones.js is a genuine UX improvement, not just a test workaround. T-111's 11 notes tests exceed the required 8 minimum and cover all edge cases (null/empty → null, char count, truncation in TripCard). Total frontend tests grew from 344 → 366 (+22).
+
+- **Both Sprint 8 features implemented cleanly and approved first pass:** T-113 (timezone abbreviations) required one fix cycle for brittle test assertions, but the underlying implementation was correct on first review. T-114 (URL linkification) passed Manager review on the first submission. Both are now in Integration Check with robust test suites.
+
+- **Sprint 7 QA pipeline unblocked and cleared:** T-105 and T-106 (the QA audit and integration testing for all 7 Sprint 7 implementation tasks) are Done. The Sprint 7 implementation quality is confirmed. T-107 Deploy can proceed immediately in Sprint 9 with no remaining blockers.
+
+- **Spec 14 design spec was complete and precise:** T-112 provided clear guidance for both features — fallback strategy for unknown timezones, security attributes for URL links, scheme allowlist — which enabled T-113 and T-114 to implement correctly without mid-sprint specification ambiguity.
+
+- **Narrower scope than Sprint 7 produced better implementation results:** The Sprint 8 implementation tasks were intentionally smaller and more focused. All implementation tasks that were attempted were approved by Manager. The issue is the QA/Deploy/Monitor pipeline, not implementation quality.
+
+**What Could Improve:**
+
+- **T-094 has now carried over four consecutive sprints (Sprint 6 → 7 → 8 → 9):** Sprint 6 features (land travel CRUD, calendar enhancements) have never been tested by the User Agent. This is an ever-widening quality blindspot — Sprint 7 and Sprint 8 features have now also accumulated without User Agent validation. Sprint 9 MUST treat T-094 as a P0 hard-block with no exceptions. If the pipeline cannot close in Sprint 9, the sprint should be scoped to only the pipeline tasks.
+
+- **T-107 was unblocked but not triggered:** After T-106 (QA integration testing) was marked Done, the Deploy Engineer had all information needed to proceed with T-107. However, T-107 was not dispatched this sprint. Sprint 9 should dispatch T-107 as the very first action, before any new design or implementation work begins.
+
+- **Sprint 8 scope was still too ambitious:** The sprint had 11 new tasks + 5 carry-overs from Sprint 7 + the T-094 P0 carry-over. Only 7 new tasks reached Done; 10 tasks carry to Sprint 9. Sprint 9 should be scoped exclusively to closing the pipeline and collecting feedback — zero new features until T-094, T-109, and T-120 are complete.
+
+- **The pipeline-first rule must be enforced at planning time:** This is the third sprint where feature implementation completed but the QA→Deploy→Monitor→User pipeline did not close. Going forward, the sprint scope must be planned to guarantee the full pipeline closes: if implementation tasks are added, time/capacity must explicitly be reserved for QA + Deploy + Monitor + User Agent.
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 9+):**
+
+*From Sprint 1 (still outstanding):*
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (no production impact, B-021)
+
+*From Sprint 2 (still outstanding):*
+- ⚠️ Rate limiting uses in-memory store — will not persist across restarts or scale across processes (B-020)
+
+*From Sprint 3 (still outstanding):*
+- ⚠️ Auth rate limit is IP-based only — aggressive on shared-IP environments (B-024)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+
+*From Sprint 5 (still outstanding):*
+- ⚠️ Sort logic duplicated across status-filter vs non-status-filter code paths in tripModel.js (minor DRY violation)
+
+*From Sprint 7 (still outstanding):*
+- ⚠️ api-contracts.md notes section: `{ "notes": "" }` described as storing empty string, but code normalizes to `null` — minor doc inconsistency; update during T-106/T-117 QA
+
+*New from Sprint 8:*
+- ⚠️ No dedicated unit tests for `formatTimezoneAbbr()` in `formatDate.test.js` — currently integration-covered only via TripDetailsPage tests; acceptable for now but should be added when formatDate.js tests are next touched
+- ⚠️ T-094 User Agent walkthrough has never run — Sprint 6 + Sprint 7 + Sprint 8 features are all untested by the User Agent (4th consecutive carry-over; critical quality blindspot)
+- ⚠️ Sprint 8 features (T-113, T-114) in Integration Check but not yet deployed to staging — no staging verification of timezone abbreviation rendering or URL link behavior under real browser/PostgreSQL conditions
+
+*Resolved this sprint (from prior debt):*
+- ✅ T-098 test fixture broken (UTC not in TIMEZONES dropdown) → resolved by T-110 (UTC added to timezones.js)
+- ✅ T-104 had 0 of 8 required tests → resolved by T-111 (11 tests written, all pass)
+
+---
+
+**Next Sprint Focus (Sprint 9 Recommendations):**
+
+*This sprint is pipeline-only. No new implementation tasks should be added until the backlog of 3 User Agent walkthroughs (T-094, T-109, T-120) and 2 staging deploys (T-107, T-118) are complete and feedback is triaged. Sprint 9 is a catch-up sprint — the pipeline must close cleanly before Sprint 10 can plan new features.*
+
+**P0 — Sprint 9 Must-Do: Close the Pipeline (sequential)**
+
+1. **T-107 IMMEDIATELY** — Deploy: Sprint 7 staging re-deployment (migration 010 + frontend rebuild). QA has cleared (T-106 Done). No blockers remain. Apply migration 010 (`notes TEXT NULL`), rebuild frontend with T-097/T-098/T-099/T-100/T-101/T-104 changes, verify pm2 online.
+2. **T-108** — Monitor: Sprint 7 staging health check. Immediately after T-107.
+3. **T-094 (P0 HARD-BLOCK)** — User Agent: Sprint 6 feature walkthrough. Can run in parallel with T-107/T-108 if staging is ready. **This is the fourth carry-over. It cannot slip again.** If T-094 requires staging to be deployed, then it must follow T-107/T-108.
+4. **T-109** — User Agent: Sprint 7 feature walkthrough. After T-108 Monitor confirms staging health.
+5. **T-115** — E2E: Playwright expansion (4 → 7 tests). After T-109 User Agent confirms staging is clean.
+6. **T-116** — QA: Sprint 8 security checklist (T-113 timezone abbreviations, T-114 URL links, T-115 E2E).
+7. **T-117** — QA: Sprint 8 integration testing.
+8. **T-118** — Deploy: Sprint 8 staging re-deployment (no new migrations — rebuild frontend only with T-113/T-114 changes).
+9. **T-119** — Monitor: Sprint 8 health check.
+10. **T-120** — User Agent: Sprint 8 feature walkthrough (TZ abbreviations, URL links, full regression).
+
+**P1 — Triage Feedback and Plan Sprint 10:**
+
+11. Manager triages T-094 + T-109 + T-120 feedback → scope Sprint 10 features from project-brief.md backlog.
+12. Top backlog candidates for Sprint 10: **B-032** (trip export/print), **B-022** (production deployment decision — now 7 consecutive sprints without a hosting provider decision), ILIKE wildcard edge case (B-033 partially done in T-085 but doc update pending).
+
+**P2 — Tech Debt (only if pipeline closes early):**
+
+13. **B-020** — Rate limiting persistence: Move from in-memory to Redis-backed store.
+14. **B-021** — Resolve dev dependency esbuild vulnerability.
+15. Update api-contracts.md notes field (`""` → `null` normalization behavior).
+
+**Out of Scope (per project brief):**
+- MFA login
+- Home page summary calendar
+- Auto-generated itinerary suggestions
+
+---
+
+### Sprint #9 — 2026-02-27 to 2026-03-03
+
+**Goal:** Close the four-sprint pipeline backlog. Execute T-094 (User Agent Sprint 6 walkthrough — 4th carry-over), T-107 (Deploy Sprint 7 staging re-deployment), T-108 (Monitor Sprint 7 health check), T-109 (User Agent Sprint 7 walkthrough), T-115 (Playwright expansion 4→7), T-116/T-117 (QA Sprint 8 pipeline), T-118 (Deploy Sprint 8 staging re-deployment), T-119 (Monitor Sprint 8 health check), T-120 (User Agent Sprint 8 walkthrough). Triage all three feedback sets and write Sprint 10 plan. Zero new implementation tasks.
+
+**Goal Met:** ❌ NO — Only T-107 (Deploy Sprint 7 staging) and two internal manager/backend tasks completed. T-094 carried over for the 5th consecutive sprint. T-108, T-109, T-115, T-118, T-119, T-120 did not execute. T-116/T-117 completed code-review portions but remain Blocked on staging E2E.
+
+---
+
+**Tasks Completed (3/12 pipeline tasks):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-107 | Deploy: Sprint 7 staging re-deployment — migration 010 applied, frontend rebuilt (Vite, 121 modules), pm2 restarted (PID 92765). 6/6 smoke tests pass. | ✅ Done (2026-02-28) |
+| MGR-S9 | Manager: Sprint 9 code review pass — zero tasks in "In Review"; no rework dispatched; pipeline unblocked. | ✅ Done |
+| BE-S9 | Backend: Sprint 9 API contract review — confirmed zero new endpoints needed; corrected api-contracts.md notes-field normalization doc (`""` → `null`). | ✅ Done |
+
+**Tasks Partially Completed (code review done, staging E2E blocked):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-116 | QA: Sprint 8 security checklist + code review — 18/18 security items PASS, 266/266 backend + 366/366 frontend tests verified, npm audit 0 prod vulns. Staging E2E BLOCKED pending T-115. | Blocked |
+| T-117 | QA: Sprint 8 integration testing — 18/18 integration contract checks PASS via source review. Staging E2E (Playwright 7/7) BLOCKED pending T-115. | Blocked |
+
+**Tasks Carried Over to Sprint 10 (7 tasks):**
+
+| ID | Description | Carry-Over Count | Reason |
+|----|-------------|-----------------|--------|
+| T-094 | User Agent: Sprint 6 feature walkthrough | **5th consecutive sprint** | Pipeline never reached User Agent; staging was ready (T-107 Done 2026-02-28) but T-094 was not triggered before sprint closeout |
+| T-108 | Monitor: Sprint 7 staging health check | 3rd | Depends on T-107 (now Done) — unblocked for Sprint 10 |
+| T-109 | User Agent: Sprint 7 feature walkthrough | 3rd | Depends on T-108 + T-094 |
+| T-115 | E2E: Playwright expansion 4→7 tests | 2nd | Depends on T-109 |
+| T-118 | Deploy: Sprint 8 staging re-deployment | 2nd | Depends on T-117 staging completion |
+| T-119 | Monitor: Sprint 8 health check | 2nd | Depends on T-118 |
+| T-120 | User Agent: Sprint 8 feature walkthrough | 2nd | Depends on T-119 |
+
+**Integration Check Tasks (awaiting pipeline confirmation — not yet Done):**
+
+| ID | Description |
+|----|-------------|
+| T-097 | Frontend: "+X more" calendar popover portal fix |
+| T-098 | Backend + Frontend: Stays check-in/checkout UTC timezone fix |
+| T-099 | Frontend: Trip details section reorder (Flights → Land Travel → Stays → Activities) |
+| T-100 | Frontend: All-day activities sort to top of day |
+| T-101 | Frontend: Calendar checkout/arrival time display enhancements |
+| T-103 | Backend: Trip notes/description field (migration 010) |
+| T-104 | Frontend: Trip notes UI (display, edit, TripCard truncation) |
+| T-113 | Frontend: Timezone abbreviation display on FlightCard + StayCard |
+| T-114 | Frontend: Activity location clickable URL detection |
+
+---
+
+**Key Decisions:**
+
+- No new ADRs this sprint (pipeline-only sprint; no implementation decisions required).
+- **api-contracts.md correction (BE-S9):** The `notes` field `{ "notes": "" }` → `null` normalization is now documented as an API-layer responsibility. GET responses never return `""` for notes — always `null` or a non-empty string.
+- **T-107 deploy confirmed T-116/T-117 staging Playwright blocker:** Deploy Engineer's pre-deploy notes from Sprint 8 confirmed that T-115 (Playwright expansion to 7 tests) must complete before Playwright 7/7 can be verified on staging. QA correctly Blocked T-116/T-117 rather than skipping the E2E verification requirement.
+
+---
+
+**Feedback Summary (Sprint 9):**
+
+*No new User Agent or Monitor Agent feedback entries submitted this sprint. T-094, T-108, T-109, T-115, T-118, T-119, T-120 all did not execute. No feedback exists for Sprint 6, Sprint 7, or Sprint 8 features from the User Agent — now 5 consecutive sprints without User Agent validation.*
+
+| FB Entry | Category | Severity | Disposition | Notes |
+|----------|----------|----------|-------------|-------|
+| (none) | — | — | — | No Sprint 9 User/Monitor entries. All prior entries remain as triaged in Sprint 8. |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- **T-107 finally executed:** The Sprint 7 staging re-deployment that was blocked since Sprint 7 completed successfully on 2026-02-28. Migration 010 applied cleanly, frontend rebuilt with all Sprint 7 changes (T-097 popover portal, T-098 timezone fix, T-099 section reorder, T-100 all-day sort, T-101 calendar times, T-104 notes UI). This unblocks T-108 (Monitor) immediately in Sprint 10.
+- **QA code review completed ahead of staging verification:** T-116 and T-117's code-review portions (18/18 security checks, source verification of T-113/T-114 implementation, notes normalization confirmed) were completed proactively. Sprint 10's QA phase only needs to run the staging E2E checks (after T-115 adds the new Playwright tests).
+- **Zero implementation drift:** The pipeline-only discipline held — no new implementation tasks were introduced. Implementation quality from Sprints 7 and 8 remains intact and awaits staging confirmation.
+
+**What Could Improve:**
+- **T-094 is now a 5-sprint carry-over — this is a critical quality blindspot.** Sprint 6 features (land travel CRUD, calendar enhancements, bug fixes), Sprint 7 features (popover portal, stays timezone, notes, section reorder), and Sprint 8 features (timezone abbreviations, URL links) have accumulated without ANY User Agent validation. If bugs exist in these features, they have been in production-intended code for 5 sprints without discovery.
+- **Staging was ready but T-094 was not triggered:** T-107 completed on 2026-02-28, making staging ready for T-094 immediately. T-094 should have run in the same sprint cycle but did not. Sprint 10 must trigger T-094 as the very first action after T-108 Monitor verifies staging health.
+- **T-115 remains the critical E2E blocker:** T-116/T-117 cannot complete without T-115 (Playwright expansion). Sprint 10 must schedule T-115 explicitly after T-109 but before T-116.
+- **Sprint 9 had 12 pipeline tasks — too many to reliably close in one sprint:** Future pipeline-closure sprints should be broken into sub-sprints or explicitly time-boxed to ensure at least one User Agent walkthrough completes per sprint.
+
+**Action Items for Sprint 10:**
+1. T-108 IMMEDIATELY (Monitor Sprint 7 health check — T-107 is Done, staging is ready)
+2. T-094 IMMEDIATELY IN PARALLEL (User Agent Sprint 6 walkthrough — staging ready)
+3. T-109 after T-108 + T-094 both complete
+4. T-115 after T-109 (Playwright expansion)
+5. T-116 + T-117 staging E2E after T-115
+6. T-118 (Deploy Sprint 8) → T-119 (Monitor Sprint 8) → T-120 (User Agent Sprint 8)
+7. Manager triages all three feedback sets → Sprint 11 plan
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 10+):**
+
+*All debt from Sprint 8 carried forward unchanged:*
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (no production impact, B-021)
+- ⚠️ Rate limiting uses in-memory store — will not persist across restarts (B-020)
+- ⚠️ Auth rate limit is IP-based only (B-024)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+- ⚠️ Sort logic duplicated across code paths in tripModel.js (minor DRY violation, Sprint 5)
+- ⚠️ No dedicated unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+- ⚠️ **T-094 User Agent walkthrough has never run — Sprint 6 + 7 + 8 features all untested by User Agent (5th consecutive carry-over; CRITICAL quality blindspot)**
+- ⚠️ T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114 all in Integration Check — awaiting staging confirmation before closing to Done
+
+*Resolved this sprint:*
+- (none — no implementation work this sprint)
+
+*New this sprint:*
+- ⚠️ T-116/T-117 are Blocked on T-115 — staging E2E phase incomplete (code review portions done)
+
+---
+
+**Next Sprint Focus (Sprint 10 Recommendations):**
+
+Sprint 10 is again a pipeline-closure sprint. No new features should be added until all three User Agent walkthroughs complete and feedback is triaged. The situation is now urgent — five consecutive sprints without User Agent feedback is a significant quality risk.
+
+**P0 — CRITICAL: Close the User Agent Pipeline**
+
+1. **T-108 IMMEDIATELY** — Monitor: Sprint 7 staging health check (T-107 is Done, staging ready, no blockers)
+2. **T-094 IMMEDIATELY (PARALLEL with T-108)** — User Agent: Sprint 6 walkthrough. **5th carry-over. Absolute hard-block — Sprint 10 cannot proceed past this point.** If any Critical bugs are found, hotfix tasks (H-XXX) must be created and resolved before T-109.
+3. **T-109** — User Agent: Sprint 7 feature walkthrough (after T-108 + T-094 complete)
+4. **T-115** — QA/E2E: Playwright expansion 4→7 tests (after T-109 confirms staging clean)
+5. **T-116 (staging E2E)** — QA: Sprint 8 security checklist staging portion (code review already done; just needs Playwright 7/7 verified on staging after T-115)
+6. **T-117 (staging E2E)** — QA: Sprint 8 integration testing staging portion
+7. **T-118** — Deploy: Sprint 8 staging re-deployment
+8. **T-119** — Monitor: Sprint 8 health check
+9. **T-120** — User Agent: Sprint 8 feature walkthrough
+10. **Manager: Triage T-094 + T-109 + T-120 feedback → write Sprint 11 plan**
+
+**P1 — After Pipeline Closes: Plan New Features from Backlog**
+
+- **B-032** — Trip export/print (PDF or print-friendly view) — highest-priority unstarted MVP-adjacent feature
+- **B-022** — Production deployment decision (project owner must select hosting provider — now 7 consecutive sprints without decision; escalate again)
+- Any Critical/Major bugs discovered in T-094/T-109/T-120 walkthroughs → hotfix tasks take P0 priority
+
+**P2 — Tech Debt (only if pipeline closes early)**
+
+- B-020: Redis-backed rate limiting
+- B-021: Resolve esbuild dev dependency vulnerability
+- Add unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+
+**Out of Scope:**
+- MFA login
+- Home page summary calendar
+- Auto-generated itinerary suggestions
+
+---
+
+### Sprint #10 — 2026-03-04 to 2026-03-04
+
+**Goal:** Close the five-sprint pipeline backlog once and for all. Execute T-108 (Monitor Sprint 7 health check) and T-094 (User Agent Sprint 6 walkthrough — 5th carry-over, P0 ABSOLUTE HARD-BLOCK) in parallel as the immediate first action, then proceed sequentially through T-109 → T-115 → T-116 (staging E2E) → T-117 (staging E2E) → T-118 → T-119 → T-120. Triage all three feedback sets. Write Sprint 11 plan. Contingent on clean pipeline closure: begin T-121 (Design: trip export/print spec) and T-122 (Frontend: print implementation).
+
+**Goal Met:** ❌ NO — The primary sprint objective (pipeline closure) was not achieved. T-094 carried over for the sixth consecutive sprint. T-108, T-109, T-115, T-118, T-119, and T-120 did not execute. T-116 and T-117 remain Blocked on staging E2E (code-review portions Done from Sprint 9). The Pipeline-Only Rule was also not upheld — T-121 and T-122 (Phase 5 contingent tasks) were completed despite the pipeline never closing, resulting in a new feature being delivered without User Agent validation of any prior sprint's features.
+
+---
+
+**Tasks Completed (4 tasks fully Done):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-121 | Design spec: Trip export/print view — Spec 15 published to ui-spec.md. Print button placement (TripDetailsPage top-right, secondary style), `@media print` CSS rules (hide navbar/buttons/calendar, single-column black-on-white, IBM Plex Mono retained), `window.print()` invocation. Manager-approved before T-122. | ✅ Done (2026-03-04) |
+| T-122 | Frontend: Trip print/export implementation — "Print" button added to TripDetailsPage (print icon, aria-label, secondary style). `print.css` created with `@media print` rules (dark theme override to white/black, navbar + action buttons hidden). 3 new tests added (button renders, `window.print()` called on click, existing tests unaffected). 369/369 tests pass. Manager APPROVED. QA APPROVED. | ✅ Done (2026-03-04) |
+| BE-S10 | Backend Engineer: Sprint 10 API contract review — confirmed zero new API endpoints or schema changes this sprint. 266/266 backend tests pass. All 10 migrations applied (001–010). Sprint 10 section added to api-contracts.md. On standby for hotfix H-XXX. | ✅ Done (2026-03-04) |
+| MGR-S10 | Manager Agent: Sprint 10 code review pass — scanned all tasks in "In Review": zero found. T-122 (sole implementation task) reviewed and approved. T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114 remain in Integration Check awaiting staging confirmation. No rework dispatched. | ✅ Done (2026-03-04) |
+
+**Integration Check Tasks (pending staging confirmation — unchanged from Sprint 9):**
+
+| ID | Description |
+|----|-------------|
+| T-097 | Frontend: "+X more" calendar popover portal fix (createPortal to document.body) |
+| T-098 | Backend + Frontend: Stays check-in/checkout UTC timezone fix |
+| T-099 | Frontend: Trip details section reorder (Flights → Land Travel → Stays → Activities) |
+| T-100 | Frontend: All-day activities sort to top of each activity day group |
+| T-101 | Frontend: Calendar checkout/arrival time display enhancements |
+| T-103 | Backend: Trip notes field (migration 010, PATCH/GET) |
+| T-104 | Frontend: Trip notes UI (TripDetailsPage + TripCard truncation) |
+| T-113 | Frontend: Timezone abbreviation display on FlightCard + StayCard |
+| T-114 | Frontend: Activity location clickable URL detection |
+
+**Tasks Carried Over to Sprint 11 (9 pipeline tasks):**
+
+| ID | Description | Carry-Over Count | Status at Closeout |
+|----|-------------|-----------------|-------------------|
+| T-094 | User Agent: Sprint 6 feature walkthrough | **6th consecutive sprint** | Backlog |
+| T-108 | Monitor Agent: Sprint 7 staging health check | 4th | Backlog |
+| T-109 | User Agent: Sprint 7 feature walkthrough | 4th | Backlog |
+| T-115 | QA: Playwright E2E expansion 4→7 tests | 3rd | Backlog |
+| T-116 | QA: Sprint 8 staging E2E verification | 2nd | Blocked (on T-115); code review Done Sprint 9 |
+| T-117 | QA: Sprint 8 staging integration check | 2nd | Blocked (on T-116); code review Done Sprint 9 |
+| T-118 | Deploy Engineer: Sprint 8 staging re-deployment | 3rd | Backlog |
+| T-119 | Monitor Agent: Sprint 8 staging health check | 3rd | Backlog |
+| T-120 | User Agent: Sprint 8 feature walkthrough | 3rd | Backlog |
+
+---
+
+**Key Decisions:**
+
+- **Pipeline-Only Rule not upheld (Sprint 10 deviation):** T-121 (Design: print spec) and T-122 (Frontend: print implementation) were completed despite the pipeline (T-094, T-108, T-109, T-115–T-120) never closing. Per the sprint plan, Phase 5 was explicitly contingent on a clean pipeline closure with no open Critical/Major bugs. This resulted in delivering a new Sprint 10 feature (print/export) that is now also untested by the User Agent — adding to an already six-sprint-deep validation backlog.
+- **No new ADRs this sprint.** No schema changes, no new API endpoints, no architectural decisions required.
+- **T-122 test count:** Frontend test suite grew from 366 → 369 (+3 print tests). Backend tests remain 266/266.
+- **B-022 (Production deployment) escalation deferred again:** Project owner has not selected a hosting provider after 8+ consecutive sprints. Sprint 11 plan should include a Deploy Engineer research spike (T-123) recommending provider options if no decision is received by Sprint 11 kickoff.
+
+---
+
+**Feedback Summary (Sprint 10):**
+
+*No new User Agent or Monitor Agent feedback entries submitted this sprint. T-094, T-108, T-109, T-115, T-118, T-119, and T-120 all did not execute. No feedback exists for Sprint 6, 7, 8, or 10 features from the User Agent — now SIX consecutive sprints without User Agent validation. This is the longest continuous validation gap in this project's history.*
+
+| FB Entry | Category | Severity | Disposition | Notes |
+|----------|----------|----------|-------------|-------|
+| (none) | — | — | — | No Sprint 10 User/Monitor entries. All prior entries remain as triaged in Sprint 9. |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- **T-121 and T-122 delivered cleanly:** The trip export/print feature (Spec 15 + implementation) was designed, implemented, QA-reviewed, and approved within a single sprint with no rework cycles required. The `@media print` approach (no PDF library, just `window.print()`) keeps the implementation lightweight and dependency-free.
+- **Frontend test count maintained:** 369/369 tests pass with the new print-related tests. No regressions introduced by T-122.
+- **T-116/T-117 code-review debt remains cleared:** No new QA code-review work is required in Sprint 11 for Sprint 8 features — only the staging E2E phase (Playwright 7/7 on staging) remains after T-115.
+- **BE-S10 and MGR-S10 completed promptly:** Backend review confirmed zero drift; Manager code review found zero tasks requiring rework. The implementation work done in Sprints 7 and 8 continues to hold quality.
+
+**What Could Improve:**
+- **T-094 is now a 6th consecutive sprint carry-over — this has reached a critical threshold.** Sprint 6 through Sprint 10 features have accumulated without a single User Agent feedback cycle completing. Land travel CRUD, calendar enhancements, the popover portal fix, stays timezone correction, section reorder, trip notes, timezone abbreviations, URL linkification, and now print/export — none of these features have been end-to-end tested by the User Agent.
+- **The Pipeline-Only Rule was violated.** T-121 and T-122 (Phase 5 tasks) were executed despite the sprint plan explicitly requiring pipeline closure first. Every new feature added to the untested backlog compounds the risk. Sprint 11 must enforce pipeline-first with zero exceptions — if T-094 doesn't run in Sprint 11, no new implementation work should begin under any circumstances.
+- **Sprint 10 is the third sprint in a row where implementation ran while the pipeline remained open.** The pattern is structural: the orchestrator continues to invoke implementation agents even when the pipeline has not cleared. Sprint 11 should open with Monitor + User Agent as the first-called agents (T-108, T-094) before any other agents are invoked.
+
+**Action Items for Sprint 11:**
+1. **T-108 IMMEDIATELY** — Monitor Agent: Sprint 7 staging health check (fully unblocked since T-107 Done 2026-02-28)
+2. **T-094 IMMEDIATELY, IN PARALLEL** — User Agent: Sprint 6 feature walkthrough (**6th carry-over — absolute no-exceptions hard-block**)
+3. **Triage T-094 feedback before T-109 begins** — if Critical/Major bugs → create H-XXX hotfix tasks first
+4. **T-109** — User Agent: Sprint 7 feature walkthrough (after T-108 + T-094 both Done)
+5. **T-115** — QA/E2E: Playwright expansion 4→7 tests (after T-109)
+6. **T-116 → T-117** — QA: Staging E2E for Sprint 8 (code review already Done; just Playwright 7/7 verification needed)
+7. **T-118 → T-119 → T-120** — Deploy/Monitor/User Agent: Sprint 8 pipeline close
+8. **New T-12X** — User Agent: Sprint 10 walkthrough (T-122 print feature — to be created during Sprint 11 planning)
+9. **Manager: Triage all feedback sets → Sprint 12 plan**
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 11+):**
+
+*All debt from Sprint 9 carried forward unchanged:*
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (no production impact, B-021)
+- ⚠️ Rate limiting uses in-memory store — will not persist across restarts (B-020)
+- ⚠️ Auth rate limit is IP-based only — aggressive on shared-IP environments (B-024)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+- ⚠️ Sort logic duplicated across status-filter vs non-status-filter code paths in tripModel.js (minor DRY violation, Sprint 5)
+- ⚠️ No dedicated unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+- ⚠️ **T-094 User Agent walkthrough has never run — Sprint 6, 7, 8, 9, and 10 features ALL untested by User Agent (6th consecutive carry-over; CRITICAL quality blindspot — now the single greatest risk in the project)**
+- ⚠️ T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114 all in Integration Check — awaiting staging confirmation before closing to Done
+- ⚠️ T-116/T-117 Blocked on T-115 staging E2E — code review done but staging not verified
+- ⚠️ B-022: Production deployment — project owner has not selected a hosting provider (8 consecutive sprints). Sprint 11 to include Deploy Engineer research spike (T-123) if no decision received.
+
+*New from Sprint 10:*
+- ⚠️ T-122 (print/export feature) is Done but has not been tested on staging or by User Agent — adds to the existing validation backlog
+
+*Resolved this sprint:*
+- (none)
+
+---
+
+**Next Sprint Focus (Sprint 11 Recommendations):**
+
+Sprint 11 is a **mandatory pipeline-closure sprint** with zero exceptions. No new design, backend, or frontend implementation may begin until T-120 (User Agent Sprint 8 walkthrough) completes and feedback is triaged. The six-sprint validation backlog is the project's highest risk and must be resolved before Sprint 12 planning.
+
+**P0 — CRITICAL (must complete before anything else):**
+1. **T-108** — Monitor: Sprint 7 staging health check (Start IMMEDIATELY — fully unblocked)
+2. **T-094** — User Agent: Sprint 6 walkthrough (**6th carry-over — ABSOLUTE HARD-BLOCK**) (Start IMMEDIATELY, parallel with T-108)
+3. Triage T-094 feedback immediately → create H-XXX hotfixes if Critical/Major bugs; resolve hotfixes before T-109
+
+**P0 — Sequential Pipeline:**
+4. **T-109** — User Agent: Sprint 7 feature walkthrough → triage immediately
+5. **T-115** — QA: Playwright expansion 4→7 tests
+6. **T-116** — QA: Sprint 8 staging E2E (Playwright 7/7 verification only — code review Done)
+7. **T-117** — QA: Sprint 8 staging integration check
+8. **T-118** — Deploy: Sprint 8 staging re-deployment (no new migrations)
+9. **T-119** — Monitor: Sprint 8 health check
+10. **T-120** — User Agent: Sprint 8 feature walkthrough → triage immediately
+
+**P1 — After Pipeline Closes:**
+11. **T-12X (new)** — User Agent: Sprint 10 walkthrough (validate T-122 print feature on staging)
+12. **T-123 (new, if B-022 still unresolved)** — Deploy Engineer: Research spike on production hosting provider options (Render, Railway, Fly.io, DigitalOcean App Platform) with cost/complexity tradeoffs; present recommendation to project owner
+13. Any Critical/Major bugs from walkthroughs → H-XXX hotfix tasks take P0 priority over everything else
+
+**P2 — Tech Debt (only if pipeline closes early):**
+- B-020: Redis-backed rate limiting
+- B-021: Resolve esbuild dev dependency vulnerability
+- Add unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+- Fix sort logic duplication in tripModel.js
+
+**Out of Scope:**
+- MFA login
+- Home page summary calendar
+- Auto-generated itinerary suggestions
+
+---
+
+### Sprint #11 — 2026-03-04 to 2026-03-06
+
+**Goal:** Close the six-sprint-deep pipeline validation backlog. Execute T-108 (Monitor Sprint 7 health check) and T-094 (User Agent Sprint 6 walkthrough — 6th consecutive carry-over, P0 ABSOLUTE HARD-BLOCK) in parallel, then sequentially: T-109 → T-115 → T-116 → T-117 → T-118 → T-119 → T-120 → T-123. Triage all feedback. In parallel: T-124 (Deploy Engineer hosting research spike).
+
+**Goal Met:** ✅ YES — The pipeline validation backlog was closed. All four User Agent walkthroughs (T-094 Sprint 6, T-109 Sprint 7, T-120 Sprint 8, T-123 Sprint 10) completed with no Critical or Major bugs surfaced. All Integration Check tasks promoted to Done. Project owner submitted 4 new feedback items (FB-085 through FB-088) via direct manual testing — all triaged for Sprint 12.
+
+---
+
+**Tasks Completed:**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-108 | Monitor Agent: Sprint 7 + T-122 staging health check — all Sprint 7 regression checks pass, HTTPS ✅, pm2 ✅, migration 010 ✅, notes field ✅, stays timezone fix ✅, popover functional ✅, section order ✅, Playwright 4/4 ✅, print button visible ✅ | ✅ Done |
+| T-094 | User Agent: Sprint 6 feature walkthrough (6th carry-over, finally complete) — land travel CRUD ✅, calendar time chips ✅, "+X more" popover ✅, activity AM/PM fix ✅, FilterToolbar refetch ✅, ILIKE search ✅, Sprint 1–5 regression ✅ | ✅ Done |
+| T-109 | User Agent: Sprint 7 feature walkthrough — popover scroll ✅, stays timezone ✅, section order ✅, all-day sort ✅, calendar checkout/arrival times ✅, trip notes ✅, Sprint 6 regression ✅ | ✅ Done |
+| T-115 | QA: Playwright E2E expansion 4→7 tests — land travel edit, calendar overflow popover, mobile 375×812 viewport — 7/7 PASS | ✅ Done |
+| T-116 | QA: Sprint 8 staging E2E verification — Playwright 7/7 ✅, api-contracts.md notes doc current ✅ | ✅ Done |
+| T-117 | QA: Sprint 8 staging integration check — TZ abbreviations verified (EDT, JST, CEST), URL links functional, Sprint 7 regression clean | ✅ Done |
+| T-118 | Deploy: Sprint 8 staging re-deployment — frontend rebuilt with T-113/T-114 + T-115 Playwright tests, pm2 online, smoke tests pass | ✅ Done |
+| T-119 | Monitor: Sprint 8 staging health check — HTTPS ✅, pm2 ✅, TZ abbreviations ✅, URL links ✅, Playwright 7/7 ✅, Sprint 6+7 regression ✅ | ✅ Done |
+| T-120 | User Agent: Sprint 8 feature walkthrough — timezone abbreviations (EDT, JST, CEST) ✅, URL linkification ✅, XSS guard ✅, Sprint 7 regression ✅ | ✅ Done |
+| T-123 | User Agent: Sprint 10 feature walkthrough — print button visible ✅, print dialog opens ✅, print preview correct (all sections shown, navbar/calendar hidden) ✅, Sprint 8 regression ✅ | ✅ Done |
+| T-124 | Deploy Engineer: Production hosting provider research spike — `.workflow/hosting-research.md` published with provider comparison (Railway, Render, Fly.io, DigitalOcean App Platform) and final recommendation | ✅ Done |
+| BE-S11 | Backend Engineer: Sprint 11 pipeline review — 266/266 tests pass, zero API/schema drift, hotfix standby active | ✅ Done |
+
+**Integration Check → Done Promotions (after T-108 + T-119 staging confirmation):**
+
+| Task | Promoted |
+|------|----------|
+| T-097 | ✅ Done — popover portal fix confirmed on staging |
+| T-098 | ✅ Done — stays timezone fix confirmed on staging |
+| T-099 | ✅ Done — section order confirmed on staging |
+| T-100 | ✅ Done — all-day sort confirmed on staging |
+| T-101 | ✅ Done — calendar checkout/arrival confirmed on staging |
+| T-103 | ✅ Done — trip notes migration + API confirmed on staging |
+| T-104 | ✅ Done — trip notes UI confirmed on staging |
+| T-113 | ✅ Done — timezone abbreviations confirmed on staging |
+| T-114 | ✅ Done — URL linkification confirmed on staging |
+
+**Tasks Carried Over:** None. The pipeline is fully closed.
+
+---
+
+**Key Decisions:**
+- No new ADRs this sprint (pipeline-only; no implementation decisions required).
+- All nine tasks that were in Integration Check (T-097 through T-104, T-113, T-114) are now Done — the longest-standing technical debt in the project's tracking has been resolved.
+- T-124 hosting research published; project owner should review `.workflow/hosting-research.md` and make a production hosting decision before Sprint 13.
+
+---
+
+**Feedback Summary (Sprint 11):**
+
+*No Critical or Major bugs surfaced by the four User Agent walkthroughs. Project owner submitted 4 feedback items from direct manual testing.*
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-085 | UX Issue | Major | Tasked → T-125 | Deploy phase overwrites `backend/.env`, breaking `npm run dev` after sprint completes |
+| FB-086 | UX Issue | Minor | Tasked → T-126 | DayPopover detaches from trigger button on page scroll (position: fixed drift) |
+| FB-087 | UX Issue | Minor | Tasked → T-127 | Calendar check-in time chip shows no "check-in" label (inconsistent with "check-out" label) |
+| FB-088 | Feature Gap | Minor | Tasked → T-128 | Calendar defaults to current month instead of the month of the first planned event |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- The pipeline finally closed after seven consecutive sprints of carry-over. All four walkthroughs (Sprint 6, 7, 8, 10) completed without revealing any Critical or Major bugs — a testament to the quality of implementation work in those sprints.
+- Zero rework cycles required across all pipeline tasks (T-115 through T-124) — each task completed cleanly on the first pass.
+- All 9 Integration Check tasks (T-097, T-098, T-099, T-100, T-101, T-103, T-104, T-113, T-114) promoted to Done after staging confirmation — clearing the longest-running open debt in the project.
+- Playwright E2E coverage grew from 4 to 7 tests (T-115), including mobile viewport (375×812), land travel edit flow, and calendar overflow popover — meaningful coverage expansion.
+- Hosting research (T-124) published — the production deployment decision can now be made with concrete data.
+
+**What Could Improve:**
+- The 6-sprint carry-over of T-094 remains the single most significant process failure of this project. The pipeline-first rule must be enforced structurally, not just in the sprint plan.
+- Project owner feedback (FB-085) about `.env` clobbering indicates a deploy process gap that should have been caught earlier. Deploy Engineer agents should always use environment-isolated config files (`.env.staging`) and never mutate the primary development `.env`.
+
+**Technical Debt Carried Forward:**
+- ⚠️ B-020: Rate limiting uses in-memory store (no Redis persistence)
+- ⚠️ B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 (no production impact)
+- ⚠️ B-024: Auth rate limit is IP-only (no per-account limiting)
+- ⚠️ No dedicated unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+- ⚠️ B-022: Production deployment pending — project owner must review hosting-research.md and select a provider
+
+**Resolved this sprint:**
+- ✅ T-094 six-sprint pipeline gap — closed
+- ✅ T-097–T-104, T-113–T-114 Integration Check backlog — all promoted to Done
+
+---
+
+### Sprint #12 — 2026-03-06 to 2026-03-06
+
+**Goal:** Ship four targeted UX/infrastructure fixes surfaced by project owner feedback (FB-085 through FB-088): isolate staging environment config from local dev (`.env.staging`), fix DayPopover scroll anchoring, add missing "check-in" label to calendar check-in chips, and default the calendar to the month of the first planned event. Close the sprint's QA/deploy/monitor/user-agent cycle cleanly.
+
+**Goal Met:** PARTIALLY MET — All four implementation tasks (T-125 through T-128) were completed, code-reviewed, and QA-cleared (266 backend + 382 frontend tests passing; 6/6 integration checks pass). However, the deploy/monitor/user-agent pipeline did not close: T-131 (staging re-deployment) was executed with an incorrect configuration (backend started on port 3000 instead of port 3001; pm2 not used). T-132 (Monitor health check) detected the misconfiguration and filed FB-089. T-133 (User Agent walkthrough) was blocked. The implementation work is production-ready; only the staging deployment step needs correction in Sprint 13.
+
+---
+
+**Tasks Completed (7/10):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-125 | Deploy: .env staging isolation — `backend/.env.staging` created as authoritative staging config; `.env.staging.example` committed; deploy scripts updated; `backend/.env` restored to local-dev defaults | Done |
+| T-126 | Frontend: DayPopover scroll-close — scroll listener (`window.addEventListener('scroll', handler, { capture: true })`) closes popover on page scroll; focus restored to trigger; Escape-to-close preserved; 3 new tests | Done |
+| T-127 | Frontend: Calendar check-in label — "check-in Xa" chip added to check-in day (all 3 stay-chip cases); 5 new tests | Done |
+| T-128 | Frontend: Calendar defaults to first event month — `getInitialMonth()` covers all 4 event types; UTC vs local-time parsing correct; `isNaN` guard for malformed dates; fallback to current month; 5 new tests | Done |
+| T-129 | QA: Security checklist + code review audit — all Sprint 12 changes verified; 266 backend + 382 frontend tests passing; no new vulnerabilities introduced | Done |
+| T-130 | QA: Integration testing — 6/6 Sprint 12 integration checks pass; Sprint 11 regression clean | Done |
+| MGR-S12 | Manager: Sprint 12 code review pass — all 4 implementation tasks independently verified correct; no rework dispatched | Done |
+
+**Tasks Carried Over (3/10 — move to Sprint 13):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-131 | Deploy: Sprint 12 staging re-deployment | Backend started as `node src/index.js` on port 3000 instead of via `pm2 start infra/ecosystem.config.cjs` (which sets `NODE_ENV=staging` and loads `.env.staging` with `PORT=3001`). T-131 acceptance criteria not met. No handoff logged to Monitor. |
+| T-132 | Monitor: Sprint 12 staging health check | Ran and detected T-131 misconfiguration (FB-089 filed). Must re-run after T-131 is corrected. |
+| T-133 | User Agent: Sprint 12 feature walkthrough | Blocked by T-131/T-132 failure — staging not in the correct state for formal User Agent verification. |
+
+---
+
+**Key Decisions:**
+- No new ADRs this sprint (all tasks were UX fixes and an infrastructure isolation improvement).
+- Design Agent authored component-level behavior specs (Spec 16, 17, 18) for T-126, T-127, T-128 — all auto-approved.
+
+---
+
+**Feedback Summary (Sprint 12):**
+
+*2 Monitor Agent alerts filed; no User Agent feedback (T-133 blocked). Both alerts triaged by Manager.*
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-089 | Monitor Alert | Major | Tasked → Sprint 13 (T-131 re-execution) | Staging backend running on port 3000 instead of port 3001; pm2 not used; T-131 acceptance criteria not met |
+| FB-090 | Monitor Alert | Minor | Acknowledged (backlog) | `api-contracts.md` documents `/land-travels` (plural) but implementation uses `/land-travel` (singular); no functional impact — documentation correction only |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- All four implementation tasks (T-125 through T-128) passed Manager code review on the first attempt — zero rework, consistent with prior sprints.
+- The `.env.staging` isolation fix (T-125) was implemented correctly end-to-end: `backend/.env.staging` exists with correct staging values, excluded from git, `.env.staging.example` committed as template, deploy scripts and `ecosystem.config.cjs` updated. The root cause of FB-085 is fully resolved at the code level.
+- Frontend test coverage grew to 382 tests (up from 369 in Sprint 11), with 13 new targeted tests across T-126/T-127/T-128 covering scroll behavior, label rendering, and date initialization edge cases.
+- The Manager code review pass (MGR-S12) independently verified all four implementation tasks and confirmed QA findings — a strong secondary quality gate.
+
+**What Could Improve:**
+- T-131 failed acceptance criteria: the Deploy Engineer started the backend directly (`node src/index.js`) on port 3000 rather than using `pm2 start infra/ecosystem.config.cjs` from the project root. The pm2 ecosystem config is the canonical entry point for staging because it sets `NODE_ENV=staging`, which triggers `backend/src/index.js` to load `.env.staging` with `PORT=3001`. This is documented in the T-131 task description and T-125 setup — the Deploy Engineer must follow the pm2 start command exactly.
+- No Deploy Engineer → Monitor Agent handoff was logged in `handoff-log.md` for T-131. This is a rules violation (all agent-to-agent handoffs must be logged) and left the Monitor Agent without accurate context about staging state. Handoffs between Deploy and Monitor are mandatory.
+
+**Technical Debt Carried Forward:**
+- B-020: Rate limiting uses in-memory store (no Redis persistence)
+- B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 (no production impact)
+- B-024: Auth rate limit is IP-only (no per-account rate limiting)
+- No dedicated unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+- B-022: Production deployment pending — project owner must review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider before Sprint 13 can execute production deployment
+- FB-090: `api-contracts.md` documents `/land-travels` (plural) but implementation uses `/land-travel` (singular) — low-priority documentation fix
+
+**Resolved this sprint (at implementation level):**
+- FB-085 / T-125: `.env.staging` isolation implemented — `backend/.env` no longer mutated by deploy cycle (staging re-deployment must still complete in Sprint 13 to confirm on-system)
+- FB-086 / T-126: DayPopover scroll-close implemented and tested
+- FB-087 / T-127: Calendar check-in label added and tested
+- FB-088 / T-128: Calendar default month logic implemented and tested
+
+---
+
+**Next Sprint Focus (Sprint 13 Recommendations):**
+
+Sprint 13 must begin with immediate correction of the T-131 staging deployment failure before any other work proceeds.
+
+**P0 — Immediate (pipeline closure — no exceptions):**
+1. **T-131 (re-execution)** — Deploy Engineer: Stop PID 78079 (`kill 78079`); start backend via `pm2 start infra/ecosystem.config.cjs` from project root; verify `pm2 status` shows `triplanner-backend` online; confirm `curl -sk https://localhost:3001/api/v1/health` → 200; log explicit handoff to Monitor Agent in `handoff-log.md`.
+2. **T-132 (re-run)** — Monitor Agent: Re-run full Sprint 12 health check after T-131 is corrected and handoff is logged.
+3. **T-133** — User Agent: Sprint 12 feature walkthrough after T-132 passes clean.
+4. **Manager: Triage T-133 feedback** and plan Sprint 14 scope.
+
+**P1 — Production deployment (project owner decision required):**
+5. **B-022** — Project owner must review `.workflow/hosting-research.md` (T-124 output) and select a production hosting provider. Once a decision is made, Deploy Engineer can execute production deployment.
+
+**P2 — Tech debt (after P0/P1 close):**
+6. Fix `api-contracts.md`: change `/land-travels` to `/land-travel` (singular) per FB-090
+7. Add unit tests for `formatTimezoneAbbr()` in `formatDate.test.js`
+8. B-020: Redis-backed rate limiting
+9. B-021: Resolve esbuild dev dependency vulnerability
+
+---
+
+### Sprint #13 — 2026-03-07 to 2026-03-07
+
+**Goal:** Close the Sprint 12 pipeline (fix T-131 staging port misconfiguration via pm2, re-run Monitor health check, complete User Agent Sprint 12 walkthrough), then deliver two targeted UX improvements from feedback: rework DayPopover to stay open and anchored on scroll instead of closing (FB-091, reversing T-126), and add rental car pick-up/drop-off time chips to the calendar (FB-092). Fix api-contracts.md land-travel endpoint documentation inconsistency (FB-090).
+
+**Goal Met:** ⚠️ PARTIALLY MET — The full implementation track delivered cleanly with zero rework: T-137, T-138, T-139 all passed Manager code review on first attempt; QA (T-140, T-141) cleared all Sprint 13 changes; staging was deployed correctly (T-142, with pm2 port fix integrated), and the Monitor health check passed with Deploy Verified: Yes (T-143). However, the User Agent walkthroughs never ran for the second consecutive sprint: T-136 (User Agent Sprint 12 walkthrough) and T-144 (User Agent Sprint 13 walkthrough) both remain in Backlog. FB-093 (JWT_SECRET placeholder) was surfaced by the Monitor Agent as a security concern requiring Sprint 14 action.
+
+---
+
+**Tasks Completed (8/12):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-137 | Frontend: DayPopover stay-open on scroll — removed T-126 scroll-close listener; switched to `position: absolute` + `scrollX/Y` offsets; all close triggers (Escape, click-outside, ×) preserved; 6 new tests (19.A–F); all 392 frontend tests pass | ✅ Done |
+| T-138 | Frontend: Rental car pick-up/drop-off time chips — `mode === 'RENTAL_CAR'` guard in DayCell and DayPopover.getEventTime; pick-up day shows "pick-up Xp", drop-off day shows "drop-off Xp"; same-day and null arrival_date handled; non-RENTAL_CAR unaffected; 7 new tests (20.A–G); all 392 tests pass | ✅ Done |
+| T-139 | Backend: api-contracts.md /land-travel documentation fix — all 19 endpoint path occurrences changed from `/land-travels` (plural) to `/land-travel` (singular); documentation-only, no code changes | ✅ Done |
+| T-140 | QA: Security checklist + code review audit — no new vulnerabilities; scroll listener removal confirmed (zero grep matches); XSS prevention verified; pre-existing B-021 esbuild dev-dep vulns accepted | ✅ Done |
+| T-141 | QA: Integration testing — all Sprint 13 contract/code checks pass; Sprint 12 regression clean; config consistency confirmed; 266 backend + 392 frontend tests | ✅ Done |
+| T-142 | Deploy: Sprint 13 staging re-deployment — frontend rebuilt (122 modules, 0 errors); pm2 port fix applied (added `PORT: 3001` explicitly to `infra/ecosystem.config.cjs` to prevent env inheritance ambiguity); backend online via pm2 PID 87119 on `https://localhost:3001`; `backend/.env` unchanged; smoke tests pass; T-134 root cause resolved within this task | ✅ Done |
+| T-143 | Monitor: Sprint 13 staging health check — 15/15 health checks PASS; HTTPS on port 3001 ✅; pm2 confirmed ✅; all Sprint 13 + Sprint 12 regression checks pass ✅; **Deploy Verified: Yes**; FB-093 (JWT_SECRET placeholder) flagged as new monitor alert | ✅ Done |
+| MGR-S13 | Manager: Sprint 13 code review pass — all implementation tasks independently verified correct; T-137 document-relative positioning logic confirmed; T-138 RENTAL_CAR guard and same-day rental edge case confirmed; T-139 documentation scan confirmed; no rework dispatched | ✅ Done |
+
+**Tasks Resolved (absorbed into T-142/T-143):**
+
+| ID | Description | Resolution |
+|----|-------------|------------|
+| T-134 | Deploy: T-131 re-execution (pm2 port fix) | Root cause identified and fixed during T-142: `PORT: 3001` added explicitly to `infra/ecosystem.config.cjs`; backend confirmed on port 3001 via pm2. Effectively Done. |
+| T-135 | Monitor: Sprint 12 health check retry | Sprint 12 feature regression checks were subsumed into T-143's comprehensive health check. All Sprint 12 features verified passing. Effectively Done. |
+
+**Tasks Carried Over (2 tasks — Backlog into Sprint 14):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-136 | User Agent: Sprint 12 feature walkthrough (T-133 carry-over) | Never ran — **5th consecutive carry-over** for this User Agent slot. Note: T-126 scroll-close behavior (one of T-136's test points) was reversed by T-137. Sprint 14 should merge T-136 scope into T-144 with updated expected behavior (scroll keeps popover open, not closed). |
+| T-144 | User Agent: Sprint 13 feature walkthrough | Never ran — requires staging walkthrough of T-137 (DayPopover stay-open) and T-138 (rental car chips). Carry to Sprint 14 as P0. |
+
+---
+
+**Key Decisions:**
+- **T-137 reverses T-126:** Sprint 13 deliberately reversed Sprint 12's scroll-close behavior based on FB-091 feedback. The DayPopover now stays open on scroll and uses document-relative (`position: absolute`) anchoring. This is the desired long-term behavior.
+- **pm2 ecosystem.config.cjs hardened:** Deploy Engineer added `PORT: 3001` explicitly to `infra/ecosystem.config.cjs` env section to prevent inherited-environment `PORT` overrides from silently breaking staging. This resolves the root cause of the Sprint 12 T-131 failure (FB-089).
+- **T-134 merged into T-142:** The pm2 staging port fix was executed as part of the Sprint 13 deploy rather than as a standalone pre-step. This is acceptable in retrospect; future deploys should confirm pm2 config first.
+
+---
+
+**Feedback Summary (Sprint 13):**
+
+*1 Monitor Agent alert filed. User Agent walkthroughs (T-136, T-144) never ran. 2 additional feedback entries submitted by project owner via manual testing.*
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-093 | Monitor Alert | Major | **Tasked → T-145** | `backend/.env.staging` JWT_SECRET is the publicly-known template placeholder `CHANGE-ME-generate-with-openssl-rand-hex-32`. Auth endpoints work but tokens can be forged. Must be rotated before external staging access. Does not block local testing. |
+| FB-094 | Feature Gap | Minor | **Tasked → T-147** | Project owner manual feedback: Calendar needs a "Today" button to jump back to the current month. Visible at all times in calendar header, consistent with prev/next month arrows. |
+| FB-095 | Bug | Major | **Tasked → T-146** | Project owner manual testing: Calendar still defaults to current month (March) even when first event is in May. T-128 implementation is not working on staging — either the deployed build does not include T-128, or there is a date-parsing bug in `getInitialMonth()`. Must investigate and fix. |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- All three implementation tasks (T-137, T-138, T-139) passed Manager code review on the first attempt — zero rework, consistent with all prior sprints.
+- The DayPopover position refactor (T-137) is architecturally cleaner than T-126: document-relative anchoring is the correct approach for portaled dropdowns that should stay anchored to their trigger location, not fixed to the viewport.
+- Frontend test coverage grew to 392 tests (up from 382 in Sprint 12), with 13 new targeted tests covering the scroll no-op behavior, RENTAL_CAR mode guards, edge cases (null arrival, same-day rental, no-time label-only chips).
+- T-142 correctly identified and fixed the root cause of the T-131 failure: the pm2 `ecosystem.config.cjs` did not have an explicit `PORT: 3001` entry, allowing inherited shell environment `PORT` variables to override the `.env.staging` value. Adding the explicit key prevents this ambiguity permanently.
+- Sprint 13 is the first sprint since Sprint 11 where staging is correctly deployed on `https://localhost:3001` via pm2, with Deploy Verified: Yes.
+
+**What Could Improve:**
+- **T-136 and T-144 have never run** — the User Agent walkthrough consistently fails to execute. This is now a 5-sprint pattern. Sprint 14 must treat the User Agent walkthrough as the sprint's primary deliverable and ensure dependencies (staging health, handoff-log entry) are in place before the User Agent phase begins.
+- **FB-093 (JWT_SECRET placeholder) was undetected since Sprint 12** — when `.env.staging` was created in T-125, the QA security checklist did not explicitly verify that placeholder values had been replaced with real secrets. Going forward, the QA security checklist must include: `[x] No placeholder values remain in .env.staging (JWT_SECRET, DATABASE_URL, etc. are real values)`.
+- **T-134/T-135 planning overhead** — separating the pm2 port fix into T-134 and a Monitor retry into T-135 created task-tracking duplication. In future sprints, a staging fix of this scope should be integrated directly into the deploy task description rather than as separate tasks.
+
+**Technical Debt Noted (Carried Forward to Sprint 14+):**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence, will not scale (deferred multiple sprints)
+- ⚠️ B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 — dev-only, no production impact
+- ⚠️ B-022: Production deployment — pending project owner hosting provider decision (12 consecutive sprints; escalated)
+- ⚠️ B-024: Auth rate limit is IP-only — aggressive on shared-IP environments
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests in `formatDate.test.js`
+
+*New from Sprint 13:*
+- ⚠️ FB-093 / T-145: JWT_SECRET in `backend/.env.staging` is a placeholder — must be rotated with `openssl rand -hex 32` before any external staging access
+- ⚠️ T-136 User Agent Sprint 12 walkthrough scope partially obsolete: T-126 (scroll-closes popover) behavior was reversed by T-137; Sprint 14's User Agent walkthrough (T-144 carry) must test the new stay-open behavior instead
+
+*Resolved this sprint:*
+- ✅ FB-089 / T-131 root cause: pm2 staging port misconfiguration — `PORT: 3001` now explicit in `infra/ecosystem.config.cjs`
+- ✅ FB-090 / T-139: api-contracts.md `/land-travels` → `/land-travel` documentation corrected
+- ✅ FB-091 / T-137: DayPopover stays open on scroll, anchored to document position
+- ✅ FB-092 / T-138: Rental car pick-up/drop-off time chips added to calendar
+
+---
+
+**Next Sprint Focus (Sprint 14 Recommendations):**
+
+*Priority order: calendar bug fix → security fix → "Today" button → User Agent walkthrough → production deployment decision.*
+
+**P0 — Pipeline (User Agent walkthrough — overdue 5 sprints):**
+1. **T-152** — User Agent: Conduct comprehensive Sprint 13 + Sprint 14 feature walkthrough on staging. Updated expected behaviors include: DayPopover scroll keeps popover OPEN; rental car pick-up/drop-off chips; calendar defaults to first event month (after T-146 fix); "Today" button visible and functional; Sprint 12/11 regressions clean.
+
+**P1 — Bug Fix (broken feature — T-128 regression):**
+2. **T-146 (FB-095)** — Frontend Engineer: Investigate and fix `getInitialMonth()` — calendar not defaulting to first event month despite T-128 implementation. Check: (a) whether T-128 changes are in the deployed build, (b) data shape from API, (c) date parsing edge cases.
+
+**P1 — Security (before any external staging access):**
+3. **T-145 (FB-093)** — Deploy Engineer: Generate secure JWT_SECRET (`openssl rand -hex 32`), replace in `backend/.env.staging`, restart pm2.
+
+**P2 — Feature Enhancement:**
+4. **T-147 (FB-094)** — Frontend Engineer: Add "Today" button to TripCalendar header. Clicking sets `currentMonth` to current date month/year. Visible at all times alongside prev/next arrows.
+
+**P1 — Production Deployment (blocked on project owner):**
+5. **B-022** — Project owner must review `.workflow/hosting-research.md` and select a hosting provider. **13 consecutive sprints with no decision.**
+
+**P3 — Tech Debt:**
+6. Add `formatTimezoneAbbr()` unit tests (minor debt from Sprint 7)
+7. B-020: Redis-backed rate limiting, B-021: esbuild vuln, B-024: per-account rate limiting
+
+---
+
+*Previous sprint (Sprint #12) archived 2026-03-07. Sprint #13 began and closed 2026-03-07.*
+
+---
+
+### Sprint #14 — 2026-03-07 to 2026-03-07
+
+**Goal:** Fix the T-128 calendar first-event-month regression on staging (FB-095), add a "Today" button to TripCalendar (FB-094), rotate the staging JWT_SECRET placeholder (FB-093), and complete the long-overdue User Agent walkthrough (T-152) covering Sprint 12 + Sprint 13 + Sprint 14 features.
+
+**Goal Met:** Partially — all 7 implementation and infrastructure tasks completed with zero rework, but T-152 (User Agent comprehensive walkthrough) did not run. This is the **6th consecutive sprint** where the User Agent pipeline has not fully closed.
+
+---
+
+**Tasks Completed (7/8):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-145 | Deploy: Rotate JWT_SECRET in `backend/.env.staging` | ✅ Done |
+| T-146 | Frontend: Fix calendar first-event-month async loading bug (FB-095) | ✅ Done |
+| T-147 | Frontend: Add "Today" button to TripCalendar navigation (FB-094) | ✅ Done |
+| T-148 | QA: Security checklist + code review audit for Sprint 14 implementation | ✅ Done |
+| T-149 | QA: Integration testing for Sprint 14 changes + regression checks | ✅ Done |
+| T-150 | Deploy: Sprint 14 staging re-deployment | ✅ Done |
+| T-151 | Monitor: Sprint 14 staging health check (all checks passed) | ✅ Done |
+
+**Tasks Carried Over (1 task — Backlog into Sprint 15):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-152 | User Agent: Comprehensive Sprint 12 + 13 + 14 feature walkthrough | Never ran — **6th consecutive carry-over**. Staging is verified healthy (T-151 Done, pm2 PID 94787, HTTPS port 3001). No blockers remain. Must run as the first task of Sprint 15. |
+
+---
+
+**Key Decisions:**
+- **Calendar async initialization pattern (T-146):** `hasNavigated = useRef(false)` + `useEffect` watching `[flights, stays, activities, landTravels]` prop arrays — when data first becomes non-empty, re-compute `getInitialMonth()` and update `currentMonth`, but only if the user has not already navigated. This pattern should be reused for any similar async-load-then-initialize UI scenarios.
+- **QA security checklist expanded (T-148):** Added permanent checklist item: `[x] No placeholder values remain in backend/.env.staging (JWT_SECRET is a real 32-byte hex secret)`. This prevents future placeholder JWT_SECRET oversights from reaching staging.
+- **Frontend test suite:** Grew to 400 tests (up from 392 in Sprint 13) — 8 new tests for T-146 (21.A–D: async-load, user-nav-before-load, null-date, prev-click) and T-147 (22.A–D: today click, past-month visibility, future-month visibility, nav-after-today).
+
+---
+
+**Feedback Summary (Sprint 14):**
+
+*No new feedback received this sprint. T-152 (User Agent walkthrough) never ran — feedback from the walkthrough will be collected and triaged in Sprint 15.*
+
+*All three Sprint 13 feedback items (FB-093, FB-094, FB-095) were fully addressed and resolved by Sprint 14 implementation tasks.*
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| (none) | — | — | No "New" feedback entries submitted during Sprint 14 — T-152 User Agent walkthrough did not run. |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- All 7 implementation + infrastructure tasks completed in a single sprint day with zero rework — consistent with the zero-rework streak maintained since Sprint 10.
+- T-146 correctly identified and fixed the root cause of the FB-095 regression: `getInitialMonth()` was called synchronously during first render before async trip-detail API responses arrived, causing it to always fall back to the current month. The `hasNavigated` ref + `useEffect` pattern ensures data-driven initialization fires when data lands without overriding explicit user navigation.
+- T-145 (JWT rotation) completed cleanly — the secret was not exposed in any tracked file, and QA independently verified the `.env.staging` value changed from the placeholder.
+- Sprint 14 is the second consecutive sprint where staging is correctly deployed on `https://localhost:3001` via pm2, with Deploy Verified: Yes.
+- QA permanently improved the security checklist with the placeholder-value check — this closes the process gap that allowed the insecure JWT_SECRET to go undetected since Sprint 12.
+
+**What Could Improve:**
+- **T-152 has now failed to run for 6 consecutive sprints.** This is a critical process failure. Sprint 15 must treat T-152 as the only P0 deliverable and ensure the orchestrator runs the User Agent phase first (or immediately after confirming staging health) rather than scheduling it last.
+- **Consider a User Agent carry-over circuit-breaker:** If the User Agent walkthrough carry-over count reaches a threshold (e.g., 5), the orchestrator or Manager should pause the sprint pipeline and alert the project owner rather than silently carrying the task again.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence (deferred multiple sprints)
+- ⚠️ B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 — dev-only, no production impact
+- ⚠️ B-022: Production deployment — pending project owner hosting provider decision (**14 consecutive sprints; project owner action required**)
+- ⚠️ B-024: Auth rate limit is IP-only — aggressive on shared-IP environments
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests in `formatDate.test.js`
+
+*Resolved this sprint:*
+- ✅ FB-093 / T-145: `backend/.env.staging` JWT_SECRET rotated to real 32-byte hex secret — QA-verified
+- ✅ FB-095 / T-146: Calendar first-event-month async race condition fixed; calendar correctly initializes to first event's month when API data arrives after first render
+- ✅ FB-094 / T-147: "Today" button added to TripCalendar header; clicking navigates calendar to current month
+
+---
+
+**Next Sprint Focus (Sprint 15 Recommendations):**
+
+*Priority order: User Agent walkthrough → production deployment decision → tech debt.*
+
+**P0 — User Agent Walkthrough (T-152 — 6th carry-over; must run first):**
+1. **T-152** — User Agent: Run the comprehensive Sprint 12 + 13 + 14 feature walkthrough on HTTPS staging (`https://localhost:3001`). Staging is live and verified. Expected behaviors: calendar opens on first event's month (T-146); "Today" button visible and functional (T-147); DayPopover stays open on scroll (T-137); rental car pick-up/drop-off chips (T-138); Sprint 12/11 regression clean. Submit structured feedback to `feedback-log.md` under Sprint 14 header (since this covers Sprint 14 features, feedback goes in the Sprint 14 section or a dedicated Sprint 15 feedback section — Manager will triage immediately).
+
+**P1 — Production Deployment Decision (B-022 — 14 consecutive sprints):**
+2. **Project owner action required:** Review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. This decision has been blocked for 14 consecutive sprints.
+
+**P3 — Tech Debt (schedule if no new feedback-driven tasks emerge):**
+3. Add `formatTimezoneAbbr()` unit tests to `formatDate.test.js`
+4. B-020: Redis-backed rate limiting (if scale warrants)
+5. B-021: Monitor esbuild vulnerability for upstream fix
+
+---
+
+*Sprint #14 began and closed 2026-03-07.*
+
+---
+
+### Sprint #15 — 2026-03-07 to 2026-03-07
+
+**Goal:** Close the 6th consecutive User Agent walkthrough carry-over (T-152). Fix three project-owner-reported issues: browser tab title ("App" → "triplanner", FB-096), missing favicon link (FB-097), and calendar land travel chips showing wrong location (FB-098). Ship a full QA → Deploy → Monitor → User Agent pipeline for the new fixes. Optional: add `formatTimezoneAbbr()` unit tests (T-153, P3).
+
+**Goal Met:** Partially — all implementation, QA, and deploy tasks completed with zero rework. T-154, T-155, and T-153 are Done; staging is re-deployed and smoke-tested. However, T-152 (User Agent comprehensive walkthrough) did not run — the **7th consecutive carry-over**. T-159 (Monitor health check) and T-160 (User Agent Sprint 15 walkthrough) also remain Backlog pending the T-152 resolution. **Circuit-breaker triggered: Manager must escalate T-152 to project owner.**
+
+---
+
+**Tasks Completed (8/11):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-153 | Frontend: Add `formatTimezoneAbbr()` unit tests (6 tests; all 410 pass) | ✅ Done |
+| T-154 | Frontend: Fix browser tab title ("triplanner") + favicon link in index.html (FB-096, FB-097) | ✅ Done |
+| T-155 | Frontend: Fix calendar land travel chip location — pick-up shows `from_location`, drop-off shows `to_location` (FB-098) | ✅ Done |
+| T-156 | QA: Security checklist + code review audit for T-154, T-155 (all checks passed; 266 backend + 410 frontend tests pass) | ✅ Done |
+| T-157 | QA: Integration testing — title/favicon, chip locations, T-138 regression, Sprint 14/13/11 regression clean | ✅ Done |
+| T-158 | Deploy: Sprint 15 staging re-deployment (frontend rebuilt, pm2 PID 9274, HTTPS port 3001) | ✅ Done |
+| MGR-S15 | Manager: Sprint 15 code review pass — T-153, T-154, T-155 all APPROVED | ✅ Done |
+| BE-S15 | Backend Engineer: Sprint 15 standby review — 266/266 backend tests pass, no backend tasks required | ✅ Done |
+
+**Tasks Carried Over (3 tasks — Backlog into Sprint 16):**
+
+| ID | Description | Carry-Over Reason | Circuit-Breaker |
+|----|-------------|-------------------|-----------------|
+| T-152 | User Agent: Comprehensive Sprint 12+13+14 feature walkthrough | Never ran — **7th consecutive carry-over**. Staging is verified healthy (T-158 Done, pm2 PID 9274, HTTPS port 3001). Zero blockers remain. | ⚠️ CIRCUIT-BREAKER TRIGGERED — Manager must escalate to project owner and halt Sprint 17 planning if T-152 does not execute in Sprint 16. |
+| T-159 | Monitor: Sprint 15 staging health check | T-158 completed and handoff was logged, but Monitor Agent did not run this phase. T-159 is unblocked. | — |
+| T-160 | User Agent: Sprint 15 feature walkthrough (title/favicon/chip location verification) | Blocked by T-159 which did not run. | — |
+
+---
+
+**Feedback Triage (Sprint 15):**
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-096 | UX Issue | Minor | **Resolved** — T-154 Done. Browser tab title corrected to "triplanner" in `frontend/index.html`. |
+| FB-097 | UX Issue | Minor | **Resolved** — T-154 Done. Favicon `<link>` tag added to `frontend/index.html`. |
+| FB-098 | Bug | Major | **Resolved** — T-155 Done. Calendar land travel chips now display `from_location` on pick-up day and `to_location` on drop-off day. 4 new tests (T-155 A–D) pass. |
+
+*All 3 Sprint 15 feedback entries are Resolved. No new feedback was received (T-152 and T-160 walkthroughs did not run).*
+
+---
+
+**Key Decisions:**
+
+- **Land travel chip location pattern (T-155):** `buildEventsMap` now sets `_location: lt.from_location` for the departure-day event and `_location: lt.to_location` for the arrival-day event. Both `DayCell` and `DayPopover.getEventLabel` consume `ev.item._location` as a React text node — no `dangerouslySetInnerHTML`, XSS-safe. T-138 RENTAL_CAR label prefixes ("pick-up", "drop-off") are independent of the location field and were unaffected.
+- **Static HTML changes need no tests (T-154):** `<title>` and `<link rel="icon">` changes to `index.html` are pure markup — no JS behavior is exercised. No unit tests added or required; change verified via `npm run build` + `npm run preview` smoke test.
+- **formatTimezoneAbbr() unit tests (T-153):** 6 tests added with regex matchers that accommodate platform-dependent DST abbreviation strings (e.g., `EDT|EST|ET`, `JST|GMT+9`, `CEST|CET|GMT+2`). Frontend test suite now at 410 tests.
+- **T-152 circuit-breaker policy (updated):** After 7 consecutive carry-overs, silent re-scheduling is no longer acceptable. Sprint 16 planning must treat T-152 as the exclusive P0 gate — no new implementation tasks should be scoped until T-152 confirms execution.
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- All 3 Sprint 15 implementation tasks (T-153, T-154, T-155) completed with zero rework for the 5th consecutive sprint — consistent with the team's strong zero-rework streak since Sprint 10.
+- T-155 fix was surgical and correct: the `_location` field propagation in `buildEventsMap` resolved the bug cleanly without touching T-138 rental-car label prefix logic. QA independently confirmed no regression on T-138 tests (20.A–D all pass).
+- T-154 was a minimal two-line HTML fix — no over-engineering, no unnecessary abstraction. Correct scoping.
+- T-153 (optional P3 tech debt) was completed — closing a long-standing gap in `formatTimezoneAbbr()` test coverage that had been deferred since Sprint 7.
+- QA security checklist (T-156) correctly identified that the favicon `href` is root-relative and safe, and that `_location` renders as a React text node (no XSS vector). Both calls were correct.
+- Staging deploy (T-158) succeeded cleanly: 465ms build, 122 modules, pm2 PID 9274 online, smoke tests passed.
+
+**What Could Improve:**
+- **T-152 has now failed to run for 7 consecutive sprints.** This represents a sustained process failure in the orchestrator pipeline. Sprint 16 must change the sequencing: User Agent walkthrough (T-152) must run as the very first task, before any new implementation begins — not scheduled at the end after the full pipeline completes.
+- **T-159 and T-160 also did not run.** The Monitor → User Agent tail of the Sprint 15 pipeline was left incomplete. The deploy (T-158) completed and the handoff to Monitor was logged, but the Monitor Agent did not execute. Sprint 16 should begin by completing T-159 → T-160 before starting new work.
+- **Escalation cadence:** After 5+ carry-overs, the Manager Agent should have formally escalated to the project owner. The circuit-breaker policy was documented but not acted upon with a visible owner notification. Sprint 16 must include an explicit escalation notice in the handoff-log.
+
+**Technical Debt Noted:**
+
+*Resolved this sprint:*
+- ✅ FB-096 / T-154: Browser tab title fixed to "triplanner"
+- ✅ FB-097 / T-154: Favicon linked in `frontend/index.html`
+- ✅ FB-098 / T-155: Calendar land travel chip location fixed (pick-up = origin, drop-off = destination)
+- ✅ T-153: `formatTimezoneAbbr()` now has 6 dedicated unit tests (deferred since Sprint 7)
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence (deferred multiple sprints)
+- ⚠️ B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 — dev-only, no production impact
+- ⚠️ B-022: Production deployment — pending project owner hosting provider decision (**15 consecutive sprints; project owner action required**)
+- ⚠️ B-024: Auth rate limit is IP-only — aggressive on shared-IP environments
+
+---
+
+**Next Sprint Focus (Sprint 16 Recommendations):**
+
+*Priority order: complete carry-over pipeline → User Agent walkthroughs → new features.*
+
+**P0 — Complete Carry-Over Pipeline (start immediately, in order):**
+1. **T-159** — Monitor: Sprint 15 staging health check (HTTPS, pm2 port 3001, title/favicon, land travel chip locations, Playwright 7/7, regression). Staging is live and has been deploy-verified (T-158 Done). Zero blockers.
+2. **T-152** — User Agent: Comprehensive Sprint 12+13+14 feature walkthrough. **⚠️ Circuit-breaker: if T-152 does not execute in Sprint 16, Manager must escalate to project owner in the handoff-log and halt new Sprint 17 scoping until resolved.** This is the 7th consecutive carry-over — no further silent re-scheduling.
+3. **T-160** — User Agent: Sprint 15 feature walkthrough (title/favicon/chip location verification). Blocked by T-159; runs after Monitor confirms health.
+
+**P1 — Triage Walkthrough Feedback (after T-152 + T-160 complete):**
+4. Triage all feedback from T-152 and T-160 walkthroughs. Create hotfix tasks (H-xxx) immediately for any Critical/Major bugs found.
+
+**P1 — Production Deployment Decision (B-022 — 15 consecutive sprints):**
+5. **Project owner action required:** Review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. This decision has been pending for 15 consecutive sprints with no action.
+
+**P2 — New Features (after walkthroughs clear with no Critical bugs):**
+6. Scope new feature work based on MVP project-brief.md. Core MVP is complete (auth, trip CRUD, flights, stays, activities, calendar, land travel). Candidate sprint themes include: print/export improvements, trip destinations UI enhancement (B-007: multi-destination structured UI), or UX polish based on User Agent feedback.
+
+**P3 — Tech Debt (schedule if sprint capacity allows):**
+7. B-020: Redis-backed rate limiting (if scale warrants)
+8. B-021: Monitor esbuild vulnerability for upstream fix
+
+---
+
+*Sprint #15 began and closed 2026-03-07.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

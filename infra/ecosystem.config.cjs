@@ -14,6 +14,7 @@ module.exports = {
       script: 'src/index.js',
       cwd: './backend',
       instances: 1,
+      exec_mode: 'fork',
       autorestart: true,
       watch: false,
       max_memory_restart: '256M',
@@ -22,6 +23,7 @@ module.exports = {
       restart_delay: 1000,
       env: {
         NODE_ENV: 'staging',
+        PORT: 3001,
       },
       // Log configuration
       error_file: './logs/backend-error.log',

@@ -3,7 +3,7 @@ import { api } from '../utils/api';
 
 /**
  * useTripDetails — fetches all data for a single trip details page.
- * Fetches trip, flights, stays, and activities in parallel.
+ * Fetches trip, flights, stays, activities, and land travel in parallel.
  * Each sub-resource has its own loading/error state so sections render independently.
  */
 export function useTripDetails(tripId) {
@@ -23,6 +23,10 @@ export function useTripDetails(tripId) {
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [activitiesError, setActivitiesError] = useState(null);
 
+  const [landTravels, setLandTravels] = useState([]);
+  const [landTravelsLoading, setLandTravelsLoading] = useState(true);
+  const [landTravelsError, setLandTravelsError] = useState(null);
+
   const fetchAll = useCallback(async () => {
     if (!tripId) return;
 
@@ -31,10 +35,12 @@ export function useTripDetails(tripId) {
     setFlightsLoading(true);
     setStaysLoading(true);
     setActivitiesLoading(true);
+    setLandTravelsLoading(true);
     setTripError(null);
     setFlightsError(null);
     setStaysError(null);
     setActivitiesError(null);
+    setLandTravelsError(null);
 
     // Fetch trip first — if it fails (404/403), don't bother with sub-resources
     try {
@@ -53,14 +59,16 @@ export function useTripDetails(tripId) {
       setFlightsLoading(false);
       setStaysLoading(false);
       setActivitiesLoading(false);
+      setLandTravelsLoading(false);
       return;
     }
 
     // Fetch sub-resources in parallel, each independently
-    const [flightsResult, staysResult, activitiesResult] = await Promise.allSettled([
+    const [flightsResult, staysResult, activitiesResult, landTravelsResult] = await Promise.allSettled([
       api.flights.list(tripId),
       api.stays.list(tripId),
       api.activities.list(tripId),
+      api.land_travel.list(tripId),
     ]);
 
     if (flightsResult.status === 'fulfilled') {
@@ -83,6 +91,19 @@ export function useTripDetails(tripId) {
       setActivitiesError('could not load activities.');
     }
     setActivitiesLoading(false);
+
+    if (landTravelsResult.status === 'fulfilled') {
+      setLandTravels(landTravelsResult.value.data.data || []);
+    } else {
+      // Graceful fallback — land travel API may not be deployed yet during rollout
+      setLandTravels([]);
+      const ltStatus = landTravelsResult.reason?.response?.status;
+      // Only surface error if it's not a 404 (missing endpoint is OK during rollout)
+      if (ltStatus && ltStatus !== 404) {
+        setLandTravelsError('could not load land travel.');
+      }
+    }
+    setLandTravelsLoading(false);
   }, [tripId]);
 
   const refetchFlights = useCallback(async () => {
@@ -124,6 +145,22 @@ export function useTripDetails(tripId) {
     }
   }, [tripId]);
 
+  const refetchLandTravels = useCallback(async () => {
+    setLandTravelsLoading(true);
+    setLandTravelsError(null);
+    try {
+      const res = await api.land_travel.list(tripId);
+      setLandTravels(res.data.data || []);
+    } catch (err) {
+      const status = err.response?.status;
+      if (status !== 404) {
+        setLandTravelsError('could not load land travel.');
+      }
+    } finally {
+      setLandTravelsLoading(false);
+    }
+  }, [tripId]);
+
   return {
     trip,
     tripLoading,
@@ -137,9 +174,13 @@ export function useTripDetails(tripId) {
     activities,
     activitiesLoading,
     activitiesError,
+    landTravels,
+    landTravelsLoading,
+    landTravelsError,
     fetchAll,
     refetchFlights,
     refetchStays,
     refetchActivities,
+    refetchLandTravels,
   };
 }

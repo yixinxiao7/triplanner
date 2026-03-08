@@ -3230,3 +3230,4452 @@ For the Frontend Engineer's reference, suggested CSS module class names:
 ---
 
 *Sprint 5 spec above is marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-25.*
+
+---
+
+## Sprint 6 Design Specifications
+
+---
+
+### Design System — Sprint 6 Additions
+
+The following CSS custom property is added to the `:root` block for land travel event coloring:
+
+```css
+:root {
+  /* ... existing variables ... */
+  --color-flight:       #5D737E;   /* existing — muted steel blue */
+  --color-stay:         #3D8F82;   /* existing — teal */
+  --color-activity:     #C47A2E;   /* existing — amber */
+  --color-land-travel:  #7B6B8E;   /* NEW Sprint 6 — muted purple */
+}
+```
+
+The land travel color (`#7B6B8E`) is a muted purple selected to be perceptually distinct from the existing three event colors while remaining within the Japandi minimal palette. It reads clearly against both `--bg-primary` and `--surface` backgrounds with white text (`--text-primary`).
+
+---
+
+### Spec 12: Land Travel Sub-Resource
+
+**Sprint:** #6
+**Related Tasks:** T-081 (Design), T-087 (Frontend: Edit Page), T-088 (Frontend: Trip Details Display)
+**Status:** Approved
+
+**Description:**
+Land travel is a new sub-resource (Sprint 6) that captures ground transportation: rental cars, buses, trains, rideshares, ferries, and other modes. This spec covers two related screens:
+- **Part A (12A): Land Travel Section on Trip Details Page** — Read-only display of all land travel entries below the Activities section (implemented in T-088).
+- **Part B (12B): Land Travel Edit Page** — `/trips/:id/land-travel/edit` for creating, editing, and deleting land travel entries (implemented in T-087).
+
+The data model for a land travel entry (per the pre-approved schema): `id`, `trip_id`, `mode` (RENTAL_CAR | BUS | TRAIN | RIDESHARE | FERRY | OTHER), `provider` (optional), `from_location`, `to_location`, `departure_date` (YYYY-MM-DD), `departure_time` (HH:MM, optional), `arrival_date` (optional), `arrival_time` (HH:MM, optional), `confirmation_number` (optional), `notes` (optional).
+
+---
+
+### Part A — 12A: Land Travel Section on Trip Details Page
+
+---
+
+#### 12A.1 Section Position & Header
+
+The Land Travel section appears on the Trip Details page (`/trips/:id`) **below the Activities section**, as the last sub-resource section before the page ends. It follows the exact same structural pattern as the Flights, Stays, and Activities sections.
+
+**Page section order (updated for Sprint 6):**
+1. Trip header (name, destinations, date range, edit icon)
+2. TripCalendar component
+3. Flights section
+4. Stays section
+5. Activities section
+6. **Land Travel section** ← new
+
+**Section Container:**
+- Margin-top: 40px (from Activities section's last element)
+- Same max-width and horizontal padding as other sections (1120px centered, 32px horizontal)
+
+**Section Header Row:**
+Follows the standard section header pattern used by Flights/Stays/Activities:
+- Font-size: 11px, font-weight: 600, letter-spacing: 0.12em, uppercase, color: `--text-muted`
+- Layout: `display: flex`, `align-items: center`, `gap: 16px`, margin-bottom: 16px
+- Label: `"land travel"`
+- Horizontal rule: `<hr>` or `flex: 1` div with `border-top: 1px solid var(--border-subtle)` extending to the right
+- Right side (after the rule): `"edit"` link
+  - Font-size: 12px, color: `--accent`, no underline by default, underline on hover
+  - Navigates to `/trips/:id/land-travel/edit`
+  - `aria-label="Edit land travel entries"`
+  - Matches the exact visual style of the "edit" links on Flights, Stays, and Activities section headers
+
+---
+
+#### 12A.2 Empty State
+
+When no land travel entries exist for the trip:
+
+**Empty placeholder container:**
+- `border: 1px dashed rgba(93,115,126,0.3)`, padding: 40px 24px, border-radius: 4px, text-align: center
+- Margin-bottom: 32px
+
+**Content (centered, stacked vertically, gap: 12px):**
+1. Primary text: `"no land travel added yet."` — 13px, `--text-muted`, font-weight: 400
+2. Secondary text: `"add rental cars, trains, buses, rideshares, ferries, and more."` — 11px, `rgba(252,252,252,0.3)`, margin-top: 4px
+3. CTA button: `"+ add land travel"` — secondary button style, small size (padding: 7px 16px, font-size: 12px), margin-top: 16px. On click → navigates to `/trips/:id/land-travel/edit`.
+
+---
+
+#### 12A.3 Loading State
+
+While the section is fetching entries (`GET /trips/:id/land-travel`):
+
+- Show **2 skeleton card placeholders** stacked vertically
+- Each skeleton: background `var(--surface)`, border `1px solid var(--border-subtle)`, border-radius: 4px, height: 84px, width: 100%, shimmer animation (left-to-right gradient sweep, same as existing skeleton patterns)
+- Margin-bottom: 10px between skeleton cards
+
+---
+
+#### 12A.4 Error State
+
+When the fetch fails:
+- Error container: `"could not load land travel."` (13px, `--text-muted`) followed by `"try again"` as an inline link/button (accent color, 13px, cursor: pointer)
+- On click: re-fetch via `GET /trips/:id/land-travel`
+- Error container has the same visual treatment as the flight/stay/activity section error states
+
+---
+
+#### 12A.5 Land Travel Entry Cards
+
+When entries exist, each entry is displayed as a card. Cards are sorted by `departure_date` ASC (matching the API's default sort order).
+
+**Card Container:**
+- Background: `var(--surface)` (`#30292F`)
+- Border: `1px solid var(--border-subtle)`
+- Border-radius: 4px
+- Padding: 16px 20px
+- Margin-bottom: 10px
+- Display: flex, flex-direction: column, gap: 8px
+- Transition: `border-color 150ms ease`
+
+**Card Layout — rows from top to bottom:**
+
+**Row 1 — Identity Row** (flex, align-items: center, gap: 12px, flex-wrap: wrap):
+
+- **Mode Badge** (flex-shrink: 0):
+  - Pill shape matching existing status badge style
+  - Background: `rgba(123, 107, 142, 0.2)` (i.e., `--color-land-travel` at 20% opacity)
+  - Text color: `var(--color-land-travel)` (`#7B6B8E`)
+  - Font-size: 10px, font-weight: 600, letter-spacing: 0.1em, uppercase, padding: 3px 10px, border-radius: 2px
+  - Display labels for each mode:
+    | API Value | Display |
+    |-----------|---------|
+    | `RENTAL_CAR` | `rental car` |
+    | `BUS` | `bus` |
+    | `TRAIN` | `train` |
+    | `RIDESHARE` | `rideshare` |
+    | `FERRY` | `ferry` |
+    | `OTHER` | `other` |
+
+- **Provider** (flex: 1, 12px, `--text-muted`): Display if `provider` is not null/empty (e.g., `"Hertz"`, `"Amtrak"`, `"Uber"`). If absent, omit this element entirely — do NOT show "n/a" or a dash.
+
+**Row 2 — Route Row** (flex, align-items: center, gap: 8px):
+- `from_location` — 14px, font-weight: 500, `--text-primary`
+- `→` arrow — 14px, `--accent`
+- `to_location` — 14px, font-weight: 500, `--text-primary`
+
+**Row 3 — Date/Time Row** (12px, `--text-muted`, flex, gap: 16px, flex-wrap: wrap):
+- **Departure** (always present): Format as `"Depart: Mon Aug 7"` (short weekday + month day from `departure_date`). If `departure_time` is set, append `"· 9:00 AM"` (12h format with AM/PM). Full example: `"Depart: Mon Aug 7 · 9:00 AM"`.
+- **Arrival** (only if `arrival_date` is set): Format as `"Arrive: Tue Aug 8"`. If `arrival_time` is set, append `"· 6:30 PM"`. Full example: `"Arrive: Tue Aug 8 · 6:30 PM"`.
+- Departure and Arrival separated by a vertical bar `"·"` or line separator if both appear on the same row. On narrow viewports, they can wrap to separate lines.
+
+**Row 4 — Details Row** (12px, `--text-muted`, flex, gap: 16px, flex-wrap: wrap):
+- **Confirmation Number** (if present): `"Conf: "` label (10px, `rgba(252,252,252,0.3)`, letter-spacing: 0.04em) followed by the confirmation number value in IBM Plex Mono, 12px, `--text-muted`. Example: `"Conf: XYZ-123456"`.
+- This row is **entirely omitted** if `confirmation_number` is null/empty.
+
+**Row 5 — Notes Row** (conditional):
+- Font-style: italic, 12px, `rgba(252,252,252,0.4)`, line-height: 1.5
+- Displays `notes` text if present
+- Max 2 lines, overflow: ellipsis (`-webkit-line-clamp: 2`, `display: -webkit-box`, `-webkit-box-orient: vertical`, `overflow: hidden`)
+- Omitted entirely if `notes` is null/empty
+
+---
+
+#### 12A.6 Multiple Entries
+
+When multiple land travel entries exist:
+- All cards are stacked vertically, sorted by `departure_date` ASC (oldest first), then by `departure_time` ASC NULLS LAST (entries without times after those with times on the same date)
+- No section sub-headers between entries (entries from different dates are not grouped — they are presented in a flat sorted list)
+- Margin-bottom: 10px between cards; last card has no bottom margin before the next page section
+
+---
+
+#### 12A.7 Calendar Integration
+
+The land travel section passes its data to `TripCalendar.jsx` for calendar display:
+- `landTravels` array is passed as a prop alongside `flights`, `stays`, `activities`
+- Calendar renders a land travel event chip on `departure_date` using `--color-land-travel` (`#7B6B8E`)
+- If `arrival_date` is set and differs from `departure_date`, also render a landing/arrival chip on `arrival_date`
+- Event label format: `"[mode label] to [to_location]"` (e.g., `"train to Los Angeles"`, `"rental car to Las Vegas"`)
+- Land travel event time display follows the calendar enhancement spec (see Spec 12 Calendar Addendum)
+
+---
+
+#### 12A.8 Responsive Behavior — Trip Details Land Travel Section
+
+| Breakpoint | Layout |
+|------------|--------|
+| Desktop (≥768px) | Cards full-width. Route row and date/time row on single lines. Provider and mode badge on same row. |
+| Mobile (<768px) | Cards full-width. All rows wrap as needed. Route arrow (`→`) stays inline. Provider may appear below mode badge if wrapping. Page padding: 16px horizontal. |
+
+---
+
+#### 12A.9 Accessibility — Trip Details Land Travel Section
+
+- Section header: `<h2>` or equivalent landmark for "land travel" (styled per spec, removes browser default styles)
+- Edit link: `aria-label="Edit land travel entries"`
+- Empty state CTA button: `aria-label="Add land travel entries"`
+- Error retry link/button: `role="button"` if implemented as `<a>`, or use `<button>` with matching styles
+- Mode badges: plain text — no aria annotation needed (badge text is readable)
+- Cards: each card as `<article>` or a `<div>` without special role — they are display-only (no interactions except the edit link which is in the section header)
+
+---
+
+### Part B — 12B: Land Travel Edit Page
+
+---
+
+#### 12B.1 Route & Navigation
+
+**Route:** `/trips/:id/land-travel/edit`
+- Registered in `App.jsx` behind `<ProtectedRoute>`
+- Reached via the "edit" link in the Land Travel section header on Trip Details page
+- Also reachable via the empty state CTA "add land travel" button
+
+**Page background:** `--bg-primary` (`#02111B`), same as all other edit pages.
+
+**Page Header Row** (flex, justify-content: space-between, align-items: flex-start, padding-top: 48px, padding-bottom: 32px, max-width: 1120px, 32px horizontal padding):
+- **Left:** Back link `"← trip details"` (12px, `--accent`, no underline, underline on hover). Navigates to `/trips/:id`. `aria-label="Back to trip details"`.
+- **Right:** Page title `"edit land travel"` (24px, font-weight: 400, `--text-primary`, IBM Plex Mono). No uppercase. No letter-spacing.
+
+---
+
+#### 12B.2 Page Structure (top to bottom)
+
+1. Navbar (56px, sticky — unchanged)
+2. Page header row (back link + title)
+3. **Entries section** — existing entries rendered as editable row-cards (fetched on mount)
+4. **Empty state placeholder** — shown when no entries exist yet, in place of entries section
+5. **"+ add entry" button row** — always visible below entries (or below empty state)
+6. **Action row** — "cancel" + "save" buttons
+7. **Bottom "done editing" convenience button** — repeated at page bottom
+
+---
+
+#### 12B.3 Entries: Multi-Row Card Form
+
+On page mount, fetch `GET /trips/:id/land-travel`. Each entry renders as an independent **editable card**. This follows the ActivitiesEditPage pattern — each row is a self-contained card with all fields labeled inline (not a table/header-row layout).
+
+**Row Card Container:**
+- Background: `var(--surface)` (`#30292F`)
+- Border: `1px solid var(--border-subtle)`
+- Border-radius: 4px
+- Padding: 20px
+- Margin-bottom: 12px
+- Display: flex, flex-direction: column, gap: 16px
+- `role="group"`, `aria-label="Land travel entry [n]"` (1-based index)
+
+**Row Card Internal Layout:**
+Within each row card, fields are arranged in a 2-column CSS grid on desktop:
+- `display: grid`
+- `grid-template-columns: 1fr 1fr`
+- `gap: 12px 24px`
+- On mobile (<768px): single column (`grid-template-columns: 1fr`)
+
+**Field Grid Layout (per row card):**
+
+| Grid Row | Column 1 | Column 2 |
+|----------|----------|----------|
+| 1 | MODE (select, required) | PROVIDER (text, optional) |
+| 2 | FROM (text, required) | TO (text, required) |
+| 3 | DEPARTURE DATE (date, required) | DEPARTURE TIME (time, optional) |
+| 4 | ARRIVAL DATE (date, optional) | ARRIVAL TIME (time, optional) |
+| 5 | CONFIRMATION # (text, optional) | *(Delete button area — see below)* |
+| 6 | NOTES (textarea, optional) — **spans full 2 columns** | |
+
+**Field Specifications:**
+
+| Field | Label | Input Type | Required | Placeholder | Notes |
+|-------|-------|-----------|----------|-------------|-------|
+| `mode` | `MODE` | `<select>` | Yes | — | See options below |
+| `provider` | `PROVIDER` | `text` | No | `e.g. Hertz, Amtrak, Uber` | Max 100 chars |
+| `from_location` | `FROM` | `text` | Yes | `e.g. San Francisco (SFO)` | Max 100 chars |
+| `to_location` | `TO` | `text` | Yes | `e.g. Los Angeles (LAX)` | Max 100 chars |
+| `departure_date` | `DEPARTURE DATE` | `date` | Yes | — | `YYYY-MM-DD` internally |
+| `departure_time` | `DEPARTURE TIME` | `time` | No | — | `HH:MM` internally |
+| `arrival_date` | `ARRIVAL DATE` | `date` | No | — | Must be ≥ departure_date if set |
+| `arrival_time` | `ARRIVAL TIME` | `time` | No | — | arrival_date must also be set if arrival_time is set |
+| `confirmation_number` | `CONFIRMATION #` | `text` | No | `e.g. RES-12345` | Max 50 chars |
+| `notes` | `NOTES` | `textarea` | No | `any additional notes...` | Max 500 chars, rows=2, resize: vertical |
+
+All fields follow the **Form Pattern** from the Design System:
+- Label: 11px, font-weight: 500, letter-spacing: 0.08em, uppercase, `--text-muted`, `margin-bottom: 6px`
+- Input/select: full-width, background `#3F4045`, border `1px solid rgba(93,115,126,0.3)`, focus border `#5D737E`, text `#FCFCFC`, padding: 10px 14px, border-radius: 2px, font: IBM Plex Mono 14px
+- Time/date inputs: same styling; on Chrome, the spinner/calendar icons should use `color-scheme: dark` to inherit the light text color
+
+**MODE Select Options (in order):**
+1. `"Select mode"` — value `""`, disabled, selected by default for new rows. Not shown for existing entries (they have a pre-selected mode).
+2. `"Rental Car"` — value `RENTAL_CAR`
+3. `"Bus"` — value `BUS`
+4. `"Train"` — value `TRAIN`
+5. `"Rideshare"` — value `RIDESHARE`
+6. `"Ferry"` — value `FERRY`
+7. `"Other"` — value `OTHER`
+
+**Delete Button (per row card):**
+- Position: Row 5, Column 2 area — bottom-right of the card, vertically aligned with the CONFIRMATION # field
+- Alternatively: top-right corner of the card (absolute positioned within the card, top: 12px, right: 12px) — Frontend Engineer's choice based on what works better with the grid layout
+- Icon: `×` (16px × 16px) or a small trash SVG icon
+- Color: `--text-muted`, hover: `rgba(220,80,80,0.8)`
+- Transition: `color 150ms ease`
+- `aria-label="Remove land travel entry [n]"` (1-based index)
+- **For new (unsaved) rows:** On click → immediately remove the card from form state. No confirmation required (no API call yet).
+- **For existing entries (loaded from API):** On click → replace card content with inline delete confirmation (see 12B.6 below).
+
+---
+
+#### 12B.4 Empty State (No Entries)
+
+When no land travel entries exist for the trip (fresh trip or all entries deleted before save):
+
+**Empty Placeholder** (shown above the "+ add entry" button):
+- `border: 1px dashed rgba(93,115,126,0.3)`, padding: 40px 24px, border-radius: 4px, text-align: center, margin-bottom: 16px
+- Primary text: `"no land travel entries yet."` — 13px, `--text-muted`
+- Secondary text: `"click + to add your first entry."` — 11px, `rgba(252,252,252,0.3)`, margin-top: 4px
+
+---
+
+#### 12B.5 "+ Add Entry" Button Row
+
+Positioned below the entries (or below the empty state placeholder):
+
+- Button: `<button>` styled as a link
+- Text: `"+ add entry"`
+- Font-size: 12px, color: `--accent`, background: transparent, border: none, cursor: pointer, padding: 8px 0
+- No underline default, underline on hover
+- `aria-label="Add a new land travel entry"`
+- Transition: `color 150ms ease`
+
+**On click:**
+1. Append a new blank row card below all existing entries
+2. The new row has no `id` (it is "new" — not yet saved to the API)
+3. Scroll the new row into view (smooth scroll)
+4. Focus the MODE `<select>` of the newly added row
+
+---
+
+#### 12B.6 Inline Delete Confirmation (Existing Entries Only)
+
+When the delete button is clicked on a row card that corresponds to an existing entry (has an API `id`):
+
+Replace the card's content with a confirmation row (maintain card background/border/padding):
+- Layout: flex, align-items: center, gap: 12px, justify-content: space-between
+- Text: `"delete this land travel entry?"` — 13px, `--text-primary`, flex: 1
+- Buttons (flex-shrink: 0, flex, gap: 8px):
+  - `"yes, delete"` — danger button style (padding: 6px 14px, font-size: 11px)
+  - `"cancel"` — secondary button style (padding: 6px 14px, font-size: 11px)
+
+**`"yes, delete"` behavior:**
+- Call `DELETE /trips/:id/land-travel/:entryId`
+- While waiting: show inline spinner (16px) in place of the "yes, delete" text, disable both buttons
+- **On success:** Remove card from DOM with fade-out animation (`opacity 0 → 0`, `height 0`, `margin 0` over 300ms), then remove from React state.
+- **On API failure:** Restore original card content (undo confirmation state) + show bottom-right toast: `"could not delete entry. please try again."` (auto-dismiss 4s)
+
+**`"cancel"` behavior:**
+- Immediately restore the original card content (all field values intact)
+
+---
+
+#### 12B.7 Save / Cancel Action Row
+
+**Action Row container** (flex, justify-content: flex-end, gap: 12px, margin-top: 32px, padding-top: 20px, border-top: `1px solid var(--border-subtle)`):
+
+**`"cancel"` button** (secondary button style):
+- On click: navigate to `/trips/:id` immediately, without any API calls
+- No confirmation required (consistent with other edit pages)
+
+**`"save"` button** (primary button style):
+- On click: trigger batch save (see 12B.8 below)
+- While saving: replace button label with inline spinner (16px, white, 1s rotation), button disabled
+- `aria-disabled="true"` during save (in addition to HTML `disabled`)
+
+---
+
+#### 12B.8 Batch Save Logic
+
+Triggered when the user clicks "save":
+
+**Step 1: Client-side validation (see 12B.9).**
+- If any errors → do NOT call API. Highlight invalid fields. Scroll to the first invalid row.
+
+**Step 2: Diff form state against loaded state.**
+- New rows (no `id`): must POST
+- Modified existing rows (any field changed): must PATCH
+- Deleted existing rows (confirmed via inline delete): already deleted via individual DELETE calls — do not need to be included in batch save. The batch save only handles new + modified.
+
+**Step 3: Issue API calls.**
+- `POST /api/v1/trips/:tripId/land-travel` for each new row (with all non-empty fields)
+- `PATCH /api/v1/trips/:tripId/land-travel/:entryId` for each modified row (with changed fields)
+- Use `Promise.allSettled()` to run all calls in parallel — tolerates partial failure
+
+**Step 4: Handle results.**
+- **All success:** navigate to `/trips/:id`
+- **Partial failure:** stay on edit page. Show error banner (see 12B.11). Rows that failed to save remain in the form with their data intact. Rows that succeeded remain in the form (now with server-assigned `id` for POSTs). User can correct and retry.
+- **Total failure (all calls failed):** same as partial failure.
+
+---
+
+#### 12B.9 Client-Side Validation
+
+Validation triggers on "save" attempt. Applied per row card:
+
+| Field | Rule | Error Message |
+|-------|------|---------------|
+| `mode` | Required (not empty string) | `"mode is required"` |
+| `from_location` | Required, non-empty after trim | `"from location is required"` |
+| `to_location` | Required, non-empty after trim | `"to location is required"` |
+| `departure_date` | Required, valid date | `"departure date is required"` |
+| `arrival_date` | If provided, must be ≥ `departure_date` | `"arrival date must be on or after departure date"` |
+| `arrival_time` | If provided, `arrival_date` must also be set | `"set an arrival date when using arrival time"` |
+
+**Error rendering (per field):**
+- Inline error text below the field: 12px, `rgba(220,80,80,0.9)`, appears immediately on failed save
+- Border of the offending input: changes to `1px solid rgba(220,80,80,0.7)`
+- Error clears on the first user input in that field (change event)
+- `role="alert"` on the error element
+
+**Row card with validation errors:**
+- Add `border-left: 3px solid rgba(220,80,80,0.5)` to the card's left border to draw attention to the entire invalid row
+
+**Scroll behavior on validation failure:**
+- After validation, `scrollIntoView({ behavior: 'smooth', block: 'start' })` on the first invalid row card
+
+---
+
+#### 12B.10 Page Loading State
+
+While fetching existing entries on mount (`GET /trips/:id/land-travel`):
+
+- Show **2 skeleton card placeholders** (shimmer animation):
+  - Each: background `var(--surface)`, border `1px solid var(--border-subtle)`, border-radius: 4px, height: 180px (tall, approximating a form card with multiple rows), width: 100%
+  - Margin-bottom: 12px between skeletons
+- `"save"` and `"cancel"` buttons: rendered but disabled (`opacity: 0.4`) during loading
+- `"+ add entry"` button: hidden during loading
+
+**If fetch fails (initial load error):**
+- Show error container: `"could not load your land travel entries."` (13px, `--text-muted`) + `"try again"` link/button (accent color)
+- On retry: re-fetch and render
+- `"save"` and `"cancel"` still accessible (user can still save without pre-loaded data if needed, though practically empty on error)
+
+---
+
+#### 12B.11 Save Error Banner
+
+When the batch save has one or more failures:
+
+- Banner appears between the entries section and the action row
+- Background: `rgba(220,80,80,0.08)`, border: `1px solid rgba(220,80,80,0.25)`, border-radius: 2px, padding: 12px 16px, margin-top: 16px
+- Text: `"some entries could not be saved. please try again."` — 13px, `--text-primary`
+- `role="alert"`, `aria-live="assertive"` — announced to screen readers immediately
+- Banner dismisses automatically if the user edits any field (or on next save attempt)
+
+---
+
+#### 12B.12 Bottom Convenience Footer
+
+Below the action row (margin-top: 40px, padding-top: 24px, border-top: `1px solid var(--border-subtle)`):
+- Repeat the `"done editing"` primary button:
+  - Same behavior: navigate to `/trips/:id` (this is the equivalent of "cancel" with a friendlier label — no API call)
+  - This is purely for UX convenience on pages that may become long with many entries
+- Secondary button style (not primary — to distinguish from "save" which is the real save action):
+  - Text: `"← back to trip details"`
+  - Background: transparent, border: `1px solid rgba(93,115,126,0.5)`, color: `--text-primary`, padding: 10px 24px, border-radius: 2px
+  - Hover: `rgba(252,252,252,0.05)` background
+
+---
+
+#### 12B.13 Responsive Behavior — Land Travel Edit Page
+
+| Breakpoint | Layout |
+|------------|--------|
+| Desktop (≥768px) | 2-column CSS grid within each row card. Page header: back link left, title right. Action row: right-aligned. |
+| Mobile (<768px) | Single-column form stack within each row card. All inputs full-width. Page header stacks: title on top, back link below (or both left-aligned, stacked). Action row: buttons full-width, stacked ("save" on top, "cancel" below). Horizontal page padding: 16px. |
+
+**Time/date inputs on mobile:**
+- `<input type="time">` and `<input type="date">` use native mobile pickers — acceptable for Sprint 6. Ensure they are full-width on mobile.
+- Clock icon (`::webkit-calendar-picker-indicator`) color: Set via `color-scheme: dark` on the input or `filter: invert(1)` on the picker icon. This resolves the same issue as FB-077 (activity edit clock icon).
+
+---
+
+#### 12B.14 Accessibility — Land Travel Edit Page
+
+- `<h1>` semantically for "edit land travel" (styled per spec, removes browser default h1 margin/size)
+- Back link: `aria-label="Back to trip details"`
+- Each row card: `role="group"`, `aria-label="Land travel entry [n]"` (1-based, e.g., "Land travel entry 1")
+- All inputs: explicit `<label htmlFor="[inputId]">` with matching `id` on input
+- Mode `<select>`: `<label>` explicitly associated via `htmlFor`
+- Error messages: `role="alert"` on each field-level error element
+- Save error banner: `role="alert"`, `aria-live="assertive"`
+- Delete button per row: `aria-label="Remove land travel entry [n]"`
+- `"+ add entry"` button: `aria-label="Add a new land travel entry"`
+- Save button during submit: `aria-disabled="true"` + HTML `disabled` attribute
+- Focus management:
+  - When `"+ add entry"` clicked → focus moves to the MODE `<select>` of the new row
+  - When a row is deleted → focus moves to the `"+ add entry"` button (or next row if available)
+  - After failed validation → focus moves to the first invalid field
+  - After successful save → navigation to `/trips/:id` (focus handled naturally by page load)
+- Keyboard: All interactive elements reachable via Tab. No focus traps (this is not a modal). The batch save can be submitted by pressing Enter within a text field.
+
+---
+
+### Spec 12 Addendum — Calendar Enhancements
+
+**Sprint:** #6
+**Related Tasks:** T-082 (Design), T-089 (Frontend Implementation)
+**Status:** Approved
+
+**Addendum to:** Spec 7 (Calendar Component + Trip Date Range UI, Sprint #2)
+
+**Description:**
+This addendum describes two enhancements to the existing `TripCalendar.jsx` component delivered in Sprint 2 (T-035). No structural changes to the calendar grid, month navigation, or event-to-date mapping logic are required — only the chip rendering and overflow handling are updated.
+
+Enhancement 1: **Event time display** — compact time indicator inside calendar event chips.
+Enhancement 2: **"+X more" clickable overflow popover** — overflow label becomes an interactive button that opens a day-detail popover.
+
+---
+
+#### CAL-1: Event Time Display
+
+---
+
+##### CAL-1.1 Overview
+
+Calendar event chips currently display only the event name/label. This enhancement adds a compact time indicator as a secondary element within the chip, giving users an at-a-glance schedule view without leaving the calendar.
+
+**Design principle:** Time display is secondary to the event name — it must not make chips taller or more cluttered on full-event days. If a chip is too narrow (compact mode), the time element may be omitted.
+
+---
+
+##### CAL-1.2 Compact Time Format
+
+**Helper function `formatCalendarTime(input)`** — add to `frontend/src/utils/formatDate.js`:
+
+- Accepts `HH:MM` or `HH:MM:SS` time strings (from activities and land travel `_time` fields)
+- Accepts a JS `Date` object or ISO string (for timezone-converted flights/stays)
+- Returns a compact 12-hour string: hours + abbreviated meridiem + minutes only if non-zero
+  - `"09:00"` → `"9a"`
+  - `"14:30"` → `"2:30p"`
+  - `"12:00"` → `"12p"`
+  - `"00:00"` → `"12a"` (midnight)
+  - `"10:00"` → `"10a"`
+  - `"09:45"` → `"9:45a"`
+- Returns `null` if input is `null`, `undefined`, or empty string
+
+---
+
+##### CAL-1.3 Time Sources Per Event Type
+
+| Event Type | Time Source | Timezone Handling | Fallback |
+|------------|-------------|-------------------|---------|
+| **Flight** | `departure_at` (UTC ISO string) | Convert via `departure_tz` using `Intl.DateTimeFormat` | No time shown if `departure_at` is null |
+| **Stay** | `check_in_at` (UTC ISO string) | Convert via `check_in_tz` using `Intl.DateTimeFormat` | No time shown if `check_in_at` is null |
+| **Activity** | `start_time` (`HH:MM:SS` string) | No conversion needed (local date + time, no timezone) | No time shown if `start_time` is null |
+| **Land Travel** | `departure_time` (`HH:MM` string) | No conversion needed | No time shown if `departure_time` is null |
+
+For timezone-aware events (flights/stays), use the existing `Intl.DateTimeFormat` approach already present in `TripCalendar.jsx`. Extract hours and minutes from the local time, then pass to `formatCalendarTime`.
+
+---
+
+##### CAL-1.4 Updated Event Chip Structure
+
+**Current chip structure (Sprint 2):**
+```
+[● EventName ]
+```
+
+**Updated chip structure (Sprint 6):**
+```
+[● EventName ]
+[  9a        ]   ← new time element (when time available)
+```
+
+**Time element spec:**
+```html
+<span className={styles.eventTime}>9a</span>
+```
+
+- Font-size: 10px (one size smaller than event name at 11px)
+- Color: inherit from chip (white text), at `opacity: 0.7`
+- Display: `block` (below event name, same left alignment)
+- Margin-top: 1px
+- **Only rendered when `formatCalendarTime()` returns a non-null value**
+- **Not rendered for stay multi-day span chips on day 2+** (show check-in time on first day chip only; subsequent span chips have no time)
+
+**Chip container height:** Increase by ~4px to accommodate the time element. Ensure this does not break day cell layout on months with 6 rows (verify no overflow clipping).
+
+---
+
+##### CAL-1.5 Stay Multi-Day Spans
+
+The existing calendar renders stay spans across multiple day cells. Sprint 6 behavior:
+- **First day of stay span** (check-in date): Show check-in time (e.g., `"4p"`)
+- **Subsequent days of same stay span**: Show no time element (chip height stays reduced)
+- The stay span chip label remains as-is (accommodation name, e.g., `"Hyatt Regency SF"`)
+
+---
+
+#### CAL-2: "+X more" Clickable Day Overflow Popover
+
+---
+
+##### CAL-2.1 Current Behavior
+
+When a day cell has more events than can be displayed (typically > 3), the calendar renders a `"+X more"` text element as a non-interactive `<span>`. Clicking it does nothing.
+
+---
+
+##### CAL-2.2 Updated Element: `<button>` Not `<span>`
+
+The `"+X more"` element must be changed from a `<span>` to a `<button>`:
+
+```html
+<!-- Before (Sprint 2) -->
+<span className={styles.moreLabel}>+2 more</span>
+
+<!-- After (Sprint 6) -->
+<button
+  className={styles.moreButton}
+  onClick={() => handleOpenPopover(dayKey, buttonRef)}
+  aria-label={`Show all ${totalEventsOnDay} events for ${formattedDate}`}
+  aria-expanded={openPopoverDay === dayKey}
+  aria-haspopup="dialog"
+  ref={buttonRef}
+>
+  +2 more
+</button>
+```
+
+**Button visual design** (same appearance as current `"+X more"` span):
+- Background: transparent
+- Border: none
+- Padding: 0
+- Cursor: pointer
+- Font: IBM Plex Mono, 11px, font-weight: 500, `--text-muted`
+- Hover: color transitions to `--accent` (`#5D737E`)
+- Transition: `color 150ms ease`
+- `outline: none` default; on `:focus-visible`: `outline: 2px solid var(--accent)`, `outline-offset: 2px`
+
+---
+
+##### CAL-2.3 State Management
+
+Add to `TripCalendar.jsx`:
+
+```javascript
+const [openPopoverDay, setOpenPopoverDay] = useState(null); // null | "YYYY-MM-DD"
+const popoverRef = useRef(null);        // ref to the popover container
+const triggerButtonRef = useRef(null);  // ref to the "+X more" button that was clicked
+```
+
+**Open popover:**
+```javascript
+function handleOpenPopover(dayKey, buttonElement) {
+  triggerButtonRef.current = buttonElement;
+  setOpenPopoverDay(dayKey);
+  // After state update + render, focus the popover (via useEffect)
+}
+```
+
+**Close popover:**
+```javascript
+function handleClosePopover() {
+  setOpenPopoverDay(null);
+  // Return focus to the trigger button
+  if (triggerButtonRef.current) {
+    triggerButtonRef.current.focus();
+  }
+}
+```
+
+**Keyboard Escape handler** (useEffect):
+```javascript
+useEffect(() => {
+  if (!openPopoverDay) return;
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      handleClosePopover();
+    }
+  };
+  document.addEventListener('keydown', handleKeyDown);
+  return () => document.removeEventListener('keydown', handleKeyDown);
+}, [openPopoverDay]);
+```
+
+**Click outside handler** (useEffect):
+```javascript
+useEffect(() => {
+  if (!openPopoverDay) return;
+  const handleMouseDown = (e) => {
+    if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+      handleClosePopover();
+    }
+  };
+  document.addEventListener('mousedown', handleMouseDown);
+  return () => document.removeEventListener('mousedown', handleMouseDown);
+}, [openPopoverDay]);
+```
+
+---
+
+##### CAL-2.4 Popover Container
+
+Rendered as a sibling to the day cells, or as a portal appended to `document.body`. Recommendation: render inline within the calendar grid as an absolutely-positioned element anchored to the day cell for simplicity. A React portal is also acceptable if the inline approach causes z-index issues.
+
+**Popover container element:**
+```html
+<div
+  role="dialog"
+  aria-modal="true"
+  aria-label={`Events for ${formattedDate}`}
+  tabIndex={-1}
+  ref={popoverRef}
+  className={styles.dayPopover}
+>
+  ...
+</div>
+```
+
+**Popover CSS (`.dayPopover`):**
+- Position: `absolute`
+- Z-index: 100 (above all calendar content, below navbar and modals)
+- Width: 240px
+- Background: `var(--surface)` (`#30292F`)
+- Border: `1px solid var(--border-subtle)`
+- Border-radius: 4px
+- Box-shadow: `0 8px 24px rgba(0, 0, 0, 0.4)` (the only element in the design that uses a box shadow — justified for overlay behavior; the shadow communicates elevation)
+- Padding: 16px
+- Max-height: 320px
+- Overflow-y: auto
+- `scrollbar-width: thin` (Firefox), `scrollbar-color: var(--accent) transparent`
+
+**Smart positioning:**
+- Default: renders **below** the day cell (`top: 100%`, `left: 0`)
+- If the day is in the **bottom 2 rows** of the calendar grid: render **above** (`bottom: 100%`, `top: auto`) to prevent viewport clipping
+- If the day is in the **rightmost 2 columns** (typically Fri/Sat positions): align to right edge of cell (`left: auto`, `right: 0`)
+- The Frontend Engineer may implement a simpler fixed positioning if the smart-positioning logic is complex — document the choice.
+
+**Focus on open:** After `setOpenPopoverDay` causes the popover to render, a `useEffect` with `openPopoverDay` dependency focuses `popoverRef.current`:
+```javascript
+useEffect(() => {
+  if (openPopoverDay && popoverRef.current) {
+    popoverRef.current.focus();
+  }
+}, [openPopoverDay]);
+```
+
+---
+
+##### CAL-2.5 Popover Content
+
+**Popover Header:**
+- Flex row, `justify-content: space-between`, `align-items: center`, margin-bottom: 8px
+- **Date label:** `"Wednesday, August 7"` — 12px, font-weight: 600, `--text-primary`, letter-spacing: 0.04em. Use `Intl.DateTimeFormat` with `{ weekday: 'long', month: 'long', day: 'numeric' }` for formatting.
+- **Close button:** `<button>` with `×` character or small X SVG. Font-size: 16px, `--text-muted`, hover: `--text-primary`. Background: transparent, border: none, cursor: pointer, padding: 2px 4px. `aria-label="Close events popover"`. Transition: `color 150ms ease`.
+
+**Divider:** `<hr>` styled as `border: none; border-top: 1px solid var(--border-subtle); margin: 8px 0 12px;`
+
+**Event List:**
+Shows **all events for that day** — including those already visible in the calendar cell (the popover is a full list, not just the overflow). Sorted in the same order as the calendar's event priority (flights first, then stays, then activities, then land travel — within each type sorted by time).
+
+Each event item:
+- Layout: flex, align-items: flex-start, gap: 8px, padding: 6px 0
+- Border-bottom: `1px solid rgba(93,115,126,0.08)` (last item: no border-bottom)
+
+- **Color dot** (flex-shrink: 0):
+  - Size: 8px × 8px circle (`border-radius: 50%`)
+  - Background: event type color (`--color-flight`, `--color-stay`, `--color-activity`, or `--color-land-travel`)
+  - Margin-top: 4px (align with first line of text block)
+  - `aria-hidden="true"` (decorative)
+
+- **Text block** (flex: 1, display: flex, flex-direction: column, gap: 2px):
+  - **Event name** (13px, font-weight: 400, `--text-primary`, line-height: 1.4): Full event name without truncation in the popover.
+    - Flight: `"[Airline] [FlightNumber]"` (e.g., `"Delta DL1234"`)
+    - Stay: accommodation name (e.g., `"Hyatt Regency SF"`)
+    - Activity: activity name (e.g., `"Fisherman's Wharf"`)
+    - Land Travel: `"[mode label] to [to_location]"` (e.g., `"Train to Los Angeles"`)
+  - **Time sub-label** (11px, `--text-muted`, margin-top: 2px): Format varies by type:
+    | Event Type | Time Format in Popover |
+    |------------|----------------------|
+    | Flight | `"dep. 9a"` or `"dep. 9a → arr. 11a"` if arrival is same day |
+    | Stay — check-in day | `"check-in 4p"` |
+    | Stay — multi-day span (not check-in) | `"stay"` (no time) |
+    | Stay — check-out day | `"check-out 11a"` |
+    | Activity | `"9a – 2p"` (if both start and end time) or `"9a"` (start only) |
+    | Land Travel | `"dep. 10a"` or no time if `departure_time` is null |
+    | Any — no time available | Omit time sub-label entirely |
+
+---
+
+##### CAL-2.6 Responsive Behavior — Popover
+
+| Breakpoint | Popover Behavior |
+|------------|-----------------|
+| Desktop (≥768px) | Inline absolute positioning as described above (anchored to day cell, smart repositioning for edge cases) |
+| Mobile (<768px) | Full-width bottom sheet. Position: fixed, bottom: 0, left: 0, right: 0. Background: `var(--surface)`. Border-radius: 4px 4px 0 0. Max-height: 70vh. Overflow-y: auto. Semi-transparent backdrop overlay: `rgba(0,0,0,0.5)` fixed behind the sheet. Slide-up animation: `transform: translateY(0)` with `transition: transform 250ms ease`. Close on backdrop click. |
+
+---
+
+##### CAL-2.7 Accessibility Summary — Calendar Enhancements
+
+| Requirement | Implementation |
+|-------------|---------------|
+| `"+X more"` keyboard accessible | Changed from `<span>` to `<button>` — Tab-reachable, Enter/Space activates |
+| Screen reader announcement | `aria-label` on button with total count + date |
+| Popover state | `aria-expanded` on button reflects open/closed state |
+| Popover semantics | `role="dialog"`, `aria-modal="true"`, `aria-label` with formatted date |
+| Close on Escape | `useEffect` keydown listener on document while popover open |
+| Focus management | Focus moves to popover on open; returns to trigger button on close |
+| Click outside closes | `mousedown` listener on document checks if click was outside popover |
+| Color dots | `aria-hidden="true"` (decorative, text already conveys event type) |
+| Time display | Compact format accessible as plain text in chip (no aria needed) |
+
+---
+
+*Sprint 6 specs above are marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-27.*
+
+---
+
+### Spec 13: Sprint 7 — Calendar Arrival/Checkout Time Display + Trip Notes Field
+
+**Sprint:** #7
+**Related Tasks:** T-096 (Design), T-101 (Frontend: Calendar), T-103 (Backend: Notes API), T-104 (Frontend: Notes UI)
+**Status:** Approved
+**Collapses:** T-102 (merged into T-096 per Manager pre-approval — scope was manageable in a single spec)
+
+**Description:**
+Spec 13 covers two Sprint 7 deliverables that were designed in parallel and are both unblocked:
+
+1. **CAL-3 — Calendar Time Display Enhancements:** Extends the existing calendar chip rendering (Spec 12 Addendum, CAL-1) to also show the checkout time on the last day of a multi-day stay and the arrival time on the arrival day for flights and land travel. These are additive changes to the chip structure — the existing check-in and departure time logic is preserved.
+
+2. **Trip Notes — New Feature:** Adds a freeform notes/description field to the trip resource. Notes are displayed on the `TripDetailsPage` with inline editing. A truncated preview appears on `TripCard` on the home page. The backend adds a `notes TEXT NULL` column to the `trips` table (migration 010) and exposes it through the existing trip CRUD API.
+
+---
+
+## Part A — CAL-3: Calendar Chip Time Display Enhancements
+
+**Addendum to:** Spec 12 Addendum (CAL-1 and CAL-1.5)
+**Implemented in:** `frontend/src/components/TripCalendar.jsx` + `frontend/src/utils/formatDate.js`
+
+---
+
+### CAL-3.1 Overview
+
+The Sprint 6 calendar spec (CAL-1) established that event chips show a compact time indicator below the event name. CAL-1.3 defined the time source for each event type, and CAL-1.5 described stay multi-day span behavior (check-in time on first day only; no time on subsequent days).
+
+**Sprint 7 adds three new display rules:**
+
+| Rule | Trigger | Display |
+|------|---------|---------|
+| CAL-3.2 | Stay chip on `check_out_date` (when `check_out_date ≠ check_in_date`) | `"check-out [time]"` e.g., `"check-out 11a"` |
+| CAL-3.3 | Flight chip on `arrival_date` (when `arrival_date ≠ departure_date`) | `"arrives [time]"` e.g., `"arrives 2:30p"` |
+| CAL-3.4 | Land travel chip on `arrival_date` (when `arrival_date ≠ departure_date`) | `"arrives [time]"` e.g., `"arrives 3p"` |
+| CAL-3.5 | Single-day stay (when `check_out_date === check_in_date`) | Both check-in and check-out shown on the same chip |
+
+The `formatCalendarTime()` helper (defined in CAL-1.2) is used for all time formatting. **No new helper function is required.** The label prefix (`"check-out "`, `"arrives "`) is a string concatenated before the formatted time.
+
+---
+
+### CAL-3.2 Stay Checkout Time on Last Day
+
+#### CAL-3.2.1 Trigger Condition
+
+A stay that spans multiple days (`check_out_date ≠ check_in_date`) renders chips across all days from `check_in_date` to `check_out_date` inclusive. Previously:
+- First day (`check_in_date`): shows check-in time (e.g., `"4p"`)
+- Middle days: no time
+- Last day (`check_out_date`): no time ← **this changes in Sprint 7**
+
+**Sprint 7:** The chip on `check_out_date` now shows the checkout time with a `"check-out "` prefix label.
+
+#### CAL-3.2.2 Time Source
+
+| Field | Source | Timezone Handling |
+|-------|--------|------------------|
+| Checkout time | `check_out_at` (UTC ISO string) | Convert via `check_out_tz` using `Intl.DateTimeFormat` (same pattern as `check_in_at` / `check_in_tz`) |
+
+If `check_out_at` is `null` or `undefined`, do not show a time element on the checkout day chip (same fallback as all other event types).
+
+#### CAL-3.2.3 Chip Display — Checkout Day
+
+The time element on the checkout day chip uses the existing `.eventTime` CSS class with one difference: the displayed string is prefixed with `"check-out "`:
+
+```
+[● Hyatt Regency SF ]
+[  check-out 11a    ]   ← prefixed label + time
+```
+
+**Full time element HTML:**
+```html
+<span className={styles.eventTime}>check-out 11a</span>
+```
+
+- The string is constructed as: `"check-out " + formatCalendarTime(checkoutLocalTime)`
+- Font-size: 10px (same as existing `.eventTime`)
+- Color: inherit (white), `opacity: 0.7` (same as existing)
+- Display: `block`, margin-top: 1px (same as existing)
+
+#### CAL-3.2.4 Updated Stay Multi-Day Span Behavior
+
+Complete updated behavior for stay chip time display across all days:
+
+| Day Position | Display |
+|-------------|---------|
+| `check_in_date` (first day) | Check-in time: e.g., `"4p"` (no prefix, same as Sprint 6) |
+| Middle days (between check-in and checkout) | No time element (same as Sprint 6) |
+| `check_out_date` (last day) | Checkout time with prefix: e.g., `"check-out 11a"` (NEW in Sprint 7) |
+
+**Note on middle days:** A stay spanning Monday → Thursday would have: Monday (`"4p"`), Tuesday (no time), Wednesday (no time), Thursday (`"check-out 11a"`). This is clean and minimal.
+
+#### CAL-3.2.5 Single-Day Stay (check_in_date === check_out_date)
+
+When a stay has the same check-in and checkout date (e.g., a day-use hotel reservation), both times appear on the single chip. There are no span chips — only one chip on that one day.
+
+**Display:**
+```
+[● Hyatt Regency SF ]
+[  4p → check-out 11a ]   ← both times inline, separated by " → "
+```
+
+**Implementation:** Construct the time string as:
+```javascript
+const checkInTime  = formatCalendarTime(checkInLocal);   // e.g., "4p"
+const checkOutTime = formatCalendarTime(checkOutLocal);  // e.g., "11a"
+
+// If both available:
+timeDisplay = `${checkInTime} → check-out ${checkOutTime}`;  // "4p → check-out 11a"
+
+// If only check-in available:
+timeDisplay = checkInTime;  // "4p"
+
+// If only check-out available:
+timeDisplay = `check-out ${checkOutTime}`;  // "check-out 11a"
+
+// If neither:
+timeDisplay = null;  // no time element rendered
+```
+
+**Note on chip length:** The single-day combined time string may be longer than a typical time display. The chip's `max-width` should handle this gracefully via `overflow: hidden; text-overflow: ellipsis` on the `.eventTime` span if needed. The Frontend Engineer may opt to abbreviate to `"4p / 11a"` for single-day stays if the combined string causes layout issues — document the choice if so.
+
+---
+
+### CAL-3.3 Flight Arrival Time on Arrival Day
+
+#### CAL-3.3.1 Trigger Condition
+
+A flight has both a `departure_date` (derived from `departure_at` in the departure timezone) and an `arrival_date` (derived from `arrival_at` in the arrival timezone). When `arrival_date ≠ departure_date`, the flight spans two calendar days:
+- Departure day: shows departure time (existing Sprint 6 behavior, no change)
+- Arrival day: shows arrival time with `"arrives "` prefix (NEW in Sprint 7)
+
+When `arrival_date === departure_date`, the flight is a same-day flight. The departure day chip already shows the departure time (Sprint 6). **No arrival time is added for same-day flights** — the chip is already sufficient.
+
+#### CAL-3.3.2 Time Source
+
+| Field | Source | Timezone Handling |
+|-------|--------|------------------|
+| Arrival time | `arrival_at` (UTC ISO string) | Convert via `arrival_tz` using `Intl.DateTimeFormat` — extract local hours/minutes, pass to `formatCalendarTime()` |
+
+If `arrival_at` is `null` or `undefined`, do not show a time element on the arrival day chip.
+
+#### CAL-3.3.3 Chip Display — Arrival Day
+
+```
+[● Delta DL1234 ]
+[  arrives 2:30p ]   ← prefixed arrival time
+```
+
+**Full time element HTML:**
+```html
+<span className={styles.eventTime}>arrives 2:30p</span>
+```
+
+- Constructed as: `"arrives " + formatCalendarTime(arrivalLocalTime)`
+- Same `.eventTime` styling as all other time elements
+
+#### CAL-3.3.4 Multi-Day Flight Calendar Representation
+
+For a flight departing on Aug 7 at 6:00 AM ET and arriving on Aug 8 at 11:00 AM PT:
+
+| Day | Chip Contents |
+|-----|--------------|
+| Aug 7 | `[● Delta DL1234]` + time: `"6a"` |
+| Aug 8 | `[● Delta DL1234]` + time: `"arrives 11a"` |
+
+Both chips exist in the calendar. The arrival-day chip was already generated by the existing flight-date-range mapping logic (if the current implementation maps flights across both departure and arrival dates). If the existing logic only maps a flight to its departure date, the Frontend Engineer must extend it to also render a chip on the arrival date — document this change.
+
+---
+
+### CAL-3.4 Land Travel Arrival Time on Arrival Day
+
+#### CAL-3.4.1 Trigger Condition
+
+Land travel (from Spec 12) has `departure_date`, `departure_time` (HH:MM), and optionally `arrival_date`, `arrival_time` (HH:MM). When `arrival_date` is provided and `arrival_date ≠ departure_date`, the land travel spans two calendar days:
+- Departure day: shows departure time (existing Sprint 6 behavior, no change)
+- Arrival day: shows arrival time with `"arrives "` prefix (NEW in Sprint 7)
+
+If `arrival_date` is `null` or `arrival_date === departure_date`, no arrival-day chip is needed.
+
+#### CAL-3.4.2 Time Source
+
+| Field | Source | Timezone Handling |
+|-------|--------|------------------|
+| Arrival time | `arrival_time` (HH:MM string) | No conversion needed — local time, same as `departure_time` (no timezone stored for land travel) |
+
+If `arrival_time` is `null` but `arrival_date` is non-null (and different from departure_date), render the arrival-day chip without a time element (just the event name).
+
+#### CAL-3.4.3 Chip Display — Arrival Day
+
+```
+[● Train to Los Angeles ]
+[  arrives 3p           ]   ← prefixed arrival time
+```
+
+**Full time element HTML:**
+```html
+<span className={styles.eventTime}>arrives 3p</span>
+```
+
+- Constructed as: `"arrives " + formatCalendarTime(arrival_time)` where `arrival_time` is the raw `HH:MM` string passed to `formatCalendarTime()`
+
+---
+
+### CAL-3.5 Updated CAL-1.3 Time Sources Reference (Complete Table)
+
+This replaces and extends the CAL-1.3 table from Spec 12 Addendum. The Frontend Engineer should treat this as the authoritative reference:
+
+| Event Type | Day | Time Source | Prefix | Timezone | Fallback |
+|------------|-----|-------------|--------|----------|---------|
+| **Flight** | Departure day | `departure_at` (UTC ISO) | none | Convert via `departure_tz` | No time shown |
+| **Flight** | Arrival day (if `arrival_date ≠ departure_date`) | `arrival_at` (UTC ISO) | `"arrives "` | Convert via `arrival_tz` | No time shown |
+| **Stay** | Check-in day (first day) | `check_in_at` (UTC ISO) | none | Convert via `check_in_tz` | No time shown |
+| **Stay** | Middle days | — | — | — | No time element |
+| **Stay** | Checkout day (last day, if `check_out_date ≠ check_in_date`) | `check_out_at` (UTC ISO) | `"check-out "` | Convert via `check_out_tz` | No time shown |
+| **Stay** | Single day (if `check_out_date === check_in_date`) | Both `check_in_at` + `check_out_at` | `" → check-out "` between | Convert each via its `_tz` field | Whichever is available |
+| **Activity** | Activity day | `start_time` (HH:MM:SS string) | none | No conversion | No time shown if null |
+| **Land Travel** | Departure day | `departure_time` (HH:MM string) | none | No conversion | No time shown if null |
+| **Land Travel** | Arrival day (if `arrival_date ≠ departure_date`, and `arrival_date` non-null) | `arrival_time` (HH:MM string) | `"arrives "` | No conversion | No time shown if null (but chip still renders with event name) |
+
+---
+
+### CAL-3.6 Regression Safety Rules
+
+The following existing behaviors from CAL-1 (Sprint 6) must be preserved exactly:
+
+1. **Check-in time on first day** — unchanged. Still shows compact time (e.g., `"4p"`) without any prefix.
+2. **Departure time on departure day** — unchanged for both flights and land travel.
+3. **Middle-day stay chips** — still show no time element.
+4. **Activity chips** — still show `start_time` when available.
+5. **"+X more" popover event list** — the popover's time sub-label format (defined in CAL-2.5) already included `"check-out 11a"` and `"arrives"` labels. These were specified in Sprint 6. Verify the popover implementation already handles these — if not, update the popover event list rendering for checkout and arrival cases (this is already in the spec at CAL-2.5; it should already be there from Sprint 6).
+
+---
+
+### CAL-3.7 States and Edge Cases
+
+| Scenario | Expected Behavior |
+|----------|------------------|
+| `check_out_at` is null (stay has no checkout time stored) | Checkout day chip shows no time element — just the stay name. Section header style unchanged. |
+| Flight arrival same as departure (same day) | No arrival-day chip added. Departure chip unchanged (only departure time shown, no `"arrives"` label). |
+| Land travel with `arrival_date` null | No arrival-day chip rendered. Departure day chip shows departure time only. |
+| Land travel with `arrival_date` same as `departure_date` | No arrival-day chip. Treat as same-day land travel — show departure time on departure day only. |
+| Two events on the same arrival day (e.g., a flight arriving + hotel check-in) | Both chips render normally; each chip only gets time based on its own rules. |
+| Calendar day has overflow ("+X more") and arrival chip is in overflow | Arrival chip appears in the popover list with `"arrives [time]"` sub-label — already handled by CAL-2.5 if implemented correctly. |
+| Stay with no `check_out_date` | No checkout-day chip rendered. This is a backend validation issue; front-end renders what it receives. |
+
+---
+
+### CAL-3.8 Accessibility — Calendar Time Enhancements
+
+No new ARIA requirements beyond what CAL-1.4 and CAL-2.7 already specify. The time label strings (`"check-out 11a"`, `"arrives 2:30p"`) are rendered as plain visible text within the chip, which screen readers will announce as part of the chip's text content. No additional `aria-label` overrides are needed for the chips — the text is self-descriptive.
+
+---
+
+## Part B — Trip Notes Feature
+
+---
+
+### 13.1 Overview
+
+The trip notes feature adds a freeform description field to every trip. It is the first "rich trip metadata" field beyond the existing name and destinations. The design follows the established Japandi minimalist aesthetic: the notes field is unobtrusive in view mode and activates cleanly when the user engages with it.
+
+**Scope:**
+- `TripDetailsPage` — view mode + inline edit mode for the notes field
+- `TripCard` (home page) — read-only truncated preview of notes
+
+**API Integration:** Notes are stored in the `notes` field of the trip resource (added via migration 010 — `notes TEXT NULL`). All trip GET and PATCH endpoints include this field. Max 2000 characters, enforced server-side (400 `VALIDATION_ERROR` if exceeded) and client-side (textarea maxLength + char count).
+
+---
+
+### 13.2 Trip Notes — TripDetailsPage
+
+#### 13.2.1 Placement
+
+The notes section is positioned **below the trip title and destinations row** and **above the calendar component**. This places it in the "trip overview header area" — information the user set up when creating the trip, not the detailed itinerary sections below the calendar.
+
+**TripDetailsPage vertical layout order (updated):**
+1. Back link (`← home`)
+2. Trip title + destinations row + edit/delete controls
+3. **Notes section** ← NEW in Sprint 7
+4. `TripCalendar` component
+5. Flights section
+6. Land Travel section
+7. Stays section
+8. Activities section
+
+#### 13.2.2 Notes Section — View Mode (has notes)
+
+```
+NOTES ─────────────────────────────────────────  ✏
+
+We fly into Narita on August 7th and spend 10 days
+exploring Tokyo, Kyoto, and Osaka. Main goals are
+food, temples, and at least one day trip to Nara.
+```
+
+**Container:**
+- Margin-top: 24px from the trip title/destinations row
+- Margin-bottom: 24px (space before the calendar)
+- No background, no border, no card — the notes section is "bare" on the page background, consistent with the section headers throughout the page
+
+**Section Header Row:**
+- Flex row, `justify-content: space-between`, `align-items: center`
+- **Left:** Section header label `"NOTES"` — standard section header styling: 11px, font-weight 600, letter-spacing 0.12em, uppercase, `--text-muted`. Followed by a `1px solid var(--border-subtle)` line that stretches to fill remaining space (flex + hr approach, same as Flights/Stays/Activities section headers).
+- **Right:** Edit pencil button (see 13.2.5) — visible in view mode
+- Margin-bottom: 12px
+
+**Notes Text:**
+- Font: IBM Plex Mono, 14px, font-weight 300 (light), `--text-primary`
+- Line-height: 1.7 (generous for readability of prose text)
+- White-space: `pre-wrap` (preserve line breaks the user entered)
+- Word-break: `break-word` (prevent overflow on long unbroken strings)
+- Max-width: inherits from content area (1120px max-content-width)
+- No background, no border — the text sits directly on the page
+
+#### 13.2.3 Notes Section — View Mode (empty / no notes)
+
+```
+NOTES ─────────────────────────────────────────  ✏
+
+  add trip notes…
+```
+
+**Empty placeholder:**
+- Text: `"add trip notes…"` (with Unicode ellipsis `…`)
+- Font: IBM Plex Mono, 14px, font-weight 300
+- Color: `--text-muted` (rgba 252,252,252,0.5)
+- Cursor: `pointer` (the entire placeholder area is clickable to enter edit mode)
+- On click: enters edit mode (same as clicking the pencil icon)
+- Padding: 8px 0 (a bit of breathing room)
+
+**Accessibility:** The empty placeholder should have `role="button"` and `tabIndex={0}` so it is keyboard-reachable, with `aria-label="Add trip notes"`. Press Enter or Space to enter edit mode.
+
+#### 13.2.4 Notes Section — Edit Mode
+
+```
+NOTES ──────────────────────────────────────────
+
+┌──────────────────────────────────────────────┐
+│ We fly into Narita on August 7th and spend 10│
+│ days exploring Tokyo, Kyoto, and Osaka. Main │
+│ goals are food, temples, and at least one day│
+│ trip to Nara.                                │
+│                                              │
+│                                              │
+└──────────────────────────────────────────────┘
+                                      142 / 2000
+
+[ cancel ]    [ save notes ]
+```
+
+**Transition into edit mode:**
+- The notes text (or empty placeholder) smoothly swaps to a textarea with no jarring layout shift
+- The pencil icon disappears from the section header in edit mode (no double-affordance)
+- Textarea is auto-focused on entering edit mode — cursor is placed at the end of existing text
+
+**Textarea element:**
+```html
+<textarea
+  className={styles.notesTextarea}
+  value={editValue}
+  onChange={handleChange}
+  maxLength={2000}
+  rows={6}
+  aria-label="Trip notes"
+  aria-describedby="notes-char-count"
+  autoFocus
+/>
+```
+
+**Textarea CSS (`.notesTextarea`):**
+- Width: 100%
+- Min-height: 144px (`rows={6}` × ~24px line-height)
+- Background: `var(--surface-alt)` (`#3F4045`)
+- Border: `1px solid var(--border-accent)` (`#5D737E`) — active/focus state from the moment it appears
+- Border-radius: `var(--radius-sm)` (2px)
+- Padding: 12px 14px
+- Font: IBM Plex Mono, 14px, font-weight 300, `--text-primary`
+- Line-height: 1.7
+- Color: `--text-primary`
+- Resize: `vertical` (user can drag to resize; min-height applies)
+- Outline: none (border serves as the focus indicator, already `--border-accent`)
+- Box-sizing: border-box
+
+**Character count (`#notes-char-count`):**
+- Positioned: right-aligned below the textarea
+- Text: `"[currentLength] / 2,000"` — e.g., `"142 / 2,000"` (use `toLocaleString()` for comma-separated number)
+- Always visible in edit mode (not conditional on being near the limit)
+- Font: IBM Plex Mono, 11px, font-weight 400, `--text-muted`
+- Margin-top: 4px
+- **Color transition near limit:**
+  - Default (0–1799 chars): `--text-muted`
+  - Warning zone (1800–1999 chars): `rgba(220, 160, 50, 0.8)` (muted amber — not alarming, just a nudge)
+  - At limit (2000 chars): `rgba(220, 80, 80, 0.9)` (error red — same as field error color in design system)
+
+**Action buttons row (below char count):**
+- Layout: flex, gap 12px, justify-content: flex-start, margin-top: 12px
+- **Cancel button:** Secondary button style (`transparent bg, #FCFCFC text, 1px solid rgba(93,115,126,0.5) border, padding 10px 24px, border-radius 2px, hover: rgba(252,252,252,0.05) bg`). Label: `"cancel"`. On click: discard `editValue`, revert to view mode, restore original notes text. No API call.
+- **Save button:** Primary button style (`#5D737E bg, #FCFCFC text, font-weight 500, padding 10px 24px, border-radius 2px, hover: rgba(93,115,126,0.8)`). Label: `"save notes"`. On click: submit PATCH /trips/:id with `{ notes: editValue }`. Disabled state while the API call is in progress.
+
+**Save behavior:**
+1. User clicks `"save notes"`
+2. Save button enters loading state: inline spinner (20px, accent color, 1s rotation), button text hidden or replaced with spinner, `disabled={true}`
+3. `PATCH /trips/:id` is called with `{ notes: editValue.trim() }` (trim whitespace from start and end before sending)
+4. On success (200): update the local notes state, exit edit mode, show updated notes text in view mode
+5. On error (network error or 400/500): show a toast error bottom-right: `"Failed to save notes. Please try again."` auto-dismisses after 4 seconds. Remain in edit mode so the user's text is not lost.
+
+**Cancel behavior:** Immediately returns to view mode without any API call. No confirmation dialog needed (changes are not yet submitted).
+
+#### 13.2.5 Edit Pencil Button
+
+The pencil/edit icon appears in the section header row, right-aligned, in view mode only.
+
+```html
+<button
+  className={styles.notesEditButton}
+  onClick={enterEditMode}
+  aria-label="Edit trip notes"
+>
+  {/* SVG pencil icon */}
+</button>
+```
+
+**Pencil icon:** SVG, 14×14px, stroke: `--text-muted`. On hover: stroke: `--text-primary`. Simple minimal pencil outline — consistent with the Japandi aesthetic (no filled icons).
+
+**Button CSS (`.notesEditButton`):**
+- Background: transparent
+- Border: none
+- Padding: 4px
+- Cursor: pointer
+- `border-radius: var(--radius-sm)` (2px)
+- Transition: `opacity 150ms ease`
+- On `:focus-visible`: `outline: 2px solid var(--accent)`, `outline-offset: 2px`
+
+---
+
+### 13.3 Notes Section — State Summary
+
+| State | User Sees |
+|-------|-----------|
+| **Empty / no notes (view)** | `"NOTES"` header + pencil icon + `"add trip notes…"` placeholder in muted color. Placeholder is clickable to enter edit mode. |
+| **Has notes (view)** | `"NOTES"` header + pencil icon + formatted notes text (white-space: pre-wrap). |
+| **Edit mode (any)** | `"NOTES"` header (no pencil icon) + textarea pre-filled with existing notes (or empty) + char count + cancel/save buttons. |
+| **Saving** | Save button shows inline spinner + `disabled`. Cancel button remains active (user can cancel a slow save before it completes — clicking cancel should abort the in-flight request and revert). |
+| **Save error** | Stays in edit mode. Toast error appears bottom-right. User's text is preserved in the textarea. |
+| **Trip loading (TripDetailsPage initial load)** | Notes section renders a skeleton: a rectangle shimmer block, ~80px tall, full-width, `background: var(--surface-alt)`, same shimmer animation as other skeleton elements. |
+
+---
+
+### 13.4 Notes Section — Responsive Behavior
+
+| Breakpoint | Notes Behavior |
+|------------|---------------|
+| **Desktop (≥1024px)** | Full-width within content area (max 1120px centered). Notes text and textarea span the full content width. |
+| **Tablet (768–1023px)** | Same as desktop — notes text wraps naturally. |
+| **Mobile (<768px)** | Full-width, padding: 0 16px (matches mobile content padding). Textarea `rows={5}`. Action buttons stack vertically if needed — flex-wrap. |
+
+---
+
+### 13.5 Notes Section — Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Empty placeholder keyboard-reachable | `role="button"`, `tabIndex={0}`, `aria-label="Add trip notes"`. Enter/Space triggers edit mode. |
+| Pencil button label | `aria-label="Edit trip notes"` on the `<button>` |
+| Textarea label | `aria-label="Trip notes"` on `<textarea>` |
+| Char count associated | `aria-describedby="notes-char-count"` on textarea; `id="notes-char-count"` on the count element |
+| Warning announced | When char count enters warning zone (1800+), `aria-live="polite"` region announces the count (e.g., `"142 of 2000 characters used"`) — update the live region on every change. This can be a visually-hidden `<span aria-live="polite">` that is updated along with the visible count. |
+| Save button state | `aria-disabled="true"` (plus `disabled` attribute) when submitting |
+| Focus management | On enter edit mode: textarea receives focus. On cancel or save success: focus returns to the pencil icon button (or empty placeholder if notes were cleared). |
+| Color-only warning | The amber/red char count color change is supplemented by the aria-live region — color alone does not convey the warning. |
+
+---
+
+### 13.6 TripCard Notes Preview
+
+#### 13.6.1 Placement
+
+The notes preview appears at the **bottom of the TripCard**, below the existing card content (destination chips, date range, status badge). It is only shown if `notes` is a non-null, non-empty string.
+
+**Current TripCard structure (no notes):**
+```
+┌─────────────────────────────────────────┐
+│ Japan Adventure 2026                    │
+│ Tokyo · Kyoto · Osaka                   │
+│ Aug 7, 2026 — Aug 21, 2026              │
+│ [PLANNING]                              │
+└─────────────────────────────────────────┘
+```
+
+**TripCard structure (with notes):**
+```
+┌─────────────────────────────────────────┐
+│ Japan Adventure 2026                    │
+│ Tokyo · Kyoto · Osaka                   │
+│ Aug 7, 2026 — Aug 21, 2026              │
+│ [PLANNING]                              │
+│                                         │
+│  We fly into Narita on August 7th and   │
+│  spend 10 days exploring Tokyo, Kyot…   │
+└─────────────────────────────────────────┘
+```
+
+#### 13.6.2 Notes Preview Element
+
+```html
+<p className={styles.notesPreview}>
+  {truncatedNotes}
+</p>
+```
+
+**Truncation logic (in component, not CSS):**
+```javascript
+const MAX_PREVIEW_LENGTH = 100;
+
+const truncatedNotes = notes && notes.length > MAX_PREVIEW_LENGTH
+  ? notes.slice(0, MAX_PREVIEW_LENGTH) + '\u2026'  // Unicode ellipsis character
+  : notes;
+```
+
+- Do not use CSS `text-overflow: ellipsis` for truncation — use JS string truncation so the character limit is precisely 100 chars of content + `"…"`
+- The 100 characters are sliced from the raw notes string (including any line breaks that might appear in the first 100 chars — these render as spaces in the card's single-line context)
+
+**CSS (`.notesPreview`):**
+- Font: IBM Plex Mono, 12px, font-weight 300
+- Color: `--text-muted` (rgba 252,252,252,0.5) — secondary information, clearly subordinate to trip name
+- Margin-top: 8px
+- Line-height: 1.5
+- Overflow: hidden
+- Display: `-webkit-box` with `-webkit-line-clamp: 2` and `-webkit-box-orient: vertical` — limits to 2 visible lines even if truncation doesn't kick in (safety net for long first lines)
+- Word-break: `break-word`
+
+**Conditional rendering:**
+```jsx
+{notes && notes.trim().length > 0 && (
+  <p className={styles.notesPreview}>{truncatedNotes}</p>
+)}
+```
+
+Do not render the element at all (not even an empty `<p>`) when notes is null or empty.
+
+#### 13.6.3 TripCard Notes Preview — Accessibility
+
+- The notes text is read by screen readers as part of the card's content flow (no special ARIA needed — it's plain descriptive text)
+- The card itself already has appropriate link semantics and aria-label from earlier specs
+- No additional ARIA is required for the notes preview
+
+---
+
+### 13.7 API Integration Reference (for Frontend Engineers)
+
+**GET /trips (list):**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Japan Adventure 2026",
+      "destinations": ["Tokyo", "Kyoto"],
+      "notes": "We fly into Narita on August 7th...",
+      ...
+    }
+  ]
+}
+```
+
+**GET /trips/:id:**
+```json
+{
+  "id": "uuid",
+  "name": "Japan Adventure 2026",
+  "notes": "We fly into Narita on August 7th...",
+  ...
+}
+```
+
+**PATCH /trips/:id — save notes:**
+```json
+// Request body
+{ "notes": "Updated trip notes content." }
+
+// Response: 200 with updated trip object (includes notes field)
+
+// To clear notes:
+{ "notes": null }
+
+// Validation error (notes > 2000 chars):
+// 400 VALIDATION_ERROR
+```
+
+**Notes field in API responses:**
+- `null` when no notes have been set
+- Empty string `""` should be treated same as `null` in display (show the empty placeholder)
+- Non-empty string: display as-is
+
+---
+
+### 13.8 Full Screen Flow — Trip Notes (User Journey)
+
+**First time adding notes:**
+1. User opens TripDetailsPage — notes section shows `"add trip notes…"` placeholder with pencil icon
+2. User clicks placeholder or pencil icon → edit mode activates, textarea focused (empty)
+3. User types notes — char count shows `"47 / 2,000"`
+4. User clicks `"save notes"` → spinner, API call
+5. On success: edit mode exits, notes text displays in view mode
+
+**Editing existing notes:**
+1. User is on TripDetailsPage — notes section shows existing notes text + pencil icon
+2. User clicks pencil icon → edit mode activates, textarea pre-filled with existing notes
+3. User modifies text
+4. User clicks `"save notes"` → API call
+5. On success: updated text displays
+
+**Cancelling an edit:**
+1. User enters edit mode
+2. User types some changes
+3. User clicks `"cancel"` → edit mode exits, original notes text restored (no API call)
+
+**Viewing notes on home page (TripCard):**
+1. User navigates to home page
+2. Trip cards with notes show the first 100 chars with `"…"` below the status badge
+3. Trip cards without notes show no notes element
+
+---
+
+### 13.9 Design Rationale Notes
+
+- **Inline edit over separate edit page:** The notes field is a short-form text field that benefits from in-context editing. A separate `/trips/:id/edit` page would feel heavyweight for a textarea. Inline edit is consistent with the quick-edit patterns users expect for note-taking.
+- **Position above calendar:** Notes are trip-level metadata (like a journal entry or planning memo), not itinerary data. Placing them above the calendar keeps the calendar as the primary itinerary overview — users look at the calendar for schedule, and at the notes for context/intent.
+- **Minimal card preview:** 100 chars on the TripCard is enough to recognize the note without overwhelming the card grid layout. The muted text color ensures it doesn't compete with the trip name.
+- **Always-visible char count in edit mode:** Showing `"X / 2,000"` at all times (not just near the limit) gives users a sense of how much they've written. The color transition to amber/red near the limit prevents surprises without alarming users unnecessarily.
+
+---
+
+*Sprint 7 Spec 13 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-27.*
+
+---
+
+### Spec 14: Sprint 8 Addendum — Timezone Abbreviation Display + Activity Location URL Detection
+
+**Status:** Approved
+**Task:** T-112
+**Sprint:** 8
+**Published:** 2026-02-27
+**Implemented by:** T-113 (timezone abbreviations), T-114 (URL link detection)
+
+---
+
+#### 14.0 Overview
+
+This spec covers two small but user-visible enhancements to the TripDetailsPage:
+
+1. **Part A — Timezone Abbreviation Display (T-113):** Flight and stay detail cards currently display formatted times (e.g., "Aug 7, 2026 · 6:00 AM") without indicating which timezone the time is in. This spec defines how to extract and display a short, DST-aware timezone abbreviation (e.g., "EDT", "JST", "CEST") adjacent to each time value on flight and stay detail cards.
+
+2. **Part B — Activity Location URL Detection (T-114):** Activity location strings are currently rendered as plain text. This spec defines how to detect `http://` and `https://` URLs within a location string and render them as accessible, secure hyperlink elements, while leaving all other text as plain text and explicitly blocking dangerous URI schemes.
+
+---
+
+#### Part A — Timezone Abbreviation Display on Detail Cards
+
+---
+
+#### 14.A.1 Problem Statement
+
+**Current behavior:**
+- `FlightCard`: Renders a timezone abbreviation as an inline string concatenated to the full datetime string (e.g., `"Aug 7, 2026 · 6:00 AM EDT"`). The abbreviation is not wrapped in a distinct HTML element.
+- `StayCard`: Renders check-in and check-out times with NO timezone abbreviation whatsoever.
+- `LandTravelCard`: Has no timezone data — stores times as wall-clock strings (`HH:MM:SS`) without an IANA timezone field. See §14.A.7 for the scope boundary.
+
+**Desired behavior:**
+- `FlightCard` and `StayCard` each display a muted, visually distinct timezone abbreviation (`<span className="tz-abbr">`) adjacent to each time value.
+- The abbreviation is DST-aware: "America/New_York" in August yields "EDT"; in January it yields "EST". "Asia/Tokyo" always yields "JST". "Europe/Paris" in July yields "CEST".
+- If the timezone abbreviation cannot be determined (missing/invalid timezone string), the display degrades gracefully — either showing the IANA string or nothing — without crashing.
+
+---
+
+#### 14.A.2 Data Model Reference
+
+| Card | UTC Timestamp Field | Timezone Field (IANA) |
+|------|--------------------|-----------------------|
+| FlightCard — departure | `departure_at` (ISO 8601 UTC) | `departure_tz` |
+| FlightCard — arrival | `arrival_at` (ISO 8601 UTC) | `arrival_tz` |
+| StayCard — check-in | `check_in_at` (ISO 8601 UTC) | `check_in_tz` |
+| StayCard — check-out | `check_out_at` (ISO 8601 UTC) | `check_out_tz` |
+| LandTravelCard | `departure_date` (DATE string) + `departure_time` (TIME string) | **None — see §14.A.7** |
+
+No backend changes are required. All `*_tz` fields already exist in the API responses.
+
+---
+
+#### 14.A.3 Utility Function — `formatTimezoneAbbr`
+
+The function `formatTimezoneAbbr(isoString, ianaTimezone)` already exists in `frontend/src/utils/formatDate.js`. **No changes are needed to this function.** Its current implementation:
+
+```js
+export function formatTimezoneAbbr(isoString, ianaTimezone) {
+  if (!isoString || !ianaTimezone) return '';
+  try {
+    const date = new Date(isoString);
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZoneName: 'short',
+      timeZone: ianaTimezone,
+    }).formatToParts(date);
+    const tzPart = parts.find((p) => p.type === 'timeZoneName');
+    return tzPart ? tzPart.value : ianaTimezone;
+  } catch {
+    return ianaTimezone;
+  }
+}
+```
+
+**How it works:**
+- Uses `Intl.DateTimeFormat` with `{ timeZoneName: 'short' }` applied to the **actual event datetime** (not a static reference date), ensuring DST awareness.
+- `America/New_York` at a summer datetime → `"EDT"` (UTC-4)
+- `America/New_York` at a winter datetime → `"EST"` (UTC-5)
+- `Asia/Tokyo` → always `"JST"` (no DST)
+- `Europe/Paris` in summer → `"CEST"`; in winter → `"CET"`
+- `UTC` → `"UTC"`
+- Invalid or unrecognized timezone → returns the IANA string as-is (graceful fallback, no crash)
+- Missing `isoString` or `ianaTimezone` → returns `''` (empty string, nothing rendered)
+
+T-113 must import this function from `formatDate.js`. No new utility is required.
+
+---
+
+#### 14.A.4 Visual Specification — Timezone Abbreviation Element
+
+**Format:** `[Date · Time] [TZ_ABBR]`
+
+**Example renders:**
+
+```
+Aug 7, 2026 · 6:00 AM EDT
+Aug 7, 2026 · 6:00 AM JST
+Jul 15, 2026 · 3:00 PM CEST
+Jan 10, 2026 · 10:00 AM GMT
+```
+
+**Rendered HTML structure:**
+```html
+<div class="flightDateTime">
+  Aug 7, 2026 · 6:00 AM <span class="tzAbbr">EDT</span>
+</div>
+```
+
+**Spec rules:**
+- The `<span className={styles.tzAbbr}>` element is placed immediately after the formatted datetime string, separated by a single space (via `margin-left: 4px` on the span).
+- The abbreviation text is muted to visually subordinate it to the primary time value — it is supplementary information, not the main display.
+- Do NOT wrap both the time AND the abbreviation in a shared `<span>`. Keep them as: `{timeString} <span>{tzAbbr}</span>`.
+- If `tzAbbr` is empty string (missing data), render nothing — no empty `<span>`.
+
+**CSS for `.tzAbbr`:**
+```css
+.tzAbbr {
+  color: var(--text-muted);   /* rgba(252, 252, 252, 0.5) */
+  font-size: inherit;          /* match the surrounding time text size */
+  font-weight: 400;            /* regular weight — not bold */
+  margin-left: 4px;            /* 4px gap from the formatted time string */
+  display: inline;
+}
+```
+
+**Accessibility:**
+- The abbreviation is supplementary to the time — screen readers will read it as part of the text flow, which is correct.
+- No additional ARIA attributes needed. The abbreviation text ("EDT", "JST") is human-readable and meaningful.
+- If the timezone abbreviation is long (e.g., "GMT+5:30"), it reads naturally as part of the time value.
+
+---
+
+#### 14.A.5 FlightCard — Updated Implementation
+
+**Current code (to be replaced):**
+```jsx
+// departure
+<div className={styles.flightDateTime}>
+  {depDisplay}{depTz ? ` ${depTz}` : ''}
+</div>
+
+// arrival
+<div className={styles.flightDateTime}>
+  {arrDisplay}{arrTz ? ` ${arrTz}` : ''}
+</div>
+```
+
+**New code:**
+```jsx
+// departure
+<div className={styles.flightDateTime}>
+  {depDisplay}
+  {depTz && <span className={styles.tzAbbr}>{depTz}</span>}
+</div>
+
+// arrival
+<div className={styles.flightDateTime}>
+  {arrDisplay}
+  {arrTz && <span className={styles.tzAbbr}>{arrTz}</span>}
+</div>
+```
+
+The variables `depTz` and `arrTz` are already computed via `formatTimezoneAbbr` at the top of the `FlightCard` component — no additional calls needed.
+
+**aria-label on the `<article>`:** The existing `aria-label` does not need to be updated. Screen readers will read the timezone abbreviation from the visible text inside the article naturally.
+
+---
+
+#### 14.A.6 StayCard — Updated Implementation
+
+**Current code:** `StayCard` does not call `formatTimezoneAbbr`. The check-in/out times show no timezone indicator.
+
+**Changes needed:**
+
+1. Verify that `formatTimezoneAbbr` is already imported at the top of `TripDetailsPage.jsx` (it should be, since `FlightCard` uses it). Confirm the import line includes it:
+   ```js
+   import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatTripDateRange } from '../utils/formatDate';
+   ```
+
+2. Add two new variable computations inside `StayCard`:
+```jsx
+function StayCard({ stay }) {
+  const checkInDisplay  = formatDateTime(stay.check_in_at,  stay.check_in_tz);
+  const checkOutDisplay = formatDateTime(stay.check_out_at, stay.check_out_tz);
+  // NEW — timezone abbreviations
+  const checkInTz  = formatTimezoneAbbr(stay.check_in_at,  stay.check_in_tz);
+  const checkOutTz = formatTimezoneAbbr(stay.check_out_at, stay.check_out_tz);
+  // ... rest unchanged
+}
+```
+
+3. Update the check-in and check-out date value renders:
+
+**Current:**
+```jsx
+<div className={styles.stayDateValue}>{checkInDisplay}</div>
+// ...
+<div className={styles.stayDateValue}>{checkOutDisplay}</div>
+```
+
+**New:**
+```jsx
+<div className={styles.stayDateValue}>
+  {checkInDisplay}
+  {checkInTz && <span className={styles.tzAbbr}>{checkInTz}</span>}
+</div>
+// ...
+<div className={styles.stayDateValue}>
+  {checkOutDisplay}
+  {checkOutTz && <span className={styles.tzAbbr}>{checkOutTz}</span>}
+</div>
+```
+
+**Layout note:** The stay card's `stayDateValue` elements are block-level within a flex row. Adding an inline `<span>` after the datetime string does not change the block flow — both check-in and check-out remain in their respective `stayDateBlock` columns.
+
+---
+
+#### 14.A.7 LandTravelCard — Scope Boundary (No Change This Sprint)
+
+**Architectural constraint:** The `land_travels` table stores `departure_time` and `arrival_time` as PostgreSQL `TIME` (wall-clock local time, no timezone). There are no `departure_tz` or `arrival_tz` columns in the `land_travels` table or the API contract. The `formatTimezoneAbbr` function requires an ISO UTC datetime AND an IANA timezone string — neither is available for land travel entries.
+
+**Sprint 8 decision: LandTravelCard receives NO timezone abbreviation changes.** Displaying a timezone abbreviation derived from guesswork or a hardcoded value would be misleading to users. The existing departure and arrival displays remain as-is (date + wall-clock time, no timezone label).
+
+**Note on Sprint 8 success criteria:** The active-sprint success criteria mentions "Create a land travel from London (Europe/London, January) → departure detail shows '10:00 AM GMT'". This cannot be implemented in Sprint 8 without a schema migration. The criteria is aspirational and reflects a future goal. The Sprint 8 implementation correctly limits timezone abbreviations to flights and stays.
+
+**Future sprint recommendation:** If timezone support for land travel is desired, a schema migration must add `departure_tz VARCHAR(50)` and `arrival_tz VARCHAR(50)` columns to `land_travels`, the API contract must be updated, and the `LandTravelEditPage` must include timezone selection inputs.
+
+---
+
+#### 14.A.8 States
+
+| State | Behavior |
+|-------|----------|
+| **Normal — DST zone, summer** | Abbreviation shows summer variant (e.g., "EDT" for America/New_York in August) |
+| **Normal — DST zone, winter** | Abbreviation shows winter variant (e.g., "EST" for America/New_York in January) |
+| **Normal — non-DST zone** | Single abbreviation always (e.g., "JST" for Asia/Tokyo) |
+| **Unknown timezone string** | `formatTimezoneAbbr` returns IANA string as fallback; rendered in `<span className={styles.tzAbbr}>` |
+| **Missing `*_tz` field (null/undefined)** | `formatTimezoneAbbr` returns `''`; conditional guard `{tzAbbr && <span>}` prevents empty span render |
+| **Missing `*_at` field (null/undefined)** | `formatTimezoneAbbr` returns `''`; same guard applies |
+| **`Intl.DateTimeFormat` throws** | `formatTimezoneAbbr` catches the error and returns the IANA string as fallback |
+
+---
+
+#### 14.A.9 Responsive Behavior
+
+- **Desktop:** Timezone abbreviation inline with the time string, same line. Narrow containers may cause the time + abbreviation to wrap as a unit — this is acceptable.
+- **Tablet / Mobile:** Same behavior. The `<span>` is inline content and wraps naturally with the time string if the container is narrow.
+- The stay card's `stayDateBlock` columns may stack on mobile depending on the existing responsive layout. The timezone abbreviation follows the time string on the same line regardless of column stacking.
+
+---
+
+#### Part B — Activity Location URL Detection
+
+---
+
+#### 14.B.1 Problem Statement
+
+**Current behavior:** `ActivityEntry` renders `activity.location` as a plain text string inside `<div className={styles.activityLocation}>`. If the user stores a Google Maps link or any other URL as the location, it renders as non-clickable text.
+
+**Desired behavior:**
+- Any `http://` or `https://` URL within a location string is rendered as a clickable `<a>` element that opens in a new tab.
+- Surrounding text (before/after the URL) renders as plain text.
+- Non-URL text locations are completely unchanged in appearance.
+- Dangerous URI schemes (`javascript:`, `data:`, `vbscript:`, `file:`, etc.) are never linkified — they remain as plain text.
+- No `dangerouslySetInnerHTML` under any circumstances.
+
+---
+
+#### 14.B.2 URL Detection Algorithm
+
+**Regex:** `/(https?:\/\/[^\s]+)/g`
+
+How it works:
+- Matches strings starting with `http://` or `https://`
+- Captures everything until the next whitespace character
+- The `g` flag finds all matches in the string
+- `javascript:`, `data:`, `vbscript:`, `file:`, and any other scheme do NOT match because they do not start with `http://` or `https://`
+
+**Edge cases handled by the regex:**
+
+| Input | Result |
+|-------|--------|
+| `"Golden Gate Park"` | No match → plain text |
+| `"https://maps.google.com/place/XYZ"` | Match → link |
+| `"http://example.com"` | Match → link |
+| `"Meet at https://maps.google.com"` | Split → `["Meet at ", "https://maps.google.com"]` |
+| `"https://a.com and https://b.com"` | Split → `["https://a.com", " and ", "https://b.com"]` |
+| `"javascript:alert(1)"` | No match → plain text |
+| `"data:text/html,<h1>hi</h1>"` | No match → plain text |
+| `""` (empty) | Returns `[]` → nothing rendered |
+
+**Note on trailing punctuation:** The regex `[^\s]+` will include trailing punctuation (e.g., a period at the end of a URL: `"https://example.com."`). This is acceptable and consistent with standard URL detection behavior. Most URLs in practice do not end with punctuation.
+
+---
+
+#### 14.B.3 `parseLocationWithLinks` Utility Function
+
+Create the following utility. Preferred location: `frontend/src/utils/formatDate.js` (to avoid creating a new import file). Alternatively, `frontend/src/utils/textUtils.js` (new file) is also acceptable if the team prefers separation of concerns.
+
+```js
+/**
+ * Parse a location string, detecting HTTP/HTTPS URLs and splitting the text
+ * into typed segments: 'text' (plain) or 'link' (URL).
+ *
+ * Only http:// and https:// schemes create links. All other content,
+ * including javascript:, data:, and vbscript: URIs, is returned as 'text'.
+ *
+ * @param {string|null|undefined} text - The location string to parse
+ * @returns {Array<{type: 'text'|'link', content: string}>}
+ */
+export function parseLocationWithLinks(text) {
+  if (!text) return [];
+  const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(URL_REGEX);
+  return parts
+    .filter((part) => part.length > 0)
+    .map((part) => ({
+      type: /^https?:\/\//.test(part) ? 'link' : 'text',
+      content: part,
+    }));
+}
+```
+
+**Implementation notes:**
+- `String.prototype.split` with a capturing-group regex returns captured groups interspersed in the result array. This is standard, well-supported JavaScript behavior.
+- The secondary `.test(/^https?:\/\//)` check on each `part` is a safety guard that re-confirms only `http://` or `https://`-prefixed strings become links — it defends against any edge case in the split behavior.
+- No `eval()`, no `new Function()`, no dynamic property access on user input.
+
+---
+
+#### 14.B.4 ActivityEntry — Updated Rendering
+
+**File:** `frontend/src/pages/TripDetailsPage.jsx` → `ActivityEntry` component
+
+**Current location render:**
+```jsx
+{activity.location && (
+  <div className={styles.activityLocation}>
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+      <path d="..." stroke="currentColor" strokeWidth="1" />
+      <circle cx="5" cy="3.75" r=".833" fill="currentColor" />
+    </svg>
+    {activity.location}
+  </div>
+)}
+```
+
+**New location render:**
+```jsx
+{activity.location && (
+  <div className={styles.activityLocation}>
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+      <path d="..." stroke="currentColor" strokeWidth="1" />
+      <circle cx="5" cy="3.75" r=".833" fill="currentColor" />
+    </svg>
+    {parseLocationWithLinks(activity.location).map((segment, index) =>
+      segment.type === 'link' ? (
+        <a
+          key={index}
+          href={segment.content}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.locationLink}
+        >
+          {segment.content}
+        </a>
+      ) : (
+        <span key={index}>{segment.content}</span>
+      )
+    )}
+  </div>
+)}
+```
+
+**Why `key={index}` is acceptable here:** The segments array is deterministically derived from a static string value (`activity.location`). Segments do not reorder between renders. Using `index` as key is correct for this case.
+
+**Do NOT use `dangerouslySetInnerHTML`.** The `href` attribute is set via JSX `href={segment.content}`, which React handles safely without HTML injection. Text content inside `<a>` and `<span>` tags is rendered via JSX children (plain strings), which React automatically escapes.
+
+---
+
+#### 14.B.5 Link Styling
+
+Add the following to `frontend/src/pages/TripDetailsPage.module.css`:
+
+```css
+/* Activity location hyperlink — URL detected within location string */
+.locationLink {
+  color: var(--accent);              /* #5D737E — matches interactive element color */
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;             /* prevent long URLs from overflowing narrow containers */
+  transition: color 150ms ease;
+}
+
+.locationLink:hover {
+  color: var(--text-primary);        /* #FCFCFC — lighten on hover */
+}
+
+.locationLink:focus-visible {
+  outline: 2px solid var(--border-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+```
+
+**Design rationale:**
+- `var(--accent)` (`#5D737E`) for link color matches the existing interactive element color in the design system — it signals clickability without a new color token.
+- Underline is the universal browser convention for hyperlinks, ensuring clarity including for colorblind users.
+- `word-break: break-all` prevents long URLs with query strings from overflowing the activity card or pushing layout horizontally.
+- Hover lightens to `var(--text-primary)` for minimal, Japandi-appropriate feedback.
+- `focus-visible` outline ensures keyboard users can clearly identify focused links (no outline on mouse click, outline on Tab navigation).
+
+---
+
+#### 14.B.6 Security Requirements
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Only `http://` and `https://` create links | Regex `/(https?:\/\/[^\s]+)/g` + secondary `.test(/^https?:\/\//)` guard |
+| `javascript:` → plain text | Regex does not match; result is `{ type: 'text', content: 'javascript:alert(1)' }` |
+| `data:` URIs → plain text | Regex does not match; all `data:` URIs → `type: 'text'` |
+| `vbscript:` → plain text | Regex does not match |
+| No `dangerouslySetInnerHTML` | JSX renders via React children — React escapes all text automatically |
+| `target="_blank"` requires `rel="noopener noreferrer"` | Required on every generated `<a>` element — prevents tab-napping and referrer leakage |
+| No code execution on user input | Utility uses only `String.split`, `Array.filter`, `Array.map`, and `RegExp.test` |
+
+---
+
+#### 14.B.7 All States
+
+| State | Input Example | Expected Render |
+|-------|---------------|-----------------|
+| **No location** | `null` or `undefined` | Location `<div>` not rendered (existing `activity.location &&` guard, unchanged) |
+| **Plain text — no URL** | `"Golden Gate Park"` | `<span>Golden Gate Park</span>` inside the location div — no `<a>` element |
+| **URL only** | `"https://maps.google.com/place/XYZ"` | `<a href="..." target="_blank" rel="noopener noreferrer">https://maps.google.com/place/XYZ</a>` |
+| **Text before URL** | `"Meet at https://maps.google.com"` | `<span>Meet at </span>` + `<a>https://maps.google.com</a>` |
+| **URL then text** | `"https://maps.google.com — see map"` | `<a>https://maps.google.com</a>` + `<span> — see map</span>` |
+| **Text + URL + text** | `"Lunch at https://yelp.com/biz/xyz done at 2pm"` | `<span>Lunch at </span>` + `<a>https://yelp.com/biz/xyz</a>` + `<span> done at 2pm</span>` |
+| **Multiple URLs** | `"https://a.com and https://b.com"` | `<a>https://a.com</a>` + `<span> and </span>` + `<a>https://b.com</a>` |
+| **Dangerous scheme — javascript:** | `"javascript:alert(1)"` | `<span>javascript:alert(1)</span>` — plain text, NOT a link |
+| **Dangerous scheme — data:** | `"data:text/html,<h1>hi</h1>"` | `<span>data:text/html,&lt;h1&gt;hi&lt;/h1&gt;</span>` — escaped plain text |
+| **Empty string** | `""` | `parseLocationWithLinks` returns `[]`; location div still guarded by `activity.location &&` — not rendered |
+
+---
+
+#### 14.B.8 Accessibility Considerations
+
+- All generated `<a>` elements have visible text (the URL string itself). Screen readers will read the full URL, which is descriptive enough for navigation context.
+- `target="_blank"` opens a new tab. The `:focus-visible` ring makes keyboard-focused links discoverable.
+- The location pin icon (`<svg aria-hidden="true">`) is unchanged — it remains decorative.
+- No ARIA changes to the `ActivityEntry` `<article>` element. The `aria-label` on the article uses `activity.name` + time and does not include location text — this is acceptable as location is secondary metadata.
+
+---
+
+#### 14.B.9 Responsive Behavior
+
+- **Desktop:** Activity location text wraps within the `activityDetails` panel. Long URLs are contained by `word-break: break-all`.
+- **Mobile (< 640px):** Same. Activity card stacks time | divider | details vertically. URL wrapping is contained by the `word-break` rule.
+- No breakpoint-specific link behavior needed.
+
+---
+
+#### 14.C Summary — What the Frontend Engineer Must Build (T-113 + T-114)
+
+**T-113 — Timezone Abbreviation Display:**
+
+| File | Change |
+|------|--------|
+| `frontend/src/utils/formatDate.js` | **No changes** — `formatTimezoneAbbr` already exists and is correct |
+| `frontend/src/pages/TripDetailsPage.jsx` → `FlightCard` | Replace inline string concat with `{depTz && <span className={styles.tzAbbr}>{depTz}</span>}` (departure + arrival) |
+| `frontend/src/pages/TripDetailsPage.jsx` → `StayCard` | Add `formatTimezoneAbbr` calls for check-in + check-out; add `<span className={styles.tzAbbr}>` renders |
+| `frontend/src/pages/TripDetailsPage.module.css` | Add `.tzAbbr` CSS rule |
+| `frontend/src/pages/TripDetailsPage.jsx` → `LandTravelCard` | **No changes** — land travel has no timezone fields (see §14.A.7) |
+
+**T-114 — Activity Location URL Detection:**
+
+| File | Change |
+|------|--------|
+| `frontend/src/utils/formatDate.js` OR `frontend/src/utils/textUtils.js` (new) | Add `parseLocationWithLinks(text)` utility function |
+| `frontend/src/pages/TripDetailsPage.jsx` → `ActivityEntry` | Replace `{activity.location}` plain text with `parseLocationWithLinks(activity.location).map(...)` render |
+| `frontend/src/pages/TripDetailsPage.module.css` | Add `.locationLink` CSS rule |
+
+---
+
+**Tests required for T-113 (minimum 6):**
+1. `FlightCard`: departure time shows "EDT" abbreviation for `America/New_York` in summer (August datetime)
+2. `FlightCard`: arrival time shows "JST" abbreviation for `Asia/Tokyo`
+3. `StayCard`: check-in time shows correct timezone abbreviation adjacent to the check-in datetime
+4. `StayCard`: check-out time shows correct timezone abbreviation adjacent to the check-out datetime
+5. Unknown/invalid timezone string passed to `formatTimezoneAbbr` → returns IANA string as fallback, no crash, component renders
+6. DST boundary: same zone (`America/New_York`), January datetime → "EST"; July datetime → "EDT" (different abbreviation)
+
+**Tests required for T-114 (minimum 5):**
+1. Plain text location (no URL) → no `<a>` element rendered in the document
+2. Single URL location → `<a>` rendered with correct `href`, `target="_blank"`, `rel="noopener noreferrer"`, and `className="locationLink"`
+3. Mixed text + URL location → text segment rendered as `<span>`, URL segment rendered as `<a>`
+4. Multiple URLs in one string → each URL is a separate `<a>` element; intervening text is a `<span>`
+5. `javascript:alert(1)` location string → renders entirely as plain text, NO `<a>` element rendered
+
+---
+
+*Sprint 8 Spec 14 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-02-27.*
+
+---
+
+### Spec 15: Trip Export / Print View
+
+**Sprint:** #10
+**Related Task:** T-121
+**Status:** Approved
+
+**Description:**
+Spec 15 adds a lightweight, browser-native print capability to the TripDetailsPage. Users can generate a clean, single-column, black-on-white paper-ready view of their entire trip itinerary by clicking a "Print" button. There is no PDF library, no server-side generation, and no new route — the feature uses `window.print()` combined with a `@media print` CSS stylesheet that overrides the dark theme and hides interactive elements unsuitable for print (navbar, edit/add/delete controls, the interactive calendar). IBM Plex Mono is retained as the document font in print.
+
+**Target User:** Detail-oriented travelers who want a physical or PDF copy of their itinerary to carry while travelling (offline reference, customs forms, accommodation confirmations).
+
+---
+
+#### 15.1 Print Button — Screen Appearance
+
+**Placement:** The Print button lives inside the `pageHeader` block on TripDetailsPage, in the same row as the trip name and destination chips. It is positioned at the far right of that header row using flexbox (`justify-content: space-between`).
+
+**Layout structure of updated pageHeader row:**
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│  [← back to trips]                                                         │
+│                                                                            │
+│  Trip Name (h1)                                          [🖨 Print]        │
+│  ● Tokyo  ● Paris  [edit destinations]                                     │
+│  Aug 7 – Aug 20, 2026  [edit dates]                                        │
+│  Notes text...  [pencil icon]                                              │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+The trip name (`h1.tripName`) and the print button are in a flex row (`tripNameRow`) with `justify-content: space-between` and `align-items: flex-start`. The destinations, date range, and notes remain below, unchanged.
+
+**Button spec:**
+
+| Property | Value |
+|----------|-------|
+| Label | `Print` (text only, no emoji — use a small SVG printer icon to the left) |
+| Icon | Printer SVG: 14×14px, `stroke="currentColor"`, `strokeWidth="1.5"`, `aria-hidden="true"`. Simple printer outline (rectangle body, paper output tray at top, feed sheet below). |
+| Style | Secondary button (see Design System: transparent bg, `1px solid rgba(93,115,126,0.5)` border, `#FCFCFC` text) |
+| Font size | 11px |
+| Font weight | 500 |
+| Letter spacing | 0.06em |
+| Text transform | uppercase |
+| Padding | 6px 14px |
+| Border radius | `var(--radius-sm)` (2px) |
+| Gap (icon + label) | 6px |
+| Hover state | Background `rgba(252,252,252,0.05)`, border stays |
+| Focus visible | `outline: 2px solid var(--border-accent); outline-offset: 2px` |
+| Cursor | pointer |
+| `aria-label` | `"Print trip itinerary"` |
+| CSS class | `.printBtn` (added to `TripDetailsPage.module.css`) |
+
+**Why secondary style:** The Print button is a utility action, not the primary CTA of the page. Secondary style signals availability without competing with section-level "add" actions.
+
+---
+
+#### 15.2 Print Button — CSS (`.printBtn` in `TripDetailsPage.module.css`)
+
+```css
+/* ── Print Button ── */
+.tripNameRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.printBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid rgba(93, 115, 126, 0.5);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  flex-shrink: 0;      /* prevent button from squishing under long trip name */
+  white-space: nowrap;
+}
+
+.printBtn:hover {
+  background: rgba(252, 252, 252, 0.05);
+}
+
+.printBtn:focus-visible {
+  outline: 2px solid var(--border-accent);
+  outline-offset: 2px;
+}
+```
+
+---
+
+#### 15.3 Print Button — JSX Structure
+
+The `pageHeader` in `TripDetailsPage.jsx` currently renders the trip name `h1` directly inside `pageHeader`. Wrap the `h1` and the new print button in a `tripNameRow` div:
+
+```jsx
+<div className={styles.pageHeader}>
+  <Link to="/" className={styles.backLink} aria-label="Back to my trips">
+    ← back to trips
+  </Link>
+
+  {/* NEW: trip name + print button row */}
+  <div className={styles.tripNameRow}>
+    <h1 className={styles.tripName}>{trip?.name}</h1>
+
+    <button
+      className={styles.printBtn}
+      onClick={() => window.print()}
+      aria-label="Print trip itinerary"
+    >
+      {/* Printer SVG icon */}
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 14 14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        {/* Paper feed (top sheet) */}
+        <rect x="3" y="1" width="8" height="4" rx="0.5" />
+        {/* Printer body */}
+        <rect x="1" y="5" width="12" height="6" rx="1" />
+        {/* Output tray / printed page */}
+        <rect x="3" y="9" width="8" height="4" rx="0.5" />
+      </svg>
+      Print
+    </button>
+  </div>
+
+  {/* destinations, date range, notes — unchanged below */}
+  ...
+</div>
+```
+
+**onClick handler:** `() => window.print()` — inline, no separate function needed. The browser opens the print dialog using the document's current rendered state, which `@media print` CSS transforms into a clean layout.
+
+---
+
+#### 15.4 Print Layout — What the User Sees in Print Preview
+
+When the user clicks Print and the browser print dialog opens, the page renders as:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│  TRIPLANNER                          (small, top-right) │
+│                                                         │
+│  Trip to Japan                                          │
+│  (h1 — large, black)                                    │
+│                                                         │
+│  Tokyo · Osaka · Kyoto                                  │
+│  (destinations, comma-separated or pill chips)          │
+│                                                         │
+│  Aug 7 – Aug 20, 2026                                   │
+│  (date range, if set)                                   │
+│                                                         │
+│  notes: Book restaurant on day 3 in Osaka...            │
+│  (notes, if present — full text, no truncation)         │
+│                                                         │
+│  ──────────────────────────────────────────────────     │
+│  FLIGHTS                                                │
+│  ──────────────────────────────────────────────────     │
+│                                                         │
+│  JFK → NRT                                              │
+│  Delta  DL006                                           │
+│  Aug 7, 2026 — 11:00 AM EDT → Aug 8, 2026 — 2:15 PM JST│
+│                                                         │
+│  ──────────────────────────────────────────────────     │
+│  LAND TRAVEL                                            │
+│  ──────────────────────────────────────────────────     │
+│  [shinkansen entries ...]                               │
+│                                                         │
+│  ──────────────────────────────────────────────────     │
+│  STAYS                                                  │
+│  ──────────────────────────────────────────────────     │
+│  [hotel entries ...]                                    │
+│                                                         │
+│  ──────────────────────────────────────────────────     │
+│  ACTIVITIES                                             │
+│  ──────────────────────────────────────────────────     │
+│  [day-grouped activity entries ...]                     │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Key print layout rules:**
+- Single column, full-width (no max-content-width constraint — paper is narrower than 1120px)
+- Black (`#000`) text on white (`#fff`) background — all dark theme colors overridden
+- IBM Plex Mono font retained throughout
+- Section headers (FLIGHTS, LAND TRAVEL, STAYS, ACTIVITIES) preserved with their horizontal rule
+- All trip data (flight cards, stay cards, land travel cards, activity entries) displayed in full
+- No interactive UI: no navbar, no edit buttons, no add buttons, no delete buttons, no calendar, no back link, no edit-destinations link, no date edit controls, no notes pencil button, no save/cancel/clear buttons, no print button itself
+
+---
+
+#### 15.5 `@media print` CSS Rules — `frontend/src/styles/print.css`
+
+Create a new file: `frontend/src/styles/print.css`
+
+This file contains only `@media print` rules. It must be imported in `TripDetailsPage.jsx` (the only page where printing is relevant).
+
+```css
+/* ============================================================
+   Print Stylesheet — TripDetailsPage
+   Imported in TripDetailsPage.jsx
+   Controls layout when user triggers window.print()
+   ============================================================ */
+
+@media print {
+
+  /* ── 1. Global overrides: white paper, black ink, IBM Plex Mono ── */
+  *,
+  *::before,
+  *::after {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #ccc !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  body {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11pt;
+    line-height: 1.5;
+    background: #fff;
+    color: #000;
+  }
+
+  /* ── 2. Hide interactive / non-print UI ── */
+
+  /* Navbar (Navbar.module.css: .navbar) */
+  [class*="navbar_navbar"],
+  [class*="Navbar_navbar"] {
+    display: none !important;
+  }
+
+  /* Back link */
+  [class*="backLink"] {
+    display: none !important;
+  }
+
+  /* Print button itself */
+  [class*="printBtn"] {
+    display: none !important;
+  }
+
+  /* Edit destinations link */
+  [class*="editDestLink"] {
+    display: none !important;
+  }
+
+  /* Destination edit container (inline edit mode) */
+  [class*="destEditContainer"] {
+    display: none !important;
+  }
+
+  /* Set dates / Edit dates links */
+  [class*="setDatesLink"],
+  [class*="editDatesLink"] {
+    display: none !important;
+  }
+
+  /* Date range edit form (input + save/clear/cancel) */
+  [class*="dateRangeEdit"] {
+    display: none !important;
+  }
+
+  /* Clear and cancel date buttons */
+  [class*="clearDatesBtn"],
+  [class*="cancelDatesLink"] {
+    display: none !important;
+  }
+
+  /* Notes pencil / edit button */
+  [class*="notesPencilBtn"] {
+    display: none !important;
+  }
+
+  /* Notes edit container (textarea + save/cancel) */
+  [class*="notesEditContainer"] {
+    display: none !important;
+  }
+
+  /* Section action buttons/links ("+ add flight", "+ add stay", etc.) */
+  [class*="sectionActionBtn"],
+  [class*="sectionActionLink"] {
+    display: none !important;
+  }
+
+  /* Calendar wrapper (interactive, not useful for print) */
+  [class*="calendarWrapper"] {
+    display: none !important;
+  }
+
+  /* ── 3. Remove max-width constraint for print ── */
+  [class*="container"] {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  [class*="main"] {
+    padding: 0 !important;
+  }
+
+  /* ── 4. Ensure all sections show (override any conditional display) ── */
+  [class*="section"] {
+    display: block !important;
+    page-break-inside: avoid;
+    margin-bottom: 24pt;
+  }
+
+  /* ── 5. Cards — single column, no card background ── */
+  [class*="cardList"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16pt !important;
+  }
+
+  [class*="flightCard"],
+  [class*="stayCard"],
+  [class*="landTravelCard"] {
+    border: 1px solid #ccc !important;
+    border-radius: 0 !important;
+    padding: 12pt !important;
+    page-break-inside: avoid;
+  }
+
+  /* Flight columns — keep three-column layout (from / airline+number / to) */
+  [class*="flightColumns"] {
+    display: flex !important;
+  }
+
+  /* ── 6. Activities ── */
+  [class*="dayGroup"] {
+    page-break-inside: avoid;
+    margin-bottom: 12pt;
+  }
+
+  [class*="activityEntry"] {
+    page-break-inside: avoid;
+    border-bottom: 1px solid #eee !important;
+    padding-bottom: 8pt;
+    margin-bottom: 8pt;
+  }
+
+  /* ── 7. Section headers — preserve uppercase label + line ── */
+  [class*="sectionHeader"] {
+    display: flex !important;
+    align-items: center;
+    margin-bottom: 12pt;
+    border-bottom: 1px solid #000 !important;
+    padding-bottom: 4pt;
+  }
+
+  [class*="sectionLine"] {
+    display: none !important; /* The border-bottom on sectionHeader replaces it */
+  }
+
+  [class*="sectionTitle"] {
+    font-size: 9pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+    color: #000 !important;
+  }
+
+  /* ── 8. Status badges — visible in print ── */
+  [class*="categoryBadge"],
+  [class*="landTravelModeBadge"],
+  [class*="allDayBadge"] {
+    border: 1px solid #888 !important;
+    padding: 1pt 6pt !important;
+    border-radius: 2pt !important;
+    font-size: 8pt !important;
+  }
+
+  /* ── 9. Page setup ── */
+  @page {
+    size: A4 portrait;
+    margin: 20mm 15mm 20mm 15mm;
+  }
+
+  /* ── 10. Typography adjustments for print ── */
+  [class*="tripName"] {
+    font-size: 20pt !important;
+    margin-bottom: 8pt !important;
+  }
+
+  [class*="destinations"],
+  [class*="destinationsRow"] {
+    font-size: 11pt !important;
+    margin-bottom: 6pt !important;
+  }
+
+  [class*="destChipReadonly"] {
+    background: none !important;
+    border: 1px solid #999 !important;
+    padding: 2pt 6pt !important;
+    border-radius: 2pt !important;
+    font-size: 9pt !important;
+  }
+
+  [class*="dateRangeText"] {
+    font-size: 10pt !important;
+    color: #444 !important;
+  }
+
+  [class*="notesText"] {
+    font-size: 10pt !important;
+    color: #333 !important;
+  }
+
+  /* Ensure notes section displays in full (not truncated) */
+  [class*="notesSection"] {
+    display: block !important;
+  }
+
+  [class*="notesDisplay"] {
+    display: block !important;
+  }
+
+  /* Airport codes larger for readability */
+  [class*="airportCode"] {
+    font-size: 14pt !important;
+    font-weight: 600 !important;
+  }
+
+  /* ── 11. Links — show as text, not blue underlined ── */
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  /* Exception: activity location URLs — show URL as text so reader can type it */
+  [class*="locationLink"] {
+    color: #000 !important;
+    text-decoration: underline !important;  /* keep underline to signal it was a link */
+  }
+
+  /* ── 12. Timezone abbreviation badges ── */
+  [class*="tzAbbr"] {
+    color: #555 !important;
+    font-size: 8pt !important;
+  }
+
+  /* ── 13. Skeleton loading states (should not appear in print) ── */
+  .skeleton {
+    display: none !important;
+  }
+
+  /* ── 14. Spinners (should not appear in print) ── */
+  .spinner {
+    display: none !important;
+  }
+
+}
+```
+
+**Implementation note on CSS Modules class name selectors:** Because TripDetailsPage uses CSS Modules, the actual compiled class names in the DOM are namespaced (e.g., `TripDetailsPage_navbar__abc12`). The `[class*="navbar_navbar"]` attribute selector matches any element whose class attribute contains that substring. This is the correct technique for targeting CSS Module classes from a global print stylesheet without needing to add `id` attributes or data attributes everywhere.
+
+**Alternative (more maintainable) approach:** If the attribute selector approach proves fragile across build hashes, the Frontend Engineer may instead add `id` attributes to key wrapper elements in TripDetailsPage.jsx (e.g., `id="print-hide-navbar"`, `id="print-calendar"`) and target those in print.css. This trades JSX changes for CSS stability. The attribute selector approach is preferred for MVP since it requires zero JSX changes beyond the print button and `tripNameRow` wrapper.
+
+---
+
+#### 15.6 Import in TripDetailsPage.jsx
+
+Add the following import at the top of `frontend/src/pages/TripDetailsPage.jsx`, alongside existing style imports:
+
+```jsx
+import '../styles/print.css';
+```
+
+This ensures the `@media print` rules are included in the Vite bundle and applied globally when `window.print()` is invoked on the TripDetailsPage.
+
+---
+
+#### 15.7 User Flow — Step by Step
+
+1. **User lands on TripDetailsPage** — sees the normal dark-theme view with the Print button in the top-right of the page header.
+2. **User clicks "Print"** — browser immediately opens the native OS print dialog (no loading state, no animation — `window.print()` is synchronous from the browser's perspective).
+3. **Print preview renders** — browser applies `@media print` CSS, hiding the navbar, interactive controls, and calendar; overriding colors to black-on-white; resetting layout to single-column.
+4. **User sees print preview** — all four trip sections (Flights, Land Travel, Stays, Activities) are visible in order; trip name, destinations, date range, and notes appear at the top.
+5. **User selects printer or PDF** — clicks Print in the OS dialog. Browser sends the document to the printer (physical) or saves as PDF.
+6. **Dialog closes** — page reverts to normal dark-theme screen rendering. No page reload or state change.
+
+---
+
+#### 15.8 All States
+
+| State | Behavior |
+|-------|----------|
+| **Normal screen** | Print button visible in page header; dark theme; all sections, calendar, and controls visible |
+| **Print preview** | Navbar hidden; calendar hidden; all edit/add/delete buttons hidden; back link hidden; notes pencil hidden; black-on-white single column; all trip data sections visible |
+| **Empty trip (no flights, no stays, etc.)** | Empty state messages (e.g., "no flights added yet") are still visible in print — they tell the reader this section has no data. Empty state CTAs (the "add" links/buttons) are hidden via sectionActionBtn/sectionActionLink selectors. |
+| **No date range set** | "trip dates not set" text renders in print (the setDatesLink control is hidden) |
+| **No notes** | "no notes yet" placeholder text renders in print (the notesPencilBtn is hidden) |
+| **Loading** | If user somehow triggers print while the page is still loading (skeleton state), skeleton shimmer elements are hidden in print. However, this should be edge-case-only — the Print button is only rendered after the trip data loads (controlled by the same `if (!trip) return` loading guard already in TripDetailsPage). |
+| **Trip load error** | Print button is not rendered in the error state (the error state renders a different branch: `tripErrorState`). No print action available without data. |
+| **Destinations in edit mode** | If the user has the destination edit form open when they click Print, the `destEditContainer` is hidden in print, and the `destinationsRow` (read-only chips) is shown — which is the intended print state. The edit form inputs would have been visible in the DOM but are suppressed by the `destEditContainer` `display: none !important` rule. |
+
+---
+
+#### 15.9 Responsive Behavior (Screen — Desktop → Mobile)
+
+The Print button is a screen-side element. The `@media print` stylesheet handles print. On screen:
+
+| Breakpoint | Print Button Behavior |
+|------------|----------------------|
+| **Desktop (≥ 768px)** | Visible in `tripNameRow`, far right of trip name. Button is full-size (11px label + icon). |
+| **Mobile (< 640px)** | Button remains visible but `tripNameRow` wraps using `flex-wrap: wrap`. On very narrow viewports the button may appear below the trip name on its own row. `white-space: nowrap` and `flex-shrink: 0` keep the button label intact. |
+
+Add the following responsive rule in `TripDetailsPage.module.css` inside the existing `@media (max-width: 640px)` block (or create it if absent):
+
+```css
+@media (max-width: 640px) {
+  .tripNameRow {
+    flex-wrap: wrap;
+  }
+
+  .printBtn {
+    font-size: 10px;
+    padding: 5px 12px;
+  }
+}
+```
+
+---
+
+#### 15.10 Accessibility Considerations
+
+| Concern | Implementation |
+|---------|---------------|
+| **Button label** | `aria-label="Print trip itinerary"` on the `<button>` element. Describes the action and the context (not just "print") |
+| **Icon-only ambiguity** | The button has both the SVG icon and the text "Print" — it is never icon-only. The SVG has `aria-hidden="true"`. Screen readers read the visible text "Print" and the aria-label |
+| **Keyboard access** | The `<button>` element is natively keyboard-focusable (Tab order). Enter and Space activate it. Focus ring via `focus-visible` |
+| **Print dialog accessibility** | `window.print()` opens the OS print dialog which is fully accessible — it is a native OS component |
+| **Color contrast (screen)** | Secondary button: `#FCFCFC` on transparent (over `#02111B` page background) — passes WCAG AA at any font size |
+| **Color contrast (print)** | `#000` on `#fff` — maximum contrast |
+| **No motion** | `window.print()` has no animation; `transition: all 150ms ease` on the button hover is below the prefers-reduced-motion threshold. Add `@media (prefers-reduced-motion: reduce) { .printBtn { transition: none; } }` for completeness |
+
+---
+
+#### 15.11 Tests Required (T-122)
+
+Minimum 2 tests. Both in `frontend/src/__tests__/TripDetailsPage.test.jsx` or a new `TripDetailsPage.print.test.jsx`:
+
+**Test 1 — Print button renders:**
+```
+Given: TripDetailsPage is rendered with a valid trip object (all sections may be empty)
+When: Component mounts
+Then: An element with aria-label="Print trip itinerary" is present in the document
+```
+
+**Test 2 — Print button calls window.print():**
+```
+Given: TripDetailsPage is rendered with a valid trip object
+  AND: window.print is mocked (jest.fn())
+When: User clicks the button with aria-label="Print trip itinerary"
+Then: window.print() was called exactly once
+  AND: No navigation occurred
+  AND: No API calls were made
+```
+
+**Test 3 (recommended, not required):** Verify the button is NOT present in the trip error state (renders `tripErrorState` branch, no print button).
+
+**Existing tests:** All 366+ existing tests must continue to pass (no regressions from the `tripNameRow` wrapper div addition or the `print.css` import).
+
+---
+
+#### 15.12 Files to Create / Modify (T-122 Summary)
+
+| File | Change Type | Description |
+|------|------------|-------------|
+| `frontend/src/styles/print.css` | **Create** | New file — all `@media print` rules |
+| `frontend/src/pages/TripDetailsPage.jsx` | **Modify** | (1) Import `'../styles/print.css'`; (2) Wrap `h1.tripName` in `div.tripNameRow` alongside new `<button className={styles.printBtn}>`; (3) `onClick={() => window.print()}` on button |
+| `frontend/src/pages/TripDetailsPage.module.css` | **Modify** | Add `.tripNameRow` and `.printBtn` CSS rules; add `@media (max-width: 640px)` responsive rules for these |
+| `frontend/src/__tests__/TripDetailsPage.test.jsx` | **Modify** | Add 2+ print-related test cases |
+
+**No backend changes required.** No new routes. No new API calls. No migration.
+
+---
+
+*Sprint 10 Spec 15 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-04.*
+
+---
+
+## Sprint 12 Specs
+
+---
+
+### Spec 16: DayPopover Scroll-Close Behavior Fix
+
+**Status:** Approved
+**Task:** T-126
+**Sprint:** 12
+**Published:** 2026-03-06
+**Type:** Bug Fix
+
+---
+
+#### 16.1 Overview
+
+The `DayPopover` component is a portal-rendered dropdown that opens when the user clicks the "+X more" overflow indicator on a calendar day. It currently uses `position: fixed` with coordinates derived from the trigger button's viewport position at the moment of click. Because the coordinates are captured once and never updated, scrolling the page causes the popover to visually detach ("drift") from its trigger.
+
+**Fix:** Close the popover automatically when a scroll event is detected (Option A from the task spec). This is the standard UX pattern for portaled dropdowns — it is simpler, more reliable, and avoids the complexity of recalculating position on every scroll frame.
+
+**No new screens or routes are introduced.** This spec describes the exact interaction behavior change for `DayPopover`.
+
+---
+
+#### 16.2 Current vs. Desired Behavior
+
+| Scenario | Current Behavior | Desired Behavior |
+|----------|-----------------|-----------------|
+| User opens popover, does NOT scroll | Popover stays anchored to trigger | Unchanged — popover stays open |
+| User opens popover, then scrolls | Popover drifts away from trigger (stays at original viewport coords while page moves) | Popover closes immediately on first scroll event |
+| User presses Escape | Popover closes; focus returns to trigger | Unchanged |
+| User clicks outside popover | Popover closes | Unchanged |
+| User closes popover via any method | Focus returns to trigger button | Unchanged |
+
+---
+
+#### 16.3 Component: DayPopover
+
+**Location:** `frontend/src/components/TripCalendar/` (or wherever DayPopover is currently defined).
+
+**Trigger:** `<button>` element labelled "+X more" inside a calendar day cell. Clicking it opens the popover.
+
+**Popover rendering:** Via `createPortal` to `document.body`. The portal renders with `position: fixed` at the trigger's viewport coordinates (`getBoundingClientRect()`).
+
+---
+
+#### 16.4 Scroll-Close Implementation Spec
+
+The scroll listener must be:
+
+1. **Added** when the popover opens (when `isOpen` transitions from `false` to `true`)
+2. **Removed** when the popover closes — whether closed by scroll, Escape, outside-click, or any other means — to prevent memory leaks
+3. **Using `{ capture: true }`** on the event listener so it fires for scroll events on any scrollable ancestor, not just the window's scroll event
+
+```js
+// Pseudocode — implement in DayPopover's useEffect
+useEffect(() => {
+  if (!isOpen) return;
+
+  const handleScroll = () => {
+    closePopover(); // call the existing close handler
+  };
+
+  window.addEventListener('scroll', handleScroll, { capture: true });
+
+  return () => {
+    window.removeEventListener('scroll', handleScroll, { capture: true });
+  };
+}, [isOpen]);
+```
+
+**Cleanup contract:** The `removeEventListener` call in the cleanup function MUST use the same options object (`{ capture: true }`) as `addEventListener` — otherwise the listener is not removed correctly. This is a browser requirement.
+
+**No race condition:** The scroll listener fires asynchronously after the popover opens. A scroll event cannot fire simultaneously with the click that opened the popover — the browser dispatches them in separate event loop ticks.
+
+---
+
+#### 16.5 Preserved Behaviors (Must Not Regress)
+
+| Behavior | Requirement |
+|----------|-------------|
+| Escape to close | Must still work. `keydown` listener for `Escape` key must be preserved alongside the scroll listener. |
+| Outside-click to close | Must still work. The existing click-outside detection logic is unchanged. |
+| Focus restoration | When the popover closes (by any method), focus must return to the trigger button (`"+X more"`). |
+| Popover content | The list of events shown inside the popover is unchanged. |
+| Trigger button label | "+X more" text and aria attributes are unchanged. |
+| Accessibility | Popover role, aria-modal, focus trap (if implemented) are all unchanged. |
+
+---
+
+#### 16.6 States
+
+| State | User Sees |
+|-------|-----------|
+| **Closed (default)** | "+X more" button visible on overflowed calendar day. No popover in DOM. |
+| **Open — no scroll** | Popover visible, anchored at trigger position. Events list displayed inside. |
+| **Open — user scrolls** | Popover immediately closes. Page scrolls normally. Focus returns to trigger button. |
+| **Open — Escape pressed** | Popover closes. Focus returns to trigger button. (Unchanged) |
+| **Open — outside click** | Popover closes. (Unchanged) |
+
+---
+
+#### 16.7 Visual Design (Unchanged)
+
+The popover's visual appearance is not changed by this fix. For reference, the DayPopover style must continue to follow the Design System:
+
+| Property | Value |
+|----------|-------|
+| Background | `var(--surface)` (`#30292F`) |
+| Border | `1px solid var(--border-subtle)` |
+| Border-radius | 4px |
+| Text color | `var(--text-primary)` (`#FCFCFC`) |
+| Font | IBM Plex Mono, 13px |
+| Max height | ~320px with internal scroll if needed |
+| z-index | High enough to appear above calendar cells (e.g., 1000) |
+
+---
+
+#### 16.8 Responsive Behavior
+
+The scroll-close behavior applies equally on all viewport sizes. Mobile users who scroll to reveal more content will have the popover close — consistent with desktop behavior. No breakpoint-specific changes.
+
+---
+
+#### 16.9 Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Focus restoration on scroll-close | When scroll closes the popover, focus returns to the `"+X more"` trigger button — same as Escape-close behavior |
+| Screen reader announcement | No special `aria-live` needed. The popover disappearing from DOM is sufficient — screen readers following focus to the trigger button will re-read its context |
+| Keyboard navigation unaffected | Tab, Escape, Enter/Space inside the popover — all existing keyboard interactions unchanged |
+
+---
+
+#### 16.10 Tests Required
+
+Minimum tests to add/update in the DayPopover test file:
+
+**New Test 1 — Scroll closes popover:**
+```
+Given: DayPopover is open (trigger has been clicked)
+When: A scroll event fires on window
+Then: The popover is removed from the DOM (or isOpen becomes false)
+  AND: Focus returns to the trigger button
+```
+
+**New Test 2 — Scroll listener is cleaned up on unmount:**
+```
+Given: DayPopover is open
+When: The component unmounts (or closes)
+Then: window.removeEventListener was called with ('scroll', handler, { capture: true })
+      (verify no dangling listener — use jest.spyOn on window.addEventListener / removeEventListener)
+```
+
+**Regression Test — Escape still works after scroll listener is added:**
+```
+Given: DayPopover is open (scroll listener is attached)
+When: User presses Escape
+Then: Popover closes
+  AND: Focus returns to trigger
+  AND: No errors thrown
+```
+
+All existing DayPopover tests must continue to pass.
+
+---
+
+#### 16.11 Files to Modify (T-126)
+
+| File | Change |
+|------|--------|
+| `DayPopover.jsx` (or equivalent component file) | Add `useEffect` with scroll listener; add to existing cleanup; no visual changes |
+| `DayPopover.test.jsx` (or equivalent test file) | Add scroll-close test, cleanup test, Escape regression test |
+
+**No CSS changes.** No new components. No API changes.
+
+---
+
+*Sprint 12 Spec 16 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-06.*
+
+---
+
+### Spec 17: Calendar Check-in Chip Label Addition
+
+**Status:** Approved
+**Task:** T-127
+**Sprint:** 12
+**Published:** 2026-03-06
+**Type:** Bug Fix
+
+---
+
+#### 17.1 Overview
+
+The calendar view renders "event chips" inside each day cell to indicate what travel events fall on that day. For stays, the current behavior is asymmetric:
+
+- **Check-out day:** chip reads `"check-out Xa"` (e.g., `"check-out 11a"`) — label prefix present
+- **Check-in day:** chip reads only `"Xa"` (e.g., `"4p"`) — no label prefix
+
+This creates a confusing inconsistency. Users can see "check-out" but not "check-in", making it ambiguous whether the check-in time chip is a flight arrival, an activity start, or something else.
+
+**Fix:** Prepend the string `"check-in "` to the check-in time chip label, matching the exact format of the check-out chip. No other visual changes.
+
+---
+
+#### 17.2 Current vs. Desired Label Format
+
+| Event Type | Day | Current Chip Text | Desired Chip Text |
+|-----------|-----|------------------|------------------|
+| Stay check-in | Check-in date | `"4p"` | `"check-in 4p"` |
+| Stay check-out | Check-out date | `"check-out 11a"` | `"check-out 11a"` (unchanged) |
+| Flight departure | Departure date | `"departs 6a"` (or similar) | Unchanged |
+| Flight arrival | Arrival date | `"arrives 2:30p"` (or similar) | Unchanged |
+| Activity | Activity date | Activity name or time | Unchanged |
+
+---
+
+#### 17.3 Chip Format Specification
+
+The time abbreviation format is already established by the existing check-out chip implementation. The check-in chip must follow the same rules:
+
+**Format:** `"check-in "` + formatted time
+
+**Time formatting rules (match existing check-out format):**
+- Hours without leading zero: `4` not `04`
+- Minutes omitted if zero: `"4p"` not `"4:00p"`, `"2:30p"` for non-zero minutes
+- AM/PM: lowercase `"a"` and `"p"` (not `"AM"` / `"PM"`)
+- Combined: `"check-in 4p"`, `"check-in 2:30p"`, `"check-in 11a"`
+
+**Examples:**
+
+| Check-in time (local) | Chip text |
+|----------------------|-----------|
+| 4:00 PM | `"check-in 4p"` |
+| 3:30 PM | `"check-in 3:30p"` |
+| 10:00 AM | `"check-in 10a"` |
+| 11:30 AM | `"check-in 11:30a"` |
+| 12:00 PM (noon) | `"check-in 12p"` |
+| 12:00 AM (midnight) | `"check-in 12a"` |
+
+---
+
+#### 17.4 Component Location
+
+The chip text is rendered inside the calendar event chip renderer — wherever the stay check-in chip is currently constructed. Based on the project's architecture, look for:
+
+- The `TripCalendar` component's event-mapping logic
+- A function like `buildCalendarEvents()`, `getChipLabel()`, or similar
+- The section that maps over `stays` and generates chip objects for check-in and check-out dates
+
+The fix is a one-line string change: wherever the check-in chip's label is assembled, prepend `"check-in "` before the formatted time string.
+
+**Pseudocode (current):**
+```js
+{ label: formatChipTime(stay.check_in_at, stay.check_in_tz), type: 'check-in' }
+```
+
+**Pseudocode (desired):**
+```js
+{ label: `check-in ${formatChipTime(stay.check_in_at, stay.check_in_tz)}`, type: 'check-in' }
+```
+
+---
+
+#### 17.5 Overflow Popover Behavior
+
+When a calendar day has more events than fit in the cell, a "+X more" overflow chip is shown. Clicking it opens the `DayPopover` which lists all events for that day, including check-in chips. The `"check-in Xa"` label must appear consistently **both** in the inline day cell chip AND in the DayPopover event list. The same label string should be used in both rendering paths — there should be no divergence between the two.
+
+---
+
+#### 17.6 States
+
+| State | Check-in Chip Appearance |
+|-------|--------------------------|
+| **Check-in day, chip visible in day cell** | `"check-in 4p"` (or appropriate time) |
+| **Check-in day, chip in DayPopover overflow list** | `"check-in 4p"` — same label, same format |
+| **No stays (empty trip)** | No check-in chip exists — no change |
+| **Stay with no check-in time (null check_in_at)** | No chip rendered (existing guard unchanged) |
+| **Check-out day** | `"check-out 11a"` — unchanged |
+
+---
+
+#### 17.7 Visual Design (Unchanged)
+
+The chip's visual appearance — background color, text color, font size, border radius, padding — is not changed. Only the text content changes.
+
+For reference, stay check-in chips should use the same visual style as check-out chips:
+
+| Property | Value |
+|----------|-------|
+| Background | `rgba(93, 115, 126, 0.15)` or the existing stay chip color |
+| Text color | `var(--text-primary)` or muted variant (match existing check-out chip) |
+| Font size | 11px (match existing calendar chips) |
+| Padding | 2px 6px (match existing) |
+| Border-radius | 2px (match existing) |
+| Max width | Truncate with ellipsis if chip overflows cell width — existing behavior unchanged |
+
+---
+
+#### 17.8 Responsive Behavior
+
+No breakpoint-specific changes. The chip text is slightly longer (adds 10 characters: `"check-in "`). On narrow viewports or smaller calendar cells, the existing ellipsis truncation handles overflow gracefully. No layout changes are needed.
+
+If the chip is already constrained to a max width with CSS `overflow: hidden; text-overflow: ellipsis`, the longer label will truncate consistently. Verify on mobile viewport that `"check-in 4p"` does not overflow its cell — the existing truncation logic handles this.
+
+---
+
+#### 17.9 Accessibility
+
+The chip text is the visible label that screen readers will announce. The change from `"4p"` to `"check-in 4p"` is a strict improvement for accessibility — the label is now self-describing and unambiguous. No additional ARIA attributes are needed.
+
+If the chip element has an `aria-label` attribute that was overriding the visible text, that override must also be updated to match the new visible text.
+
+---
+
+#### 17.10 Tests Required
+
+**Test 1 — Check-in chip shows "check-in" prefix:**
+```
+Given: A trip with a stay (check_in_at: "2026-08-07T20:00:00.000Z", check_in_tz: "America/New_York")
+When: TripCalendar renders the calendar for August 2026
+Then: The chip on August 7 reads "check-in 4p"
+  AND: No chip on August 7 reads just "4p" (without the prefix)
+```
+
+**Test 2 — Check-out chip is unchanged:**
+```
+Given: A trip with a stay (check_out_at: "2026-08-09T15:00:00.000Z", check_out_tz: "America/New_York")
+When: TripCalendar renders
+Then: The chip on August 9 still reads "check-out 11a"
+  AND: The check-out format is not affected by this change
+```
+
+**Test 3 — Check-in chip in DayPopover matches day cell chip:**
+```
+Given: A calendar day with check-in chip in overflow (DayPopover)
+When: User opens the DayPopover for that day
+Then: The check-in label inside the popover reads "check-in Xa" (same prefix)
+```
+
+All existing calendar chip tests must be updated if they assert the old `"4p"` format — snapshot tests especially. All tests must pass.
+
+---
+
+#### 17.11 Files to Modify (T-127)
+
+| File | Change |
+|------|--------|
+| Calendar event chip label assembly (e.g., `TripCalendar.jsx` or chip builder utility) | Prepend `"check-in "` to the check-in time string |
+| Calendar test file(s) | Update assertions for check-in chip text from `"4p"` → `"check-in 4p"` (and similar). Update snapshots if used. |
+
+**No CSS changes.** No API changes. No new components.
+
+---
+
+*Sprint 12 Spec 17 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-06.*
+
+---
+
+### Spec 18: Calendar Default Month — First Planned Event
+
+**Status:** Approved
+**Task:** T-128
+**Sprint:** 12
+**Published:** 2026-03-06
+**Type:** Feature / UX Improvement
+
+---
+
+#### 18.1 Overview
+
+The `TripCalendar` component initializes its `currentMonth` state to the current calendar month (e.g., March 2026 when the sprint runs). For a trip planned in August 2026, the user must manually navigate forward 5 months every time they open the trip details page — a significant friction point.
+
+**Fix:** Initialize `currentMonth` to the month/year of the trip's **earliest planned event** across all event types (flights, stays, activities). If no events exist, fall back to the current month.
+
+This is a state initialization change only. No API calls are added, no visual design changes, and month navigation (prev/next arrows) continues to work normally from whatever month the calendar opens on.
+
+---
+
+#### 18.2 Event Date Sources
+
+The `TripCalendar` component already receives (or has access to) all trip event data. The following fields must be inspected to find the earliest date:
+
+| Data Source | Field to Inspect | Field Type |
+|------------|-----------------|-----------|
+| `flights` array | `departure_at` | ISO 8601 UTC string (e.g., `"2026-08-07T10:00:00.000Z"`) |
+| `stays` array | `check_in_at` | ISO 8601 UTC string |
+| `activities` array | `activity_date` | DATE string (e.g., `"2026-08-08"`) |
+
+**Note on land travel:** Land travel entries use `departure_date` (a DATE string). If the `TripCalendar` already maps land travel events onto the calendar, include `departure_date` as well. If land travel is not currently rendered on the calendar, do NOT include it — only include date sources that are already used by the calendar's event-building logic.
+
+**Note on field availability:** The component receives these arrays as props (or via context). All three arrays are already fetched by `useTripDetails` (parallel fetch). No new API calls are needed.
+
+---
+
+#### 18.3 Earliest Event Date Algorithm
+
+```js
+/**
+ * Find the earliest event date across flights, stays, and activities.
+ * Returns a Date object set to the first day of the earliest event's month,
+ * or the first day of the current month if no events exist.
+ *
+ * @param {Array} flights - flight objects with departure_at (ISO string)
+ * @param {Array} stays   - stay objects with check_in_at (ISO string)
+ * @param {Array} activities - activity objects with activity_date (YYYY-MM-DD string)
+ * @returns {Date} - a Date object representing the start of the target month
+ */
+function getInitialMonth(flights = [], stays = [], activities = []) {
+  const dates = [];
+
+  // Collect flight departure dates
+  flights.forEach(f => {
+    if (f.departure_at) {
+      const d = new Date(f.departure_at);
+      if (!isNaN(d)) dates.push(d);
+    }
+  });
+
+  // Collect stay check-in dates
+  stays.forEach(s => {
+    if (s.check_in_at) {
+      const d = new Date(s.check_in_at);
+      if (!isNaN(d)) dates.push(d);
+    }
+  });
+
+  // Collect activity dates — parse as local date to avoid UTC-midnight offset issues
+  activities.forEach(a => {
+    if (a.activity_date) {
+      // YYYY-MM-DD: parse with explicit components to treat as local date
+      const [year, month, day] = a.activity_date.split('-').map(Number);
+      const d = new Date(year, month - 1, day);
+      if (!isNaN(d)) dates.push(d);
+    }
+  });
+
+  if (dates.length === 0) {
+    // Fallback: current month
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
+  // Find the earliest date
+  const earliest = dates.reduce((min, d) => d < min ? d : min, dates[0]);
+
+  // Return first day of that month
+  return new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+}
+```
+
+**Key design decisions:**
+
+1. **Activity dates parsed as local time:** `new Date("2026-08-08")` interprets the date as midnight UTC, which can shift to the previous day in timezones west of UTC. Parsing with `new Date(year, month - 1, day)` uses local time and avoids this off-by-one error.
+
+2. **Flight/stay dates parsed as UTC ISO strings:** `departure_at` and `check_in_at` are full ISO 8601 UTC timestamps. `new Date(isoString)` correctly parses these as UTC. The resulting local Date object may show a different calendar date depending on the user's timezone, but for the purpose of "which month to open the calendar on", this is acceptable — the calendar operates in the user's local timezone.
+
+3. **Graceful handling of missing/invalid dates:** `isNaN(d)` guards prevent `Invalid Date` objects from entering the comparison. Entries with null or malformed date fields are silently skipped.
+
+4. **Returns a Date, not a `{month, year}` object:** The returned Date should be stored in `currentMonth` state in whatever format the component already uses. If `currentMonth` is stored as `{ month: number, year: number }`, extract those values from the returned Date:
+   ```js
+   const initial = getInitialMonth(flights, stays, activities);
+   const [currentMonth, setCurrentMonth] = useState({
+     month: initial.getMonth(), // 0-indexed
+     year: initial.getFullYear()
+   });
+   ```
+   If `currentMonth` is stored as a Date directly, use the Date object as-is.
+
+---
+
+#### 18.4 State Initialization Timing
+
+The `getInitialMonth` call must happen **at component initialization** — it determines the initial value of `currentMonth` state. It should NOT be inside a `useEffect` that runs after mount (which would cause a visible flash from the current month to the correct month).
+
+**Correct pattern (no flash):**
+```jsx
+// Props/context: flights, stays, activities passed in from TripDetailsPage
+const TripCalendar = ({ flights, stays, activities }) => {
+  const [currentMonth, setCurrentMonth] = useState(() =>
+    getInitialMonth(flights, stays, activities)
+  );
+  // ...
+};
+```
+
+The lazy initializer (`useState(() => fn())`) ensures the function runs only once at mount, avoiding re-computation on re-renders.
+
+**Note on data availability:** If `TripCalendar` is rendered before the flights/stays/activities data has loaded (during the loading state), the arrays passed as props will be empty (`[]`). In this case, `getInitialMonth` correctly returns the current month fallback. When data loads and the parent re-renders, the component has already mounted — `useState` initial value does not re-run. The calendar will remain on the current month until the user navigates.
+
+**Preferred approach:** Render `TripCalendar` only after all three data sets have loaded. The existing `TripDetailsPage` loading skeleton pattern already defers rendering sub-components until data is ready. Verify that `TripCalendar` is rendered inside the loaded state branch (not in the skeleton/loading branch). If it is already conditional on data being present, `getInitialMonth` will always receive populated arrays.
+
+---
+
+#### 18.5 Month Navigation (Must Not Regress)
+
+The existing prev/next month navigation must continue to work normally after this change. The only change is the **initial** `currentMonth` value — once the user navigates, `setCurrentMonth` is called with the new month/year as usual. Navigation logic is completely unaffected.
+
+**Verify:**
+- Clicking "next month" from August 2026 moves to September 2026
+- Clicking "prev month" from August 2026 moves to July 2026
+- Navigation from any month continues indefinitely in both directions
+
+---
+
+#### 18.6 User Flow
+
+**Trip with future events:**
+1. User opens `TripDetailsPage` for a trip with events in August 2026 (e.g., a flight departing August 7, a stay checking in August 7, activities on August 8–9)
+2. `TripCalendar` initializes — `getInitialMonth` finds August 7, 2026 as the earliest date
+3. Calendar renders with August 2026 visible immediately — no current-month flash, no navigation required
+4. User sees their August flights, stays, and activities populated on the calendar
+5. User clicks "next" arrow → September 2026 displayed (navigation works normally)
+
+**Trip with no events (empty trip):**
+1. User opens `TripDetailsPage` for a newly created trip with no flights, stays, or activities
+2. `TripCalendar` initializes — `getInitialMonth` receives three empty arrays, returns current month (March 2026)
+3. Calendar renders with March 2026 (current month) — same as the previous behavior
+
+**Existing trip with events in current month:**
+1. User's trip has events in March 2026 (the current month as of 2026-03-06)
+2. `getInitialMonth` returns March 2026 — calendar opens on March 2026
+3. Visually identical to previous behavior (no perceptible change for current-month trips)
+
+---
+
+#### 18.7 States
+
+| State | Calendar Opening Month |
+|-------|----------------------|
+| **Trip has events in a future month** | Opens on the month of the earliest event |
+| **Trip has events in a past month** | Opens on the month of the earliest event (past month) — user can navigate forward |
+| **Trip has events spanning multiple months** | Opens on the month of the earliest event |
+| **Trip has events only in the current month** | Opens on current month (same as before) |
+| **Trip has no events (all arrays empty)** | Opens on current month (fallback) |
+| **Data loading (arrays not yet fetched)** | Opens on current month (fallback) — corrected after data loads IF calendar is conditionally rendered post-load |
+| **Malformed date in one event** | Malformed entry is skipped; other events still determine the month |
+| **All events have null date fields** | Falls back to current month |
+
+---
+
+#### 18.8 Visual Design (Unchanged)
+
+The calendar's visual layout, chip styles, day cell styles, header (month/year label + navigation arrows), and color scheme are all unchanged. The only difference is which month is visible when the calendar first renders.
+
+---
+
+#### 18.9 Responsive Behavior
+
+No changes to responsive behavior. The calendar already adapts to different viewport widths. This change is purely a state initialization logic change.
+
+---
+
+#### 18.10 Accessibility
+
+No accessibility changes required. The month/year header text (e.g., "August 2026") that screen readers announce is determined by `currentMonth` state — it will now read the correct month for the trip rather than the current month. This is a strict accessibility improvement: users navigating with screen readers will land directly on the relevant month.
+
+---
+
+#### 18.11 Tests Required
+
+**Test 1 — Defaults to earliest event month when events exist:**
+```
+Given: TripCalendar receives:
+  - flights: [{ departure_at: "2026-08-07T10:00:00.000Z" }]
+  - stays: [{ check_in_at: "2026-08-07T20:00:00.000Z" }]
+  - activities: [{ activity_date: "2026-08-08" }]
+When: TripCalendar mounts
+Then: The calendar header shows "August 2026" (not the current month)
+  AND: The August 2026 grid is visible
+```
+
+**Test 2 — No events falls back to current month:**
+```
+Given: TripCalendar receives:
+  - flights: []
+  - stays: []
+  - activities: []
+When: TripCalendar mounts
+Then: The calendar header shows the current month (e.g., "March 2026")
+```
+
+**Test 3 — Earliest across mixed event types:**
+```
+Given: TripCalendar receives:
+  - flights: [{ departure_at: "2026-09-15T06:00:00.000Z" }]
+  - stays: [{ check_in_at: "2026-09-15T20:00:00.000Z" }]
+  - activities: [{ activity_date: "2026-08-20" }]  // ← earlier than flights/stays
+When: TripCalendar mounts
+Then: The calendar header shows "August 2026" (the activity date is the earliest)
+```
+
+**Test 4 — Month navigation works from initial month:**
+```
+Given: TripCalendar mounts showing August 2026
+When: User clicks the "next month" button
+Then: The calendar header shows "September 2026"
+When: User clicks "prev month"
+Then: The calendar header shows "August 2026" again
+```
+
+**Test 5 — Malformed date is skipped gracefully:**
+```
+Given: TripCalendar receives:
+  - flights: [{ departure_at: "not-a-date" }]
+  - stays: [{ check_in_at: "2026-10-01T12:00:00.000Z" }]
+When: TripCalendar mounts
+Then: No error is thrown
+  AND: The calendar header shows "October 2026" (the valid date wins)
+```
+
+All existing TripCalendar tests must continue to pass.
+
+---
+
+#### 18.12 Files to Modify (T-128)
+
+| File | Change |
+|------|--------|
+| `TripCalendar.jsx` (or equivalent) | Add `getInitialMonth(flights, stays, activities)` utility; use as lazy initial state for `currentMonth` |
+| `TripCalendar.test.jsx` (or equivalent) | Add 5 tests covering the scenarios above |
+
+**No CSS changes.** No API changes. No new routes. No backend changes.
+
+---
+
+*Sprint 12 Spec 18 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-06.*
+
+---
+
+### Spec 19: DayPopover Stay-Open and Document-Anchored Behavior (Sprint 13 — T-137)
+
+**Status:** Approved
+**Sprint:** 13
+**Related Task:** T-137
+**Feedback Source:** FB-091
+**Supersedes:** Spec 16 (scroll-close behavior — T-126 approach is reversed)
+
+---
+
+#### 19.1 Overview and Motivation
+
+Spec 16 (T-126) fixed the original drift problem (FB-086) by closing the DayPopover whenever the user scrolled. While this eliminated the visual artifact, it introduced new friction: users who accidentally scrolled slightly lost the popover and had to re-open it. FB-091 requests the preferred behavior: the popover should **stay open** when the user scrolls, and should remain **visually anchored** to the trigger button's document position so it does not drift.
+
+**Before (Spec 16 / T-126 approach — to be removed):**
+- Popover used `position: fixed` with viewport-relative coordinates captured at open time.
+- A `window.addEventListener('scroll', close, { capture: true })` listener was added on open and removed on close.
+- Effect: scrolling dismissed the popover immediately.
+
+**After (Spec 19 / T-137 approach):**
+- Popover uses `position: absolute` with document-relative coordinates (viewport offset + scroll offset).
+- No scroll-close listener. Scroll events are completely ignored by the popover.
+- Effect: the popover stays open, scrolling with the document, remaining pinned at the trigger's original document position.
+
+**No new screens or routes.** This spec describes a targeted behavior change to `DayPopover` only.
+
+---
+
+#### 19.2 Affected Component
+
+**Component:** `DayPopover` (located in `frontend/src/components/TripCalendar/` or equivalent)
+
+This is the portal-rendered dropdown that opens when the user clicks the "+X more" overflow indicator on a calendar day cell. It lists all events for that day that did not fit inline.
+
+---
+
+#### 19.3 Positioning Model Change
+
+##### 19.3.1 Current model (to be removed)
+
+```
+position: fixed
+top:  triggerRect.bottom  (viewport Y at time of open)
+left: triggerRect.left    (viewport X at time of open)
+```
+
+With `position: fixed`, the popover is anchored to the **viewport**. When the user scrolls, the viewport coordinates remain the same but the page content moves — causing the popover to visually detach from the trigger.
+
+##### 19.3.2 New model (to implement)
+
+```
+position: absolute
+top:  triggerRect.bottom + window.scrollY   (document Y)
+left: triggerRect.left   + window.scrollX   (document X)
+```
+
+With `position: absolute` on a child of `document.body` (via `createPortal`), the coordinates are **document-relative**. When the user scrolls, both the trigger button and the popover shift in the viewport by the same amount, so the popover remains visually pinned to the trigger location.
+
+##### 19.3.3 Portal target
+
+The portal target remains `document.body`. No change to the createPortal call itself — only the CSS positioning mode and coordinate calculation change.
+
+**Important:** If `document.body` or `html` has any transform, `position: fixed` override, or `will-change` applied globally, `position: absolute` may behave unexpectedly. The implementation should verify that no such global override exists (none is expected in the current codebase).
+
+##### 19.3.4 Position calculation pseudocode
+
+```js
+// Called once on open, inside the click handler or useLayoutEffect after mount
+function calculatePopoverPosition(triggerEl) {
+  const rect = triggerEl.getBoundingClientRect();
+  const scrollX = window.scrollX ?? window.pageXOffset;
+  const scrollY = window.scrollY ?? window.pageYOffset;
+
+  return {
+    top:  rect.bottom + scrollY,   // document-relative Y (below trigger)
+    left: rect.left   + scrollX,   // document-relative X (aligned with trigger left)
+  };
+}
+```
+
+The position is computed **once** at open time and set as inline styles on the popover element. No ongoing recalculation is needed — `position: absolute` handles the scroll tracking passively.
+
+##### 19.3.5 Edge case: viewport overflow (right/bottom)
+
+When the trigger is near the right edge of the viewport, the popover must not overflow off-screen. Apply the same right-edge clamping that existed previously:
+
+```js
+const viewportWidth = window.innerWidth;
+const popoverWidth = 240; // matches existing DayPopover max-width
+let left = rect.left + scrollX;
+if (left + popoverWidth > scrollX + viewportWidth - 16) {
+  // Align right edge of popover with right edge of viewport (with 16px margin)
+  left = scrollX + viewportWidth - popoverWidth - 16;
+}
+```
+
+If the trigger is near the bottom of the viewport and there is insufficient space below, the popover should appear above the trigger instead:
+
+```js
+const viewportHeight = window.innerHeight;
+const popoverEstimatedHeight = 200; // conservative estimate
+let top = rect.bottom + scrollY;
+if (rect.bottom + popoverEstimatedHeight > viewportHeight) {
+  top = rect.top + scrollY - popoverEstimatedHeight; // render above trigger
+}
+```
+
+These clamping behaviors mirror the existing logic — only the `position: absolute` + scroll-offset shift is new.
+
+---
+
+#### 19.4 Close Behaviors (Unchanged)
+
+The following close triggers must all continue to work exactly as before:
+
+| Trigger | Behavior |
+|---------|----------|
+| **Click outside** | Clicking anywhere outside the popover (including the trigger button when it's outside the popover bounds) closes the popover |
+| **Escape key** | `keydown` listener on `window` or the popover element — pressing `Escape` closes the popover |
+| **Explicit close button** | If a close (×) button exists inside the popover, clicking it closes the popover |
+| **Navigation** | If the user navigates away, the component unmounts and the popover is removed |
+
+**Scroll is NOT in this list.** Scroll must not close the popover.
+
+---
+
+#### 19.5 State and Lifecycle
+
+```
+Open state:
+  - Popover mounted via createPortal into document.body
+  - position: absolute; top: <docY>px; left: <docX>px
+  - Click-outside listener added to document
+  - Escape keydown listener added to window (or document)
+  - NO scroll listener
+
+Close trigger fires (any of: click-outside, Escape, close button):
+  - Popover unmounted (or hidden)
+  - Click-outside listener removed
+  - Escape keydown listener removed
+
+Cleanup (useEffect return):
+  - Remove click-outside listener
+  - Remove Escape keydown listener
+  (No scroll listener to remove)
+```
+
+---
+
+#### 19.6 Visual Appearance (No Change)
+
+The popover's visual style is unchanged from Spec 16.3 / Spec 7. For reference:
+
+| Property | Value |
+|----------|-------|
+| Background | `var(--surface)` (`#30292F`) |
+| Border | `1px solid rgba(93, 115, 126, 0.3)` |
+| Border radius | 4px |
+| Padding | 12px |
+| Min width | 200px |
+| Max width | 240px |
+| Font | IBM Plex Mono, 12px, `var(--text-primary)` |
+| Z-index | 1000 (or existing value — must render above all other page content) |
+| Shadow | None (Japandi aesthetic — no shadows) |
+
+The popover lists each event for the overflow day with the same chip styles used in the inline day cell. No visual changes are required for this spec.
+
+---
+
+#### 19.7 Accessibility (No Change)
+
+No accessibility changes are required. The existing roles, `aria-label`, focus management, and keyboard handling are preserved. The Escape-to-close behavior is maintained, which satisfies WCAG 2.1 SC 1.4.13 (Content on Hover or Focus).
+
+---
+
+#### 19.8 Test Plan
+
+Remove or update the test added in T-126:
+
+**Test to REMOVE (from Spec 16 / T-126):**
+```
+Given: DayPopover is open (trigger has been clicked)
+When: A scroll event fires on window
+Then: onClose IS called and popover is dismissed
+→ DELETE THIS TEST — behavior has changed
+```
+
+**Tests to ADD:**
+
+**Test 19.A — Popover stays open on scroll:**
+```
+Given: DayPopover is open (trigger has been clicked)
+When: A scroll event fires on window (simulate: window.dispatchEvent(new Event('scroll')))
+Then: onClose is NOT called
+And:  The popover remains mounted in the DOM
+```
+
+**Test 19.B — No scroll listener attached:**
+```
+Given: DayPopover is about to open
+When: The component mounts
+Then: window.addEventListener is NOT called with 'scroll' as the event type
+(Spy on window.addEventListener and assert no scroll call)
+```
+
+**Test 19.C — Position uses document-relative coordinates:**
+```
+Given: Trigger button has getBoundingClientRect() returning { bottom: 120, left: 50 }
+And:   window.scrollY = 300, window.scrollX = 0
+When:  DayPopover opens
+Then:  Popover element has inline style top: 420px (120 + 300), left: 50px (50 + 0)
+```
+
+**Regression tests (must continue to pass):**
+
+**Test 19.D — Escape closes popover:**
+```
+Given: DayPopover is open
+When: User presses Escape key
+Then: onClose IS called
+```
+
+**Test 19.E — Click outside closes popover:**
+```
+Given: DayPopover is open
+When: User clicks outside the popover bounds
+Then: onClose IS called
+```
+
+**Test 19.F — Cleanup removes all listeners on unmount:**
+```
+Given: DayPopover is open (listeners attached)
+When: The component unmounts
+Then: All event listeners (click-outside, Escape keydown) are removed
+And:  No scroll listener was ever added (so none to remove)
+```
+
+All existing DayPopover tests not related to scroll-close must continue to pass.
+
+---
+
+#### 19.9 Files Affected
+
+| File | Change |
+|------|--------|
+| `DayPopover.jsx` (or equivalent) | Remove `window.addEventListener('scroll', close, ...)` and its cleanup. Change `position: 'fixed'` to `position: 'absolute'`. Update coordinate calculation to add `window.scrollX`/`window.scrollY`. |
+| `DayPopover.test.jsx` (or equivalent) | Remove scroll-closes-popover test. Add Tests 19.A, 19.B, 19.C. Verify Tests 19.D, 19.E, 19.F pass. |
+
+**No CSS file changes.** No API changes. No backend changes. No new routes.
+
+---
+
+*Sprint 13 Spec 19 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
+
+---
+
+### Spec 20: Rental Car Pick-Up / Drop-Off Time Chips on Calendar (Sprint 13 — T-138)
+
+**Status:** Approved
+**Sprint:** 13
+**Related Task:** T-138
+**Feedback Source:** FB-092
+**Extends:** Spec 12 Addendum (CAL-1, CAL-1.5), Spec 13 (CAL-3)
+
+---
+
+#### 20.1 Overview
+
+When a user adds a rental car land travel entry, the calendar currently shows the car icon and destination label on the relevant days but does not clearly communicate when the car is picked up or dropped off. FB-092 requests time chips for rental car events that match the labeling convention established by stay check-in/check-out chips.
+
+**Pattern already established by stays:**
+- Check-in day: `"check-in 4p"` chip
+- Check-out day: `"check-out 11a"` chip
+
+**New pattern for rental cars:**
+- Pick-up day (`departure_date`): `"pick-up 5p"` chip
+- Drop-off day (`arrival_date`): `"drop-off 5p"` chip
+
+This change applies **only** to `RENTAL_CAR` mode land travel entries. All other land travel modes (BUS, TRAIN, RIDESHARE, FERRY, OTHER) are unaffected.
+
+---
+
+#### 20.2 Data Model Reference
+
+A land travel entry has the following relevant fields (from Spec 12):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `mode` | enum | `RENTAL_CAR \| BUS \| TRAIN \| RIDESHARE \| FERRY \| OTHER` |
+| `departure_date` | YYYY-MM-DD | The date the rental car is picked up |
+| `departure_time` | HH:MM (optional) | The time the rental car is picked up |
+| `arrival_date` | YYYY-MM-DD (optional) | The date the rental car is dropped off |
+| `arrival_time` | HH:MM (optional) | The time the rental car is dropped off |
+
+---
+
+#### 20.3 Chip Label Logic
+
+##### 20.3.1 Pick-up chip (departure_date)
+
+On the cell corresponding to `departure_date`, if the land travel entry's `mode === 'RENTAL_CAR'`:
+
+- If `departure_time` is present: render chip as `"pick-up Xp"` (e.g., `"pick-up 5p"` for 17:00, `"pick-up 9a"` for 09:00)
+- If `departure_time` is absent (null / empty): render chip as `"pick-up"` (no time suffix — same fallback as stays use when check_in_at time is absent)
+
+The time format follows the existing `formatCalendarTime` convention used throughout the calendar:
+- Format: single digit or double digit hour + "a" (AM) or "p" (PM), no `:00` suffix, no leading zero for single-digit hours.
+- Examples: `9a`, `11a`, `12p`, `1p`, `5p`
+
+##### 20.3.2 Drop-off chip (arrival_date)
+
+On the cell corresponding to `arrival_date`, if `mode === 'RENTAL_CAR'` and `arrival_date` is set:
+
+- If `arrival_time` is present: render chip as `"drop-off Xp"` (e.g., `"drop-off 5p"` for 17:00)
+- If `arrival_time` is absent: render chip as `"drop-off"` (no time suffix)
+
+If `arrival_date` is not set (single-day rental car with no explicit return), no drop-off chip is shown. The departure day shows only the pick-up chip.
+
+##### 20.3.3 Multi-day rental car (departure_date ≠ arrival_date)
+
+- `departure_date` cell: shows `"pick-up Xp"` chip
+- `arrival_date` cell: shows `"drop-off Xp"` chip
+- Intermediate days (if any between departure and arrival): show the event label (mode + destination) but **no time chip** — same behavior as intermediate days for multi-day stays
+
+##### 20.3.4 Same-day rental car (departure_date === arrival_date)
+
+If the rental car is picked up and dropped off on the same day:
+- Show `"pick-up Xp"` chip (departure time takes priority for a single-day entry)
+- Do NOT also show `"drop-off Xp"` on the same cell (avoid redundancy)
+
+---
+
+#### 20.4 Rendering Locations
+
+This change affects two rendering paths. Both must be updated consistently:
+
+##### 20.4.1 DayCell (inline calendar grid)
+
+In the `DayCell` component (or wherever inline calendar event chips are rendered per cell), for land travel events with `mode === 'RENTAL_CAR'`:
+
+```
+if (event.mode === 'RENTAL_CAR') {
+  if (cellDate === event.departure_date) {
+    // pick-up chip: prepend "pick-up " to the formatted time
+    timeLabel = event.departure_time
+      ? "pick-up " + formatCalendarTime(event.departure_time)
+      : "pick-up";
+  } else if (cellDate === event.arrival_date && cellDate !== event.departure_date) {
+    // drop-off chip: prepend "drop-off " to the formatted time
+    timeLabel = event.arrival_time
+      ? "drop-off " + formatCalendarTime(event.arrival_time)
+      : "drop-off";
+  }
+  // intermediate days: no time label (same as multi-day stays)
+}
+```
+
+##### 20.4.2 DayPopover.getEventTime (overflow popover)
+
+In the `DayPopover` component (or its `getEventTime` / `formatEventChip` helper), apply identical labeling for `RENTAL_CAR` events so the chip text inside the popover matches the inline day cell chip.
+
+The popover already lists all events for the overflow day with their time chips. This change ensures that when a rental car pick-up or drop-off day overflows into the "+X more" popover, the chip reads `"pick-up Xp"` or `"drop-off Xp"` there too.
+
+---
+
+#### 20.5 Visual Appearance
+
+The chip visual style is **not changed**. Rental car pick-up/drop-off chips use the same chip appearance as all other land travel time chips in the calendar.
+
+Per Spec 12 Addendum (CAL-1):
+- Chip background: `rgba(93, 115, 126, 0.2)` (accent tint — land travel chip color)
+- Chip text: `var(--accent)` (`#5D737E`)
+- Chip font: IBM Plex Mono, 10px, font-weight 500
+- Chip padding: 2px 6px, border-radius 2px
+
+The `"pick-up"` and `"drop-off"` prefixes are purely text — no new icons or colors.
+
+---
+
+#### 20.6 Non-RENTAL_CAR Modes
+
+All other land travel modes (`BUS`, `TRAIN`, `RIDESHARE`, `FERRY`, `OTHER`) are **unaffected** by this change:
+
+- Their departure day continues to show the departure time chip with no prefix (existing behavior).
+- Their arrival day continues to show the arrival time chip with no prefix (existing behavior per Spec 13 CAL-3).
+
+The `mode === 'RENTAL_CAR'` guard must be strictly applied. No other mode should receive the `"pick-up"` or `"drop-off"` prefix.
+
+---
+
+#### 20.7 Interaction with "+X more" Overflow
+
+When a rental car pick-up or drop-off falls on a day with many events, the pick-up/drop-off chip may appear inside the DayPopover overflow list rather than inline. In that case:
+
+- The chip inside the popover must read `"pick-up Xp"` / `"drop-off Xp"` (same label as the inline chip would show).
+- There must be no discrepancy between the inline display and the popover display.
+
+---
+
+#### 20.8 Empty / Edge States
+
+| Scenario | Behavior |
+|----------|----------|
+| RENTAL_CAR with `departure_time` = null | Pick-up day chip: `"pick-up"` (no time) |
+| RENTAL_CAR with `arrival_date` = null | No drop-off chip on any day |
+| RENTAL_CAR with `arrival_time` = null | Drop-off day chip: `"drop-off"` (no time) |
+| RENTAL_CAR with `departure_date === arrival_date` | Only `"pick-up Xp"` chip on that day (no drop-off chip) |
+| Non-RENTAL_CAR mode | No prefix added — existing behavior unchanged |
+| No land travel entries | No change — empty state is unaffected |
+
+---
+
+#### 20.9 Accessibility
+
+No additional accessibility changes. The chip text is already exposed via screen readers as part of the day cell content. The new labels `"pick-up"` and `"drop-off"` are plain text and will be read correctly by screen readers.
+
+If chips are wrapped in `aria-label` attributes (check existing implementation), update the `aria-label` of the affected chips to include the `"pick-up"` or `"drop-off"` prefix.
+
+---
+
+#### 20.10 Test Plan
+
+All tests belong in `TripCalendar.test.jsx` (or the equivalent test file for `DayCell` / `DayPopover`).
+
+**Test 20.A — RENTAL_CAR pick-up chip on departure day:**
+```
+Given: A land travel entry with mode=RENTAL_CAR, departure_date=2026-08-07, departure_time=17:00, arrival_date=2026-08-10
+When:  The calendar renders the cell for 2026-08-07
+Then:  A chip with text "pick-up 5p" is present in that cell
+```
+
+**Test 20.B — RENTAL_CAR drop-off chip on arrival day:**
+```
+Given: A land travel entry with mode=RENTAL_CAR, departure_date=2026-08-07, departure_time=10:00, arrival_date=2026-08-10, arrival_time=14:00
+When:  The calendar renders the cell for 2026-08-10
+Then:  A chip with text "drop-off 2p" is present in that cell
+```
+
+**Test 20.C — RENTAL_CAR no drop-off chip when arrival_date is null:**
+```
+Given: A land travel entry with mode=RENTAL_CAR, departure_date=2026-08-07, arrival_date=null
+When:  The calendar renders
+Then:  No chip containing "drop-off" appears on any day
+```
+
+**Test 20.D — RENTAL_CAR with no times shows label-only chips:**
+```
+Given: A land travel entry with mode=RENTAL_CAR, departure_time=null, arrival_time=null, arrival_date=2026-08-10
+When:  The calendar renders departure_date cell and arrival_date cell
+Then:  departure_date cell shows chip "pick-up" (no time)
+And:   arrival_date cell shows chip "drop-off" (no time)
+```
+
+**Test 20.E — Non-RENTAL_CAR is unaffected:**
+```
+Given: A land travel entry with mode=TRAIN, departure_date=2026-08-07, departure_time=09:00
+When:  The calendar renders the cell for 2026-08-07
+Then:  The chip does NOT contain "pick-up"
+And:   The chip shows the departure time in the standard format (e.g., "9a")
+```
+
+**Test 20.F — DayPopover shows matching labels:**
+```
+Given: A RENTAL_CAR pick-up day has more events than fit inline (triggers "+X more" overflow)
+When:  User opens the DayPopover for that day
+Then:  The rental car entry in the popover shows "pick-up Xp" (matching the inline chip label)
+```
+
+**Test 20.G — Same-day pickup and drop-off shows only pick-up:**
+```
+Given: A land travel entry with mode=RENTAL_CAR, departure_date=2026-08-07, arrival_date=2026-08-07
+When:  The calendar renders the cell for 2026-08-07
+Then:  A chip with text "pick-up" (with or without time) is present
+And:   No chip with text "drop-off" is present on that day
+```
+
+All existing `TripCalendar.test.jsx` tests must continue to pass.
+
+---
+
+#### 20.11 Files Affected
+
+| File | Change |
+|------|--------|
+| `DayCell.jsx` (or wherever inline calendar chips render per cell) | Add `mode === 'RENTAL_CAR'` guard; prepend `"pick-up "` on departure day and `"drop-off "` on arrival day for RENTAL_CAR entries |
+| `DayPopover.jsx` (or `getEventTime` helper) | Apply same `"pick-up "` / `"drop-off "` prefix logic for RENTAL_CAR events |
+| `TripCalendar.test.jsx` (or equivalent) | Add Tests 20.A through 20.G |
+
+**No CSS changes.** No API changes. No new routes. No backend changes.
+
+---
+
+*Sprint 13 Spec 20 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
+
+---
+
+## Sprint 14 Specs
+
+---
+
+### Spec 21: TripCalendar — Async First-Event-Month Fix
+
+**Status:** Approved
+**Sprint:** 14
+**Related Task:** T-146
+**Feedback Source:** FB-095
+**Published:** 2026-03-07
+**Type:** Bug Fix
+
+---
+
+#### 21.1 Overview and Problem Statement
+
+T-128 (Sprint 12) implemented `getInitialMonth()` to compute the month of the first planned event and use it as the calendar's starting month. The implementation was correct in isolation, but a timing bug prevents it from working in practice:
+
+**Root cause:** `TripCalendar` receives `flights`, `stays`, `activities`, and `landTravel` as props. On first render, these props are **empty arrays** — the data has not yet arrived from the async API calls in `TripDetailsPage`. The lazy `useState` initializer fires immediately on mount with empty arrays, so `getInitialMonth()` falls through to its fallback (current month). When the data eventually loads and the props update, `useState`'s initializer does **not** re-run — `currentMonth` is stuck at the current month.
+
+**Fix:** Add a `useEffect` that watches the event data props and, the first time meaningful data arrives, updates `currentMonth` to the result of `getInitialMonth(flights, stays, activities, landTravel)` — but **only if the user has not manually navigated the calendar** (tracked via a `hasNavigated` ref).
+
+**No new screens or routes.** This spec describes an implementation change to `TripCalendar` (and related test file) only.
+
+---
+
+#### 21.2 Component Location
+
+**Component:** `TripCalendar.jsx` (located in `frontend/src/components/TripCalendar/` or `frontend/src/components/`)
+
+**Test file:** `TripCalendar.test.jsx` (or equivalent)
+
+---
+
+#### 21.3 Behavioral Specification
+
+##### 21.3.1 Happy Path — data loads after mount
+
+| Step | State | Calendar shows |
+|------|-------|---------------|
+| TripDetailsPage mounts | flights=[], stays=[], activities=[], landTravel=[] | Current month (fallback) |
+| API calls resolve — data arrives | flights=[...May events...], stays=[], activities=[], landTravel=[] | **Automatically updates to May 2026** |
+| User navigates prev/next | — | User's chosen month (no automatic reset) |
+| User opens a different trip | Component re-mounts | Correct first-event month for new trip |
+
+##### 21.3.2 User navigated before data arrived
+
+| Step | State | Calendar shows |
+|------|-------|---------------|
+| TripCalendar mounts | All props empty | Current month (fallback) |
+| User clicks `>` (next month) | `hasNavigated.current = true` | April 2026 (user's choice) |
+| Data arrives | flights=[...May events...] | **Stays on April 2026 — no override** |
+
+**Rationale:** The user has expressed intent by navigating. Overriding their choice when data arrives would be jarring and unexpected.
+
+##### 21.3.3 Empty trip (no events ever)
+
+| Step | State | Calendar shows |
+|------|-------|---------------|
+| TripCalendar mounts | All props empty | Current month |
+| API calls resolve | All props still empty (no events added) | Current month (no change) |
+
+The `useEffect` must NOT update `currentMonth` if `getInitialMonth()` returns the current month due to absence of events — it must only update when there are actual events to navigate to. This is naturally handled by tracking whether `hasNavigated` has been set and whether the data is non-empty.
+
+---
+
+#### 21.4 Implementation Specification
+
+##### 21.4.1 `hasNavigated` Ref
+
+Add a ref to `TripCalendar` to track whether the user has manually moved the calendar:
+
+```jsx
+const hasNavigated = useRef(false);
+```
+
+- Initialized to `false` on component mount.
+- Set to `true` in **every** handler that changes `currentMonth` due to user interaction:
+  - The `handlePrev` callback (click `<` arrow)
+  - The `handleNext` callback (click `>` arrow)
+  - The `handleToday` callback (click "Today" button — T-147)
+- **Never reset to `false`** once it becomes `true` — if the user has navigated even once, automatic initialization is permanently disabled for that component instance.
+- Not exposed to parent — internal implementation detail only.
+
+##### 21.4.2 Updated Navigation Handlers
+
+**Before (existing):**
+```jsx
+function handlePrev() {
+  setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+}
+function handleNext() {
+  setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+}
+```
+
+**After:**
+```jsx
+function handlePrev() {
+  hasNavigated.current = true;
+  setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+}
+function handleNext() {
+  hasNavigated.current = true;
+  setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+}
+```
+
+The `handleToday` function introduced in T-147 (Spec 22) must also set `hasNavigated.current = true` before calling `setCurrentMonth`.
+
+##### 21.4.3 Data-Arrival `useEffect`
+
+Add the following `useEffect` inside `TripCalendar`:
+
+```jsx
+useEffect(() => {
+  // Only auto-initialize if the user has not already navigated
+  if (hasNavigated.current) return;
+
+  // Check if any event data is now present
+  const hasData =
+    flights.length > 0 ||
+    stays.length > 0 ||
+    activities.length > 0 ||
+    landTravel.length > 0;
+
+  if (!hasData) return;
+
+  // Compute the first-event month from the now-available data
+  const firstEventMonth = getInitialMonth(flights, stays, activities, landTravel);
+
+  // Only update if we actually get a meaningful result
+  // (getInitialMonth returns current month when no valid dates found,
+  //  so we compare to avoid a no-op state update)
+  setCurrentMonth(prev => {
+    const same =
+      firstEventMonth.getFullYear() === prev.getFullYear() &&
+      firstEventMonth.getMonth() === prev.getMonth();
+    return same ? prev : firstEventMonth;
+  });
+}, [flights, stays, activities, landTravel]);
+```
+
+**Dependency array:** `[flights, stays, activities, landTravel]` — the effect re-runs any time the event data changes. After the first non-empty update, subsequent updates are still handled (e.g., if data is paginated or arrives in batches), but `hasNavigated.current` prevents interference once the user has navigated.
+
+**No cleanup needed** — this `useEffect` registers no listeners and creates no subscriptions.
+
+##### 21.4.4 `getInitialMonth()` — Unchanged
+
+The `getInitialMonth(flights, stays, activities, landTravel)` function implemented in T-128 is **correct as-is**. Do not modify its logic. The fix is exclusively in the calling code (the `useEffect` above). If `getInitialMonth` doesn't currently receive `landTravel` as a parameter, add it as an optional fourth argument with a default of `[]` — the function should include `landTravel` departure dates in its search for the earliest event.
+
+---
+
+#### 21.5 States
+
+| State | User Sees |
+|-------|-----------|
+| **Page loads, data loading** | Calendar shows current month (skeleton loading state in parent; TripCalendar itself shows the current month as placeholder) |
+| **Data arrives (first non-empty)** | Calendar automatically slides to first-event month — no user action required |
+| **Data arrives but user had already navigated** | Calendar stays on user's chosen month — no override |
+| **No events exist** | Calendar stays on current month — no update |
+| **User navigates freely** | Normal prev/next/Today navigation — no interference from the auto-init effect |
+
+---
+
+#### 21.6 Visual Design
+
+**No visual changes** to the calendar are introduced by this spec beyond the existing T-128 design. The calendar layout, chip styling, header navigation, and day cells are all unchanged.
+
+---
+
+#### 21.7 Responsive Behavior
+
+The data-arrival `useEffect` runs identically on all viewport sizes. No responsive-specific changes.
+
+---
+
+#### 21.8 Accessibility
+
+No additional accessibility changes. The calendar's keyboard navigation (arrow keys for prev/next, today button) is unchanged. The `hasNavigated` ref is invisible to screen readers.
+
+---
+
+#### 21.9 Test Plan (New Tests)
+
+Add the following tests to `TripCalendar.test.jsx`. All **existing T-128 tests must continue to pass** — the `getInitialMonth()` function is not changed, only the initialization mechanism.
+
+**Test 21.A — Async load: calendar updates when data arrives after mount**
+```
+Given: TripCalendar renders initially with flights=[], stays=[], activities=[], landTravel=[]
+And:   The calendar shows the current month on first render
+When:  flights prop updates to [{departure_at: "2026-05-10T...", ...}] (data arrives asynchronously)
+Then:  The calendar automatically navigates to May 2026
+And:   No user interaction was required
+```
+
+**Test 21.B — No override when user navigated before data arrived**
+```
+Given: TripCalendar renders with empty arrays (current month shown)
+When:  User clicks the ">" (next month) arrow
+And:   Then flights prop updates to [{departure_at: "2026-05-10T...", ...}]
+Then:  The calendar remains on April 2026 (the month user navigated to)
+And:   The calendar does NOT jump to May 2026
+```
+
+**Test 21.C — No spurious update when data arrives but no events have valid dates**
+```
+Given: TripCalendar renders with empty arrays
+When:  flights updates to [{departure_at: null, ...}] (data present but no valid date)
+Then:  getInitialMonth falls back to current month
+And:   currentMonth does not unnecessarily re-render (stays at current month)
+```
+
+**Test 21.D — Both prev and next clicks set hasNavigated**
+```
+Given: TripCalendar renders with empty arrays
+When:  User clicks "<" (previous month)
+And:   Data arrives with May 2026 events
+Then:  Calendar remains on the month the user navigated to (not May 2026)
+(Variant: same test for ">" click — both must set hasNavigated)
+```
+
+---
+
+#### 21.10 Files to Modify (T-146)
+
+| File | Change |
+|------|--------|
+| `TripCalendar.jsx` (or equivalent) | Add `hasNavigated` ref; set `hasNavigated.current = true` in `handlePrev` and `handleNext`; add data-arrival `useEffect` with `[flights, stays, activities, landTravel]` deps |
+| `TripCalendar.test.jsx` (or equivalent) | Add Tests 21.A through 21.D (4 new tests). All existing T-128 tests must still pass. |
+
+**No CSS changes.** No new components. No API changes. No backend changes.
+
+---
+
+*Sprint 14 Spec 21 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
+
+---
+
+### Spec 22: TripCalendar — "Today" Navigation Button
+
+**Status:** Approved
+**Sprint:** 14
+**Related Task:** T-147
+**Feedback Source:** FB-094
+**Published:** 2026-03-07
+**Type:** Feature
+
+---
+
+#### 22.1 Overview
+
+The TripCalendar navigation header currently contains only two controls: a `<` (previous month) button and a `>` (next month) button flanking the current month/year heading. Once a user navigates away from the current month — for example, to browse future trip events — there is no quick way to return to today's month.
+
+**Add:** A "Today" button in the calendar header that, when clicked, navigates the calendar to the current month (March 2026 at time of writing) and sets `hasNavigated.current = true` (per Spec 21).
+
+**No new screens, routes, or backend changes.** This spec describes a targeted addition to `TripCalendar` only.
+
+---
+
+#### 22.2 Component Location
+
+**Component:** `TripCalendar.jsx` (same file as Spec 21)
+**Test file:** `TripCalendar.test.jsx`
+
+---
+
+#### 22.3 Header Layout
+
+##### 22.3.1 Current Header Structure
+
+```
+[ < ]   March 2026   [ > ]
+```
+
+The `<` and `>` are icon buttons. The month/year heading is centered text (or a heading element).
+
+##### 22.3.2 Updated Header Structure
+
+```
+[ < ]   March 2026   [ > ]   [ today ]
+```
+
+The "today" button is placed **to the right of the `>` arrow**, outside the month/year heading area. The header row uses `display: flex; align-items: center; justify-content: space-between` (or equivalent). The "today" button sits at the far right of the navigation row with a small left margin separating it from the `>` arrow.
+
+**Alternative acceptable placement:** Immediately to the right of the `>` button in the same flex group, with `gap: 8px` between `>` and "today". The key requirement is that the button is always visible in the calendar header and does not displace the month/year heading.
+
+---
+
+#### 22.4 Button Specification
+
+| Property | Value |
+|----------|-------|
+| **Text** | `today` (lowercase, matches Japandi minimal aesthetic) |
+| **Element** | `<button>` |
+| **`aria-label`** | `"Go to current month"` |
+| **Background** | Transparent |
+| **Border** | `1px solid rgba(93, 115, 126, 0.4)` (subtle accent border — slightly less prominent than active/focus border) |
+| **Border-radius** | `var(--radius-sm)` (2px) |
+| **Text color** | `var(--text-muted)` (`rgba(252, 252, 252, 0.5)`) |
+| **Font** | IBM Plex Mono, 11px, font-weight 500, letter-spacing 0.05em |
+| **Padding** | `4px 10px` |
+| **Cursor** | `pointer` |
+| **Hover** | Border color: `var(--border-accent)` (`#5D737E`); text color: `var(--text-primary)` (`#FCFCFC`); background: `rgba(93, 115, 126, 0.08)` |
+| **Focus-visible** | `outline: 2px solid var(--border-accent); outline-offset: 2px` |
+| **Transition** | `all 150ms ease` |
+| **Visibility** | Always visible — no conditional show/hide based on current month |
+| **CSS class** | `.todayBtn` (added to `TripCalendar.module.css` or inline as a scoped style) |
+
+**Design rationale:** The muted text color and subtle border signal that this is a utility action, secondary to the main prev/next navigation. Hover restores full contrast to confirm interactivity. The lowercase `"today"` label is consistent with the Japandi lowercase/monospace aesthetic used throughout the application (e.g., section headers, button labels).
+
+---
+
+#### 22.5 Click Handler
+
+```jsx
+function handleToday() {
+  hasNavigated.current = true;  // user intent — disable async auto-init override
+  const now = new Date();
+  setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+}
+```
+
+- Sets `hasNavigated.current = true` **before** calling `setCurrentMonth` — consistent with all other user navigation actions (Spec 21).
+- Uses `new Date()` at click time — always reflects the actual current date.
+- Sets the day to `1` explicitly to normalize the date (avoids issues with months that have fewer days than the current day).
+
+---
+
+#### 22.6 JSX
+
+```jsx
+{/* Calendar header navigation row */}
+<div className={styles.calendarNav}>
+  <button
+    className={styles.navBtn}
+    onClick={handlePrev}
+    aria-label="Previous month"
+  >
+    ‹
+  </button>
+
+  <span className={styles.monthHeading} aria-live="polite">
+    {format(currentMonth, 'MMMM yyyy')}  {/* or equivalent date formatting */}
+  </span>
+
+  <button
+    className={styles.navBtn}
+    onClick={handleNext}
+    aria-label="Next month"
+  >
+    ›
+  </button>
+
+  {/* NEW: Today button */}
+  <button
+    className={styles.todayBtn}
+    onClick={handleToday}
+    aria-label="Go to current month"
+  >
+    today
+  </button>
+</div>
+```
+
+The `‹` and `›` glyphs (or `<` / `>` or SVG arrows) are whatever the existing implementation uses — do not change the existing arrow buttons. Only add the "today" button.
+
+---
+
+#### 22.7 CSS
+
+Add to `TripCalendar.module.css` (or equivalent):
+
+```css
+/* ── Today Button ── */
+.todayBtn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid rgba(93, 115, 126, 0.4);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  margin-left: 8px;   /* small separation from the ">" arrow */
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.todayBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-accent);
+  background: rgba(93, 115, 126, 0.08);
+}
+
+.todayBtn:focus-visible {
+  outline: 2px solid var(--border-accent);
+  outline-offset: 2px;
+}
+
+/* Responsive: on mobile, reduce padding slightly */
+@media (max-width: 640px) {
+  .todayBtn {
+    font-size: 10px;
+    padding: 3px 8px;
+    margin-left: 6px;
+  }
+}
+```
+
+---
+
+#### 22.8 States
+
+| State | Today Button Appearance |
+|-------|------------------------|
+| **Default (any month)** | Visible, subtle border, muted text |
+| **Viewing current month** | Still visible — no change. Button behavior is idempotent (clicking while on current month is a no-op visually). |
+| **Hover** | Accent border, full-brightness text, subtle bg tint |
+| **Focus (keyboard)** | Accent `outline` ring, 2px offset |
+| **Click** | Calendar navigates to current month. No loading state (state update is synchronous). |
+
+---
+
+#### 22.9 Responsive Behavior
+
+| Breakpoint | Behavior |
+|------------|----------|
+| **Desktop (≥ 768px)** | Full button with `today` label, 11px font, `4px 10px` padding |
+| **Mobile (< 640px)** | Reduced padding (`3px 8px`), slightly smaller font (10px), same label. The calendar header should use `flex-wrap: wrap` if the nav row gets too narrow, but `today` should remain on the same row as the arrows on typical mobile widths (320px+) |
+
+---
+
+#### 22.10 Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| **Button semantics** | Native `<button>` element — keyboard-focusable, activated by Enter and Space |
+| **Descriptive label** | `aria-label="Go to current month"` — explains the action beyond the visible `"today"` text |
+| **Focus ring** | `:focus-visible` outline with `--border-accent` color, 2px offset — meets WCAG focus indicator contrast requirement |
+| **Screen reader announcement** | When the month changes after clicking Today, `aria-live="polite"` on the month heading (if present) announces the new month name automatically |
+| **Color contrast** | `var(--text-muted)` (`rgba(252,252,252,0.5)`) on transparent over `--bg-primary` (`#02111B`) — meets WCAG AA at 11px bold for informational UI (button is also reachable via keyboard so color contrast for state communication is supplemented by other cues) |
+| **No motion** | The calendar month change is instantaneous state update with no animation. No `prefers-reduced-motion` changes needed. |
+
+---
+
+#### 22.11 Test Plan (New Tests)
+
+Add the following tests to `TripCalendar.test.jsx`. All **existing TripCalendar tests must pass** — no regressions.
+
+**Test 22.A — Clicking "Today" returns to current month**
+```
+Given: TripCalendar is rendered
+When:  User navigates to a future month (e.g., May 2026) via the ">" arrow
+And:   User clicks the "today" button
+Then:  The calendar navigates to the current month (March 2026)
+And:   The month heading updates to "March 2026" (or equivalent)
+```
+
+**Test 22.B — "Today" button is visible when viewing a past month**
+```
+Given: TripCalendar is rendered with currentMonth = January 2026 (a past month)
+Then:  A button with aria-label "Go to current month" (or text "today") is visible in the DOM
+```
+
+**Test 22.C — "Today" button is visible when viewing a future month**
+```
+Given: TripCalendar is rendered with currentMonth = December 2027 (a future month)
+Then:  A button with aria-label "Go to current month" (or text "today") is visible in the DOM
+```
+
+**Test 22.D — Prev/next navigation continues to work after clicking Today**
+```
+Given: TripCalendar is rendered
+When:  User navigates to May 2026 via ">"
+And:   User clicks "today" (returns to March 2026)
+And:   User clicks ">" once more
+Then:  Calendar shows April 2026 (prev/next navigation is not broken by Today click)
+```
+
+---
+
+#### 22.12 Interaction with Spec 21 (hasNavigated)
+
+The "Today" button click **must** set `hasNavigated.current = true` (via the `handleToday` handler shown in 22.5). This ensures:
+
+- After clicking "Today", if event data then arrives (or updates), the calendar will **not** be automatically re-initialized to the first-event month.
+- The user clicked "Today" intentionally — their intent overrides the auto-initialization.
+
+This is consistent with how prev/next navigation interacts with the async auto-init (Spec 21).
+
+---
+
+#### 22.13 Files to Modify (T-147)
+
+| File | Change |
+|------|--------|
+| `TripCalendar.jsx` (or equivalent) | Add `handleToday` function (sets `hasNavigated.current = true`, calls `setCurrentMonth` to current month); add `<button className={styles.todayBtn} onClick={handleToday} aria-label="Go to current month">today</button>` to calendar nav header |
+| `TripCalendar.module.css` (or equivalent) | Add `.todayBtn` CSS rule and responsive variant |
+| `TripCalendar.test.jsx` (or equivalent) | Add Tests 22.A through 22.D (4 new tests). All existing tests must still pass. |
+
+**No API changes.** No backend changes. No new routes. No new components.
+
+---
+
+*Sprint 14 Spec 22 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
+
+---
+
+## Sprint 15 Specs
+
+---
+
+### Spec 23: Calendar Land Travel Chip — Corrected Location Display (Sprint 15)
+
+**Sprint:** #15
+**Related Task:** T-155 (Bug Fix — FB-098)
+**Status:** Approved
+**Priority:** P1
+
+---
+
+#### 23.1 Overview
+
+This spec is a **behavioral correction** to the existing calendar land travel chip rendering described in Spec 20 (Sprint 13, T-138). No new screen or component is introduced. The fix corrects which location string is shown on the pick-up day chip vs. the drop-off day chip for land travel calendar entries.
+
+**Bug (FB-098):** Both the pick-up day chip and the drop-off day chip currently display `to_location` (the destination). The pick-up chip should instead display `from_location` (the origin).
+
+**Correct Behavior:**
+
+| Calendar Day | Chip Label Prefix | Location Displayed |
+|---|---|---|
+| Pick-up / departure day | `"pick-up"` (RENTAL_CAR only) or none (other modes) | `from_location` — the origin/pick-up location |
+| Drop-off / arrival day | `"drop-off"` (RENTAL_CAR only) or none (other modes) | `to_location` — the destination/drop-off location |
+
+---
+
+#### 23.2 Chip Anatomy (Pick-up Day)
+
+```
+┌──────────────────────────────────────────────┐
+│  [mode icon]  <prefix> <time> · <from_loc>   │
+└──────────────────────────────────────────────┘
+```
+
+- **Prefix:** `"pick-up"` for RENTAL_CAR mode; absent for FLIGHT, BUS, TRAIN, FERRY, OTHER
+- **Time:** Departure time formatted in departure timezone (e.g., `"9a"` or `"9:30a"`)
+- **Location:** `from_location` — the origin city/airport/address
+
+**Example (RENTAL_CAR):** `pick-up 9a · LAX Airport`
+**Example (FLIGHT):** `9a · JFK Airport`
+
+---
+
+#### 23.3 Chip Anatomy (Drop-off Day)
+
+```
+┌──────────────────────────────────────────────┐
+│  [mode icon]  <prefix> <time> · <to_loc>     │
+└──────────────────────────────────────────────┘
+```
+
+- **Prefix:** `"drop-off"` for RENTAL_CAR mode; absent for FLIGHT, BUS, TRAIN, FERRY, OTHER
+- **Time:** Arrival time formatted in arrival timezone (e.g., `"2p"` or `"2:30p"`)
+- **Location:** `to_location` — the destination city/airport/address
+
+**Example (RENTAL_CAR):** `drop-off 2p · SFO Airport`
+**Example (FLIGHT):** `2p · SFO Airport`
+
+---
+
+#### 23.4 Same-Day Travel Edge Case
+
+When a land travel entry departs and arrives on the **same calendar day**, only a single chip is shown — the **pick-up chip** (departure view), displaying `from_location`. The `_isArrival` flag is `false` for this chip.
+
+| Condition | Chip Shown | Location |
+|---|---|---|
+| Departure day ≠ Arrival day | Pick-up chip on departure day | `from_location` |
+| Departure day ≠ Arrival day | Drop-off chip on arrival day | `to_location` |
+| Departure day = Arrival day | Single chip (pick-up) | `from_location` |
+
+---
+
+#### 23.5 DayPopover Consistency
+
+The DayPopover overlay ("+X more" expanded view) must render the same location text as the DayCell chip. The `getEventTime` helper or equivalent logic in `DayPopover` must use the same `_isArrival` flag to select `from_location` (departure) vs. `to_location` (arrival).
+
+---
+
+#### 23.6 Visual Appearance
+
+No visual style changes. Only the text content of the location portion of the chip changes. The chip styling (font size, color, padding, truncation) remains exactly as defined in Spec 20.
+
+| Element | Value |
+|---|---|
+| Chip background | `rgba(93, 115, 126, 0.15)` (land travel) |
+| Chip text color | `var(--accent)` (`#5D737E`) |
+| Chip font size | 10px |
+| Chip padding | `2px 6px` |
+| Location text truncation | `text-overflow: ellipsis; overflow: hidden; white-space: nowrap` — same as existing |
+| Max chip width | Constrained to day cell width; location string is truncated with `…` if too long |
+
+---
+
+#### 23.7 Overflow Behavior (DayCell — "+X more")
+
+When a day cell has more events than fit in the cell height, the chip count shown vs. hidden follows existing overflow logic. Land travel chips with corrected location text participate in overflow the same as before — this fix has no impact on overflow behavior.
+
+---
+
+#### 23.8 States
+
+| State | Behavior |
+|---|---|
+| **`from_location` is null / empty string** | Display an empty location segment or omit the ` · ` separator entirely. Do not render `"null"` or `"undefined"` as text. |
+| **`to_location` is null / empty string** | Same as above — omit ` · ` and location segment gracefully. |
+| **Both locations provided** | Render `· <location>` after the time string |
+| **RENTAL_CAR mode** | Prepend `"pick-up"` / `"drop-off"` prefix before the time (existing T-138 behavior, unchanged) |
+| **Non-RENTAL_CAR mode** | No prefix; time directly followed by location |
+
+---
+
+#### 23.9 Accessible Labels
+
+When the chip renders in `DayCell` or `DayPopover`, the accessible text (via `title` attribute or `aria-label` on the chip container) should reflect the corrected location:
+
+- Pick-up chip: `aria-label="Land travel: departs <from_location> at <time>"`
+- Drop-off chip: `aria-label="Land travel: arrives <to_location> at <time>"`
+
+If no accessible label currently exists on these chips, adding it is **strongly recommended** but may be deferred to Sprint 16 if it would block the primary fix.
+
+---
+
+#### 23.10 Implementation Guidance
+
+> **Note to Frontend Engineer:** This section records the design intent for the data model change. Implementation follows the approach described in T-155.
+
+The `buildEventsMap` function builds the list of calendar events for each day. For land travel entries:
+
+1. **Departure-day event:** Set `_location = lt.from_location` on the event object. The `_isArrival` flag is `false` (or absent).
+2. **Arrival-day event:** Set `_location = lt.to_location` on the event object. The `_isArrival` flag is `true`.
+
+Both `DayCell` (chip rendering) and `DayPopover` (expanded view) must read `event._location` (not re-derive it from `lt.from_location` or `lt.to_location` directly). This ensures a single source of truth for which location to display.
+
+---
+
+#### 23.11 Test Plan (New Tests — T-155)
+
+Add the following tests to `TripCalendar.test.jsx` (or equivalent land travel chip test file). All **400+ existing tests must pass** — no regressions.
+
+**Test 23.A — Pick-up day chip shows `from_location`**
+```
+Given: A land travel entry with from_location = "LAX Airport" and to_location = "SFO Airport"
+And:   The pick-up date is 2026-08-07, the drop-off date is 2026-08-08
+When:  The calendar renders the week containing August 7
+Then:  The chip on August 7 shows "LAX Airport" (not "SFO Airport")
+```
+
+**Test 23.B — Drop-off day chip shows `to_location`**
+```
+Given: The same land travel entry as Test 23.A
+When:  The calendar renders the week containing August 8
+Then:  The chip on August 8 shows "SFO Airport" (not "LAX Airport")
+```
+
+**Test 23.C — Same-day travel shows `from_location` only**
+```
+Given: A land travel entry where pick-up date = drop-off date = 2026-08-07
+And:   from_location = "Chicago O'Hare" and to_location = "Midway"
+When:  The calendar renders August 7
+Then:  Only one chip is visible on August 7, showing "Chicago O'Hare"
+And:   "Midway" does not appear on August 7
+```
+
+**Test 23.D — RENTAL_CAR label prefixes still present**
+```
+Given: A RENTAL_CAR land travel entry with from_location = "Hertz LAX" and to_location = "Hertz SFO"
+When:  The calendar renders the pick-up day
+Then:  The chip text contains "pick-up" AND "Hertz LAX"
+When:  The calendar renders the drop-off day
+Then:  The chip text contains "drop-off" AND "Hertz SFO"
+```
+
+---
+
+#### 23.12 Regression Checklist
+
+Before marking T-155 Done, the Frontend Engineer must verify:
+
+| Check | Expected |
+|---|---|
+| T-138 rental car label prefixes ("pick-up", "drop-off") | Still present — not removed by this change |
+| T-137 DayPopover stay-open on scroll | Unaffected — no DayPopover structural changes |
+| T-146 calendar first-event-month | Unaffected — no `buildEventsMap` month logic changes |
+| T-147 "Today" button | Unaffected — no navigation changes |
+| Non-land-travel chips (flights, stays, activities) | Unaffected — only land travel event objects change |
+
+---
+
+#### 23.13 Files to Modify (T-155)
+
+| File | Change |
+|---|---|
+| `TripCalendar.jsx` (or equivalent) | In `buildEventsMap`: set `_location = lt.from_location` on departure-day events; set `_location = lt.to_location` on arrival-day events |
+| `DayCell.jsx` (or equivalent) | Use `ev._location` for chip location text instead of re-reading from the raw land travel object |
+| `DayPopover.jsx` (or equivalent) | In `getEventTime` (or equivalent): use `ev._location` for the expanded chip location text |
+| `TripCalendar.test.jsx` (or equivalent) | Add Tests 23.A through 23.D (4 new tests) |
+
+**No API changes.** No backend changes. No new routes. No schema changes. No style changes.
+
+---
+
+### Spec 24: Browser Tab Title + Favicon (Sprint 15)
+
+**Sprint:** #15
+**Related Task:** T-154 (Bug Fix — FB-096, FB-097)
+**Status:** Approved
+**Priority:** P3
+
+---
+
+#### 24.1 Overview
+
+This is a **trivial HTML-only fix** to `frontend/index.html`. No component, no logic, no test, no style change. Two changes to the `<head>` element:
+
+1. **Page title:** Change `<title>App</title>` → `<title>triplanner</title>`
+2. **Favicon link:** Add `<link rel="icon" type="image/png" href="/favicon.png">` inside `<head>` (the file `frontend/public/favicon.png` already exists)
+
+---
+
+#### 24.2 Expected Result
+
+| Element | Before | After |
+|---|---|---|
+| Browser tab title | `App` | `triplanner` |
+| Browser tab icon | Default browser globe/icon | `favicon.png` (existing file) |
+
+---
+
+#### 24.3 Design Rationale
+
+The title `"triplanner"` matches the lowercase Japandi-aesthetic brand voice used throughout the UI (e.g., the `TRIPLANNER` brand mark in auth screens, the lowercase button labels). All lowercase is intentional and consistent with the design system.
+
+---
+
+#### 24.4 No Spec Further Required
+
+This change requires no screen diagram, no user flow, and no component specification. The active-sprint.md task description (T-154) contains the complete implementation instructions.
+
+---
+
+#### 24.5 Verification
+
+The Frontend Engineer should verify via `npm run build` + `npm run preview`:
+- Browser tab text reads `"triplanner"` (not `"App"`, not `"Triplanner"`)
+- Browser tab displays the favicon PNG icon (not the default browser icon)
+
+---
+
+*Sprint 15 Specs 23 and 24 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*

@@ -4,50 +4,120 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #5 — 2026-02-25 to 2026-03-11
+## Sprint #15 — 2026-03-07
 
-**Sprint Goal**: Enhance the home page with trip search, filter, and sort capabilities so users can quickly find trips as their collection grows. Establish end-to-end test coverage with Playwright for production deployment confidence. Address React Router v7 deprecation warnings.
+**Sprint Goal:** Close the 6th consecutive User Agent walkthrough carry-over (T-152). Fix three project-owner-reported bugs: browser tab title showing "App" (FB-096), missing favicon link (FB-097), and calendar land travel chips showing wrong location (FB-098). Ship a QA → Deploy → Monitor → User Agent pipeline for the new fixes. Optional: add formatTimezoneAbbr() unit tests (T-153, P3).
 
-**Context:** The MVP has been feature-complete since Sprint 2, production-hardened in Sprint 3, and polished to zero issues in Sprint 4. Sprint 4 was the cleanest sprint in project history: 13/13 positive feedback entries, zero bugs. The application has 428 tests (168 backend + 260 frontend), full HTTPS, comprehensive accessibility compliance, and all tech debt from Sprints 1–4 resolved. Sprint 5 is the first "enhancement" sprint — it adds user-facing functionality beyond the original MVP scope. The primary deferred item (B-022 production deployment) remains blocked on the project owner selecting a hosting provider.
+**Context:** Sprint 14 delivered all 7 implementation and infrastructure tasks (T-145–T-151) with zero rework and a fully healthy staging environment (HTTPS port 3001, pm2 PID 94787, Playwright 7/7 PASS, Deploy Verified: Yes). Three new feedback items (FB-096, FB-097, FB-098) were filed by the project owner and triaged this sprint — two are trivial UX fixes (browser title, favicon) and one is a Major bug (calendar land travel chip showing wrong location). T-152 (User Agent comprehensive walkthrough) carries in as the P0 hard-block for the 6th consecutive sprint.
+
+**Feedback Triage (Sprint 15 — Manager Agent 2026-03-07):**
+
+| FB Entry | Category | Severity | Status | Disposition |
+|----------|----------|----------|--------|-------------|
+| FB-093 | Monitor Alert | Major | Resolved | T-145 Done — JWT_SECRET rotated |
+| FB-094 | Feature Gap | Minor | Resolved | T-147 Done — "Today" button added |
+| FB-095 | Bug | Major | Resolved | T-146 Done — Calendar first-event-month fixed |
+| FB-096 | UX Issue | Minor | **Tasked → T-154** | Frontend: fix browser tab title to "triplanner" — P3 |
+| FB-097 | UX Issue | Minor | **Tasked → T-154** | Frontend: add favicon link tag — combined with FB-096 — P3 |
+| FB-098 | Bug | Major | **Tasked → T-155** | Frontend: fix calendar land travel chip location (pick-up shows origin, drop-off shows destination) — P1 |
 
 ---
 
 ## In Scope
 
-*All tasks below are in `dev-cycle-tracker.md`. Dependency order is enforced — no task starts before its Blocked By items are Done.*
+### Phase 0 — User Agent Walkthrough (P0 — start immediately — zero blockers)
 
-### Phase 1 — Design Specs (start immediately)
-- [ ] T-071 — Design spec: Home page search bar, status filter, sort controls, empty search state
+- [ ] **T-152** — User Agent: Comprehensive Sprint 12+13+14 feature walkthrough ← **P0 HARD-BLOCK — START IMMEDIATELY — CIRCUIT-BREAKER APPLIES**
+  - Staging is verified healthy: `https://localhost:3001`, pm2 PID 94787, T-151 health check Done 2026-03-07
+  - **Calendar first-event-month fix (T-146):** Open a trip with events only in May 2026. Verify the calendar opens on May 2026, not March 2026. Navigate forward/back — verify manual navigation is preserved. Open a trip with no events — verify calendar falls back to current month (March 2026).
+  - **"Today" button (T-147):** Navigate to a future month. Verify a "Today" button is visible in the calendar header. Click it — verify calendar returns to March 2026. Repeat from a past month.
+  - **DayPopover stay-open (T-137, carry-over from T-144):** Trigger "+X more" overflow on a calendar day. Open the popover. Scroll the page — verify popover remains open and does NOT close or drift. Press Escape — closes. Click outside — closes.
+  - **Rental car chips (T-138, carry-over from T-144):** Create a rental car land travel entry with pick-up and drop-off times. Verify pick-up day shows "pick-up Xp"; drop-off day shows "drop-off Xp".
+  - **Sprint 12 regression (carry-over from T-136):** `backend/.env` shows local-dev settings (not staging) ✅; check-in chip reads "check-in Xa" ✅; check-out chip reads "check-out Xa" ✅. Note: DayPopover scroll behavior is stay-open (T-137), NOT close-on-scroll (T-126 was reversed).
+  - **Sprint 11 regression:** Land travel CRUD, trip notes, timezone abbreviations, URL links, print — all operational.
+  - Submit structured feedback to `feedback-log.md` under a Sprint 15 header.
+  - **This task formally closes T-136 (6th carry-over) and T-144 carry-over scope.**
 
-### Phase 2 — Backend (start immediately, parallel with Design)
-- [ ] T-072 — Backend: API contract + implementation for GET /trips query params (?search, ?status, ?sort_by, ?sort_order)
+---
 
-### Phase 3 — Frontend (T-073 waits on T-071 + T-072; T-074 starts immediately)
-- [ ] T-073 — Frontend: Home page search/filter/sort UI ← T-071, T-072
-- [ ] T-074 — Frontend: React Router v7 future flag migration (no blockers)
+### Phase 1 — Frontend Bug Fixes (parallel with Phase 0 — start immediately)
 
-### Phase 4 — E2E Testing (after implementation)
-- [ ] T-075 — E2E: Install Playwright + write critical user flow tests ← T-072, T-073, T-074
+- [ ] **T-154** — Frontend Engineer: Fix browser tab title + favicon ← NO DEPENDENCIES — START IMMEDIATELY (P3)
+  - Update `frontend/index.html`:
+    1. Change `<title>App</title>` → `<title>triplanner</title>`
+    2. Add `<link rel="icon" type="image/png" href="/favicon.png">` to `<head>` (`frontend/public/favicon.png` already exists)
+  - No component changes, no logic changes, no new tests (static HTML only).
+  - Verify via `npm run build` + `npm run preview`: tab shows "triplanner" and favicon icon.
 
-### Phase 5 — QA, Deploy, Monitor, User (sequential after all implementation)
-- [ ] T-076 — QA: Security checklist + code review audit ← T-072, T-073, T-074, T-075
-- [ ] T-077 — QA: Integration testing ← T-076
-- [ ] T-078 — Deploy: Staging re-deployment ← T-077
-- [ ] T-079 — Monitor: Staging health check ← T-078
-- [ ] T-080 — User Agent: Feature walkthrough + feedback ← T-079
+- [ ] **T-155** — Frontend Engineer: Fix calendar land travel chip location display ← NO DEPENDENCIES — START IMMEDIATELY (P1)
+  - Both pick-up and drop-off chips currently show the destination (`to_location`). Fix:
+    - **Pick-up day chip**: display `from_location` (origin)
+    - **Drop-off day chip**: display `to_location` (destination)
+  - Root cause: in `buildEventsMap`, land travel departure-day events need `_location = lt.from_location`; arrival-day events need `_location = lt.to_location`. Use `_location` in `DayCell` and `DayPopover.getEventTime` for land travel rendering.
+  - T-138 RENTAL_CAR label prefixes ("pick-up", "drop-off") must remain correct — only the location text changes.
+  - 4 new tests required: (A) pick-up day shows from_location; (B) drop-off day shows to_location; (C) same-day rental shows from_location only; (D) RENTAL_CAR prefixes still present.
+  - All 400+ existing tests must pass.
+
+- [ ] **T-153** — Frontend Engineer: Add `formatTimezoneAbbr()` unit tests ← NO DEPENDENCIES — may start immediately (P3)
+  - Deferred since Sprint 7. Add to `frontend/src/utils/formatDate.test.js`:
+    1. `America/New_York` in August → `"EDT"` (or ICU equivalent)
+    2. `Asia/Tokyo` → `"JST"` (or `"GMT+9"`)
+    3. `Europe/Paris` in summer → `"CEST"` (or `"GMT+2"`)
+    4. Invalid/null timezone → graceful fallback (no throw, returns a string)
+  - No production code changes — tests only. All 400+ existing tests must still pass.
+
+---
+
+### Phase 2 — QA Review (after T-154 + T-155 complete)
+
+- [ ] **T-156** — QA Engineer: Security checklist + code review for T-154, T-155 ← Blocked by T-154, T-155
+  - T-154: static HTML change — no script injection, no CSP implications; favicon href is root-relative to existing file.
+  - T-155: confirm `_location` field sourced from DB record fields (not unsanitized user input echoed into innerHTML); React renders as text node; `dangerouslySetInnerHTML` not used; T-138 RENTAL_CAR logic preserved.
+  - Run full test suite: `backend/` (266+) and `frontend/` (404+).
+
+- [ ] **T-157** — QA Engineer: Integration testing for Sprint 15 ← Blocked by T-156
+  - Browser title: `<title>triplanner</title>` in index.html ✅; favicon `<link>` present ✅.
+  - Calendar land travel chips: from_location on pick-up day, to_location on drop-off day ✅.
+  - RENTAL_CAR "pick-up"/"drop-off" label prefixes still correct ✅.
+  - Sprint 14 regression: calendar first-event-month (T-146), "Today" button (T-147) ✅.
+  - Sprint 13 regression: DayPopover stay-open (T-137), rental car time chips (T-138) ✅.
+  - Sprint 11 regression: land travel CRUD, notes, timezone abbreviations, URL links, print ✅.
+
+---
+
+### Phase 3 — Deploy, Monitor, User Agent (sequential after Phase 2)
+
+- [ ] **T-158** — Deploy Engineer: Sprint 15 staging re-deployment ← Blocked by T-157
+  - Rebuild frontend with T-154/T-155 changes.
+  - No new migrations (no schema changes in Sprint 15).
+  - Restart pm2 — backend must remain on `https://localhost:3001`.
+  - Smoke tests: (a) tab title "triplanner"; (b) favicon visible; (c) land travel pick-up/drop-off chips show correct locations; (d) Sprint 14 features operational.
+
+- [ ] **T-159** — Monitor Agent: Sprint 15 staging health check ← Blocked by T-158
+  - HTTPS ✅, pm2 port 3001 ✅, health 200 ✅.
+  - Browser title "triplanner" ✅, favicon link present ✅.
+  - Land travel chip locations correct ✅.
+  - Playwright 7/7 ✅.
+  - Sprint 14 + Sprint 13 regression pass ✅.
+
+- [ ] **T-160** — User Agent: Sprint 15 feature walkthrough ← Blocked by T-159 (P2)
+  - Verify browser tab title "triplanner", favicon visible.
+  - Verify land travel pick-up/drop-off chips show correct locations.
+  - Verify RENTAL_CAR label prefixes still correct (T-138 regression).
+  - Sprint 14 regression: calendar first-event-month, "Today" button.
+  - Sprint 13 regression: DayPopover stay-open, rental car time chips.
+  - Sprint 11 regression: land travel CRUD, notes, timezone abbreviations, URL links, print.
+  - Submit structured feedback under Sprint 16 header.
 
 ---
 
 ## Out of Scope
 
-*These items are explicitly deferred. Do not start them this sprint.*
-
-- **B-022 — Production deployment to hosting provider** — Still blocked on the project owner selecting a hosting provider (Railway, Fly.io, Render, AWS), configuring DNS, approving budget, and provisioning production PostgreSQL. **Escalated to project owner since Sprint 3.** All deployment preparation is complete. The application is deployment-ready.
-- **B-020 — Rate limiting persistence (Redis)** — In-memory rate limiting is acceptable for staging and initial single-instance production. Redis-backed store only needed for multi-process scaling. Deferred until production architecture is defined.
-- **B-024 — Per-account rate limiting** — IP-based rate limiting is standard. Per-account limiting is an enhancement for shared-IP environments. Depends on B-020 infrastructure.
-- **B-021 — Dev dependency esbuild vulnerability** — No production impact. Monitor for upstream fix.
-- **B-030 — Trip notes/description field** — Useful enhancement deferred to Sprint 6. Added to backlog.
-- **B-032 — Trip export/print** — Useful enhancement deferred to Sprint 6. Added to backlog.
+- **Production deployment (B-022)** — Pending project owner hosting decision. T-124 produced `.workflow/hosting-research.md`; project owner must review and select a provider. **15 consecutive sprints with no decision. Project owner action required.**
+- **B-020 (Redis rate limiting)** — Deferred. In-memory acceptable at current scale.
+- **B-021 (esbuild dev dep vulnerability)** — No production impact. Monitor for upstream fix.
+- **B-024 (per-account rate limiting)** — Depends on B-020. Deferred.
+- **New features** — No new feature work this sprint. New features begin in Sprint 16 after T-152 and T-160 feedback is triaged.
 - **MFA login** — Explicitly out of scope per project brief.
 - **Home page summary calendar** — Explicitly out of scope per project brief.
 - **Auto-generated itinerary suggestions** — Explicitly out of scope per project brief.
@@ -58,125 +128,81 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Manager | Sprint planning (done), code review all implementation tasks, triage feedback | Review T-071–T-075 specs + implementations; approve before downstream tasks start |
-| Design Agent | Search/filter/sort UI spec for home page | T-071 |
-| Backend Engineer | Trip search/filter/sort API (contract + implementation) | T-072 |
-| Frontend Engineer | Search/filter/sort UI + React Router migration | T-073, T-074 |
-| QA Engineer | E2E test setup with Playwright + security checklist + integration testing | T-075, T-076, T-077 |
-| Deploy Engineer | Staging re-deployment with all Sprint 5 changes | T-078 |
-| Monitor Agent | Health checks (Sprint 4 regression + Sprint 5 changes) | T-079 |
-| User Agent | Test search/filter/sort, E2E validation, Sprint 4 regression, feedback | T-080 |
+| User Agent | Comprehensive Sprint 12+13+14 walkthrough **(P0 — run immediately, no blockers)** | T-152 |
+| Frontend Engineer | Fix browser title + favicon (P3), fix land travel chip location (P1), formatTimezoneAbbr() tests (P3) | T-154, T-155, T-153 |
+| QA Engineer | Security checklist + integration testing for Sprint 15 fixes | T-156, T-157 |
+| Deploy Engineer | Sprint 15 staging re-deployment (after QA clears) | T-158 |
+| Monitor Agent | Sprint 15 staging health check | T-159 |
+| User Agent | Sprint 15 feature walkthrough (after Monitor) | T-160 |
+| Manager | Triage T-152 + T-160 feedback → Sprint 16 plan | Feedback triage |
+| Backend Engineer | Standby — no backend tasks this sprint | — |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-T-071 (Design: Search/Filter/Sort UI)  ──────────────────────┐
-                                                               │
-T-072 (BE: Search/Filter/Sort API)     ──────────────────────┤  (parallel)
-                                                               │
-T-074 (FE: React Router Migration)     ──────────────────────┤  (parallel, independent)
-                                                               ↓
-T-073 (FE: Search/Filter/Sort UI)      ← T-071, T-072 ──────┤
-                                                               ↓
-                            T-075 (E2E: Playwright Tests)     ← T-072, T-073, T-074
-                                                               ↓
-                            T-076 (QA: Security + Code Review)
-                                                               ↓
-                            T-077 (QA: Integration Tests)
-                                                               ↓
-                            T-078 (Deploy: Staging Re-deploy)
-                                                               ↓
-                            T-079 (Monitor: Health Check)
-                                                               ↓
-                            T-080 (User Agent: Testing)
+Track A — User Agent Sprint 12+13+14 (start immediately — P0):
+T-152 (User Agent: comprehensive walkthrough)
+        |
+        └-> Manager: Triage feedback → Sprint 16 plan
+
+Track B — Sprint 15 Bug Fixes (start immediately — parallel with Track A):
+T-154 (Frontend: title + favicon)  ─┐
+T-155 (Frontend: land travel chips) ─┤
+T-153 (Frontend: tz abbr tests, P3) ─┤
+                                     ├-> T-156 (QA: security+review) -> T-157 (QA: integration)
+                                                                              |
+                                                                          T-158 (Deploy)
+                                                                              |
+                                                                          T-159 (Monitor)
+                                                                              |
+                                                                          T-160 (User Agent: Sprint 15 walkthrough)
+                                                                              |
+                                                                     Manager: Triage feedback → Sprint 16 plan
 ```
-
-**Note on parallelism:** Phase 1 (Design), Phase 2 (Backend), and T-074 (React Router migration) can all start simultaneously. T-073 (search UI) must wait for both T-071 (design spec) and T-072 (backend API) to be complete. T-075 (E2E) waits for all implementation tasks. This sprint has moderate parallelism — the critical path runs through T-071/T-072 → T-073 → T-075 → QA → Deploy → Monitor → User.
-
----
-
-## Sprint 4 Feedback Triage Summary
-
-*Triaged by Manager Agent on 2026-02-25 as part of Sprint 5 planning.*
-
-| FB Entry | Category | Severity | Sprint 5 Disposition | Task |
-|----------|----------|----------|---------------------|------|
-| FB-044 | Positive | — | Acknowledged | — |
-| FB-045 | Positive | — | Acknowledged | — |
-| FB-046 | Positive | — | Acknowledged | — |
-| FB-047 | Positive | — | Acknowledged | — |
-| FB-048 | Positive | — | Acknowledged | — |
-| FB-049 | Positive | — | Acknowledged | — |
-| FB-050 | Positive | — | Acknowledged | — |
-| FB-051 | Positive | — | Acknowledged | — |
-| FB-052 | Positive | — | Acknowledged | — |
-| FB-053 | Positive | — | Acknowledged | — |
-| FB-054 | Positive | — | Acknowledged | — |
-| FB-055 | Positive | — | Acknowledged | — |
-| FB-056 | Positive | — | Acknowledged | — |
-
-**Summary:** All 13 Sprint 4 feedback entries are positive findings — zero issues, zero bugs, zero suggestions. This is the first sprint in the project's history with zero issues found by the User Agent. No new tasks needed from Sprint 4 feedback. Sprint 5 tasks are driven by enhancement priorities (trip search/filter/sort) and production readiness (E2E testing, React Router migration).
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #5 is complete?*
+*How do we know Sprint #15 is complete?*
 
-- [ ] Design Agent has published search/filter/sort UI spec to `.workflow/ui-spec.md` (T-071)
-- [ ] Manager Agent has reviewed and approved the design spec before T-073 starts
-- [ ] Backend Engineer has updated API contracts for GET /trips query params before implementation (T-072)
-- [ ] GET /trips?search=<text> returns trips matching name or destinations (case-insensitive partial match) (T-072)
-- [ ] GET /trips?status=<PLANNING|ONGOING|COMPLETED> filters by computed trip status (T-072)
-- [ ] GET /trips?sort_by=<name|created_at|start_date>&sort_order=<asc|desc> sorts correctly (T-072)
-- [ ] Combined search + filter + sort params work together (T-072)
-- [ ] Frontend home page renders search bar, status filter, and sort controls per design spec (T-073)
-- [ ] Search input is debounced (300ms) and triggers API calls with query params (T-073)
-- [ ] Empty search results show proper empty state with "clear filters" action (T-073)
-- [ ] React Router v7 future flags added — no deprecation warnings in test output (T-074)
-- [ ] Playwright installed and ≥4 E2E tests pass against staging (T-075)
-- [ ] All task dependencies (Blocked By) are resolved before moving tasks to In Progress
-- [ ] Manager Agent has completed code review for all implementation tasks
-- [ ] QA Engineer has completed security checklist (T-076) and integration testing (T-077)
-- [ ] QA Engineer has logged all results in `.workflow/qa-build-log.md`
-- [ ] Deploy Engineer has redeployed to staging with all Sprint 5 changes (T-078)
-- [ ] Monitor Agent has verified staging health — all Sprint 4 checks pass + Sprint 5 checks pass (T-079)
-- [ ] User Agent has tested all changes and submitted feedback to `.workflow/feedback-log.md` (T-080)
-- [ ] Manager Agent has triaged all Sprint 5 feedback entries (New → Tasked/Acknowledged/Won't Fix)
-- [ ] Sprint summary added to `.workflow/sprint-log.md`
+- [ ] T-152: User Agent verifies calendar first-event-month fix (T-146), "Today" button (T-147), DayPopover stay-open (T-137), rental car chips (T-138), Sprint 12 regression, Sprint 11 regression; structured feedback submitted to feedback-log.md
+- [ ] T-136 and T-144 carry-over scope confirmed closed via T-152
+- [ ] T-154: Browser tab title shows "triplanner"; favicon linked in index.html
+- [ ] T-155: Calendar land travel chips show from_location on pick-up day, to_location on drop-off day; 4 new tests pass
+- [ ] T-153: formatTimezoneAbbr() unit tests added and passing (optional — P3)
+- [ ] T-156: QA security checklist passed
+- [ ] T-157: QA integration tests passed
+- [ ] T-158: Frontend rebuilt and deployed to staging
+- [ ] T-159: Monitor confirms all Sprint 15 health checks pass
+- [ ] T-160: User Agent verifies Sprint 15 fixes; structured feedback submitted
+- [ ] All feedback triaged by Manager (Tasked, Won't Fix, or Acknowledged)
+- [ ] Sprint 15 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 16 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint 5)
+## Success Criteria (Sprint #15)
 
-By the end of Sprint #5, the following must be verifiable on staging (in addition to all Sprint 1 + Sprint 2 + Sprint 3 + Sprint 4 criteria):
+By end of Sprint #15, the following must be verifiable:
 
-- [ ] GET /trips?search=Tokyo returns only trips with "Tokyo" in name or destinations
-- [ ] GET /trips?status=PLANNING returns only trips with computed PLANNING status
-- [ ] GET /trips?sort_by=name&sort_order=asc returns trips sorted alphabetically
-- [ ] GET /trips?search=Tokyo&status=PLANNING&sort_by=name combined params work
-- [ ] Home page search bar renders, user types, results filter dynamically
-- [ ] Home page status filter dropdown filters trip cards
-- [ ] Home page sort controls change trip card order
-- [ ] Empty search results show "no trips match" message with clear filters action
-- [ ] React Router v7 future flags enabled — no deprecation warnings in test output
-- [ ] Playwright is installed and ≥4 E2E test scenarios pass against staging
-- [ ] All 428+ existing unit tests pass (no regressions)
-- [ ] All Sprint 1+2+3+4 features still work over HTTPS (full regression)
+- [ ] T-152 has executed — User Agent has walked through all features on `https://localhost:3001` — **circuit-breaker: if this does not happen, Manager escalates to project owner and halts Sprint 16 planning**
+- [ ] T-155 is Done — calendar land travel chips show correct locations (pick-up = origin, drop-off = destination)
+- [ ] T-154 is Done — browser tab shows "triplanner" and favicon icon
+- [ ] Sprint 15 staging deploy (T-158) completed successfully
+- [ ] Structured feedback from T-152 and T-160 is in `feedback-log.md` and triaged by Manager
+- [ ] No Critical or Major bugs left unaddressed (hotfixes created immediately if found)
+- [ ] Sprint 16 plan is written in `active-sprint.md`
 
 ---
 
 ## Blockers
 
-*Active blockers that need resolution before the sprint can complete.*
-
-- **B-022 (Production Deployment):** Deferred to Sprint 6+ pending project owner decision on hosting provider. All deployment preparation complete since Sprint 3. This is NOT a Sprint 5 blocker.
-- **Docker availability:** Playwright E2E tests (T-075) run directly against the staging environment (HTTPS localhost), not in Docker. Docker unavailability does not block Sprint 5.
-
-*No implementation blockers. Phase 1 (Design), Phase 2 (Backend), and T-074 are all unblocked and ready to start immediately.*
+- **B-022 (Production Deployment — 15 consecutive sprints):** Project owner must review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. **Project owner action required before production deployment can execute.**
+- **T-152 carry-over circuit-breaker:** T-152 has now carried over 6 consecutive sprints. If T-152 fails to run in Sprint 15, the Manager Agent must escalate to the project owner and halt sprint planning until the User Agent pipeline is unblocked. Silent carry-over is no longer acceptable.
 
 ---
 
-*Previous sprint (Sprint #4) archived to `.workflow/sprint-log.md` on 2026-02-25. Sprint #5 begins 2026-02-25.*
+*Previous sprint (Sprint #14) archived to `.workflow/sprint-log.md` on 2026-03-07. Sprint #15 revised plan written by Manager Agent 2026-03-07 after triaging FB-096, FB-097, FB-098.*

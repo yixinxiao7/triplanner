@@ -11,7 +11,7 @@ run_phase_verify() {
 
 Your task: Run post-deploy health checks on the staging environment.
 
-1. Read .workflow/handoff-log.md for the Deploy Engineer's deployment details (URLs, ports)
+1. Read .workflow/handoff-log.md — only the Sprint #${sprint_num} section — for the Deploy Engineer's deployment details (URLs, ports)
 2. Read .workflow/api-contracts.md for the list of endpoints to check
 3. Read architecture.md for environment URLs
 
@@ -56,7 +56,7 @@ LOGGING:
 
 Be precise in your reports. Include actual HTTP status codes, response bodies, and error messages."
 
-    run_agent_with_retry "monitor-agent" "$task_prompt" 3
+    run_agent_with_retry "monitor-agent" "$task_prompt" 3 25 "${MODEL_LIGHT:-sonnet}"
 
     # Check if health checks passed
     if phase_verify_complete; then
@@ -72,7 +72,7 @@ Be precise in your reports. Include actual HTTP status codes, response bodies, a
             # Re-deploy
             run_phase_deploy
             # Re-verify
-            run_agent_with_retry "monitor-agent" "$task_prompt" 3
+            run_agent_with_retry "monitor-agent" "$task_prompt" 3 25 "${MODEL_LIGHT:-sonnet}"
 
             if ! phase_verify_complete; then
                 log_error "Health checks failed after retry. Sprint may need manual intervention."

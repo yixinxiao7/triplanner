@@ -248,6 +248,94 @@ check_config_consistency() {
     fi
 }
 
+# -- Workflow File Archiving ---------------------------------------------------
+# Trims old sprint data from large workflow files to reduce agent token usage.
+# Keeps the file header + current sprint (N) + previous sprint (N-1).
+# Archived content is saved to .workflow/archive/ before removal.
+
+archive_old_sprints() {
+    local current_sprint="$1"
+    local keep_from=$((current_sprint - 1))
+    if [[ $keep_from -lt 1 ]]; then
+        keep_from=1
+    fi
+    local archive_dir="${WORKFLOW_DIR}/archive"
+    mkdir -p "$archive_dir"
+
+    log_info "Archiving workflow files older than Sprint #${keep_from}..."
+
+    # Archive feedback-log.md (sections: ## Sprint N Feedback)
+    _archive_by_section "${WORKFLOW_DIR}/feedback-log.md" \
+        "${archive_dir}/feedback-log-before-sprint-${keep_from}.md" \
+        "$keep_from" '## Sprint [0-9]'
+
+    # Archive qa-build-log.md (sections: ## Sprint N ...)
+    _archive_by_section "${WORKFLOW_DIR}/qa-build-log.md" \
+        "${archive_dir}/qa-build-log-before-sprint-${keep_from}.md" \
+        "$keep_from" '## Sprint [0-9]'
+
+    # Archive handoff-log.md (entries: ### Sprint N — ...)
+    _archive_by_section "${WORKFLOW_DIR}/handoff-log.md" \
+        "${archive_dir}/handoff-log-before-sprint-${keep_from}.md" \
+        "$keep_from" '### Sprint [0-9]'
+
+    log_success "Workflow file archiving complete"
+}
+
+# Internal helper: archive sections of a file older than a given sprint.
+# Keeps the file header (everything before the first matching section header)
+# plus sections whose sprint number >= keep_from.
+#
+# Usage: _archive_by_section <file> <archive_dest> <keep_from> <section_pattern>
+_archive_by_section() {
+    local file="$1"
+    local archive_dest="$2"
+    local keep_from="$3"
+    local section_pattern="$4"
+
+    if [[ ! -f "$file" ]]; then
+        return 0
+    fi
+
+    local line_count
+    line_count=$(wc -l < "$file" | tr -d ' ')
+    # Skip small files (nothing worth archiving)
+    if [[ "$line_count" -lt 200 ]]; then
+        return 0
+    fi
+
+    # Use awk to split into kept and archived content.
+    # Header = everything before the first line matching section_pattern.
+    # Sections with sprint num >= keep_from are kept; older ones go to archive.
+    awk -v keep_from="$keep_from" -v pat="$section_pattern" '
+    BEGIN { in_header = 1; keep = 1 }
+    {
+        if ($0 ~ pat) {
+            in_header = 0
+            # Extract sprint number
+            match($0, /Sprint [0-9]+/)
+            sprint_num = substr($0, RSTART + 7, RLENGTH - 7) + 0
+            keep = (sprint_num >= keep_from) ? 1 : 0
+        }
+        if (in_header || keep) {
+            print > KEPT_FILE
+        } else {
+            print > ARCH_FILE
+        }
+    }
+    ' KEPT_FILE="${file}.tmp" ARCH_FILE="$archive_dest" "$file"
+
+    # Only replace if we actually archived something
+    if [[ -s "$archive_dest" ]]; then
+        mv "${file}.tmp" "$file"
+        local new_lines
+        new_lines=$(wc -l < "$file" | tr -d ' ')
+        log_info "  $(basename "$file"): ${line_count} -> ${new_lines} lines (archived $((line_count - new_lines)))"
+    else
+        rm -f "${file}.tmp" "$archive_dest"
+    fi
+}
+
 # -- Git Checkpoints -----------------------------------------------------------
 # Commits all changes after each phase so --continue always resumes
 # from a clean state. If a token limit kills an agent mid-write,

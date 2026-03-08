@@ -6,6 +6,10 @@ node_modules/
 .env.local
 .env.*.local
 
+# Staging environment config — contains staging secrets, must not be committed.
+# Use backend/.env.staging.example as the committed template (T-125).
+backend/.env.staging
+
 # Build output
 frontend/dist/
 backend/dist/

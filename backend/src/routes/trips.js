@@ -124,18 +124,37 @@ router.post(
         return null;
       },
     },
+    // notes: optional freeform trip description/notes (T-103).
+    // Max 2000 chars (enforced here; TEXT column has no DB-level limit).
+    // Send null to explicitly clear. Empty string is normalized to null.
+    notes: {
+      required: false,
+      nullable: true,
+      type: 'string',
+      maxLength: 2000,
+      messages: {
+        maxLength: 'Notes must be at most 2000 characters',
+      },
+    },
   }),
   async (req, res, next) => {
     try {
       const { name, destinations, start_date, end_date } = req.body;
 
-      const trip = await createTrip({
+      // Build model data; only include notes if explicitly provided in body
+      // (undefined → not in body → don't set; empty string → normalize to null)
+      const tripData = {
         user_id: req.user.id,
         name,
         destinations,
         start_date: start_date ?? null,
         end_date: end_date ?? null,
-      });
+      };
+      if (Object.prototype.hasOwnProperty.call(req.body, 'notes')) {
+        tripData.notes = req.body.notes || null; // empty string → null
+      }
+
+      const trip = await createTrip(tripData);
 
       return res.status(201).json({ data: trip });
     } catch (err) {
@@ -205,6 +224,17 @@ router.patch(
         type: 'End date must be a valid date in YYYY-MM-DD format',
       },
     },
+    // notes: optional freeform trip description/notes (T-103).
+    // Max 2000 chars. Send null to clear. Omit to leave unchanged.
+    notes: {
+      required: false,
+      nullable: true,
+      type: 'string',
+      maxLength: 2000,
+      messages: {
+        maxLength: 'Notes must be at most 2000 characters',
+      },
+    },
   }),
   async (req, res, next) => {
     try {
@@ -222,13 +252,19 @@ router.patch(
         });
       }
 
-      const UPDATABLE_FIELDS = ['name', 'destinations', 'status', 'start_date', 'end_date'];
+      const UPDATABLE_FIELDS = ['name', 'destinations', 'status', 'start_date', 'end_date', 'notes'];
       const updates = {};
       for (const field of UPDATABLE_FIELDS) {
         // Include the field if it was explicitly provided (including null to clear)
         if (Object.prototype.hasOwnProperty.call(req.body, field)) {
           updates[field] = req.body[field];
         }
+      }
+
+      // Normalize empty string notes to null (trim is applied by validate middleware;
+      // an empty-after-trim notes should be stored as null, not "")
+      if (Object.prototype.hasOwnProperty.call(updates, 'notes') && updates.notes === '') {
+        updates.notes = null;
       }
 
       if (Object.keys(updates).length === 0) {

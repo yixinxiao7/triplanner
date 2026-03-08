@@ -32,6 +32,105 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 006 | 1 | Create `activities` table | Create Table | `20260224_006_create_activities.js` | ✅ Applied on Staging (2026-02-24, T-020) |
 | 007 | 2 | Add `start_date` + `end_date` to `trips` table | Alter Table | `20260225_007_add_trip_date_range.js` | ✅ Applied on Staging (2026-02-25, T-038) |
 | 008 | 3 | Make `start_time` + `end_time` nullable on `activities` | Alter Table | `20260225_008_make_activity_times_optional.js` | ✅ Implemented — awaiting staging deploy (T-054) |
+| 009 | 6 | Create `land_travels` table | Create Table | `20260227_009_create_land_travels.js` | ✅ Implemented (2026-02-27, T-086). Awaiting staging deploy by Deploy Engineer (T-092). |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` table | Alter Table | `20260227_010_add_trip_notes.js` | ✅ Implemented (2026-02-27, T-103). **Manager Code Review APPROVED** — Integration Check. Awaiting staging deploy by Deploy Engineer (T-107). |
+| — | 8 | *(No new migrations this sprint)* | — | — | Sprint 8 features (T-113 timezone abbreviations, T-114 activity URL links) are frontend-only. Existing schema (001–010) is sufficient. Migration 010 is the only pending deploy (T-107). Confirmed by Backend Engineer 2026-02-27. |
+
+---
+
+### Sprint 8 — No Schema Changes
+
+**Date:** 2026-02-27
+**Confirmed by:** Backend Engineer
+**Reason:** Sprint 8 introduces two frontend-only features:
+- **T-113 (Timezone abbreviations):** Uses existing `*_at` (UTC timestamp) and `*_tz` (IANA timezone string) columns already present in `flights`, `stays`, and `land_travels` tables. No column additions required.
+- **T-114 (Activity URL link detection):** Uses the existing `location TEXT NULL` column in `activities`. URL parsing and linkification are purely a frontend rendering concern. No column additions required.
+
+The only pending schema action this sprint is **applying migration 010** (`notes TEXT NULL` on `trips`) as part of T-107. This was implemented and approved in Sprint 7.
+
+---
+
+### Migration 010 — Add `notes` to `trips` table
+
+**Sprint:** 7
+**Task:** T-103
+**Status:** ✅ Implemented (2026-02-27) — **Manager Code Review APPROVED** (in Integration Check). Pre-Approved by Manager in Sprint 7 planning (2026-02-27). Migration file: `backend/src/migrations/20260227_010_add_trip_notes.js`. 265/265 backend tests pass. Awaiting staging deploy by Deploy Engineer (T-107).
+
+**Rationale:** Adds the trip notes freeform description field to the `trips` table. This is the first "rich trip metadata" field beyond `name` and `destinations`. The column is `TEXT NULL` — nullable, backward-compatible with all existing trip rows (which will have `notes = NULL` after the migration). No existing queries are impacted; the `notes` column is simply included in `SELECT *` going forward. Length enforcement (max 2000 chars) is applied at the API validation layer only.
+
+**File:** `backend/src/migrations/20260227_010_add_notes_to_trips.js`
+
+**up():**
+```sql
+ALTER TABLE trips ADD COLUMN notes TEXT NULL;
+```
+
+**down():**
+```sql
+ALTER TABLE trips DROP COLUMN IF EXISTS notes;
+```
+
+**Notes:**
+- `TEXT NULL` — no DB-level length constraint. Max 2000 chars enforced in API validation middleware (route handler PATCH /trips/:id).
+- `IF EXISTS` guard in `down()` makes rollback safe to run even if the column was never created.
+- No index needed — notes are not queried or filtered server-side; they are returned as part of the trip resource.
+- `updated_at` is not affected by this migration — application layer sets it on every PATCH.
+- This is a pure `ALTER TABLE ADD COLUMN` — zero downtime on PostgreSQL (no table rewrite for nullable TEXT column).
+
+**Manager Approval Note:** Schema was explicitly pre-approved by the Manager Agent in `active-sprint.md` Sprint 7 planning section (2026-02-27). Backend Engineer may proceed with implementation as soon as T-096 (Design Spec) is complete. No additional Manager handoff required before implementation.
+
+**Deploy Engineer Note:** When T-106 (QA Integration Testing) is complete and T-107 (Staging Re-deploy) begins, migration 010 must be applied to the staging database before the backend is restarted. See handoff-log.md for the Deploy Engineer handoff entry.
+
+---
+
+### Migration 009 — `land_travels` table
+
+**Sprint:** 6
+**Task:** T-086
+**Status:** ✅ Implemented (2026-02-27) — **Pre-Approved by Manager** (explicitly approved in `active-sprint.md`, Sprint 6 planning, 2026-02-27). Awaiting staging deployment by Deploy Engineer (T-092).
+
+**Rationale:** Adds a new `land_travels` sub-resource table to track ground transportation (rental cars, buses, trains, rideshares, ferries, etc.) associated with a trip. This is a net-new table with no impact on existing tables or data. Schema pre-approved so T-086 can begin implementation immediately after T-081 design spec review.
+
+**File:** `backend/src/migrations/20260227_009_create_land_travels.js`
+
+**up():**
+```sql
+CREATE TABLE land_travels (
+  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  trip_id             UUID        NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  mode                TEXT        NOT NULL CHECK (mode IN ('RENTAL_CAR','BUS','TRAIN','RIDESHARE','FERRY','OTHER')),
+  provider            TEXT        NULL,
+  from_location       TEXT        NOT NULL,
+  to_location         TEXT        NOT NULL,
+  departure_date      DATE        NOT NULL,
+  departure_time      TIME        NULL,
+  arrival_date        DATE        NULL,
+  arrival_time        TIME        NULL,
+  confirmation_number TEXT        NULL,
+  notes               TEXT        NULL,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX land_travels_trip_id_idx ON land_travels(trip_id);
+```
+
+**down():**
+```sql
+DROP TABLE IF EXISTS land_travels;
+```
+
+**Notes:**
+- `CHECK (mode IN (...))` enforces the enum at the DB level. Adding a new mode value in the future will require an `ALTER TABLE` to widen the constraint.
+- `ON DELETE CASCADE` on `trip_id` ensures land travel entries are automatically removed when their parent trip is deleted — consistent with the cascade pattern used on `flights`, `stays`, and `activities`.
+- `arrival_time` may be stored even when `arrival_date` is NULL at the DB level; cross-field validation is enforced entirely at the application layer for simplicity.
+- `TEXT` (unbounded) for `from_location`, `to_location`, and `notes` — length limits are enforced in the API validation layer (500 chars, 500 chars, 2000 chars respectively).
+- Index on `trip_id` supports the common query pattern `SELECT * FROM land_travels WHERE trip_id = $1 ORDER BY departure_date ASC`.
+- No trigger for `updated_at` — application layer must explicitly set `updated_at = NOW()` in every PATCH handler (consistent with existing sub-resource tables).
+
+**Manager Approval Note:** Schema was explicitly pre-approved by the Manager Agent in `active-sprint.md` Sprint 6 planning section (2026-02-27) with the following note: *"Pre-approved to allow T-086 to proceed immediately after T-081 design spec is reviewed."* No additional Manager handoff needed before implementation.
+
+**Deploy Engineer Note:** When T-091 (QA Integration Testing) is complete and T-092 (Staging Re-deploy) begins, migration 009 must be applied to the staging database before the backend is restarted. See handoff-log.md for the Deploy Engineer handoff entry.
 
 ---
 
@@ -399,6 +498,98 @@ Sprint 5 task T-072 (trip search, filter, and sort) adds query parameter support
 - **No new indexes** are needed at the current scale — all queries are user-scoped via the existing `trips_user_id_idx` index
 
 No migration file is needed for Sprint 5. The migration log remains at 8 entries (001–008).
+
+---
+
+---
+
+## Sprint 10 — No Schema Changes Required
+
+**Date:** 2026-03-04
+**Confirmed by:** Backend Engineer
+
+Sprint 10 is a pipeline-closure sprint with no new backend or frontend implementation tasks (except for T-122, the trip print feature, which is frontend-only). No schema changes are required.
+
+### Sprint 10 Task Analysis
+
+| Task | Schema Impact |
+|------|--------------|
+| T-094 (User Agent: Sprint 6 walkthrough) | None — user testing only |
+| T-108 (Monitor: Sprint 7 health check) | None — monitor scope |
+| T-109 (User Agent: Sprint 7 walkthrough) | None — user testing only |
+| T-115 (QA: Playwright E2E expansion 4→7) | None — test authoring only |
+| T-116 (QA: Sprint 8 staging E2E) | None — QA audit only |
+| T-117 (QA: Sprint 8 staging integration check) | None — QA testing only |
+| T-118 (Deploy: Sprint 8 frontend rebuild) | None — deploy scope; no new migrations |
+| T-119 (Monitor: Sprint 8 health check) | None — monitor scope |
+| T-120 (User Agent: Sprint 8 walkthrough) | None — user testing only |
+| T-121 (Design: trip export/print spec) | None — design spec only |
+| T-122 (Frontend: trip print implementation) | None — `window.print()` is frontend-only; no new columns, no new tables, no API routes. UI spec Spec 15 confirms: "No backend changes required." |
+| H-XXX (Hotfix, if triggered by T-094/T-109/T-120) | TBD — if any hotfix requires a schema change, it will be proposed here and logged for Manager approval before implementation. No hotfix tasks currently exist (2026-03-04). |
+
+### Current Schema State (Sprint 10 Start — 2026-03-04)
+
+**All 10 migrations applied on staging (confirmed by T-107 Deploy, 2026-02-28):**
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time` + `end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (T-107, 2026-02-28) |
+| — | 8–10 | *(No new migrations)* | Sprints 8, 9, 10 are all schema-stable |
+
+The schema is complete and current for all features through Sprint 10. No pending migrations. The migration log remains at 10 entries (001–010).
+
+---
+
+---
+
+## Sprint 14 — No Schema Changes Required
+
+**Date:** 2026-03-07
+**Confirmed by:** Backend Engineer
+
+Sprint 14 is a focused regression-fix sprint with no backend implementation tasks assigned to the Backend Engineer. All in-scope tasks are frontend component changes (T-146, T-147) or a deploy/security operation (T-145). No schema changes are required.
+
+### Sprint 14 Task Analysis
+
+| Task | Agent | Schema Impact |
+|------|-------|--------------|
+| T-145 | Deploy Engineer | JWT_SECRET rotation in `backend/.env.staging` — environment variable change only. No tables, no columns, no migration. |
+| T-146 | Frontend Engineer | Calendar async fix — adds `useEffect` + `hasNavigated` ref inside `TripCalendar.jsx`. Pure frontend component change. All required data fields (`departure_at`, `check_in_at`, `activity_date`, `departure_date`) already exist in the current schema. |
+| T-147 | Frontend Engineer | "Today" button — adds a button to `TripCalendar.jsx` header. Pure render + state change. No new data requirements. |
+| T-148 | QA Engineer | Security checklist + code review audit — QA scope only. No schema work. |
+| T-149 | QA Engineer | Integration testing — QA scope only. No schema work. |
+| T-150 | Deploy Engineer | Sprint 14 staging re-deployment — explicitly confirms "No new backend migrations." |
+| T-151 | Monitor Agent | Sprint 14 health check — monitor scope only. No schema work. |
+| T-152 | User Agent | Comprehensive walkthrough — user testing scope only. No schema work. |
+
+### Current Schema State (Sprint 14 — 2026-03-07)
+
+**All 10 migrations applied on staging:**
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (T-107, 2026-02-28) |
+| — | 8–14 | *(No new migrations)* | Sprints 8–14 are all schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending. The migration log remains at 10 entries for Sprint 14.**
 
 ---
 

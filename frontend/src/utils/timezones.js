@@ -16,6 +16,7 @@ export const TIMEZONES = [
   { label: 'ET — Eastern Time', value: 'America/New_York' },
   { label: 'ET — Eastern Time (Toronto)', value: 'America/Toronto' },
   { label: 'BRT — Brasília Time', value: 'America/Sao_Paulo' },
+  { label: 'UTC — Coordinated Universal Time', value: 'UTC' },
   { label: 'GMT/BST — London', value: 'Europe/London' },
   { label: 'CET — Central European', value: 'Europe/Paris' },
   { label: 'CET — Central European (Berlin)', value: 'Europe/Berlin' },

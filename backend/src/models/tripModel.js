@@ -36,6 +36,7 @@ const TRIP_COLUMNS = [
   'name',
   'destinations',
   'status',
+  'notes',   // T-103 — nullable trip notes/description field (max 2000 chars)
   db.raw("TO_CHAR(start_date, 'YYYY-MM-DD') AS start_date"),
   db.raw("TO_CHAR(end_date, 'YYYY-MM-DD') AS end_date"),
   'created_at',
@@ -142,10 +143,25 @@ export async function listTripsByUser(userId, options = {}) {
     query.where({ user_id: userId });
 
     if (search && search.trim()) {
-      const searchTerm = `%${search.trim()}%`;
+      // T-085 / B-033 / FB-062: Escape ILIKE special characters before interpolation.
+      // Without escaping, a user searching for "%" would match ALL trips (SQL wildcard),
+      // and "_" would match any single character. We use "!" as the ESCAPE character
+      // (a single literal char, safe with standard_conforming_strings=on since PG 9.1).
+      //
+      // Escaping order matters: escape "!" first to avoid double-escaping.
+      //   ! → !!   (the escape char itself)
+      //   % → !%   (SQL wildcard)
+      //   _ → !_   (SQL single-char wildcard)
+      const escaped = search
+        .trim()
+        .replace(/!/g, '!!')  // Escape the escape char first
+        .replace(/%/g, '!%')  // Escape percent wildcard
+        .replace(/_/g, '!_'); // Escape underscore single-char wildcard
+
+      const searchTerm = `%${escaped}%`;
       query.where(function () {
-        this.whereRaw('name ILIKE ?', [searchTerm])
-          .orWhereRaw("array_to_string(destinations, ',') ILIKE ?", [searchTerm]);
+        this.whereRaw("name ILIKE ? ESCAPE '!'", [searchTerm])
+          .orWhereRaw("array_to_string(destinations, ',') ILIKE ? ESCAPE '!'", [searchTerm]);
       });
     }
 
@@ -244,6 +260,11 @@ export async function createTrip(data) {
   }
   if (data.end_date !== undefined) {
     insertData.end_date = data.end_date ?? null;
+  }
+
+  // notes is an optional nullable text field (T-103)
+  if (data.notes !== undefined) {
+    insertData.notes = data.notes ?? null;
   }
 
   const [{ id }] = await db('trips').insert(insertData).returning('id');

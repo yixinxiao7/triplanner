@@ -80,16 +80,16 @@ Write clean, production-quality configurations. Follow security best practices. 
     deploy_tasks=$(grep -cE 'Deploy Engineer.*(Backlog|In Progress)' "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null || true)
     deploy_tasks="${deploy_tasks:-0}"
 
-    # Build list of agents to run
+    # Build list of agents to run (pipe-delimited: agent|turns|model|prompt)
     local agents_to_run=()
     if [[ "$backend_tasks" -gt 0 ]]; then
-        agents_to_run+=("backend-engineer:${backend_prompt}")
+        agents_to_run+=("backend-engineer|50|${MODEL_HEAVY:-sonnet}|${backend_prompt}")
     fi
     if [[ "$frontend_tasks" -gt 0 ]]; then
-        agents_to_run+=("frontend-engineer:${frontend_prompt}")
+        agents_to_run+=("frontend-engineer|50|${MODEL_HEAVY:-sonnet}|${frontend_prompt}")
     fi
     if [[ "$deploy_tasks" -gt 0 ]]; then
-        agents_to_run+=("deploy-engineer:${deploy_prompt}")
+        agents_to_run+=("deploy-engineer|30|${MODEL_LIGHT:-sonnet}|${deploy_prompt}")
     fi
 
     local agent_count=${#agents_to_run[@]}
@@ -97,10 +97,23 @@ Write clean, production-quality configurations. Follow security best practices. 
         log_warn "No implementation tasks found for this phase"
     elif [[ $agent_count -eq 1 ]]; then
         local entry="${agents_to_run[0]}"
-        local agent_name="${entry%%:*}"
-        local task="${entry#*:}"
+        local agent_name model turns task
+        # Parse only the first line for metadata (prompts are multi-line)
+        local first_line="${entry%%$'\n'*}"
+        agent_name=$(echo "$first_line" | cut -d'|' -f1)
+        turns=$(echo "$first_line" | cut -d'|' -f2)
+        model=$(echo "$first_line" | cut -d'|' -f3)
+        local first_line_task
+        first_line_task=$(echo "$first_line" | cut -d'|' -f4-)
+        local rest="${entry#*$'\n'}"
+        if [[ "$rest" == "$entry" ]]; then
+            task="$first_line_task"
+        else
+            task="${first_line_task}
+${rest}"
+        fi
         log_info "Running ${agent_name} only"
-        run_agent_with_retry "$agent_name" "$task"
+        run_agent_with_retry "$agent_name" "$task" 2 "$turns" "$model"
     else
         log_info "Running $agent_count engineers in parallel"
         run_agents_parallel "${agents_to_run[@]}"
