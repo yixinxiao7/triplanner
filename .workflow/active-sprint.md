@@ -4,132 +4,123 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #16 — 2026-03-08
+## Sprint #17 — 2026-03-08
 
-**Sprint Goal:** Close the long-overdue User Agent and Monitor pipeline (T-159, T-152, T-160 — 7th carry-over of T-152, circuit-breaker active). Deliver the first post-MVP feature: trip date range display on home page trip cards, fulfilling the project brief's "timeline of the trip" requirement that has been deferred since Sprint 1 (B-006). Complete the full QA → Deploy → Monitor → User Agent cycle for the new feature.
+**Sprint Goal:** Apply three code-quality improvements from Sprint 16 feedback (T-170: fix double-muted opacity on "No dates yet" text, remove dead `formatTripDateRange` function, update stale comment). Deliver the long-deferred trip print/export feature (B-032): a "Print itinerary" button on the trip details page that triggers a browser print dialog with a clean, printer-friendly layout. Complete the full QA → Deploy → Monitor → User Agent pipeline.
 
-**Context:** Sprint 15 delivered all implementation tasks (T-153–T-158) cleanly: browser title/favicon fixed (T-154), calendar land travel chip locations fixed (T-155), formatTimezoneAbbr() tests added (T-153), QA passed (T-156, T-157), and staging deployed (T-158, pm2 PID 9274, HTTPS port 3001). However, T-152 (User Agent comprehensive walkthrough — 7th carry-over), T-159 (Monitor Sprint 15 health check), and T-160 (User Agent Sprint 15 walkthrough) did not run. The circuit-breaker threshold has been reached for T-152 — this is the final acceptable carry-over before project owner escalation halts Sprint 17 scoping.
+**Context:** Sprint 16 delivered all 12 tasks cleanly — trip date range display on home page cards is live, and T-152 circuit-breaker was finally resolved after 8 consecutive carry-overs. The Sprint 16 User Agent walkthrough (T-169) found no Critical or Major issues — only three Minor code-quality items now bundled into T-170. The MVP feature set (auth, trips CRUD, flights/stays/activities with edit, land travel, calendar, date ranges) is complete. Sprint 17 is a polish + deferred-feature sprint with a light implementation scope.
 
-**Feedback Triage (Sprint 16 — Manager Agent 2026-03-08):**
+**Feedback Triage (Sprint 16 → Sprint 17 — Manager Agent 2026-03-08):**
 
 | FB Entry | Category | Severity | Status | Disposition |
 |----------|----------|----------|--------|-------------|
-| FB-096 | UX Issue | Minor | Resolved | T-154 Done — browser title "triplanner" |
-| FB-097 | UX Issue | Minor | Resolved | T-154 Done — favicon linked |
-| FB-098 | Bug | Major | Resolved | T-155 Done — calendar land travel chip locations fixed |
-| — | — | — | — | No new feedback. T-152/T-160 User Agent walkthroughs not yet run. |
+| FB-099 | Positive | — | Acknowledged | Trip with no events shows "No dates yet" — T-164 empty state confirmed |
+| FB-100 | Positive | — | Acknowledged | Mixed-event trip date range (same month) correct — T-163 SQL correct |
+| FB-101 | Positive | — | Acknowledged | Cross-year date range computed and formatted correctly |
+| FB-102 | Positive | — | Acknowledged | GET /trips list includes start_date/end_date; NULLs sorted last |
+| FB-103 | Positive | — | Acknowledged | Test suites exceed thresholds (278 backend, 420 frontend) |
+| FB-104 | Positive | — | Acknowledged | Sprint 15 regression clean (title, favicon, land travel chips) |
+| FB-105 | Positive | — | Acknowledged | Auth and validation safeguards working as expected |
+| FB-106 | UX Issue | Minor | **Tasked → T-170** | `.datesNotSet` double-muted opacity (~25% effective) — remove `opacity: 0.5` |
+| FB-107 | UX Issue | Minor | **Tasked → T-170** | `formatTripDateRange` dead code with non-spec behavior — remove + 5 dead tests |
+| FB-108 | Suggestion | — | **Acknowledged → T-170** | Stale comment in formatDate.js line 8 — update to reflect all event types |
 
 ---
 
 ## In Scope
 
-### Phase 0 — Pipeline Carry-overs (P0 — run immediately — highest priority)
+### Phase 1 — Code Cleanup + Design Spec (parallel, no dependencies — start immediately)
 
-- [ ] **T-159** — Monitor Agent: Sprint 15 staging health check ← **ZERO BLOCKERS — START IMMEDIATELY** (P0)
-  - Staging is live: `https://localhost:3001`, pm2 PID 9274 (verified T-158 Done 2026-03-07)
-  - Verify: HTTPS ✅, pm2 online ✅, health 200 ✅, title "triplanner" ✅, favicon ✅
-  - Verify: Calendar land travel chips — pick-up shows from_location, drop-off shows to_location ✅
-  - Playwright 7/7 ✅, Sprint 14 + Sprint 13 regression pass ✅
-  - Full report in qa-build-log.md Sprint 15 section. Handoff to User Agent (T-160).
+- [ ] **T-170** — Frontend Engineer: Code cleanup from Sprint 16 feedback ← **NO DEPENDENCIES — START IMMEDIATELY** (P2)
+  - **FB-106:** Remove `opacity: 0.5` from `.datesNotSet` in `TripCard.module.css`. Also remove duplicate definition at line 159 (hardcoded rgba — dead code, overridden by line 211). Only `color: var(--text-muted)` should remain on `.datesNotSet`.
+  - **FB-107:** Remove `formatTripDateRange` export from `formatDate.js`. Remove its 5 associated tests from `formatDate.test.js`. Verify `formatDateRange` (spec-compliant) remains intact.
+  - **FB-108:** Update file-level comment on `formatDate.js` line 8 from "derive date range from flight dates" to "derive date range from the earliest and latest dates across all event types (flights, stays, activities, land travels)."
+  - **Test plan:** All 415+ frontend tests pass (5 fewer after dead test removal). `formatDateRange` still exported and passing.
 
-- [ ] **T-152** — User Agent: Comprehensive Sprint 12+13+14+15 walkthrough ← **P0 HARD-BLOCK — 8th carry-over — CIRCUIT-BREAKER ACTIVE — MUST EXECUTE**
-  - Staging is live: `https://localhost:3001`, pm2 PID 9274
-  - **Can run in parallel with T-159** — zero blockers, staging is healthy
-  - Scope: (1) Browser title "triplanner" + favicon (T-154); (2) Land travel chip location fix (T-155); (3) Calendar first-event-month (T-146); (4) "Today" button (T-147); (5) DayPopover stay-open (T-137); (6) Rental car chips (T-138); (7) Sprint 12 regression; (8) Sprint 11 regression
-  - Submit structured feedback to `feedback-log.md` under Sprint 16 header
-  - **If T-152 does not run in Sprint 16, Manager must halt Sprint 17 scoping and escalate to project owner.**
-
-- [ ] **T-160** — User Agent: Sprint 15 feature walkthrough ← Blocked by T-159 (P2)
-  - Verify T-154 (title, favicon), T-155 (land travel chip locations), T-138 regression, T-146 regression, T-137 regression, Sprint 11 regression
-  - Submit structured feedback to `feedback-log.md` under Sprint 16 header
-
----
-
-### Phase 1 — Design Spec + API Contract (parallel with Phase 0 — no cross-dependencies)
-
-- [ ] **T-161** — Design Agent: Spec 16 — Trip date range display on home page cards ← NO DEPENDENCIES — START IMMEDIATELY (P1)
-  - Date range format: "May 1 – 15, 2026" (same year abbreviated) / "Dec 28, 2025 – Jan 3, 2026" (cross-year full)
-  - Empty state: "No dates yet" in muted secondary text when trip has no events
-  - Source: backend-computed `start_date` + `end_date` fields (YYYY-MM-DD); frontend formats for display
-  - Placement: below existing trip card content (destinations + status badge), new line, secondary/muted color
-  - Publish to `ui-spec.md` as Spec 16
-
-- [ ] **T-162** — Backend Engineer: API contract for trip date range ← NO DEPENDENCIES — START IMMEDIATELY (P1)
-  - Document in `api-contracts.md` Sprint 16 section before T-163 begins
-  - Fields: `start_date: string | null` (YYYY-MM-DD, MIN of all event dates), `end_date: string | null` (YYYY-MM-DD, MAX of all event dates)
-  - Endpoints affected: `GET /trips` (per-trip object) and `GET /trips/:id`
-  - No new endpoints; no schema migration; computed on read via SQL MIN/MAX subquery
-  - Manager must approve before T-163 begins
+- [ ] **T-171** — Design Agent: Spec 17 — Trip print/export view ← **NO DEPENDENCIES — START IMMEDIATELY** (P2)
+  - Trigger: "Print itinerary" `<button>` on trip details page header, `onClick={() => window.print()}`
+  - Print layout: single-column, linear, black on white; hide navbar/calendar/interactive controls
+  - Section ordering: trip name + destinations + date range → Flights → Stays → Activities (day-grouped) → Land Travel
+  - Empty section rule: omit entirely if section has no events (no empty-state CTAs in print)
+  - Page break: `page-break-inside: avoid` on individual event cards
+  - Typography: IBM Plex Mono at 12pt minimum; print units preferred
+  - Colors: `#000` text on `#fff` background in print; no CSS custom properties that may not resolve in print
+  - Implementation approach: CSS `@media print` in `frontend/src/styles/print.css` imported in TripDetailsPage
+  - Publish to `ui-spec.md` as Spec 17. Manager must approve before T-172 begins.
 
 ---
 
-### Phase 2 — Implementation (after T-161 + T-162 approved)
+### Phase 2 — Implementation (after T-171 approved)
 
-- [ ] **T-163** — Backend Engineer: Implement computed trip date range ← Blocked by T-162 (P1)
-  - SQL subquery across flights (departure_at, arrival_at), stays (check_in_at, check_out_at), activities (activity_date), land_travels (departure_date, arrival_date)
-  - DATE() cast to YYYY-MM-DD; null when no events
-  - Add to both GET /trips (list) and GET /trips/:id (single trip)
-  - No schema migration required
-  - Tests: (A) no events → null/null; (B) flights only → correct; (C) mixed events → correct overall min/max; (D) list endpoint includes fields; (E) existing tests pass
-  - All 266+ backend tests must pass
-
-- [ ] **T-164** — Frontend Engineer: Display trip date range on home page trip cards ← Blocked by T-161, T-163 (P1)
-  - Add `formatDateRange(startDate, endDate)` utility to `formatDate.js` (same-year abbreviation, cross-year full, null handling)
-  - Render in `TripCard.jsx`: date range below existing content in muted secondary text
-  - Tests: (A) start + end same year; (B) cross-year; (C) both null → "No dates yet"; (D) only start_date; (E) existing TripCard tests pass
-  - All 410+ frontend tests must pass
+- [ ] **T-172** — Frontend Engineer: Implement trip print/export view ← Blocked by T-171 (P2)
+  - Add "Print itinerary" button to trip details page header with `aria-label="Print itinerary"`
+  - Create `frontend/src/styles/print.css` with `@media print` rules:
+    - Hide: navbar, calendar widget, all edit/add/delete buttons, print button itself, toasts/overlays
+    - Override: background → white, text → black, font-size → 12pt
+    - `page-break-inside: avoid` on each event card
+    - Omit empty sections (either CSS `.has-items` guard or `display: none` on empty state elements)
+  - Import `print.css` in `TripDetailsPage.jsx` (or globally in `main.jsx`)
+  - No new API endpoints; no schema changes
+  - Tests: (A) button renders on TripDetailsPage; (B) click calls `window.print()`; (C) aria-label correct; (D) existing TripDetailsPage tests still pass
+  - All 415+ existing frontend tests (after T-170 cleanup) must pass
 
 ---
 
-### Phase 3 — QA Review (after T-163 + T-164 complete)
+### Phase 3 — QA Review (after T-170 + T-172 complete)
 
-- [ ] **T-165** — QA Engineer: Security checklist + code review for Sprint 16 ← Blocked by T-163, T-164
-  - T-163: Confirm parameterized Knex queries (no raw SQL with user input); null returns safely; no authorization gap
-  - T-164: Confirm `formatDateRange()` output is React text node (no dangerouslySetInnerHTML); null guard present; CSS tokens not hardcoded hex
-  - Run full test suites: backend (271+ expected), frontend (416+ expected)
+- [ ] **T-173** — QA Engineer: Security checklist + code review for Sprint 17 ← Blocked by T-170, T-172 (P1)
+  - T-170: `.datesNotSet` no opacity stacking; `formatTripDateRange` absent; comment updated; 415+ tests pass
+  - T-172: `window.print()` call safe; no dangerouslySetInnerHTML; aria-label present; no hardcoded colors in print.css; no sensitive data in button attributes
+  - Run full test suites: frontend (415+), backend (278+ — no backend changes)
+  - Run `npm audit` — flag any new Critical/High findings
 
-- [ ] **T-166** — QA Engineer: Integration testing for Sprint 16 ← Blocked by T-165
-  - Scenario 1: Trip with no events → `start_date: null`, `end_date: null`, card shows "No dates yet"
-  - Scenario 2: Trip with only flights → `start_date` = flight departure date, `end_date` = arrival date
-  - Scenario 3: Trip with mixed events → correct overall min/max across all event types
-  - Scenario 4: GET /trips list includes `start_date`/`end_date` per entry
-  - Sprint 15 + 14 + 13 regression pass
-  - Handoff to Deploy (T-167) in handoff-log.md
+- [ ] **T-174** — QA Engineer: Integration testing for Sprint 17 ← Blocked by T-173 (P1)
+  - Print button visible on trip details page ✅
+  - Print button has correct aria-label ✅
+  - "No dates yet" is legible (opacity fix from T-170 working) ✅
+  - Home page date ranges still correct (formatTripDateRange removal did not affect formatDateRange) ✅
+  - Sprint 16 regression: date ranges, "No dates yet" ✅
+  - Sprint 15 regression: title, favicon, land travel chip locations ✅
+  - Sprint 14 + Sprint 13 + Sprint 11 regression ✅
+  - Handoff to Deploy (T-175)
 
 ---
 
 ### Phase 4 — Deploy, Monitor, User Agent (sequential after Phase 3)
 
-- [ ] **T-167** — Deploy Engineer: Sprint 16 staging re-deployment ← Blocked by T-166
-  - No migrations (schema unchanged — computed read only)
-  - `pm2 restart triplanner-backend`, rebuild frontend `npm run build` in `frontend/`
-  - Smoke tests: health ✅; trip date range populated via API ✅; home page card shows date range ✅; "No dates yet" on empty trip ✅; Sprint 15 features operational ✅
+- [ ] **T-175** — Deploy Engineer: Sprint 17 staging re-deployment ← Blocked by T-174 (P1)
+  - **Backend:** No migrations, no backend changes. Verify pm2 `triplanner-backend` still online (port 3001). No restart needed unless backend was stopped.
+  - **Frontend:** `npm run build` in `frontend/`. Confirm 0 errors. Confirm `print.css` included in built assets.
+  - Smoke tests: health ✅; home page date ranges unaffected ✅; trip details "Print itinerary" button visible ✅; Sprint 15 features (title/favicon) operational ✅
   - Do NOT modify `backend/.env` or `backend/.env.staging`
-  - Log handoff to Monitor (T-168) in handoff-log.md
+  - Handoff to Monitor (T-176)
 
-- [ ] **T-168** — Monitor Agent: Sprint 16 staging health check ← Blocked by T-167
+- [ ] **T-176** — Monitor Agent: Sprint 17 staging health check ← Blocked by T-175 (P1)
   - HTTPS ✅, pm2 port 3001 ✅, health 200 ✅
-  - Trip date range: GET /trips includes start_date/end_date ✅; trip with flight → dates populated correctly ✅
-  - Sprint 15 regression (title, favicon, land travel chips) ✅; Sprint 14 regression ✅
+  - "Print itinerary" button present on trip details page ✅
+  - "No dates yet" opacity fix visible (legible muted text) ✅
+  - Sprint 16 regression (date ranges) ✅; Sprint 15 regression (title/favicon) ✅
   - Playwright 7/7 ✅
-  - Handoff to User Agent (T-169) in handoff-log.md
+  - Handoff to User Agent (T-177)
 
-- [ ] **T-169** — User Agent: Sprint 16 feature walkthrough ← Blocked by T-168 (P2)
-  - Trip with events (flight + stay + activity) → card shows correct date range
-  - Trip with no events → card shows "No dates yet"
-  - Same-year and cross-year date range format verification
-  - Sprint 15 + 14 + 13 + 11 regression clean
-  - Submit structured feedback to `feedback-log.md` under Sprint 17 header
+- [ ] **T-177** — User Agent: Sprint 17 feature walkthrough ← Blocked by T-176 (P2)
+  - "Print itinerary" button visible on trip details page ✅
+  - Clicking button opens browser print dialog ✅
+  - Button has correct aria-label ✅
+  - "No dates yet" text is legible (not over-dimmed) after opacity fix ✅
+  - Home page date ranges still correct (formatTripDateRange removal regression check) ✅
+  - Sprint 16 + Sprint 15 + Sprint 14 + Sprint 13 + Sprint 11 regression ✅
+  - Submit structured feedback to `feedback-log.md` under Sprint 18 header
 
 ---
 
 ## Out of Scope
 
-- **Production deployment (B-022)** — Pending project owner hosting decision. T-124 produced `.workflow/hosting-research.md`; project owner must review and select a provider. **16 consecutive sprints with no decision. Project owner action required.**
+- **Production deployment (B-022)** — Pending project owner hosting decision. `.workflow/hosting-research.md` (T-124) awaits review. **17 consecutive sprints with no decision. Project owner action required.**
 - **B-020 (Redis rate limiting)** — Deferred. In-memory acceptable at current scale.
 - **B-021 (esbuild dev dep vulnerability)** — No production impact. Monitor for upstream fix.
 - **B-024 (per-account rate limiting)** — Depends on B-020. Deferred.
-- **B-032 (trip export/print)** — Deferred to Sprint 17 after date range feature ships.
+- **B-007 (multi-destination structured UI)** — Deferred to Sprint 18+. Destinations currently stored as TEXT ARRAY; UI is comma-separated display.
 - **MFA login** — Explicitly out of scope per project brief.
 - **Home page summary calendar** — Explicitly out of scope per project brief.
 - **Auto-generated itinerary suggestions** — Explicitly out of scope per project brief.
@@ -140,92 +131,80 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Monitor Agent | Sprint 15 health check **(P0 — run immediately, zero blockers)** | T-159 |
-| User Agent | Comprehensive Sprint 12+13+14+15 walkthrough **(P0 — run immediately, circuit-breaker active)** | T-152 |
-| User Agent | Sprint 15 feature walkthrough (after T-159) | T-160 |
-| Design Agent | Trip date range UI spec | T-161 |
-| Backend Engineer | API contract for trip date range (then implementation) | T-162, T-163 |
-| Frontend Engineer | Display trip date range on home page cards | T-164 |
-| QA Engineer | Security checklist + integration testing for Sprint 16 | T-165, T-166 |
-| Deploy Engineer | Sprint 16 staging re-deployment | T-167 |
-| Monitor Agent | Sprint 16 staging health check | T-168 |
-| User Agent | Sprint 16 feature walkthrough | T-169 |
-| Manager | Triage T-152 + T-160 + T-169 feedback → Sprint 17 plan | Feedback triage |
+| Frontend Engineer | Code cleanup (opacity fix, dead code removal, stale comment) | T-170 |
+| Design Agent | Trip print/export UI spec | T-171 |
+| Frontend Engineer | Implement trip print/export view | T-172 |
+| QA Engineer | Security checklist + integration testing | T-173, T-174 |
+| Deploy Engineer | Sprint 17 staging re-deployment | T-175 |
+| Monitor Agent | Sprint 17 staging health check | T-176 |
+| User Agent | Sprint 17 feature walkthrough + feedback | T-177 |
+| Manager | Triage T-177 feedback → Sprint 18 plan | Feedback triage |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-Track A — Pipeline Carry-overs (start immediately — P0):
-T-159 (Monitor: Sprint 15 health check) ──> T-160 (User Agent: Sprint 15 walkthrough)
-T-152 (User Agent: Sprint 12+13+14+15 comprehensive walkthrough) [parallel with T-159]
+Track A — Code Cleanup (start immediately, no dependencies):
+T-170 (Frontend: code cleanup — opacity fix, dead code removal, stale comment)
+         |
+         └─┐
+           ├-> T-173 (QA: security + review)
            |
-           └-> Manager: Triage feedback → inform Sprint 17
-
-Track B — New Feature (start immediately — parallel with Track A):
-T-161 (Design: date range spec) ─┐
-T-162 (Backend: API contract)    ─┤
-                                  ├-> T-163 (Backend: implement date range)
-                                  │         |
-                                  └-> T-164 (Frontend: display date range) [blocked by T-163 + T-161]
-                                              |
-                                          T-165 (QA: security + review)
-                                              |
-                                          T-166 (QA: integration)
-                                              |
-                                          T-167 (Deploy)
-                                              |
-                                          T-168 (Monitor: Sprint 16 health)
-                                              |
-                                          T-169 (User Agent: Sprint 16 walkthrough)
-                                              |
-                                     Manager: Triage feedback → Sprint 17 plan
+Track B — New Feature (start Design immediately; impl after spec approved):
+T-171 (Design: print/export spec) --> T-172 (Frontend: print/export impl)
+                                               |
+                                               └─┘
+                                               |
+                                           T-173 (QA: security + review)
+                                               |
+                                           T-174 (QA: integration)
+                                               |
+                                           T-175 (Deploy)
+                                               |
+                                           T-176 (Monitor: Sprint 17 health)
+                                               |
+                                           T-177 (User Agent: Sprint 17 walkthrough)
+                                               |
+                                    Manager: Triage feedback → Sprint 18 plan
 ```
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #16 is complete?*
+*How do we know Sprint #17 is complete?*
 
-- [ ] T-159: Monitor Agent verifies all Sprint 15 health checks on staging; full report in qa-build-log.md
-- [ ] T-152: User Agent walks through all Sprint 12+13+14+15 features on staging; structured feedback in feedback-log.md; T-136 + T-144 carry-over scope formally closed
-- [ ] T-160: User Agent verifies Sprint 15 bug fixes; structured feedback in feedback-log.md
-- [ ] T-161: Design spec for trip date range published to ui-spec.md as Spec 16; Manager-approved
-- [ ] T-162: API contract for `start_date`/`end_date` published to api-contracts.md; Manager-approved
-- [ ] T-163: Backend computes and returns `start_date`/`end_date` on GET /trips and GET /trips/:id; all tests pass
-- [ ] T-164: Home page trip cards display formatted date range or "No dates yet"; all tests pass
-- [ ] T-165: QA security checklist passed for Sprint 16 changes
-- [ ] T-166: QA integration testing passed; Sprint 15 regression clean
-- [ ] T-167: Frontend rebuilt and deployed to staging; pm2 restarted; smoke tests pass
-- [ ] T-168: Monitor confirms all Sprint 16 health checks pass
-- [ ] T-169: User Agent verifies trip date range feature; structured feedback in feedback-log.md
-- [ ] All feedback from T-152, T-160, T-169 triaged by Manager (Tasked, Won't Fix, or Acknowledged)
-- [ ] Sprint 16 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 17 plan written in `.workflow/active-sprint.md`
+- [ ] T-170: `.datesNotSet` CSS has no `opacity: 0.5`; `formatTripDateRange` removed from formatDate.js + its 5 tests; stale comment updated; 415+ frontend tests pass
+- [ ] T-171: Design spec for trip print/export published to ui-spec.md as Spec 17; Manager-approved
+- [ ] T-172: "Print itinerary" button on trip details page calls `window.print()`; print.css @media print rules suppress nav/calendar/buttons; 418+ frontend tests pass
+- [ ] T-173: QA security checklist passed for Sprint 17 changes; no new Critical/High audit findings
+- [ ] T-174: QA integration testing passed; Sprint 16 + Sprint 15 + prior regression clean
+- [ ] T-175: Frontend rebuilt and deployed to staging; smoke tests pass
+- [ ] T-176: Monitor confirms all Sprint 17 health checks pass
+- [ ] T-177: User Agent verifies print button and opacity fix on staging; structured feedback in feedback-log.md
+- [ ] All feedback from T-177 triaged by Manager (Tasked, Won't Fix, or Acknowledged)
+- [ ] Sprint 17 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 18 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #16)
+## Success Criteria (Sprint #17)
 
-By end of Sprint #16, the following must be verifiable:
+By end of Sprint #17, the following must be verifiable on staging:
 
-- [ ] **T-152 has executed** — User Agent has walked through all Sprint 12–15 features on `https://localhost:3001` and submitted structured feedback. **CIRCUIT-BREAKER: if T-152 does not run in Sprint 16, Manager halts Sprint 17 scoping and escalates to project owner.**
-- [ ] **T-159 is Done** — Monitor has verified Sprint 15 health on staging
-- [ ] **T-163 is Done** — `GET /trips` and `GET /trips/:id` return `start_date`/`end_date` for all trips
-- [ ] **T-164 is Done** — Home page trip cards show date range ("May 1 – 15, 2026" or "No dates yet")
-- [ ] Sprint 16 staging deploy (T-167) completed successfully
-- [ ] No Critical or Major bugs left unaddressed from T-152/T-160/T-169 feedback
-- [ ] Sprint 17 plan written in `active-sprint.md`
+- [ ] **T-170 Done** — "No dates yet" text on home page cards is legible (not double-dimmed); `formatTripDateRange` is absent from codebase
+- [ ] **T-172 Done** — "Print itinerary" button visible on trip details page; clicking opens browser print dialog
+- [ ] Sprint 17 staging deploy (T-175) completed successfully
+- [ ] No Critical or Major bugs found by User Agent in T-177 walkthrough
+- [ ] Sprint 18 plan written in `active-sprint.md`
 
 ---
 
 ## Blockers
 
-- **B-022 (Production Deployment — 16 consecutive sprints):** Project owner must review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. **Project owner action required before production deployment can execute.**
-- **T-152 Circuit-Breaker (8th carry-over):** T-152 must execute in Sprint 16. If it does not, the Manager Agent will halt Sprint 17 scoping and escalate to the project owner. Silent carry-over is no longer acceptable.
+- **B-022 (Production Deployment — 17 consecutive sprints):** Project owner must review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. **Project owner action required before production deployment can execute.**
 
 ---
 
-*Previous sprint (Sprint #15) archived to `.workflow/sprint-log.md` on 2026-03-07. Sprint #16 plan written by Manager Agent 2026-03-08.*
+*Previous sprint (Sprint #16) archived to `.workflow/sprint-log.md` on 2026-03-08. Sprint #17 plan written by Manager Agent 2026-03-08.*

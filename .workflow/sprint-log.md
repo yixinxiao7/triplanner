@@ -1979,4 +1979,108 @@ Sprint 13 must begin with immediate correction of the T-131 staging deployment f
 
 ---
 
+### Sprint #16 — 2026-03-08 to 2026-03-08
+
+**Goal:** Close the long-overdue User Agent pipeline carry-overs (T-152 — 8th attempt, T-159, T-160). Deliver trip date range display on home page trip cards (B-006 — deferred since Sprint 1): compute `start_date`/`end_date` from all event types via SQL MIN/MAX, expose via API, and render formatted date range on TripCard. Complete the full QA → Deploy → Monitor → User Agent cycle.
+
+**Goal Met:** ✅ YES — All 11 implementation, QA, deploy, monitor, and User Agent tasks completed. T-152 finally executed after 8 consecutive carry-overs, closing the circuit-breaker. Sprint 16 feedback was exclusively positive with three minor code-quality items triaged to Sprint 17.
+
+---
+
+**Tasks Completed (11/11):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-159 | Monitor Agent: Sprint 15 staging health check — HTTPS, pm2 port 3001, title/favicon, land travel chips, Playwright 7/7 | ✅ Done |
+| T-152 | User Agent: Comprehensive Sprint 12+13+14+15 feature walkthrough — **circuit-breaker cleared after 8 carry-overs** | ✅ Done |
+| T-160 | User Agent: Sprint 15 feature walkthrough (title, favicon, land travel chip locations) | ✅ Done |
+| T-161 | Design Agent: UI spec for trip date range display on home page cards (Spec 16) | ✅ Done |
+| T-162 | Backend Engineer: API contract for `start_date`/`end_date` on trip endpoints | ✅ Done |
+| T-163 | Backend Engineer: Implement computed trip date range via LEAST/GREATEST SQL subquery across all event types | ✅ Done |
+| T-164 | Frontend Engineer: Display trip date range on home page trip cards (formatDateRange, TripCard.jsx) | ✅ Done |
+| T-165 | QA: Security checklist + code review audit for Sprint 16 (278/278 backend + 420/420 frontend tests pass) | ✅ Done |
+| T-166 | QA: Integration testing for Sprint 16 (all 6 scenarios pass; Sprint 15/14/13 regression clean) | ✅ Done |
+| T-167 | Deploy: Sprint 16 staging re-deployment (frontend rebuilt, pm2 restarted PID 51577) | ✅ Done |
+| T-168 | Monitor: Sprint 16 staging health check (all checks pass; trip date range verified on staging) | ✅ Done |
+| T-169 | User Agent: Sprint 16 feature walkthrough (date range, empty state, cross-year format, regression clean) | ✅ Done |
+
+**Tasks Carried Over:** None. All Sprint 16 tasks completed and verified Done.
+
+---
+
+**Key Decisions (ADRs / Approvals This Sprint):**
+
+- **Trip date range computation (T-163):** `LEAST()` / `GREATEST()` SQL functions used in a correlated subquery across `flights` (departure_at, arrival_at), `stays` (check_in_at, check_out_at), `activities` (activity_date), and `land_travels` (departure_date, arrival_date). The result is cast via `TO_CHAR(…, 'YYYY-MM-DD')`. Null is returned (not thrown) when no events exist. No schema migration required — computed on read.
+- **Frontend date formatting (T-164):** `formatDateRange(startDate, endDate)` utility added to `formatDate.js`. Handles 5 cases: null/null → "No dates yet"; same-month → "May 1 – 12, 2026"; same-year cross-month → "May 1 – Jun 15, 2026"; cross-year → "Dec 28, 2025 – Jan 10, 2026"; start-only → "May 1, 2026 –". CSS token `var(--text-muted)` used (no hardcoded hex).
+- **Dead code identified (FB-107):** `formatTripDateRange` in `formatDate.js` does not conform to the current UI spec (no same-month abbreviation) and is not imported by any production component. 5 tests exist for non-spec behavior. Flagged for removal in Sprint 17 (T-170).
+
+---
+
+**Feedback Summary (Sprint 16):**
+
+*10 feedback entries submitted by User Agent (FB-099 – FB-108). All resolved or triaged.*
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-099 | Positive | — | Acknowledged — empty trip shows "No dates yet" correctly |
+| FB-100 | Positive | — | Acknowledged — mixed-event trip computes correct date range (same month) |
+| FB-101 | Positive | — | Acknowledged — cross-year date range computed and formatted correctly |
+| FB-102 | Positive | — | Acknowledged — GET /trips list includes start_date/end_date on every trip |
+| FB-103 | Positive | — | Acknowledged — 278 backend + 420 frontend tests passing (above thresholds) |
+| FB-104 | Positive | — | Acknowledged — Sprint 15 regression (title, favicon, land travel chips) clean |
+| FB-105 | Positive | — | Acknowledged — auth and validation safeguards working correctly |
+| FB-106 | UX Issue | Minor | **Tasked → T-170** — `.datesNotSet` double-muted opacity (~25% effective); fix: remove `opacity: 0.5` |
+| FB-107 | UX Issue | Minor | **Tasked → T-170** — `formatTripDateRange` is dead code with non-spec behavior; remove + its 5 tests |
+| FB-108 | Suggestion | — | **Acknowledged → T-170** — stale comment on formatDate.js line 8; update to reflect all event types |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- **T-152 circuit-breaker resolved** — After 8 consecutive carry-overs spanning Sprint 6 through Sprint 15, the User Agent comprehensive walkthrough finally executed. All Sprint 12–15 features verified clean. Zero Critical or Major bugs found.
+- **Sprint 16 feedback was exclusively positive** — 7 of 10 feedback entries were Positive findings confirming correct behavior. Only 3 minor code-quality items were raised (all bundled into T-170 for Sprint 17).
+- **Zero rework on implementation tasks (T-163, T-164)** — Backend LEAST/GREATEST subquery and frontend formatDateRange both passed Manager code review and QA on the first attempt. Consistent with the team's zero-rework streak since Sprint 10.
+- **Test counts continue to grow** — Backend at 278 tests (7 above minimum), frontend at 420 tests (4 above minimum). Regression coverage is solid.
+- **Full pipeline closed** — T-159 through T-169 all executed in sequence. The first sprint since Sprint 1 where every planned phase (Monitor → User Agent → Design → Backend → Frontend → QA → Deploy → Monitor → User Agent) completed.
+
+**What Could Improve:**
+- **T-168 status in tracker** — Monitor Agent (T-168) and User Agent (T-169) were recorded as Backlog in the tracker; evidence of execution comes from the feedback-log entries. Tracker should be updated at task completion, not inferred retroactively.
+- **Minor CSS duplication undetected until FB-106** — The double-muted opacity issue in `.datesNotSet` was caught by the User Agent, not QA. The QA code review checklist should include checking for stacked opacity + color token combinations when reviewing CSS for accessibility.
+
+**Technical Debt Resolved This Sprint:**
+- ✅ B-006: Trip date range display on home page cards — deferred since Sprint 1, now Done.
+- ✅ T-152 circuit-breaker: User Agent comprehensive walkthrough executed after 8 carry-overs.
+
+**Ongoing Tech Debt (carried forward):**
+- ⚠️ FB-106 / T-170: `.datesNotSet` double-muted opacity — Sprint 17
+- ⚠️ FB-107 / T-170: `formatTripDateRange` dead code — Sprint 17
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence
+- ⚠️ B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 — dev-only, no production impact
+- ⚠️ B-022: Production deployment — pending project owner hosting provider decision (**16 consecutive sprints; project owner action required**)
+- ⚠️ B-024: Auth rate limit is IP-only
+
+---
+
+**Next Sprint Focus (Sprint 17 Recommendations):**
+
+**P2 — Code Quality (fast wins from Sprint 16 feedback):**
+1. **T-170** — Frontend: Code cleanup bundle (FB-106 opacity fix, FB-107 dead code removal, FB-108 stale comment). No blockers. One small PR.
+
+**P2 — Feature (long-deferred backlog item):**
+2. **T-171** — Design Agent: UI spec for trip print/export view (B-032). No blockers.
+3. **T-172** — Frontend: Implement trip print/export view. Blocked by T-171.
+
+**P1 — Full QA Pipeline:**
+4. T-173 (QA: security + review), T-174 (QA: integration), T-175 (Deploy), T-176 (Monitor), T-177 (User Agent).
+
+**Ongoing — Production Deployment (B-022 — 16 consecutive sprints):**
+- Project owner must review `.workflow/hosting-research.md` and select a hosting provider. All application infrastructure is production-ready.
+
+---
+
+*Sprint #16 began and closed 2026-03-08.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*
