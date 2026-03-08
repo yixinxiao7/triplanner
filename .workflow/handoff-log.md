@@ -4,6 +4,52 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Sprint 15 — Manager Agent: Code Review Complete — T-153, T-154, T-155 Approved → Integration Check (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Manager Agent |
+| To | QA Engineer |
+| Date | 2026-03-07 |
+| Status | All Three Tasks Approved — Ready for T-156 + T-157 |
+| Related Tasks | T-153, T-154, T-155, T-156, T-157 |
+
+**All three Sprint 15 frontend tasks have passed Manager code review and are now in Integration Check. QA Engineer is cleared to begin T-156 (security checklist + code review audit) and T-157 (integration testing) immediately.**
+
+#### Review Results
+
+| Task | Result | Summary |
+|------|--------|---------|
+| T-154 — Browser title + favicon | ✅ **APPROVED** | `frontend/index.html`: `<title>triplanner</title>` and `<link rel="icon" type="image/png" href="/favicon.png" />` correctly added. Root-relative href — safe, no CSP implications. No tests required (static HTML only). |
+| T-153 — `formatTimezoneAbbr()` unit tests | ✅ **APPROVED** | 6 tests in `formatDate.test.js` (lines 107–156) covering all sprint-spec cases: NY DST, Tokyo no-DST, Paris summer, null isoString, null timezone, invalid zone fallback. Regex patterns correctly accommodate platform-dependent short names. No production code changes. |
+| T-155 — Land travel chip location fix | ✅ **APPROVED** | `buildEventsMap` sets `_location: lt.from_location` on departure day and `_location: lt.to_location` on arrival day. `DayCell` and `DayPopover.getEventLabel` both consume `_location`. Location rendered as React text node — no `dangerouslySetInnerHTML`, XSS-safe. T-138 RENTAL_CAR "pick-up"/"drop-off" prefixes unaffected. All 4 required tests (T-155 A–D) present and correct. |
+
+#### Security Checklist (Manager Pre-Check)
+
+| Check | T-154 | T-153 | T-155 |
+|-------|-------|-------|-------|
+| No hardcoded secrets | ✅ | ✅ | ✅ |
+| No SQL injection vectors | ✅ (no SQL) | ✅ (no SQL) | ✅ (no SQL) |
+| No XSS vectors | ✅ | ✅ | ✅ React text node |
+| No dangerouslySetInnerHTML | ✅ | ✅ | ✅ |
+| No external resource loading | ✅ root-relative | ✅ | ✅ |
+| Error handling safe | ✅ | ✅ try/catch | ✅ |
+| Auth checks present | N/A (static) | N/A (tests) | N/A (frontend rendering) |
+
+#### What QA Should Do
+
+- **T-156:** Full security checklist audit and code review for T-154, T-155. Run full test suite (`npm test --run` in `frontend/` expecting 410+; `backend/` expecting 266/266). Report in `qa-build-log.md` Sprint 15 section.
+- **T-157:** Integration testing. Key scenarios: (1) `index.html` title = "triplanner", favicon link present; (2) land travel pick-up day chip shows `from_location`, drop-off day chip shows `to_location`; (3) RENTAL_CAR "pick-up"/"drop-off" prefixes still present (T-138 regression); (4) Sprint 14 regression: "Today" button, first-event-month. Report in `qa-build-log.md`. Handoff to Deploy (T-158) when complete.
+
+#### Notes for T-156
+
+- T-154 is a **pure static HTML change** — no script injection possible, no external resource, `href="/favicon.png"` is root-relative pointing to an existing public asset.
+- T-155 location strings (`from_location`, `to_location`) come from the API and are rendered as React children (string interpolation in JSX template literals) — **not** via `innerHTML` or `dangerouslySetInnerHTML`. No XSS risk.
+- `parseLocationWithLinks()` (used elsewhere for URL linking) was **not** touched by T-155 — this function already whitelists only `http://` and `https://` schemes.
+- Backend unchanged this sprint — 266/266 backend tests remain green per BE-S15 handoff.
+
+---
+
 ### Sprint 15 — Backend Engineer: BE-S15 Implementation Phase Complete — 266/266 Tests Pass (2026-03-07)
 
 | Field | Value |
