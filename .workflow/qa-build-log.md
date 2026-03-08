@@ -737,3 +737,137 @@ No new config changes were introduced in Sprint 17. All previous consistency fin
 
 T-170 (code cleanup: opacity fix, dead code removal, comment update) and T-172 (print button aria-label + text update with T-172-A–D tests) meet all acceptance criteria. No security issues introduced. No regressions. Backend unchanged at 278/278. Frontend at 416/416 (correct count per T-170+T-172 arithmetic). Deploy Engineer (T-175) is unblocked.
 
+
+---
+
+## Sprint #17 — Deploy: T-175 — 2026-03-08
+
+**Deploy Engineer:** T-175 — Sprint 17 Staging Re-Deployment
+
+### Pre-Deploy Gate Check
+
+| Gate | Status |
+|------|--------|
+| QA T-173 (security checklist) | ✅ Done — confirmed in handoff-log.md |
+| QA T-174 (integration testing) | ✅ Done — confirmed in handoff-log.md |
+| QA handoff to Deploy | ✅ Present in handoff-log.md (2026-03-08) |
+| T-170 source verified | ✅ `.datesNotSet` → `color: var(--text-muted)` only; `formatTripDateRange` absent |
+| T-172 source verified | ✅ `window.print()` + `aria-label="Print itinerary"` present in TripDetailsPage.jsx |
+| print.css exists | ✅ `/frontend/src/styles/print.css` confirmed |
+
+### Backend Status
+
+| Check | Result |
+|-------|--------|
+| pm2 `triplanner-backend` | ✅ Online — PID 51577, 98m uptime |
+| pm2 `triplanner-frontend` | ✅ Online — PID 51694, 97m uptime |
+| Backend restart required | ❌ No — no backend changes in Sprint 17 |
+| Migrations required | ❌ No — T-170 + T-172 are frontend-only |
+
+### Frontend Build
+
+| Step | Result |
+|------|--------|
+| Command | `npm run build` in `frontend/` |
+| Build tool | Vite v6.4.1 |
+| Exit code | ✅ 0 (success) |
+| Errors | ✅ 0 errors |
+| Modules transformed | 122 modules |
+| Output: `dist/index.html` | ✅ 0.46 kB (gzip: 0.29 kB) |
+| Output: `dist/assets/index-CHbJGuD3.css` | ✅ 74.41 kB (gzip: 11.88 kB) |
+| Output: `dist/assets/index-B58n1DRM.js` | ✅ 339.63 kB (gzip: 103.16 kB) |
+| Build time | 458ms |
+
+### Asset Verification
+
+| Check | Result |
+|-------|--------|
+| `@media print` rules in CSS bundle | ✅ Confirmed — `@media print{*,*:before,*:after{background:#fff!important;color:#000!important;...` |
+| "Print itinerary" text in JS bundle | ✅ Confirmed (2 occurrences — visible text + aria-label) |
+| `.datesNotSet` CSS (opacity fix) | ✅ `datesNotSet_1vo21_206{color:var(--text-muted)}` — no opacity property |
+| `dist/index.html` title | ✅ `<title>triplanner</title>` |
+| `dist/favicon.png` | ✅ Present |
+
+### Smoke Tests
+
+| # | Test | Result |
+|---|------|--------|
+| (a) | `GET /api/v1/health` → `{"status":"ok"}` | ✅ PASS |
+| (b) | pm2 `triplanner-backend` online (port 3001) | ✅ PASS — PID 51577 |
+| (c) | Frontend build: 0 errors, all assets generated | ✅ PASS |
+| (d) | `print.css` @media print rules in CSS bundle | ✅ PASS |
+| (e) | "Print itinerary" button text in JS bundle | ✅ PASS |
+| (f) | `.datesNotSet` no opacity in CSS bundle | ✅ PASS |
+| (g) | Sprint 15 feature: title "triplanner" in index.html | ✅ PASS |
+| (h) | Sprint 15 feature: favicon.png in dist | ✅ PASS |
+
+### Environment
+
+| Setting | Value |
+|---------|-------|
+| `backend/.env` | ✅ NOT modified |
+| `backend/.env.staging` | ✅ NOT modified |
+| Migrations run | None (frontend-only sprint) |
+| pm2 restart | Not required (backend unchanged) |
+
+### Build Status: ✅ SUCCESS
+
+**Environment:** Staging
+**Date:** 2026-03-08
+**T-175:** DONE
+
+Handoff logged to Monitor Agent (T-176) in handoff-log.md.
+
+
+---
+
+## Sprint #17 QA Re-Verification — 2026-03-08 (Orchestrator Pass)
+
+**QA Engineer — Sprint #17 Re-Verification Run**
+
+The orchestrator invoked QA again for Sprint 17. This is a re-verification confirming all prior QA findings remain valid. No new code changes were detected.
+
+### Fresh Test Run Results
+
+#### Unit Test: Frontend
+- **Command:** `cd frontend && npm test -- --run`
+- **Result:** 22 test files — **416/416 PASS** ✅
+- Test files verified include: `TripDetailsPage.test.jsx` (70 tests, T-172-A–D confirmed passing), `formatDate.test.js` (20 tests, `formatTripDateRange` absent), `TripCard.test.jsx` (17 tests, `.datesNotSet` tests passing).
+
+#### Unit Test: Backend
+- **Command:** `cd backend && npm test -- --run`
+- **Result:** 13 test files — **278/278 PASS** ✅
+- No backend changes in Sprint 17; results unchanged from Sprint 16 baseline.
+
+### Source Code Spot-Check (Re-Verified)
+
+| Check | File | Finding | Result |
+|-------|------|---------|--------|
+| T-170: `.datesNotSet` no opacity | `frontend/src/components/TripCard.module.css` line 206 | `color: var(--text-muted)` only — no `opacity` | ✅ PASS |
+| T-170: `formatTripDateRange` absent | `frontend/src/utils/formatDate.js` | Not exported; only `formatDateRange` present | ✅ PASS |
+| T-170: File comment updated | `formatDate.js` line 8 | Reflects all event types (flights, stays, activities, land travels) | ✅ PASS |
+| T-172: Print button in JSX | `frontend/src/pages/TripDetailsPage.jsx` line 634–657 | `onClick={() => window.print()}`, `aria-label="Print itinerary"` present | ✅ PASS |
+| T-172: print.css imported | `TripDetailsPage.jsx` line 10 | `import '../styles/print.css'` ✅ | ✅ PASS |
+| T-172: print.css exists | `frontend/src/styles/print.css` | 256 lines, `@media print` only | ✅ PASS |
+| T-172: No dangerouslySetInnerHTML | `TripDetailsPage.jsx` | Zero occurrences | ✅ PASS |
+
+### npm audit (Re-Run)
+
+| Target | Result |
+|--------|--------|
+| `frontend/` | 5 Moderate (esbuild/vite/vitest dev chain, pre-existing) — no new Critical/High |
+| `backend/` | 5 Moderate (esbuild/vite/vitest dev chain, pre-existing) — no new Critical/High |
+
+### Config Consistency (Re-Verified)
+
+| Check | Result |
+|-------|--------|
+| Backend PORT=3000 | ✅ Matches vite.config.js default BACKEND_PORT='3000' |
+| SSL disabled locally | ✅ backend/.env SSL lines commented out; vite proxy uses http:// |
+| CORS_ORIGIN=http://localhost:5173 | ✅ Matches frontend dev server |
+| Docker Compose PORT: 3000 | ✅ Consistent |
+
+### QA Verdict: ✅ PASS (Re-Confirmed)
+
+All Sprint 17 acceptance criteria satisfied. T-170 and T-172 are being marked Done. Deploy pipeline (T-175 + T-176) already complete.
+
