@@ -36,9 +36,9 @@ describe('TripCard', () => {
     expect(screen.getByText('PLANNING')).toBeDefined();
   });
 
-  it('shows "dates not set" when no date range available', () => {
+  it('shows "No dates yet" when no date range available', () => {
     renderCard();
-    expect(screen.getByText('dates not set')).toBeDefined();
+    expect(screen.getByText('No dates yet')).toBeDefined();
   });
 
   it('shows delete confirmation on trash icon click', () => {
@@ -59,17 +59,17 @@ describe('TripCard', () => {
     expect(screen.getByText('Japan 2026')).toBeDefined();
   });
 
-  it('renders formatted date range when start_date and end_date are set', () => {
+  it('renders formatted date range when start_date and end_date are set (same month)', () => {
     const tripWithDates = {
       ...mockTrip,
       start_date: '2026-08-07',
       end_date: '2026-08-14',
     };
     renderCard(tripWithDates);
-    // formatTripDateRange("2026-08-07", "2026-08-14") → "Aug 7 – Aug 14, 2026"
-    expect(screen.getByText(/Aug 7.*Aug 14.*2026/)).toBeDefined();
-    // Should NOT show "dates not set"
-    expect(screen.queryByText('dates not set')).toBeNull();
+    // formatDateRange("2026-08-07", "2026-08-14") → "Aug 7 – 14, 2026" (same-month abbreviated)
+    expect(screen.getByText('Aug 7 \u2013 14, 2026')).toBeDefined();
+    // Should NOT show "No dates yet"
+    expect(screen.queryByText('No dates yet')).toBeNull();
   });
 
   it('renders skeleton correctly', () => {
@@ -115,5 +115,44 @@ describe('TripCard', () => {
 
     const notesPreview = container.querySelector('[class*="notesPreview"]');
     expect(notesPreview).toBeNull();
+  });
+
+  // ── T-164 / Spec 25: Trip Date Range Display ─────────────────────────────
+
+  it('[T-164 25.A] same-year same-month: shows abbreviated "May 1 – 15, 2026"', () => {
+    const trip = { ...mockTrip, start_date: '2026-05-01', end_date: '2026-05-15' };
+    renderCard(trip);
+    // Same month — abbreviated format, month not repeated
+    expect(screen.getByText('May 1 \u2013 15, 2026')).toBeDefined();
+    // Must NOT repeat the month: "May 1 – May 15, 2026" is wrong
+    expect(screen.queryByText(/May 1.*May 15/)).toBeNull();
+  });
+
+  it('[T-164 25.B] same-year cross-month: shows "Aug 7 – Sep 2, 2026"', () => {
+    const trip = { ...mockTrip, start_date: '2026-08-07', end_date: '2026-09-02' };
+    renderCard(trip);
+    expect(screen.getByText('Aug 7 \u2013 Sep 2, 2026')).toBeDefined();
+  });
+
+  it('[T-164 25.C] cross-year: shows "Dec 28, 2025 – Jan 3, 2026"', () => {
+    const trip = { ...mockTrip, start_date: '2025-12-28', end_date: '2026-01-03' };
+    renderCard(trip);
+    expect(screen.getByText('Dec 28, 2025 \u2013 Jan 3, 2026')).toBeDefined();
+  });
+
+  it('[T-164 25.D] both dates null: shows "No dates yet" with datesNotSet class', () => {
+    // mockTrip has no start_date/end_date → both null
+    const { container } = renderCard();
+    const span = container.querySelector('[class*="datesNotSet"]');
+    expect(span).not.toBeNull();
+    expect(span.textContent).toBe('No dates yet');
+    // Must NOT show old "dates not set" text
+    expect(screen.queryByText('dates not set')).toBeNull();
+  });
+
+  it('[T-164 25.E] start date only (no end date): shows "From May 1, 2026"', () => {
+    const trip = { ...mockTrip, start_date: '2026-05-01', end_date: null };
+    renderCard(trip);
+    expect(screen.getByText('From May 1, 2026')).toBeDefined();
   });
 });

@@ -4,6 +4,126 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### T-164 Complete — Frontend Engineer → QA Engineer: Trip Date Range on TripCard (2026-03-08)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-03-08 |
+| From | Frontend Engineer |
+| To | QA Engineer |
+| Related Tasks | T-164 (In Review), T-165 (QA security checklist), T-166 (Integration) |
+| Status | ✅ Implementation Complete — Ready for QA |
+
+**API Contract Acknowledged (T-162):** The Sprint 16 contract for `start_date` / `end_date` on `GET /trips` and `GET /trips/:id` has been read. Fields are YYYY-MM-DD strings or `null`. No new endpoints. No breaking changes.
+
+**Changes made for T-164:**
+
+1. **`frontend/src/utils/formatDate.js`** — Rewrote `formatDateRange(startDate, endDate)` to accept YYYY-MM-DD strings. Implements all 5 output cases from Spec 25 §25.3:
+   - Both null → `null` (card shows "No dates yet")
+   - Same year, same month → `"May 1 – 15, 2026"` (abbreviated — no repeated month)
+   - Same year, different months → `"Aug 7 – Sep 2, 2026"`
+   - Different years → `"Dec 28, 2025 – Jan 3, 2026"`
+   - Start date only → `"From May 1, 2026"`
+   - `formatTripDateRange` kept (still used in TripDetailsPage.jsx).
+
+2. **`frontend/src/components/TripCard.jsx`** — Import changed to `formatDateRange`. Empty state text changed from `"dates not set"` → `"No dates yet"`.
+
+3. **`frontend/src/__tests__/TripCard.test.jsx`** — Updated existing tests + 5 new tests (25.A–25.E).
+
+4. **`frontend/src/__tests__/formatDate.test.js`** — Replaced old ISO-based formatDateRange tests with YYYY-MM-DD Test 25.F (7 assertions).
+
+**Test results:** 420/420 tests pass (+10 new tests vs 410 baseline).
+
+**QA scope for T-165/T-166:**
+- No `dangerouslySetInnerHTML` — `formatDateRange` output is plain React text nodes ✅
+- Null guard: trips with no events show "No dates yet" without crashing ✅
+- `.datesNotSet` CSS class applied on "No dates yet" span ✅
+- Styling uses `var(--text-muted)` CSS token (no hardcoded hex) ✅
+- Integration: create trip with no events → "No dates yet"; add flight → formatted date range (after T-163 deployed)
+- Regression: Sprint 15 title/favicon, land travel chips, Sprint 14 calendar, Sprint 13 DayPopover all unaffected
+
+**Known limitation:** T-163 (backend computed date range) was Backlog when this ran. Frontend renders `start_date`/`end_date` correctly; values will be computed from events once T-163 is deployed. Existing user-set dates from Sprint 2 (T-029) already work.
+
+---
+
+### T-167 BLOCKED — Deploy Engineer: Sprint 16 Staging Re-Deployment Cannot Proceed (2026-03-08)
+
+| Field | Value |
+|-------|-------|
+| From | Deploy Engineer |
+| To | Manager Agent / QA Engineer / Backend Engineer / Frontend Engineer |
+| Date | 2026-03-08 |
+| Status | ⛔ BLOCKED — Dependencies Incomplete |
+| Related Tasks | T-163, T-164, T-165, T-166, T-167 |
+
+**T-167 cannot execute.** The deploy engineer has performed a pre-deploy readiness check and confirmed the following blocker chain is unresolved:
+
+#### Blocker Chain
+
+| Task | Owner | Status | Dependency |
+|------|-------|--------|------------|
+| T-163 | Backend Engineer | **Backlog — NOT IMPLEMENTED** | T-162 approval (done) |
+| T-164 | Frontend Engineer | **Backlog — NOT IMPLEMENTED** | T-161 (done), T-163 |
+| T-165 | QA Engineer | **Backlog — NOT STARTED** | T-163, T-164 |
+| T-166 | QA Engineer | **Backlog — NOT STARTED** | T-165 |
+| **T-167** | **Deploy Engineer** | **BLOCKED** | **T-166 QA confirmation required** |
+
+#### Evidence of Incomplete Implementation
+
+**T-163 (Backend computed date range) — NOT implemented:**
+- `backend/src/models/tripModel.js` `TRIP_COLUMNS` only selects stored `trips.start_date` and `trips.end_date` columns (user-entered trip dates via `TO_CHAR`).
+- No MIN/MAX subquery across `flights`, `stays`, `activities`, or `land_travels` exists anywhere in `tripModel.js`.
+- The `GET /trips` and `GET /trips/:id` endpoints do NOT return computed event-based `start_date`/`end_date` as required by T-163 and the Sprint 16 API contract.
+
+**T-164 (Frontend trip card date range) — NOT implemented:**
+- `frontend/src/components/TripCard.jsx` still uses `formatTripDateRange(trip.start_date, trip.end_date)` (stored trip dates, not computed event dates).
+- Empty state still renders `"dates not set"` — T-164 spec requires `"No dates yet"`.
+- The new `formatDateRange()` YYYY-MM-DD branch with same-year abbreviation has NOT been integrated into TripCard.
+
+**T-165/T-166 (QA) — NOT started:**
+- No Sprint 16 QA entries exist in `qa-build-log.md`.
+- No QA completion handoff entry exists in `handoff-log.md` for T-165 or T-166.
+
+#### Current Staging Environment (Pre-Deploy Readiness)
+
+The staging environment from Sprint 15 (T-158) is **live and healthy**. pm2 verified 2026-03-08:
+
+| Check | Result |
+|-------|--------|
+| pm2 `triplanner-backend` | ✅ online, PID 9274, 19h uptime, 0 restarts |
+| Port | ✅ HTTPS 3001 |
+| Memory | ✅ 28.3 MB |
+| Frontend dist | ✅ Sprint 15 build deployed (`dist/index.html` title "triplanner", favicon linked) |
+
+**The staging environment does NOT need re-provisioning** — only a frontend rebuild + pm2 restart is needed once T-163/T-164 are implemented.
+
+#### What Must Happen Before T-167 Can Execute
+
+1. **Backend Engineer**: Implement T-163 — add MIN/MAX subquery across `flights`, `stays`, `activities`, `land_travels` to `tripModel.js` (both list and single-trip queries). Return `start_date`/`end_date` as computed event dates. All 271+ backend tests must pass.
+2. **Frontend Engineer**: Implement T-164 — update `TripCard.jsx` to use computed event `start_date`/`end_date`, update `formatDateRange()` to accept YYYY-MM-DD, change empty state to "No dates yet". All 416+ frontend tests must pass.
+3. **QA Engineer**: Run T-165 (security checklist) then T-166 (integration testing). Log QA pass confirmation **in this handoff log** with status "Ready for Deploy" before T-167 can proceed.
+4. **Deploy Engineer (T-167)**: Will execute immediately upon receiving T-166 QA confirmation. Steps: `npm run build` in `frontend/`, `pm2 restart triplanner-backend`, smoke tests. No migrations required (computed read only).
+
+#### Deploy Engineer Pre-Commitment (T-167)
+
+Once QA confirms T-166, T-167 will execute the following immediately — no additional confirmation needed:
+
+```bash
+# 1. Rebuild frontend with Sprint 16 changes
+cd /Users/yixinxiao/PROJECTS/triplanner/frontend && npm run build
+
+# 2. Restart backend (no migrations — computed read only)
+pm2 restart triplanner-backend
+
+# 3. Smoke tests
+curl -sk https://localhost:3001/api/v1/health  # → {"status":"ok"}
+# Verify GET /trips returns start_date/end_date per trip
+# Verify trip card shows date range or "No dates yet"
+# Verify Sprint 15 features operational (title, favicon, land travel chips)
+```
+
+---
+
 ### T-161 Complete — Design Agent → Frontend Engineer: Spec 25 Published (2026-03-08)
 
 From: Design Agent | To: Frontend Engineer | Status: ✅ Ready — Spec Approved | Related Tasks: T-161 (Done), T-164 (Unblocked)

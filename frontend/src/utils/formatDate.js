@@ -157,18 +157,57 @@ export function parseLocationWithLinks(text) {
 }
 
 /**
- * Format a trip card date range from departure/arrival ISO strings.
- * Example output: "Aug 7, 2026 — Aug 14, 2026"
+ * Format a trip date range from YYYY-MM-DD start_date and end_date fields.
+ * Returns a formatted string or null if no dates are set.
  *
- * @param {string} startIso
- * @param {string} endIso
- * @returns {string}
+ * Parsing rule: Parse each date string by splitting on '-' and using
+ * new Date(year, month - 1, day) — local date, no UTC offset.
+ *
+ * Output rules:
+ *   (null, null)           → null
+ *   ("YYYY-MM-DD", null)   → "From May 1, 2026"
+ *   same year + same month → "May 1 – 15, 2026"      (no repeated month)
+ *   same year, diff month  → "Aug 7 – Sep 2, 2026"
+ *   different years        → "Dec 28, 2025 – Jan 3, 2026"
+ *
+ * Separator: en-dash with spaces (U+2013).
+ *
+ * @param {string|null} startDate - YYYY-MM-DD
+ * @param {string|null} endDate   - YYYY-MM-DD
+ * @returns {string|null}
  */
-export function formatDateRange(startIso, endIso) {
-  if (!startIso && !endIso) return null;
-  const start = startIso ? formatDate(startIso) : '?';
-  const end = endIso ? formatDate(endIso) : '?';
-  return `${start} — ${end}`;
+export function formatDateRange(startDate, endDate) {
+  if (!startDate && !endDate) return null;
+
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  function parseYMD(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return { year: y, month: m - 1, day: d }; // month is 0-indexed
+  }
+
+  if (startDate && endDate) {
+    const s = parseYMD(startDate);
+    const e = parseYMD(endDate);
+    if (s.year === e.year) {
+      if (s.month === e.month) {
+        // Same month: "May 1 – 15, 2026"
+        return `${MONTHS[s.month]} ${s.day} \u2013 ${e.day}, ${s.year}`;
+      }
+      // Same year, different months: "Aug 7 – Sep 2, 2026"
+      return `${MONTHS[s.month]} ${s.day} \u2013 ${MONTHS[e.month]} ${e.day}, ${s.year}`;
+    }
+    // Different years: "Dec 28, 2025 – Jan 3, 2026"
+    return `${MONTHS[s.month]} ${s.day}, ${s.year} \u2013 ${MONTHS[e.month]} ${e.day}, ${e.year}`;
+  }
+
+  if (startDate && !endDate) {
+    const s = parseYMD(startDate);
+    return `From ${MONTHS[s.month]} ${s.day}, ${s.year}`;
+  }
+
+  return null;
 }
 
 /**

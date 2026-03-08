@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from './StatusBadge';
-import { formatTripDateRange } from '../utils/formatDate';
+import { formatDateRange } from '../utils/formatDate';
 import styles from './TripCard.module.css';
 
 /**
@@ -19,8 +19,10 @@ export default function TripCard({ trip, onDelete }) {
     ? trip.destinations.join(', ')
     : trip.destinations || '';
 
-  // Format date range from trip.start_date / trip.end_date (Sprint 2 T-029)
-  const dateRange = formatTripDateRange(trip.start_date, trip.end_date);
+  // Format date range from trip.start_date / trip.end_date (Sprint 16 T-164)
+  // start_date and end_date are YYYY-MM-DD strings or null, computed by the backend
+  // from the earliest and latest dates across flights, stays, activities, and land travels.
+  const dateRange = formatDateRange(trip.start_date, trip.end_date);
 
   function handleCardClick(e) {
     if (confirmDelete) return; // Don't navigate if in confirmation state
@@ -165,7 +167,7 @@ export default function TripCard({ trip, onDelete }) {
             {dateRange ? (
               <span>{dateRange}</span>
             ) : (
-              <span className={styles.datesNotSet}>dates not set</span>
+              <span className={styles.datesNotSet}>No dates yet</span>
             )}
           </div>
         </>
