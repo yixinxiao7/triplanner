@@ -18,13 +18,21 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
+## Sprint 16 Feedback Triage (Manager Agent — 2026-03-08)
+
+| FB Entry | Category | Severity | Disposition | Notes |
+|----------|----------|----------|-------------|-------|
+| — | — | — | **No new entries** | All Sprint 15 feedback (FB-096, FB-097, FB-098) resolved in Sprint 15. No new User Agent or Monitor Agent feedback has been submitted — T-152 (User Agent comprehensive walkthrough) and T-159/T-160 (Monitor + User Agent Sprint 15 pipeline) did not run in Sprint 15. Sprint 16 prioritizes completing this pipeline before scoping additional feedback. |
+
+---
+
 ## Sprint 15 Feedback Triage (Manager Agent — 2026-03-07)
 
 | FB Entry | Category | Severity | Disposition | Notes |
 |----------|----------|----------|-------------|-------|
-| FB-096 | UX Issue | Minor | **Tasked → T-154** | Frontend: update `<title>` in `frontend/index.html` to "triplanner"; add favicon `<link>` tag. Both are trivial `<head>` fixes with no backend or logic changes. P3, Sprint 15. |
-| FB-097 | UX Issue | Minor | **Tasked → T-154** | Combined with FB-096 — same file, same task. P3, Sprint 15. |
-| FB-098 | Bug | Major | **Tasked → T-155** | Frontend: fix calendar land travel pick-up/drop-off chip location rendering. Pick-up day chip must render the **origin** (pick-up location); drop-off day chip must render the **destination** (drop-off location). Currently both chips incorrectly render the destination. Root cause is likely in `DayCell` and `DayPopover.getEventTime` — the `_isArrival` flag path needs to select the correct location field. P1, Sprint 15. |
+| FB-096 | UX Issue | Minor | **Resolved — T-154 Done** | Frontend: update `<title>` in `frontend/index.html` to "triplanner"; add favicon `<link>` tag. Both are trivial `<head>` fixes with no backend or logic changes. P3, Sprint 15. |
+| FB-097 | UX Issue | Minor | **Resolved — T-154 Done** | Combined with FB-096 — same file, same task. P3, Sprint 15. |
+| FB-098 | Bug | Major | **Resolved — T-155 Done** | Frontend: fix calendar land travel pick-up/drop-off chip location rendering. Pick-up day chip must render the **origin** (pick-up location); drop-off day chip must render the **destination** (drop-off location). Currently both chips incorrectly render the destination. Root cause is likely in `DayCell` and `DayPopover.getEventTime` — the `_isArrival` flag path needs to select the correct location field. P1, Sprint 15. |
 
 ---
 
