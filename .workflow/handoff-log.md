@@ -941,3 +941,53 @@ No backend tasks are assigned to the Backend Engineer in Sprint 17. All Sprint 1
 The backend is production-stable from Sprint 16. For Sprint 17 QA (T-173), the backend test suite should run `npm test --run` in `backend/` and expect **278+ passing tests** with zero changes.
 
 **QA instruction:** No backend review needed for Sprint 17 beyond running the existing test suite to confirm no regressions.
+
+---
+
+**From:** QA Engineer
+**To:** Deploy Engineer
+**Sprint:** #17
+**Date:** 2026-03-08
+**Status:** T-173 + T-174 COMPLETE — Deploy (T-175) is UNBLOCKED
+
+## QA Sign-Off: Sprint 17 All Clear
+
+Both QA tasks are complete. All gates are cleared. Deploy Engineer may proceed immediately with T-175.
+
+### T-173 — Security Checklist + Code Review: PASS
+
+**T-170 (Code Cleanup) verified:**
+- `.datesNotSet` in `TripCard.module.css`: confirmed only `color: var(--text-muted)` — no `opacity` property ✅
+- `formatTripDateRange` confirmed absent from `formatDate.js` — only `formatDateRange` exported ✅
+- Updated file-level comment on `formatDate.js` line 8 confirmed accurate ✅
+- Dead tests removed from `formatDate.test.js`; 5 `formatTripDateRange` tests gone; `formatDateRange` tests intact ✅
+
+**T-172 (Print Button) verified:**
+- `TripDetailsPage.jsx`: `onClick={() => window.print()}`, `aria-label="Print itinerary"`, visible text "Print itinerary" ✅
+- T-172-A through T-172-D tests present in `TripDetailsPage.test.jsx` and passing ✅
+- `print.css` confirmed security-neutral (pure @media print CSS) ✅
+- No `dangerouslySetInnerHTML`, no sensitive DOM attributes, no new API calls ✅
+
+**npm audit:** 5 moderate dev-only (pre-existing esbuild/vite/vitest chain) — no new Critical/High findings ✅
+
+### T-174 — Integration Testing: PASS
+
+- Backend: 278/278 tests pass (no backend changes) ✅
+- Frontend: 416/416 tests pass (correct count: 420 − 5 dead + 4 new − 3 replaced = 416) ✅
+- All 10 integration scenarios verified (see qa-build-log.md Sprint 17 section) ✅
+- Config consistency unchanged — PORT=3000, CORS=http://localhost:5173, SSL-off for local dev ✅
+
+### Gate Clearance
+
+| Gate | Status |
+|------|--------|
+| T-170 (Code cleanup) | ✅ Done — verified in source + tests pass |
+| T-172 (Print button update) | ✅ Done — verified in source + T-172-A–D pass |
+| T-173 (QA security checklist) | ✅ Done — this entry |
+| T-174 (QA integration testing) | ✅ Done — this entry |
+| QA handoff to Deploy | ✅ This entry |
+
+**Deploy Engineer: T-175 is cleared to execute. No blockers remain. pm2 processes were online as of the prior Deploy Engineer gate check (backend PID 51577, frontend PID 51694). Backend requires no restart (no backend changes). Frontend requires a `npm run build` rebuild to include T-170 + T-172 changes.**
+
+Full QA report in `/Users/yixinxiao/PROJECTS/triplanner/.workflow/qa-build-log.md` — Sprint #17 QA Run — 2026-03-08.
+

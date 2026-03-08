@@ -615,3 +615,125 @@ Verified at code + unit test level. Live DB integration deferred to T-167 (Deplo
 
 T-163 (backend computed date range) and T-164 (frontend TripCard display) meet all acceptance criteria. No security issues. No regressions. Staging deployment (T-167, pm2 PID 48706) is live and verified. T-168 (Monitor) is unblocked — no QA blockers. T-159 (Monitor Sprint 15 carry-over) and T-152/T-160 (User Agent walkthroughs) remain Backlog — circuit-breaker still active for T-152 (8th carry-over).
 
+---
+
+## Sprint #17 QA Run — 2026-03-08
+
+**QA Engineer Tasks:** T-173 (security checklist + code review) + T-174 (integration testing)
+**Sprint 17 Changes:** T-170 (code cleanup: FB-106/FB-107/FB-108) + T-172 (print button update per Spec 17)
+
+---
+
+### Unit Test: Backend
+- **Status:** PASS
+- **Command:** `cd /Users/yixinxiao/PROJECTS/triplanner/backend && npm test -- --run`
+- **Result:** 13 test files, **278/278 tests passed**
+- **Details:** No backend changes in Sprint 17 (frontend-only sprint). All 278 backend tests continue to pass. No regressions detected. The stderr output (malformed JSON SyntaxError in sprint2.test.js) is expected — that test intentionally sends truncated JSON to verify 400 INVALID_JSON response; the log line is from the error handler doing its job correctly.
+
+---
+
+### Unit Test: Frontend
+- **Status:** PASS
+- **Command:** `cd /Users/yixinxiao/PROJECTS/triplanner/frontend && npm test -- --run`
+- **Result:** 22 test files, **416/416 tests passed**
+- **Details:** Count is correct per T-170+T-172 arithmetic: 420 (Sprint 16 baseline) − 5 dead `formatTripDateRange` tests (T-170/FB-107) + 4 new T-172 print tests − 3 replaced stale T-122 print tests = 416.
+  - `formatDate.test.js` (20 tests): `formatTripDateRange` removed — only `formatDateRange` tests remain, all passing.
+  - `TripDetailsPage.test.jsx` (70 tests): T-172-A through T-172-D present and passing.
+  - `TripCard.test.jsx` (17 tests): `datesNotSet` / "No dates yet" tests passing.
+  - All other test files: unchanged, all pass.
+
+---
+
+### Integration Test
+- **Status:** PASS
+- **Details:** Verified at code level (code-path analysis + unit test coverage). Live staging integration deferred to T-175 (Deploy) and T-176 (Monitor) per established sprint protocol.
+
+| Scenario | Verification Method | Result |
+|----------|---------------------|--------|
+| 1. Print button visible on TripDetailsPage | T-172-A unit test: `getByRole('button', { name: /print itinerary/i })` | ✅ PASS |
+| 2. Print button calls `window.print()` exactly once | T-172-B unit test: `vi.fn()` mock, `toHaveBeenCalledTimes(1)` | ✅ PASS |
+| 3. Print button has `aria-label="Print itinerary"` | T-172-C unit test: `getAttribute('aria-label') === 'Print itinerary'` | ✅ PASS |
+| 4. Print button absent in error state | T-172-D unit test: `queryByRole` returns null when trip load fails | ✅ PASS |
+| 5. "No dates yet" legibility improved (opacity fix) | `.datesNotSet` CSS: only `color: var(--text-muted)`, no `opacity` property | ✅ PASS |
+| 6. `formatDateRange` unaffected by dead-code removal | 20 `formatDate` unit tests pass; `TripDetailsPage` imports `formatDateRange` | ✅ PASS |
+| 7. Sprint 16 regression: date ranges on home page | TripCard.test.jsx (17 tests) all pass; `formatDateRange` exports intact | ✅ PASS |
+| 8. Sprint 15 regression: title, favicon, land travel chips | 416 frontend tests pass — TripCalendar (70 tests), TripCard (17 tests) | ✅ PASS |
+| 9. Sprint 14 regression: Today button, first-event-month | TripCalendar.test.jsx (70 tests) all pass | ✅ PASS |
+| 10. No new API endpoints introduced | api-contracts.md confirms Sprint 17 = frontend-only, zero schema changes | ✅ PASS |
+
+---
+
+### Config Consistency Check
+- **Status:** PASS
+- **Details:**
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| Backend PORT | ✅ PASS | `backend/.env` → `PORT=3000` |
+| Vite proxy target | ✅ PASS | `vite.config.js` defaults `BACKEND_PORT` to `'3000'` — matches backend dev PORT |
+| SSL consistency | ✅ PASS | `backend/.env` has SSL lines commented out (dev mode); vite `backendSSL` defaults `false` — both use HTTP for local dev |
+| `CORS_ORIGIN` includes `http://localhost:5173` | ✅ PASS | `backend/.env` → `CORS_ORIGIN=http://localhost:5173` |
+| Docker Compose PORT | ✅ PASS | `infra/docker-compose.yml` backend env sets `PORT: 3000` — consistent with local dev |
+| JWT_SECRET in `.env` | ⚠️ NOTE | `JWT_SECRET=change-me-to-a-random-string` in dev `.env` (pre-existing; staging `.env.staging` uses rotated secret per T-145) |
+
+No new config changes were introduced in Sprint 17. All previous consistency findings unchanged.
+
+---
+
+### Security Scan
+- **Status:** PASS
+- **npm audit (backend):** 5 moderate severity vulnerabilities (esbuild ≤0.24.2 → vite → vitest chain). All dev-only, pre-existing since Sprint 15, no new Critical/High findings. Fix requires breaking vitest upgrade (`npm audit fix --force` → vitest@4.x). Accepted as-is per project policy.
+- **npm audit (frontend):** Same 5 moderate dev-only vulnerabilities. Same pre-existing chain. No new Critical/High findings.
+
+#### Security Checklist — T-170 (Code Cleanup)
+
+| Item | Check | Result |
+|------|-------|--------|
+| No hardcoded secrets | `.datesNotSet` CSS rule: pure CSS color utility, no script execution | ✅ PASS |
+| No XSS vectors | T-170 changes are CSS + function removal — no HTML output, no DOM manipulation | ✅ PASS |
+| No injection risk | No database queries changed; no user input handling modified | ✅ PASS |
+| Dead code fully removed | `formatTripDateRange` absent from `formatDate.js`; 5 dead tests removed from `formatDate.test.js` | ✅ PASS |
+| Comment accuracy | `formatDate.js` file-level comment on line 8 updated to: "derive date range from the earliest and latest dates across all event types (flights, stays, activities, land travels)" | ✅ PASS |
+
+#### Security Checklist — T-172 (Print Button)
+
+| Item | Check | Result |
+|------|-------|--------|
+| No `dangerouslySetInnerHTML` | `TripDetailsPage.jsx` grep confirms zero occurrences | ✅ PASS |
+| `window.print()` is safe native API | `onClick={() => window.print()}` — no custom print logic, no error risk | ✅ PASS |
+| No sensitive data in DOM attributes | Button has only `className`, `onClick`, `aria-label` — no data attributes with sensitive content | ✅ PASS |
+| `print.css` security-neutral | Pure `@media print` layout rules; no script injection; no external resource loading; no CORS implications | ✅ PASS |
+| Button accessible | `aria-label="Print itinerary"` present and verified by T-172-C unit test | ✅ PASS |
+| No new API calls | Frontend-only change confirmed by Manager review and api-contracts.md | ✅ PASS |
+| Auth enforcement unchanged | No route changes; all resource endpoints continue to require `authenticate` middleware | ✅ PASS |
+
+#### Full Security Checklist Status
+
+| Category | Status |
+|----------|--------|
+| Authentication & Authorization | ✅ All API resource routes use `router.use(authenticate)` middleware |
+| Input Validation & Injection Prevention | ✅ No new user inputs; Knex query builder used throughout (no raw SQL string concat) |
+| API Security | ✅ CORS configured to `http://localhost:5173`; rate limiting in place; no stack traces in responses |
+| Data Protection | ✅ No credentials in code; `.env` values used for secrets |
+| Infrastructure | ✅ HTTPS on staging (T-145); `npm audit` no new Critical/High; no default credentials |
+
+---
+
+### Overall: PASS
+
+| Category | Result |
+|----------|--------|
+| Backend Unit Tests (T-173) | ✅ 278/278 PASS |
+| Frontend Unit Tests (T-173) | ✅ 416/416 PASS |
+| Integration Scenarios (T-174) | ✅ 10/10 PASS |
+| Config Consistency | ✅ PASS (no changes in Sprint 17) |
+| Security Checklist — T-170 | ✅ PASS |
+| Security Checklist — T-172 | ✅ PASS |
+| npm audit (backend) | ⚠️ 5 Moderate dev-only (pre-existing, accepted) |
+| npm audit (frontend) | ⚠️ 5 Moderate dev-only (pre-existing, accepted) |
+| No new Critical/High vulnerabilities | ✅ CONFIRMED |
+
+**QA VERDICT: SPRINT 17 PASS — ALL CHECKS CLEAR**
+
+T-170 (code cleanup: opacity fix, dead code removal, comment update) and T-172 (print button aria-label + text update with T-172-A–D tests) meet all acceptance criteria. No security issues introduced. No regressions. Backend unchanged at 278/278. Frontend at 416/416 (correct count per T-170+T-172 arithmetic). Deploy Engineer (T-175) is unblocked.
+
