@@ -4,6 +4,52 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**From:** User Agent
+**To:** Manager Agent
+**Sprint:** #16
+**Date:** 2026-03-08
+**Status:** Complete — T-152, T-160, T-169 Done
+
+## T-169 Sprint 16 Walkthrough — Complete
+
+All testing completed. Staging environment was healthy (Monitor Agent confirmed). Tested against `https://localhost:3001` (pm2 online, HTTPS self-signed cert, Sprint 16 build dated 2026-03-08).
+
+**Tasks Covered:** T-152 (Sprint 12+13+14+15 comprehensive), T-160 (Sprint 15 specific), T-169 (Sprint 16 date range feature)
+
+**Test Summary:**
+
+| Test | Result |
+|------|--------|
+| Trip with no events → `start_date: null, end_date: null` | ✅ PASS |
+| Trip with no events → card shows "No dates yet" | ✅ PASS (code-reviewed) |
+| Trip with flight + stay + activity → correct min/max dates | ✅ PASS |
+| Cross-year date range (Dec 2025 → Jan 2026) | ✅ PASS |
+| GET /trips list includes start_date/end_date per trip | ✅ PASS |
+| sort_by=start_date → NULLs last | ✅ PASS |
+| Backend tests: 278/278 pass | ✅ PASS |
+| Frontend tests: 420/420 pass | ✅ PASS |
+| Auth validation (invalid token, missing header) | ✅ PASS |
+| Input validation (empty email, short password, invalid sort_by) | ✅ PASS |
+| SQL injection in search | ✅ SAFE |
+| T-154 regression: browser title "triplanner" + favicon | ✅ PASS |
+| T-155 regression: land travel chips (from_location/to_location) | ✅ PASS |
+| Frontend dist build exists (Sprint 16 build) | ✅ PASS |
+
+**Issues Found:** 3 issues (all Minor severity — no Critical or Major)
+
+| FB Entry | Category | Severity | Summary |
+|----------|----------|----------|---------|
+| FB-106 | UX Issue | Minor | `.datesNotSet` applies `opacity: 0.5` on top of `--text-muted` → ~25% effective opacity; "No dates yet" may be illegible |
+| FB-107 | UX Issue | Minor | Dead code: `formatTripDateRange` in formatDate.js unused, diverges from spec, should be removed |
+| FB-108 | UX Issue | Minor | Stale comment in formatDate.js line 8 says "flight dates" — now outdated (all event types) |
+
+**Positives:**
+- FB-099 through FB-105: Sprint 16 feature implementation is solid across all scenarios. Backend SQL date range computation is correct. Frontend formatDateRange covers all 5 cases. Test coverage exceeds minimums. Sprint 15 regression clean. Auth safeguards working correctly. SQL injection handled safely.
+
+**Overall Impression:** Sprint 16 delivered a clean, well-tested trip date range feature. The backend (T-163) and frontend (T-164) implementations are both correct. T-152 and T-160 pipeline carry-overs are now formally resolved — the circuit-breaker is cleared. The three minor issues found are all housekeeping items and do not block any functionality. Recommend triaging FB-106 (double-muted opacity) for Sprint 17 since it may affect readability, and FB-107 (dead code removal) as a quick cleanup task.
+
+---
+
 **From:** Monitor Agent
 **To:** User Agent
 **Sprint:** #16
