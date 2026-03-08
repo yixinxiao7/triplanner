@@ -2083,4 +2083,95 @@ Sprint 13 must begin with immediate correction of the T-131 staging deployment f
 
 ---
 
+### Sprint #17 — 2026-03-08 to 2026-03-08
+
+**Goal:** Apply three code-quality improvements from Sprint 16 feedback (T-170: fix double-muted opacity on "No dates yet" text, remove dead `formatTripDateRange` function, update stale comment in formatDate.js). Deliver the long-deferred trip print/export feature (B-032): a "Print itinerary" button on the trip details page triggering `window.print()` with a clean CSS `@media print` layout. Complete the full QA → Deploy → Monitor → User Agent pipeline.
+
+**Goal Met:** ⚠️ PARTIAL — Implementation (T-170, T-171, T-172), QA (T-173, T-174), and Deploy (T-175) phases all completed cleanly with no rework. Monitor Agent (T-176) and User Agent (T-177) pipeline stages did not execute before sprint close and carry over to Sprint 18.
+
+---
+
+**Tasks Completed (7/9):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-170 | Frontend: Code cleanup bundle — opacity fix on `.datesNotSet`, remove `formatTripDateRange` dead code + 5 dead tests, update stale comment in formatDate.js | ✅ Done |
+| T-171 | Design Agent: Spec 17 — Trip print/export view (single-column, black-on-white, page-break rules, hidden controls, IBM Plex Mono 12pt) | ✅ Done |
+| T-172 | Frontend: Implement trip print/export — "Print itinerary" button (`window.print()`, `aria-label`), `print.css` @media print rules | ✅ Done |
+| T-173 | QA: Security checklist + code review for Sprint 17 (T-170 + T-172) — 416/416 frontend tests, 278/278 backend tests, npm audit clean | ✅ Done |
+| T-174 | QA: Integration testing — print button visible/accessible, opacity legibility, Sprint 16/15/14/13 regression | ✅ Done |
+| T-175 | Deploy: Sprint 17 frontend rebuild (Vite, 122 modules, 458ms, 0 errors) and staging deployment; smoke tests PASS | ✅ Done |
+| MGR-S17 | Manager: Code review pass (T-170 + T-172 spot-check) — both approved first pass | ✅ Done |
+
+**Tasks Carried Over to Sprint 18:**
+
+| ID | Description | Reason |
+|----|-------------|--------|
+| T-176 | Monitor Agent: Sprint 17 staging health check | Orchestrator cycle ended before Monitor phase executed; T-175 deploy is live and ready for verification |
+| T-177 | User Agent: Sprint 17 feature walkthrough | Blocked by T-176; not reached |
+
+---
+
+**Test Results:**
+- Frontend: 416/416 tests pass (420 original − 5 dead `formatTripDateRange` tests + 4 new T-172 print tests − 3 replaced T-122 tests = 416)
+- Backend: 278/278 tests pass (no backend changes in Sprint 17)
+- npm audit: 5 moderate dev-only findings (esbuild/vitest/vite-node chain, pre-existing from Sprint 15) — no new Critical/High
+
+---
+
+**Key Decisions:**
+- No ADRs created this sprint. Sprint 17 was polish + CSS-only feature (no schema changes, no new API endpoints).
+- Confirmed: `print.css` was partially implemented from T-122 (Sprint 8). T-172 formalized it per Spec 17: updated button text to "Print itinerary", corrected aria-label, replaced 3 stale T-122 tests with 4 proper T-172 tests.
+- `formatTripDateRange` was confirmed dead code (not imported by any production component at time of removal). `formatDateRange` is the sole spec-compliant formatter going forward.
+
+---
+
+**Feedback Summary:**
+- No Sprint 17 User Agent walkthrough feedback (T-177 not reached). No new feedback-log.md entries for Sprint 17.
+- Sprint 16 Minor feedback (FB-106 opacity, FB-107 dead code, FB-108 stale comment) fully resolved: all three items delivered in T-170.
+
+---
+
+**Retrospective Notes:**
+
+- **What went well:** Implementation phase clean — Manager approved T-170 and T-172 on first review pass (no rework). QA (T-173, T-174) and Deploy (T-175) all PASS with zero issues. Codebase hygiene improved: dead `formatTripDateRange` function and its 5 non-spec tests removed; CSS opacity stacking bug fixed; stale comment updated. The print feature delivers on a backlog item (B-032) deferred since Sprint 8.
+
+- **What to improve:** Monitor Agent and User Agent pipeline stages did not execute before sprint closeout — Sprint 18 must run T-176 and T-177 as its first priority before beginning any new feature work. The Deploy Engineer's early pre-deploy gate check (before T-170/T-172 were complete) reflects an orchestration ordering issue; Deploy should not be invoked until QA signals readiness.
+
+- **Action items for next sprint:** (1) Complete T-176 + T-177 first. (2) Implement auth rate limiting (B-020 — 17+ sprints deferred, now P1). (3) Design spec for multi-destination structured UI (B-007).
+
+---
+
+**Technical Debt Noted:**
+- ⚠️ **B-020 (Auth rate limiting) — CRITICAL DEFERRAL:** express-rate-limit installed but not applied to /auth/login or /auth/register. This has been an accepted risk since Sprint 1 (17 sprints). Must be resolved in Sprint 18.
+- ⚠️ **B-021 (esbuild dev dep moderate vulnerabilities):** 5 moderate findings (GHSA-67mh-4wv8-2f99) — dev-only, no production risk, pre-existing from Sprint 15. Awaiting upstream vitest patch.
+- ⚠️ **B-022 (Production deployment) — 17 consecutive sprints:** Project owner must select a hosting provider. Infrastructure is production-ready. Project owner action required.
+- ⚠️ **B-007 (Multi-destination structured UI):** Destinations stored as TEXT ARRAY; UI renders as comma-separated string. No structured add/edit/remove per destination. Design spec needed for Sprint 18.
+
+---
+
+**Next Sprint Focus (Sprint 18 Recommendations):**
+
+**P1 — Pipeline Completion (start immediately):**
+1. **T-176** (carry-over) — Monitor Agent: Sprint 17 staging health check. T-175 deploy is live; verification pending.
+2. **T-177** (carry-over) — User Agent: Sprint 17 feature walkthrough. Blocked by T-176.
+
+**P1 — Security (long-deferred):**
+3. **T-178** — Backend: Auth rate limiting (B-020). Apply express-rate-limit to /auth/login and /auth/register. In-memory store acceptable at current scale.
+
+**P2 — UX Foundation:**
+4. **T-179** — Design Agent: Multi-destination structured UI spec (B-007, Spec 18). Spec first; implementation in Sprint 19.
+
+**P1 — Full QA + Deploy Pipeline:**
+5. T-180 (QA), T-181 (Deploy), T-182 (Monitor), T-183 (User Agent).
+
+**Ongoing:**
+- B-022 (Production deployment — 17 consecutive sprints): Project owner must review `.workflow/hosting-research.md` and select a hosting provider.
+
+---
+
+*Sprint #17 began and closed 2026-03-08.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

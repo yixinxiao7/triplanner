@@ -4,123 +4,167 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #17 — 2026-03-08
+## Sprint #18 — 2026-03-08
 
-**Sprint Goal:** Apply three code-quality improvements from Sprint 16 feedback (T-170: fix double-muted opacity on "No dates yet" text, remove dead `formatTripDateRange` function, update stale comment). Deliver the long-deferred trip print/export feature (B-032): a "Print itinerary" button on the trip details page that triggers a browser print dialog with a clean, printer-friendly layout. Complete the full QA → Deploy → Monitor → User Agent pipeline.
+**Sprint Goal:** Close the Sprint 17 pipeline carry-overs (Monitor Agent health check T-176 + User Agent walkthrough T-177 — staging is already live from T-175). Implement auth rate limiting (B-020) to resolve the 17-sprint security deferral on /auth/login and /auth/register. Produce the Spec 18 design spec for multi-destination structured UI (B-007), enabling Sprint 19 frontend implementation. Complete the full QA → Deploy → Monitor → User Agent pipeline for Sprint 18 changes.
 
-**Context:** Sprint 16 delivered all 12 tasks cleanly — trip date range display on home page cards is live, and T-152 circuit-breaker was finally resolved after 8 consecutive carry-overs. The Sprint 16 User Agent walkthrough (T-169) found no Critical or Major issues — only three Minor code-quality items now bundled into T-170. The MVP feature set (auth, trips CRUD, flights/stays/activities with edit, land travel, calendar, date ranges) is complete. Sprint 17 is a polish + deferred-feature sprint with a light implementation scope.
+**Context:** Sprint 17 delivered all 7 in-scope tasks cleanly (T-170 code cleanup, T-171 design spec, T-172 print/export implementation, T-173/T-174 QA, T-175 deploy, MGR-S17 code review). The staging build is live. T-176 (Monitor) and T-177 (User Agent) did not execute before sprint close — they are Sprint 18's first deliverables. Auth rate limiting (B-020) has been an accepted security risk since Sprint 1; 17 sprints is too long — it ships in Sprint 18. Multi-destination structured UI (B-007) gets its design spec this sprint so implementation can follow in Sprint 19.
 
-**Feedback Triage (Sprint 16 → Sprint 17 — Manager Agent 2026-03-08):**
+**Feedback Triage (Sprint 17 → Sprint 18 — Manager Agent 2026-03-08):**
 
 | FB Entry | Category | Severity | Status | Disposition |
 |----------|----------|----------|--------|-------------|
-| FB-099 | Positive | — | Acknowledged | Trip with no events shows "No dates yet" — T-164 empty state confirmed |
-| FB-100 | Positive | — | Acknowledged | Mixed-event trip date range (same month) correct — T-163 SQL correct |
-| FB-101 | Positive | — | Acknowledged | Cross-year date range computed and formatted correctly |
-| FB-102 | Positive | — | Acknowledged | GET /trips list includes start_date/end_date; NULLs sorted last |
-| FB-103 | Positive | — | Acknowledged | Test suites exceed thresholds (278 backend, 420 frontend) |
-| FB-104 | Positive | — | Acknowledged | Sprint 15 regression clean (title, favicon, land travel chips) |
-| FB-105 | Positive | — | Acknowledged | Auth and validation safeguards working as expected |
-| FB-106 | UX Issue | Minor | **Tasked → T-170** | `.datesNotSet` double-muted opacity (~25% effective) — remove `opacity: 0.5` |
-| FB-107 | UX Issue | Minor | **Tasked → T-170** | `formatTripDateRange` dead code with non-spec behavior — remove + 5 dead tests |
-| FB-108 | Suggestion | — | **Acknowledged → T-170** | Stale comment in formatDate.js line 8 — update to reflect all event types |
+| — | — | — | N/A | No Sprint 17 User Agent feedback — T-177 not reached. T-176 + T-177 carry over as Sprint 18 Phase 0. |
+| B-020 | Security | Major | **Tasked → T-178** | Auth rate limiting on /auth/login + /auth/register. 17-sprint deferral closed in Sprint 18. |
+| B-007 | Feature Gap | Minor | **Tasked → T-179** | Multi-destination structured UI design spec (implementation Sprint 19). |
 
 ---
 
 ## In Scope
 
-### Phase 1 — Code Cleanup + Design Spec (parallel, no dependencies — start immediately)
+### Phase 0 — Pipeline Carry-over (HIGHEST PRIORITY — start before all other work)
 
-- [ ] **T-170** — Frontend Engineer: Code cleanup from Sprint 16 feedback ← **NO DEPENDENCIES — START IMMEDIATELY** (P2)
-  - **FB-106:** Remove `opacity: 0.5` from `.datesNotSet` in `TripCard.module.css`. Also remove duplicate definition at line 159 (hardcoded rgba — dead code, overridden by line 211). Only `color: var(--text-muted)` should remain on `.datesNotSet`.
-  - **FB-107:** Remove `formatTripDateRange` export from `formatDate.js`. Remove its 5 associated tests from `formatDate.test.js`. Verify `formatDateRange` (spec-compliant) remains intact.
-  - **FB-108:** Update file-level comment on `formatDate.js` line 8 from "derive date range from flight dates" to "derive date range from the earliest and latest dates across all event types (flights, stays, activities, land travels)."
-  - **Test plan:** All 415+ frontend tests pass (5 fewer after dead test removal). `formatDateRange` still exported and passing.
+*T-175 (Sprint 17 deploy) is live on staging. T-176 and T-177 simply need to run against it.*
 
-- [ ] **T-171** — Design Agent: Spec 17 — Trip print/export view ← **NO DEPENDENCIES — START IMMEDIATELY** (P2)
-  - Trigger: "Print itinerary" `<button>` on trip details page header, `onClick={() => window.print()}`
-  - Print layout: single-column, linear, black on white; hide navbar/calendar/interactive controls
-  - Section ordering: trip name + destinations + date range → Flights → Stays → Activities (day-grouped) → Land Travel
-  - Empty section rule: omit entirely if section has no events (no empty-state CTAs in print)
-  - Page break: `page-break-inside: avoid` on individual event cards
-  - Typography: IBM Plex Mono at 12pt minimum; print units preferred
-  - Colors: `#000` text on `#fff` background in print; no CSS custom properties that may not resolve in print
-  - Implementation approach: CSS `@media print` in `frontend/src/styles/print.css` imported in TripDetailsPage
-  - Publish to `ui-spec.md` as Spec 17. Manager must approve before T-172 begins.
+- [ ] **T-176** — Monitor Agent: Sprint 17 staging health check ← **NO DEPENDENCIES — START IMMEDIATELY** (P1)
+  - HTTPS handshake + pm2 `triplanner-backend` online on port 3001
+  - `GET /api/v1/health` → 200
+  - **Sprint 17 verification:** "Print itinerary" button visible on trip details page ✅; "No dates yet" text legible (T-170 opacity fix) ✅
+  - **Sprint 16 regression:** `GET /trips` returns `start_date`/`end_date`; empty trip → null dates ✅
+  - **Sprint 15 regression:** title "triplanner", favicon, land travel chip locations ✅
+  - **Sprint 14 regression:** calendar first-event-month, "Today" button ✅
+  - `npx playwright test` → 7/7 PASS ✅
+  - Log results in qa-build-log.md Sprint 17 section. Handoff to User Agent (T-177).
 
----
-
-### Phase 2 — Implementation (after T-171 approved)
-
-- [ ] **T-172** — Frontend Engineer: Implement trip print/export view ← Blocked by T-171 (P2)
-  - Add "Print itinerary" button to trip details page header with `aria-label="Print itinerary"`
-  - Create `frontend/src/styles/print.css` with `@media print` rules:
-    - Hide: navbar, calendar widget, all edit/add/delete buttons, print button itself, toasts/overlays
-    - Override: background → white, text → black, font-size → 12pt
-    - `page-break-inside: avoid` on each event card
-    - Omit empty sections (either CSS `.has-items` guard or `display: none` on empty state elements)
-  - Import `print.css` in `TripDetailsPage.jsx` (or globally in `main.jsx`)
-  - No new API endpoints; no schema changes
-  - Tests: (A) button renders on TripDetailsPage; (B) click calls `window.print()`; (C) aria-label correct; (D) existing TripDetailsPage tests still pass
-  - All 415+ existing frontend tests (after T-170 cleanup) must pass
-
----
-
-### Phase 3 — QA Review (after T-170 + T-172 complete)
-
-- [ ] **T-173** — QA Engineer: Security checklist + code review for Sprint 17 ← Blocked by T-170, T-172 (P1)
-  - T-170: `.datesNotSet` no opacity stacking; `formatTripDateRange` absent; comment updated; 415+ tests pass
-  - T-172: `window.print()` call safe; no dangerouslySetInnerHTML; aria-label present; no hardcoded colors in print.css; no sensitive data in button attributes
-  - Run full test suites: frontend (415+), backend (278+ — no backend changes)
-  - Run `npm audit` — flag any new Critical/High findings
-
-- [ ] **T-174** — QA Engineer: Integration testing for Sprint 17 ← Blocked by T-173 (P1)
+- [ ] **T-177** — User Agent: Sprint 17 feature walkthrough ← Blocked by T-176 (P2)
   - Print button visible on trip details page ✅
-  - Print button has correct aria-label ✅
-  - "No dates yet" is legible (opacity fix from T-170 working) ✅
+  - Clicking "Print itinerary" opens browser print dialog ✅
+  - Button has `aria-label="Print itinerary"` ✅
+  - "No dates yet" text is legible (not over-dimmed after opacity fix) ✅
   - Home page date ranges still correct (formatTripDateRange removal did not affect formatDateRange) ✅
-  - Sprint 16 regression: date ranges, "No dates yet" ✅
-  - Sprint 15 regression: title, favicon, land travel chip locations ✅
-  - Sprint 14 + Sprint 13 + Sprint 11 regression ✅
-  - Handoff to Deploy (T-175)
+  - Sprint 16 + Sprint 15 + Sprint 14 + Sprint 13 + Sprint 11 regression ✅
+  - Submit structured feedback to `feedback-log.md` under Sprint 18 User Agent Feedback header
+
+---
+
+### Phase 1 — Backend Security Fix + Design Spec (parallel, no dependencies — start immediately)
+
+- [ ] **T-178** — Backend Engineer: Auth rate limiting (B-020) ← **NO DEPENDENCIES — START IMMEDIATELY** (P1)
+  - `express-rate-limit` is already installed (verified Sprint 1). No new dependencies needed.
+  - Create `backend/src/middleware/rateLimiter.js` with two limiter instances:
+    - **loginLimiter:** 10 attempts per IP per 15-minute window → 429 `{"code":"RATE_LIMITED","message":"Too many login attempts, please try again later."}`
+    - **registerLimiter:** 5 attempts per IP per 60-minute window → 429 `{"code":"RATE_LIMITED","message":"Too many registration attempts, please try again later."}`
+  - Both limiters: `standardHeaders: true, legacyHeaders: false`
+  - Apply limiters to auth router in `backend/src/routes/auth.js` — before the route handler
+  - Tests (add to `backend/src/__tests__/auth.test.js` or new `rateLimiter.test.js`):
+    - (A) Login within limit → 200/401 (not rate limited)
+    - (B) Login at attempt 11 in window → 429 `RATE_LIMITED`
+    - (C) Register within limit → 201/409
+    - (D) Register at attempt 6 in window → 429 `RATE_LIMITED`
+    - (E) Non-auth route (GET /api/v1/trips) is NOT rate limited
+  - All 278+ existing backend tests must continue to pass
+
+- [ ] **T-179** — Design Agent: Multi-destination structured UI spec (B-007, Spec 18) ← **NO DEPENDENCIES — START IMMEDIATELY** (P2)
+  - Destinations remain stored as TEXT ARRAY on the backend — no schema change
+  - **Create trip modal:** Replace single text input with chip/tag multi-input. Enter or "+" adds a chip. × removes a chip. At least 1 destination required.
+  - **Trip card (home page):** Destinations rendered as readable list (truncate at 3: "Paris, Rome, +1 more")
+  - **Trip details page header:** Destination chips displayed inline (comma-separated or chip row)
+  - **Edit destinations:** "Edit destinations" control (pencil icon or button near header). Opens inline or modal chip editor. On save: PATCH /api/v1/trips/:id with updated destinations array.
+  - **Validation:** "Add at least one destination" when 0 chips on submit
+  - **Accessibility:** Each × chip button has `aria-label="Remove [destination name]"`
+  - **Styling:** Consistent with existing minimal Japandi aesthetic (IBM Plex Mono, #02111B palette)
+  - Publish to `ui-spec.md` as Spec 18. Log handoff to Manager for approval before T-180 begins.
+
+---
+
+### Phase 2 — Frontend Implementation (after T-179 approved by Manager)
+
+- [ ] **T-180** — Frontend Engineer: Multi-destination structured UI per Spec 18 ← Blocked by T-179 (P2)
+  - **Create trip modal (`CreateTripModal.jsx`):** Replace destinations text input with chip input component. State: `destinations: string[]`. Add chip on Enter keypress or "+" button click. Remove chip on × click. Submit sends `destinations` as string array (existing API shape). Disable submit if `destinations.length === 0`. Validation message "Add at least one destination."
+  - **Trip card (`TripCard.jsx`):** Display destinations as readable list. Truncate: if > 3, show first 3 + "+N more".
+  - **Trip details page (`TripDetailsPage.jsx`):** Render destinations as chips in header. Add "Edit destinations" button (pencil icon). Clicking opens chip editor (can reuse chip input component). On save: call `api.trips.update(tripId, { destinations: [...] })` → PATCH. Reload trip data on success.
+  - **No new API endpoints or schema changes** — destinations array is already the contract
+  - **Tests:** Add to modal test, TripCard test, TripDetailsPage test:
+    - Chip added on Enter keystroke
+    - Chip removed on × click
+    - Submit blocked with 0 chips (validation message present)
+    - TripCard renders all destinations (or truncated form)
+    - TripDetailsPage shows edit control; save calls PATCH with correct array
+  - All 416+ existing frontend tests must pass
+
+---
+
+### Phase 3 — QA Review (after T-178 + T-180 complete)
+
+- [ ] **T-181** — QA Engineer: Security checklist + code review for Sprint 18 ← Blocked by T-178, T-180 (P1)
+  - **T-178 (rate limiting) security:**
+    - Limiter uses IP as key (not user-supplied input) ✅
+    - 429 response body uses `RATE_LIMITED` code — no stack trace, no internal details ✅
+    - `standardHeaders: true` — rate limit headers present in response ✅
+    - Non-auth endpoints unaffected ✅
+  - **T-180 (destinations UI) security:**
+    - Destination chip values rendered as React text nodes — no `dangerouslySetInnerHTML` ✅
+    - PATCH request sends `destinations` as plain string array — no SQL injection vector (Knex parameterized) ✅
+    - Destination names displayed safely — XSS check ✅
+    - No hardcoded secrets introduced ✅
+  - Run `npm test --run` in `backend/` (278+ base + new rate limiter tests)
+  - Run `npm test --run` in `frontend/` (416+ base + new chip input tests)
+  - Run `npm audit` — flag any new Critical/High findings
+  - Full report in qa-build-log.md Sprint 18 section
+
+- [ ] **T-182** — QA Engineer: Integration testing for Sprint 18 ← Blocked by T-181 (P1)
+  - **Rate limiting:** Simulate 11 POST /auth/login requests → 10th returns 200/401, 11th returns 429 `RATE_LIMITED` ✅
+  - **Rate limiting — register:** Simulate 6 POST /auth/register requests → 5th returns 201/409, 6th returns 429 ✅
+  - **Destinations — create:** Open create modal → add 3 destination chips → submit → verify trip created with all 3 in array ✅
+  - **Destinations — edit:** Open trip details → edit destinations → remove 1, add 1 → save → verify PATCH called correctly ✅
+  - **Destinations — card:** Verify all trip card destination displays correct ✅
+  - **Sprint 17 regression:** Print button still visible; "No dates yet" still legible after re-deploy ✅
+  - **Sprint 16 + Sprint 15 + Sprint 14 regression** ✅
+  - Full report in qa-build-log.md Sprint 18 section. Handoff to Deploy (T-183).
 
 ---
 
 ### Phase 4 — Deploy, Monitor, User Agent (sequential after Phase 3)
 
-- [ ] **T-175** — Deploy Engineer: Sprint 17 staging re-deployment ← Blocked by T-174 (P1)
-  - **Backend:** No migrations, no backend changes. Verify pm2 `triplanner-backend` still online (port 3001). No restart needed unless backend was stopped.
-  - **Frontend:** `npm run build` in `frontend/`. Confirm 0 errors. Confirm `print.css` included in built assets.
-  - Smoke tests: health ✅; home page date ranges unaffected ✅; trip details "Print itinerary" button visible ✅; Sprint 15 features (title/favicon) operational ✅
+- [ ] **T-183** — Deploy Engineer: Sprint 18 staging re-deployment ← Blocked by T-182 (P1)
+  - **Backend:** T-178 adds `rateLimiter.js` middleware — `pm2 restart triplanner-backend`. Verify online.
+  - **Frontend:** `npm run build` in `frontend/`. Confirm 0 errors.
+  - **Smoke tests:**
+    - `GET /api/v1/health` → `{"status":"ok"}` ✅
+    - POST /auth/login (valid creds) → 200 (rate limiter not triggered by single request) ✅
+    - Trip details page: destinations chips visible in header ✅
+    - "Print itinerary" button still visible (Sprint 17 regression) ✅
+    - Home page date ranges unaffected (Sprint 16 regression) ✅
   - Do NOT modify `backend/.env` or `backend/.env.staging`
-  - Handoff to Monitor (T-176)
+  - Log handoff to Monitor (T-184) in handoff-log.md. Full report in qa-build-log.md.
 
-- [ ] **T-176** — Monitor Agent: Sprint 17 staging health check ← Blocked by T-175 (P1)
+- [ ] **T-184** — Monitor Agent: Sprint 18 staging health check ← Blocked by T-183 (P1)
   - HTTPS ✅, pm2 port 3001 ✅, health 200 ✅
-  - "Print itinerary" button present on trip details page ✅
-  - "No dates yet" opacity fix visible (legible muted text) ✅
-  - Sprint 16 regression (date ranges) ✅; Sprint 15 regression (title/favicon) ✅
-  - Playwright 7/7 ✅
-  - Handoff to User Agent (T-177)
+  - **Sprint 18 — Rate limiting:** 11 rapid POST /auth/login requests → first 10: 200/401, 11th: 429 ✅
+  - **Sprint 18 — Destinations UI:** Trip details page shows destination chips; "Edit destinations" control visible ✅
+  - **Sprint 17 regression:** "Print itinerary" button visible ✅; "No dates yet" legible ✅
+  - **Sprint 16 regression:** start_date/end_date on trips ✅
+  - **Sprint 15 regression:** title "triplanner", favicon ✅
+  - `npx playwright test` → 7/7 PASS ✅
+  - Full report in qa-build-log.md Sprint 18 section. Handoff to User Agent (T-185).
 
-- [ ] **T-177** — User Agent: Sprint 17 feature walkthrough ← Blocked by T-176 (P2)
-  - "Print itinerary" button visible on trip details page ✅
-  - Clicking button opens browser print dialog ✅
-  - Button has correct aria-label ✅
-  - "No dates yet" text is legible (not over-dimmed) after opacity fix ✅
-  - Home page date ranges still correct (formatTripDateRange removal regression check) ✅
-  - Sprint 16 + Sprint 15 + Sprint 14 + Sprint 13 + Sprint 11 regression ✅
-  - Submit structured feedback to `feedback-log.md` under Sprint 18 header
+- [ ] **T-185** — User Agent: Sprint 18 feature walkthrough ← Blocked by T-184 (P2)
+  - **Rate limiting:** Attempt 11 rapid logins with wrong password → verify 429 (or user-facing error message) on 11th attempt ✅
+  - **Multi-destination — Create:** Create trip with 3 destination chips → verify all 3 appear on trip card ✅
+  - **Multi-destination — Edit:** Edit destinations on trip details → remove 1, add 1 → save → verify header updates ✅
+  - **Sprint 17 regression:** Print button visible, "No dates yet" legible ✅
+  - **Sprint 16 + Sprint 15 + Sprint 14 + Sprint 13 + Sprint 11 regression** ✅
+  - Submit structured feedback to `feedback-log.md` under Sprint 19 User Agent Feedback header
 
 ---
 
 ## Out of Scope
 
-- **Production deployment (B-022)** — Pending project owner hosting decision. `.workflow/hosting-research.md` (T-124) awaits review. **17 consecutive sprints with no decision. Project owner action required.**
-- **B-020 (Redis rate limiting)** — Deferred. In-memory acceptable at current scale.
-- **B-021 (esbuild dev dep vulnerability)** — No production impact. Monitor for upstream fix.
-- **B-024 (per-account rate limiting)** — Depends on B-020. Deferred.
-- **B-007 (multi-destination structured UI)** — Deferred to Sprint 18+. Destinations currently stored as TEXT ARRAY; UI is comma-separated display.
+- **Multi-destination frontend implementation** — design spec (T-179) ships in Sprint 18; implementation (T-180) is in Sprint 18 too if spec is approved early — otherwise implementation goes to Sprint 19.
+- **Production deployment (B-022)** — Pending project owner hosting decision. `.workflow/hosting-research.md` (T-124) awaits review. **18 consecutive sprints with no decision. Project owner action required.**
+- **B-021 (esbuild dev dep vulnerability)** — No production impact. Monitor for upstream vitest patch.
+- **B-024 (per-account rate limiting)** — Depends on B-020 completion. Defer to Sprint 19+ if needed.
+- **Redis for rate limiting** — express-rate-limit in-memory store sufficient at current scale. Redis upgrade is B-020 extended scope.
 - **MFA login** — Explicitly out of scope per project brief.
 - **Home page summary calendar** — Explicitly out of scope per project brief.
 - **Auto-generated itinerary suggestions** — Explicitly out of scope per project brief.
@@ -131,80 +175,88 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Frontend Engineer | Code cleanup (opacity fix, dead code removal, stale comment) | T-170 |
-| Design Agent | Trip print/export UI spec | T-171 |
-| Frontend Engineer | Implement trip print/export view | T-172 |
-| QA Engineer | Security checklist + integration testing | T-173, T-174 |
-| Deploy Engineer | Sprint 17 staging re-deployment | T-175 |
-| Monitor Agent | Sprint 17 staging health check | T-176 |
-| User Agent | Sprint 17 feature walkthrough + feedback | T-177 |
-| Manager | Triage T-177 feedback → Sprint 18 plan | Feedback triage |
+| Monitor Agent | Complete Sprint 17 health check carry-over | T-176 (immediate) |
+| User Agent | Complete Sprint 17 walkthrough carry-over | T-177 (after T-176) |
+| Backend Engineer | Auth rate limiting (B-020 security fix) | T-178 |
+| Design Agent | Multi-destination structured UI spec (B-007) | T-179 |
+| Frontend Engineer | Multi-destination structured UI implementation | T-180 |
+| QA Engineer | Security checklist + integration testing | T-181, T-182 |
+| Deploy Engineer | Sprint 18 staging re-deployment | T-183 |
+| Monitor Agent | Sprint 18 staging health check | T-184 |
+| User Agent | Sprint 18 feature walkthrough | T-185 |
+| Manager | Triage T-185 feedback → Sprint 19 plan | Feedback triage |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-Track A — Code Cleanup (start immediately, no dependencies):
-T-170 (Frontend: code cleanup — opacity fix, dead code removal, stale comment)
+Track A — Pipeline Carry-over (start immediately, highest priority):
+T-176 (Monitor: Sprint 17 health check) → T-177 (User Agent: Sprint 17 walkthrough)
+        [T-177 submits feedback under Sprint 18 header — triaged at sprint end]
+
+Track B — Security Fix (start immediately, no blockers):
+T-178 (Backend: auth rate limiting — B-020)
          |
          └─┐
-           ├-> T-173 (QA: security + review)
            |
-Track B — New Feature (start Design immediately; impl after spec approved):
-T-171 (Design: print/export spec) --> T-172 (Frontend: print/export impl)
-                                               |
-                                               └─┘
-                                               |
-                                           T-173 (QA: security + review)
-                                               |
-                                           T-174 (QA: integration)
-                                               |
-                                           T-175 (Deploy)
-                                               |
-                                           T-176 (Monitor: Sprint 17 health)
-                                               |
-                                           T-177 (User Agent: Sprint 17 walkthrough)
-                                               |
-                                    Manager: Triage feedback → Sprint 18 plan
+Track C — Design Spec (start immediately, no blockers):
+T-179 (Design: multi-destination spec) → T-180 (Frontend: multi-destination impl)
+                                                   |
+                                                   └─┘
+                                                   |
+                                              T-181 (QA: security + review)
+                                                   |
+                                              T-182 (QA: integration)
+                                                   |
+                                              T-183 (Deploy)
+                                                   |
+                                              T-184 (Monitor: Sprint 18 health)
+                                                   |
+                                              T-185 (User Agent: Sprint 18 walkthrough)
+                                                   |
+                                         Manager: Triage feedback → Sprint 19 plan
 ```
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #17 is complete?*
+*How do we know Sprint #18 is complete?*
 
-- [ ] T-170: `.datesNotSet` CSS has no `opacity: 0.5`; `formatTripDateRange` removed from formatDate.js + its 5 tests; stale comment updated; 415+ frontend tests pass
-- [ ] T-171: Design spec for trip print/export published to ui-spec.md as Spec 17; Manager-approved
-- [ ] T-172: "Print itinerary" button on trip details page calls `window.print()`; print.css @media print rules suppress nav/calendar/buttons; 418+ frontend tests pass
-- [ ] T-173: QA security checklist passed for Sprint 17 changes; no new Critical/High audit findings
-- [ ] T-174: QA integration testing passed; Sprint 16 + Sprint 15 + prior regression clean
-- [ ] T-175: Frontend rebuilt and deployed to staging; smoke tests pass
-- [ ] T-176: Monitor confirms all Sprint 17 health checks pass
-- [ ] T-177: User Agent verifies print button and opacity fix on staging; structured feedback in feedback-log.md
-- [ ] All feedback from T-177 triaged by Manager (Tasked, Won't Fix, or Acknowledged)
-- [ ] Sprint 17 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 18 plan written in `.workflow/active-sprint.md`
+- [ ] T-176: Monitor verifies Sprint 17 staging health — print button visible, opacity fix deployed, Playwright 7/7 PASS
+- [ ] T-177: User Agent verifies Sprint 17 features on staging — print button functional, "No dates yet" legible, regressions clean; feedback submitted to feedback-log.md
+- [ ] T-178: Auth rate limiting live — /auth/login returns 429 after 10 attempts in 15min window; /auth/register returns 429 after 5 in 60min window; all 278+ backend tests pass
+- [ ] T-179: Spec 18 (multi-destination UI) published to ui-spec.md; Manager-approved
+- [ ] T-180: Multi-destination chip input in create modal; destinations display on trip card; edit destinations on trip details page; all 416+ frontend tests pass
+- [ ] T-181: QA security checklist passed for Sprint 18 changes; no new Critical/High audit findings
+- [ ] T-182: QA integration testing passed; rate limiting verified; Sprint 17/16/15 regression clean
+- [ ] T-183: Frontend + backend rebuilt and deployed to staging; smoke tests pass
+- [ ] T-184: Monitor confirms all Sprint 18 health checks pass
+- [ ] T-185: User Agent verifies rate limiting and multi-destination UI on staging; structured feedback submitted
+- [ ] All feedback from T-185 triaged by Manager (Tasked, Won't Fix, or Acknowledged)
+- [ ] Sprint 18 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 19 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #17)
+## Success Criteria (Sprint #18)
 
-By end of Sprint #17, the following must be verifiable on staging:
+By end of Sprint #18, the following must be verifiable on staging:
 
-- [ ] **T-170 Done** — "No dates yet" text on home page cards is legible (not double-dimmed); `formatTripDateRange` is absent from codebase
-- [ ] **T-172 Done** — "Print itinerary" button visible on trip details page; clicking opens browser print dialog
-- [ ] Sprint 17 staging deploy (T-175) completed successfully
-- [ ] No Critical or Major bugs found by User Agent in T-177 walkthrough
-- [ ] Sprint 18 plan written in `active-sprint.md`
+- [ ] **T-176/T-177 Done** — Sprint 17 pipeline complete; print button and opacity fix verified by Monitor and User Agent
+- [ ] **T-178 Done** — Auth endpoints are rate limited; 429 returned after threshold; existing tests unbroken
+- [ ] **T-180 Done** — Users can add multiple destinations via chip input in create modal and edit them from trip details
+- [ ] Sprint 18 staging deploy (T-183) completed successfully
+- [ ] No Critical or Major bugs found in T-185 walkthrough
+- [ ] Sprint 19 plan written in `active-sprint.md`
 
 ---
 
 ## Blockers
 
-- **B-022 (Production Deployment — 17 consecutive sprints):** Project owner must review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. **Project owner action required before production deployment can execute.**
+- **B-022 (Production Deployment — 18 consecutive sprints):** Project owner must review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. **Project owner action required before production deployment can execute.**
 
 ---
 
-*Previous sprint (Sprint #16) archived to `.workflow/sprint-log.md` on 2026-03-08. Sprint #17 plan written by Manager Agent 2026-03-08.*
+*Previous sprint (Sprint #17) archived to `.workflow/sprint-log.md` on 2026-03-08. Sprint #18 plan written by Manager Agent 2026-03-08.*

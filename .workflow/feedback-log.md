@@ -18,6 +18,16 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
+## Sprint 17 Feedback Triage (Manager Agent — 2026-03-08)
+
+| FB Entry | Category | Severity | Disposition | Notes |
+|----------|----------|----------|-------------|-------|
+| — | — | — | **No new entries** | T-177 (User Agent Sprint 17 walkthrough) did not execute before sprint close — T-176 (Monitor) and T-177 (User Agent) carry over to Sprint 18. Sprint 17 User Agent feedback will be submitted during Sprint 18 after T-177 completes. All Sprint 16 feedback (FB-106, FB-107, FB-108) was fully resolved in Sprint 17 (T-170). |
+
+*No "New" status entries to triage. Sprint 17 ended with T-176 and T-177 in Backlog — these are the first tasks of Sprint 18.*
+
+---
+
 ## Sprint 16 Feedback Triage (Manager Agent — 2026-03-08)
 
 | FB Entry | Category | Severity | Disposition | Notes |
