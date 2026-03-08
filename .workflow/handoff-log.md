@@ -644,3 +644,58 @@ T-168 is fully unblocked. Run immediately:
 
 T-152 (User Agent comprehensive walkthrough) is on its **8th consecutive carry-over**. It is Backlog with zero blockers. This must execute in Sprint 16. If it does not run before Sprint 17 scoping, Manager must halt Sprint 17 and escalate to project owner per the established circuit-breaker protocol.
 
+---
+
+**From:** Design Agent
+**To:** Frontend Engineer
+**Sprint:** #17
+**Date:** 2026-03-08
+**Status:** Spec Ready — T-172 Unblocked
+
+## T-171 Complete — Spec 17 (Trip Print / Export View) Published
+
+Spec 17 has been written and published to `ui-spec.md`. T-171 is Done. T-172 is now unblocked.
+
+**Spec location:** `.workflow/ui-spec.md` → Spec 17: Trip Print / Export View
+
+**Summary of what is specified:**
+
+### Print Trigger Button
+- A `<button aria-label="Print itinerary">Print itinerary</button>` in the trip details page header (right-aligned in the header row)
+- `onClick={() => window.print()}` — no async logic, no loading state
+- Styled as a secondary button (transparent bg, `1px solid rgba(93,115,126,0.5)` border, `#FCFCFC` text, 8px 16px padding)
+- Hidden in the print output (`display: none !important`)
+
+### Print Layout (CSS `@media print` in `frontend/src/styles/print.css`)
+- Import in `TripDetailsPage.jsx`
+- **Document order:** Trip header block → Flights → Stays → Activities (day-grouped) → Land Travel
+- **Empty sections:** Omitted entirely if no events exist. Recommended: add `has-items` CSS class to section containers when they have ≥1 event card; `printSection:not(.has-items) { display: none !important; }`
+- **Hidden elements:** Navbar, calendar widget, edit/add/delete buttons, the print button itself, toasts, modals, empty-state CTAs, skeleton elements
+
+### Typography
+- IBM Plex Mono throughout
+- Trip name: 24pt bold; section headings: 10pt, 700 weight, uppercase; event card primary line: 11–12pt, 600 weight; detail lines: 10pt
+- All `@media print` rules use hardcoded hex (#000, #fff, #ccc, #333, #555) — no CSS custom properties
+
+### Page Breaks
+- `page-break-inside: avoid; break-inside: avoid;` on every event card (`.flightCard`, `.stayCard`, `.activityCard`, `.landTravelCard`)
+- `page-break-after: avoid` on section headings and day group headings
+- No forced `page-break-before: always` on sections — allow natural pagination
+
+### Colors in Print
+- All backgrounds → `#fff !important`
+- All text → `#000 !important`
+- Category badges → `background: transparent; color: #555; border: none;`
+- Card borders → `1pt solid #ccc`
+
+### Tests Required (T-172)
+- **A:** "Print itinerary" button renders on TripDetailsPage
+- **B:** Click calls `window.print()` (mock `window.print = vi.fn()`)
+- **C:** Button has `aria-label="Print itinerary"`
+- **D:** All existing TripDetailsPage tests still pass
+- Expected total frontend tests after T-172: 418+
+
+**Spec status:** Approved (auto-approved per Sprint 17 automated orchestration)
+
+**Next step:** Frontend Engineer may begin T-172 immediately.
+

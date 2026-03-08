@@ -8004,4 +8004,501 @@ formatDateRange("2025-12-28", "2026-01-03") → "Dec 28, 2025 – Jan 3, 2026"
 
 ---
 
+### Spec 17: Trip Print / Export View
+
+**Sprint:** #17
+**Related Task:** T-171 → T-172
+**Status:** Approved
+
+**Description:**
+A print-optimized layout of the full trip itinerary, triggered by a "Print itinerary" button in the trip details page header. When the user clicks the button, the browser's native print dialog opens. The print output is a clean, black-on-white, single-column document that a planner-type user can read offline, attach to a PDF, or hand to a travel companion. No new page or route is introduced — the feature is implemented entirely via CSS `@media print` rules in `frontend/src/styles/print.css`, imported into `TripDetailsPage.jsx`. The interactive on-screen UI is unchanged; the print stylesheet simply overrides it for print output.
+
+**Target User Context:**
+Detail-oriented planners who like to have every hour of their trip documented. The print view is their paper backup — they want every flight number, every hotel address, every activity name, in chronological order, readable at a glance without a screen.
+
+---
+
+#### 17.1 Print Trigger — "Print itinerary" Button
+
+**Location:** Trip details page header, inline with the trip name row. Positioned to the right of the trip name / destination heading block, at the same vertical level as any existing edit or action controls (rightmost element in the header row).
+
+**Appearance (on-screen, normal view):**
+- Style: secondary button pattern (transparent background, border, IBM Plex Mono text)
+- Label: `Print itinerary`
+- Icon (optional): a small printer icon (16×16px SVG) to the left of the text label; purely decorative (`aria-hidden="true"` if icon is included)
+- Border: `1px solid rgba(93, 115, 126, 0.5)` (`--border-subtle`)
+- Text color: `--text-primary` (`#FCFCFC`)
+- Font: IBM Plex Mono, 12px, font-weight 400
+- Padding: 8px 16px
+- Border-radius: `var(--radius-sm)` (2px)
+- Hover state: background `rgba(252, 252, 252, 0.05)`, border `rgba(93, 115, 126, 0.8)`, transition 150ms ease
+- Cursor: pointer
+- `aria-label="Print itinerary"`
+
+**Behavior:**
+```
+onClick={() => window.print()}
+```
+No loading state. No async logic. The button simply invokes the browser's built-in print dialog. Errors (e.g., user cancels the dialog) require no handling — the browser manages the dialog lifecycle.
+
+**In the print output:** The button is hidden (see §17.4 — Elements Hidden in Print).
+
+---
+
+#### 17.2 Print Layout — Overall Structure
+
+The printed document is a **single-column, linear document** reading top-to-bottom. There is no sidebar, no grid, no calendar. All elements use black text on a white background. The layout mimics a clean, well-formatted travel itinerary document.
+
+**Page setup:**
+```css
+@media print {
+  @page {
+    margin: 1.5cm 2cm;
+    size: A4 portrait;
+  }
+}
+```
+
+**Content width in print:** Full page width (no max-width container constraining content to 1120px — the print layout uses the full printable area).
+
+**Document sections, in order:**
+
+1. **Trip header block** — trip name, destinations, date range
+2. **Flights section** — all flights in chronological order (omitted if no flights)
+3. **Stays section** — all stays in chronological order (omitted if no stays)
+4. **Activities section** — activities grouped by day, sorted by start time within each day (omitted if no activities)
+5. **Land Travel section** — all land travel entries in chronological order (omitted if no land travel)
+
+Each section is separated by a visible horizontal rule (1px solid #ccc) and a section heading.
+
+---
+
+#### 17.3 Print Layout — Document Sections
+
+##### 17.3.1 Trip Header Block
+
+Rendered at the very top of the print output, before any event sections.
+
+```
+[TRIP NAME]                    (24pt, bold, IBM Plex Mono, #000)
+[Destination list]             (13pt, #000, comma-separated)
+[Date range]                   (11pt, #555, "May 1 – 12, 2026" or "No dates yet")
+─────────────────────────────  (1px solid #ccc, full width, margin 16pt 0)
+```
+
+- **Trip name:** `font-size: 24pt; font-weight: 700; color: #000; margin-bottom: 6pt;`
+- **Destinations:** `font-size: 13pt; font-weight: 400; color: #000; margin-bottom: 4pt;`
+- **Date range:** `font-size: 11pt; font-weight: 400; color: #555; margin-bottom: 0;` — formatted the same as the on-screen date range (e.g., "May 1 – 12, 2026"). If both dates are null, shows "No dates yet".
+- The horizontal rule below the header block separates the header from the first event section.
+
+##### 17.3.2 Section Heading Style (shared by all event sections)
+
+Each event section (Flights, Stays, Activities, Land Travel) starts with a heading:
+```
+FLIGHTS                        (10pt, font-weight 700, letter-spacing 0.15em, #000, uppercase)
+─────────────────────────────  (0.5pt solid #ccc, full width, margin 4pt 0 10pt)
+```
+- `font-size: 10pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #000; margin-bottom: 4pt;`
+- Followed by a subtle rule (`border-bottom: 0.5pt solid #ccc; margin-bottom: 10pt;`)
+
+##### 17.3.3 Flights Section
+
+If the trip has **no flights**, this section is **omitted entirely** — no heading, no rule, no empty state message.
+
+If flights exist, list each flight in a card block, sorted by departure datetime ascending.
+
+**Each flight card (print):**
+```
+┌─────────────────────────────────────────────────────────┐
+│  [Airline] — [Flight Number]                             │
+│  [Departure Airport] → [Arrival Airport]                 │
+│  Departs: [date] at [time] [TZ abbreviation]             │
+│  Arrives: [date] at [time] [TZ abbreviation]             │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Card styling (print):**
+- Border: `1pt solid #ccc`
+- Border-radius: 0 (print does not render border-radius reliably; omit)
+- Padding: `10pt 12pt`
+- Margin-bottom: `8pt`
+- Background: `#fff`
+- `page-break-inside: avoid`
+
+**Field layout within a flight card:**
+- **Line 1:** Airline + flight number — `font-size: 12pt; font-weight: 600; color: #000;`
+- **Line 2:** Route — `[from_location] → [to_location]` — `font-size: 11pt; color: #000;`
+- **Line 3:** Departs — `font-size: 10pt; color: #333;` — format: `"Departs: Mon, Aug 7, 2026 at 6:00 AM ET"`
+- **Line 4:** Arrives — `font-size: 10pt; color: #333;` — format: `"Arrives: Mon, Aug 7, 2026 at 11:00 AM PT"`
+
+Use the existing `formatFlightDateTime` utility (or equivalent) to produce the full date + time + timezone string. For print, the timezone abbreviation must be present (not just the time) because the reader has no tooltip.
+
+##### 17.3.4 Stays Section
+
+If the trip has **no stays**, this section is **omitted entirely**.
+
+If stays exist, list each stay card, sorted by check-in datetime ascending.
+
+**Each stay card (print):**
+```
+┌─────────────────────────────────────────────────────────┐
+│  [CATEGORY]  [Stay Name]                                 │
+│  [Address or "Address not provided"]                     │
+│  Check in:  [date] at [time] [TZ abbreviation]           │
+│  Check out: [date] at [time] [TZ abbreviation]           │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Card styling (print):** Same as flight card — `1pt solid #ccc`, padding `10pt 12pt`, margin-bottom `8pt`, `page-break-inside: avoid`, background `#fff`.
+
+**Field layout:**
+- **Line 1:** Category badge text + stay name — Category in uppercase, 9pt, color `#555`, followed by stay name in 12pt, font-weight 600, `#000`. (On-screen colored category badges become plain uppercase text in print — no background colors.)
+- **Line 2:** Address — 10pt, `#333`. If address is blank/null, display: `"Address not provided"` in 10pt, `#999`.
+- **Line 3:** Check in — `"Check in: Mon, Aug 7, 2026 at 4:00 PM"` — 10pt, `#333`.
+- **Line 4:** Check out — `"Check out: Wed, Aug 9, 2026 at 11:00 AM"` — 10pt, `#333`.
+
+Note: Timezone display for stays follows the same rule as flights — show timezone abbreviation if stored.
+
+##### 17.3.5 Activities Section
+
+If the trip has **no activities**, this section is **omitted entirely**.
+
+If activities exist, group by `activity_date`, sorted ascending. Within each day group, sort activities by `start_time` ascending.
+
+**Day group heading:**
+```
+Friday, August 8, 2026         (12pt, font-weight 600, #000, margin-top 10pt, margin-bottom 6pt)
+```
+- Format: `EEEE, MMMM D, YYYY` — use the same `formatActivityDate` utility as on-screen.
+- `page-break-before: avoid` on the day heading to prevent it orphaning at the bottom of a page.
+
+**Each activity card (print):**
+```
+┌─────────────────────────────────────────────────────────┐
+│  9:00 AM – 2:00 PM  ·  Fisherman's Wharf                │
+│  Location: Fisherman's Wharf, San Francisco, CA          │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Card styling:** Lighter border — `1pt solid #ddd`, padding `8pt 12pt`, margin-bottom `4pt`, background `#fff`, `page-break-inside: avoid`.
+
+**Field layout:**
+- **Line 1:** Time range + activity name — `"[start_time] – [end_time]  ·  [activity name]"` — 11pt, font-weight 500, `#000`. Time format: `"9:00 AM"` (12-hour with AM/PM).
+- **Line 2 (conditional):** Location — `"Location: [location]"` — 10pt, `#555`. Omit this line if `location` is null or empty string.
+
+Day groups are separated by `margin-top: 10pt` before each new day heading (after the first).
+
+##### 17.3.6 Land Travel Section
+
+If the trip has **no land travel entries**, this section is **omitted entirely**.
+
+If land travel entries exist, list each in a card, sorted by departure_date + departure_time ascending.
+
+**Each land travel card (print):**
+```
+┌─────────────────────────────────────────────────────────┐
+│  [TYPE]  [from_location] → [to_location]                 │
+│  Departs: [date] at [time]                               │
+│  Arrives: [date] at [time]                               │
+│  [Confirmation / notes if present]                       │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Card styling:** Same as flight card — `1pt solid #ccc`, padding `10pt 12pt`, margin-bottom `8pt`, `page-break-inside: avoid`, background `#fff`.
+
+**Field layout:**
+- **Line 1:** Land travel type (RENTAL CAR, TRAIN, BUS, etc.) in uppercase 9pt `#555`, followed by route `[from_location] → [to_location]` in 12pt, font-weight 600, `#000`.
+- **Line 2:** Departs — `"Departs: Mon, Aug 7, 2026 at 9:00 AM"` — 10pt, `#333`.
+- **Line 3:** Arrives — `"Arrives: Mon, Aug 7, 2026 at 1:00 PM"` — 10pt, `#333`.
+- **Line 4 (conditional):** Confirmation number or notes if present — `"Confirmation: ABC123"` or `"Notes: [notes text]"` — 10pt, `#555`. Omit entirely if blank/null.
+
+---
+
+#### 17.4 Elements Hidden in the Print Output
+
+The `@media print` stylesheet sets `display: none !important` on the following elements. Use stable CSS class selectors or element roles — do not rely on generated class names that may change across builds.
+
+| Element | Selector / Description |
+|---------|------------------------|
+| Navbar | `.navbar` or `nav` — the top navigation bar |
+| Calendar widget | `.tripCalendar`, `.calendarSection`, or the section wrapping `<TripCalendar />` |
+| "Print itinerary" button | `.printButton` or `[aria-label="Print itinerary"]` — the button that triggered the print |
+| All edit / modify buttons | `.editButton`, `.modifyButton`, any `<button>` within event cards that opens an edit flow |
+| All add-event buttons | `.addButton`, `.addFlightButton`, `.addStayButton`, `.addActivityButton`, etc. |
+| Delete buttons | `.deleteButton`, or any button with "delete" / "remove" aria-label |
+| Toast notifications | `.toast`, `.toastContainer` |
+| Modal overlays | `.modalOverlay`, `.modal` |
+| Empty state CTA elements | `.emptyState`, `.emptyCta` — empty state messages and "Add your first…" prompts |
+| Section header action area | The right-side "Add" or "Edit" link/button within section headers |
+| Loading skeletons | `.skeleton` elements |
+
+**Important:** Empty sections should be hidden at the container level. If a section's only content is an empty-state element (which is hidden), the section heading and rule should also not appear. Achieve this with either:
+- A `.has-items` class added by the component to the section container when it has ≥1 event card. In print CSS: `section:not(.has-items) { display: none !important; }`.
+- Or: ensure the section wrapper element receives `display: none` when empty via a print-specific utility class.
+
+---
+
+#### 17.5 Print Typography Rules
+
+All print typography uses IBM Plex Mono. Font sizes use `pt` units for reliable print rendering.
+
+| Element | Font Size | Font Weight | Color |
+|---------|-----------|-------------|-------|
+| Trip name (header) | 24pt | 700 | #000 |
+| Destinations | 13pt | 400 | #000 |
+| Date range | 11pt | 400 | #555 |
+| Section heading | 10pt | 700 | #000 |
+| Day group heading (Activities) | 12pt | 600 | #000 |
+| Event card — primary line | 11–12pt | 600 | #000 |
+| Event card — route / secondary line | 11pt | 400 | #000 |
+| Event card — detail lines (dates, times) | 10pt | 400 | #333 |
+| Event card — tertiary / conditional lines | 10pt | 400 | #555 |
+| Address not provided | 10pt | 400 | #999 |
+
+**General print body rule:**
+```css
+@media print {
+  * {
+    font-family: 'IBM Plex Mono', monospace !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+}
+```
+
+**Note on CSS custom properties in print:** Do NOT use `var(--bg-primary)`, `var(--text-primary)`, etc., in print.css. Custom properties are generally resolved, but some older print renderers (and PDF export tools) may fail to resolve them. Use raw hex values (#000, #fff, #ccc, #333, #555, #999) in all `@media print` declarations.
+
+---
+
+#### 17.6 Page Break Rules
+
+```css
+@media print {
+  /* Prevent individual event cards from splitting across pages */
+  .flightCard,
+  .stayCard,
+  .activityCard,
+  .landTravelCard {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Prevent section headings from orphaning at the bottom of a page */
+  .sectionHeading,
+  .dayGroupHeading {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Allow natural page breaks between sections */
+  .printSection {
+    page-break-before: auto;
+    break-before: auto;
+  }
+
+  /* Avoid a break between the trip header and first section */
+  .tripPrintHeader {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+}
+```
+
+**Do NOT use `page-break-before: always`** on sections — this would waste paper when a trip has only a few events. Allow the browser's natural pagination to decide where to break between sections.
+
+---
+
+#### 17.7 Color Overrides for Print
+
+All on-screen dark theme colors must be overridden to a print-safe black-on-white scheme.
+
+```css
+@media print {
+  /* Page background and text */
+  body,
+  .pageWrapper,
+  .contentWrapper,
+  .tripDetailsPage {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Card surfaces */
+  .flightCard,
+  .stayCard,
+  .activityCard,
+  .landTravelCard,
+  .eventCard {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #ccc !important;
+  }
+
+  /* Status badges — convert to plain text */
+  .categoryBadge,
+  .statusBadge,
+  [class*="badge"] {
+    background: transparent !important;
+    color: #555 !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  /* Links — print as plain text */
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  /* Section headers */
+  .sectionHeader,
+  [class*="sectionHeader"] {
+    color: #000 !important;
+    border-color: #ccc !important;
+  }
+}
+```
+
+---
+
+#### 17.8 Responsive Behavior
+
+This spec is print-only; the "Print itinerary" button on-screen adapts as follows:
+
+**Desktop (≥ 768px):**
+- Button renders in the trip details page header, right-aligned in the header row alongside any existing action controls.
+- Full label visible: `Print itinerary`.
+
+**Mobile (< 768px):**
+- Button renders below the trip name / destination block, as a full-width secondary button OR reduced to an icon-only button (printer icon, 36×36px tap target, `aria-label="Print itinerary"`) — implementation choice is left to the Frontend Engineer.
+- If icon-only on mobile, the label should still be present as a visually hidden screen-reader text (`<span class="visually-hidden">Print itinerary</span>`).
+- `window.print()` behavior on mobile: some mobile browsers open a share sheet instead of a native print dialog; this is acceptable and expected behavior — no workaround required.
+
+**Print media itself:** Always single-column regardless of screen size at time of print invocation.
+
+---
+
+#### 17.9 Accessibility Considerations
+
+| Concern | Requirement |
+|---------|-------------|
+| Button label | `aria-label="Print itinerary"` on the `<button>` element. This is the accessible name for screen readers. |
+| Icon (if used) | Printer icon SVG must have `aria-hidden="true"` — the accessible name comes from `aria-label`, not the icon. |
+| Focus management | No focus management needed — `window.print()` returns control to the button synchronously after the dialog is dismissed. The button retains focus. |
+| Keyboard access | The button must be a native `<button>` element (not a `<div>` or `<span>`) so it is naturally keyboard-accessible (Tab to focus, Enter/Space to activate). |
+| Color contrast (on-screen button) | Secondary button style: `#FCFCFC` text on transparent background over `#30292F` card surface — contrast ratio ~12:1 ✅ WCAG AA. |
+| Screen reader announcement | When the button is activated, no custom ARIA announcement is needed — the browser print dialog takes over immediately. |
+| Reduced motion | `window.print()` has no animation; no `prefers-reduced-motion` considerations needed. |
+| Empty section omission | Sections with no events are hidden in print via CSS. No `aria-hidden` manipulation is needed for this — the `@media print` suppression only affects the printed output, not the screen DOM. |
+
+---
+
+#### 17.10 States
+
+**On-screen button states:**
+
+| State | Appearance |
+|-------|-----------|
+| Default | Secondary button — transparent bg, `rgba(93,115,126,0.5)` border, `#FCFCFC` text |
+| Hover | Background `rgba(252,252,252,0.05)`, border `rgba(93,115,126,0.8)`, 150ms transition |
+| Focus (keyboard) | `outline: 2px solid #5D737E; outline-offset: 2px;` — visible focus ring |
+| Active (pressed) | Background `rgba(252,252,252,0.1)` |
+| Disabled | Not applicable — the button is never disabled. If TripDetailsPage is loading, the button can be omitted (the data needed for print is already on the page once it loads) |
+
+**Print output states:**
+
+| State | Behavior |
+|-------|---------|
+| Trip with all 4 section types populated | All 4 sections print in order: Flights → Stays → Activities → Land Travel |
+| Trip with only some sections populated | Only the populated sections appear; empty sections are omitted entirely |
+| Trip with no events at all | Only the trip header block (name, destinations, "No dates yet") prints; no section headings appear |
+| Trip with many events (multi-page) | Natural browser pagination applies; `page-break-inside: avoid` on cards prevents mid-card page breaks; section headings always stay with their content |
+| Activities spanning multiple days | Each day group renders with its heading, followed by that day's activity cards; new day groups appear after the previous day's last card |
+
+---
+
+#### 17.11 Implementation Notes for Frontend Engineer (T-172)
+
+These notes translate the spec into concrete implementation guidance. They are non-binding design intent — the Frontend Engineer may adapt as needed within the spec's constraints.
+
+**File structure:**
+```
+frontend/src/styles/print.css          ← new file (all @media print rules)
+frontend/src/pages/TripDetailsPage.jsx ← add import + button element
+```
+
+**Import approach:**
+```js
+// In TripDetailsPage.jsx (or main.jsx for global import)
+import '../styles/print.css';
+```
+
+**Button placement in TripDetailsPage.jsx:**
+The button should be placed in the existing header/title row of TripDetailsPage, after the trip name and destination display, as a right-aligned element. If a flex row already wraps the trip name, add the button as the last child with `margin-left: auto` (or via a flex spacer).
+
+**Selector stability:** Class names used in `print.css` selectors must match the actual class names in the component files. If `TripDetailsPage` uses CSS Modules (`.module.css`), the generated class names will be hashed — in that case, add plain non-module CSS classes (e.g., `data-print-hide="true"`) to elements that need to be hidden, and target `[data-print-hide="true"]` in `print.css`.
+
+**Empty section handling — recommended approach:**
+```jsx
+// In the section wrapper of each event type:
+<section className={`printSection ${flights.length > 0 ? 'has-items' : ''}`}>
+  <h2 className="sectionHeading">Flights</h2>
+  {flights.length > 0 ? (
+    flights.map(f => <FlightCard key={f.id} flight={f} />)
+  ) : (
+    <div className="emptyState">...</div>
+  )}
+</section>
+```
+Then in print.css:
+```css
+@media print {
+  .printSection:not(.has-items) { display: none !important; }
+  .emptyState { display: none !important; }
+}
+```
+
+**window.print() call:**
+```jsx
+<button
+  className={styles.printButton}
+  onClick={() => window.print()}
+  aria-label="Print itinerary"
+>
+  Print itinerary
+</button>
+```
+
+---
+
+#### 17.12 Test Plan (T-172)
+
+| Test | Expected Result |
+|------|----------------|
+| **A** — Button renders on TripDetailsPage | "Print itinerary" button is present in the DOM when TripDetailsPage renders with a valid trip |
+| **B** — Button click calls `window.print()` | Mock `window.print = vi.fn()`. Click the button. Assert `window.print` was called once. |
+| **C** — Button has correct aria-label | `getByRole('button', { name: /print itinerary/i })` returns the button element |
+| **D** — Existing TripDetailsPage tests pass | All prior TripDetailsPage.test.jsx tests continue to pass with no changes |
+
+These 4 tests bring the total frontend test count to 418+ (after T-170 reduces it to 415).
+
+---
+
+#### 17.13 Design Rationale
+
+- **`window.print()` over custom PDF library:** Zero dependencies, zero bundle size, works offline, and respects the user's OS print/PDF configuration. The triplanner project brief values minimalism; a dependency on a PDF library (jsPDF, html2canvas, etc.) adds maintenance burden for a rarely-used feature.
+- **`@media print` over a separate print route:** A separate `/trips/:id/print` route would require duplicating data-fetching logic, navigation guards, and state. The `@media print` approach reuses the existing TripDetailsPage data already in memory — no additional API calls.
+- **Omitting empty sections:** Empty-state CTAs (e.g., "No flights yet — add one") are action-prompts tied to the interactive UI. In a printed document, they add noise and imply the reader can take action. Omitting them produces a cleaner printout.
+- **Hardcoded #000/#fff over CSS custom properties:** Print rendering across browsers and OS PDF printers is inconsistent in how it resolves CSS custom properties. Using explicit hex values in `@media print` rules ensures consistent black-on-white output across Chrome, Firefox, Safari, and system PDF printers.
+- **IBM Plex Mono in print:** The design brief specifies IBM Plex Mono for all typography. Monospaced fonts give itineraries a structured, data-table feel — aligned columns, predictable character widths. This is appropriate for a document dense with times, flight numbers, and confirmation codes.
+- **No forced page breaks between sections:** A trip with 2 flights and 1 stay would waste a page if each section forced a new page. The Japandi "every element has a purpose" principle applies to paper too — natural pagination avoids blank space.
+
+---
+
 *Spec 25 marked Approved (auto-approved per automated sprint cycle — Sprint 16). Published by Design Agent 2026-03-08.*
