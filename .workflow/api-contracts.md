@@ -4564,3 +4564,262 @@ No new database migrations are introduced in Sprint 15.
 ---
 
 *Sprint 15 contract review complete — 2026-03-07. Backend Engineer: no new endpoints or schema changes this sprint. Sprint 15 is a focused frontend bug-fix sprint — T-154 (browser title + favicon) is a static HTML change, T-155 (land travel chip location) is a frontend-only fix consuming `from_location`/`to_location` fields already present in existing land travel API responses since Sprint 6, and T-153 (formatTimezoneAbbr unit tests) adds tests with zero production code changes. All existing contracts (Sprints 1–14) remain authoritative and unchanged. Backend Engineer on hotfix standby for T-152 and T-160 User Agent walkthroughs only.*
+
+---
+
+## Sprint 16 Contracts
+
+---
+
+### T-162 — Trip Date Range (Computed `start_date` / `end_date`)
+
+**Sprint:** 16
+**Task:** T-162
+**Status:** Agreed (Manager auto-approved per automated sprint cycle — 2026-03-08)
+**Author:** Backend Engineer
+**Date:** 2026-03-08
+
+---
+
+#### Overview
+
+This sprint adds event-derived `start_date` and `end_date` fields to the trip response objects returned by `GET /api/v1/trips` and `GET /api/v1/trips/:id`. These values are computed on read via SQL `MIN()`/`MAX()` subqueries across all event tables (flights, stays, activities, land_travels). They are **not stored in the trips table** — no schema migration is required.
+
+**No new endpoints are introduced. Only the trip response shape changes.**
+
+---
+
+#### Naming Clarification
+
+The trips table already contains `start_date` and `end_date` columns (added in Sprint 2, Migration 007) which represent user-set scheduled dates for the trip. Sprint 16 **replaces** these stored values in the API response with event-derived computed values. The stored trips-table columns (`start_date`, `end_date`) remain in the database for backward-compatible query support (e.g., `sort_by=start_date` continues to use the stored column for ordering), but the **response fields** now reflect event-computed min/max dates.
+
+| Field | Source | Type | Description |
+|-------|--------|------|-------------|
+| `start_date` | Computed — MIN across all event dates | `string \| null` | Earliest event date in YYYY-MM-DD format. `null` if the trip has no events. |
+| `end_date` | Computed — MAX across all event dates | `string \| null` | Latest event date in YYYY-MM-DD format. `null` if the trip has no events. |
+
+**Event tables and date columns included in the MIN/MAX computation:**
+
+| Table | Date Columns Used |
+|-------|------------------|
+| `flights` | `DATE(departure_at)`, `DATE(arrival_at)` |
+| `stays` | `DATE(check_in_at)`, `DATE(check_out_at)` |
+| `activities` | `activity_date` (already YYYY-MM-DD) |
+| `land_travels` | `departure_date`, `arrival_date` (already YYYY-MM-DD) |
+
+All timestamps (`departure_at`, `arrival_at`, `check_in_at`, `check_out_at`) must be cast via `DATE()` to extract the date portion before MIN/MAX comparison.
+
+---
+
+#### Updated: GET /api/v1/trips
+
+| Field | Value |
+|-------|-------|
+| Method | GET |
+| Path | `/api/v1/trips` |
+| Sprint | 16 (extends Sprint 5 T-072, Sprint 7 T-103) |
+| Task | T-162 / T-163 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token in `Authorization: Bearer <token>` header) |
+
+**Change from previous sprint:** The `start_date` and `end_date` fields in each trip object in the `data` array are now event-computed (MIN/MAX across all event tables) rather than the stored trips-table values. All other fields, query parameters, pagination behavior, and error responses remain unchanged.
+
+**Request:**
+- All existing query parameters unchanged: `?page`, `?limit`, `?search`, `?status`, `?sort_by`, `?sort_order`
+- No new query parameters
+
+**Response (Success — 200 OK):**
+
+```json
+{
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Japan 2026",
+      "destinations": ["Tokyo", "Osaka", "Kyoto"],
+      "status": "PLANNING",
+      "start_date": "2026-08-07",
+      "end_date": "2026-08-21",
+      "notes": "We fly into Narita on August 7th...",
+      "created_at": "2026-02-24T12:00:00.000Z",
+      "updated_at": "2026-02-24T12:00:00.000Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Weekend Getaway",
+      "destinations": ["Portland"],
+      "status": "PLANNING",
+      "start_date": null,
+      "end_date": null,
+      "notes": null,
+      "created_at": "2026-02-25T09:00:00.000Z",
+      "updated_at": "2026-02-25T09:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 2
+  }
+}
+```
+
+**`start_date` / `end_date` field contract:**
+
+| Field | Type | Value when events exist | Value when NO events exist |
+|-------|------|------------------------|---------------------------|
+| `start_date` | `string \| null` | YYYY-MM-DD string — MIN date across all event tables | `null` |
+| `end_date` | `string \| null` | YYYY-MM-DD string — MAX date across all event tables | `null` |
+
+- Both fields are always present in every trip object (never omitted from the response)
+- Both are `null` together when a trip has no events; never partially null (if any event exists, both fields have values)
+- Format is always `YYYY-MM-DD` (e.g., `"2026-08-07"`) — never ISO 8601 timestamp
+- The frontend is responsible for formatting this date string for display (e.g., "Aug 7 – 21, 2026")
+
+**Error responses:** Unchanged from Sprint 5 (400 for invalid query params, 401 for missing/invalid token).
+
+---
+
+#### Updated: GET /api/v1/trips/:id
+
+| Field | Value |
+|-------|-------|
+| Method | GET |
+| Path | `/api/v1/trips/:id` |
+| Sprint | 16 (extends Sprint 1 T-005, Sprint 7 T-103) |
+| Task | T-162 / T-163 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token in `Authorization: Bearer <token>` header) |
+
+**Change from previous sprint:** The `start_date` and `end_date` fields in the single-trip response are now event-computed (MIN/MAX across all event tables) rather than the stored trips-table values. All other fields and error responses remain unchanged.
+
+**Path Parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `id` | UUID (v4) | Trip ID |
+
+**Response (Success — 200 OK — trip with events):**
+
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-21",
+    "notes": "We fly into Narita on August 7th and spend 10 days exploring Tokyo, Kyoto, and Osaka.",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-24T13:00:00.000Z"
+  }
+}
+```
+
+**Response (Success — 200 OK — trip with NO events):**
+
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440002",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Weekend Getaway",
+    "destinations": ["Portland"],
+    "status": "PLANNING",
+    "start_date": null,
+    "end_date": null,
+    "notes": null,
+    "created_at": "2026-02-25T09:00:00.000Z",
+    "updated_at": "2026-02-25T09:00:00.000Z"
+  }
+}
+```
+
+**`start_date` / `end_date` field contract:** Same as `GET /api/v1/trips` above — event-computed, YYYY-MM-DD or `null`, always both present, always both null or both non-null.
+
+**Error responses (unchanged from Sprint 1):**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 401 | `UNAUTHORIZED` | Missing or invalid Bearer token |
+| 403 | `FORBIDDEN` | Authenticated user does not own this trip |
+| 404 | `NOT_FOUND` | Trip ID does not exist |
+
+```json
+{ "error": { "message": "Trip not found", "code": "NOT_FOUND" } }
+```
+
+---
+
+#### SQL Implementation Guidance (for T-163)
+
+The following subquery pattern computes the min/max event dates for a single trip. This should be used in both the list and single-trip model functions. **All queries must be parameterized — never concatenate trip IDs.**
+
+```sql
+-- Computed start_date: MIN across all event date columns
+SELECT
+  LEAST(
+    (SELECT MIN(DATE(departure_at)) FROM flights WHERE trip_id = t.id),
+    (SELECT MIN(DATE(arrival_at))   FROM flights WHERE trip_id = t.id),
+    (SELECT MIN(DATE(check_in_at))  FROM stays   WHERE trip_id = t.id),
+    (SELECT MIN(DATE(check_out_at)) FROM stays   WHERE trip_id = t.id),
+    (SELECT MIN(activity_date)      FROM activities WHERE trip_id = t.id),
+    (SELECT MIN(departure_date)     FROM land_travels WHERE trip_id = t.id),
+    (SELECT MIN(arrival_date)       FROM land_travels WHERE trip_id = t.id)
+  ) AS start_date,
+
+-- Computed end_date: MAX across all event date columns
+  GREATEST(
+    (SELECT MAX(DATE(departure_at)) FROM flights WHERE trip_id = t.id),
+    (SELECT MAX(DATE(arrival_at))   FROM flights WHERE trip_id = t.id),
+    (SELECT MAX(DATE(check_in_at))  FROM stays   WHERE trip_id = t.id),
+    (SELECT MAX(DATE(check_out_at)) FROM stays   WHERE trip_id = t.id),
+    (SELECT MAX(activity_date)      FROM activities WHERE trip_id = t.id),
+    (SELECT MAX(departure_date)     FROM land_travels WHERE trip_id = t.id),
+    (SELECT MAX(arrival_date)       FROM land_travels WHERE trip_id = t.id)
+  ) AS end_date
+FROM trips t
+WHERE t.id = ?  -- parameterized
+```
+
+PostgreSQL `LEAST()`/`GREATEST()` ignore `NULL` values by default when mixed with non-null values. If ALL inputs are `NULL` (i.e., no events exist), both functions return `NULL`. This is the correct behavior — `null` in the response signals "no events".
+
+For the list endpoint (`GET /api/v1/trips`), wrap these subqueries as lateral expressions or add them as computed columns in the main `SELECT` for each trip row.
+
+---
+
+#### Schema State — Sprint 16
+
+No schema migrations are introduced in Sprint 16. The computed date range fields are derived at read time. All 10 existing migrations (001–010) remain the complete and authoritative schema.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–15 | *(No new migrations)* | Sprints 8–15 schema-stable |
+| — | **16** | *(No new migrations)* | **Sprint 16: computed read only — zero schema work** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+---
+
+#### Test Cases Required (for T-163 implementation)
+
+| ID | Scenario | Expected `start_date` | Expected `end_date` |
+|----|----------|-----------------------|---------------------|
+| A | Trip with no events | `null` | `null` |
+| B | Trip with flights only (departure 2026-08-07, arrival 2026-08-21) | `"2026-08-07"` | `"2026-08-21"` |
+| C | Trip with mixed events (flight departs 2026-08-07, stay checks out 2026-08-25, activity on 2026-08-10) | `"2026-08-07"` | `"2026-08-25"` |
+| D | GET /trips list endpoint includes both fields on every trip object | Present on all trips | Present on all trips |
+| E | All 266+ existing backend tests still pass | — | — |
+
+---
+
+*Sprint 16 contract published by Backend Engineer 2026-03-08. Manager auto-approved per automated sprint cycle. T-163 implementation may proceed. T-164 (Frontend) may proceed in parallel — frontend reads `start_date` and `end_date` from the trip object exactly as documented above.*

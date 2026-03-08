@@ -718,3 +718,95 @@ Staging is healthy as of T-158 completion. Backend pm2 running (PID 9274, HTTPS 
 6. Sprint 14 + Sprint 13 regression checks pass
 7. Handoff to User Agent (T-160) upon completion
 
+---
+
+## Sprint 16 Handoffs
+
+---
+
+### Handoff — Backend Engineer → Frontend Engineer (T-162 → T-164)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-03-08 |
+| From | Backend Engineer |
+| To | Frontend Engineer |
+| Related Tasks | T-162 (API contract), T-164 (Frontend implementation) |
+| Status | ✅ Contract Ready — Frontend may proceed with T-164 in parallel with T-163 |
+
+**API Contract Ready: Trip Date Range (`start_date` / `end_date`)**
+
+The Sprint 16 API contract for T-162 has been published to `.workflow/api-contracts.md` under "Sprint 16 Contracts — T-162". Frontend Engineer should read that section before beginning T-164.
+
+#### Key Contract Points for T-164
+
+**Endpoints affected:**
+- `GET /api/v1/trips` — each trip object in the `data` array now includes `start_date` and `end_date`
+- `GET /api/v1/trips/:id` — the single trip object now includes `start_date` and `end_date`
+
+**New fields on every trip object:**
+
+| Field | Type | Example (with events) | Example (no events) |
+|-------|------|----------------------|---------------------|
+| `start_date` | `string \| null` | `"2026-08-07"` | `null` |
+| `end_date` | `string \| null` | `"2026-08-21"` | `null` |
+
+**Rules the frontend must follow:**
+1. Both fields are always present — never omitted from the response
+2. Both are `null` when the trip has no events (both null together, never partially)
+3. Format is always `YYYY-MM-DD` — never an ISO 8601 timestamp
+4. The frontend is responsible for formatting these strings for display
+5. When both are `null` → display "No dates yet" in muted secondary text
+
+**Display format (from Spec 16 / T-161):**
+- Same year: `"Aug 7 – 21, 2026"` (abbreviated same-year format)
+- Cross-year: `"Dec 28, 2025 – Jan 3, 2026"` (full both sides)
+- No events: `"No dates yet"` (muted secondary text, `var(--text-muted)`)
+
+**No new query parameters. No breaking changes to existing fields. No new endpoints.**
+
+Frontend Engineer action: Acknowledge this handoff in `handoff-log.md` before starting T-164 (per api-contracts.md Rule 2).
+
+---
+
+### Handoff — Backend Engineer → QA Engineer (T-162 → T-165 / T-166)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-03-08 |
+| From | Backend Engineer |
+| To | QA Engineer |
+| Related Tasks | T-162 (API contract), T-165 (security + code review), T-166 (integration testing) |
+| Status | ✅ Contract Published — QA may use for T-165 / T-166 reference |
+
+**API Contract Published: Trip Date Range — QA Reference**
+
+The Sprint 16 API contract is in `.workflow/api-contracts.md` under "Sprint 16 Contracts — T-162". QA should use this as the authoritative reference for T-165 (security + code review) and T-166 (integration testing).
+
+#### QA Checklist Reference (T-165)
+
+**Security checks for T-163 (backend implementation):**
+- [ ] `start_date`/`end_date` subqueries use parameterized Knex queries — no raw SQL with user-controlled input
+- [ ] Trip ID is validated as UUID before subquery executes (existing UUID middleware covers this)
+- [ ] Null returned safely when no events exist — no uncaught exception or 500 response
+- [ ] No authorization gap — subqueries only access events belonging to the user's trip (trip ownership already enforced by existing auth middleware before model is called)
+- [ ] `DATE()` cast on timestamp columns is safe for null timestamps (PostgreSQL `DATE(NULL)` = NULL — safe)
+
+**Code review checks:**
+- [ ] No raw string concatenation for trip IDs in subqueries
+- [ ] Both `start_date` and `end_date` present in every trip response object (never omitted)
+- [ ] `null` (not undefined, not empty string) returned when no events exist
+
+#### Integration Test Scenarios (T-166)
+
+| Scenario | Setup | Expected `start_date` | Expected `end_date` | Frontend display |
+|----------|-------|----------------------|---------------------|-----------------|
+| 1 | Trip with no events | `null` | `null` | "No dates yet" |
+| 2 | Trip with flights only (departure 2026-08-07, arrival 2026-08-21) | `"2026-08-07"` | `"2026-08-21"` | "Aug 7 – 21, 2026" |
+| 3 | Trip with mixed events (flight 2026-08-07, stay checks out 2026-08-25, activity 2026-08-10) | `"2026-08-07"` | `"2026-08-25"` | "Aug 7 – 25, 2026" |
+| 4 | GET /trips list response | Multiple trips returned | Both fields present per trip | Home page cards render correctly |
+| 5 | Sprint 15 + 14 + 13 regression | All prior features | No regressions | Full pass |
+
+**Backend test count expectation (T-165):** 271+ tests (266 existing + 5 new T-163 tests A–E). All must pass.
+**Frontend test count expectation (T-165):** 416+ tests (410 existing + 6 new T-164 tests). All must pass.
+
