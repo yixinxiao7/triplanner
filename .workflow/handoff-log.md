@@ -4,6 +4,59 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**From:** Manager Agent
+**To:** QA Engineer
+**Sprint:** #17
+**Date:** 2026-03-08
+**Status:** T-170 + T-172 Approved — Proceed with T-173 + T-174
+
+## Code Review Decision: APPROVED
+
+Both Sprint 17 implementation tasks passed Manager code review. T-170 and T-172 are now in **Integration Check**. QA Engineer should proceed immediately with T-173 (security checklist) and T-174 (integration testing).
+
+### T-170 — Code Cleanup (APPROVED)
+
+All three FB items verified in the actual source files:
+
+1. **FB-106 — `.datesNotSet` opacity fix:** `frontend/src/components/TripCard.module.css` lines 206-208: `.datesNotSet` contains only `color: var(--text-muted)` — no `opacity` property. No duplicate definition exists. ✅
+
+2. **FB-107 — `formatTripDateRange` removed:** `frontend/src/utils/formatDate.js` contains no `formatTripDateRange` export. `formatDate.test.js` imports only `formatDateRange` (the spec-compliant function). No dead tests remain. ✅
+
+3. **FB-108 — Comment updated:** `formatDate.js` file-level comment on line 8 correctly reads: `"Trip cards: derive date range from the earliest and latest dates across all event types (flights, stays, activities, land travels)."` ✅
+
+**Security:** No hardcoded secrets, no SQL injection risk, no XSS vectors. Pure CSS/JS cleanup. ✅
+
+**Note for QA:** The Deploy Engineer's earlier block log (claiming `opacity: 0.5` was still present at line 208) was a timing issue — Deploy ran before Frontend committed. The current code is correct. Verify with a fresh file read, not the Deploy Engineer's stale grep.
+
+### T-172 — Trip Print/Export View (APPROVED)
+
+All implementation requirements verified in source:
+
+1. **Print button:** `TripDetailsPage.jsx` line 633-658 — `<button className={styles.printBtn} onClick={() => window.print()} aria-label="Print itinerary">` in `tripNameRow` div. Correct text "Print itinerary", correct aria-label, correct onClick. ✅
+
+2. **`print.css` imported:** `import '../styles/print.css';` at TripDetailsPage.jsx line 10. ✅
+
+3. **`print.css` contents:** `@media print` block hides navbar (`[class*="navbar_navbar"]`, `[class*="Navbar_navbar"]`), back link, print button itself, all edit/add controls, calendar. Overrides background to `#fff`, text to `#000`. Sets `page-break-inside: avoid` on flight/stay/land-travel cards, day groups, and activity entries. `@page` A4 portrait with margins. No CSS custom properties in print overrides. ✅
+
+4. **Tests:** 4 required tests present in `TripDetailsPage.test.jsx` (section `// ── 19. T-122 / T-172`):
+   - `[T-172-A]` Print button renders ✅
+   - `[T-172-B]` Click calls `window.print()` exactly once (uses `vi.fn()` mock, restores original) ✅
+   - `[T-172-C]` `aria-label="Print itinerary"` ✅
+   - `[T-172-D]` Button absent in trip error state ✅
+
+5. **Security:** `window.print()` is the native browser print API — no custom print logic, no risk. No `dangerouslySetInnerHTML`. No sensitive data in DOM attributes. No new API calls. ✅
+
+**Minor observation (non-blocking):** Task spec mentioned optionally hiding empty sections in print via a `.has-items` class. The `print.css` uses `display: block !important` on `[class*="section"]` which will show empty-state text in print. This is a minor print-UX gap — does not affect security or functional correctness. Flag for Sprint 18 feedback if desired.
+
+### QA Tasks to Run
+
+- **T-173:** Security checklist + code audit for T-170 + T-172. Run `npm test --run` in `frontend/` (expect ~416 tests passing). Run `npm audit` in both directories.
+- **T-174:** Integration testing — print button visible/functional, opacity legibility, date range regression, Sprint 16/15/14 regression.
+
+After T-173 + T-174 pass, log handoff to Deploy Engineer to unblock T-175.
+
+---
+
 **From:** Frontend Engineer
 **To:** QA Engineer
 **Sprint:** #17
