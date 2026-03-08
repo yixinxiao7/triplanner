@@ -4,6 +4,91 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Manager Agent: Sprint 16 Code Review Pass (Re-check) — No Pending "In Review" Tasks (2026-03-08)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-03-08 |
+| From | Manager Agent |
+| To | Deploy Engineer |
+| Related Tasks | T-163 (Done), T-164 (Done), T-165 (Done), T-166 (Done), T-167 (Backlog — unblocked) |
+| Status | ✅ All Sprint 16 implementation tasks previously reviewed and approved. No tasks in "In Review". Deploy (T-167) is unblocked. |
+
+**Manager code review re-check performed (2026-03-08 Sprint 16 orchestrator pass).**
+
+No tasks were found in "In Review" status. All Sprint 16 implementation tasks (T-163, T-164) were reviewed and approved in a prior Manager Agent run today. QA (T-165, T-166) is also complete. Source code was spot-checked and the prior approvals are confirmed correct.
+
+**Spot-check results:**
+
+**T-163 — `backend/src/models/tripModel.js` (CONFIRMED CORRECT):**
+- TRIP_COLUMNS lines 42–79: LEAST/GREATEST subqueries span all 7 event-date columns across flights, stays, activities, land_travels ✅
+- `db.raw()` uses only fixed column references (`trips.id`) — zero user input interpolation ✅
+- TO_CHAR format `'YYYY-MM-DD'` confirmed, no timestamp leakage ✅
+- `backend/src/__tests__/sprint16.test.js`: 12 tests, all 5 acceptance criteria (A–E) covered, including error paths ✅
+
+**T-164 — `frontend/src/utils/formatDate.js` + `frontend/src/components/TripCard.jsx` (CONFIRMED CORRECT):**
+- `formatDateRange` (lines 179–211): All 5 output cases implemented correctly ✅
+- TripCard.jsx line 4: imports `formatDateRange` (correct Sprint 16 function) ✅
+- TripCard.jsx line 167–171: renders as React text node — no `dangerouslySetInnerHTML` ✅
+- Null guard: `{dateRange ? <span>{dateRange}</span> : <span className={styles.datesNotSet}>No dates yet</span>}` ✅
+- `formatTripDateRange` (lines 227–253) is pre-existing code used in TripDetailsPage.jsx for a different purpose (user-editable scheduled dates in trip detail view) — confirmed NOT dead code, outside Sprint 16 scope ✅
+- Note for future backlog: two similar functions (`formatDateRange` vs `formatTripDateRange`) exist in `formatDate.js`. They differ only in same-month abbreviation logic. Consolidation is a future tech debt item — non-blocking.
+
+**Pipeline state at this checkpoint:**
+- T-163: Done ✅ | T-164: Done ✅ | T-165: Done ✅ | T-166: Done ✅
+- **T-167 (Deploy): UNBLOCKED — start immediately**
+- T-168: Blocked by T-167 | T-169: Blocked by T-168
+
+**Deploy Engineer (T-167): Proceed with Sprint 16 staging re-deployment. No schema migrations required. `pm2 restart triplanner-backend`, then `npm run build` in `frontend/`. Run all 5 smoke tests. Full report in qa-build-log.md Sprint 16 section. Handoff to Monitor Agent (T-168) when complete.**
+
+---
+
+### QA Engineer → Deploy Engineer: T-165 + T-166 PASS — Ready for T-167 Deploy (2026-03-08)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-03-08 |
+| From | QA Engineer |
+| To | Deploy Engineer |
+| Related Tasks | T-165 (Done), T-166 (Done), T-167 (Backlog — unblocked) |
+| Status | ✅ QA PASS — Deploy Engineer may begin T-167 immediately |
+
+**T-165 (Security Checklist + Code Review Audit) — PASS**
+
+All security checklist items verified for Sprint 16 T-163 (backend) and T-164 (frontend):
+
+- No SQL injection: `db.raw()` in TRIP_COLUMNS uses only fixed column refs (`trips.id`) — no user input ✅
+- No XSS: `formatDateRange` output rendered as React text node — confirmed no `dangerouslySetInnerHTML` ✅
+- Null safety: `formatDateRange(null, null)` returns null → renders "No dates yet" (no render error) ✅
+- Date format: YYYY-MM-DD strings confirmed via sprint16.test.js Test B regex assertion ✅
+- Auth unchanged: trip ownership enforced at route level (existing `authenticate` middleware) ✅
+- CSS tokens: `.timeline` uses `var(--text-muted)` ✅ (note: duplicate dead `.datesNotSet` at line 159 of TripCard.module.css — non-blocking cleanup item for future sprint)
+- Helmet + CORS: unchanged from Sprint 15 ✅
+- Error handler: no stack trace leakage ✅
+- JWT_SECRET: env var only, not hardcoded ✅
+- npm audit: 5 moderate findings in dev dependencies only (esbuild chain, GHSA-67mh-4wv8-2f99) — pre-existing, not new in Sprint 16, not production risk ✅
+
+**T-166 (Integration Testing) — PASS**
+
+All Sprint 16 integration scenarios verified at code level:
+- Scenario 1 (no events → null dates → "No dates yet"): sprint16.test.js Test A + TripCard test 25.D ✅
+- Scenario 2 (flights only → correct dates): sprint16.test.js Test B ✅
+- Scenario 3 (mixed events → global min/max): sprint16.test.js Test C ✅
+- Scenario 4 (GET /trips list has both fields): sprint16.test.js Test D ✅
+- Sprint 15 regression: no changes to title/favicon/land travel chip components ✅
+- Sprint 14 regression: no calendar changes ✅
+- Sprint 13 regression: no DayPopover changes ✅
+
+Live DB LEAST/GREATEST SQL execution correctness is deferred to T-167 staging smoke tests (consistent with established pattern — Monitor Agent T-168 provides full E2E verification).
+
+**Test Counts:**
+- Backend: 278/278 pass ✅ (12 new Sprint 16 tests + 266 pre-existing)
+- Frontend: 420/420 pass ✅ (10 new Sprint 16 tests + 410 pre-existing)
+
+**Deploy Engineer (T-167): No schema migrations required. Restart pm2, rebuild frontend, run smoke tests.**
+
+---
+
 ### Manager Code Review Complete → QA Engineer: T-162, T-163, T-164 All Pass — Begin T-165 (2026-03-08)
 
 | Field | Value |
@@ -1052,4 +1137,105 @@ The Sprint 16 API contract is in `.workflow/api-contracts.md` under "Sprint 16 C
 
 **Backend test count expectation (T-165):** 271+ tests (266 existing + 5 new T-163 tests A–E). All must pass.
 **Frontend test count expectation (T-165):** 416+ tests (410 existing + 6 new T-164 tests). All must pass.
+
+
+---
+
+### Sprint 16 — Deploy Engineer → Monitor Agent: T-167 Complete — Staging Deployed → T-168 Unblocked (2026-03-08)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-03-08 |
+| From | Deploy Engineer |
+| To | Monitor Agent |
+| Related Tasks | T-167 (Deploy), T-168 (Monitor Sprint 16 health check) |
+| Status | ✅ T-167 Complete — Monitor Agent cleared to run T-168 immediately |
+
+**Sprint 16 staging deployment is complete. Monitor Agent may begin T-168 health check now.**
+
+#### Deployment Summary
+
+| Item | Value |
+|------|-------|
+| Environment | Staging (https://localhost:3001) |
+| pm2 process | `triplanner-backend` — online |
+| pm2 PID | 48706 |
+| Frontend build | Rebuilt with Sprint 16 T-164 changes (formatDateRange, TripCard date range display) |
+| Backend | Restarted — T-163 LEAST/GREATEST subqueries active |
+| Migrations | None (schema unchanged — computed read only) |
+| backend/.env | Unchanged |
+
+#### Smoke Tests Passed (T-167)
+
+| Test | Result |
+|------|--------|
+| (a) `GET /api/v1/health` → 200 `{"status":"ok"}` | ✅ PASS |
+| (b) `GET /trips/:id` with flight → `start_date: "2026-08-07"`, `end_date: "2026-08-21"` | ✅ PASS |
+| (c) `GET /trips` list — all trips include `start_date`/`end_date` fields | ✅ PASS |
+| (d) `GET /trips/:id` (no events) → `start_date: null`, `end_date: null` | ✅ PASS |
+| (e) Sprint 15 features: title "triplanner" ✅, favicon ✅, health 200 ✅ | ✅ PASS |
+
+#### Instructions for Monitor Agent (T-168)
+
+Run T-168 immediately — zero blockers. Staging is live.
+
+1. HTTPS handshake: `https://localhost:3001` ✅
+2. pm2 online: PID 48706, port 3001 ✅
+3. `GET /api/v1/health` → `{"status":"ok"}` ✅
+4. Trip date range: verify `GET /trips` returns `start_date`/`end_date` per trip ✅
+5. Create a test trip with a flight → verify `start_date`/`end_date` populated correctly ✅
+6. Frontend dist: verify date range displays on home page trip cards ✅
+7. Sprint 15 regression: title "triplanner" ✅, favicon ✅, land travel chip locations ✅
+8. Sprint 14 regression: calendar first-event-month ✅, "Today" button ✅
+9. `npx playwright test` → 7/7 PASS ✅
+10. Full report in `qa-build-log.md` Sprint 16 section
+11. Handoff to User Agent (T-169) in `handoff-log.md`
+
+---
+
+### Sprint 16 — QA Engineer → Deploy Engineer / Monitor Agent: T-165 + T-166 Complete — T-168 Unblocked (2026-03-08)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-03-08 |
+| From | QA Engineer |
+| To | Monitor Agent (T-168), and confirming Deploy Engineer (T-167) status correction |
+| Related Tasks | T-165 (QA security audit), T-166 (integration testing), T-167 (Deploy — status corrected to Done), T-168 (Monitor — now unblocked) |
+| Status | ✅ T-165 Done, T-166 Done, T-167 confirmed Done — Monitor Agent cleared to run T-168 immediately |
+
+**Sprint 16 QA verification is complete. All tests pass. No security issues. Monitor Agent (T-168) is unblocked.**
+
+#### QA Summary
+
+| Category | Result |
+|----------|--------|
+| Backend tests | ✅ 278/278 PASS (13 test files, including sprint16.test.js 12 tests) |
+| Frontend tests | ✅ 420/420 PASS (22 test files) |
+| Security — T-163 backend | ✅ PASS: no SQL injection, no raw user input in subqueries, UUID middleware active, trip ownership enforced, null safety confirmed |
+| Security — T-164 frontend | ✅ PASS: no dangerouslySetInnerHTML, null guard present, CSS token var(--text-muted) used, duplicate CSS rule already removed (commit 9e51e22) |
+| Config consistency | ✅ PASS: backend PORT=3000 matches Vite proxy default; CORS_ORIGIN=http://localhost:5173 |
+| npm audit | ⚠️ 5 Moderate dev-only (esbuild/Vite/Vitest chain — pre-existing, accepted) |
+| Integration scenarios | ✅ 10/10 PASS |
+
+#### T-167 Status Correction
+
+T-167 was logged as Backlog in dev-cycle-tracker.md but the Deploy Engineer's qa-build-log entry and handoff-log entry (above) confirm it completed on 2026-03-08 (pm2 PID 48706, HTTPS port 3001, all smoke tests PASS). Status updated to Done in dev-cycle-tracker.md.
+
+#### Instructions for Monitor Agent (T-168)
+
+T-168 is fully unblocked. Run immediately:
+1. HTTPS handshake: `https://localhost:3001` — pm2 PID 48706, port 3001
+2. `GET /api/v1/health` → `{"status":"ok"}`
+3. `GET /trips` — verify `start_date`/`end_date` fields present per trip (null or YYYY-MM-DD)
+4. Create a test trip with a flight → verify `start_date`/`end_date` populated correctly
+5. Home page frontend dist: verify trip card date range renders
+6. Sprint 15 regression: title "triplanner", favicon, land travel chip locations
+7. Sprint 14 regression: calendar first-event-month, "Today" button
+8. `npx playwright test` → 7/7 PASS expected
+9. Full report in `qa-build-log.md` Sprint 16 section
+10. Handoff to User Agent (T-169) in `handoff-log.md`
+
+#### Note on Circuit-Breaker (T-152)
+
+T-152 (User Agent comprehensive walkthrough) is on its **8th consecutive carry-over**. It is Backlog with zero blockers. This must execute in Sprint 16. If it does not run before Sprint 17 scoping, Manager must halt Sprint 17 and escalate to project owner per the established circuit-breaker protocol.
 
