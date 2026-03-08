@@ -4,6 +4,61 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### T-163 Complete — Backend Engineer → QA Engineer: Computed Trip Date Range (2026-03-08)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | QA Engineer |
+| Related Tasks | T-163, T-165, T-166 |
+| Status | ✅ Ready for QA |
+
+**T-163 implementation is complete and ready for QA review (T-165 + T-166).**
+
+#### What Was Implemented
+
+| File | Change |
+|------|--------|
+| `backend/src/models/tripModel.js` | Replaced stored `TO_CHAR(start_date, ...)` / `TO_CHAR(end_date, ...)` TRIP_COLUMNS entries with correlated LEAST/GREATEST subqueries computing min/max dates across all event tables |
+| `backend/src/__tests__/sprint16.test.js` | New test file — 12 tests covering all 5 acceptance criteria (A through E) |
+
+#### SQL Computation (no schema migration)
+
+`start_date` = `LEAST(MIN(DATE(departure_at)) from flights, MIN(DATE(arrival_at)) from flights, MIN(DATE(check_in_at)) from stays, MIN(DATE(check_out_at)) from stays, MIN(activity_date) from activities, MIN(departure_date) from land_travels, MIN(arrival_date) from land_travels)` — formatted `TO_CHAR(..., 'YYYY-MM-DD')`
+
+`end_date` = same pattern with `GREATEST`/`MAX`. Both return `null` when trip has no events.
+
+#### Test Results
+
+- **278/278 tests pass** (266 pre-existing + 12 new sprint16.test.js tests)
+- Test A: no events → `start_date: null, end_date: null` ✅
+- Test B: flights only → correct departure/arrival dates ✅
+- Test C: mixed events → correct global min/max ✅
+- Test D: list endpoint includes `start_date`/`end_date` per trip ✅
+- Test E: POST + PATCH responses include `start_date`/`end_date` keys ✅
+
+#### QA Checklist for T-165
+
+- [x] No raw SQL string concatenation with user input — all subqueries reference `trips.id` (a DB column, not user input)
+- [x] `start_date`/`end_date` values are YYYY-MM-DD strings (via `TO_CHAR`) — no timestamp leakage
+- [x] `null` returned when no events exist (LEAST/GREATEST of all-null inputs = null in PostgreSQL)
+- [x] No thrown exception on null path — null propagates gracefully through `computeTripStatus`
+- [x] TRIP_COLUMNS change propagates to `listTripsByUser`, `findTripById`, `createTrip` (re-query), `updateTrip` (re-query)
+- [x] Trip ownership authorization unchanged — all queries still scope by `user_id`
+
+#### Integration Scenarios for T-166
+
+| Scenario | Expected `start_date` | Expected `end_date` |
+|----------|----------------------|---------------------|
+| Trip with no events | `null` | `null` |
+| Trip with one flight (departs 2026-08-07, arrives 2026-08-21) | `"2026-08-07"` | `"2026-08-21"` |
+| Mixed: flight (2026-08-07), stay (checkout 2026-08-25), activity (2026-08-10) | `"2026-08-07"` | `"2026-08-25"` |
+| GET /trips list | Both fields on every trip object | — |
+
+**No migrations to run** (Deploy Engineer: no schema changes in T-163).
+
+---
+
 ### T-164 Complete — Frontend Engineer → QA Engineer: Trip Date Range on TripCard (2026-03-08)
 
 | Field | Value |
