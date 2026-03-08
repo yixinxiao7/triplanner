@@ -4437,3 +4437,130 @@ No new database migrations are introduced in Sprint 14.
 ---
 
 *Sprint 14 contract review complete — 2026-03-07. Backend Engineer: no new endpoints or schema changes this sprint. Sprint 14 is a focused regression-fix sprint — T-146 (calendar async timing) and T-147 ("Today" button) are purely frontend component changes that consume data already fetched from existing endpoints. T-145 (JWT_SECRET rotation) is a deploy/security operation with no API surface impact. All existing contracts (Sprints 1–13) remain authoritative and unchanged. Backend Engineer on hotfix standby for T-152 User Agent walkthrough only.*
+
+---
+
+## Sprint 15 Contracts
+
+**Date:** 2026-03-07
+**Reviewed by:** Backend Engineer
+**Sprint Goal:** Fix browser tab title + favicon (FB-096, FB-097 → T-154), fix calendar land travel chip location display (FB-098 → T-155), add `formatTimezoneAbbr()` unit tests (T-153), and complete User Agent comprehensive walkthroughs (T-152, T-160).
+
+---
+
+### Sprint 15 — No New API Endpoints
+
+Sprint 15 contains zero backend API changes. All in-scope tasks are purely frontend bug fixes or test additions. The active-sprint.md explicitly states: *"Backend Engineer | Standby — no backend tasks this sprint"* and *"No new migrations (no schema changes in Sprint 15)."*
+
+| Task | Agent | Reason — No API Contract Change |
+|------|-------|--------------------------------|
+| T-154 | Frontend Engineer | Browser title + favicon fix — static HTML change only (`frontend/index.html`). Updates `<title>` text and adds a `<link rel="icon">` tag. No API calls, no data fetching, no component changes. |
+| T-155 | Frontend Engineer | Calendar land travel chip location fix — corrects the `_location` field assignment in `buildEventsMap`. The fix reads `from_location` (pick-up) and `to_location` (drop-off) from the land travel records already returned by `GET /api/v1/trips/:id/land-travel`. Both fields are present in all land travel responses since Sprint 6. No new API calls, no new query parameters, no request or response shape changes. |
+| T-153 | Frontend Engineer | `formatTimezoneAbbr()` unit tests — test-only task. No production code changes. No API calls. |
+| T-152 / T-160 | User Agent | Comprehensive feature walkthroughs — read-only browsing of existing staging app. No API changes. |
+
+---
+
+### Sprint 15 — Field Reference for T-155 (Land Travel Chip Location Fix)
+
+The T-155 bug fix relies entirely on fields **already present** in the existing land travel response shape (established Sprint 6, confirmed applied on staging). No backend changes are needed. This section documents the specific fields the Frontend Engineer must reference when implementing the fix.
+
+**Endpoint:** `GET /api/v1/trips/:tripId/land-travel` (and `GET /api/v1/trips/:tripId/land-travel/:lid`)
+
+**Fields consumed by T-155:**
+
+| Field | Type | Present Since | Usage in T-155 Fix |
+|-------|------|--------------|-------------------|
+| `from_location` | `string \| null` | Sprint 6 | Displayed on **pick-up / departure day** chip (`_isArrival = false`) |
+| `to_location` | `string \| null` | Sprint 6 | Displayed on **drop-off / arrival day** chip (`_isArrival = true`) |
+
+**Correct chip → field mapping (per Design Agent Spec 23):**
+
+| Calendar Day | `_isArrival` | Field to Display | Example |
+|---|---|---|---|
+| Departure / pick-up day | `false` | `from_location` | `"LAX Airport"` |
+| Arrival / drop-off day | `true` | `to_location` | `"SFO Airport"` |
+| Same-day travel (departure = arrival) | `false` (pick-up only) | `from_location` | `"LAX Airport"` |
+
+**Null/empty handling:** If `from_location` or `to_location` is `null` or `""`, omit the ` · ` separator — never render the string `"null"` or `"undefined"` to the user.
+
+**No response shape change:** The backend already returns `from_location` and `to_location` on every land travel object. T-155 is a frontend-only fix — it corrects which field is read by `buildEventsMap` when constructing the `_location` property on calendar event objects.
+
+---
+
+### Sprint 15 — Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–14 remain in force and unchanged. The complete authoritative state of all endpoint groups:
+
+| Sprint | Endpoint Group | Contract Status | Key Notes |
+|--------|---------------|----------------|-----------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/health` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7. `notes` is always `null \| non-empty string` (Sprint 9 correction). |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | Destinations deduped case-insensitively (Sprint 4). |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field present; returns `null` if unset. |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` updatable; `""` normalized to `null` (Sprint 9). |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | `departure_tz` + `arrival_tz` present. `departure_at` read client-side for calendar. |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | `check_in_tz` + `check_out_tz` present. `check_in_at` read client-side for calendar. |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | `activity_date` (YYYY-MM-DD) read client-side for calendar. `start_time`/`end_time` nullable since Sprint 3. |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Singular path confirmed (T-139 Sprint 13 fix). `from_location` + `to_location` consumed by T-155 fix. |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+
+**Schema state on staging:** All 10 migrations applied (001–010). Database is fully current. No pending migrations for Sprint 15.
+
+**Fields consumed by Sprint 15 frontend changes:** T-155 reads `from_location` and `to_location` from land travel records already returned by `GET /api/v1/trips/:id/land-travel`. No new fields, no new fetches, no query parameter changes.
+
+---
+
+### Sprint 15 — No Schema Changes
+
+No new database migrations are introduced in Sprint 15.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging (T-107, 2026-02-28) |
+| — | 8–14 | *(No new migrations)* | Sprints 8–14 are all schema-stable |
+| — | **15** | *(No new migrations)* | **Sprint 15 is frontend bug fixes only. Zero schema work.** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+---
+
+### Sprint 15 — Hotfix Standby Protocol
+
+**Trigger:** If User Agent walkthroughs (T-152 or T-160) reveal a **Critical or Major backend bug**, the Manager Agent will create an H-XXX hotfix task. The Backend Engineer is on standby.
+
+| Severity | Backend Engineer Action |
+|----------|------------------------|
+| **Critical** | Respond immediately. Document contract change (if any) here under `Sprint 15 — Hotfix H-XXX` first, then implement. |
+| **Major** | Respond within the same sprint phase. Document contract change (if any) here first, then implement. |
+| **Minor / Suggestion** | Log to Sprint 16 backlog. No Backend Engineer action this sprint. |
+
+**Current status (Sprint 15 start — 2026-03-07):** No H-XXX tasks exist. T-152 User Agent walkthrough is pending (6th carry-over — circuit-breaker applies). Backend Engineer is monitoring. Sprint 14 closed with zero Critical or Major bugs — no outstanding hotfix debt.
+
+---
+
+*Sprint 15 contract review complete — 2026-03-07. Backend Engineer: no new endpoints or schema changes this sprint. Sprint 15 is a focused frontend bug-fix sprint — T-154 (browser title + favicon) is a static HTML change, T-155 (land travel chip location) is a frontend-only fix consuming `from_location`/`to_location` fields already present in existing land travel API responses since Sprint 6, and T-153 (formatTimezoneAbbr unit tests) adds tests with zero production code changes. All existing contracts (Sprints 1–14) remain authoritative and unchanged. Backend Engineer on hotfix standby for T-152 and T-160 User Agent walkthroughs only.*

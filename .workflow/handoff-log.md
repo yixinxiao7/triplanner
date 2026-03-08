@@ -4,6 +4,93 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Sprint 15 — Backend Engineer: API Contracts Complete — No New Endpoints — Frontend Engineer Cleared (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | Frontend Engineer |
+| Date | 2026-03-07 |
+| Status | Complete — No Backend Blocking Work |
+| Related Tasks | T-154, T-155, T-153 |
+
+**Sprint 15 API contract review is complete. The Frontend Engineer is cleared to begin T-154, T-155, and T-153 immediately. There are zero backend dependencies — all three tasks are purely frontend changes.**
+
+#### Summary
+
+Sprint 15 introduces **no new API endpoints, no request/response shape changes, and no schema migrations.** The Backend Engineer is on standby this sprint (active-sprint.md: *"Backend Engineer | Standby — no backend tasks this sprint"*).
+
+| Task | API Dependency | What to Use |
+|------|---------------|-------------|
+| T-154 — Browser title + favicon | None | Static HTML change only. No API calls. |
+| T-155 — Land travel chip location fix | Existing `GET /api/v1/trips/:id/land-travel` | Read `from_location` (pick-up day chip) and `to_location` (drop-off day chip). Both fields have been in every land travel response since Sprint 6. **No new API calls or parameters needed.** |
+| T-153 — `formatTimezoneAbbr()` unit tests | None | Test-only task. No API calls. |
+
+#### Key Field Reference for T-155
+
+The T-155 fix reads two fields from land travel records already in memory (fetched by `useTripDetails.js`):
+
+| Field | Type | Usage |
+|-------|------|-------|
+| `from_location` | `string \| null` | Display on **pick-up / departure day** (`_isArrival = false`) |
+| `to_location` | `string \| null` | Display on **drop-off / arrival day** (`_isArrival = true`) |
+
+Per Design Agent Spec 23: if either field is `null` or `""`, omit the ` · ` separator — never render `"null"` or `"undefined"`. Same-day travel shows only the pick-up chip (`from_location`).
+
+Full field reference documented in `.workflow/api-contracts.md` under *Sprint 15 — Field Reference for T-155*.
+
+#### No Acknowledgement Needed from Frontend Engineer
+
+Since there are no new contracts to negotiate, no Frontend Engineer acknowledgement is required before implementation begins. Frontend Engineer can start T-154, T-155, and T-153 immediately.
+
+---
+
+### Sprint 15 — Backend Engineer: API Contracts Complete — QA Reference (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Backend Engineer |
+| To | QA Engineer |
+| Date | 2026-03-07 |
+| Status | Complete — For QA Reference |
+| Related Tasks | T-156, T-157 |
+
+**Sprint 15 API contract review is complete. The QA Engineer should reference this handoff when running the security checklist (T-156) and integration testing (T-157).**
+
+#### API Surface for Sprint 15 — What QA Must Verify
+
+Sprint 15 has **no new backend endpoints or schema changes.** The QA scope for backend API concerns is:
+
+1. **No regression in existing endpoints** — All endpoints from Sprints 1–14 must continue to function identically after the Sprint 15 frontend changes are deployed. The frontend changes do not touch any backend code, so regression risk is minimal.
+
+2. **T-155 data flow** — The land travel chip location fix reads `from_location` and `to_location` from land travel API responses. QA must verify:
+   - Pick-up day chip renders `from_location` (the origin, e.g., `"LAX Airport"`)
+   - Drop-off day chip renders `to_location` (the destination, e.g., `"SFO Airport"`)
+   - No `"null"` or `"undefined"` strings appear in chip renders when fields are null
+   - RENTAL_CAR "pick-up" / "drop-off" label prefixes (T-138) are unchanged
+
+3. **T-154 security concern (minimal)** — The favicon `href="/favicon.png"` is a root-relative path pointing to an existing static file. QA must confirm: no external URL is referenced, no CSP implications, the `<link>` tag does not introduce a `<script>` injection vector.
+
+4. **T-155 security concern** — The `_location` field displayed in `DayCell` and `DayPopover` originates from `from_location` / `to_location` database fields (server-controlled, parameterized query). QA must confirm: `dangerouslySetInnerHTML` is not used; React renders location text as a text node (XSS-safe); no raw user input is echoed unsanitized.
+
+#### Existing Contracts in Force (Testing Reference)
+
+All contracts from Sprints 1–14 remain authoritative. The land travel endpoints most relevant to T-155 QA:
+
+| Endpoint | Auth | Notes for T-155 QA |
+|----------|------|--------------------|
+| `GET /api/v1/trips/:tripId/land-travel` | Bearer token | Returns array; each item has `from_location` (string\|null) and `to_location` (string\|null). Verify frontend reads correct field per chip type. |
+| `GET /api/v1/trips/:tripId/land-travel/:lid` | Bearer token | Same fields. Used by edit form (not calendar). Not directly impacted by T-155. |
+
+Full contract table in `.workflow/api-contracts.md` under *Sprint 15 — Existing Contracts Remain Authoritative*.
+
+#### Migration Status for Deploy Reference (T-158)
+
+- **Migrations on staging: 10 (001–010). All applied. None pending.**
+- T-158 Deploy Engineer does **not** need to run any migrations for Sprint 15. Frontend rebuild only.
+
+---
+
 ### Sprint 15 — Design Agent: UI Specs Published — Frontend Engineer Cleared to Build (2026-03-07)
 
 | Field | Value |
