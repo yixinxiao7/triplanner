@@ -18,202 +18,13 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
-## Sprint 11 Feedback
-
-*Sprint 11 begins 2026-03-04. No "New" feedback entries carry into Sprint 11. All prior entries (FB-001 through FB-084) were triaged in previous sprints. FB-084 is Resolved (T-113 Done, T-122 Done and deployed). No User Agent or Monitor Agent feedback has been submitted for Sprint 6, 7, 8, or 10 features — T-094, T-109, T-120, and the new T-123 (Sprint 10 walkthrough) have never run. This is the seventh consecutive sprint where the pipeline has not fully closed.*
-
-*Sprint 11 will collect feedback from four long-overdue walkthroughs: T-094 (Sprint 6 features — land travel CRUD, calendar enhancements, activity AM/PM fix, FilterToolbar refetch, ILIKE search), T-109 (Sprint 7 features — popover portal fix, stays UTC timezone fix, section reorder, all-day sort, calendar checkout/arrival times, trip notes), T-120 (Sprint 8 features — timezone abbreviations on flight/stay cards, URL linkification in activity location), and T-123 (Sprint 10 features — trip print/export via window.print()). Manager will triage each feedback set immediately after submission and create hotfix tasks (H-XXX) if any Critical or Major bugs are found.*
-
-**Sprint 11 Feedback Triage Summary (Manager Agent — 2026-03-04):**
-
-*No "New" entries carry into Sprint 11. All prior entries (FB-001 through FB-084) triaged in previous sprints. FB-084 Resolved (T-113 Done). Awaiting T-094, T-109, T-120, and T-123 feedback submissions this sprint.*
+## Sprint 15 Feedback Triage (Manager Agent — 2026-03-07)
 
 | FB Entry | Category | Severity | Disposition | Notes |
 |----------|----------|----------|-------------|-------|
-| (none — carry-in) | — | — | — | No entries carry "New" status into Sprint 11. All prior entries triaged. FB-084 Resolved. Awaiting T-094, T-109, T-120, T-123 submissions this sprint. |
-
-*Entries will be added here as User Agent submits Sprint 6, Sprint 7, Sprint 8, and Sprint 10 feedback during T-094, T-109, T-120, and T-123 respectively.*
-
----
-
-**Sprint 11 → Sprint 12 Feedback Triage (Manager Agent — 2026-03-06):**
-
-| FB Entry | Category | Severity | Disposition | Notes |
-|----------|----------|----------|-------------|-------|
-| FB-085 | UX Issue | Major | **Tasked → T-125** | Deploy Engineer must use `.env.staging` instead of overwriting `.env`. P1, Sprint 12. |
-| FB-086 | UX Issue | Minor | **Tasked → T-126** | DayPopover must stay anchored to trigger on scroll. Frontend fix, P2, Sprint 12. |
-| FB-087 | UX Issue | Minor | **Tasked → T-127** | Add "check-in" label to calendar check-in time chip for consistency with "check-out". Frontend fix, P2, Sprint 12. |
-| FB-088 | Feature Gap | Minor | **Tasked → T-128** | Calendar should open on the month of the first planned event, not current month. Frontend fix, P2, Sprint 12. |
-
----
-
-### FB-085 — UX Issue: Deploy phase overwrites .env, breaking local dev
-
-| Field | Value |
-|-------|-------|
-| Sprint | 11 |
-| Category | UX Issue |
-| Severity | Major |
-| Status | Tasked → T-125 |
-| Related Task | T-125 |
-
-**Description:** The Deploy Engineer agent modifies `backend/.env` to staging settings (HTTPS, port 3001, secure cookies, staging CORS origin) during the deploy phase, but never restores it afterward. This leaves `.env` in staging mode after the sprint completes, which breaks `npm run dev` for the project owner — the frontend proxy can't connect because it expects HTTP on port 3000 by default.
-
-**Recommended fix:** Use a separate `backend/.env.staging` file for staging deployments instead of overwriting `backend/.env`. The deploy phase and staging-related agents should read from `.env.staging`, while `.env` remains untouched for local development. The Deploy Engineer prompt and the deploy phase script should be updated to reference `.env.staging` instead of mutating `.env`.
-
-**Requested by:** Project owner (manual testing feedback)
-
----
-
-### FB-086 — UX Issue: DayPopover detaches from trigger on page scroll
-
-| Field | Value |
-|-------|-------|
-| Sprint | 11 |
-| Category | UX Issue |
-| Severity | Minor |
-| Status | Tasked → T-126 |
-| Related Task | T-126 |
-
-**Description:** When clicking "+X more" on a calendar day, the DayPopover dropdown detaches from its trigger button on page scroll. The popover is rendered with `position: fixed` via `createPortal` to `document.body`, so it stays at the original viewport coordinates while the page content scrolls. Expected behavior: the dropdown should stay anchored relative to the trigger button.
-
-**Requested by:** Project owner (manual testing feedback)
-
----
-
-### FB-087 — UX Issue: Calendar check-in time missing "check-in" label
-
-| Field | Value |
-|-------|-------|
-| Sprint | 11 |
-| Category | UX Issue |
-| Severity | Minor |
-| Status | Tasked → T-127 |
-| Related Task | T-127 |
-
-**Description:** On the calendar view, the check-out date explicitly displays a "check-out" label, but the check-in date does not have a corresponding "check-in" label. For consistency, the check-in time should explicitly say "check-in" the same way "check-out" is written out on the check-out date.
-
-**Requested by:** Project owner (manual testing feedback)
-
----
-
-### FB-088 — Feature Gap: Calendar should default to month of first planned event
-
-| Field | Value |
-|-------|-------|
-| Sprint | 11 |
-| Category | Feature Gap |
-| Severity | Minor |
-| Status | Tasked → T-128 |
-| Related Task | T-128 |
-
-**Description:** When opening the trip details page, the calendar currently defaults to the current month. Instead, it should default to the month of the trip's first planned event (flight, transport, activity, stay, etc.) so the user immediately sees relevant content. If no events have been planned yet, it should fall back to the current month.
-
-**Requested by:** Project owner (manual feedback)
-
----
-
-## Sprint 12 Monitor Alerts — 2026-03-06
-
-### FB-089 — Monitor Alert: Staging Backend Running on Wrong Port (PORT=3000, Expected PORT=3001)
-
-| Field | Value |
-|-------|-------|
-| Sprint | 12 |
-| Category | Monitor Alert |
-| Severity | Major |
-| Status | Tasked → Sprint 13 (T-131 re-execution required) |
-| Related Task | T-131, T-132 |
-
-**Description:** Sprint 12 post-deploy health check (T-132) found the staging backend running on `https://localhost:3000`, not `https://localhost:3001` as specified in `backend/.env.staging`. The backend is serving HTTPS (TLS certs loaded from `infra/certs/`), but `PORT=3000` was used instead of the staging-config value of `PORT=3001`. The Sprint 11 staging backend (pm2 PID 42784, `https://localhost:3001`) is no longer running — port 3001 has no listener.
-
-**Evidence:**
-- `lsof -i :3001` → empty (no listener)
-- `lsof -i :3000` → PID 78079, `node src/index.js`, TCP \*:hbci (LISTEN)
-- `curl -sk https://localhost:3000/api/v1/health -w "HTTP_STATUS:%{http_code}"` → `{"status":"ok"} HTTP_STATUS:200`
-- `curl -sk https://localhost:3001/api/v1/health` → connection refused (curl exit 7, HTTP_STATUS:000)
-- `pm2` binary not found in PATH — process management unverifiable
-- No Deploy Engineer → Monitor Agent handoff found in handoff-log.md for T-131
-
-**Impact:**
-- Staging vite dev proxy (configured with `BACKEND_PORT=3001 BACKEND_SSL=true`) would target `https://localhost:3001` — a dead port. Dev-mode integration with staging backend broken.
-- T-131 acceptance criteria not met: pm2 management not verified, staging config not correctly applied.
-- T-133 (User Agent walkthrough) is BLOCKED — staging is not in the correct state for formal verification.
-
-**Required Action:** Deploy Engineer must:
-1. Stop the current backend process (PID 78079): `kill 78079`
-2. Start backend via pm2 with staging config: `pm2 start infra/ecosystem.config.cjs` (from project root — this sets `NODE_ENV=staging`, which triggers `.env.staging` load with PORT=3001)
-3. Verify pm2 online: `pm2 status` shows `triplanner-backend` as `online`
-4. Confirm `curl -sk https://localhost:3001/api/v1/health` → 200
-5. Log T-131 completion handoff to Monitor Agent so T-132 re-check can proceed
-6. Do NOT touch `backend/.env` (T-131 AC)
-
----
-
-### FB-090 — Monitor Alert: Pre-existing Route Documentation Inconsistency — /land-travel vs /land-travels
-
-| Field | Value |
-|-------|-------|
-| Sprint | 12 |
-| Category | Monitor Alert |
-| Severity | Minor |
-| Status | Acknowledged (backlog — documentation fix, no functional impact) |
-| Related Task | T-132 |
-
-**Description:** During T-132 health checks, Monitor Agent discovered that the land travel API route is mounted at `/api/v1/trips/:tripId/land-travel` (singular) in `backend/src/app.js`, but `api-contracts.md` documents it as `/land-travels` (plural). All 266 backend tests use the singular URL and pass. The frontend uses the singular URL (application works). This is a pre-existing documentation inconsistency from Sprint 6, not a Sprint 12 regression.
-
-**Evidence:**
-- `curl -sk https://localhost:3000/api/v1/trips/:id/land-travel` → HTTP 200 `{"data":[]}`
-- `curl -sk https://localhost:3000/api/v1/trips/:id/land-travels` → HTTP 404 (Express HTML error)
-- `backend/src/app.js` line 43: `app.use('/api/v1/trips/:tripId/land-travel', landTravelRoutes)`
-- `backend/src/__tests__/sprint6.test.js` line 281: uses `/land-travel` (singular) throughout
-
-**Impact:** No functional impact — application works correctly. Risk: future agents or external API consumers reading `api-contracts.md` may call the wrong URL. Should be corrected in api-contracts.md.
-
-**Required Action:** Backend Engineer to correct `api-contracts.md` to document the endpoint as `/land-travel` (singular) in a future sprint. Low priority.
-
----
-
-## Sprint 12 Feedback Triage Summary (Manager Agent — 2026-03-06)
-
-*No User Agent feedback received (T-133 blocked by T-131 staging failure). Two Monitor Agent alerts triaged.*
-
-| FB Entry | Category | Severity | Disposition | Notes |
-|----------|----------|----------|-------------|-------|
-| FB-089 | Monitor Alert | Major | **Tasked → Sprint 13 (T-131 re-execution)** | Deploy Engineer must use `pm2 start infra/ecosystem.config.cjs` from project root. Backend must run on `https://localhost:3001` (PORT=3001 from `.env.staging`). P0, Sprint 13. |
-| FB-090 | Monitor Alert | Minor | **Acknowledged (backlog)** | Backend Engineer to fix `api-contracts.md` — change `/land-travels` to `/land-travel` (singular). No functional impact. Low priority. |
-| FB-091 | Feature Gap | Minor | **Tasked → T-137** | DayPopover should not close on scroll; should remain open and anchored at original position until user explicitly closes it. Frontend fix, P2, Sprint 13. |
-| FB-092 | Feature Gap | Minor | **Tasked → T-138** | Rental car calendar events should show "pick-up Xp" and "drop-off Xp" time labels, matching the stay check-in/check-out chip format. Frontend fix, P2, Sprint 13. |
-
----
-
-### FB-091 — DayPopover: keep popover open and anchored on scroll
-
-| Field | Value |
-|-------|-------|
-| Feedback | DayPopover closes on scroll — should stay open and anchored |
-| Sprint | 12 |
-| Category | Feature Gap |
-| Severity | Minor |
-| Status | Tasked → T-137 |
-| Related Task | T-126, T-137 |
-
-**Description:** When clicking "+X more" on a calendar day, the DayPopover opens correctly. However, as soon as the user scrolls the page, the popover disappears. The desired behavior is: (1) The popover should remain open until the user explicitly closes it (click outside, press Escape, or click the close button). Scrolling should NOT dismiss it. (2) The popover should stay anchored at the position where it was originally opened — it should NOT move or drift when the user scrolls up or down on the page. In other words, the popover should use `position: absolute` (anchored to the document) rather than `position: fixed` (anchored to the viewport), and scroll events should not trigger a close.
-
----
-
-### FB-092 — Rental car calendar events: show pick-up and drop-off time labels
-
-| Field | Value |
-|-------|-------|
-| Feedback | Rental car calendar events should display "pick-up" and "drop-off" time labels |
-| Sprint | 12 |
-| Category | Feature Gap |
-| Severity | Minor |
-| Status | Tasked → T-138 |
-| Related Task | T-138 |
-
-**Description:** Rental cars displayed on the calendar view do not clearly indicate pick-up and drop-off times. The desired behavior is to match the format used by stays (check-in/check-out chips). On the pick-up day, the calendar event should show a time chip reading "pick-up Xp" (e.g., "pick-up 5p" for a 5 PM pick-up on May 21st). On the drop-off day, the chip should read "drop-off Xp" (e.g., "drop-off 5p"). This makes it immediately obvious when the rental period starts and ends, consistent with how stays display "check-in 4p" and "check-out 11a".
+| FB-096 | UX Issue | Minor | **Tasked → T-154** | Frontend: update `<title>` in `frontend/index.html` to "triplanner"; add favicon `<link>` tag. Both are trivial `<head>` fixes with no backend or logic changes. P3, Sprint 15. |
+| FB-097 | UX Issue | Minor | **Tasked → T-154** | Combined with FB-096 — same file, same task. P3, Sprint 15. |
+| FB-098 | Bug | Major | **Tasked → T-155** | Frontend: fix calendar land travel pick-up/drop-off chip location rendering. Pick-up day chip must render the **origin** (pick-up location); drop-off day chip must render the **destination** (drop-off location). Currently both chips incorrectly render the destination. Root cause is likely in `DayCell` and `DayPopover.getEventTime` — the `_isArrival` flag path needs to select the correct location field. P1, Sprint 15. |
 
 ---
 
@@ -238,6 +49,9 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | FB-093 | Monitor Alert | Major | **Tasked → T-145** | Deploy Engineer: rotate JWT_SECRET in `backend/.env.staging` (`openssl rand -hex 32`), restart pm2. P1, Sprint 14. Must complete before any external staging access. |
 | FB-094 | Feature Gap | Minor | **Tasked → T-147** | Frontend Engineer: add "Today" button to TripCalendar navigation header. Clicking it sets `currentMonth` to the current date's month/year. P2, Sprint 14. |
 | FB-095 | Bug | Major | **Tasked → T-146** | Frontend Engineer: investigate and fix T-128 regression — calendar still opens on current month even when first event is in a future month. Root cause likely in deployed build not including T-128, or a date-parsing edge case. Reproduce on staging, compare TripCalendar.jsx implementation against `getInitialMonth()` logic in source. P1, Sprint 14. |
+| FB-096 | UX Issue | Minor | **Tasked → T-154** | Frontend Engineer: update `<title>` in `frontend/index.html` from "App" to "triplanner"; add `<link rel="icon" type="image/png" href="/favicon.png">` to `<head>`. P3, Sprint 15. |
+| FB-097 | UX Issue | Minor | **Tasked → T-154** | Combined with FB-096 — both are `frontend/index.html` `<head>` changes with no logic or test requirements. P3, Sprint 15. |
+| FB-098 | Bug | Major | **Tasked → T-155** | Frontend Engineer: fix calendar land travel chip location display — pick-up chip must show origin location (pick-up location), drop-off chip must show destination location (drop-off location). P1, Sprint 15. |
 
 ---
 
@@ -312,5 +126,61 @@ This is the publicly documented placeholder value from the project template. Bec
 **Description:** T-128 (Sprint 12) was supposed to make the calendar default to the month of the trip's first scheduled event. This is not working. Reproduction: open a trip with events only in May 2026 (e.g., Memorial Day trip) — the calendar defaults to March 2026 (the current month) instead of May 2026. The user must manually click the forward arrow twice to reach their events. The T-128 implementation is either not applying or has a bug in how it determines the first event's month. This needs to be investigated and fixed — the calendar should open on May 2026 when the first event is in May.
 
 **Requested by:** Project owner (manual testing — confirmed broken)
+
+---
+
+### FB-096 — Browser tab title shows "App" instead of "triplanner"
+
+| Field | Value |
+|-------|-------|
+| Feedback | Browser tab title displays "App" instead of "triplanner" |
+| Sprint | 15 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | New |
+| Related Task | — |
+
+**Description:** The browser tab title currently shows "App" (likely the default Vite/React template title). It should display "triplanner" to match the product name. This is a simple fix — update the `<title>` tag in `frontend/index.html` (or equivalent) from "App" to "triplanner".
+
+**Requested by:** Project owner
+
+---
+
+### FB-097 — Favicon not displayed in browser tab
+
+| Field | Value |
+|-------|-------|
+| Feedback | Browser tab shows default icon — favicon.png exists but is not linked |
+| Sprint | 15 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | New |
+| Related Task | — |
+
+**Description:** A favicon file exists at `frontend/public/favicon.png` but the browser tab displays the default browser icon instead of it. The `<link rel="icon">` tag is likely missing from `frontend/index.html`. Add `<link rel="icon" type="image/png" href="/favicon.png">` to the `<head>` section of `frontend/index.html` so the favicon appears in the browser tab.
+
+**Requested by:** Project owner
+
+---
+
+### FB-098 — Calendar land travel chips show wrong location for pick-up vs drop-off
+
+| Field | Value |
+|-------|-------|
+| Feedback | Pick-up and drop-off calendar chips both show drop-off destination instead of showing origin/destination respectively |
+| Sprint | 15 |
+| Category | Bug |
+| Severity | Major |
+| Status | New |
+| Related Task | T-138 |
+
+**Description:** On the calendar view, land travel entries (e.g., rental cars) display location chips on both the pick-up day and the drop-off day. Currently, both chips show the drop-off destination location, which is incorrect and confusing. The expected behavior is:
+
+- **Pick-up day chip:** Should display the pick-up/origin location (where the user collects the car)
+- **Drop-off day chip:** Should display the drop-off/destination location (where the user returns the car)
+
+For example, if a rental car is picked up at "LAX Airport" and dropped off at "SFO Airport", the pick-up day should show "pick-up — LAX Airport" and the drop-off day should show "drop-off — SFO Airport". Currently both days show "SFO Airport". The frontend calendar chip rendering logic needs to differentiate between the origin and destination fields when generating pick-up vs drop-off chips.
+
+**Requested by:** Project owner
 
 ---
