@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import DestinationChipInput from '../components/DestinationChipInput';
 import { useTripDetails } from '../hooks/useTripDetails';
-import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatTripDateRange, parseLocationWithLinks } from '../utils/formatDate';
+import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatDateRange, parseLocationWithLinks } from '../utils/formatDate';
 import TripCalendar from '../components/TripCalendar';
 import { api } from '../utils/api';
 import styles from './TripDetailsPage.module.css';
@@ -633,7 +633,7 @@ export default function TripDetailsPage() {
                   <button
                     className={styles.printBtn}
                     onClick={() => window.print()}
-                    aria-label="Print trip itinerary"
+                    aria-label="Print itinerary"
                   >
                     {/* Printer SVG icon */}
                     <svg
@@ -654,7 +654,7 @@ export default function TripDetailsPage() {
                       {/* Output tray / printed page */}
                       <rect x="3" y="9" width="8" height="4" rx="0.5" />
                     </svg>
-                    Print
+                    Print itinerary
                   </button>
                 </div>
 
@@ -864,7 +864,7 @@ export default function TripDetailsPage() {
                 <div className={styles.dateRangeDisplay}>
                   <CalendarIconSmall />
                   <span className={styles.dateRangeText}>
-                    {formatTripDateRange(savedStartDate, savedEndDate)}
+                    {formatDateRange(savedStartDate, savedEndDate)}
                   </span>
                   <button
                     className={styles.editDatesLink}

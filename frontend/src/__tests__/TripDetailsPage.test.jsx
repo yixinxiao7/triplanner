@@ -329,9 +329,9 @@ describe('TripDetailsPage', () => {
 
     renderTripDetailsPage();
 
-    // Should show formatted date range (Aug 7 — Aug 14, 2026)
+    // formatDateRange same-month output: "Aug 7 – 14, 2026" (no repeated month per spec)
     expect(screen.getByText(/Aug 7/)).toBeDefined();
-    expect(screen.getByText(/Aug 14/)).toBeDefined();
+    expect(screen.getByText(/14, 2026/)).toBeDefined();
   });
 
   it('shows edit dates button in display mode', () => {
@@ -1273,37 +1273,44 @@ describe('TripDetailsPage', () => {
     expect(activityLocation).toBeNull();
   });
 
-  // ── 19. T-122: Trip Print / Export ────────────────────────────────────────
+  // ── 19. T-122 / T-172: Trip Print / Export ────────────────────────────────
 
-  it('[T-122] renders Print button with aria-label="Print trip itinerary" on TripDetailsPage', () => {
+  it('[T-172-A] renders "Print itinerary" button on TripDetailsPage', () => {
     useTripDetails.mockReturnValue({ ...defaultHookValue });
 
     renderTripDetailsPage();
 
-    const printBtn = screen.getByRole('button', { name: /print trip itinerary/i });
+    const printBtn = screen.getByRole('button', { name: /print itinerary/i });
     expect(printBtn).toBeDefined();
   });
 
-  it('[T-122] clicking Print button calls window.print() exactly once', () => {
+  it('[T-172-B] clicking "Print itinerary" button calls window.print() exactly once', () => {
     useTripDetails.mockReturnValue({ ...defaultHookValue });
 
-    // Mock window.print
     const mockPrint = vi.fn();
     const originalPrint = window.print;
     window.print = mockPrint;
 
     renderTripDetailsPage();
 
-    const printBtn = screen.getByRole('button', { name: /print trip itinerary/i });
+    const printBtn = screen.getByRole('button', { name: /print itinerary/i });
     fireEvent.click(printBtn);
 
     expect(mockPrint).toHaveBeenCalledTimes(1);
 
-    // Restore
     window.print = originalPrint;
   });
 
-  it('[T-122] Print button is NOT rendered in the trip error state', () => {
+  it('[T-172-C] "Print itinerary" button has correct aria-label="Print itinerary"', () => {
+    useTripDetails.mockReturnValue({ ...defaultHookValue });
+
+    renderTripDetailsPage();
+
+    const printBtn = screen.getByRole('button', { name: /print itinerary/i });
+    expect(printBtn.getAttribute('aria-label')).toBe('Print itinerary');
+  });
+
+  it('[T-172-D] Print button is NOT rendered in the trip error state', () => {
     useTripDetails.mockReturnValue({
       ...defaultHookValue,
       trip: null,
@@ -1314,7 +1321,7 @@ describe('TripDetailsPage', () => {
     renderTripDetailsPage();
 
     // Error state renders — no print button
-    expect(screen.queryByRole('button', { name: /print trip itinerary/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /print itinerary/i })).toBeNull();
     // Error message is visible instead
     expect(screen.getByText('trip not found.')).toBeDefined();
   });

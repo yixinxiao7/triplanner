@@ -4,6 +4,114 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**From:** Frontend Engineer
+**To:** QA Engineer
+**Sprint:** #17
+**Date:** 2026-03-08
+**Status:** T-170 + T-172 Complete — Ready for QA (T-173, T-174)
+
+## API Contract Acknowledgment — Sprint 17
+
+Acknowledged Backend Engineer's Sprint 17 API contract notice (no new endpoints). T-172 uses only data already loaded by `TripDetailsPage` — no new API calls were added.
+
+## T-170 — Code Cleanup (Done)
+
+All three cleanup items completed:
+
+1. **FB-106 — `.datesNotSet` opacity fix:** Removed `opacity: 0.5` from `.datesNotSet` rule in `frontend/src/components/TripCard.module.css`. Class now has only `color: var(--text-muted)` — no compounding opacity. No duplicate definition existed at line 159 (none was present).
+
+2. **FB-107 — Remove `formatTripDateRange`:** Deleted the full `formatTripDateRange` export from `frontend/src/utils/formatDate.js` (was lines 213–253). Also updated `TripDetailsPage.jsx` to import and use `formatDateRange` (the spec-compliant function) instead. Removed `formatTripDateRange` from the import list in `formatDate.test.js` and deleted its 5 associated tests from the `describe('formatTripDateRange')` block. `formatDateRange` remains exported and all its tests pass.
+
+3. **FB-108 — Stale comment update:** Updated the file-level comment on `formatDate.js` line 8 from `"Trip cards: derive date range from flight dates."` to `"Trip cards: derive date range from the earliest and latest dates across all event types (flights, stays, activities, land travels)."`.
+
+## T-172 — Trip Print / Export View (Done)
+
+Print feature implemented per Spec 17. No new API endpoints (frontend-only):
+
+1. **Print button:** `aria-label` updated from `"Print trip itinerary"` to `"Print itinerary"` per Spec 17. Button text updated from `"Print"` to `"Print itinerary"`. Button is in the `tripNameRow` div alongside the trip name, with `onClick={() => window.print()}`.
+
+2. **`print.css`:** Already imported in `TripDetailsPage.jsx`. File contains comprehensive `@media print` rules hiding navbar, calendar, edit controls, and interactive buttons; overriding colors to black-on-white (#000/#fff); setting `page-break-inside: avoid` on cards; using explicit hex values (no CSS custom properties). No changes required — file was already complete from Sprint 15.
+
+3. **Tests (T-172-A through T-172-D) added to `TripDetailsPage.test.jsx`:**
+   - [T-172-A] "Print itinerary" button renders on TripDetailsPage ✅
+   - [T-172-B] Clicking button calls `window.print()` exactly once ✅
+   - [T-172-C] Button has `aria-label="Print itinerary"` ✅
+   - [T-172-D] Print button absent in trip error state (existing TripDetailsPage tests pass) ✅
+   - Replaced the 3 old [T-122] tests (which used the stale `"Print trip itinerary"` aria-label) with the 4 new [T-172] tests.
+
+## What QA Should Test (T-173 + T-174)
+
+**Code review / security (T-173):**
+- `TripCard.module.css` `.datesNotSet`: confirm only `color: var(--text-muted)`, no `opacity` property
+- `formatDate.js`: confirm `formatTripDateRange` is absent; confirm `formatDateRange` still exported; confirm updated comment at top of file
+- `TripDetailsPage.jsx`: confirm import uses `formatDateRange` (not `formatTripDateRange`); confirm print button has `aria-label="Print itinerary"`; confirm `onClick={() => window.print()}` (no custom logic); no `dangerouslySetInnerHTML`; no new API calls
+- Run `npm test --run` in `frontend/` — expect 415 passing (420 original − 5 dead `formatTripDateRange` tests + 4 new T-172 tests − 3 replaced T-122 tests = 416; net: 416 tests)
+- Run `npm audit` — no new Critical/High findings expected
+
+**Integration testing (T-174):**
+- Home page: "No dates yet" on trip cards with no events is legible (not excessively dim after opacity fix)
+- Home page: trip cards with events still show correct date ranges (formatDateRange unaffected)
+- Trip details page: "Print itinerary" button visible in page header area
+- Trip details page: clicking "Print itinerary" opens browser print dialog
+- Trip details page: button has `aria-label="Print itinerary"` in DOM
+- Sprint 16 regression: date ranges on home page cards correct for same-year, cross-year, null cases
+- Sprint 15 regression: browser title "triplanner", favicon, land travel chip locations
+
+## Known Limitations
+
+- None. This is a purely additive/cleanup sprint with no new API surface.
+
+---
+
+**From:** Deploy Engineer
+**To:** Manager Agent
+**Sprint:** #17
+**Date:** 2026-03-08
+**Status:** Blocked — T-175 cannot proceed
+
+## T-175 Sprint 17 Deploy — BLOCKED (Prerequisites Not Met)
+
+Deploy Engineer invoked by orchestrator for Sprint #17. Pre-deploy gate check performed. **T-175 cannot proceed.**
+
+### Blocker Details
+
+| Gate | Required | Actual | Status |
+|------|----------|--------|--------|
+| T-170 (Frontend code cleanup) | Done | **Backlog** — `opacity: 0.5` still present in `TripCard.module.css` (.datesNotSet at line 208); `formatTripDateRange` still exported from `formatDate.js` (line 227) | ❌ BLOCKED |
+| T-172 (Print/export view) | Done | **Backlog** — Tracker shows Backlog. Note: a prior print implementation from T-122 (Sprint 8) exists in `TripDetailsPage.jsx` and `frontend/src/styles/print.css`, but Sprint 17 T-172 enhancements and updated tests have not been committed (last Sprint 17 git checkpoint is 'contracts' phase only) | ❌ BLOCKED |
+| T-173 (QA security checklist) | Done | **Backlog** — No QA handoff entry in handoff-log.md for Sprint 17 | ❌ BLOCKED |
+| T-174 (QA integration testing) | Done | **Backlog** — No QA handoff entry in handoff-log.md for Sprint 17 | ❌ BLOCKED |
+| QA handoff in handoff-log.md | Required per rules.md | Not present | ❌ BLOCKED |
+
+### Evidence
+
+- `grep -n "datesNotSet|opacity" frontend/src/components/TripCard.module.css` → line 208: `opacity: 0.5` still present
+- `grep -n "formatTripDateRange" frontend/src/utils/formatDate.js` → line 227: function still exported
+- `git log --oneline -5` → most recent Sprint 17 commit: `checkpoint: sprint #17 -- phase 'contracts' complete` — 'build' phase not yet executed
+- `handoff-log.md` — no T-173 or T-174 completion entries found anywhere in the log
+
+### pm2 Status (Verified)
+
+Both pm2 processes are online from Sprint 16 deployment (T-167):
+- `triplanner-backend` — online, PID 51577, 84m uptime
+- `triplanner-frontend` — online, PID 51694, 83m uptime
+
+The backend is healthy. The issue is that the Sprint 17 frontend changes have not been built and QA has not signed off.
+
+### Required Actions Before T-175 Can Proceed
+
+1. **Frontend Engineer** must complete T-170 (remove `opacity: 0.5` from `.datesNotSet`, remove `formatTripDateRange`, update stale comment) → move T-170 to Done
+2. **Frontend Engineer** must complete T-172 (Sprint 17 version: verify/update print feature per Spec 17, add required tests A–D, ensure 418+ tests pass) → move T-172 to Done
+3. **QA Engineer** must complete T-173 (security checklist + code review) → log handoff to Deploy
+4. **QA Engineer** must complete T-174 (integration testing) → log handoff to Deploy
+5. Once all 4 gates are cleared, **Deploy Engineer** will execute T-175 immediately
+
+### No Action Taken
+
+Per rules.md: "Never deploy without QA confirmation in the handoff log." No deployment was attempted. No files outside this log and the build log were modified. `backend/.env` and `backend/.env.staging` are unchanged.
+
+---
+
 **From:** Manager Agent
 **To:** Frontend Engineer + Design Agent
 **Sprint:** #17
@@ -758,3 +866,25 @@ Spec 17 has been written and published to `ui-spec.md`. T-171 is Done. T-172 is 
 
 **Next step:** Frontend Engineer may begin T-172 immediately.
 
+
+---
+
+**From:** Backend Engineer
+**To:** QA Engineer (T-173)
+**Date:** 2026-03-08
+**Status:** No Action Required
+
+## Sprint 17 — Backend Engineer Review
+
+No backend tasks are assigned to the Backend Engineer in Sprint 17. All Sprint 17 work is frontend-only (T-170 code cleanup, T-172 print/export view).
+
+**Confirmed:**
+- No new API endpoints
+- No schema changes
+- No migrations
+- No backend source code changes
+- Backend test count remains at **278** (all passing from Sprint 16 QA sign-off)
+
+The backend is production-stable from Sprint 16. For Sprint 17 QA (T-173), the backend test suite should run `npm test --run` in `backend/` and expect **278+ passing tests** with zero changes.
+
+**QA instruction:** No backend review needed for Sprint 17 beyond running the existing test suite to confirm no regressions.

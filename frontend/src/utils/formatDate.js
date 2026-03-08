@@ -5,7 +5,7 @@
  * - Flights and stays: display local time + timezone abbreviation from the stored *_tz IANA string.
  *   We do NOT do timezone conversion — we display the stored local time and label it with the tz.
  * - Activities: activity_date is YYYY-MM-DD, start_time/end_time are HH:MM:SS (24-hour).
- * - Trip cards: derive date range from flight dates.
+ * - Trip cards: derive date range from the earliest and latest dates across all event types (flights, stays, activities, land travels).
  */
 
 /**
@@ -210,44 +210,3 @@ export function formatDateRange(startDate, endDate) {
   return null;
 }
 
-/**
- * Format a trip date range from start_date / end_date (YYYY-MM-DD) fields.
- * Returns formatted string or null if no dates set.
- *
- * Examples:
- *   ("2026-08-07", "2026-08-14") → "Aug 7 – Aug 14, 2026"
- *   ("2025-12-28", "2026-01-04") → "Dec 28, 2025 – Jan 4, 2026"
- *   ("2026-08-07", null) → "From Aug 7, 2026"
- *   (null, null) → null
- *
- * @param {string|null} startDate - YYYY-MM-DD
- * @param {string|null} endDate - YYYY-MM-DD
- * @returns {string|null}
- */
-export function formatTripDateRange(startDate, endDate) {
-  if (!startDate && !endDate) return null;
-
-  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  function parseDate(dateStr) {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    return { year: y, month: m - 1, day: d };
-  }
-
-  if (startDate && endDate) {
-    const s = parseDate(startDate);
-    const e = parseDate(endDate);
-    if (s.year === e.year) {
-      return `${MONTHS[s.month]} ${s.day} \u2013 ${MONTHS[e.month]} ${e.day}, ${s.year}`;
-    }
-    return `${MONTHS[s.month]} ${s.day}, ${s.year} \u2013 ${MONTHS[e.month]} ${e.day}, ${e.year}`;
-  }
-
-  if (startDate && !endDate) {
-    const s = parseDate(startDate);
-    return `From ${MONTHS[s.month]} ${s.day}, ${s.year}`;
-  }
-
-  return null;
-}
