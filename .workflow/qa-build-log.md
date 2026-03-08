@@ -4,6 +4,40 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #17 — T-175 Pre-Deploy Gate Check
+**Date:** 2026-03-08
+**Environment:** Staging (pre-deploy check only — no deploy attempted)
+**Performed by:** Deploy Engineer
+
+### Pre-Deploy Gate Status
+
+| Gate | Status | Notes |
+|------|--------|-------|
+| QA confirmation in handoff-log.md | ❌ MISSING | No T-173 or T-174 completion entries found |
+| T-170 (Frontend code cleanup) | ❌ NOT DONE | `opacity: 0.5` still in `TripCard.module.css:208`; `formatTripDateRange` still in `formatDate.js:227` |
+| T-172 (Sprint 17 print/export) | ❌ NOT DONE | Tracker shows Backlog; Sprint 17 build phase not committed |
+| T-173 (QA security checklist) | ❌ NOT DONE | Backlog |
+| T-174 (QA integration testing) | ❌ NOT DONE | Backlog |
+
+### pm2 Status Check
+
+| Process | PID | Uptime | Status |
+|---------|-----|--------|--------|
+| triplanner-backend | 51577 | 84m | ✅ Online |
+| triplanner-frontend | 51694 | 83m | ✅ Online |
+
+Backend is healthy from Sprint 16 deployment (T-167). No action taken.
+
+### Build Status
+
+**BLOCKED — No build attempted.** Prerequisite gates (T-170, T-172, T-173, T-174) are not complete. Per rules.md, a deploy without QA confirmation is prohibited.
+
+### Next Steps
+
+Waiting for: T-170 → T-172 → T-173 → T-174 to complete. Deploy Engineer will execute T-175 (frontend rebuild + smoke tests) immediately upon receiving QA handoff confirmation.
+
+---
+
 ## Sprint #16 — Post-Deploy Health Check
 **Date:** 2026-03-08
 **Environment:** Staging
