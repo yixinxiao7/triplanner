@@ -30,6 +30,65 @@ Sprint 16 is complete and archived. Sprint 17 is now active.
 
 ---
 
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Sprint:** #17
+**Date:** 2026-03-08
+**Status:** API Contracts Ready — Sprint 17 (No New Endpoints)
+
+## Sprint 17 API Contracts — Frontend Engineer Notice
+
+Sprint 17 is a **frontend-only sprint**. There are no new API endpoints and no schema changes.
+
+**What this means for T-172 (trip print/export):**
+
+The print view must use **only existing data already loaded** by `TripDetailsPage`. Do not add any new API calls. All the data you need is already fetched at page load:
+
+| Data Needed for Print | Existing Endpoint | Already in TripDetailsPage? |
+|-----------------------|-------------------|----------------------------|
+| Trip name, destinations, date range | `GET /api/v1/trips/:id` | ✅ Yes |
+| Flights section | `GET /api/v1/trips/:id/flights` | ✅ Yes |
+| Stays section | `GET /api/v1/trips/:id/stays` | ✅ Yes |
+| Activities section | `GET /api/v1/trips/:id/activities` | ✅ Yes |
+| Land Travel section | `GET /api/v1/trips/:id/land-travels` | ✅ Yes |
+
+**Response shapes are unchanged** from prior sprints. See `api-contracts.md` → Sprint 1 (T-006), Sprint 2 (T-029), Sprint 6 (T-083) for the authoritative field-level contracts on each resource.
+
+**`start_date` / `end_date` for the print header:** These are the event-computed fields added in Sprint 16 (T-162). Both are already present in the `GET /api/v1/trips/:id` response. Format is `YYYY-MM-DD` or `null`. Use `formatDateRange` (not the now-removed `formatTripDateRange`) to display these in the print header — or call the existing `formatDate` utilities already used by `TripDetailsPage`.
+
+**Full Sprint 17 contract record:** `.workflow/api-contracts.md` → "Sprint 17 Contracts" section.
+
+---
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Sprint:** #17
+**Date:** 2026-03-08
+**Status:** API Contracts Ready — QA Reference for Sprint 17
+
+## Sprint 17 API Contracts — QA Reference
+
+Sprint 17 has **no new or changed API endpoints** and **no schema migrations**. The backend is unchanged from Sprint 16.
+
+**QA implications for T-173 (security checklist + code review):**
+
+- **Backend test suite target:** 278+ passing (same as Sprint 16 — no backend code changes)
+- **No new parameterized query surface** to audit (no new SQL)
+- **No new auth requirements** (print is a client-side `window.print()` call — no server interaction)
+- **No new secrets or environment variables** introduced
+- **No new migration files** to verify
+
+**What to verify on the backend side during T-173:**
+1. Run `npm test --run` in `backend/` — expect **278+ tests passing** (unchanged from Sprint 16)
+2. Run `npm audit` in `backend/` — flag any new Critical/High findings (none anticipated; no new dependencies)
+3. Confirm no backend files were modified by T-170 or T-172 (both tasks are frontend-only)
+
+**Existing contracts remain authoritative.** All Sprint 1–16 API contracts in `.workflow/api-contracts.md` are in effect. The print feature (T-172) consumes data already fetched by `TripDetailsPage` — no new backend integration points to test.
+
+**Full Sprint 17 contract record:** `.workflow/api-contracts.md` → "Sprint 17 Contracts" section.
+
+---
+
 **From:** User Agent
 **To:** Manager Agent
 **Sprint:** #16

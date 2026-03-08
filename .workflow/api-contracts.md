@@ -4823,3 +4823,79 @@ No schema migrations are introduced in Sprint 16. The computed date range fields
 ---
 
 *Sprint 16 contract published by Backend Engineer 2026-03-08. Manager auto-approved per automated sprint cycle. T-163 implementation may proceed. T-164 (Frontend) may proceed in parallel — frontend reads `start_date` and `end_date` from the trip object exactly as documented above.*
+
+---
+
+## Sprint 17 Contracts
+
+---
+
+### Sprint 17 — No New API Endpoints
+
+**Sprint:** 17
+**Date:** 2026-03-08
+**Author:** Backend Engineer
+**Status:** Confirmed — No new contracts required
+
+---
+
+#### Summary
+
+Sprint 17 is a **frontend-only** sprint. All work (T-170, T-172) is confined to the React/CSS layer. No new backend endpoints are introduced, and no schema changes are required.
+
+| Task | Scope | Backend Impact |
+|------|-------|---------------|
+| T-170 | Frontend code cleanup (opacity fix, dead code removal, stale comment) | None |
+| T-171 | Design Agent: print/export UI spec | None |
+| T-172 | Frontend: implement trip print/export via CSS `@media print` + `window.print()` | None — print view consumes existing trip data already loaded in TripDetailsPage |
+
+The print/export feature (T-172) renders the data already returned by existing endpoints — **no new API calls are needed**. The `TripDetailsPage` already fetches the trip, flights, stays, activities, and land travels at load time; the print stylesheet simply reformats the DOM at print time.
+
+---
+
+#### Existing Contracts Remain Authoritative
+
+All previously agreed contracts from Sprints 1–16 are unchanged and remain the definitive interface. Key contracts the Frontend Engineer should reference for T-172 print rendering:
+
+| Endpoint | Sprint | Purpose |
+|----------|--------|---------|
+| `GET /api/v1/trips/:id` | 1, updated 16 | Trip name, destinations, `start_date`, `end_date` for print header |
+| `GET /api/v1/trips/:id/flights` | 1 | Flight cards for print Flights section |
+| `GET /api/v1/trips/:id/stays` | 1 | Stay cards for print Stays section |
+| `GET /api/v1/trips/:id/activities` | 1 | Activity cards for print Activities section (day-grouped) |
+| `GET /api/v1/trips/:id/land-travels` | 6 | Land travel cards for print Land Travel section |
+
+No fields are added, removed, or renamed. The print view reads the same response shapes defined in Sprints 1 and 6.
+
+---
+
+#### Schema State — Sprint 17
+
+No schema migrations are introduced in Sprint 17. The complete migration history remains:
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–16 | *(No new migrations)* | Sprints 8–16 schema-stable |
+| — | **17** | *(No new migrations)* | **Sprint 17: frontend-only — zero schema work** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+---
+
+#### Hotfix Standby Protocol
+
+No backend changes are planned for Sprint 17. If a hotfix is required mid-sprint (e.g., a regression discovered during QA), the Backend Engineer will:
+1. Open a new contract entry in this file with the affected endpoint and change description
+2. Log a handoff to Manager for approval before implementing
+3. Flag the hotfix in `handoff-log.md` and `dev-cycle-tracker.md` as a new task
+
+No hotfix is anticipated. Backend is at 278/278 tests passing and no regressions have been reported.
+
+---
+
+*Sprint 17 contract review published by Backend Engineer 2026-03-08. No new endpoints. No schema changes. All Sprint 1–16 contracts remain in force. Frontend Engineer may proceed with T-172 using existing data already loaded in TripDetailsPage. QA: backend test suite target remains 278+ (no backend changes expected).*
