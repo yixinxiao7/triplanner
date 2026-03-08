@@ -4,6 +4,57 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Deploy Engineer → Monitor Agent: T-167 Complete — Staging Deployed — Begin T-168 Health Check (2026-03-08)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-03-08 |
+| From | Deploy Engineer |
+| To | Monitor Agent |
+| Related Tasks | T-167 (Done), T-168 (Backlog — start now) |
+| Status | ✅ Staging deployment complete — Monitor Agent may begin T-168 immediately |
+
+**Deployment Summary:**
+
+Sprint 16 staging deployment (T-167) is complete. All pre-deploy gates were satisfied:
+- QA T-165 + T-166: ✅ PASS (handoff-log.md 2026-03-08)
+- Manager code review: ✅ APPROVED (all T-163, T-164 approved)
+- No schema migrations required (Sprint 16 is compute-on-read)
+
+**What was deployed:**
+- **T-163:** Backend computed date range — `TRIP_COLUMNS` in `backend/src/models/tripModel.js` now includes LEAST/GREATEST subqueries across flights, stays, activities, land_travels to compute `start_date` + `end_date` on every trip read
+- **T-164:** Frontend date range display — `formatDateRange()` in `frontend/src/utils/formatDate.js` + `TripCard.jsx` updated to display formatted date range (or "No dates yet" when null)
+
+**Build results:**
+- Backend: `npm install` ✅ (169 packages, up to date)
+- Frontend: `npm install` ✅ (190 packages, up to date)
+- Frontend build: `vite build` ✅ (122 modules, 468ms, no errors)
+- Migrations: ✅ Already up to date (all 10 applied, none pending)
+
+**Running services:**
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend API | `https://localhost:3001` | ✅ Online (pm2: triplanner-backend, PID 51577) |
+| Frontend SPA | `https://localhost:4173` | ✅ Online (pm2: triplanner-frontend, PID 51694) |
+| Database | `postgres://localhost:5432/triplanner` | ✅ Connected |
+
+**Smoke tests completed by Deploy Engineer:**
+- `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}` ✅
+- `GET https://localhost:4173/` → HTTP 200 ✅
+
+**Monitor Agent (T-168): Run post-deploy health check against the above endpoints. Focus areas for Sprint 16:**
+1. `GET /api/v1/trips` — verify `start_date` and `end_date` fields are present on every trip object
+2. `GET /api/v1/trips` — verify null dates (`start_date: null, end_date: null`) for trips with no events
+3. Live SQL execution — verify LEAST/GREATEST across real PostgreSQL data returns correct YYYY-MM-DD strings
+4. Home page trip cards — verify date range renders correctly (or "No dates yet" for empty trips)
+5. Smoke test Sprint 15 regression: title "triplanner", favicon, land travel chips all intact
+6. Full health check endpoints as per monitor playbook
+
+See `qa-build-log.md` Sprint 16 T-167 section for full build and deployment log.
+
+---
+
 ### Manager Agent: Sprint 16 Code Review Pass (Re-check) — No Pending "In Review" Tasks (2026-03-08)
 
 | Field | Value |

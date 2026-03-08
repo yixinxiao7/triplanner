@@ -155,6 +155,92 @@ No config mismatches found.
 
 ---
 
+## Sprint 16 — T-167 Staging Deployment — SUCCESS (2026-03-08)
+
+**Deploy Engineer:** Automated (Sprint #16 orchestrator invocation)
+**Task:** T-167 — Sprint 16 Staging Re-Deployment
+**Status:** ✅ COMPLETE — Staging deployment successful
+
+---
+
+### Pre-Deploy Verification
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| QA T-165 (Security + Code Review) | ✅ PASS | Confirmed in handoff-log.md (2026-03-08) |
+| QA T-166 (Integration Testing) | ✅ PASS | 278/278 backend, 420/420 frontend tests pass |
+| Manager Code Review (T-163, T-164) | ✅ APPROVED | Confirmed in handoff-log.md (2026-03-08) |
+| Pending DB migrations | ✅ NONE | Sprint 16 is compute-on-read — no schema changes |
+| Migrations already applied (001–010) | ✅ All current | Confirmed via `knex migrate:latest` → "Already up to date" |
+| Docker available | ⚠️ NOT AVAILABLE | Docker not installed on this machine — local process mode used |
+
+### Build
+
+| Step | Command | Result |
+|------|---------|--------|
+| Backend install | `cd backend && npm install` | ✅ Success — 169 packages, up to date |
+| Frontend install | `cd frontend && npm install` | ✅ Success — 190 packages, up to date |
+| Frontend build | `cd frontend && npm run build` | ✅ Success — 122 modules, built in 468ms |
+
+**Frontend build output:**
+```
+dist/index.html                   0.46 kB │ gzip:   0.29 kB
+dist/assets/index-BW7UIVKz.css   74.42 kB │ gzip:  11.89 kB
+dist/assets/index-m24a0Ip-.js   340.10 kB │ gzip: 103.17 kB
+```
+
+### Database Migrations
+
+| Step | Result |
+|------|--------|
+| `knex migrate:latest --knexfile src/config/knexfile.js` (staging env) | ✅ Already up to date — all 10 migrations applied |
+
+No new migrations for Sprint 16. Schema is current.
+
+### Deployment (Local Staging — pm2)
+
+**Docker limitation:** Docker is not installed on this machine. Staging deployment uses the established local pm2 + PostgreSQL stack (same as Sprints 14–15).
+
+| Step | Command | Result |
+|------|---------|--------|
+| Backend restart | `pm2 restart triplanner-backend` | ✅ Online — PID 51577, 0 errored restarts |
+| Frontend preview start | `pm2 start "npm run preview" --name triplanner-frontend` | ✅ Online — PID 51694 |
+
+### Smoke Tests
+
+| Test | Command | Expected | Actual | Status |
+|------|---------|----------|--------|--------|
+| Backend health | `curl -k https://localhost:3001/api/v1/health` | `{"status":"ok"}` | `{"status":"ok"}` | ✅ PASS |
+| Frontend serving | `curl -k -o /dev/null -w "%{http_code}" https://localhost:4173/` | 200 | 200 | ✅ PASS |
+
+### Deployed Services
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend API | `https://localhost:3001` | ✅ Online |
+| Frontend SPA | `https://localhost:4173` | ✅ Online |
+| Database | `postgres://localhost:5432/triplanner` | ✅ Connected |
+
+### Summary
+
+| Field | Value |
+|-------|-------|
+| Test Run | Sprint 16 — T-167 staging deployment |
+| Sprint | 16 |
+| Test Type | Staging Deployment |
+| Result | **PASS** |
+| Build Status | **Success** |
+| Environment | Staging |
+| Deploy Verified | Pending — Monitor Agent T-168 health check |
+| Tested By | Deploy Engineer |
+| Error Summary | None |
+| Related Tasks | T-163, T-164, T-165, T-166, T-167 |
+| Notes | Docker not available; pm2 + local PostgreSQL used. No new migrations. Sprint 16 is compute-on-read only. |
+
+**Handoff status:** Monitor Agent T-168 unblocked. See handoff-log.md for handoff entry.
+
+---
+
 ## Sprint 16 — T-167 Pre-Deploy Environment Check (2026-03-08) — BLOCKED
 
 **Deploy Engineer:** Automated (Sprint #16 orchestrator invocation)
