@@ -4,6 +4,49 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #16 — Post-Deploy Health Check
+**Date:** 2026-03-08
+**Environment:** Staging
+**Performed by:** Monitor Agent
+
+### Config Consistency Validation
+
+Staging environment uses `backend/.env.staging` (PORT=3001, HTTPS, CORS_ORIGIN=https://localhost:4173). `backend/.env` is the local dev config (PORT=3000, HTTP) and is not used for staging.
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Backend PORT vs Vite proxy port | same (3001) | `.env.staging` PORT=3001; Vite proxy uses `BACKEND_PORT=3001` env var at staging launch → `https://localhost:3001` | PASS |
+| Protocol (HTTP/HTTPS) | HTTPS (SSL_KEY_PATH + SSL_CERT_PATH set in .env.staging) | `SSL_KEY_PATH=../infra/certs/localhost-key.pem` and `SSL_CERT_PATH=../infra/certs/localhost.pem` both set; certs exist at `infra/certs/`; pm2 process confirmed serving HTTPS on port 3001 | PASS |
+| CORS_ORIGIN includes frontend origin | `https://localhost:4173` (Vite preview staging port) | `.env.staging` CORS_ORIGIN=`https://localhost:4173` | PASS |
+| Docker port mapping | N/A (staging uses pm2, not Docker) | `docker-compose.yml` backend hardcodes PORT=3000 — applies to Docker production setup only, not staging | N/A |
+
+**Config Consistency Result:** PASS
+
+### Health Check Results
+
+| Check | Endpoint | Expected | Actual | Result |
+|-------|----------|----------|--------|--------|
+| App responds | GET /api/v1/health | 200 `{"status":"ok"}` | 200 `{"status":"ok"}` | PASS |
+| Auth register | POST /api/v1/auth/register | 201 with user object + access_token | 201 `{"data":{"user":{"id":"d2a9554d-...","name":"Monitor Test S16","email":"monitor-test-s16@example.com","created_at":"2026-03-08T20:48:49.244Z"},"access_token":"eyJ..."}}` | PASS |
+| Auth login | POST /api/v1/auth/login | 200 with user + access_token | 200 `{"data":{"user":{...},"access_token":"eyJ..."}}` | PASS |
+| GET /trips (authenticated) | GET /api/v1/trips | 200 with pagination + start_date/end_date per trip | 200 `{"data":[{"id":"089b...","start_date":"2026-05-01","end_date":"2026-05-02",...}],"pagination":{"page":1,"limit":20,"total":1}}` | PASS |
+| GET /trips — no-event trip returns null dates | GET /api/v1/trips (immediately after trip creation, before flight added) | `start_date: null, end_date: null` | POST /trips response: `"start_date":null,"end_date":null` | PASS |
+| GET /trips/:id — date range computed from flight | GET /api/v1/trips/089bfa3d-... | `start_date: "2026-05-01", end_date: "2026-05-02"` (flight departure_at 2026-05-01, arrival_at 2026-05-02) | `"start_date":"2026-05-01","end_date":"2026-05-02"` | PASS |
+| GET /trips list includes start_date/end_date | GET /api/v1/trips | each trip object has start_date + end_date fields | confirmed present in list response | PASS |
+| pm2 backend process | triplanner-backend | online, PID 51577 | online, PID 51577, uptime ~4m, 0% CPU, 72.6MB mem | PASS |
+| pm2 frontend process | triplanner-frontend | online | online, PID 51694, 0% CPU, 46.2MB mem | PASS |
+| Frontend build | frontend/dist/ | exists with assets | `frontend/dist/` contains `index.html`, `favicon.png`, `assets/index-BW7UIVKz.css`, `assets/index-m24a0Ip-.js` | PASS |
+
+**Deploy Verified:** Yes
+
+### Error Summary
+
+No failures. All health checks passed.
+
+Notable: Initial `curl` calls with `-d '...'` (single-quoted JSON with smart-quote shell interpolation) returned `INVALID_JSON 400`. Re-testing with escaped double-quotes in double-quoted strings succeeded with 201/200 as expected — this is a shell quoting artifact in the monitor script, not a server defect.
+
+---
+
 ## QA Run — Sprint #16 — [Date: 2026-03-08]
 
 **QA Engineer:** Automated (Sprint #16 orchestrator invocation)

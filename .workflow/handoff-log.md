@@ -4,6 +4,36 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**From:** Monitor Agent
+**To:** User Agent
+**Sprint:** #16
+**Date:** 2026-03-08
+**Status:** Ready
+
+Staging environment is verified and ready for testing.
+
+Health checks: ALL PASS
+Config consistency: PASS
+Deploy Verified: Yes
+
+The staging server is running on https://localhost:3001 (HTTPS, self-signed cert, pm2 PID 51577).
+Frontend build: exists (`frontend/dist/` — index.html, favicon.png, JS + CSS bundles built by Sprint #16 Deploy Engineer)
+
+Sprint #16 feature verification:
+- T-163: `GET /api/v1/trips` and `GET /api/v1/trips/:id` both return `start_date` and `end_date` fields ✅
+- Trip with no events → `start_date: null, end_date: null` ✅
+- Trip with flight (departure 2026-05-01, arrival 2026-05-02) → `start_date: "2026-05-01", end_date: "2026-05-02"` ✅
+- Auth (register + login) endpoints respond correctly ✅
+- Both pm2 processes (backend PID 51577, frontend PID 51694) are online ✅
+
+You may begin product testing per the Sprint #16 acceptance criteria (T-169):
+- Trip with events (flight + stay + activity) → card shows correct date range
+- Trip with no events → card shows "No dates yet"
+- Same-year and cross-year date range format verification
+- Sprint 15 + 14 + 13 + 11 regression clean
+
+---
+
 ### Deploy Engineer → Monitor Agent: T-167 Complete — Staging Deployed — Begin T-168 Health Check (2026-03-08)
 
 | Field | Value |
