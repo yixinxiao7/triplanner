@@ -1255,3 +1255,51 @@ T-175 (Deploy) and T-176 (Monitor) were previously completed in this same sprint
 
 **Deploy Engineer:** No further action required — T-175 is already Done. Sprint 17 is complete through the Monitor phase.
 
+---
+
+**From:** Deploy Engineer
+**To:** Monitor Agent
+**Sprint:** #17
+**Date:** 2026-03-08
+**Status:** T-175 Re-Verified — T-176 Unblocked (Orchestrator Pass 3)
+
+## Deploy Engineer → Monitor Agent: T-175 Re-Verification Complete
+
+The orchestrator re-invoked the Deploy Engineer for Sprint #17. T-175 was previously completed. This is a re-verification pass confirming the staging deployment is still live, healthy, and contains all Sprint 17 changes.
+
+### Re-Verification Summary
+
+| Component | Status |
+|-----------|--------|
+| `triplanner-backend` (pm2, PID 51577) | ✅ Online, 108m uptime |
+| `triplanner-frontend` (pm2, PID 51694) | ✅ Online, 108m uptime |
+| `GET /api/v1/health` | ✅ `{"status":"ok"}` |
+| Frontend dist/ build (Mar 8 18:23) | ✅ Current — matches T-175 log exactly |
+| CSS bundle: `@media print` rules | ✅ Present (index-CHbJGuD3.css, 74,410 bytes) |
+| JS bundle: `"Print itinerary"` button | ✅ Present (index-B58n1DRM.js, 339,634 bytes) |
+| T-170: `.datesNotSet` color-only (no opacity) | ✅ Confirmed in source |
+| T-170: `formatTripDateRange` absent | ✅ Confirmed in source |
+| No new migrations | ✅ Migrations 001–010 all previously applied |
+
+### Services Running
+
+- **Backend:** `https://localhost:3001` — HTTPS, pm2-managed, Node.js Express
+- **Frontend:** pm2-managed static server serving `frontend/dist/`
+- **Database:** PostgreSQL (Docker or local) — all 10 migrations applied
+
+### Monitor Agent Instructions (T-176)
+
+Please execute T-176 — Sprint 17 staging health check:
+
+1. **HTTPS + pm2:** Verify `pm2 status` → `triplanner-backend` and `triplanner-frontend` both online
+2. **Health endpoint:** `GET /api/v1/health` → 200 `{"status":"ok"}`
+3. **Sprint 17 — Print button:** Trip details page shows "Print itinerary" button
+4. **Sprint 17 — Opacity fix:** "No dates yet" on home page is legible (not over-dimmed)
+5. **Sprint 16 regression:** `GET /trips` returns `start_date`/`end_date`; trip cards show date range
+6. **Sprint 15 regression:** Title "triplanner", favicon, land travel chip locations
+7. **Sprint 14 regression:** Calendar first-event-month, "Today" button
+8. **Playwright:** `npx playwright test` → 7/7 PASS
+9. **Report:** Full results in `qa-build-log.md` Sprint 17 section. Handoff to User Agent (T-177).
+
+Full deploy re-verification report in `.workflow/qa-build-log.md` — Sprint #17 Deploy Re-Verification — 2026-03-08 (Orchestrator Pass 3).
+

@@ -871,3 +871,43 @@ The orchestrator invoked QA again for Sprint 17. This is a re-verification confi
 
 All Sprint 17 acceptance criteria satisfied. T-170 and T-172 are being marked Done. Deploy pipeline (T-175 + T-176) already complete.
 
+---
+
+## Sprint #17 — Deploy Re-Verification — 2026-03-08 (Orchestrator Pass 3)
+
+**Deploy Engineer — T-175 Re-Verification**
+
+The orchestrator invoked the Deploy Engineer again for Sprint #17. T-175 was completed in a prior orchestrator pass. This entry confirms the deployment is still live and all Sprint 17 changes remain in effect.
+
+### Live System State
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| `triplanner-backend` (pm2) | ✅ Online | PID 51577, 108m uptime, 0 restarts |
+| `triplanner-frontend` (pm2) | ✅ Online | PID 51694, 108m uptime, 0 restarts |
+| `GET /api/v1/health` | ✅ `{"status":"ok"}` | HTTPS on port 3001 |
+| Frontend dist/ | ✅ Current | Built Mar 8 18:23 — exact match to T-175 log |
+
+### Bundle Verification
+
+| Check | Result |
+|-------|--------|
+| `@media print` in CSS bundle (`index-CHbJGuD3.css`, 74,410 bytes) | ✅ Present |
+| `"Print itinerary"` in JS bundle (`index-B58n1DRM.js`, 339,634 bytes) | ✅ Present |
+| `.datesNotSet` source (TripCard.module.css line 206): `color: var(--text-muted)` only, no `opacity` | ✅ Confirmed |
+| `formatTripDateRange` absent from `formatDate.js` | ✅ Confirmed |
+| favicon.png in dist/ | ✅ Present |
+
+### Migrations
+
+No migrations needed — Sprint 17 is frontend-only. All 10 migrations (001–010) remain applied on staging.
+
+### Verdict
+
+**Environment:** Staging
+**Build Status:** ✅ SUCCESS (pre-existing build — Mar 8 18:23)
+**Backend:** Healthy — no restart required
+**T-175:** DONE (confirmed re-verified 2026-03-08)
+
+Monitor Agent (T-176) is unblocked. Handoff logged in handoff-log.md.
+
