@@ -4,6 +4,74 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Manager Code Review Complete → QA Engineer: T-162, T-163, T-164 All Pass — Begin T-165 (2026-03-08)
+
+| Field | Value |
+|-------|-------|
+| Date | 2026-03-08 |
+| From | Manager Agent |
+| To | QA Engineer |
+| Related Tasks | T-162 (Integration Check), T-163 (Integration Check), T-164 (Integration Check), T-165 (Backlog — start now), T-166 (Backlog) |
+| Status | ✅ All three In-Review tasks passed code review — QA may begin T-165 immediately |
+
+**Manager code review is complete for Sprint 16 Phase 2 tasks. All three pass. QA Engineer: begin T-165 (security checklist + code review audit) now.**
+
+#### T-162 — API Contract (Backend Engineer) — APPROVED
+
+- Contract published in `api-contracts.md` Sprint 16 section ✅
+- Fields: `start_date: string | null` (YYYY-MM-DD), `end_date: string | null` (YYYY-MM-DD) ✅
+- Endpoints: `GET /trips` and `GET /trips/:id` — no new endpoints ✅
+- SQL computation: LEAST/GREATEST over MIN/MAX subqueries across all event tables ✅
+- No breaking changes to existing contract fields ✅
+- Null behavior documented (both null when trip has no events) ✅
+- No schema migration required ✅
+
+#### T-163 — Backend Implementation (Backend Engineer) — APPROVED
+
+- `backend/src/models/tripModel.js` TRIP_COLUMNS updated with correlated LEAST/GREATEST subqueries ✅
+- **Security:** No user input interpolated into `db.raw()` — only fixed column references (`trips.id`) ✅
+- **Null safety:** LEAST/GREATEST in PostgreSQL return NULL only when all inputs are NULL → TO_CHAR(NULL, ...) returns NULL — no exception thrown ✅
+- **Propagation:** Flows through `listTripsByUser`, `findTripById`, and via re-query through `createTrip`/`updateTrip` ✅
+- **Authorization:** Trip ownership enforced at route level (existing established pattern) ✅
+- **Dates:** TO_CHAR('YYYY-MM-DD') format ensures YYYY-MM-DD strings, not timestamps ✅
+- **Tests:** 12 tests in `sprint16.test.js` covering acceptance criteria A–E. 278/278 backend tests pass ✅
+- Note for QA: SQL correctness of LEAST/GREATEST computation against real DB is validated by T-166 integration tests; unit tests verify route propagation via mocked model (consistent with established test pattern)
+
+#### T-164 — Frontend Implementation (Frontend Engineer) — APPROVED
+
+- `frontend/src/utils/formatDate.js`: `formatDateRange(startDate, endDate)` correctly handles all 5 output cases ✅
+  - (null, null) → null → TripCard shows "No dates yet"
+  - Same year, same month → "May 1 – 15, 2026" (abbreviated, no repeated month)
+  - Same year, different month → "Aug 7 – Sep 2, 2026"
+  - Different years → "Dec 28, 2025 – Jan 3, 2026"
+  - Start only → "From May 1, 2026"
+- `frontend/src/components/TripCard.jsx`: Renders `formatDateRange` output as React text node — **no `dangerouslySetInnerHTML`** ✅
+- Null guard: `formatDateRange` returns null → rendered as `<span className={styles.datesNotSet}>No dates yet</span>` ✅
+- Styling: `.timeline` uses `color: var(--text-muted)` CSS token — no hardcoded hex ✅
+- `formatTripDateRange` confirmed as active (used in `TripDetailsPage.jsx` for user-set scheduled dates) — not dead code ✅
+- **Tests:** TripCard.test.jsx covers 25.A–25.F. 420/420 frontend tests pass ✅
+- **Minor cleanup note (non-blocking):** `.datesNotSet` class defined twice in `TripCard.module.css` (line 159 and line 211). First definition has hardcoded `rgba(252, 252, 252, 0.3)` and is dead (overridden by second definition which correctly uses `var(--text-muted)`). No functional impact. QA should note this for future cleanup — do not block T-165 on it.
+
+#### QA: What To Do Now
+
+1. **T-165 — Security checklist + code review audit** (unblocked — begin immediately):
+   - Confirm Knex parameterized queries (T-163 uses `db.raw()` with fixed refs only — no user input)
+   - Confirm `start_date`/`end_date` are YYYY-MM-DD strings in response (test B confirms format via regex)
+   - Confirm null returned correctly when no events (T-163 Test A covers this)
+   - Confirm no `dangerouslySetInnerHTML` in T-164 (use grep on TripCard.jsx)
+   - Confirm null guard prevents render error on trips with no dates
+   - Confirm CSS uses tokens not hardcoded hex (`.timeline` → `var(--text-muted)` ✅; note the dead `.datesNotSet` first def — report but don't block)
+   - Run full test suites: `npm test --run` in `frontend/` (420+ expected) and `backend/` (278+ expected)
+   - Run `npm audit` in both directories
+   - Full report in `qa-build-log.md` Sprint 16 section
+
+2. **T-166 — Integration testing** (blocked by T-165 — run after):
+   - Verify real DB SQL computation with actual event records across all 4 scenarios
+   - Sprint 15 + 14 + 13 regression pass
+   - Handoff to Deploy Engineer (T-167)
+
+---
+
 ### T-163 Complete — Backend Engineer → QA Engineer: Computed Trip Date Range (2026-03-08)
 
 | Field | Value |
