@@ -4,6 +4,37 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### T-161 Complete — Design Agent → Frontend Engineer: Spec 25 Published (2026-03-08)
+
+From: Design Agent | To: Frontend Engineer | Status: ✅ Ready — Spec Approved | Related Tasks: T-161 (Done), T-164 (Unblocked)
+
+**T-161 is Done.** Spec 25 — Trip Date Range Display on Home Page Cards — has been published to `.workflow/ui-spec.md` as Spec 25 and is auto-approved.
+
+**T-164 is now unblocked** (pending T-163 Backend completion — the `start_date`/`end_date` fields must be available in the API response before the frontend can render them).
+
+**Summary of Spec 25 (see `ui-spec.md` §25 for full details):**
+
+- **Feature:** Display computed trip date range in the existing TripCard timeline row (below divider)
+- **Data source:** `trip.start_date` and `trip.end_date` — YYYY-MM-DD strings (or null), computed by backend via MIN/MAX SQL subquery across all event types
+- **Format — same month/year:** `"May 1 – 15, 2026"` (month appears once)
+- **Format — same year, different months:** `"Aug 7 – Sep 2, 2026"` (year appears once at end)
+- **Format — cross-year:** `"Dec 28, 2025 – Jan 3, 2026"` (both years shown)
+- **Format — start date only:** `"From May 1, 2026"`
+- **Empty state (both null):** `"No dates yet"` in `.datesNotSet` style (dimmed muted)
+- **Separator:** En-dash with spaces: ` – ` (U+2013)
+
+**Files to modify (T-164):**
+1. `frontend/src/utils/formatDate.js` — Update `formatDateRange(startDate, endDate)` to accept YYYY-MM-DD (not ISO datetimes) and implement the 5-case output rules from Spec 25 §25.3
+2. `frontend/src/components/TripCard.jsx` — Update import to `formatDateRange`, change empty state text from "dates not set" → "No dates yet"
+3. `frontend/src/__tests__/TripCard.test.jsx` — Add Tests 25.A through 25.E
+4. `frontend/src/__tests__/formatDate.test.js` — Add Test 25.F unit tests for `formatDateRange`
+
+**Note:** The TripCard currently imports `formatTripDateRange`. That function handles most cases correctly but does NOT implement the same-month abbreviation ("May 1 – 15, 2026"). The existing `formatDateRange` function uses ISO datetime strings and is not suitable as-is. The Frontend Engineer should consolidate this into a single updated `formatDateRange(startDate, endDate)` that accepts YYYY-MM-DD.
+
+**Blocker:** T-164 remains blocked by T-163 (Backend must implement `start_date`/`end_date` in `GET /trips` and `GET /trips/:id` responses). Do not start T-164 until T-163 is Done.
+
+---
+
 ### Sprint 16 Kickoff — Manager Agent: Sprint Plan + Agent Dispatches (2026-03-08)
 
 From: Manager Agent | To: All Agents | Status: Sprint 16 Active | Related Tasks: T-152, T-159, T-160, T-161, T-162, T-163, T-164, T-165, T-166, T-167, T-168, T-169

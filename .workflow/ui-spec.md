@@ -7679,3 +7679,329 @@ The Frontend Engineer should verify via `npm run build` + `npm run preview`:
 ---
 
 *Sprint 15 Specs 23 and 24 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
+
+---
+
+### Spec 25: Trip Date Range Display on Home Page Cards (Sprint 16 — T-164)
+
+**Sprint:** #16
+**Related Task:** T-164 (Frontend), T-161 (Design), T-163 (Backend)
+**Status:** Approved
+**Priority:** P1
+
+---
+
+#### 25.1 Overview
+
+This spec defines the UI for displaying a computed trip date range on each trip card on the home page. The date range is derived from the backend-computed `start_date` and `end_date` fields (YYYY-MM-DD format), which represent the MIN and MAX dates across all events in a trip (flights, stays, activities, and land travels). When no events exist, the card displays "No dates yet" in dimmed muted text.
+
+This closes B-006 — the "timeline of the trip" requirement from the project brief that has been deferred since Sprint 1.
+
+**Source fields (from API):**
+- `trip.start_date` — YYYY-MM-DD string or `null` (MIN of all event dates, computed by backend)
+- `trip.end_date` — YYYY-MM-DD string or `null` (MAX of all event dates, computed by backend)
+
+**No timezone conversion.** Dates are calendar-local (YYYY-MM-DD). Parse and render as-is without UTC offset adjustments.
+
+---
+
+#### 25.2 Updated TripCard Layout
+
+The TripCard layout remains as currently implemented. The date range row is the final element inside the normal card content area, below the horizontal divider.
+
+**Vertical stacking order (top → bottom):**
+
+```
+┌─────────────────────────────────────────────────┐
+│  [STATUS BADGE]                    [DELETE ICON] │  ← top row
+│                                                  │
+│  Trip Name                                       │  ← tripName (16px, 500)
+│                                                  │
+│  🗺 Destination, Another City                    │  ← destinations (12px muted)
+│                                                  │
+│  Notes preview (first 100 chars)…                │  ← notesPreview (11px muted, if present)
+│                                                  │
+│  ─────────────────────────────────────────────  │  ← divider (1px subtle border)
+│                                                  │
+│  🗓  May 1 – 15, 2026                            │  ← timeline row (11px muted)
+└─────────────────────────────────────────────────┘
+```
+
+The `timeline` row (calendar icon + date range text) already exists in `TripCard.jsx` and `TripCard.module.css`. **Do not restructure the card.** Only update the text content and the formatting function.
+
+---
+
+#### 25.3 `formatDateRange(startDate, endDate)` — Function Specification
+
+Add or update the `formatDateRange(startDate, endDate)` export in `frontend/src/utils/formatDate.js`.
+
+**Signature:**
+```js
+/**
+ * Format a trip date range from YYYY-MM-DD start_date and end_date fields.
+ * Returns a formatted string or null if no dates are set.
+ *
+ * @param {string|null} startDate - YYYY-MM-DD
+ * @param {string|null} endDate   - YYYY-MM-DD
+ * @returns {string|null}
+ */
+export function formatDateRange(startDate, endDate) { ... }
+```
+
+**Parsing rule:** Parse each date string by splitting on `-` and using `new Date(year, month - 1, day)` (local date, no UTC). Never pass YYYY-MM-DD directly to `new Date(str)` — that triggers UTC interpretation and causes off-by-one-day bugs on users behind UTC.
+
+**Output rules (all cases):**
+
+| Input | Output |
+|-------|--------|
+| `null`, `null` | `null` |
+| `"2026-05-01"`, `null` | `"From May 1, 2026"` |
+| `"2026-05-01"`, `"2026-05-15"` (same month, same year) | `"May 1 – 15, 2026"` |
+| `"2026-08-07"`, `"2026-09-02"` (different months, same year) | `"Aug 7 – Sep 2, 2026"` |
+| `"2025-12-28"`, `"2026-01-03"` (cross-year) | `"Dec 28, 2025 – Jan 3, 2026"` |
+
+**Formatting rules in detail:**
+
+1. **Both null → return `null`** (the TripCard will render "No dates yet")
+
+2. **Start only (endDate is null) → `"From {Mon} {D}, {YYYY}"`**
+   - Example: `"2026-05-01"` → `"From May 1, 2026"`
+
+3. **Same year, same month → `"{Mon} {D_start} – {D_end}, {YYYY}"`**
+   - Month name appears once, at the start. End date shows day number only.
+   - Example: `"2026-05-01"` + `"2026-05-15"` → `"May 1 – 15, 2026"`
+
+4. **Same year, different months → `"{Mon} {D_start} – {Mon} {D_end}, {YYYY}"`**
+   - Year appears once at the end.
+   - Example: `"2026-08-07"` + `"2026-09-02"` → `"Aug 7 – Sep 2, 2026"`
+
+5. **Cross-year → `"{Mon} {D_start}, {YYYY_start} – {Mon} {D_end}, {YYYY_end}"`**
+   - Both year values are shown.
+   - Example: `"2025-12-28"` + `"2026-01-03"` → `"Dec 28, 2025 – Jan 3, 2026"`
+
+**Month abbreviations (3-letter, en-US):**
+`Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec`
+
+**Separator:** En-dash with spaces: ` – ` (Unicode U+2013, not a hyphen, not an em-dash)
+
+**Note:** The existing `formatTripDateRange` function in `formatDate.js` handles cases 1, 2, 4, and 5 but does NOT handle the same-month abbreviation (case 3). The existing `formatDateRange` function operates on ISO datetime strings, not YYYY-MM-DD. The Frontend Engineer should update `formatDateRange` to replace its current ISO-string behavior with the YYYY-MM-DD behavior described in this spec, and update `TripCard.jsx` to call `formatDateRange` (instead of `formatTripDateRange`). If renaming creates import issues in existing tests, both functions can be kept and the old one deprecated.
+
+---
+
+#### 25.4 TripCard Component — Required Changes
+
+**File:** `frontend/src/components/TripCard.jsx`
+
+**Change 1 — Import update:**
+Change the import from `formatTripDateRange` to `formatDateRange`:
+```js
+// Before
+import { formatTripDateRange } from '../utils/formatDate';
+
+// After
+import { formatDateRange } from '../utils/formatDate';
+```
+
+**Change 2 — Date range computation:**
+```js
+// Before
+const dateRange = formatTripDateRange(trip.start_date, trip.end_date);
+
+// After
+const dateRange = formatDateRange(trip.start_date, trip.end_date);
+```
+
+**Change 3 — Empty state text:**
+The empty state label must read **"No dates yet"** (not "dates not set"):
+```jsx
+{/* Before */}
+<span className={styles.datesNotSet}>dates not set</span>
+
+{/* After */}
+<span className={styles.datesNotSet}>No dates yet</span>
+```
+
+All other card markup remains unchanged.
+
+---
+
+#### 25.5 Styling
+
+**Timeline row (existing `.timeline` class — no changes needed):**
+```css
+.timeline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);   /* rgba(252, 252, 252, 0.5) */
+}
+```
+
+**Date set state:** The formatted date string is a plain `<span>` inheriting the `.timeline` color (`var(--text-muted)`). No additional styling.
+
+**Empty state (`.datesNotSet` — existing class):**
+```css
+.datesNotSet {
+  color: var(--text-muted);
+  opacity: 0.5;   /* further dimmed vs the formatted date text */
+}
+```
+The empty state is visually dimmer than actual dates to signal that it is placeholder text, not real data.
+
+**Calendar icon (existing SVG):** 12×12px, `stroke="currentColor"` inherits the `.timeline` muted color. No changes.
+
+**No new CSS classes are required.**
+
+---
+
+#### 25.6 States
+
+**State A — Dates populated (normal):**
+- `trip.start_date` and `trip.end_date` are both non-null YYYY-MM-DD strings
+- `formatDateRange` returns a formatted string (e.g., `"May 1 – 15, 2026"`)
+- The timeline row renders: `[calendar icon]  May 1 – 15, 2026`
+- Text color: `var(--text-muted)` (rgba 252,252,252 at 50% opacity)
+
+**State B — Start date only (end date null):**
+- `trip.start_date` is set; `trip.end_date` is null
+- `formatDateRange` returns `"From May 1, 2026"`
+- The timeline row renders: `[calendar icon]  From May 1, 2026`
+- Text color: `var(--text-muted)`
+
+**State C — No dates (both null — "No dates yet"):**
+- Both `trip.start_date` and `trip.end_date` are null
+- `formatDateRange` returns `null`
+- The timeline row renders: `[calendar icon]  No dates yet`
+- The text `"No dates yet"` uses class `.datesNotSet` (further dimmed: `var(--text-muted)` at opacity 0.5)
+- This occurs when a trip has been created but no events (flights/stays/activities/land travels) have been added yet
+
+**State D — Card loading (skeleton):**
+- The `TripCardSkeleton` component already renders a `.skeletonTimeline` shimmer bar in place of the timeline row
+- No changes required to the skeleton
+
+**State E — Delete confirmation overlay:**
+- When `confirmDelete` is true, the entire card content (including the timeline row) is replaced by the inline delete confirmation UI
+- The date range is not visible during delete confirmation
+- No changes required to delete confirmation flow
+
+---
+
+#### 25.7 User Flow
+
+1. User is logged in and navigates to the home page (`/`)
+2. The app fetches `GET /trips` — response now includes `start_date` and `end_date` per trip object
+3. Each `TripCard` renders with the timeline row showing one of:
+   - A formatted date range string if events exist
+   - "No dates yet" if no events exist
+4. User scans the home page and can immediately see the trip duration at a glance without opening the trip
+5. User adds a new event to a trip (e.g., a flight) via the Trip Details page
+6. User returns to the home page
+7. The trip card now shows the correct date range reflecting the newly added event
+8. If a user deletes all events from a trip, the card reverts to "No dates yet"
+
+---
+
+#### 25.8 Responsive Behavior
+
+| Breakpoint | Behavior |
+|------------|----------|
+| Desktop (≥1024px) | Cards in a multi-column grid. Timeline row spans the full card width. Date range text truncates with ellipsis if the card is narrower than the text (unlikely for typical date ranges). |
+| Tablet (768–1023px) | Same grid, narrower columns. Date range text is short enough (max ~26 chars for cross-year format) to fit comfortably at 11px monospace. |
+| Mobile (<768px) | Single-column cards. Full card width. No wrapping issues expected at 11px. |
+
+**No responsive changes required.** The existing `.timeline` flexbox row handles all breakpoints correctly.
+
+---
+
+#### 25.9 Accessibility
+
+- The timeline row is a `<div>` with `display: flex`. The calendar icon SVG has `aria-hidden="true"` (already present — the icon is decorative).
+- The date range text (or "No dates yet") is a plain `<span>` — readable by screen readers as inline text.
+- The full card has `aria-label="Trip: {trip.name}"` (already present). The date range is read as part of the card's content flow.
+- Color contrast: `var(--text-muted)` (rgba 252,252,252,0.5) on `--surface` (#30292F) gives approximately 5.5:1 contrast ratio — meets WCAG AA for 11px text with `font-weight: 400`. The `.datesNotSet` style at opacity 0.5 on top reduces contrast to approximately 2.7:1 — acceptable for placeholder/decorative secondary text that conveys no critical information.
+- No keyboard interaction changes — the timeline row is not interactive.
+
+---
+
+#### 25.10 Tests Required (T-164)
+
+The Frontend Engineer must add or update tests in the TripCard test file:
+
+**Test 25.A — Same-year, same-month date range:**
+```
+Given: trip.start_date = "2026-05-01", trip.end_date = "2026-05-15"
+When:  TripCard renders
+Then:  The timeline row shows "May 1 – 15, 2026"
+And:   The text is NOT "May 1 – May 15, 2026" (no repeated month)
+```
+
+**Test 25.B — Same-year, cross-month date range:**
+```
+Given: trip.start_date = "2026-08-07", trip.end_date = "2026-09-02"
+When:  TripCard renders
+Then:  The timeline row shows "Aug 7 – Sep 2, 2026"
+```
+
+**Test 25.C — Cross-year date range:**
+```
+Given: trip.start_date = "2025-12-28", trip.end_date = "2026-01-03"
+When:  TripCard renders
+Then:  The timeline row shows "Dec 28, 2025 – Jan 3, 2026"
+```
+
+**Test 25.D — Both dates null (empty state):**
+```
+Given: trip.start_date = null, trip.end_date = null
+When:  TripCard renders
+Then:  The timeline row shows "No dates yet"
+And:   The text does NOT show "dates not set"
+And:   The "No dates yet" span has the datesNotSet CSS class
+```
+
+**Test 25.E — Start date only (no end date):**
+```
+Given: trip.start_date = "2026-05-01", trip.end_date = null
+When:  TripCard renders
+Then:  The timeline row shows "From May 1, 2026"
+```
+
+**Test 25.F — formatDateRange unit tests:**
+In `formatDate.test.js` (or equivalent), add unit tests for `formatDateRange`:
+```
+formatDateRange(null, null)         → null
+formatDateRange("2026-05-01", null) → "From May 1, 2026"
+formatDateRange("2026-05-01", "2026-05-15") → "May 1 – 15, 2026"
+formatDateRange("2026-08-07", "2026-09-02") → "Aug 7 – Sep 2, 2026"
+formatDateRange("2025-12-28", "2026-01-03") → "Dec 28, 2025 – Jan 3, 2026"
+```
+
+**Regression:** All existing TripCard tests must continue to pass.
+
+---
+
+#### 25.11 Files to Modify (T-164)
+
+| File | Change |
+|------|--------|
+| `frontend/src/utils/formatDate.js` | Update `formatDateRange(startDate, endDate)` to accept YYYY-MM-DD strings and implement all 5 output cases from §25.3. Keep `formatTripDateRange` if it is used elsewhere; otherwise it can be removed after confirming no other imports. |
+| `frontend/src/components/TripCard.jsx` | Update import to use `formatDateRange`; call `formatDateRange(trip.start_date, trip.end_date)`; change empty state text from "dates not set" to "No dates yet". |
+| `frontend/src/__tests__/TripCard.test.jsx` | Add Tests 25.A through 25.E. |
+| `frontend/src/__tests__/formatDate.test.js` (or equivalent) | Add Test 25.F unit tests for `formatDateRange`. |
+
+**No backend changes.** No new API endpoints. No schema migration. No CSS changes. No new components.
+
+---
+
+#### 25.12 Design Rationale
+
+- **Placement in timeline row (below divider):** The date range is metadata, not a primary card descriptor. Placing it in the footer of the card (below the divider) keeps the trip name and destinations visually dominant while making the timeline scannable without cluttering the main content area.
+- **Same-month abbreviation ("May 1 – 15, 2026"):** Avoids redundancy. Repeating "May" twice ("May 1 – May 15, 2026") adds no information and increases visual noise in a compact 11px monospace row.
+- **"No dates yet" vs "dates not set":** "No dates yet" is more friendly and accurately implies the state is temporary — dates will appear once events are added. "dates not set" feels like a configuration option that requires manual action.
+- **Muted secondary color:** The date range is supporting information. Using `var(--text-muted)` instead of `--text-primary` maintains the Japandi hierarchy: trip name reads first, destinations second, metadata third.
+- **11px monospace font (IBM Plex Mono):** Consistent with the existing timeline row. The monospace spacing gives date ranges a structured, tabular feel appropriate for a planning app.
+
+---
+
+*Spec 25 marked Approved (auto-approved per automated sprint cycle — Sprint 16). Published by Design Agent 2026-03-08.*
