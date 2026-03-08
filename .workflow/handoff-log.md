@@ -4,6 +4,55 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Sprint 15 — Design Agent: UI Specs Published — Frontend Engineer Cleared to Build (2026-03-07)
+
+| Field | Value |
+|-------|-------|
+| From | Design Agent |
+| To | Frontend Engineer |
+| Date | 2026-03-07 |
+| Status | Complete — Specs Approved |
+| Related Tasks | T-154, T-155 |
+
+**Sprint 15 design review is complete. The Frontend Engineer is cleared to begin T-154 and T-155 immediately (no blockers, parallel execution allowed).**
+
+#### Sprint 15 Design Work Summary
+
+Sprint 15 contains no new screens. All frontend tasks are bug fixes to existing components. The Design Agent reviewed all three frontend tasks and produced the following:
+
+| Task | Spec | Design Work |
+|------|------|-------------|
+| T-154 (title + favicon) | Spec 24 — `ui-spec.md` | Trivial HTML fix; spec confirms `"triplanner"` lowercase branding; no component design needed |
+| T-155 (land travel chip location) | Spec 23 — `ui-spec.md` | **Behavioral correction spec** documenting correct pick-up/drop-off location rendering |
+| T-153 (unit tests) | N/A | Test-only task; no UI spec needed |
+
+#### Key Design Decisions — T-155 (Spec 23)
+
+The core behavioral correction:
+
+| Calendar Day | Location Field | Example |
+|---|---|---|
+| Pick-up / departure day | `from_location` (origin) | `"LAX Airport"` |
+| Drop-off / arrival day | `to_location` (destination) | `"SFO Airport"` |
+
+Additional decisions documented in Spec 23:
+- **Same-day travel:** Show only the pick-up chip with `from_location`. No arrival chip on same day.
+- **RENTAL_CAR prefixes:** `"pick-up"` / `"drop-off"` labels from T-138 remain **unchanged** — only the location text after them changes.
+- **Null/empty location:** Omit the ` · ` separator gracefully — never render `"null"` or `"undefined"`.
+- **`_location` field:** Set on the event object in `buildEventsMap`; both `DayCell` and `DayPopover` read `ev._location` (single source of truth).
+- **DayPopover consistency:** `getEventTime` must apply the same `_isArrival` → location logic as `DayCell`.
+
+#### Key Design Decisions — T-154 (Spec 24)
+
+- Title must be lowercase `"triplanner"` — consistent with Japandi brand voice (not `"Triplanner"`, not `"TripPlanner"`).
+- Favicon uses existing `frontend/public/favicon.png` — no new asset needed, just the `<link>` tag.
+
+#### Test Plan Reference
+
+Spec 23 defines 4 required tests (23.A–D) for T-155. See `ui-spec.md` §23.11. All 400+ existing tests must continue to pass.
+
+---
+
 ### Sprint 14 Closeout — Manager Agent: Sprint 14 Summary Complete — Sprint 15 Planning Unblocked (2026-03-07)
 
 | Field | Value |

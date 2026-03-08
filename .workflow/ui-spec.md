@@ -7425,3 +7425,257 @@ This is consistent with how prev/next navigation interacts with the async auto-i
 ---
 
 *Sprint 14 Spec 22 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
+
+---
+
+## Sprint 15 Specs
+
+---
+
+### Spec 23: Calendar Land Travel Chip — Corrected Location Display (Sprint 15)
+
+**Sprint:** #15
+**Related Task:** T-155 (Bug Fix — FB-098)
+**Status:** Approved
+**Priority:** P1
+
+---
+
+#### 23.1 Overview
+
+This spec is a **behavioral correction** to the existing calendar land travel chip rendering described in Spec 20 (Sprint 13, T-138). No new screen or component is introduced. The fix corrects which location string is shown on the pick-up day chip vs. the drop-off day chip for land travel calendar entries.
+
+**Bug (FB-098):** Both the pick-up day chip and the drop-off day chip currently display `to_location` (the destination). The pick-up chip should instead display `from_location` (the origin).
+
+**Correct Behavior:**
+
+| Calendar Day | Chip Label Prefix | Location Displayed |
+|---|---|---|
+| Pick-up / departure day | `"pick-up"` (RENTAL_CAR only) or none (other modes) | `from_location` — the origin/pick-up location |
+| Drop-off / arrival day | `"drop-off"` (RENTAL_CAR only) or none (other modes) | `to_location` — the destination/drop-off location |
+
+---
+
+#### 23.2 Chip Anatomy (Pick-up Day)
+
+```
+┌──────────────────────────────────────────────┐
+│  [mode icon]  <prefix> <time> · <from_loc>   │
+└──────────────────────────────────────────────┘
+```
+
+- **Prefix:** `"pick-up"` for RENTAL_CAR mode; absent for FLIGHT, BUS, TRAIN, FERRY, OTHER
+- **Time:** Departure time formatted in departure timezone (e.g., `"9a"` or `"9:30a"`)
+- **Location:** `from_location` — the origin city/airport/address
+
+**Example (RENTAL_CAR):** `pick-up 9a · LAX Airport`
+**Example (FLIGHT):** `9a · JFK Airport`
+
+---
+
+#### 23.3 Chip Anatomy (Drop-off Day)
+
+```
+┌──────────────────────────────────────────────┐
+│  [mode icon]  <prefix> <time> · <to_loc>     │
+└──────────────────────────────────────────────┘
+```
+
+- **Prefix:** `"drop-off"` for RENTAL_CAR mode; absent for FLIGHT, BUS, TRAIN, FERRY, OTHER
+- **Time:** Arrival time formatted in arrival timezone (e.g., `"2p"` or `"2:30p"`)
+- **Location:** `to_location` — the destination city/airport/address
+
+**Example (RENTAL_CAR):** `drop-off 2p · SFO Airport`
+**Example (FLIGHT):** `2p · SFO Airport`
+
+---
+
+#### 23.4 Same-Day Travel Edge Case
+
+When a land travel entry departs and arrives on the **same calendar day**, only a single chip is shown — the **pick-up chip** (departure view), displaying `from_location`. The `_isArrival` flag is `false` for this chip.
+
+| Condition | Chip Shown | Location |
+|---|---|---|
+| Departure day ≠ Arrival day | Pick-up chip on departure day | `from_location` |
+| Departure day ≠ Arrival day | Drop-off chip on arrival day | `to_location` |
+| Departure day = Arrival day | Single chip (pick-up) | `from_location` |
+
+---
+
+#### 23.5 DayPopover Consistency
+
+The DayPopover overlay ("+X more" expanded view) must render the same location text as the DayCell chip. The `getEventTime` helper or equivalent logic in `DayPopover` must use the same `_isArrival` flag to select `from_location` (departure) vs. `to_location` (arrival).
+
+---
+
+#### 23.6 Visual Appearance
+
+No visual style changes. Only the text content of the location portion of the chip changes. The chip styling (font size, color, padding, truncation) remains exactly as defined in Spec 20.
+
+| Element | Value |
+|---|---|
+| Chip background | `rgba(93, 115, 126, 0.15)` (land travel) |
+| Chip text color | `var(--accent)` (`#5D737E`) |
+| Chip font size | 10px |
+| Chip padding | `2px 6px` |
+| Location text truncation | `text-overflow: ellipsis; overflow: hidden; white-space: nowrap` — same as existing |
+| Max chip width | Constrained to day cell width; location string is truncated with `…` if too long |
+
+---
+
+#### 23.7 Overflow Behavior (DayCell — "+X more")
+
+When a day cell has more events than fit in the cell height, the chip count shown vs. hidden follows existing overflow logic. Land travel chips with corrected location text participate in overflow the same as before — this fix has no impact on overflow behavior.
+
+---
+
+#### 23.8 States
+
+| State | Behavior |
+|---|---|
+| **`from_location` is null / empty string** | Display an empty location segment or omit the ` · ` separator entirely. Do not render `"null"` or `"undefined"` as text. |
+| **`to_location` is null / empty string** | Same as above — omit ` · ` and location segment gracefully. |
+| **Both locations provided** | Render `· <location>` after the time string |
+| **RENTAL_CAR mode** | Prepend `"pick-up"` / `"drop-off"` prefix before the time (existing T-138 behavior, unchanged) |
+| **Non-RENTAL_CAR mode** | No prefix; time directly followed by location |
+
+---
+
+#### 23.9 Accessible Labels
+
+When the chip renders in `DayCell` or `DayPopover`, the accessible text (via `title` attribute or `aria-label` on the chip container) should reflect the corrected location:
+
+- Pick-up chip: `aria-label="Land travel: departs <from_location> at <time>"`
+- Drop-off chip: `aria-label="Land travel: arrives <to_location> at <time>"`
+
+If no accessible label currently exists on these chips, adding it is **strongly recommended** but may be deferred to Sprint 16 if it would block the primary fix.
+
+---
+
+#### 23.10 Implementation Guidance
+
+> **Note to Frontend Engineer:** This section records the design intent for the data model change. Implementation follows the approach described in T-155.
+
+The `buildEventsMap` function builds the list of calendar events for each day. For land travel entries:
+
+1. **Departure-day event:** Set `_location = lt.from_location` on the event object. The `_isArrival` flag is `false` (or absent).
+2. **Arrival-day event:** Set `_location = lt.to_location` on the event object. The `_isArrival` flag is `true`.
+
+Both `DayCell` (chip rendering) and `DayPopover` (expanded view) must read `event._location` (not re-derive it from `lt.from_location` or `lt.to_location` directly). This ensures a single source of truth for which location to display.
+
+---
+
+#### 23.11 Test Plan (New Tests — T-155)
+
+Add the following tests to `TripCalendar.test.jsx` (or equivalent land travel chip test file). All **400+ existing tests must pass** — no regressions.
+
+**Test 23.A — Pick-up day chip shows `from_location`**
+```
+Given: A land travel entry with from_location = "LAX Airport" and to_location = "SFO Airport"
+And:   The pick-up date is 2026-08-07, the drop-off date is 2026-08-08
+When:  The calendar renders the week containing August 7
+Then:  The chip on August 7 shows "LAX Airport" (not "SFO Airport")
+```
+
+**Test 23.B — Drop-off day chip shows `to_location`**
+```
+Given: The same land travel entry as Test 23.A
+When:  The calendar renders the week containing August 8
+Then:  The chip on August 8 shows "SFO Airport" (not "LAX Airport")
+```
+
+**Test 23.C — Same-day travel shows `from_location` only**
+```
+Given: A land travel entry where pick-up date = drop-off date = 2026-08-07
+And:   from_location = "Chicago O'Hare" and to_location = "Midway"
+When:  The calendar renders August 7
+Then:  Only one chip is visible on August 7, showing "Chicago O'Hare"
+And:   "Midway" does not appear on August 7
+```
+
+**Test 23.D — RENTAL_CAR label prefixes still present**
+```
+Given: A RENTAL_CAR land travel entry with from_location = "Hertz LAX" and to_location = "Hertz SFO"
+When:  The calendar renders the pick-up day
+Then:  The chip text contains "pick-up" AND "Hertz LAX"
+When:  The calendar renders the drop-off day
+Then:  The chip text contains "drop-off" AND "Hertz SFO"
+```
+
+---
+
+#### 23.12 Regression Checklist
+
+Before marking T-155 Done, the Frontend Engineer must verify:
+
+| Check | Expected |
+|---|---|
+| T-138 rental car label prefixes ("pick-up", "drop-off") | Still present — not removed by this change |
+| T-137 DayPopover stay-open on scroll | Unaffected — no DayPopover structural changes |
+| T-146 calendar first-event-month | Unaffected — no `buildEventsMap` month logic changes |
+| T-147 "Today" button | Unaffected — no navigation changes |
+| Non-land-travel chips (flights, stays, activities) | Unaffected — only land travel event objects change |
+
+---
+
+#### 23.13 Files to Modify (T-155)
+
+| File | Change |
+|---|---|
+| `TripCalendar.jsx` (or equivalent) | In `buildEventsMap`: set `_location = lt.from_location` on departure-day events; set `_location = lt.to_location` on arrival-day events |
+| `DayCell.jsx` (or equivalent) | Use `ev._location` for chip location text instead of re-reading from the raw land travel object |
+| `DayPopover.jsx` (or equivalent) | In `getEventTime` (or equivalent): use `ev._location` for the expanded chip location text |
+| `TripCalendar.test.jsx` (or equivalent) | Add Tests 23.A through 23.D (4 new tests) |
+
+**No API changes.** No backend changes. No new routes. No schema changes. No style changes.
+
+---
+
+### Spec 24: Browser Tab Title + Favicon (Sprint 15)
+
+**Sprint:** #15
+**Related Task:** T-154 (Bug Fix — FB-096, FB-097)
+**Status:** Approved
+**Priority:** P3
+
+---
+
+#### 24.1 Overview
+
+This is a **trivial HTML-only fix** to `frontend/index.html`. No component, no logic, no test, no style change. Two changes to the `<head>` element:
+
+1. **Page title:** Change `<title>App</title>` → `<title>triplanner</title>`
+2. **Favicon link:** Add `<link rel="icon" type="image/png" href="/favicon.png">` inside `<head>` (the file `frontend/public/favicon.png` already exists)
+
+---
+
+#### 24.2 Expected Result
+
+| Element | Before | After |
+|---|---|---|
+| Browser tab title | `App` | `triplanner` |
+| Browser tab icon | Default browser globe/icon | `favicon.png` (existing file) |
+
+---
+
+#### 24.3 Design Rationale
+
+The title `"triplanner"` matches the lowercase Japandi-aesthetic brand voice used throughout the UI (e.g., the `TRIPLANNER` brand mark in auth screens, the lowercase button labels). All lowercase is intentional and consistent with the design system.
+
+---
+
+#### 24.4 No Spec Further Required
+
+This change requires no screen diagram, no user flow, and no component specification. The active-sprint.md task description (T-154) contains the complete implementation instructions.
+
+---
+
+#### 24.5 Verification
+
+The Frontend Engineer should verify via `npm run build` + `npm run preview`:
+- Browser tab text reads `"triplanner"` (not `"App"`, not `"Triplanner"`)
+- Browser tab displays the favicon PNG icon (not the default browser icon)
+
+---
+
+*Sprint 15 Specs 23 and 24 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
