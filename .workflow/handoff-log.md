@@ -4,6 +4,43 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+### Sprint 15 — Deploy Engineer: T-158 Re-Verified — Monitor Agent Cleared for T-159 (2026-03-07)
+
+From: Deploy Engineer | To: Monitor Agent | Status: Staging Verified — T-159 Unblocked | Related Tasks: T-154, T-155, T-158, T-159
+
+This is a re-verification entry from an orchestrator re-invocation. Prior T-158 deploy (PID 9274) is confirmed still live and healthy.
+
+**Re-Verification Summary:**
+- `npm install` (backend + frontend): ✅ Success
+- `npm run build` (frontend): ✅ Success — 463ms, 122 modules, 0 errors
+- `dist/index.html` — `<title>triplanner</title>`: ✅ Present
+- `dist/index.html` — favicon link `href="/favicon.png"`: ✅ Present
+- `curl -sk https://localhost:3001/api/v1/health`: ✅ `{"status":"ok"}`
+- pm2 `triplanner-backend`: ✅ online, PID 9274, 0 restarts, 76.8 MB
+- Migrations: None required (all 10 applied, zero new in Sprint 15)
+
+**Service URLs:**
+- Backend HTTPS: `https://localhost:3001`
+- Health endpoint: `https://localhost:3001/api/v1/health`
+- Frontend dist: `frontend/dist/` (served by backend static middleware)
+
+**Instructions for Monitor Agent (T-159):**
+1. `pm2 list` → confirm `triplanner-backend` online, PID 9274, 0 restarts
+2. `curl -sk https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+3. Check `frontend/dist/index.html`: `<title>triplanner</title>` present
+4. Check `frontend/dist/index.html`: `<link rel="icon" type="image/png" href="/favicon.png" />` present
+5. Create a test land travel entry — verify pick-up day chip shows `from_location`, drop-off day chip shows `to_location`
+6. `npx playwright test` → expect 7/7 PASS
+7. Sprint 14 regression: calendar first-event-month (T-146), "Today" button (T-147)
+8. Sprint 13 regression: DayPopover stay-open on scroll (T-137), rental car time chips (T-138)
+9. Log results in `qa-build-log.md` Sprint 15 section
+10. Update T-159 status to Done in `dev-cycle-tracker.md`
+11. Log handoff to User Agent (T-160) in `handoff-log.md`
+
+Full build log in `.workflow/qa-build-log.md` (Sprint 15 Re-Verification section, 2026-03-07).
+
+---
+
 ### Sprint 15 — Manager Agent: Code Review Pass Complete — Zero Rework — Monitor Agent Cleared for T-159 (2026-03-07)
 
 | Field | Value |

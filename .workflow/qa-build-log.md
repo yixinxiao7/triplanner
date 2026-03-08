@@ -22,6 +22,94 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint 15 Deploy Re-Verification — 2026-03-07 (Orchestrator Re-Invocation)
+
+**Deploy Engineer:** Automated (Sprint #15 orchestrator re-invocation)
+**Task:** T-158 — Sprint 15 Staging Re-Verification
+**QA Clearance:** T-156 + T-157 both PASS (confirmed in handoff-log.md, 2026-03-07)
+**Migrations:** None required — all 10 migrations applied, zero new in Sprint 15
+
+---
+
+### T-158 Re-Verification — Build
+
+| Field | Value |
+|-------|-------|
+| Test Run | Sprint 15 frontend rebuild verification (T-154 title/favicon + T-155 land travel chip fix) |
+| Sprint | 15 |
+| Test Type | Build |
+| Result | Pass |
+| Build Status | **Success** |
+| Environment | Staging |
+| Deploy Verified | Pending (T-159 Monitor Agent) |
+| Tested By | Deploy Engineer |
+| Error Summary | None |
+| Related Tasks | T-154, T-155, T-158 |
+
+#### Build Command Output
+
+```
+cd frontend && npm run build
+vite v6.4.1 building for production...
+✓ 122 modules transformed.
+dist/index.html                   0.46 kB │ gzip:   0.29 kB
+dist/assets/index-Dr9Rp1mS.css   74.46 kB │ gzip:  11.89 kB
+dist/assets/index-C0DZD8qz.js   339.56 kB │ gzip: 103.14 kB
+✓ built in 463ms
+```
+
+#### Build Verification
+
+| Check | Result |
+|-------|--------|
+| `npm install` — backend | ✅ Success |
+| `npm install` — frontend | ✅ Success |
+| `npm run build` — 122 modules, 0 errors | ✅ Success (463ms) |
+| `<title>triplanner</title>` in `dist/index.html` | ✅ PASS |
+| `<link rel="icon" type="image/png" href="/favicon.png" />` in `dist/index.html` | ✅ PASS |
+
+---
+
+### T-158 Re-Verification — Staging Environment
+
+| Field | Value |
+|-------|-------|
+| Test Run | Sprint 15 staging process re-verification |
+| Sprint | 15 |
+| Test Type | Post-Deploy Health Check |
+| Result | Pass |
+| Build Status | Success |
+| Environment | Staging |
+| Deploy Verified | Pending (T-159) |
+| Tested By | Deploy Engineer |
+| Error Summary | None |
+| Related Tasks | T-158, T-159 |
+
+#### pm2 Process Status
+
+| Field | Value |
+|-------|-------|
+| Process name | `triplanner-backend` |
+| PID | 9274 |
+| Status | online |
+| Port | 3001 (HTTPS) |
+| Restarts | 0 |
+| Memory | 76.8 MB |
+| NODE_ENV | staging |
+
+#### Smoke Tests
+
+| Smoke Test | Result |
+|------------|--------|
+| `curl -sk https://localhost:3001/api/v1/health` → `{"status":"ok"}` | ✅ PASS |
+| pm2 status: online, PID 9274, 0 restarts | ✅ PASS |
+| `<title>triplanner</title>` in `dist/index.html` | ✅ PASS |
+| `<link rel="icon" type="image/png" href="/favicon.png" />` in `dist/index.html` | ✅ PASS |
+
+**Next step:** Monitor Agent to run T-159 (staging health check). Handoff logged in handoff-log.md.
+
+---
+
 ## Sprint 15 Deploy Log — 2026-03-07
 
 **Deploy Engineer:** Automated (Sprint #15 orchestrator run)
