@@ -4,6 +4,66 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint 16 — T-167 Pre-Deploy Environment Check (2026-03-08) — BLOCKED
+
+**Deploy Engineer:** Automated (Sprint #16 orchestrator invocation)
+**Task:** T-167 — Sprint 16 Staging Re-Deployment
+**Status:** ⛔ BLOCKED — Awaiting T-166 QA confirmation
+**Reason:** T-163 (Backend computed date range) and T-164 (Frontend date range display) are not yet implemented. QA cannot run T-165/T-166 until implementation is complete. Deploy cannot proceed without T-166 QA sign-off.
+
+---
+
+### T-167 — Pre-Deploy Environment Readiness Check
+
+| Field | Value |
+|-------|-------|
+| Test Run | Sprint 16 pre-deploy environment check (no build yet — blocked) |
+| Sprint | 16 |
+| Test Type | Pre-Deploy Health Check |
+| Result | **Blocked** |
+| Build Status | **Not Started — Blocked on T-166** |
+| Environment | Staging |
+| Deploy Verified | N/A |
+| Tested By | Deploy Engineer |
+| Error Summary | Dependencies incomplete: T-163, T-164, T-165, T-166 all in Backlog |
+| Related Tasks | T-163, T-164, T-165, T-166, T-167 |
+
+#### Staging Environment Status (Sprint 15 baseline — pm2 verified 2026-03-08)
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| pm2 `triplanner-backend` status | ✅ **online** | PID 9274, 0 restarts, 19h uptime |
+| pm2 port | ✅ HTTPS 3001 | Unchanged from Sprint 15 T-158 deploy |
+| pm2 memory | ✅ 28.3 MB | Normal |
+| NODE_ENV | staging | Unchanged |
+| Frontend dist | ✅ Sprint 15 build | `dist/index.html` with title "triplanner" + favicon |
+| `backend/.env` | ✅ Unchanged | Not modified (per T-167 instructions) |
+| `backend/.env.staging` | ✅ Unchanged | Not modified |
+
+#### Implementation Gap (reason for block)
+
+| File | Expected T-163/T-164 Change | Current State |
+|------|-----------------------------|---------------|
+| `backend/src/models/tripModel.js` | MIN/MAX subquery across flights/stays/activities/land_travels | Only stores `trips.start_date` / `trips.end_date` (user-entered) |
+| `frontend/src/components/TripCard.jsx` | `formatDateRange()` with YYYY-MM-DD, "No dates yet" empty state | Uses `formatTripDateRange()` with stored dates, shows "dates not set" |
+
+#### T-167 Execution Plan (ready to run on QA clearance)
+
+When QA logs T-166 confirmation in `handoff-log.md`, T-167 will execute immediately:
+
+| Step | Command | Expected Result |
+|------|---------|-----------------|
+| 1. Frontend rebuild | `cd frontend && npm run build` | 0 errors, dist rebuilt with T-164 changes |
+| 2. Backend restart | `pm2 restart triplanner-backend` | Process restarts, status online, port 3001 |
+| 3. Health smoke test | `curl -sk https://localhost:3001/api/v1/health` | `{"status":"ok"}` |
+| 4. Date range API smoke test | `GET /trips` | Each trip has `start_date` + `end_date` fields |
+| 5. Sprint 15 regression | Title, favicon, land travel chips | All pass (unchanged by Sprint 16) |
+| 6. Handoff to Monitor | Log in handoff-log.md | T-168 unblocked |
+
+**Migrations required:** None (T-163 is computed read — no schema changes).
+
+---
+
 ## Log Fields
 
 | Field | Description |
