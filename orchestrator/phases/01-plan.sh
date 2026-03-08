@@ -53,6 +53,15 @@ ${feedback_context}
 Focus on incremental progress. Each sprint should deliver a visible improvement to the product."
     fi
 
+    # Check if the previous closeout already wrote this sprint's plan
+    if phase_planning_complete && grep -q "Sprint #${sprint_num}" "${WORKFLOW_DIR}/active-sprint.md" 2>/dev/null; then
+        log_success "Sprint #${sprint_num} plan already exists (written by previous closeout). Skipping planning."
+        sprint_state_set "phase" "plan"
+        sprint_state_set "plan_status" "complete"
+        print_sprint_summary
+        return 0
+    fi
+
     run_agent_with_retry "manager" "$task_prompt" 3 30 "${MODEL_LIGHT:-sonnet}"
 
     # Verify planning produced results

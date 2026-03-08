@@ -33,13 +33,22 @@ SPRINT SUMMARY:
    - Technical debt noted
 4. Update .workflow/dev-cycle-tracker.md: move any unfinished tasks to Backlog with a note
 
-PREPARATION FOR NEXT SPRINT:
-5. Note in the sprint summary what the next sprint should focus on based on:
-   - Critical feedback items marked as 'Tasked'
-   - Remaining MVP features from .workflow/project-brief.md
-   - Any technical debt or infrastructure improvements needed
+WRITE THE NEXT SPRINT PLAN:
+5. Read .workflow/project-brief.md for the overall product vision
+6. Write the Sprint #$((sprint_num + 1)) plan in .workflow/active-sprint.md (REPLACE the current sprint content):
+   - Sprint number and date
+   - Sprint goal based on: critical feedback items marked 'Tasked', carried-over tasks, next MVP features, and technical debt
+   - In Scope section with task descriptions, dependencies, and acceptance criteria
+   - Out of Scope section
+   - Agent Assignments table
+   - Dependency Chain (critical path)
+   - Definition of Done checklist
+   - Success Criteria
+   - Blockers
+7. Create task entries in .workflow/dev-cycle-tracker.md for all new Sprint #$((sprint_num + 1)) tasks (T-xxx IDs, Assigned Agent, Status: Backlog, Priority, Blocked By)
+8. Log the handoff in .workflow/handoff-log.md with Sprint #$((sprint_num + 1)) priorities
 
-This summary will be used by the planning phase of the next sprint."
+CRITICAL: Do NOT skip step 6. The next sprint plan MUST be written to active-sprint.md before closeout is complete. The plan phase will verify it exists — if it is missing, the sprint cycle will stall."
 
     run_agent_with_retry "manager" "$task_prompt" 3 20 "${MODEL_LIGHT:-sonnet}"
 
