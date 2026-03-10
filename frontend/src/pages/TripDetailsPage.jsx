@@ -8,6 +8,7 @@ import TripCalendar from '../components/TripCalendar';
 import { api } from '../utils/api';
 import styles from './TripDetailsPage.module.css';
 import '../styles/print.css';
+import TripNotesSection from '../components/TripNotesSection';
 
 // ── Small Calendar Icon ───────────────────────────────────────
 function CalendarIconSmall() {
@@ -396,14 +397,6 @@ export default function TripDetailsPage() {
   const [destError, setDestError] = useState('');
   const [savedDestinations, setSavedDestinations] = useState([]);
 
-  // ── Trip Notes State (T-104) ────────────────────────────────
-  const [notesMode, setNotesMode] = useState('display'); // 'display' | 'edit'
-  const [notesDraft, setNotesDraft] = useState('');
-  const [savedNotes, setSavedNotes] = useState(null);
-  const [notesSaving, setNotesSaving] = useState(false);
-  const [notesError, setNotesError] = useState('');
-  const NOTES_MAX = 2000;
-  const NOTES_WARN_THRESHOLD = 1800;
 
   useEffect(() => {
     fetchAll();
@@ -438,12 +431,6 @@ export default function TripDetailsPage() {
     }
   }, [trip, tripLoading]);
 
-  // Initialize notes from trip data (T-104)
-  useEffect(() => {
-    if (!tripLoading && trip) {
-      setSavedNotes(trip.notes ?? null);
-    }
-  }, [trip, tripLoading]);
 
   // ── Date range handlers ───────────────────────────────────
   async function handleSaveDates() {
@@ -530,42 +517,6 @@ export default function TripDetailsPage() {
     }
   }
 
-  // ── Notes handlers (T-104) ────────────────────────────────
-  function handleEditNotes() {
-    setNotesDraft(savedNotes || '');
-    setNotesError('');
-    setNotesMode('edit');
-  }
-
-  function handleCancelNotes() {
-    setNotesMode('display');
-    setNotesError('');
-  }
-
-  async function handleSaveNotes() {
-    setNotesError('');
-    if (notesDraft.length > NOTES_MAX) {
-      setNotesError(`notes must be ${NOTES_MAX} characters or fewer.`);
-      return;
-    }
-    // Send null when empty (to clear notes)
-    const notesPayload = notesDraft.trim() ? notesDraft : null;
-    // Skip API call if nothing changed
-    if (notesPayload === savedNotes) {
-      setNotesMode('display');
-      return;
-    }
-    setNotesSaving(true);
-    try {
-      await api.trips.update(tripId, { notes: notesPayload });
-      setSavedNotes(notesPayload);
-      setNotesMode('display');
-    } catch {
-      setNotesError('could not save notes. please try again.');
-    } finally {
-      setNotesSaving(false);
-    }
-  }
 
   // Group activities by date
   const activitiesByDate = activities.reduce((acc, activity) => {
@@ -716,72 +667,13 @@ export default function TripDetailsPage() {
             )}
           </div>
 
-          {/* ── Trip Notes Section (T-104) ── */}
-          {!tripLoading && (
-            <div className={styles.notesSection}>
-              {notesMode === 'display' && (
-                <div className={styles.notesDisplay}>
-                  {savedNotes ? (
-                    <p className={styles.notesText}>{savedNotes}</p>
-                  ) : (
-                    <p className={styles.notesPlaceholder}>no notes yet</p>
-                  )}
-                  <button
-                    className={styles.notesPencilBtn}
-                    onClick={handleEditNotes}
-                    aria-label="Edit trip notes"
-                    title="Edit notes"
-                  >
-                    {/* Pencil icon */}
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                      <path d="M9.667 1.667a1.571 1.571 0 012.222 2.222L4.333 11.333 1.333 12l.667-3L9.667 1.667z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-
-              {notesMode === 'edit' && (
-                <div className={styles.notesEditContainer}>
-                  <textarea
-                    className={styles.notesTextarea}
-                    value={notesDraft}
-                    onChange={(e) => { setNotesDraft(e.target.value); setNotesError(''); }}
-                    placeholder="add trip notes…"
-                    maxLength={NOTES_MAX}
-                    disabled={notesSaving}
-                    aria-label="Trip notes"
-                    autoFocus
-                  />
-                  {notesDraft.length >= NOTES_WARN_THRESHOLD && (
-                    <span className={`${styles.notesCharCount} ${notesDraft.length >= NOTES_MAX ? styles.notesCharCountWarn : ''}`}>
-                      {notesDraft.length.toLocaleString()} / {NOTES_MAX.toLocaleString()}
-                    </span>
-                  )}
-                  {notesError && (
-                    <span className={styles.notesError} role="alert">{notesError}</span>
-                  )}
-                  <div className={styles.notesEditActions}>
-                    <button
-                      className={styles.saveDatesBtn}
-                      onClick={handleSaveNotes}
-                      disabled={notesSaving}
-                      aria-label="Save trip notes"
-                    >
-                      {notesSaving ? <span className="spinner" /> : 'Save'}
-                    </button>
-                    <button
-                      className={styles.cancelDatesLink}
-                      onClick={handleCancelNotes}
-                      disabled={notesSaving}
-                      aria-label="Cancel notes editing"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          {/* ── Trip Notes Section (T-189) ── */}
+          <TripNotesSection
+            tripId={tripId}
+            initialNotes={trip?.notes ?? null}
+            onSaveSuccess={fetchAll}
+            isLoading={tripLoading}
+          />
 
           {/* ── Trip Date Range Section ── */}
           {!tripLoading && dateMode !== 'loading' && (

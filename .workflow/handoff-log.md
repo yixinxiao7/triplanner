@@ -4,6 +4,91 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-10] Frontend Engineer → QA Engineer**
+T-189 complete — Trip Notes UI implemented and all tests passing.
+**Status:** In Review — QA Engineer may begin T-190/T-191 integration checks once T-186 is also complete.
+
+## T-189 — Frontend Notes UI: COMPLETE
+
+**Task:** Trip Notes Section on TripDetailsPage per Spec 19
+**Sprint:** #20
+**Status:** In Review
+
+### What was built
+
+- **New component:** `frontend/src/components/TripNotesSection.jsx`
+  - Section header "NOTES" with thin separator line above (per Spec 19.2)
+  - Pencil button (`aria-label="Edit trip notes"`, `title="Edit trip notes"`) always visible
+  - **View mode (empty):** italic muted placeholder "Add notes about this trip…" — clickable (`role="button"`, `tabIndex={0}`)
+  - **View mode (notes present):** full notes text with `white-space: pre-wrap`, clickable
+  - **Edit mode:** `<textarea id="trip-notes-textarea" aria-label="Trip notes" aria-describedby="trip-notes-char-count" maxLength={2000}>`
+  - **Char count:** `id="trip-notes-char-count"`, `role="status"`, `aria-live="polite"`, `aria-atomic="true"` — color shifts amber at 1800, red at 2000
+  - **Save flow:** trims value, sends `null` for empty, calls `PATCH /api/v1/trips/:id` with `{ notes: value }`, shows "NOTES — SAVED" for 1500ms, calls `onSaveSuccess()`
+  - **Cancel flow:** discards draft, exits edit mode instantly
+  - **Keyboard:** `Escape` → cancel, `Ctrl+Enter` / `Cmd+Enter` → save
+  - **Error state:** inline `role="alert"` message, edit mode stays open
+  - **Loading skeleton:** shimmer bars shown while `isLoading` is true
+  - **Focus management:** textarea autofocuses on enter; returns to pencil button on close
+  - Props: `tripId`, `initialNotes`, `onSaveSuccess`, `isLoading`
+
+- **New styles:** `frontend/src/components/TripNotesSection.module.css`
+  - Japandi aesthetic — IBM Plex Mono, existing CSS variables, minimal visual weight
+  - Responsive: mobile `min-height: 100px`, very narrow `<360px` stacks buttons vertically
+
+- **Updated:** `frontend/src/pages/TripDetailsPage.jsx`
+  - Replaced inline notes state/handlers/JSX with `<TripNotesSection>` component
+  - Passes `tripId={tripId}`, `initialNotes={trip?.notes ?? null}`, `onSaveSuccess={fetchAll}`, `isLoading={tripLoading}`
+  - Placement: below Destinations section, above Trip Date Range / Calendar (per Spec 19.1)
+
+- **New tests:** `frontend/src/__tests__/TripNotesSection.test.jsx` — 13 test cases:
+  - (A) Empty placeholder when `initialNotes` null
+  - (B) Renders existing note text in view mode
+  - (C) Pencil button click enters edit mode
+  - (D) Textarea pre-filled with current notes
+  - (E) Char count updates as user types
+  - (F) Save calls `api.trips.update` with correct value
+  - (G) Cancel returns to view mode without API call
+  - (H) Empty save sends `null`
+  - (I) Error state shown on save failure
+  - (J) Loading skeleton when `isLoading` true
+  - (K) Escape key cancels edit mode
+  - (L) Clicking placeholder enters edit mode
+  - (M) Section header "NOTES" renders
+
+- **Updated tests:** `frontend/src/__tests__/TripDetailsPage.test.jsx`
+  - Updated 6 existing T-104 tests to match new component behavior (placeholder text, button selectors, char count format)
+
+### Test results
+
+**429/429 frontend tests pass** (13 new + 416 existing, including updated T-104 tests)
+
+### API contract acknowledgment
+
+Endpoint used: `PATCH /api/v1/trips/:id` with `{ notes: string | null }`
+Acknowledged per `api-contracts.md` — contract published by Backend Engineer (T-188). The frontend calls `api.trips.update(tripId, { notes: payload })` which maps to `PATCH /api/v1/trips/:id`. Notes field: `string | null`, max 2000 chars enforced at both frontend (`maxLength={2000}`) and backend (Joi `string().max(2000)`).
+
+### Known limitations
+
+- `onSaveSuccess` calls `fetchAll()` which re-fetches the full trip + all sub-resources. This is intentional to keep trip data in sync. If T-188 backend is not yet deployed, the notes field will not appear in API responses (gracefully handled — `trip?.notes ?? null` defaults to null).
+- The "NOTES — SAVED" flash feedback is purely client-side (1500ms timer). No persistence issues.
+
+### What QA should test
+
+1. **Empty state:** Open any trip details page → NOTES section visible with italic placeholder "Add notes about this trip…"
+2. **Edit mode entry:** Click pencil button OR click placeholder text → textarea appears, pre-filled (empty for null), char count shows "0 / 2000"
+3. **Typing:** Type notes → char count updates live. At 1800+ chars → amber. At 2000 → red. Input stops at 2000 (maxLength).
+4. **Save:** Type "Bring sunscreen and extra cash" → click Save → view mode shows saved text. Section header flashes "NOTES — SAVED" for ~1.5s.
+5. **Clear + save:** Enter edit mode with existing notes → clear textarea → Save → placeholder "Add notes about this trip…" returns. API called with `notes: null`.
+6. **Cancel:** Enter edit mode → type something → Cancel → view mode shows original notes unchanged. No API call made.
+7. **Keyboard — Escape:** In edit mode → press Escape → cancel (no save).
+8. **Keyboard — Ctrl+Enter:** In edit mode, textarea focused → press Ctrl+Enter → saves.
+9. **Error state:** (Mock or force a 500) → "Failed to save notes. Please try again." shown below buttons. Edit mode stays open.
+10. **Accessibility:** Tab to pencil button → Enter/Space activates edit mode. Tab to placeholder → Enter/Space activates edit mode.
+11. **Sprint 19 regression:** Rate limiting headers still present on /auth/login ✅. Multi-destination chips still work ✅.
+12. **Sprint 17 regression:** Print button still visible ✅.
+
+---
+
 **[2026-03-10] Design Agent → Manager Agent + Frontend Engineer**
 T-187 complete — Spec 19 (Trip Notes Field) published to `ui-spec.md` and auto-approved per automated sprint cycle.
 **Status:** Approved — Backend Engineer and Frontend Engineer may proceed with T-188 and T-189
