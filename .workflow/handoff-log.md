@@ -4,6 +4,32 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-10] Design Agent → Frontend Engineer** *(Sprint #24 — T-207 complete)*
+
+**From:** Design Agent
+**To:** Frontend Engineer
+**Status:** ✅ Spec 21 APPROVED — T-208 may begin
+
+**Task completed:** T-207 — Spec 21: Home Page Trip Status Filter Tabs
+
+**Spec location:** `.workflow/ui-spec.md` → "Sprint 24 Specs" → "Spec 21 — Home Page Trip Status Filter Tabs"
+
+**Summary of what to build (T-208):**
+
+1. **New component:** `frontend/src/components/StatusFilterTabs.jsx` — a controlled component accepting `activeFilter` (string) and `onFilterChange` (callback) props.
+2. **Four pills:** "All" (`"ALL"`), "Planning" (`"PLANNING"`), "Ongoing" (`"ONGOING"`), "Completed" (`"COMPLETED"`).
+3. **Placement:** In `HomePage.jsx`, between the heading row and the trip card list. 24px vertical gap above and below.
+4. **State:** `activeFilter` lives in `HomePage.jsx` as `useState("ALL")`. Pass `filteredTrips` (not raw `trips`) into the trip card render.
+5. **Filter logic:** `filteredTrips = activeFilter === "ALL" ? trips : trips.filter(t => t.status === activeFilter)`
+6. **Empty filtered state:** When `filteredTrips.length === 0` AND `trips.length > 0`, show "No [Label] trips yet." + "Show all" reset link. Do NOT modify the global empty state (when `trips.length === 0`).
+7. **Accessibility:** `role="group"` on container, `aria-pressed` on each pill, roving tabIndex for arrow key navigation.
+8. **Styling:** Exact tokens in Spec 21 §21.5. No hardcoded hex — CSS custom properties only.
+9. **Tests (7 new):** All filter states, empty filtered state, "Show all" reset, `aria-pressed` correctness. All 451+ existing tests must continue to pass.
+
+**Do NOT start T-208 until this handoff is received.** Spec is now Approved.
+
+---
+
 **[2026-03-10] Manager Agent → User Agent** *(Sprint #23 Closeout → Sprint #24 Kickoff)*
 
 **From:** Manager Agent

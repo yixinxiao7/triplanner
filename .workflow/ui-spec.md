@@ -9718,3 +9718,411 @@ The `TripStatusSelector` is integrated in the trip header section of `TripDetail
 ---
 
 *Spec 20 (Sprint 22 — Trip Status Selector) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-10.*
+
+---
+
+## Sprint 24 Specs
+
+---
+
+### Spec 21 — Home Page Trip Status Filter Tabs
+
+**Task:** T-207
+**Status:** ✅ Approved (auto-approved per automated sprint cycle)
+**Published:** 2026-03-10
+**Assigned to:** Frontend Engineer (T-208)
+
+---
+
+#### 21.1 Overview
+
+**Screen:** `HomePage` (`frontend/src/pages/HomePage.jsx`)
+
+**Description:** A row of four filter pills — "All", "Planning", "Ongoing", and "Completed" — positioned above the trip card list on the Home page. Selecting a pill immediately filters the visible trip cards client-side, with no new API call. The active pill is visually distinct from inactive pills. When the active filter yields zero matching trips, a contextual empty state message replaces the card list, with a "Show all" reset link.
+
+**User goal:** Quickly narrow a potentially long trip list to trips at a specific lifecycle stage.
+
+**Component name:** `StatusFilterTabs` (standalone component, imported into `HomePage.jsx`)
+
+**No backend changes required.** The component operates entirely on the `trips` array already fetched and held in `HomePage` state.
+
+---
+
+#### 21.2 User Flow
+
+1. User arrives at the Home page (authenticated). Trip cards are already displayed.
+2. User sees the `StatusFilterTabs` row above the trip list. The "All" pill is active by default.
+3. User clicks the "Planning" pill.
+   - The "Planning" pill becomes visually active (filled style).
+   - Trip cards instantly re-render to show only trips where `status === "PLANNING"`.
+   - If one or more PLANNING trips exist, the filtered list is shown.
+   - If zero PLANNING trips exist, the empty filtered state is shown: _"No Planning trips yet."_ with a "Show all" reset link.
+4. User clicks the "Show all" link (empty state scenario) or the "All" pill.
+   - Filter resets to "All". All trips are shown again.
+5. User can also use the keyboard (Tab, Space/Enter, Arrow keys) to navigate and activate any pill.
+
+---
+
+#### 21.3 Location on Home Page
+
+The `StatusFilterTabs` row is inserted **between the page heading row (which contains the "New Trip" button) and the trip card list**. It sits flush-left, aligned with the left edge of the trip cards, with 24px of vertical spacing above it (from the heading row) and 24px below it (before the first trip card).
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  MY TRIPS                              [ + New Trip ]        │  ← existing heading row
+├─────────────────────────────────────────────────────────────┤
+│                                                             │  ← 24px gap
+│  [● All]  [ Planning ]  [ Ongoing ]  [ Completed ]          │  ← StatusFilterTabs (NEW)
+│                                                             │  ← 24px gap
+│  ┌──────────────────────┐  ┌──────────────────────┐         │
+│  │  Trip Card           │  │  Trip Card           │         │  ← existing trip cards
+│  └──────────────────────┘  └──────────────────────┘         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+On mobile (≤ 640px), the pills remain on a single row. If horizontal space is insufficient, allow the row to scroll horizontally with `overflow-x: auto`. No pill wrapping to a new line.
+
+---
+
+#### 21.4 Component Structure
+
+```
+<StatusFilterTabs>
+  <div role="group" aria-label="Filter trips by status">
+    <button aria-pressed={true|false}>All</button>
+    <button aria-pressed={true|false}>Planning</button>
+    <button aria-pressed={true|false}>Ongoing</button>
+    <button aria-pressed={true|false}>Completed</button>
+  </div>
+</StatusFilterTabs>
+```
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `activeFilter` | `string` | `"ALL"` | Currently active filter value. One of: `"ALL"`, `"PLANNING"`, `"ONGOING"`, `"COMPLETED"`. |
+| `onFilterChange` | `function` | required | Callback `(filterValue: string) => void`. Called when user clicks a pill or activates via keyboard. |
+
+**Filter value mapping (internal constant):**
+
+| Pill Label | Filter Value | `trip.status` match |
+|-----------|--------------|---------------------|
+| All | `"ALL"` | no filter (show all) |
+| Planning | `"PLANNING"` | `"PLANNING"` |
+| Ongoing | `"ONGOING"` | `"ONGOING"` |
+| Completed | `"COMPLETED"` | `"COMPLETED"` |
+
+**Filter logic in `HomePage.jsx`:**
+
+```js
+const filteredTrips = activeFilter === "ALL"
+  ? trips
+  : trips.filter(t => t.status === activeFilter);
+```
+
+`activeFilter` is local state in `HomePage.jsx`, initialized to `"ALL"`.
+
+---
+
+#### 21.5 Visual Design
+
+##### Pill — Inactive State
+
+- Background: transparent
+- Border: `1px solid rgba(93, 115, 126, 0.3)` (subtle border)
+- Text color: `rgba(252, 252, 252, 0.5)` (muted)
+- Font: IBM Plex Mono, 11px, weight 500, letter-spacing 0.08em, uppercase
+- Padding: 6px 14px
+- Border-radius: 2px (`--radius-sm`)
+- Cursor: pointer
+
+##### Pill — Active State
+
+- Background: `rgba(93, 115, 126, 0.2)` (soft accent fill)
+- Border: `1px solid #5D737E` (accent border, full opacity)
+- Text color: `#FCFCFC` (full brightness)
+- Font: IBM Plex Mono, 11px, weight 600, letter-spacing 0.08em, uppercase
+- Padding: 6px 14px
+- Border-radius: 2px
+
+##### Pill — Hover State (inactive pill only)
+
+- Background: `rgba(252, 252, 252, 0.04)`
+- Border: `1px solid rgba(93, 115, 126, 0.5)`
+- Text color: `rgba(252, 252, 252, 0.75)`
+- Transition: `all 150ms ease`
+
+##### Pill — Focus State (keyboard)
+
+- Outline: `2px solid #5D737E`
+- Outline-offset: `2px`
+- (Do not rely on browser default outline — always render the custom ring)
+
+##### Pill row container
+
+- Display: flex
+- Flex-direction: row
+- Gap: 8px (`--space-2`)
+- Align-items: center
+- Overflow-x: auto (mobile safety valve)
+- No wrap (`flex-wrap: nowrap`)
+
+---
+
+#### 21.6 ASCII Wireframe — Desktop
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  MY TRIPS                                       [ + New Trip ]  │
+│                                                                 │
+│  ╔═══════╗  ┌──────────┐  ┌─────────┐  ┌───────────┐           │
+│  ║  ALL  ║  │ PLANNING │  │ ONGOING │  │ COMPLETED │           │
+│  ╚═══════╝  └──────────┘  └─────────┘  └───────────┘           │
+│    ↑ active (filled bg, accent border, bright text)             │
+│      inactive (transparent bg, subtle border, muted text)       │
+│                                                                 │
+│  ┌──────────────────────┐  ┌──────────────────────┐             │
+│  │  Iceland Adventure   │  │  Tokyo Summer        │             │
+│  │  Jun 2–14, 2026      │  │  Aug 10–20, 2026     │             │
+│  │  PLANNING            │  │  ONGOING             │             │
+│  └──────────────────────┘  └──────────────────────┘             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 21.7 ASCII Wireframe — Active Filter "Planning" (matches exist)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  MY TRIPS                                       [ + New Trip ]  │
+│                                                                 │
+│  ┌─────┐  ╔══════════╗  ┌─────────┐  ┌───────────┐             │
+│  │ ALL │  ║ PLANNING ║  │ ONGOING │  │ COMPLETED │             │
+│  └─────┘  ╚══════════╝  └─────────┘  └───────────┘             │
+│                                                                 │
+│  ┌──────────────────────┐                                       │
+│  │  Iceland Adventure   │   ← only PLANNING trips shown         │
+│  │  Jun 2–14, 2026      │                                       │
+│  │  PLANNING            │                                       │
+│  └──────────────────────┘                                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 21.8 ASCII Wireframe — Active Filter "Completed" (no matches — empty filtered state)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  MY TRIPS                                       [ + New Trip ]  │
+│                                                                 │
+│  ┌─────┐  ┌──────────┐  ┌─────────┐  ╔═══════════╗             │
+│  │ ALL │  │ PLANNING │  │ ONGOING │  ║ COMPLETED ║             │
+│  └─────┘  └──────────┘  └─────────┘  ╚═══════════╝             │
+│                                                                 │
+│                                                                 │
+│              No Completed trips yet.                            │
+│              Show all                                           │
+│              ↑ underlined link, accent color                    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 21.9 States
+
+##### 21.9.1 Default State (All)
+
+- Active filter: `"ALL"`
+- All `filteredTrips` rendered (same as pre-filter behavior)
+- This is the state on first render and after filter reset
+
+##### 21.9.2 Filtered State — Results Exist
+
+- Active filter: `"PLANNING"`, `"ONGOING"`, or `"COMPLETED"`
+- Only matching trip cards are rendered
+- The filtered count may be 1–N trips
+- No additional loading state — filter is purely client-side and instant
+
+##### 21.9.3 Filtered State — Empty (no matching trips)
+
+- Active filter: `"PLANNING"`, `"ONGOING"`, or `"COMPLETED"`
+- `filteredTrips.length === 0` AND `trips.length > 0`
+- Replace the trip card grid with the empty-filter message:
+
+```
+No [Label] trips yet.
+Show all
+```
+
+Where `[Label]` is the title-cased filter label:
+- Filter `"PLANNING"` → "No Planning trips yet."
+- Filter `"ONGOING"` → "No Ongoing trips yet."
+- Filter `"COMPLETED"` → "No Completed trips yet."
+
+**Empty filtered state layout:**
+- Centered horizontally in the trip list area
+- Vertical padding: 48px top and bottom
+- Text: `rgba(252, 252, 252, 0.5)`, IBM Plex Mono 14px, weight 400
+- "Show all" on a new line below the message
+- "Show all" styling: IBM Plex Mono 13px, `#5D737E` (accent), underline, cursor pointer
+- On click: calls `onFilterChange("ALL")`
+- `aria-label="Show all trips"` on the "Show all" link
+
+**Important:** This empty filtered state must NOT be confused with the global empty state shown when `trips.length === 0` (no trips at all). That existing global empty state renders independently and must be left unchanged.
+
+##### 21.9.4 Global Empty State (no trips at all — unchanged)
+
+- `trips.length === 0` — existing behavior, not modified by this spec
+- `StatusFilterTabs` is still rendered, but since there are no trips to filter, all filter options result in the same empty trip list
+- The global empty state (e.g., "Plan your first trip") still displays
+- Do not show the "No [status] trips yet." message when `trips.length === 0`
+
+---
+
+#### 21.10 Responsive Behavior
+
+| Breakpoint | Behavior |
+|------------|---------|
+| **Desktop (> 1024px)** | Pills in a single row, gap 8px. No overflow needed — all 4 pills fit comfortably. |
+| **Tablet (641px – 1024px)** | Same as desktop. Pills scale to available width naturally. |
+| **Mobile (≤ 640px)** | Container gets `overflow-x: auto`. Pills remain in a single row with the same 8px gap. No wrapping. User can scroll the pill row horizontally if needed. No horizontal scrollbar visible by default (use `-webkit-overflow-scrolling: touch`, `scrollbar-width: none`). |
+
+On all breakpoints, pill text does not truncate — each pill label fits fully on one line.
+
+---
+
+#### 21.11 Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Group label | `<div role="group" aria-label="Filter trips by status">` wraps all pills |
+| Pressed state | Each pill is a `<button>` with `aria-pressed="true"` (active) or `aria-pressed="false"` (inactive). Updated on filter change. |
+| Focus order | Pills are naturally in tab order. No custom `tabIndex` required — all are `<button>` elements. |
+| Keyboard activation | Space or Enter activates the focused pill. Arrow keys (left/right) should move focus between pills within the group (roving tabIndex pattern — see below). |
+| Screen reader announcement | When a pill is activated, its `aria-pressed` changes to `true`. Screen readers announce "[Label], pressed, button". |
+| Color contrast | Active pill text (`#FCFCFC` on `rgba(93,115,126,0.2)` + `#02111B` bg): meets WCAG AA. Inactive muted text (`rgba(252,252,252,0.5)` on `#02111B`): minimum 3:1 contrast for UI components. |
+| "Show all" link | `<button>` or `<a>` with `aria-label="Show all trips"`. Receives focus naturally via Tab. |
+
+**Roving tabIndex for arrow key navigation:**
+- Only the active pill has `tabIndex=0`. All other pills have `tabIndex=-1`.
+- ArrowRight: move focus to next pill (wraps from last → first).
+- ArrowLeft: move focus to previous pill (wraps from first → last).
+- Activating a pill via Space/Enter: call `onFilterChange(value)` immediately.
+- Arrow key movement alone moves focus but does NOT change the active filter — user must press Space/Enter to activate.
+
+---
+
+#### 21.12 Interaction Detail
+
+| Interaction | Result |
+|-------------|--------|
+| Click inactive pill | Calls `onFilterChange(value)`. Parent updates `activeFilter` state. Pill becomes active. Trip list re-renders instantly. |
+| Click already-active pill | No-op. `onFilterChange` is still called (parent can guard). No visual change. |
+| Click "Show all" link | Calls `onFilterChange("ALL")`. Filter resets. All trips shown. |
+| Tab key | Moves focus through pills and then to rest of page. |
+| ArrowRight/ArrowLeft | Moves focus within the pill group (roving tabIndex). Does NOT activate. |
+| Space / Enter on focused pill | Activates the pill (calls `onFilterChange`). |
+| Escape key | No special behavior for pills. Page-level Escape handling (e.g., modals) is unaffected. |
+
+---
+
+#### 21.13 Animation / Transitions
+
+- All pill state changes (hover, active, focus): `transition: all 150ms ease`
+- Trip card list re-render: instant (no animation). Do not animate the card grid filtering.
+- The empty filtered state: appears immediately with no fade (consistent with global empty state behavior).
+
+---
+
+#### 21.14 Code Placement
+
+```
+frontend/src/
+  components/
+    StatusFilterTabs.jsx        ← new component file
+    StatusFilterTabs.css        ← (or inline CSS-in-JS / CSS module — match existing convention)
+  pages/
+    HomePage.jsx                ← import StatusFilterTabs; add activeFilter state; pass filteredTrips to trip list
+```
+
+**State ownership:** `activeFilter` lives in `HomePage.jsx` as `useState("ALL")`. `StatusFilterTabs` is a controlled component — it receives `activeFilter` and `onFilterChange` as props.
+
+---
+
+#### 21.15 Edge Cases
+
+| Scenario | Behavior |
+|----------|---------|
+| Trip's `status` field is `null` or `undefined` | Trip does not match any status filter. It appears under "All" but not under any specific filter pill. No crash. |
+| Trip's `status` is an unexpected value (e.g., `"ARCHIVED"`) | Same as above — not matched by any specific filter. Appears only under "All". |
+| All trips happen to share the same status (e.g., all PLANNING) | "Planning" pill shows all trips. "Ongoing" and "Completed" each show the empty filtered state. Correct behavior. |
+| User creates a new trip while a non-"All" filter is active | New trip may or may not appear in the filtered list depending on its status. This is correct behavior. No special handling needed. |
+| `trips` array is loading (initial fetch in progress) | `StatusFilterTabs` is rendered with the same loading skeleton/spinner behavior as the existing home page. Pills can be shown even during load (they have no data dependency of their own). |
+| Only one trip total | Filter works as expected. |
+
+---
+
+#### 21.16 Full Annotated Wireframe (Desktop)
+
+```
+MAX CONTENT WIDTH: 1120px, centered
+─────────────────────────────────────────────────────────────────────────────
+
+  MY TRIPS                                              [ + New Trip ]
+  ─────────────────────────────────────── section header line ──────────────
+
+                        ↕ 24px gap
+
+  ╔═══════╗   ┌──────────┐   ┌─────────┐   ┌───────────┐
+  ║  ALL  ║   │ PLANNING │   │ ONGOING │   │ COMPLETED │
+  ╚═══════╝   └──────────┘   └─────────┘   └───────────┘
+  │       │
+  │ active: bg rgba(93,115,126,0.2), border #5D737E, text #FCFCFC 600 │
+  │ inactive: bg transparent, border rgba(93,115,126,0.3), text rgba(252,252,252,0.5) 500 │
+  │ gap between pills: 8px │
+  │ pill padding: 6px 14px │
+  │ font: IBM Plex Mono 11px uppercase letter-spacing 0.08em │
+  │ border-radius: 2px │
+
+                        ↕ 24px gap
+
+  ┌─────────────────────────────────┐   ┌─────────────────────────────────┐
+  │  Iceland Adventure              │   │  Tokyo Summer                   │
+  │  Jun 2–14, 2026                 │   │  Aug 10–20, 2026                │
+  │  [ PLANNING ]                   │   │  [ ONGOING ]                    │
+  └─────────────────────────────────┘   └─────────────────────────────────┘
+
+─────────────────────────────────────────────────────────────────────────────
+```
+
+---
+
+#### 21.17 Empty Filtered State Wireframe
+
+```
+─────────────────────────────────────────────────────────────────────────────
+
+  MY TRIPS                                              [ + New Trip ]
+  ─────────────────────────────────────── section header line ──────────────
+
+  ┌─────┐   ┌──────────┐   ┌─────────┐   ╔═══════════╗
+  │ ALL │   │ PLANNING │   │ ONGOING │   ║ COMPLETED ║
+  └─────┘   └──────────┘   └─────────┘   ╚═══════════╝
+
+                        ↕ 48px gap
+
+                   No Completed trips yet.
+                        Show all            ← accent #5D737E, underline
+
+                        ↕ 48px gap
+
+─────────────────────────────────────────────────────────────────────────────
+```
+
+---
+
+*Spec 21 (Sprint 24 — Home Page Trip Status Filter Tabs) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-10.*
