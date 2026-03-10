@@ -29,7 +29,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Positive
 - **Severity:** —
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-178
 - **Details:**
   Tested by sending 12 sequential POST /api/v1/auth/login requests with invalid credentials from the same IP. Requests 1–10 returned HTTP 401 (INVALID_CREDENTIALS) with the expected `RateLimit-Limit: 10`, `RateLimit-Remaining: N`, `RateLimit-Reset: N` headers on each response. Request 11 returned HTTP 429 with body `{"error":{"code":"RATE_LIMITED","message":"Too many login attempts, please try again later."}}`. Requests 12+ continued returning 429. The `RateLimit-Policy` header correctly reads `10;w=900`. Response shape exactly matches the T-178 API contract.
@@ -42,7 +42,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Positive
 - **Severity:** —
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-178
 - **Details:**
   Confirmed via observed `RateLimit-Policy: 5;w=3600` and `RateLimit-Limit: 5` headers on POST /api/v1/auth/register. Single registration call returned HTTP 201 with rate limit headers present. Response body shape, httpOnly refresh token cookie (Secure, HttpOnly, SameSite=Strict, Path=/api/v1/auth), and access token all correct. No regressions to existing registration behavior.
@@ -55,7 +55,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Positive
 - **Severity:** —
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-178
 - **Details:**
   Sent 5 rapid authenticated GET /api/v1/trips requests. All returned HTTP 200. No `RateLimit-*` headers present in response. Confirms the rate limiting middleware is correctly scoped to auth endpoints only and does not affect trip/flight/stay/activity/land-travel endpoints.
@@ -68,7 +68,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Positive
 - **Severity:** —
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-178
 - **Details:**
   The `rateLimiter.js` middleware includes a `generalAuthLimiter` (30 requests per 15-minute window) applied to POST /auth/refresh and POST /auth/logout. T-178 only required `loginLimiter` and `registerLimiter`. This extra limiter provides baseline protection against token-hammering. No tests broken, no regressions. Good initiative by the Backend Engineer — worth acknowledging.
@@ -81,7 +81,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Positive
 - **Severity:** —
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-180
 - **Details:**
   Steps: POST /api/v1/trips with `{"name":"Multi-Destination Test","destinations":["Tokyo","Kyoto","Osaka"]}`.
@@ -96,7 +96,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Positive
 - **Severity:** —
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-180
 - **Details:**
   Steps: Created trip with `["Tokyo","Kyoto","Osaka"]`, then PATCH with `{"destinations":["Tokyo","Osaka","Hiroshima"]}` (removed Kyoto, added Hiroshima).
@@ -111,7 +111,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Positive
 - **Severity:** —
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-180
 - **Details:**
   Test A: POST /api/v1/trips with `"destinations":[]` → HTTP 400, `VALIDATION_ERROR`, field message "At least one destination is required". ✅
@@ -127,7 +127,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** UX Issue
 - **Severity:** Minor
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-180
 - **Details:**
   Steps to reproduce:
@@ -145,7 +145,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Bug
 - **Severity:** Minor
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-180
 - **Details:**
   Steps to reproduce:
@@ -164,7 +164,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Positive
 - **Severity:** —
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-180
 - **Details:**
   Code review of `frontend/src/components/DestinationChipInput.jsx` confirmed:
@@ -187,7 +187,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Positive
 - **Severity:** —
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-180
 - **Details:**
   Reviewed `formatDestinations` in `frontend/src/utils/formatDate.js`:
@@ -205,7 +205,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Positive
 - **Severity:** —
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-177
 - **Details:**
   Code review of `TripDetailsPage.jsx` confirmed the print button is unaffected by Sprint 19 multi-destination changes:
