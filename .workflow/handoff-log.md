@@ -1378,6 +1378,126 @@ The following upstream tasks are NOT yet complete:
 
 ---
 
+**[2026-03-10] Frontend Engineer → QA Engineer** *(Sprint #22 — T-196 Complete → T-197 + T-198 Handoff)*
+
+**Task completed:** T-196 — TripStatusSelector component (Sprint 22, Spec 20)
+**T-196 status:** ✅ In Review
+**Unblocks:** T-197 (security checklist + code review) + T-198 (integration tests)
+
+---
+
+### What Was Built
+
+**New files:**
+- `frontend/src/components/TripStatusSelector.jsx` — interactive inline status badge component
+- `frontend/src/components/TripStatusSelector.module.css` — colocated styles
+- `frontend/src/__tests__/TripStatusSelector.test.jsx` — 22 tests
+
+**Modified files:**
+- `frontend/src/pages/TripDetailsPage.jsx` — imports TripStatusSelector, adds `localTripStatus` state + `handleStatusChange`, wraps `<h1>` + `<TripStatusSelector>` in `tripNameGroup` flex div
+- `frontend/src/pages/TripDetailsPage.module.css` — adds `.tripNameGroup { display: flex; align-items: center; gap: 12px; flex-wrap: wrap }` rule
+
+---
+
+### All Spec 20 States Implemented
+
+| State | Implementation |
+|-------|---------------|
+| **A — View mode** | Badge pill: status color bg + text, indicator dot (currentColor), chevron ▾. `cursor: pointer`. Hover: `filter: brightness(1.15)`. `aria-haspopup="listbox"`, `aria-expanded="false"` |
+| **B — Dropdown open** | `<ul role="listbox">` with 3 `<li role="option" aria-selected>` rows. Position: `absolute; top: calc(100% + 4px); left: 0; z-index: 100`. Indicator dots + checkmark ✓ on selected. Keyboard: ArrowUp/Down, Enter/Space selects, Escape closes |
+| **C — Loading (optimistic)** | Badge immediately shows new status (optimistic). Chevron replaced by 12px CSS spinner (`border-top-color: transparent; animation: spin 0.8s linear`). `opacity: 0.7`. `pointer-events: none`. `aria-busy="true"`. `aria-label` includes "(saving…)" |
+| **D — Error** | Reverts `currentStatus` to previous. Error toast rendered: `background: #30292F; border: 1px solid rgba(220,80,80,0.5)`. `role="alert"`. Auto-dismisses after 4 seconds via `setTimeout` in `useEffect`. |
+| **E — Pre-load error** | Not rendered (TripStatusSelector only mounts when `trip` is loaded and `trip.status` is available) |
+
+### Edge Cases Covered (Spec §20.14)
+- Same status selected → dropdown closes, no API call, no loading state
+- `pointer-events: none` during loading → double-click impossible
+- Unknown `initialStatus` → renders raw string in COMPLETED (muted) style, dropdown shows valid 3 options
+- `initialStatus` prop changes → re-synced via `useEffect([initialStatus])` guard (only when not loading)
+- Network offline → PATCH fails → toast, revert, user can retry
+
+---
+
+### Test Results
+
+```
+Tests:       22 passed (22/22 new)
+Full suite:  451 passed (451/451) — was 429/429 before Sprint 22
+Regressions: 0
+```
+
+**Test coverage includes:**
+- Badge renders for PLANNING / ONGOING / COMPLETED / unknown status
+- Dropdown hidden initially; opens on click
+- All 3 options visible; `aria-selected` correct; checkmark on selected
+- Escape closes dropdown; no change
+- Same status click → no `api.trips.update` call
+- New status click → `api.trips.update(tripId, { status })` called correctly
+- `onStatusChange` invoked on success; NOT invoked on failure
+- Optimistic update visible before API resolves
+- Error toast (`role="alert"`) on API failure; status reverted
+- `aria-haspopup`, `aria-expanded` false/true, `aria-label` includes status name
+- `initialStatus` prop change re-syncs component
+
+---
+
+### What QA Should Test (T-197 + T-198)
+
+**T-197 Security Checklist:**
+1. Status value is restricted to enum (`PLANNING`/`ONGOING`/`COMPLETED`) — options are hardcoded, no user-typed input sent to API ✅
+2. Status text rendered as React text node (no `dangerouslySetInnerHTML`) ✅
+3. Error message is generic — no server error body surfaced to UI ✅
+4. No secrets hardcoded ✅
+5. Run `npm test --run` in `frontend/` → expect 451/451 ✅
+6. Run `npm test --run` in `backend/` → expect 304/304 ✅
+7. Run `npm audit` → flag Critical/High
+
+**T-198 Integration Tests (suggested):**
+1. Load TripDetailsPage for a PLANNING trip → status selector badge shows `[• PLANNING ▾]` ✅
+2. Click badge → dropdown appears with 3 options; PLANNING has ✓ checkmark ✅
+3. Select ONGOING → optimistic update shows `[• ONGOING ◌]` → API resolves → `[• ONGOING ▾]` ✅
+4. Navigate to Home → TripCard shows ONGOING (re-fetch on mount) ✅
+5. Click badge → select COMPLETED → success ✅
+6. Simulate API failure (kill backend) → badge reverts to previous status, error toast appears 4s then dismisses ✅
+7. Select same status → no network request ✅
+8. Keyboard flow: Tab to badge → Space opens dropdown → ArrowDown to ONGOING → Enter selects ✅
+9. Keyboard: Escape closes dropdown, focus returns to badge, no change ✅
+10. Mobile viewport (< 768px): badge wraps to next line if name is long; touch target ≥ 44×28px ✅
+
+**Known limitations / acceptable deviations:**
+- Focus ring on `.badge:focus-visible` uses CSS filter brightness hover (not alpha multiply as described in spec — visually equivalent)
+- `aria-label` on badge is updated synchronously (not after animation) — acceptable
+- Toast uses component-local CSS (not the global `.toast` class) to apply the error-specific `rgba(220,80,80,0.5)` border per spec §20.3
+
+**No backend changes.** `PATCH /api/v1/trips/:id` with `status` field works since Sprint 1 migration 003.
+
+**Staging environment:** Backend pm2 online port 3001, frontend pm2 online port 4173 (per T-193/T-192 confirmation).
+
+---
+
+**[2026-03-10] Frontend Engineer → All** *(Sprint #22 — T-196 API Contract Acknowledgment)*
+
+**Task:** T-196 — TripStatusSelector component implementation
+
+**API Contract Acknowledged:** `PATCH /api/v1/trips/:id` — Sprint 1 contract, confirmed in api-contracts.md Sprint 22 section.
+
+| Field | Value |
+|-------|-------|
+| Method | `PATCH` |
+| Endpoint | `/api/v1/trips/:id` |
+| Request body | `{ "status": "PLANNING" \| "ONGOING" \| "COMPLETED" }` |
+| Auth | Bearer token via Axios interceptor (api.trips.update wrapper) |
+| Success response | `200 OK` — full trip object with updated `status` field |
+| Error response | Any non-2xx — treated as generic failure, no error body parsing |
+
+**API helper used:** `api.trips.update(tripId, { status: newStatus })` — existing Axios wrapper in `frontend/src/utils/api.js`. No new utility functions needed.
+
+**Schema:** No backend changes required. `status VARCHAR(20) DEFAULT 'PLANNING'` on `trips` table exists since migration 003 (Sprint 1).
+
+**Implementation starting now. No blockers.**
+
+---
+
 **[2026-03-10] Backend Engineer → QA Engineer + Frontend Engineer** *(Sprint 22 Implementation Verification — Phase 3 Gate)*
 
 **Task:** Sprint 22 Backend Audit (implementation standby)

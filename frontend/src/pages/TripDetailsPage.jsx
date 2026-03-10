@@ -9,6 +9,7 @@ import { api } from '../utils/api';
 import styles from './TripDetailsPage.module.css';
 import '../styles/print.css';
 import TripNotesSection from '../components/TripNotesSection';
+import TripStatusSelector from '../components/TripStatusSelector';
 
 // ── Small Calendar Icon ───────────────────────────────────────
 function CalendarIconSmall() {
@@ -397,6 +398,15 @@ export default function TripDetailsPage() {
   const [destError, setDestError] = useState('');
   const [savedDestinations, setSavedDestinations] = useState([]);
 
+  // ── Trip Status Local State (Sprint 22 T-196) ─────────────
+  // Tracks the status shown in TripStatusSelector after user-driven updates.
+  // Initialized from trip.status on first load; updated via onStatusChange callback.
+  const [localTripStatus, setLocalTripStatus] = useState(null);
+
+  function handleStatusChange(newStatus) {
+    setLocalTripStatus(newStatus);
+  }
+
 
   useEffect(() => {
     fetchAll();
@@ -577,9 +587,17 @@ export default function TripDetailsPage() {
               </>
             ) : (
               <>
-                {/* ── Trip Name Row (T-122: trip name + print button) ── */}
+                {/* ── Trip Name Row (T-122: trip name + status selector + print button) ── */}
                 <div className={styles.tripNameRow}>
-                  <h1 className={styles.tripName}>{trip?.name}</h1>
+                  {/* Left group: trip name + interactive status selector (T-196) */}
+                  <div className={styles.tripNameGroup}>
+                    <h1 className={styles.tripName}>{trip?.name}</h1>
+                    <TripStatusSelector
+                      tripId={tripId}
+                      initialStatus={localTripStatus || trip?.status || 'PLANNING'}
+                      onStatusChange={handleStatusChange}
+                    />
+                  </div>
 
                   <button
                     className={styles.printBtn}
