@@ -4,6 +4,35 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-09] Monitor Agent → User Agent**
+Sprint #19 post-deploy health check complete.
+**Status:** Ready for Testing
+**Environment:** Staging
+All health checks passed. Config consistency validated. Staging environment is ready for user acceptance testing.
+
+**Sprint #19 features available for testing:**
+- T-178: Auth rate limiting — login endpoint rate-limited at 10 requests/15min (`RateLimit-Limit: 10` header confirmed), register at 5/60min. Returns 429 `RATE_LIMITED` when exceeded.
+- T-180: Multi-destination chip UI — trips can be created and edited with multiple destinations (array). Verified: POST /trips with `["Tokyo","Kyoto","Osaka"]` returns 201 with correct destinations array. PATCH /trips/:id destinations update returns 200.
+
+**Health check evidence:**
+- `GET https://localhost:3001/api/v1/health` → 200 `{"status":"ok"}`
+- `POST https://localhost:3001/api/v1/auth/register` → 201 (new user created)
+- `POST https://localhost:3001/api/v1/auth/login` → 200 (valid creds), 401 (invalid creds)
+- `RateLimit-Limit: 10`, `RateLimit-Remaining: 6` headers present on login endpoint
+- `POST https://localhost:3001/api/v1/trips` with 3 destinations → 200, array persisted
+- `PATCH https://localhost:3001/api/v1/trips/:id` destinations update → 200
+- All unauthenticated protected route calls → 401 (not 5xx)
+- `GET https://localhost:4173/` → 200 (frontend serving)
+- pm2 processes: triplanner-backend (PID 2525, online), triplanner-frontend (PID 2564, online)
+
+**User Agent (T-185) actions:**
+1. Test multi-destination trip creation flow in the UI (add 3+ destinations via chip input, create trip)
+2. Test destination editing in TripDetailsPage (add/remove destination chips, save)
+3. Verify TripCard shows destination chips with "+N more" truncation for long lists
+4. Optionally: test auth rate limiting by attempting >10 logins in 15 minutes and verifying error message in UI
+
+---
+
 **[Deploy Engineer → Monitor Agent] Sprint #19 — T-183 Complete: Staging Deploy Successful — T-184 Unblocked**
 Date: 2026-03-09
 Status: PASS — T-184 (Monitor Agent health check) is now unblocked

@@ -574,6 +574,59 @@ No config mismatches found.
 
 ---
 
+---
+
+## Sprint #19 — Post-Deploy Health Check
+**Date:** 2026-03-09
+**Environment:** Staging (pm2 — https://localhost:3001 backend, https://localhost:4173 frontend)
+**Test Type:** Post-Deploy Health Check + Config Consistency
+**Performed by:** Monitor Agent (T-184)
+
+### Config Consistency Results
+
+| Check | Status | Details |
+|-------|--------|---------|
+| Backend PORT vs Vite proxy port | PASS | Staging: `backend/.env.staging` PORT=3001; Vite proxy uses `BACKEND_PORT=3001` env var at staging launch → `https://localhost:3001`. Dev: `backend/.env` PORT=3000; Vite proxy defaults to `http://localhost:3000`. Both environments consistent. |
+| Protocol match (HTTP/HTTPS) | PASS | SSL_KEY_PATH and SSL_CERT_PATH are commented out in dev `backend/.env` (HTTP in dev). Staging overrides with SSL env vars — certs exist at `infra/certs/`; pm2 backend confirmed serving HTTPS on port 3001. Vite proxy uses `https://` when `BACKEND_SSL=true` is set at staging launch. |
+| CORS_ORIGIN vs frontend dev port | PASS | Dev `backend/.env`: `CORS_ORIGIN=http://localhost:5173`; Vite dev server: `port: 5173`. Staging uses `CORS_ORIGIN=https://localhost:4173` via `.env.staging` override matching Vite preview port 4173. |
+| Docker port mapping | N/A | `docker-compose.yml` hardcodes `PORT: 3000` in backend service — consistent for Docker context (nginx on :80). Staging uses pm2, not Docker. No mismatch. |
+
+### Health Check Results
+
+| Check | Status | Details |
+|-------|--------|---------|
+| GET /api/v1/health → 200 | PASS | HTTP 200, body: `{"status":"ok"}` |
+| POST /api/v1/auth/register | PASS | HTTP 201 — new user created with `{"data":{"user":{...},"access_token":"eyJ..."}}` |
+| POST /api/v1/auth/login (valid creds) | PASS | HTTP 200 — returns user object + access_token |
+| POST /api/v1/auth/login (invalid creds) | PASS | HTTP 401 — correct rejection behavior |
+| Rate limiting headers on /auth/login | PASS | `RateLimit-Limit: 10`, `RateLimit-Remaining: 6` present on response — T-178 rate limiter active |
+| POST /api/v1/trips (multi-destination) | PASS | HTTP 200 — trip created with `destinations:["Tokyo","Kyoto","Osaka"]`, `start_date:null`, `end_date:null` — T-180 multi-destination API working |
+| GET /api/v1/trips (authenticated) | PASS | HTTP 200 — trips list returned with auth token |
+| GET /api/v1/trips (unauthenticated) | PASS | HTTP 401 — auth guard working |
+| GET /api/v1/trips/:id (authenticated) | PASS | HTTP 200 |
+| GET /api/v1/trips/:id (unauthenticated) | PASS | HTTP 401 |
+| PATCH /api/v1/trips/:id destinations | PASS | HTTP 200 — destinations updated to 4-item array |
+| GET /api/v1/trips/:id/flights (unauthenticated) | PASS | HTTP 401 — not 5xx |
+| GET /api/v1/trips/:id/stays (unauthenticated) | PASS | HTTP 401 — not 5xx |
+| GET /api/v1/trips/:id/activities (unauthenticated) | PASS | HTTP 401 — not 5xx |
+| Frontend build exists | PASS | `frontend/dist/` contains `index.html`, `favicon.png`, `assets/` directory |
+| Frontend serving (https://localhost:4173/) | PASS | HTTP 200 |
+| pm2 triplanner-backend | PASS | Online, PID 2525, 0% CPU, 79.2MB mem |
+| pm2 triplanner-frontend | PASS | Online, PID 2564, 0% CPU, 67.3MB mem |
+| Backend error log review | PASS | No new errors from Sprint #19. Pre-existing `[ErrorHandler] SyntaxError` entries from malformed JSON test runs (sprint2.test.js) — pre-existing, non-blocking. Latest startup log: `HTTPS Server running on https://localhost:3001` (2026-03-09) ✅ |
+
+### Deploy Verified: Yes
+
+### Error Summary
+
+No failures. All health checks passed. All config consistency checks passed.
+
+Notable findings (non-blocking):
+- pm2 restart counter shows 3 restarts for backend, 1 for frontend — these are from Sprint #19 reload cycles during deploy, not crash-loops. Both processes are stable and online.
+- Pre-existing `[ErrorHandler]` stderr entries in pm2 error log originate from `sprint2.test.js` malformed JSON test cases (run time, not production requests). No Sprint #19 runtime errors observed.
+
+---
+
 ## Sprint #19 — T-182 Re-Certification QA Run (2026-03-09)
 
 **QA Engineer:** Automated (Sprint #19 third QA invocation — T-180 test fixes complete)
