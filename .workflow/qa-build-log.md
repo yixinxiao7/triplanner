@@ -84,3 +84,80 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #24 — T-205 Pre-Deploy Infrastructure Readiness Check — 2026-03-10
+
+**Test Type:** Pre-Deploy Infrastructure Readiness Check
+**Agent:** Deploy Engineer (T-205)
+**Environment:** Staging
+**Timestamp:** 2026-03-10T00:00:00Z
+**Deploy Status:** ⛔ BLOCKED — Pre-deploy gate not met (T-204 not done)
+
+---
+
+### Why T-205 Is Blocked
+
+T-205 requires T-204 (QA Engineer: security checklist + test re-verification) to be **Done** with a handoff in `handoff-log.md` before any deployment proceeds. As of this check:
+
+| Dependency | Status | Reason |
+|------------|--------|--------|
+| T-202 (User Agent walkthrough) | Backlog | 5th consecutive carry-over — not yet executed |
+| T-203 (vitest upgrade 1.x → 4.x) | Backlog | Blocked by T-202 triage |
+| T-207 (Design spec — status filter) | ✅ Done | No blocker |
+| T-208 (StatusFilterTabs frontend impl) | Backlog | Awaiting T-202 triage gate |
+| T-204 (QA: security + test re-verification) | Backlog | Blocked by T-203 + T-208 |
+| **T-205 (Deploy)** | **BLOCKED** | **Pre-deploy gate (T-204) not satisfied** |
+
+No Sprint 24 QA confirmation exists in `handoff-log.md`. Deployment **cannot proceed**.
+
+---
+
+### Infrastructure Pre-Verification Checks (performed now)
+
+These checks were run proactively to ensure the deploy can proceed immediately once T-204 is complete.
+
+#### 1. ecosystem.config.cjs — CRITICAL Regression Check
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| `triplanner-frontend` entry exists | Present | `apps[1].name: 'triplanner-frontend'` | ✅ PASS |
+| `env.BACKEND_PORT` | `'3001'` | `'3001'` | ✅ PASS |
+| `env.BACKEND_SSL` | `'true'` | `'true'` | ✅ PASS |
+| `triplanner-backend` port | `3001` | `PORT: 3001` in env | ✅ PASS |
+
+**ecosystem.config.cjs: ✅ CORRECTLY CONFIGURED** — No changes required.
+
+#### 2. Database Migrations — Sprint 24
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Migrations required | None (T-203 is dev-dep only; T-208 is client-side only) | 0 pending migrations for Sprint 24 | ✅ PASS |
+| Total applied | 10 (001–010) | 10 confirmed in `technical-context.md` | ✅ PASS |
+
+**No `knex migrate:latest` required for Sprint 24 deploy.** Schema is unchanged.
+
+#### 3. pm2 Process Status
+
+| Process | Status | Notes |
+|---------|--------|-------|
+| `triplanner-backend` | ✅ online (PID 27774) | Port 3001, uptime 90m+ |
+| `triplanner-frontend` | ✅ online (PID 29092) | Port 4173, uptime 77m+ |
+
+Current staging serves Sprint 22 code (TripStatusSelector live). Both services are stable.
+
+#### 4. Sprint 24 Deploy Scope (when T-204 clears)
+
+When T-204 completes and issues a handoff, T-205 will perform:
+1. `npm run build` in `frontend/` → verify 0 errors (picks up T-208 StatusFilterTabs + T-203 vitest-only dependency bump)
+2. `pm2 reload triplanner-frontend` — hot-reload frontend with new build
+3. `pm2 restart triplanner-backend` — restart backend (T-203 vitest is dev-dep only, but restart confirms clean state)
+4. No migrations — confirmed above
+5. Smoke tests: `GET /health → 200`; status filter tabs render on home page; TripStatusSelector renders; `PATCH /trips/:id status → 200`; trip notes key present
+
+---
+
+**Build Status:** N/A — not yet executed (blocked)
+**Environment:** Staging
+**Pre-Verification:** ✅ PASS (infrastructure ready — no config changes required)
+**Blocker:** T-204 (QA confirmation) not done → T-205 cannot proceed
+
+---

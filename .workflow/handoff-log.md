@@ -4,6 +4,182 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-10] Deploy Engineer → Manager Agent / QA Engineer** *(Sprint #24 — T-205 BLOCKED: Pre-Deploy Gate Not Met)*
+
+**From:** Deploy Engineer
+**To:** Manager Agent, QA Engineer
+**Status:** ⛔ BLOCKED — Pre-deploy gate not satisfied
+**Task:** T-205 — Sprint 24 staging re-deployment
+
+### T-205 Deploy — BLOCKED: Dependency Chain Incomplete
+
+Deploy Engineer has been invoked for T-205 (Sprint 24 staging re-deployment). The deploy **cannot proceed** because the mandatory pre-deploy gate has not been met.
+
+**Pre-Deploy Gate Requirement:** T-204 (QA Engineer: security checklist + test re-verification) must be **Done** and a QA → Deploy handoff must be present in this log. Neither condition is satisfied.
+
+**Root cause of block:**
+
+| Task | Agent | Status | Blocker |
+|------|-------|--------|---------|
+| T-202 (User Agent walkthrough) | User Agent | Backlog | 5th consecutive carry-over — not executed |
+| T-203 (vitest upgrade) | Frontend + Backend | Backlog | T-202 triage gate |
+| T-208 (StatusFilterTabs frontend) | Frontend Engineer | Backlog | T-202 triage gate + T-207 (done) |
+| T-204 (QA security + tests) | QA Engineer | Backlog | T-203 + T-208 not done |
+| **T-205 (Deploy)** | **Deploy Engineer** | **BLOCKED** | **T-204 not done** |
+
+### What Was Verified (Pre-Deploy Infrastructure Checks)
+
+Despite the block, all infrastructure pre-conditions for Sprint 24 have been checked proactively:
+
+1. **`infra/ecosystem.config.cjs` ✅ CORRECT** — CRITICAL regression check PASS:
+   - `triplanner-frontend` entry has `BACKEND_PORT: '3001'` and `BACKEND_SSL: 'true'` ✅
+   - `triplanner-backend` entry has `PORT: 3001` ✅
+   - **No changes needed to ecosystem.config.cjs**
+
+2. **Database migrations ✅ NONE REQUIRED** — Sprint 24 changes are:
+   - T-203: dev-dependency upgrade only (vitest) — no runtime or schema change
+   - T-208: client-side React filter component — no backend or schema change
+   - 10 migrations (001–010) already applied on staging — confirmed unchanged
+
+3. **pm2 processes ✅ STABLE** — Both services online:
+   - `triplanner-backend`: online, PID 27774, port 3001
+   - `triplanner-frontend`: online, PID 29092, port 4173
+   - Current staging serves Sprint 22 code — no downtime, stable
+
+4. **Full report** in `qa-build-log.md` → "Sprint #24 — T-205 Pre-Deploy Infrastructure Readiness Check"
+
+### Deploy Plan (Ready to Execute the Moment T-204 Clears)
+
+When QA Engineer completes T-204 and logs a QA → Deploy handoff here, T-205 will immediately execute:
+
+```bash
+# 1. Build frontend (picks up T-208 StatusFilterTabs + T-203 bump)
+cd /Users/yixinxiao/PROJECTS/triplanner/frontend
+npm run build                          # must exit 0
+
+# 2. Reload frontend process (hot-reload without downtime)
+pm2 reload triplanner-frontend
+
+# 3. Restart backend (confirms clean state after dev-dep upgrade)
+pm2 restart triplanner-backend
+
+# 4. No migrations (confirmed)
+
+# 5. Smoke tests
+#    GET https://localhost:3001/api/v1/health → 200
+#    GET https://localhost:4173/              → status filter tabs render
+#    TripStatusSelector renders on TripDetailsPage
+#    PATCH /api/v1/trips/:id { status: "ONGOING" } → 200
+#    GET /api/v1/trips/:id → response includes `notes` key
+```
+
+### Action Required
+
+- **QA Engineer:** Complete T-204 (security checklist + `npm test --run` in both dirs + `npm audit` both dirs). Log QA → Deploy handoff in this file. T-205 unblocks immediately.
+- **Manager Agent:** T-205 is blocked. The Sprint 24 deploy pipeline is stalled on T-202 → T-203/T-208 → T-204. T-202 (User Agent walkthrough) is the critical path blocker — 5th consecutive carry-over.
+
+---
+
+**[2026-03-10] Frontend Engineer → QA Engineer** *(Sprint #24 — T-208 complete)*
+
+**From:** Frontend Engineer
+**To:** QA Engineer
+**Status:** ✅ READY FOR QA — T-208 implementation complete. 481/481 frontend tests pass.
+
+**Task completed:** T-208 — Home page trip status filter (StatusFilterTabs, Spec 21)
+
+**What was built:**
+
+1. **New component:** `frontend/src/components/StatusFilterTabs.jsx` + `StatusFilterTabs.module.css`
+   - Four filter pills: All / Planning / Ongoing / Completed
+   - `role="group"` on container, `aria-pressed` on each pill
+   - Roving tabIndex: active pill = `tabIndex=0`, others = `tabIndex=-1`
+   - ArrowLeft/ArrowRight moves focus between pills (wrapping); Space/Enter activates via native button
+   - Custom `focus-visible` ring (`outline: 2px solid var(--accent)`)
+   - Mobile: `overflow-x: auto`, `scrollbar-width: none`, no pill wrapping
+   - All styling via CSS custom properties — no hardcoded hex values
+
+2. **`HomePage.jsx` changes:**
+   - `activeFilter` state initialized to `"ALL"`
+   - `filteredTrips` derived: `activeFilter === "ALL" ? trips : trips.filter(t => t.status === activeFilter)`
+   - `StatusFilterTabs` rendered after `initialLoadDone` (between page heading and FilterToolbar)
+   - Empty filtered state: shown when `filteredTrips.length === 0 && activeFilter !== "ALL" && trips.length > 0` — displays "No [Label] trips yet." + "Show all" button (aria-label="Show all trips")
+   - Trip grid renders `filteredTrips` (not raw `trips`)
+   - Global empty state (`trips.length === 0`) **unchanged and independent**
+   - `HomePage.module.css` adds: `.statusFilterTabsRow`, `.emptyFilteredState`, `.emptyFilteredText`, `.showAllLink`
+
+3. **Tests:**
+   - `src/__tests__/StatusFilterTabs.test.jsx` — 19 new tests (isolated component: render, aria-pressed, tabIndex, click → onFilterChange, keyboard arrow nav, wrap-around)
+   - 11 new integration tests in `src/__tests__/HomePage.test.jsx` covering: A–G from T-208 spec + no-API-call guard + global-empty-state isolation
+   - **481/481 frontend tests pass** (was 451 before T-208; +30 new)
+
+**QA checklist for T-204:**
+
+| Check | Expected |
+|-------|---------|
+| `npm test --run` in `frontend/` | 481/481 pass |
+| Status filter pills visible on home page after trip load | All / Planning / Ongoing / Completed pills rendered |
+| "Planning" pill → only PLANNING cards visible | Non-PLANNING cards absent from DOM |
+| "Ongoing" pill → only ONGOING cards visible | Non-ONGOING cards absent from DOM |
+| "Completed" pill → only COMPLETED cards visible | Non-COMPLETED cards absent from DOM |
+| "All" pill → all trip cards visible | Full list restored |
+| Active filter with 0 matches → empty filtered state | "No [X] trips yet." shown; global "no trips yet" NOT shown |
+| "Show all" link in empty filtered state | Filter resets to ALL; all cards visible |
+| `aria-pressed=true` on active pill; `false` on others | Verified via DevTools / axe |
+| No network request on filter pill click | Confirmed via DevTools Network (client-side only) |
+| Global empty state (0 trips in DB) not suppressed | "no trips yet" CTA shown; StatusFilterTabs still renders |
+| No `dangerouslySetInnerHTML` introduced | ✅ None — all text via React children |
+| No hardcoded secrets | ✅ None introduced |
+
+**Known limitations / pre-existing issues (not introduced by T-208):**
+- T-203 (vitest upgrade frontend half) NOT done — blocked by T-202. vitest remains at 2.1.x.
+- `act(...)` warnings in ActivitiesEditPage and StaysEditPage test output are pre-existing.
+- StatusFilterTabs + FilterToolbar status select both filter by status independently. Using both narrows results (API-filtered then client-filtered). No conflict.
+
+---
+
+**[2026-03-10] Frontend Engineer — API Contract Acknowledgment** *(Sprint #24 — T-208)*
+
+**From:** Frontend Engineer
+**To:** (self — pre-implementation gate)
+**Status:** ✅ CONTRACT ACKNOWLEDGED — T-208 implementation begins.
+
+**Contract reviewed:** Sprint 24 — "Status Field on GET /api/v1/trips (Reference for T-208)" in `.workflow/api-contracts.md`
+
+**Acknowledged details:**
+- Existing endpoint `GET /api/v1/trips` (auth required, Bearer token) returns `status` field on every trip object: one of `"PLANNING"`, `"ONGOING"`, `"COMPLETED"`.
+- `StatusFilterTabs` is **fully client-side** — no new API call on filter change. Filtering operates on the `trips` array already in memory from the initial page load.
+- Filter logic: `filteredTrips = activeFilter === "ALL" ? trips : trips.filter(t => t.status === activeFilter)`
+- Empty filtered state triggered when `filteredTrips.length === 0` AND `trips.length > 0` AND `activeFilter !== "ALL"`.
+- Global empty state (`trips.length === 0`) is unchanged and independent.
+- T-203 (vitest upgrade, frontend half) is **blocked by T-202** — will NOT start until Manager confirms T-202 feedback is clean.
+
+---
+
+**[2026-03-10] Backend Engineer → QA Engineer** *(Sprint #24 — T-203 backend half complete)*
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** ✅ BACKEND HALF OF T-203 COMPLETE — In Review
+
+**Task completed:** T-203 (Backend) — vitest upgrade 2.1.9 → 4.0.18
+
+**What was done:**
+- Updated `backend/package.json` devDependencies: `"vitest": "^2.1.0"` → `"^4.0.18"` (installed as 4.0.18)
+- Ran `npm install` — 0 vulnerabilities reported by `npm audit` (GHSA-67mh-4wv8-2f99 resolved)
+- Ran `npm test --run` → **304/304 tests pass**, 15/15 test files pass, 0 failures
+- **No test assertions required changes** — vitest 4.x is fully backward-compatible with this codebase's usage patterns (no `globals: true`, no deprecated matchers, standard `describe/it/expect` API)
+- No production/runtime code changes — dev-tooling only
+
+**What QA should verify (as part of T-204):**
+1. Re-run `npm test --run` in `backend/` — confirm 304+ tests pass ✅
+2. Re-run `npm audit` in `backend/` — confirm 0 Moderate+ vulnerabilities ✅
+3. The frontend half of T-203 (Frontend Engineer) must also complete before T-204 begins
+
+**No migrations, no schema changes, no new environment variables.**
+
+---
+
 **[2026-03-10] Backend Engineer → Frontend Engineer** *(Sprint #24 — API contracts published)*
 
 **From:** Backend Engineer

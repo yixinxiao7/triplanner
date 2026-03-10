@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import TripCard, { TripCardSkeleton } from '../components/TripCard';
 import CreateTripModal from '../components/CreateTripModal';
 import FilterToolbar from '../components/FilterToolbar';
+import StatusFilterTabs from '../components/StatusFilterTabs';
 import EmptySearchResults from '../components/EmptySearchResults';
 import Toast from '../components/Toast';
 import { useTrips } from '../hooks/useTrips';
@@ -50,6 +51,24 @@ export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const createTripBtnRef = useRef(null);
+
+  // ── Status Filter Tabs (Spec 21 — client-side, no new API call) ────────────
+  const [activeFilter, setActiveFilter] = useState('ALL');
+
+  /**
+   * filteredTrips — derived from `trips` and `activeFilter`.
+   * When activeFilter === "ALL" every trip is shown; otherwise only matching.
+   * This is purely client-side and instant — no API call on filter change.
+   */
+  const filteredTrips = activeFilter === 'ALL'
+    ? trips
+    : trips.filter((t) => t.status === activeFilter);
+
+  /**
+   * Label used in the empty-filtered-state message ("No Planning trips yet.").
+   * Title-cased from the activeFilter value.
+   */
+  const activeFilterLabel = activeFilter.charAt(0) + activeFilter.slice(1).toLowerCase();
 
   // Track whether the initial load has completed (to know if we have any trips at all)
   const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -186,6 +205,16 @@ export default function HomePage() {
             </button>
           </div>
 
+          {/* Status Filter Tabs (Spec 21 — Sprint 24, client-side, always visible after load) */}
+          {initialLoadDone && (
+            <div className={styles.statusFilterTabsRow}>
+              <StatusFilterTabs
+                activeFilter={activeFilter}
+                onFilterChange={setActiveFilter}
+              />
+            </div>
+          )}
+
           {/* Filter Toolbar — shown when user has ≥1 trip */}
           {showToolbar && (
             <FilterToolbar
@@ -278,19 +307,34 @@ export default function HomePage() {
               </button>
             </div>
           ) : isEmptySearchResults ? (
-            /* Empty search results — trips exist but none match filters */
+            /* Empty search results — trips exist but none match API-level filters */
             <EmptySearchResults
               search={search}
               status={status}
               onClearFilters={handleClearFilters}
             />
+          ) : filteredTrips.length === 0 && activeFilter !== 'ALL' && trips.length > 0 ? (
+            /* Empty filtered state — trips exist but none match the StatusFilterTabs filter (Spec 21.9.3) */
+            <div className={styles.emptyFilteredState} aria-live="polite">
+              <p className={styles.emptyFilteredText}>
+                No {activeFilterLabel} trips yet.
+              </p>
+              <button
+                type="button"
+                className={styles.showAllLink}
+                aria-label="Show all trips"
+                onClick={() => setActiveFilter('ALL')}
+              >
+                Show all
+              </button>
+            </div>
           ) : (
             /* Trip grid — with loading opacity when refetching */
             <div
               className={styles.grid}
               style={isLoading ? { opacity: 0.5, transition: 'opacity 200ms ease' } : { transition: 'opacity 200ms ease' }}
             >
-              {trips.map((trip) => (
+              {filteredTrips.map((trip) => (
                 <TripCard
                   key={trip.id}
                   trip={trip}
