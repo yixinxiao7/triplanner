@@ -2231,4 +2231,116 @@ All tasks remain in Backlog status. None progressed.
 
 ---
 
+### Sprint #19 — 2026-03-09 to 2026-03-10
+
+**Goal:** Execute the full Sprint 18 plan that failed to run — close Sprint 17 pipeline carry-overs (T-176 Monitor + T-177 User Agent), ship auth rate limiting (B-020, 18-sprint security deferral — non-negotiable P0), produce the multi-destination structured UI spec (T-179) and implementation (T-180), and complete the full QA → Deploy → Monitor → User Agent pipeline.
+
+**Goal Met:** ✅ YES — All 10 Sprint 19 tasks completed and verified. Auth rate limiting is live. Multi-destination chip UI is deployed. Full pipeline executed from Monitor (T-176) through User Agent (T-185). Sprint 19 broke the planning-without-execution pattern from Sprints 17–18. Two minor issues found (FB-008, FB-009) — both tasked for Sprint 20.
+
+---
+
+**Tasks Completed (10/10):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-176 | Monitor Agent: Sprint 17 staging health check (carry-over from Sprint 17/18) | ✅ Done |
+| T-177 | User Agent: Sprint 17 feature walkthrough (carry-over from Sprint 17/18) | ✅ Done |
+| T-178 | Backend Engineer: Auth rate limiting — loginLimiter (10/15min), registerLimiter (5/60min), generalAuthLimiter on /refresh+/logout | ✅ Done |
+| T-179 | Design Agent: Multi-destination structured UI spec (Spec 18 — chip input, trip card truncation, trip details edit control) | ✅ Done |
+| T-180 | Frontend Engineer: Multi-destination chip UI — DestinationChipInput component, TripCard truncation, TripDetailsPage edit destinations | ✅ Done |
+| T-181 | QA Engineer: Security checklist + code review (Sprint 19) — 416/416 frontend + 287/287 backend tests PASS | ✅ Done |
+| T-182 | QA Engineer: Integration testing (Sprint 19) — rate limiting, multi-destination, regressions all verified | ✅ Done |
+| T-183 | Deploy Engineer: Sprint 19 staging re-deployment (pm2 reload, 122 modules, 0 build errors) | ✅ Done |
+| T-184 | Monitor Agent: Sprint 19 staging health check (HTTPS, pm2, health endpoint, rate limit headers, destinations API) | ✅ Done |
+| T-185 | User Agent: Sprint 19 feature walkthrough — 13 feedback entries (11 positive, 1 Minor bug, 1 Minor UX) | ✅ Done |
+
+**Tasks Carried Over:** None. All 10 Sprint 19 tasks completed and verified Done.
+
+---
+
+**Key Decisions (ADRs / Approvals This Sprint):**
+- **Auth Rate Limiting Strategy:** In-memory store retained (acceptable at current scale). `generalAuthLimiter` (30/15min) on `/refresh` and `/logout` refactored from pre-existing inline limiters — approved as benign cleanup. Error code standardized to `RATE_LIMITED` (was `RATE_LIMIT_EXCEEDED` in one route).
+- **Multi-Destination UI:** `DestinationChipInput` built as a reusable component. Backend remains TEXT ARRAY — no schema change required. Duplicate detection is case-insensitive (`.toLowerCase()` comparison). Backspace-to-remove-last-chip implemented per Spec 18.2.
+- **Frontend Test Selectors:** QA catch: initial T-180 submission used `getByLabelText(/new destination/i)` in some tests — corrected to use specific aria-labels (`aria-label="New destination"` on input, `aria-label="Add destination"` on "+" button) for semantic precision.
+
+---
+
+**Feedback Summary (from User Agent T-185, 2026-03-09):**
+
+*13 entries: 11 positive findings, 1 minor UX issue, 1 minor bug. Zero Critical or Major issues.*
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-001 | Positive | — | Acknowledged | Login rate limiter (10/15min) works correctly with proper RateLimit-* headers |
+| FB-002 | Positive | — | Acknowledged | Register rate limiter (5/60min) works correctly with proper headers and cookie shape |
+| FB-003 | Positive | — | Acknowledged | Non-auth endpoints correctly exempt from rate limiting |
+| FB-004 | Positive | — | Acknowledged | generalAuthLimiter on /refresh and /logout is a positive security addition |
+| FB-005 | Positive | — | Acknowledged | Multi-destination trip creation works end-to-end (3-destination + 5-destination) |
+| FB-006 | Positive | — | Acknowledged | Destination editing via PATCH works correctly (add/remove/reorder) |
+| FB-007 | Positive | — | Acknowledged | Empty destinations validation enforced on POST and PATCH |
+| FB-008 | UX Issue | Minor | **Tasked → T-186** | PATCH empty destinations returns raw Joi message instead of human-friendly message |
+| FB-009 | Bug | Minor | **Tasked → T-186** | Backend accepts destination strings >100 chars (frontend maxLength=100 not enforced at API layer) |
+| FB-010 | Positive | — | Acknowledged | DestinationChipInput: full accessibility and XSS safety verified |
+| FB-011 | Positive | — | Acknowledged | TripCard destination truncation (formatDestinations) correct per Spec 18.4 |
+| FB-012 | Positive | — | Acknowledged | Sprint 17 regression clean — print button present and accessible |
+| FB-013 | Positive | — | Acknowledged | All 416/416 frontend + 287/287 backend tests passing — no regressions |
+
+---
+
+**What Went Well:**
+- **Sprint 19 broke the carry-over cycle:** After Sprint 18 failed to execute (0/10 tasks done), Sprint 19 delivered 10/10 tasks. The auth rate limiting that was deferred for 18 consecutive sprints is now live.
+- **Auth rate limiting implementation was excellent:** loginLimiter (10/15min), registerLimiter (5/60min), and generalAuthLimiter (30/15min on refresh/logout) all correct. Proper `RateLimit-*` standard headers. Error shape exactly matches the global error contract. Non-auth endpoints unaffected.
+- **Multi-destination chip UI is accessible and safe:** `DestinationChipInput` uses React text nodes only (no XSS), `aria-live="polite"` announcer, `role="group"`, individual chip remove aria-labels. Case-insensitive duplicate prevention. Backspace-to-remove implemented.
+- **Only 2 minor issues in 13 feedback entries:** Both are simple Joi schema tweaks (max length and custom message). No functional regressions. No Critical or Major bugs.
+- **Test suite at historic high:** 416/416 frontend, 287/287 backend — zero regressions across all 19 sprints of feature development.
+
+**What Could Improve:**
+- **Backend Joi schema gaps found by User Agent:** Two validation gaps (max(100) on destination items, custom message on PATCH) should have been caught by the Backend Engineer during T-180/T-178 implementation. These are trivial to fix but represent incomplete implementation of the frontend contract.
+- **Frontend test selector specificity:** Initial T-180 test submission had 10 failing tests due to selector mismatches (aria-label vs test-id). Manager code review catch was effective; tests were corrected before QA sign-off.
+- **T-183 required 3 invocations before clean pass:** Deploy Engineer ran twice before QA was complete — dependency chain enforcement needs tightening. Final deploy was correct.
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 20+):**
+
+*From Sprint 1 (still outstanding):*
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (dev-only, no production impact, B-021)
+
+*From Sprint 2 (still outstanding):*
+- ⚠️ Rate limiting uses in-memory store — will not persist across restarts or scale across processes (B-020, partially mitigated — in-memory acceptable at current scale)
+
+*From Sprint 3 (still outstanding):*
+- ⚠️ Auth rate limit is IP-based only — aggressive on shared-IP environments (B-024)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+
+*New from Sprint 19:*
+- ⚠️ Backend missing Joi `.max(100)` on destination array items — accepts oversized input via direct API (FB-009 → T-186)
+- ⚠️ PATCH destinations route uses raw Joi error message instead of human-friendly message (FB-008 → T-186)
+
+*Resolved this sprint:*
+- ✅ Auth rate limiting (B-020) — 18 consecutive sprints deferred → resolved by T-178
+- ✅ Multi-destination structured UI (B-007) → resolved by T-179, T-180
+- ✅ Sprint 17 + Sprint 18 pipeline carry-overs (T-176, T-177) → resolved
+
+---
+
+**Next Sprint Focus (Sprint 20 Recommendations):**
+
+**P1 — Backend validation fixes (from Sprint 19 feedback):**
+1. **T-186** — Fix Joi destination validation: add `.items(Joi.string().max(100))` to array schema + add custom `.messages()` on PATCH route (FB-008 + FB-009 combined)
+
+**P2 — New visible feature:**
+2. **T-187** — Design Agent: Trip notes/description field spec (Spec 19)
+3. **T-188** — Backend: Trip notes field (migration 010, `notes TEXT NULL` on trips table, API update)
+4. **T-189** — Frontend: Trip notes UI (inline edit, character count, save/cancel)
+
+**Pipeline:**
+5. T-190 (QA), T-191 (QA integration), T-192 (Deploy), T-193 (Monitor), T-194 (User Agent)
+
+---
+
+*Sprint #19 began 2026-03-09 and closed 2026-03-10.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

@@ -127,7 +127,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** UX Issue
 - **Severity:** Minor
-- **Status:** Acknowledged
+- **Status:** Tasked → T-186
 - **Related Task:** T-180
 - **Details:**
   Steps to reproduce:
@@ -145,7 +145,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Bug
 - **Severity:** Minor
-- **Status:** Acknowledged
+- **Status:** Tasked → T-186
 - **Related Task:** T-180
 - **Details:**
   Steps to reproduce:
@@ -222,7 +222,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 - **Sprint:** 19
 - **Category:** Positive
 - **Severity:** —
-- **Status:** New
+- **Status:** Acknowledged
 - **Related Task:** T-181, T-182
 - **Details:**
   Ran `npm test --run` in `frontend/` and `backend/` directories:
