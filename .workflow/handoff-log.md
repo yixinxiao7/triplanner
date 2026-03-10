@@ -4,6 +4,41 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[Frontend Engineer → QA Engineer] Sprint #19 — T-180 Complete: Multi-Destination UI + Test Fixes**
+Date: 2026-03-09
+Status: Ready for QA (T-181/T-182)
+
+## T-180 — Multi-Destination UI: API Contract Acknowledged + Implementation Complete
+
+**API Contract Acknowledged:**
+- `PATCH /api/v1/trips/:id` — Sprint 1 contract, unchanged. Used to save updated destinations array.
+- `POST /api/v1/trips` — Sprint 1 contract, unchanged. Accepts `{ destinations: string[] }`.
+- Sprint 19 additions: `POST /auth/login` (429 RATE_LIMITED after 10/15min) and `POST /auth/register` (429 RATE_LIMITED after 5/60min) — frontend updated to handle 429 via rateLimitUtils (pre-existing). No new frontend changes required for T-178 contract.
+
+**What was done (T-180):**
+- `DestinationChipInput.jsx` — reusable chip/tag input component per Spec 18.2. Already implemented.
+- `CreateTripModal.jsx` — uses DestinationChipInput for DESTINATIONS field. Submit disabled when name empty or destinations empty. Already implemented.
+- `TripCard.jsx` — displays destinations via `formatDestinations()` (truncates at 3, "+N more"). Already implemented.
+- `TripDetailsPage.jsx` — read-only destination chips in header + inline "edit destinations" panel using DestinationChipInput. Save calls `PATCH /api/v1/trips/:id`. Already implemented.
+
+**Test fixes applied (10 failures → 0 failures):**
+1. `DestinationChipInput.test.jsx` (6 tests) — updated `getByLabelText(/add destination/i)` → `getByLabelText(/new destination/i)` to match the renamed input `aria-label="New destination"` (the "+" button carries `aria-label="Add destination"` per Spec 18.2).
+2. `CreateTripModal.test.jsx` (3 tests) — updated validation error tests to use `fireEvent.submit(form)` (since submit button is correctly `disabled` when form is empty per Spec 18.3.4); updated chip input selector to `/new destination/i`.
+3. `HomePage.test.jsx` (1 test) — updated chip input selector to `/new destination/i`.
+
+**Test result:** 416/416 frontend tests pass. `npm run build` succeeds (0 errors).
+
+**What QA should test (T-181 security + T-182 integration):**
+- Create modal: chip input adds destinations on Enter/comma; × removes; submit disabled with 0 chips; submit sends string array to POST /api/v1/trips.
+- TripCard: destinations display truncated (up to 3 + "+N more").
+- TripDetailsPage: destination chips in header; "edit destinations" button opens inline chip editor; save calls PATCH /api/v1/trips/:id with updated array; cancel discards changes.
+- Accessibility: each × button has `aria-label="Remove [destination]"`.
+- XSS: chip values rendered as React text nodes (no dangerouslySetInnerHTML).
+
+**Known limitations:** None. All Spec 18 states (empty, loading, error, success) implemented.
+
+---
+
 **[Deploy Engineer → Frontend Engineer] Sprint #19 — T-183 Blocked: Fix 10 Frontend Test Failures**
 Date: 2026-03-09
 Status: Blocked — Awaiting Frontend Engineer Fix

@@ -236,8 +236,8 @@ describe('HomePage', () => {
     });
 
     // Destinations now uses DestinationChipInput (Sprint 3 T-046)
-    // Add destinations via the chip input: type + Enter
-    const destInput = screen.getByLabelText(/add destination/i);
+    // Input aria-label is "New destination" (Spec 18.3.10); "+" button has aria-label="Add destination" (Spec 18.2)
+    const destInput = screen.getByLabelText(/new destination/i);
     fireEvent.change(destInput, { target: { value: 'Paris' } });
     fireEvent.keyDown(destInput, { key: 'Enter' });
     fireEvent.change(destInput, { target: { value: 'Rome' } });

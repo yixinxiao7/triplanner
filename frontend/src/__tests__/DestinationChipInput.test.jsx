@@ -26,8 +26,9 @@ describe('DestinationChipInput', () => {
   });
 
   it('calls onChange when Enter is pressed with text', () => {
+    // Input has aria-label="New destination" (Spec 18.3.10); "+" button has aria-label="Add destination" (Spec 18.2)
     const { onChange } = renderChipInput({ destinations: ['Tokyo'] });
-    const input = screen.getByLabelText(/add destination/i);
+    const input = screen.getByLabelText(/new destination/i);
     fireEvent.change(input, { target: { value: 'Kyoto' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onChange).toHaveBeenCalledWith(['Tokyo', 'Kyoto']);
@@ -35,7 +36,7 @@ describe('DestinationChipInput', () => {
 
   it('calls onChange when comma is pressed with text', () => {
     const { onChange } = renderChipInput({ destinations: [] });
-    const input = screen.getByLabelText(/add destination/i);
+    const input = screen.getByLabelText(/new destination/i);
     fireEvent.change(input, { target: { value: 'Paris' } });
     fireEvent.keyDown(input, { key: ',' });
     expect(onChange).toHaveBeenCalledWith(['Paris']);
@@ -43,7 +44,7 @@ describe('DestinationChipInput', () => {
 
   it('does not add duplicate destinations (case-insensitive)', () => {
     const { onChange } = renderChipInput({ destinations: ['Tokyo'] });
-    const input = screen.getByLabelText(/add destination/i);
+    const input = screen.getByLabelText(/new destination/i);
     fireEvent.change(input, { target: { value: 'tokyo' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onChange).not.toHaveBeenCalled();
@@ -51,7 +52,7 @@ describe('DestinationChipInput', () => {
 
   it('does not add empty destinations', () => {
     const { onChange } = renderChipInput({ destinations: [] });
-    const input = screen.getByLabelText(/add destination/i);
+    const input = screen.getByLabelText(/new destination/i);
     fireEvent.change(input, { target: { value: '' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onChange).not.toHaveBeenCalled();
@@ -59,7 +60,7 @@ describe('DestinationChipInput', () => {
 
   it('removes last destination on Backspace when input is empty', () => {
     const { onChange } = renderChipInput({ destinations: ['Tokyo', 'Osaka'] });
-    const input = screen.getByLabelText(/add destination/i);
+    const input = screen.getByLabelText(/new destination/i);
     fireEvent.keyDown(input, { key: 'Backspace' });
     expect(onChange).toHaveBeenCalledWith(['Tokyo']);
   });
@@ -89,7 +90,7 @@ describe('DestinationChipInput', () => {
 
   it('clears input on Escape key', () => {
     renderChipInput();
-    const input = screen.getByLabelText(/add destination/i);
+    const input = screen.getByLabelText(/new destination/i);
     fireEvent.change(input, { target: { value: 'test' } });
     fireEvent.keyDown(input, { key: 'Escape' });
     expect(input.value).toBe('');
@@ -122,14 +123,15 @@ describe('DestinationChipInput', () => {
   });
 
   it('input has aria-describedby pointing to dest-chip-hint when no error', () => {
+    // Input aria-label is "New destination" (Spec 18.3.10); "+" button aria-label is "Add destination" (Spec 18.2)
     renderChipInput();
-    const input = screen.getByLabelText(/add destination/i);
+    const input = screen.getByLabelText(/new destination/i);
     expect(input.getAttribute('aria-describedby')).toBe('dest-chip-hint');
   });
 
   it('input has aria-describedby pointing to dest-chip-error when error is set', () => {
     renderChipInput({ error: 'error message' });
-    const input = screen.getByLabelText(/add destination/i);
+    const input = screen.getByLabelText(/new destination/i);
     expect(input.getAttribute('aria-describedby')).toBe('dest-chip-error');
   });
 });
