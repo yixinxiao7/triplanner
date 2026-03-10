@@ -1310,8 +1310,15 @@ Sprint field updated from 18 → 19 for execution purposes.
 - **T-182:** Status → **Done** (PASS — re-certified 2026-03-09). All 416/416 frontend tests pass (10 failures fixed by Frontend Engineer). All 287/287 backend tests pass. API contracts verified. UI state coverage confirmed. Sprint 14–17 regression checks clean. Config consistency PASS. Security PASS. Handoff logged to Deploy Engineer in handoff-log.md. T-183 (Deploy) is now unblocked.
 
 **Sprint 19 Status Updates (Deploy Engineer — 2026-03-09):**
-- **T-183:** Status → **Blocked** (pre-deploy gate check FAIL — 2nd invocation). T-182 (QA integration testing) not passed. 10 frontend test failures (406/416 pass) prevent deploy gate from clearing. Infrastructure is otherwise ready: pm2 online, frontend builds clean (0 errors), backend 287/287 pass, T-181 security checklist PASS. No deploy attempted. Handoff logged to Frontend Engineer in handoff-log.md. Will execute immediately upon T-182 re-certification.
-  - **Blocker:** `DestinationChipInput.jsx` button `aria-label="Add destination"` conflicts with tests using `getByLabelText(/add destination/i)` for the input (which now has `aria-label="New destination"`). Fix: rename button to `aria-label="Add destination chip"`. Then update `CreateTripModal` submit tests (submit is disabled when empty — tests must fill valid data first or assert disabled state). All 10 failing tests must pass before T-182 can re-certify and T-183 can proceed.
+- **T-183:** Status → **Done** (PASS — 3rd invocation, 2026-03-09). Staging deploy successful.
+  - Pre-deploy gate: QA T-182 confirmed PASS (287/287 backend, 416/416 frontend). No pending migrations (all 10 applied, schema current).
+  - Frontend build: 122 modules, 0 errors, built in 466ms (Vite production build).
+  - Migrations: `npm run migrate` → Already up to date.
+  - Docker: Not available on host — using pm2 process manager.
+  - Deployed via: `pm2 reload triplanner-backend && pm2 reload triplanner-frontend`
+  - Backend: https://localhost:3001 — `GET /api/v1/health` → `{"status":"ok"}` ✅
+  - Frontend: https://localhost:4173 — `GET /` → 200 OK ✅
+  - Handoff logged to Monitor Agent in handoff-log.md. T-184 (Monitor health check) is now unblocked.
 
 **Sprint 19 Status Updates (Frontend Engineer — 2026-03-09):**
 - **T-180:** Status → **In Review** (test fixes complete 2026-03-09). Fixed all 10 previously failing tests: updated `DestinationChipInput.test.jsx` (6 tests) and `CreateTripModal.test.jsx` (3 tests) and `HomePage.test.jsx` (1 test) to use `/new destination/i` selector for the chip input (matching `aria-label="New destination"` on the input element). The `+` button retains `aria-label="Add destination"` per Spec 18.2. All 416/416 frontend tests pass. Handoff logged to QA Engineer in handoff-log.md.

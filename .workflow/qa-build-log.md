@@ -4,6 +4,72 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #19 Deploy — 2026-03-09
+
+**Deploy Engineer:** Automated (Sprint #19 orchestrator invocation)
+**Tasks:** T-183 (Staging Deploy)
+
+---
+
+### Pre-Deploy Checklist
+
+- [x] QA confirmation received: T-182 PASS (287/287 backend, 416/416 frontend) — handoff-log.md 2026-03-09
+- [x] Pending migrations: None — all 10 migrations applied, schema current through Sprint 14, unchanged through Sprint 19
+- [x] Sprint tasks verified: T-178 (Integration Check/Done), T-179 Done, T-180 Done, T-181 Done, T-182 Done
+
+---
+
+### Build Results
+
+**Backend:** npm install — Success (dependencies up to date)
+**Frontend:** npm install — Success (dependencies up to date)
+
+**Frontend Build (Vite production):**
+- Status: **SUCCESS**
+- Modules transformed: 122
+- Output:
+  - `dist/index.html` — 0.46 kB (gzip: 0.29 kB)
+  - `dist/assets/index-CGFU1j2A.css` — 74.97 kB (gzip: 11.95 kB)
+  - `dist/assets/index-BIdeIIYL.js` — 340.24 kB (gzip: 103.33 kB)
+- Build time: 466ms
+- Errors: 0
+
+---
+
+### Database Migrations
+
+- Command: `cd backend && npm run migrate`
+- Result: **Already up to date** — no pending migrations
+- Environment: development (PostgreSQL local)
+
+---
+
+### Staging Deployment
+
+**Environment:** Staging (local pm2 processes)
+**Date:** 2026-03-09
+**Build Status:** Success
+
+**Docker availability:** Not available — using pm2 process manager (local staging)
+
+**Services:**
+| Service | Process Name | PID | Port | Protocol | Status |
+|---------|-------------|-----|------|----------|--------|
+| Backend (Express + Node.js) | triplanner-backend | 2525 | 3001 | HTTPS | Online ✅ |
+| Frontend (Vite preview) | triplanner-frontend | 2564 | 4173 | HTTPS | Online ✅ |
+
+**Reload method:** `pm2 reload triplanner-backend && pm2 reload triplanner-frontend`
+- Both processes reloaded with new Sprint #19 build
+- Backend confirmed: `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}` ✅
+- Backend auth confirmed: `POST https://localhost:3001/api/v1/auth/login` → 401 (invalid credentials, correct behavior) ✅
+- Frontend confirmed: `GET https://localhost:4173/` → 200 ✅
+
+**Sprint #19 features deployed:**
+- T-178: Auth rate limiting (loginLimiter 10/15min, registerLimiter 5/60min, generalAuthLimiter 30/15min)
+- T-180: Multi-destination chip UI (DestinationChipInput, CreateTripModal, TripCard truncation, TripDetailsPage inline edit)
+
+---
+
 ## Sprint #19 QA Run — 2026-03-09
 
 **QA Engineer:** Automated (Sprint #19 orchestrator invocation)
