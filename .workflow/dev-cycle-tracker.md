@@ -1474,7 +1474,7 @@ Sprint field updated from 18 → 19 for execution purposes.
 
 ### Phase 4 — Deploy, Monitor, User Agent (sequential after Phase 3)
 
-| T-199 | Deploy Engineer: Sprint 22 staging re-deployment. Pre-deploy gate: T-198 Done. No new migrations required (status column exists from Sprint 1). `npm run build` in `frontend/` → 0 errors → `pm2 reload triplanner-frontend`. `pm2 restart triplanner-backend` → verify online. Smoke tests: GET /health → 200 ✅; TripDetailsPage status badge renders ✅; PATCH /trips/:id `{status:"COMPLETED"}` → 200 ✅; notes feature ✅; Sprint 19 rate limit regression ✅; Sprint 17 print regression ✅. Log handoff to Monitor Agent (T-200). Full report in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 22 | T-198 | **[Sprint 21 → Sprint 22 Carry-Over]** Blocked by T-198. |
+| T-199 | Deploy Engineer: Sprint 22 staging re-deployment. Pre-deploy gate: T-198 Done. No new migrations required (status column exists from Sprint 1). `npm run build` in `frontend/` → 0 errors → `pm2 reload triplanner-frontend`. `pm2 restart triplanner-backend` → verify online. Smoke tests: GET /health → 200 ✅; TripDetailsPage status badge renders ✅; PATCH /trips/:id `{status:"COMPLETED"}` → 200 ✅; notes feature ✅; Sprint 19 rate limit regression ✅; Sprint 17 print regression ✅. Log handoff to Monitor Agent (T-200). Full report in qa-build-log.md. | Infrastructure | Deploy Engineer | Blocked | P1 | S | 22 | T-198 | **[BLOCKED — 2026-03-10]** Deploy Engineer invoked but pre-deploy gate not met. T-196 (TripStatusSelector.jsx) not built. T-197/T-198 QA not run. No Sprint 22 QA → Deploy handoff in handoff-log.md. Infrastructure is ready (pm2 online, health 200, no migrations needed). Unblocks immediately when QA logs T-198 Done handoff. Detailed blocker report in handoff-log.md [2026-03-10 Deploy Engineer → Manager]. |
 
 | T-200 | Monitor Agent: Sprint 22 staging health check. Verify: (1) HTTPS ✅, pm2 online ✅, health 200 ✅. (2) Sprint 22: PATCH /trips/:id `{status:"ONGOING"}` → 200, status updated ✅. (3) Sprint 22: TripStatusSelector visible on TripDetailsPage ✅. (4) Sprint 20 regression: GET /trips/:id includes `notes` key ✅. (5) Sprint 19 regression: RateLimit-Limit header on /auth/login ✅. (6) Sprint 17 regression: Print itinerary button visible ✅. (7) Sprint 16 regression: trips include start_date/end_date ✅. (8) `npx playwright test` → 7/7 PASS ✅. Full report in qa-build-log.md Sprint 22 section. Handoff to User Agent (T-201). | Infrastructure | Monitor Agent | Backlog | P1 | S | 22 | T-199 | **[Sprint 21 → Sprint 22 Carry-Over]** Blocked by T-199. |
 
@@ -1510,6 +1510,15 @@ Sprint field updated from 18 → 19 for execution purposes.
 **Schema changes:** None. `status VARCHAR(20) DEFAULT 'PLANNING'` on `trips` table exists since migration 003 (Sprint 1). No migration required.
 
 **Hotfix standby:** Backend Engineer is monitoring. If T-194 (User Agent Sprint 20 walkthrough) or T-201 (Sprint 22 walkthrough) reveals a Critical or Major backend bug, the Manager will create an H-XXX task. Backend Engineer will document any contract changes in `api-contracts.md` before implementing.
+
+**Implementation audit (2026-03-10):**
+- ✅ `npm test --run` executed — **304/304 tests PASS** (15 test files). Test baseline confirmed.
+- ✅ `PATCH /api/v1/trips/:id` verified: `status` field in `UPDATABLE_FIELDS`, enum validation enforces `['PLANNING','ONGOING','COMPLETED']`, ownership + existence checks both present.
+- ✅ Sprint 20 fixes verified: `notes` max 2000 chars (POST + PATCH), `destinations` min 1 item + max 100 chars/item — all still intact.
+- ✅ No new routes, migrations, middleware, or env vars created. Backend is unchanged from Sprint 20 staging.
+- ✅ Logged implementation verification handoff to QA Engineer + Frontend Engineer in `handoff-log.md`.
+
+**Backend Engineer Sprint 22 work: COMPLETE. Awaiting T-196 (Frontend) → T-197/T-198 (QA) pipeline.**
 
 ---
 
