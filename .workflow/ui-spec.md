@@ -9318,3 +9318,403 @@ NOTES ────────────────────────�
 ---
 
 *Spec 19 (Sprint 20 — Trip Notes Field) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-10.*
+
+---
+
+## Sprint 22 Specs
+
+---
+
+### Spec 20: Trip Status Selector (Sprint 22 — T-195)
+
+**Sprint:** #22
+**Related Task:** T-195, T-196
+**Status:** Approved
+
+---
+
+#### 20.1 Description
+
+The Trip Status Selector is an interactive inline badge on the `TripDetailsPage` that lets users change a trip's status (`PLANNING` → `ONGOING` → `COMPLETED`) without leaving the page. In view mode it renders exactly like the read-only status badge on `TripCard` — a small pill with a muted Japandi color — but with a visual affordance (cursor and subtle hover effect) indicating it is clickable. Clicking it opens a compact dropdown overlay with all three status options. Selecting one fires a `PATCH /api/v1/trips/:id` call and updates the badge in place. The Home page `TripCard` will reflect the change on the next navigation (standard re-fetch; no real-time sync required).
+
+---
+
+#### 20.2 Screen Context
+
+**Page:** `TripDetailsPage` (`/trips/:id`)
+
+**Placement within the trip header:**
+```
+┌─────────────────────────────────────────────────────────┐
+│  ← Back                                                 │
+│                                                         │
+│  Tokyo Summer Trip              [PLANNING ▾]  ← HERE   │
+│  Tokyo · Kyoto · Osaka                                  │
+│                                                         │
+│  ─────────────────────────────────────────────────────  │
+│  [Calendar section ...]                                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+The status selector sits **inline with the trip name** on the same row (flex row, aligned to the right side of the trip name line), or immediately below it if the trip name is very long. It is visually prominent but not dominant — smaller than the trip name, above the destinations list.
+
+**Layout:** `display: flex; align-items: center; gap: 12px;` on the trip name row.
+- Left: `<h1>` trip name (font-size 22px, font-weight 500, IBM Plex Mono, `#FCFCFC`)
+- Right: `TripStatusSelector` component (inline)
+
+---
+
+#### 20.3 Component Overview
+
+**Component file:** `frontend/src/components/TripStatusSelector.jsx`
+
+**Props:**
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| `tripId` | string | ✅ | The trip's UUID, used in the PATCH call |
+| `initialStatus` | `"PLANNING" \| "ONGOING" \| "COMPLETED"` | ✅ | The current trip status, loaded by the parent |
+| `onStatusChange` | `(newStatus: string) => void` | ✅ | Callback invoked after a successful API update; parent uses this to sync its local trip state |
+
+**Internal state:**
+| State variable | Type | Description |
+|---------------|------|-------------|
+| `currentStatus` | string | Tracks the displayed status. Initialized from `initialStatus`. Reverted on API error. |
+| `isOpen` | boolean | Whether the dropdown overlay is currently visible |
+| `isLoading` | boolean | True while the PATCH request is in flight |
+| `error` | string \| null | Set to a generic error message on API failure; triggers a toast |
+
+---
+
+#### 20.4 Status Color Reference
+
+Each status maps to a fixed color pair used consistently across the badge (view mode), the dropdown options, and the option indicator dots.
+
+| Status | Badge Background | Badge Text | Indicator Dot |
+|--------|-----------------|------------|---------------|
+| `PLANNING` | `rgba(93, 115, 126, 0.2)` | `#5D737E` | `#5D737E` |
+| `ONGOING` | `rgba(100, 180, 100, 0.15)` | `rgba(100, 200, 100, 0.9)` | `rgba(100, 200, 100, 0.9)` |
+| `COMPLETED` | `rgba(252, 252, 252, 0.1)` | `rgba(252, 252, 252, 0.5)` | `rgba(252, 252, 252, 0.5)` |
+
+These are the same values as the Design System Conventions Status Badges table to ensure visual consistency between `TripCard` (read-only) and `TripDetailsPage` (interactive).
+
+---
+
+#### 20.5 Component States
+
+**State A — View Mode (idle, dropdown closed)**
+
+The badge renders as a clickable pill:
+
+```
+[• PLANNING ▾]
+```
+
+- Pill shape: `padding: 3px 10px`, `border-radius: 2px`
+- Font: IBM Plex Mono, `font-size: 10px`, `font-weight: 600`, `letter-spacing: 0.1em`, `text-transform: uppercase`
+- Background and text color per status (table in §20.4)
+- Left element: a small 6px filled circle (indicator dot) in the status color, `margin-right: 6px`
+- Right element: a small `▾` chevron icon (5px, same text color, `margin-left: 6px`, `opacity: 0.7`)
+- `cursor: pointer`
+- Hover: background becomes 10% more opaque (multiply the alpha by ~1.5). Transition: `150ms ease`.
+- `role="button"`, `aria-haspopup="listbox"`, `aria-expanded="false"`, `aria-label="Trip status: PLANNING"` (dynamic — includes current status name)
+
+---
+
+**State B — Dropdown Open**
+
+Clicking the badge (or pressing Space/Enter when focused) opens a dropdown listbox overlay positioned directly below the badge.
+
+```
+[• PLANNING ▾]
+┌─────────────────┐
+│ ● PLANNING   ✓ │  ← currently selected, checkmark on right
+│ ● ONGOING      │
+│ ● COMPLETED    │
+└─────────────────┘
+```
+
+Dropdown anatomy:
+- Container: `position: absolute`, `z-index: 100`, `top: calc(100% + 4px)`, `left: 0`
+- Background: `#30292F` (surface color)
+- Border: `1px solid rgba(93, 115, 126, 0.3)`
+- Border radius: `4px`
+- Box shadow: none (Japandi — use borders, no shadows)
+- Min-width: `160px`
+- `role="listbox"`, `aria-label="Trip status"`
+
+Each option row:
+- Padding: `10px 14px`
+- Font: IBM Plex Mono, `font-size: 12px`, `font-weight: 500`, `letter-spacing: 0.06em`, `text-transform: uppercase`
+- Text color: status text color (from §20.4 table)
+- Left: 8px indicator dot in the status color
+- Right (selected option only): `✓` checkmark in `#5D737E`
+- `role="option"`, `aria-selected="true/false"`
+- Focus/hover: `background: rgba(93, 115, 126, 0.1)`, no outline (handled by background change)
+- `cursor: pointer` on non-selected options; `cursor: default` on the currently-selected option
+
+The parent `badge` button:
+- `aria-expanded="true"` while open
+- `aria-label="Trip status: PLANNING"` (unchanged — reflects current persisted status, not the focused option)
+
+**Closing the dropdown:**
+- User selects an option → dropdown closes, API call starts
+- User presses Escape → dropdown closes, no change, focus returns to badge button
+- User clicks outside the dropdown or badge → dropdown closes, no change
+- A `mousedown` event listener on `document` (checking if click is outside) handles outside-click dismissal
+
+---
+
+**State C — Loading**
+
+After the user selects a new status, the dropdown closes immediately and the badge enters loading state:
+
+```
+[• ONGOING  ◌]   ← spinner replaces chevron, badge opacity reduced
+```
+
+- Optimistic update: the badge immediately shows the **newly selected** status color and text before the API responds (optimistic UI). This feels more responsive.
+- The `▾` chevron is replaced by a 12px circular CSS spinner (border-style, accent color `#5D737E`, `animation: spin 0.8s linear infinite`)
+- Badge overall `opacity: 0.7`
+- `pointer-events: none` on the badge during loading (prevent double-click)
+- `aria-label` updates to `"Trip status: ONGOING (saving…)"` (screen reader announcement)
+- `aria-busy="true"` on the badge container
+
+---
+
+**State D — Error (API Failure)**
+
+If the PATCH call returns a non-2xx status:
+
+1. The badge reverts to the **previous** status (color + text). The optimistic update is rolled back.
+2. `isLoading` returns to `false`. Badge returns to normal view mode (chevron visible, pointer-events restored).
+3. A **toast notification** appears at the bottom-right of the viewport:
+   - Text: `"Failed to update trip status. Please try again."`
+   - Styling: `background: #30292F`, border: `1px solid rgba(220, 80, 80, 0.5)`, text: `rgba(252, 252, 252, 0.85)`, font-size: 13px, padding: 12px 16px, border-radius: 4px
+   - Auto-dismisses after 4 seconds
+   - `role="alert"` for screen reader announcement
+4. No API error details are surfaced (no status code, no raw message from the server).
+
+---
+
+**State E — Error Pre-load (initial load failure)**
+
+If the parent `TripDetailsPage` fails to load the trip (e.g., network error), the `TripStatusSelector` simply does not render — the parent handles the full-page error state. This component is only mounted when `tripId` and `initialStatus` are available and valid.
+
+---
+
+#### 20.6 User Flow (Step-by-Step)
+
+1. User opens `TripDetailsPage` for a trip with status `PLANNING`.
+2. The trip header renders: trip name on the left, `[• PLANNING ▾]` badge on the right.
+3. User clicks the badge (or tabs to it and presses Space/Enter).
+4. A dropdown appears below the badge showing all three options: `PLANNING` (with ✓), `ONGOING`, `COMPLETED`.
+5. User clicks `ONGOING` (or uses arrow keys to navigate to it and presses Enter).
+6. The dropdown closes. The badge optimistically switches to `[• ONGOING ◌]` (loading, spinner).
+7. `PATCH /api/v1/trips/:id` is called with body `{ "status": "ONGOING" }`.
+8. **On success (200):**
+   - Badge settles to `[• ONGOING ▾]` (loading state cleared, chevron returns).
+   - `onStatusChange("ONGOING")` callback is invoked. Parent updates its local trip state.
+   - No page reload. No toast.
+9. **On error (non-2xx):**
+   - Badge reverts to `[• PLANNING ▾]` (previous status).
+   - Error toast appears: `"Failed to update trip status. Please try again."` (4s auto-dismiss).
+   - User can try again immediately.
+
+**Keyboard flow (no mouse):**
+1. User tabs to the badge button.
+2. Badge receives focus (visible focus ring: `outline: 2px solid #5D737E`, `outline-offset: 2px`).
+3. User presses Space or Enter → dropdown opens. Focus moves to the first option (or the currently selected option).
+4. User presses ArrowDown / ArrowUp to move focus between options.
+5. User presses Enter or Space on the desired option → selection is made, dropdown closes, API call fires.
+6. User presses Escape (at any point while open) → dropdown closes, focus returns to the badge button, no change.
+
+---
+
+#### 20.7 API Integration
+
+| Field | Value |
+|-------|-------|
+| **Method** | `PATCH` |
+| **Endpoint** | `/api/v1/trips/:id` |
+| **Request body** | `{ "status": "ONGOING" }` (or `"PLANNING"` or `"COMPLETED"`) |
+| **Auth** | Bearer token via Axios interceptor (standard, handled by `api.js`) |
+| **Success response** | `200 OK` — full trip object with updated `status` field |
+| **Error response** | Any non-2xx — treat all as generic failure; do not parse error body for UI display |
+| **API helper** | `api.trips.update(tripId, { status: newStatus })` — existing Axios wrapper |
+
+**Important:** The frontend must validate the status value client-side before sending (must be one of `"PLANNING"`, `"ONGOING"`, `"COMPLETED"`). Since the options are hardcoded in the UI, this is inherently guaranteed — no user-typed input is sent to the API. No sanitization beyond enum restriction is required.
+
+---
+
+#### 20.8 Dropdown Positioning
+
+The dropdown is positioned using `position: absolute` relative to a `position: relative` wrapper that contains both the badge button and the dropdown. This ensures the dropdown appears anchored to the badge regardless of scroll position.
+
+```css
+.trip-status-selector {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.trip-status-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: 160px;
+}
+```
+
+The wrapper `div` should have `role="none"` (no semantic role) — only the inner `button` (badge) and `ul` (listbox) carry semantic roles.
+
+---
+
+#### 20.9 Responsive Behavior
+
+| Breakpoint | Behavior |
+|------------|---------|
+| **Desktop (≥ 768px)** | Trip name and status selector on same flex row (`display: flex; align-items: center; gap: 12px; flex-wrap: wrap`). Dropdown opens downward and left-aligned to the badge. |
+| **Mobile (< 768px)** | If trip name + badge don't fit on one line (due to `flex-wrap: wrap`), the badge wraps to its own row below the trip name, still left-aligned with the content. Dropdown still opens downward. Badge touch target minimum: 44×28px (per WCAG 2.5.5). |
+
+No change to the dropdown layout at mobile — the compact list is usable at all widths because it is `min-width: 160px` and anchored to the badge.
+
+---
+
+#### 20.10 Accessibility Checklist
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Badge button labeled | `aria-label="Trip status: PLANNING"` (dynamically includes current status) |
+| Dropdown announced | `aria-haspopup="listbox"` on badge button |
+| Dropdown open state | `aria-expanded="true/false"` on badge button |
+| Loading state announced | `aria-busy="true"` + `aria-label` updates to include `"(saving…)"` |
+| Error announced | Toast has `role="alert"` — screen readers announce it automatically |
+| Options labeled | `role="option"` on each item, `aria-selected="true/false"` |
+| Keyboard: open | Space / Enter on badge button |
+| Keyboard: navigate | ArrowDown / ArrowUp between options (focus trap within dropdown while open) |
+| Keyboard: select | Enter / Space on focused option |
+| Keyboard: close | Escape closes dropdown, focus returns to badge button |
+| Focus ring | `outline: 2px solid #5D737E; outline-offset: 2px` on keyboard focus (`:focus-visible` only — not on mouse click) |
+| Color contrast | PLANNING text `#5D737E` on `#30292F` bg ≈ 3.5:1 (AA for UI components). ONGOING text `rgba(100,200,100,0.9)` on `#30292F` ≈ 4.2:1. COMPLETED text `rgba(252,252,252,0.5)` on `#30292F` ≈ 3.1:1 (acceptable for non-critical UI indicators). |
+| Touch target | Badge minimum 44×28px touch area on mobile |
+| No color-only info | Status is communicated by text label, not color alone |
+
+---
+
+#### 20.11 TripCard Sync
+
+The `TripCard` component on the Home page (`/`) displays the trip's `status` badge (read-only). After the user changes the status on `TripDetailsPage` and navigates back to Home, the `useTrips` hook re-fetches the trips list (`GET /api/v1/trips`), which will return the updated status.
+
+**No real-time sync is required.** The flow is:
+1. User changes status on TripDetailsPage → `onStatusChange(newStatus)` updates parent state locally (TripDetailsPage remains accurate).
+2. User navigates to Home → `HomePage` mounts / `useTrips` fetches → `GET /api/v1/trips` returns updated status → TripCard displays correct status.
+
+The Frontend Engineer does **not** need to implement WebSockets, polling, or any cross-page state sharing (e.g., Zustand/Context) for this feature. React Router navigation + standard re-fetch is sufficient.
+
+---
+
+#### 20.12 Integration into TripDetailsPage
+
+The `TripStatusSelector` is integrated in the trip header section of `TripDetailsPage.jsx`. The parent is responsible for:
+
+1. Passing `tripId` (from route params / trip data)
+2. Passing `initialStatus` (from the trip object returned by `api.trips.get(tripId)`)
+3. Providing an `onStatusChange` callback that updates the parent's local `trip.status` state:
+   ```jsx
+   const [trip, setTrip] = useState(null);
+
+   const handleStatusChange = (newStatus) => {
+     setTrip(prev => ({ ...prev, status: newStatus }));
+   };
+
+   // In JSX:
+   <div className="trip-header">
+     <h1 className="trip-name">{trip.name}</h1>
+     <TripStatusSelector
+       tripId={trip.id}
+       initialStatus={trip.status}
+       onStatusChange={handleStatusChange}
+     />
+   </div>
+   ```
+4. The `TripStatusSelector` should **not** re-fetch the trip on its own. It only manages its own status state and the PATCH call.
+
+---
+
+#### 20.13 Visual Mockup (Text-Based)
+
+**View mode — PLANNING:**
+```
+─────────────────────────────────────────────────────────────
+
+  Tokyo Summer Trip                        [• PLANNING ▾]
+  Tokyo · Kyoto · Osaka
+
+─────────────────────────────────────────────────────────────
+```
+
+**Dropdown open — PLANNING selected:**
+```
+─────────────────────────────────────────────────────────────
+
+  Tokyo Summer Trip                        [• PLANNING ▾]
+                                           ┌──────────────────┐
+                                           │ ● PLANNING    ✓  │
+                                           │ ● ONGOING        │
+                                           │ ● COMPLETED      │
+                                           └──────────────────┘
+  Tokyo · Kyoto · Osaka
+
+─────────────────────────────────────────────────────────────
+```
+
+**Loading state — optimistically showing ONGOING:**
+```
+─────────────────────────────────────────────────────────────
+
+  Tokyo Summer Trip                        [• ONGOING  ◌]
+                                                ↑ spinner, opacity 0.7
+  Tokyo · Kyoto · Osaka
+
+─────────────────────────────────────────────────────────────
+```
+
+**Error state — reverted to PLANNING, toast visible:**
+```
+─────────────────────────────────────────────────────────────
+
+  Tokyo Summer Trip                        [• PLANNING ▾]
+  Tokyo · Kyoto · Osaka
+
+─────────────────────────────────────────────────────────────
+
+
+                       ┌───────────────────────────────────────────────┐
+                       │  Failed to update trip status. Please try     │  ← bottom-right toast
+                       │  again.                               [×]    │
+                       └───────────────────────────────────────────────┘
+```
+
+**Keyboard focus state:**
+```
+  Tokyo Summer Trip        ╔══════════════════╗
+                           ║ [• PLANNING ▾]   ║  ← 2px solid #5D737E focus ring
+                           ╚══════════════════╝
+```
+
+---
+
+#### 20.14 Edge Cases
+
+| Scenario | Behavior |
+|----------|---------|
+| User selects the **same** status that is already set | The dropdown closes. No API call is made. No loading state. No change. |
+| API call is in flight and user tries to click the badge | `pointer-events: none` on badge during loading. Second click is impossible. |
+| Trip data has an unexpected status value (not one of the 3 enum values) | Badge renders the raw string in `COMPLETED` style (muted/faded) as a safe fallback. Dropdown still shows all 3 valid options. |
+| `initialStatus` prop changes (parent re-fetches trip data) | Component re-syncs `currentStatus` via a `useEffect` that watches `initialStatus`. Only applies if not currently in loading state. |
+| Network offline | PATCH fails → generic error toast. Badge reverts. User can retry. |
+
+---
+
+*Spec 20 (Sprint 22 — Trip Status Selector) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-10.*
