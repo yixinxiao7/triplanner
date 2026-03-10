@@ -1272,7 +1272,6 @@ Users can print or save a clean, printer-friendly view of their trip itinerary. 
 ### Sprint 19 — Carried Over Tasks (all 10 from Sprint 18)
 
 All tasks T-176 through T-185 defined under Sprint 18 Tasks section above are assigned to Sprint 19.
-Status of all tasks: **Backlog** (no execution occurred in Sprint 18).
 Sprint field updated from 18 → 19 for execution purposes.
 
 **Execution order:**
@@ -1286,5 +1285,8 @@ Sprint field updated from 18 → 19 for execution purposes.
 8. T-183 (Deploy) — blocked by T-182
 9. T-184 (Monitor: Sprint 19 health) — blocked by T-183
 10. T-185 (User Agent: Sprint 19 walkthrough) — blocked by T-184
+
+**Sprint 19 Status Updates (Backend Engineer — 2026-03-09):**
+- **T-178:** Status → **In Progress** (API contracts phase complete). Sprint 19 contracts published in `api-contracts.md` under Sprint 19 Contracts. Rate limiting behavior documented: POST /auth/login (429 after 10/15min), POST /auth/register (429 after 5/60min). Handoffs logged to Frontend Engineer and QA Engineer in `handoff-log.md`. Implementation (code) is next phase.
 
 ---

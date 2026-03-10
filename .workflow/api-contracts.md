@@ -4899,3 +4899,262 @@ No hotfix is anticipated. Backend is at 278/278 tests passing and no regressions
 ---
 
 *Sprint 17 contract review published by Backend Engineer 2026-03-08. No new endpoints. No schema changes. All Sprint 1–16 contracts remain in force. Frontend Engineer may proceed with T-172 using existing data already loaded in TripDetailsPage. QA: backend test suite target remains 278+ (no backend changes expected).*
+
+---
+
+## Sprint 18 Contracts
+
+Sprint 18 was fully planned but never executed. All tasks carried forward to Sprint 19 unchanged. No Sprint 18 contracts were published.
+
+---
+
+## Sprint 19 Contracts
+
+---
+
+### T-178 — Auth Rate Limiting (B-020)
+
+**Sprint:** 19
+**Date:** 2026-03-09
+**Author:** Backend Engineer
+**Status:** Agreed — Auto-approved per automated sprint cycle (P0 security fix, 18 sprints deferred)
+**Scope:** Behavior change on two existing public auth endpoints. No new endpoints. No request/response shape changes. New 429 error case added to both.
+
+---
+
+#### Summary
+
+Sprint 19 adds IP-based rate limiting middleware to the two public auth endpoints. This is a **behavior-only change** — the request and success response shapes are identical to the Sprint 1 contracts. The only addition is a new `429 Too Many Requests` error response that each endpoint can now return when the per-IP threshold is exceeded.
+
+| Endpoint | Middleware | Limit | Window | 429 Response |
+|----------|-----------|-------|--------|-------------|
+| `POST /api/v1/auth/login` | `loginLimiter` | 10 requests per IP | 15 minutes | `RATE_LIMITED` |
+| `POST /api/v1/auth/register` | `registerLimiter` | 5 requests per IP | 60 minutes | `RATE_LIMITED` |
+
+All other auth endpoints (`POST /auth/refresh`, `POST /auth/logout`) and all trip/flight/stay/activity/land-travel endpoints are **not** rate limited by this change.
+
+---
+
+#### Updated: POST /api/v1/auth/login
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 19) |
+| Task | T-004 (updated T-178) |
+| Status | Agreed |
+| Auth Required | No (public) |
+
+**Change from Sprint 1:** A new `429 Too Many Requests` error response is now possible when the per-IP login attempt threshold is exceeded. All other request/response shapes are unchanged.
+
+**Rate Limit Parameters:**
+| Parameter | Value |
+|-----------|-------|
+| Key | Client IP address |
+| Max requests | 10 |
+| Window | 15 minutes |
+| Headers | `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` (standard headers, RFC 6585) |
+| Legacy headers | Disabled (`legacyHeaders: false`) |
+
+**New Error Response (429 Too Many Requests — Rate limit exceeded):**
+```json
+{
+  "error": {
+    "message": "Too many login attempts, please try again later.",
+    "code": "RATE_LIMITED"
+  }
+}
+```
+
+**Response Headers (on 429):**
+```
+RateLimit-Limit: 10
+RateLimit-Remaining: 0
+RateLimit-Reset: <Unix timestamp when window resets>
+```
+
+**All other request/response shapes:** Unchanged from Sprint 1 contract (`POST /api/v1/auth/login` section above). Request body, 200 success, 400 validation, 401 invalid credentials, 500 server error are all identical.
+
+**Frontend Notes:**
+- The frontend does not need to make any API shape changes for rate limiting.
+- On receiving a 429, the frontend should display a non-field error banner: "Too many login attempts, please try again later."
+- The `RATE_LIMITED` code distinguishes this error from `INVALID_CREDENTIALS` (401) — the frontend can use this to display a more specific message.
+
+---
+
+#### Updated: POST /api/v1/auth/register
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 19) |
+| Task | T-004 (updated T-178) |
+| Status | Agreed |
+| Auth Required | No (public) |
+
+**Change from Sprint 1:** A new `429 Too Many Requests` error response is now possible when the per-IP registration attempt threshold is exceeded. All other request/response shapes are unchanged.
+
+**Rate Limit Parameters:**
+| Parameter | Value |
+|-----------|-------|
+| Key | Client IP address |
+| Max requests | 5 |
+| Window | 60 minutes |
+| Headers | `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` (standard headers, RFC 6585) |
+| Legacy headers | Disabled (`legacyHeaders: false`) |
+
+**New Error Response (429 Too Many Requests — Rate limit exceeded):**
+```json
+{
+  "error": {
+    "message": "Too many registration attempts, please try again later.",
+    "code": "RATE_LIMITED"
+  }
+}
+```
+
+**Response Headers (on 429):**
+```
+RateLimit-Limit: 5
+RateLimit-Remaining: 0
+RateLimit-Reset: <Unix timestamp when window resets>
+```
+
+**All other request/response shapes:** Unchanged from Sprint 1 contract (`POST /api/v1/auth/register` section above). Request body, 201 success, 400 validation, 409 email taken, 500 server error are all identical.
+
+**Frontend Notes:**
+- On receiving a 429, the frontend should display a non-field error banner: "Too many registration attempts, please try again later."
+- The `RATE_LIMITED` code distinguishes this from `EMAIL_TAKEN` (409) and `VALIDATION_ERROR` (400).
+
+---
+
+#### T-178 — Implementation Notes
+
+**Middleware location:** `backend/src/middleware/rateLimiter.js`
+
+```
+loginLimiter:
+  windowMs: 15 * 60 * 1000   (15 minutes)
+  max: 10
+  standardHeaders: true
+  legacyHeaders: false
+  message: { error: { message: "Too many login attempts, please try again later.", code: "RATE_LIMITED" } }
+
+registerLimiter:
+  windowMs: 60 * 60 * 1000   (60 minutes)
+  max: 5
+  standardHeaders: true
+  legacyHeaders: false
+  message: { error: { message: "Too many registration attempts, please try again later.", code: "RATE_LIMITED" } }
+```
+
+**Application point:** Both limiters are applied in `backend/src/routes/auth.js`, attached to their respective route handlers **before** the handler function. No other routes are affected.
+
+**Store:** In-memory (default `express-rate-limit` MemoryStore). Sufficient at current single-process staging scale. Redis store deferred to Sprint 20+ per B-024.
+
+**Test cases (T-178):**
+| Case | Description | Expected |
+|------|-------------|---------|
+| A | POST /auth/login — attempts 1–10 in window | 200 (valid creds) or 401 (wrong creds) — not rate limited |
+| B | POST /auth/login — attempt 11 in same window | 429 `RATE_LIMITED` |
+| C | POST /auth/register — attempts 1–5 in window | 201 (new user) or 409 (email taken) — not rate limited |
+| D | POST /auth/register — attempt 6 in same window | 429 `RATE_LIMITED` |
+| E | GET /api/v1/trips (non-auth route) — any number of requests | 200 or 401 — never 429 from rate limiter |
+
+---
+
+### T-180 — Multi-Destination Structured UI
+
+**Sprint:** 19
+**Date:** 2026-03-09
+**Author:** Backend Engineer
+**Status:** Confirmed — No new backend contracts required
+
+---
+
+#### Summary
+
+T-180 is a **frontend-only** implementation task. The backend already supports the destinations array on all relevant trip endpoints. No new API endpoints are introduced, and no schema changes are required.
+
+The frontend chip input component will send `destinations` as a string array — exactly the same shape the backend has accepted since Sprint 1 (POST and PATCH trips endpoints).
+
+| Task | Scope | Backend Impact |
+|------|-------|---------------|
+| T-179 | Design Agent: Multi-destination chip UI spec | None |
+| T-180 | Frontend: Chip input in create modal, trip card display, trip details editor | None — uses existing POST and PATCH trips endpoints |
+
+---
+
+#### Existing Contracts the Frontend Engineer Must Reference for T-180
+
+| Endpoint | Sprint | Relevant Field | Notes |
+|----------|--------|----------------|-------|
+| `POST /api/v1/trips` | 1, updated 4 | `destinations: string[]` | Chip input sends array. Min 1 element. Case-insensitive dedup applied server-side. |
+| `PATCH /api/v1/trips/:id` | 1, updated 2, 4, 7 | `destinations: string[]` | Edit destinations sends updated array. Same dedup rules. |
+| `GET /api/v1/trips` | 1, updated 8 (search/filter) | `destinations: string[]` | Trip card renders this array. |
+| `GET /api/v1/trips/:id` | 1, updated 16 | `destinations: string[]` | Trip details header renders this array. |
+
+The `destinations` field is always returned as a `string[]` (never null — a trip must have at least one destination). The frontend chip editor reads and writes this field unchanged.
+
+**No new validation rules are introduced.** Existing server-side rules apply:
+- Min 1 element required
+- Each element trimmed, empty strings filtered
+- Case-insensitive deduplication (first occurrence casing preserved)
+- Max 50 destinations
+
+---
+
+#### Schema State — Sprint 19
+
+No schema migrations are introduced in Sprint 19. The complete migration history remains:
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–19 | *(No new migrations)* | Sprints 8–19 schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 19.**
+
+---
+
+#### Complete Endpoint Inventory — Sprint 19 (Unchanged from Sprint 17)
+
+All previously agreed contracts from Sprints 1–17 remain in force unchanged.
+
+| Sprint | Endpoint | Status | Notes |
+|--------|----------|--------|-------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | **+Sprint 19: 429 RATE_LIMITED after 5 req/60min per IP** |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | **+Sprint 19: 429 RATE_LIMITED after 10 req/15min per IP** |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | No rate limit applied |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | No rate limit applied |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Not rate limited |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | `destinations` dedup (Sprint 4) |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` updatable (Sprint 7); `""` → `null` (Sprint 9) |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Nullable start/end time (Sprint 3) |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Linked time validation (Sprint 3) |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
+| 6 | `POST /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+
+---
+
+*Sprint 19 contracts published by Backend Engineer 2026-03-09. T-178 adds 429 RATE_LIMITED behavior to POST /auth/login (10/15min) and POST /auth/register (5/60min). T-180 is frontend-only — no new endpoints or schema changes. All Sprint 1–17 contracts remain in force. Frontend Engineer may proceed with T-180 using existing PATCH /api/v1/trips/:id contract. QA: backend test suite target is 278+ base + 5 new rate limiter tests = 283+ total.*

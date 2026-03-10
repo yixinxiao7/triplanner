@@ -1008,3 +1008,130 @@ See **ui-spec.md §18.11** for the full test table (15 tests). Key assertions:
 - Sprint 17 regression: "Print itinerary" button must remain visible on TripDetailsPage after header restructuring
 
 ---
+
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Sprint:** #19
+**Date:** 2026-03-09
+**Status:** Pending — Frontend Engineer to acknowledge
+
+## Sprint 19 API Contracts Published (T-178 rate limiting + T-180 destinations)
+
+The Sprint 19 API contracts are published in `.workflow/api-contracts.md` under **Sprint 19 Contracts**. Implementation has not started yet — contracts are confirmed and frontend integration may proceed based on these specs.
+
+---
+
+### T-178 — Auth Rate Limiting: New 429 Responses on Auth Endpoints
+
+Two existing public auth endpoints now return `429 Too Many Requests` when the per-IP threshold is exceeded. **Request/response shapes are otherwise unchanged** — only the new 429 case is added.
+
+#### POST /api/v1/auth/login — Updated
+- **New behavior:** After 10 login attempts from the same IP within a 15-minute window, returns `429`.
+- **New error response:**
+  ```json
+  { "error": { "message": "Too many login attempts, please try again later.", "code": "RATE_LIMITED" } }
+  ```
+- **Response headers on 429:** `RateLimit-Limit: 10`, `RateLimit-Remaining: 0`, `RateLimit-Reset: <timestamp>`
+- **Frontend action required:** On receiving HTTP 429 from `POST /auth/login`, display a non-field error banner: *"Too many login attempts, please try again later."*
+
+#### POST /api/v1/auth/register — Updated
+- **New behavior:** After 5 registration attempts from the same IP within a 60-minute window, returns `429`.
+- **New error response:**
+  ```json
+  { "error": { "message": "Too many registration attempts, please try again later.", "code": "RATE_LIMITED" } }
+  ```
+- **Frontend action required:** On receiving HTTP 429 from `POST /auth/register`, display a non-field error banner: *"Too many registration attempts, please try again later."*
+
+All other endpoints (`/auth/refresh`, `/auth/logout`, all trip endpoints) are **not** affected by rate limiting.
+
+---
+
+### T-180 — Multi-Destination UI: No Backend Changes
+
+**No new API endpoints. No schema changes. No contract changes.**
+
+The `destinations` field has been a `string[]` on all trip endpoints since Sprint 1. The chip input component sends `destinations` as a plain string array — exactly the existing contract shape.
+
+Key contracts to reference for T-180 implementation:
+
+| Endpoint | Field | Notes |
+|----------|-------|-------|
+| `POST /api/v1/trips` | `destinations: string[]` | Required. Min 1 element. Server deduplicates case-insensitively. |
+| `PATCH /api/v1/trips/:id` | `destinations: string[]` | Optional in PATCH. Min 1 element if provided. Same dedup rules. |
+| `GET /api/v1/trips` | `destinations: string[]` | Returned on all trip objects. Use for TripCard rendering. |
+| `GET /api/v1/trips/:id` | `destinations: string[]` | Returned on single trip. Use for TripDetailsPage header chips. |
+
+The backend will **never** return `destinations: null` — a trip always has at least one destination. Frontend may assume a non-empty array.
+
+---
+
+### No Schema Migrations This Sprint
+
+No new database migrations are needed for Sprint 19. The `destinations TEXT[]` column is unchanged. Backend test suite target: **283+ tests** (278 existing + 5 new rate limiter tests).
+
+---
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Sprint:** #19
+**Date:** 2026-03-09
+**Status:** Pending — QA Engineer to acknowledge at T-181/T-182
+
+## Sprint 19 API Contracts for QA Reference (T-178 + T-180)
+
+Sprint 19 API contracts are published in `.workflow/api-contracts.md` under **Sprint 19 Contracts**. This handoff is for QA reference ahead of T-181 (security checklist) and T-182 (integration testing). Implementation has not started yet.
+
+---
+
+### T-178 — Auth Rate Limiting Contracts for QA
+
+**What changed:** Two middleware instances added to the auth router. No endpoint or schema changes.
+
+| Endpoint | Limiter | Threshold | Window | 429 Code |
+|----------|---------|-----------|--------|----------|
+| `POST /api/v1/auth/login` | `loginLimiter` | 10 requests per IP | 15 min | `RATE_LIMITED` |
+| `POST /api/v1/auth/register` | `registerLimiter` | 5 requests per IP | 60 min | `RATE_LIMITED` |
+
+**QA test scenarios (from T-178 test plan):**
+| Case | Input | Expected |
+|------|-------|---------|
+| A | POST /auth/login — attempts 1–10 | 200 or 401 — not 429 |
+| B | POST /auth/login — attempt 11 | 429 `{ "error": { "code": "RATE_LIMITED", ... } }` |
+| C | POST /auth/register — attempts 1–5 | 201 or 409 — not 429 |
+| D | POST /auth/register — attempt 6 | 429 `{ "error": { "code": "RATE_LIMITED", ... } }` |
+| E | GET /api/v1/trips — any number of requests | 200 or 401, never 429 |
+
+**Security checklist items for T-178 (T-181):**
+- Rate limiter key is client IP (not user-supplied input) ✅
+- 429 body contains only `code` + `message` — no stack trace, no internal details ✅
+- `standardHeaders: true` — `RateLimit-*` headers present in 429 response ✅
+- `legacyHeaders: false` — no `X-RateLimit-*` legacy headers ✅
+- Non-auth endpoints unaffected ✅
+- All 278+ existing backend tests continue to pass ✅
+
+---
+
+### T-180 — Multi-Destination UI Contracts for QA
+
+**What changed:** Frontend-only. No backend contract changes.
+
+**Security checklist items for T-180 (T-181):**
+- Destination chip values rendered as React text nodes — no `dangerouslySetInnerHTML` ✅
+- PATCH body sends `destinations` as plain `string[]` — no SQL injection vector (Knex parameterized queries) ✅
+- Destination names in chips are safely escaped by React — XSS check ✅
+- No hardcoded secrets introduced ✅
+
+**Integration test scenarios for T-180 (T-182):**
+- Create trip modal: add 3 chips → submit → trip created with all 3 in `destinations[]`
+- Trip details edit: remove 1, add 1 → save → PATCH called with correct updated array
+- TripCard: verify `destinations` array from GET /trips renders correctly (truncation at >3)
+
+---
+
+### Backend Test Target — Sprint 19
+- **Existing:** 278 passing tests
+- **New (T-178):** 5 rate limiter tests (cases A–E above)
+- **Sprint 19 target:** 283+ passing tests
+- **Frontend target:** 416+ existing + new chip input tests
+
+---
