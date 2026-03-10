@@ -28,7 +28,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Category** | Monitor Alert |
 | **Severity** | Critical |
 | **Sprint** | 22 |
-| **Status** | New |
+| **Status** | Resolved |
 | **Related Task** | T-200 |
 
 **Feedback:** Staging Vite proxy ECONNREFUSED — browser-based API calls fail; 3/4 Playwright E2E tests fail.

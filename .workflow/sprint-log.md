@@ -2467,6 +2467,83 @@ All tasks remain in Backlog status. None progressed.
 
 ---
 
+### Sprint #22 — 2026-03-10 to 2026-03-10
+
+**Goal:** Close the Sprint 20 User Agent carry-over (T-194 — P0, 3rd attempt, zero blockers). Deliver the trip status selector feature (TripStatusSelector inline badge on TripDetailsPage, PLANNING → ONGOING → COMPLETED without page reload). Complete the full QA → Deploy → Monitor → User Agent pipeline (T-195 through T-201). No new scope beyond carry-over tasks.
+
+**Goal Met:** ⚠️ PARTIAL — The feature delivery pipeline (T-195 through T-200) executed and passed. TripStatusSelector is live on staging, all QA checks green, Monitor re-verified PASS. However, **T-194 (User Agent Sprint 20 walkthrough) carried over for the 4th consecutive sprint** and **T-201 (User Agent Sprint 22 walkthrough) never ran**. The validation backlog continues to grow.
+
+---
+
+**Tasks Completed (6/8):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-195 | Design Agent: Trip status selector spec (Spec 20) — published to ui-spec.md; inline badge, 3-option dropdown, Japandi palette colors, accessibility spec (aria-label, keyboard nav) | ✅ Done |
+| T-196 | Frontend Engineer: TripStatusSelector component — optimistic update, revert on failure, loading state, 22 new tests; integrated into TripDetailsPage; 451/451 frontend tests pass | ✅ Done |
+| T-197 | QA Engineer: Security checklist + code review — 304/304 backend, 451/451 frontend; no Critical/High audit findings; all 19 security items PASS | ✅ Done |
+| T-198 | QA Engineer: Integration testing — all 8 API contract cases PASS; all regressions (Sprint 20/19/17/16) clean | ✅ Done |
+| T-199 | Deploy Engineer: Sprint 22 staging re-deployment — 126-module build, 0 errors; pm2 online; 12/12 smoke tests PASS | ✅ Done |
+| T-200 | Monitor Agent: Sprint 22 staging health check — initial run found Critical Vite proxy ECONNREFUSED (3/4 Playwright fail); Deploy Engineer fixed `infra/ecosystem.config.cjs` (added BACKEND_PORT + BACKEND_SSL env); re-verification: all checks PASS, proxy confirmed routing to https://localhost:3001 | ✅ Done (re-verified) |
+
+**Tasks Carried Over (2/8):**
+
+| ID | Description | Carry-Over Count | Status at Closeout |
+|----|-------------|-----------------|-------------------|
+| T-194 | User Agent: Sprint 20 feature walkthrough (trip notes + destination validation) | **4th consecutive sprint** | Backlog — UNBLOCKED |
+| T-201 | User Agent: Sprint 22 feature walkthrough (TripStatusSelector + regressions) | 1st carry-over | Backlog — Blocked by T-200 (now Done); UNBLOCKED |
+
+---
+
+**Key Decisions:**
+
+- **Vite proxy env var pattern established:** `infra/ecosystem.config.cjs` now includes explicit `triplanner-frontend` app entry with `env: { BACKEND_PORT: '3001', BACKEND_SSL: 'true' }`. This is the canonical pattern for staging frontend pm2 configuration. Without these env vars, Vite preview defaults to `http://localhost:3000` and all browser-based API calls ECONNREFUSED against the `https://localhost:3001` backend. **All future Deploy tasks must verify this entry is present before logging pm2 online.**
+- **T-196 code review APPROVED first pass:** TripStatusSelector.jsx passed Manager review with zero rework cycles — optimistic update, VALID_STATUSES enum constraint, no dangerouslySetInnerHTML, generic error messages, 22 tests covering all states. Strongest frontend implementation quality since Sprint 14.
+- **451/451 frontend tests (22 new):** Test suite grew from 429 → 451 (+22). Backend tests unchanged at 304/304. Total: 755 (304 backend + 451 frontend).
+
+---
+
+**Feedback Summary:**
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| Monitor Alert (T-200) | Monitor Alert | Critical | **Resolved ✅** | Vite preview proxy ECONNREFUSED — staging backend HTTPS on 3001, proxy defaulted to http://3000. Fixed by Deploy Engineer updating `infra/ecosystem.config.cjs`. Re-verified PASS by Monitor Agent. |
+
+*No User Agent feedback entries — T-194 and T-201 did not run.*
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- **Feature delivery pipeline executed cleanly end-to-end** — T-195 through T-200 all completed within Sprint 22. After two planning-only sprints (Sprints 18 and 21), the implementation pipeline finally ran and closed correctly.
+- **TripStatusSelector delivered with zero rework** — Design spec, frontend implementation, QA, deploy, and Monitor all passed on first attempt (aside from the infra config fix). 22 new tests, keyboard accessibility, Japandi palette colors per Spec 20.
+- **Critical infra bug caught and fixed within the sprint** — The Vite proxy ECONNREFUSED was identified by Monitor Agent, root-caused to `infra/ecosystem.config.cjs`, fixed by Deploy Engineer, and re-verified within the same sprint cycle. No open bugs carried forward.
+- **Test suite at all-time high:** 755 tests total (304 backend + 451 frontend), all passing. Zero regressions across Sprint 16–22 feature scope.
+
+**What Could Improve:**
+- **T-194 is now a 4th consecutive sprint carry-over** — The User Agent has not completed a walkthrough in 4 consecutive sprints (Sprints 19, 20, 21, 22). The Sprint 20 feature set (trip notes + destination validation) has never been end-to-end validated by the User Agent. Sprint 23 must treat T-202 (consolidated User Agent walkthrough) as the absolute highest priority with zero excuses.
+- **T-201 also never ran** — Sprint 22's TripStatusSelector feature has been deployed but not end-to-end tested by the User Agent. Combined with T-194, the User Agent validation backlog now covers two full feature sprints.
+- **infra/ecosystem.config.cjs must be validated at deploy time** — The ecosystem config should be part of every Deploy task's pre-deploy checklist going forward. The ECONNREFUSED failure mode (browser flows break while direct API calls succeed) is subtle and not caught by simple smoke tests.
+
+**Technical Debt:**
+- ⚠️ B-021 (esbuild/vitest moderate vulnerability GHSA-67mh-4wv8-2f99) — dev-only, no production impact. `npm audit fix --force` requires vitest 4.x (breaking change). **Recommended for Sprint 23 if T-202 feedback is clean.**
+- ⚠️ B-022 (Production deployment) — **22 consecutive sprints without project owner hosting decision.** All infrastructure is complete and production-ready. Project owner action required.
+- ⚠️ B-024 (Per-account rate limiting) — IP-based only, acceptable at current scale.
+- ⚠️ `infra/ecosystem.config.cjs` frontend env vars — now fixed and documented; must be included in all future Deploy task checklists.
+
+---
+
+**Next Sprint Focus (Sprint 23 Recommendations):**
+
+1. **T-202 (P0 — IMMEDIATE)** — User Agent: Consolidated Sprint 20 + Sprint 22 comprehensive walkthrough. Zero blockers. Covers: trip notes (edit/save/clear/max-length), destination validation, TripStatusSelector (view/change/keyboard/Home sync), Sprint 19/17/16 regressions.
+2. **T-203 (P2 — if T-202 clean)** — Frontend + Backend: vitest upgrade 1.x → 4.x to resolve B-021 (5 moderate dev-only vulnerabilities). Run all tests post-upgrade, re-deploy to staging.
+3. **B-022** — Escalate production deployment to project owner (23 consecutive sprints without decision).
+
+---
+
+*Sprint #22 archived 2026-03-10. Sprint #23 plan written by Manager Agent 2026-03-10.*
+
 *Sprint #21 began and closed 2026-03-10 with zero tasks completed.*
 
 ---

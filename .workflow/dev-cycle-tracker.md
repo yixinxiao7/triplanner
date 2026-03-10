@@ -1540,3 +1540,42 @@ Sprint field updated from 18 → 19 for execution purposes.
 
 ---
 
+### Sprint 22 — Closeout (Manager Agent — 2026-03-10)
+
+**Sprint 22 final task statuses:**
+- T-194: **Backlog** — ⚠️ 4th consecutive carry-over. User Agent Sprint 20 walkthrough (trip notes + destination validation). Zero blockers. Consolidated into T-202 for Sprint 23.
+- T-195: **Done ✅** — Design Agent: Spec 20 (trip status selector). Published to ui-spec.md. Auto-approved.
+- T-196: **Done ✅** — Frontend: TripStatusSelector.jsx. 22 new tests. 451/451 frontend tests PASS. Manager APPROVED.
+- T-197: **Done ✅** — QA: Security checklist. 304/304 backend, 451/451 frontend. No Critical/High findings.
+- T-198: **Done ✅** — QA: Integration testing. 8/8 scenarios PASS. All regressions clean.
+- T-199: **Done ✅** — Deploy: 126-module build. pm2 online. 12/12 smoke tests PASS.
+- T-200: **Done ✅** — Monitor: Initial run FAIL (Vite proxy ECONNREFUSED 3/4 Playwright). Deploy Engineer fixed `infra/ecosystem.config.cjs` (BACKEND_PORT + BACKEND_SSL). Re-verification PASS. Filed as Monitor Alert in feedback-log.md → Status: Resolved.
+- T-201: **Backlog** — ⚠️ 1st carry-over. User Agent Sprint 22 walkthrough (TripStatusSelector). T-200 is now Done. Consolidated into T-202 for Sprint 23.
+
+**Feedback triage (Sprint 22 → Sprint 23):**
+- Monitor Alert (T-200): Vite proxy ECONNREFUSED → **Resolved** (fixed mid-sprint by Deploy Engineer)
+- No User Agent feedback (T-194 and T-201 never ran)
+- No new "Tasked" entries from feedback
+
+**Sprint 22 test baseline at closeout:** 304/304 backend | 451/451 frontend
+
+---
+
+## Sprint 23 Tasks
+
+**Sprint 23 Kickoff (Manager Agent — 2026-03-10):** T-194 and T-201 are consolidated into T-202 — a single comprehensive User Agent walkthrough covering both Sprint 20 (trip notes + destination validation) and Sprint 22 (TripStatusSelector) feature sets. Staging is verified healthy (T-200 Monitor re-verification 2026-03-10T21:35:00Z: all checks PASS). T-202 has ZERO BLOCKERS and MUST START IMMEDIATELY. No new feature scope until T-202 completes and feedback is triaged.
+
+**Phase 2 (T-203–T-206) is conditional** — only triggers if T-202 feedback triage finds no Critical or Major bugs. Phase 2 covers vitest 1.x → 4.x upgrade (B-021 resolution).
+
+---
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By |
+|---------|-------------|--------|---------------|--------|----------|------------|
+| T-202 | User Agent: Consolidated Sprint 20 + Sprint 22 comprehensive walkthrough. Covers: trip notes (edit/save/clear/max-length), destination validation (101-char → 400, empty destinations → 400), TripStatusSelector (view badge, change status PLANNING→ONGOING→COMPLETED, keyboard nav, Home page sync), Sprint 19/17/16 regressions. Submit structured feedback to feedback-log.md under "Sprint 23 User Agent Feedback". | 23 | User Agent | Backlog | P0 | None — START IMMEDIATELY |
+| T-203 | Frontend + Backend Engineer: vitest dependency upgrade 1.x → 4.x (B-021 resolution). Frontend: update `frontend/package.json` vitest to ^4.0.0, run `npm test --run` → 451+ tests pass. Backend: update `backend/package.json` vitest to ^4.0.0, run `npm test --run` → 304+ tests pass. Fix any vitest 4.x API breaking changes. Run `npm audit` — verify 5 moderate dev-dep vulnerabilities (GHSA-67mh-4wv8-2f99) resolved. | 23 | Frontend Engineer + Backend Engineer | Backlog | P2 | T-202 feedback triage (clean — no Critical/Major bugs) |
+| T-204 | QA Engineer: Security checklist + test re-verification after vitest upgrade. Re-run `npm test --run` in both dirs — confirm 304 backend + 451+ frontend. Re-run `npm audit` — confirm 0 Moderate+ dev dep vulnerabilities. Full report in qa-build-log.md Sprint 23 section. | 23 | QA Engineer | Backlog | P2 | T-203 |
+| T-205 | Deploy Engineer: Sprint 23 staging re-deployment. Pre-deploy gate: T-204 Done. `npm run build` in `frontend/` → 0 errors. `pm2 reload triplanner-frontend`. `pm2 restart triplanner-backend`. CRITICAL: verify `infra/ecosystem.config.cjs` includes `triplanner-frontend` entry with `env: { BACKEND_PORT: '3001', BACKEND_SSL: 'true' }` — prevent recurrence of Sprint 22 Monitor Alert. Smoke tests: GET /health → 200, PATCH /trips/:id status, TripStatusSelector renders. Log handoff to Monitor (T-206). | 23 | Deploy Engineer | Backlog | P2 | T-204 |
+| T-206 | Monitor Agent: Sprint 23 staging health check. HTTPS, pm2 port 3001, health 200. Config consistency: Vite proxy targets https://localhost:3001 (BACKEND_PORT + BACKEND_SSL in ecosystem.config.cjs). Sprint 22 regression: PATCH /trips/:id status → 200. Sprint 20 regression: notes key present. Sprint 19: RateLimit-Limit header. Sprint 17: print button. Sprint 16: start_date/end_date. `npx playwright test` → 4/4 PASS. Full report in qa-build-log.md. | 23 | Monitor Agent | Backlog | P2 | T-205 |
+
+---
+
