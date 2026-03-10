@@ -9007,3 +9007,314 @@ All animations should respect `prefers-reduced-motion: reduce` — if set, skip 
 ---
 
 *Spec 18 (Sprint 19 — Multi-Destination Chip UI) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-09.*
+
+---
+
+### Spec 19: Trip Notes / Description Field (Sprint 20 — T-187)
+
+**Sprint:** #20
+**Related Task:** T-187, T-189
+**Status:** Approved
+
+**Description:**
+The Trip Notes section is a freeform text area on the TripDetailsPage that allows users to store personal observations, reminders, packing lists, research notes, or any contextual information for a given trip. It lives below the Destinations section and above the Calendar. It uses an inline edit-in-place pattern — no separate edit page — so users can quickly jot a note and return to viewing their trip details without a full page navigation. The section is minimal in visual weight: it should feel like a quiet, always-available notepad rather than a prominent form element.
+
+---
+
+#### 19.1 Section Placement on TripDetailsPage
+
+TripDetailsPage vertical order (top → bottom):
+
+1. Calendar (top — existing)
+2. Trip name + metadata header (existing)
+3. Destinations section (existing)
+4. **[NEW] Trip Notes section** ← inserted here
+5. Flights section (existing)
+6. Stays section (existing)
+7. Activities section (existing)
+
+**Separator above section:**
+- A `1px solid var(--border-subtle)` horizontal rule spans the full content width, placed 32px below the destinations section and 24px above the notes section header. This creates visual breathing room between the two sections without heavy decoration.
+
+---
+
+#### 19.2 Section Header
+
+- Follows the standard section header convention: font-size 11px, font-weight 600, letter-spacing 0.12em, uppercase, color `var(--text-muted)`.
+- Label text: `"NOTES"`
+- A thin horizontal line (`flex: 1; height: 1px; background: var(--border-subtle)`) extends to the right of the label via a flex row containing the label span + the line element.
+- The pencil icon button sits at the far right of this header row (right-aligned via `justify-content: space-between` or `margin-left: auto`).
+
+**Pencil button (always visible in both view and edit mode):**
+- Icon: a simple 14×14px pencil/edit SVG icon. No filled background — icon only.
+- Color: `var(--text-muted)` by default; `var(--accent)` on hover and when in edit mode.
+- `aria-label="Edit trip notes"`
+- `title="Edit trip notes"` (tooltip for sighted mouse users)
+- In **edit mode**: clicking the pencil button while already in edit mode has no effect (edit mode is already active).
+- `cursor: pointer`
+- Padding: 4px (increases tap/click target to ~22×22px)
+- Transition: `color 150ms ease`
+
+---
+
+#### 19.3 View Mode
+
+**Default appearance (notes null or empty string):**
+- Below the section header, display a single line of placeholder text: `"Add notes about this trip…"`
+- Style: font-size 14px, IBM Plex Mono, color `var(--text-muted)` (rgba(252,252,252,0.5)), font-style: italic
+- Clicking on the placeholder text activates Edit Mode (same as clicking the pencil button)
+- The placeholder text itself has `cursor: pointer` and subtle hover: `color: rgba(252,252,252,0.65)`
+
+**When notes exist (non-null, non-empty string):**
+- Display the notes text in a `<p>` or `<div>` block element
+- Style: font-size 14px, IBM Plex Mono, color `var(--text-primary)`, line-height 1.7
+- `white-space: pre-wrap` — preserve newlines entered by the user
+- The text is NOT truncated in view mode — full notes content is displayed regardless of length
+- Clicking anywhere in the notes text block also activates Edit Mode (cursor: pointer, subtle hover background: `rgba(252,252,252,0.03)`)
+- Do NOT wrap the text in a visible input or box — it should read like plain paragraph text
+
+**Padding:**
+- Notes content area: padding-top 12px from the section header row
+- No additional background box — the notes text sits directly on the page background
+
+---
+
+#### 19.4 Edit Mode
+
+Edit mode is activated when the user:
+1. Clicks the pencil icon button
+2. Clicks on the placeholder text (empty state)
+3. Clicks on the existing notes text (notes present state)
+
+**Transition into edit mode:** The view-mode content fades out (opacity 0, 100ms) and is replaced by the edit form (opacity 0 → 1, 150ms). The textarea autofocuses immediately on activation.
+
+**Edit form layout (top to bottom):**
+
+```
+[ textarea (full width, min-height 120px) ]
+[ char count right-aligned            "N / 2000" ]
+[ Save button ]  [ Cancel button ]
+```
+
+**Textarea:**
+- `<textarea aria-label="Trip notes" id="trip-notes-textarea" maxLength={2000}>`
+- Pre-filled with `trip.notes` if it exists; empty string if `trip.notes` is null
+- Width: 100% of the section container
+- Min-height: 120px; auto-grows vertically as user types (use CSS `field-sizing: content` or a JS auto-resize approach — whichever is simpler in the existing codebase)
+- Max-height: 400px before scrolling (internal scroll on overflow)
+- Background: `var(--surface-alt)` (`#3F4045`)
+- Border: `1px solid var(--border-subtle)`
+- Focus border: `1px solid var(--border-accent)` (`#5D737E`)
+- Text color: `var(--text-primary)`
+- Font: IBM Plex Mono, 14px, line-height 1.6
+- Padding: 12px 14px
+- Border-radius: `var(--radius-sm)` (2px)
+- Resize: `vertical` only (allow user to drag taller; prevent horizontal)
+- Placeholder attribute (only shows when textarea is empty): `"Add notes about this trip…"` — styled by browser default placeholder styling, which will appear muted. If browser default is too prominent, override with CSS `::placeholder { color: var(--text-muted); font-style: italic; }`
+
+**Character count:**
+- Displayed below the textarea, right-aligned
+- Format: `"N / 2000"` where N is the current character count (updates on every keystroke)
+- `id="trip-notes-char-count"` — so `aria-describedby` on the textarea can reference it
+- `role="status"` — announces count updates to screen readers via live region
+- Font-size: 11px, font-weight: 400, color: `var(--text-muted)`
+- When count is between 1800–1999: color changes to `rgba(240,180,60,0.85)` (warm amber warning — subtle, not alarming)
+- When count is 2000: color changes to `rgba(220,80,80,0.9)` (red — at limit)
+- When count is 0–1799: default muted color
+- The textarea's `aria-describedby="trip-notes-char-count"` ensures screen readers can navigate to the count
+
+**Textarea `aria-describedby`:**
+```jsx
+<textarea
+  id="trip-notes-textarea"
+  aria-label="Trip notes"
+  aria-describedby="trip-notes-char-count"
+  maxLength={2000}
+  ...
+/>
+<div
+  id="trip-notes-char-count"
+  role="status"
+  aria-live="polite"
+  aria-atomic="true"
+>
+  {charCount} / 2000
+</div>
+```
+
+**Save button:**
+- Label: `"Save"`
+- Style: Primary button — background `var(--accent)` (`#5D737E`), text `var(--text-primary)`, font-weight 500, font-size 13px, padding: 8px 20px, border-radius: 2px
+- Hover: `rgba(93,115,126,0.8)`
+- Loading state: button text replaced with 14px inline spinner; button disabled; cancel button also disabled
+- On click → triggers save flow (see 19.5)
+
+**Cancel button:**
+- Label: `"Cancel"`
+- Style: Secondary button — background transparent, border `1px solid rgba(93,115,126,0.5)`, text `var(--text-primary)`, font-size 13px, padding: 8px 20px, border-radius: 2px
+- Hover: `rgba(252,252,252,0.05)`
+- On click → triggers cancel flow (see 19.6)
+
+**Button row:**
+- `display: flex; gap: 12px; margin-top: 12px`
+- Buttons are left-aligned (not full-width, not right-aligned)
+- Save comes first (left), Cancel comes second (right of Save)
+
+---
+
+#### 19.5 Save Flow
+
+1. User clicks "Save" button (or presses `Ctrl+Enter` / `Cmd+Enter` as keyboard shortcut — see 19.7)
+2. The notes value is trimmed: `editNotes.trim()`
+3. If trimmed value is empty string (`""`), send `null` to API (clearing the note)
+4. If trimmed value is non-empty, send the trimmed string
+5. Save button enters loading state (spinner, disabled); Cancel button also disabled
+6. `PATCH /api/v1/trips/:id` with body `{ notes: trimmedValue }` is called
+7. **On success (200):**
+   - Trip data is reloaded (re-fetch `GET /api/v1/trips/:id`)
+   - Edit mode closes; view mode is shown with updated notes (or placeholder if cleared)
+   - A brief success indicator is shown: the notes section header label briefly changes to `"NOTES — SAVED"` for 1500ms then reverts to `"NOTES"`. This is subtle and non-intrusive — no toast needed for a field save.
+8. **On error (any non-200):**
+   - Loading state cleared; buttons re-enabled
+   - An inline error message appears below the button row: `"Failed to save notes. Please try again."` — font-size 12px, color `rgba(220,80,80,0.9)`, `role="alert"`
+   - Edit mode stays open so the user does not lose their content
+
+---
+
+#### 19.6 Cancel Flow
+
+1. User clicks "Cancel" button (or presses `Escape` key while in edit mode)
+2. No API call is made
+3. The textarea value is discarded — internal edit state reverts to the original `trip.notes` value (or empty)
+4. Edit mode closes; view mode is shown unchanged
+5. No loading state, no error, no toast — instant
+
+---
+
+#### 19.7 Keyboard Interactions
+
+| Key | Context | Behavior |
+|-----|---------|---------|
+| `Escape` | Edit mode active | Cancel — discard changes, exit edit mode |
+| `Ctrl+Enter` / `Cmd+Enter` | Textarea focused | Save — same as clicking Save button |
+| `Tab` | Textarea focused | Move focus to "Save" button |
+| `Tab` | Save focused | Move focus to "Cancel" button |
+| `Tab` | Cancel focused | Move focus to next focusable element after section |
+| `Enter` | On placeholder text | Activate edit mode (placeholder has `tabIndex={0}`, handles `onKeyDown Enter`) |
+| `Enter` | On notes text in view mode | Activate edit mode (same pattern) |
+
+The pencil icon button participates in normal tab order. It should receive focus and be activatable via `Enter` and `Space`.
+
+---
+
+#### 19.8 States
+
+| State | What the user sees |
+|-------|--------------------|
+| **Empty / no notes** | Section header `"NOTES"` + pencil icon. Below: italic muted placeholder text `"Add notes about this trip…"`. |
+| **Notes exist (view mode)** | Section header `"NOTES"` + pencil icon. Below: full notes text in primary color, `white-space: pre-wrap`. |
+| **Edit mode (empty start)** | Textarea empty (placeholder text inside), char count `"0 / 2000"`, Save + Cancel buttons. |
+| **Edit mode (typing)** | Textarea fills; char count updates in real-time. Color shift at 1800+ chars. |
+| **Edit mode (at limit)** | Char count shows red `"2000 / 2000"`. Textarea prevents further input (maxLength). |
+| **Saving** | Save button shows spinner; both buttons disabled. Textarea read-only (add `disabled` attribute during save). |
+| **Save success** | View mode restored. Section header flashes `"NOTES — SAVED"` for 1500ms. |
+| **Save error** | Edit mode remains. Error text below buttons. Buttons re-enabled. |
+| **Cancel** | View mode instantly restored. No feedback needed. |
+| **Loading (initial page load)** | Section shows skeleton shimmer (same shimmer style as other TripDetailsPage sections): two lines of `var(--surface-alt)` background, border-radius 2px, shimmer animation. Pencil icon hidden during skeleton. |
+
+---
+
+#### 19.9 Responsive Behavior
+
+| Breakpoint | Layout Notes |
+|------------|-------------|
+| **Desktop ≥1024px** | Section full width (up to 1120px max content width). Textarea min-height 120px. Save/Cancel buttons left-aligned, inline. |
+| **Tablet 768–1023px** | Same as desktop. No layout changes needed at this breakpoint. |
+| **Mobile <768px** | Section full width (minus 16px horizontal padding on each side per page padding). Textarea min-height 100px (slightly shorter). Save and Cancel buttons remain inline (they fit at small sizes — each ~80px wide). If viewport is very narrow (<360px), stack buttons vertically with full width: `flex-direction: column; gap: 8px` with each button `width: 100%`. |
+
+---
+
+#### 19.10 Accessibility Checklist
+
+- [ ] `<textarea>` has `aria-label="Trip notes"` (explicit label; no `<label>` element needed if aria-label is present, but a visually-hidden `<label>` for screen readers is acceptable)
+- [ ] `aria-describedby="trip-notes-char-count"` on textarea references the live char count element
+- [ ] Char count container has `role="status"`, `aria-live="polite"`, `aria-atomic="true"` — screen reader announces count after brief debounce (or on blur at minimum)
+- [ ] Pencil button has `aria-label="Edit trip notes"` and `title="Edit trip notes"`
+- [ ] Placeholder text (empty state, view mode) has `tabIndex={0}`, `role="button"`, `aria-label="Add notes about this trip"`, handles `Enter`/`Space` for keyboard activation
+- [ ] Notes text in view mode (non-empty) has `tabIndex={0}`, `role="button"`, `aria-label="Edit trip notes"`, handles `Enter`/`Space` for keyboard activation
+- [ ] Error message after failed save uses `role="alert"` (immediate announcement)
+- [ ] Save button disabled state: `disabled` attribute AND `aria-disabled="true"` during loading
+- [ ] Cancel button disabled state: `disabled` attribute AND `aria-disabled="true"` during loading
+- [ ] Focus management: when edit mode activates, focus is moved to the textarea. When edit mode closes (save or cancel), focus returns to the pencil icon button.
+- [ ] Color contrast: all text colors meet WCAG AA. `var(--text-muted)` on `var(--bg-primary)` = 4.6:1 (passes AA for 14px regular weight which requires 4.5:1). Amber warning color at 1800 chars meets 3:1 for large text.
+- [ ] `prefers-reduced-motion`: if set, skip fade transition between view/edit mode (instant toggle)
+
+---
+
+#### 19.11 Component Architecture Guidance (for T-189)
+
+**New file:** `frontend/src/components/TripNotesSection.jsx`
+
+**Props:**
+```jsx
+TripNotesSection({
+  tripId,           // string — used in PATCH call
+  initialNotes,     // string | null — the trip.notes value from parent
+  onSaveSuccess,    // () => void — callback to trigger trip data reload in parent
+})
+```
+
+**Internal state:**
+```jsx
+const [isEditing, setIsEditing] = useState(false);
+const [editNotes, setEditNotes] = useState('');
+const [isSaving, setIsSaving] = useState(false);
+const [saveError, setSaveError] = useState(null);
+const [showSavedFeedback, setShowSavedFeedback] = useState(false);
+```
+
+**Integration in `TripDetailsPage.jsx`:**
+- Import `TripNotesSection`
+- Place it after the destinations section and before the calendar (per 19.1 placement)
+- Pass `tripId={trip.id}`, `initialNotes={trip.notes}`, `onSaveSuccess={reloadTrip}` where `reloadTrip` re-fetches the trip data
+
+**Note:** `initialNotes` should be re-passed whenever the parent reloads trip data after a successful save, so the component reflects the latest persisted value.
+
+---
+
+#### 19.12 Visual Mockup (Text-Based)
+
+```
+─────────────────────────────────────────────────────────
+
+NOTES ────────────────────────────────────────────── [✎]
+
+  Add notes about this trip…                         ← italic, muted (empty state)
+
+─────────────────────────────────────────────────────────
+
+NOTES ────────────────────────────────────────────── [✎]
+
+  Booked refundable hotel. Check if visa needed.     ← primary color, pre-wrap
+  Packing list: camera, adapters, rain jacket.
+  Budget: ~$2000 for 5 nights.
+
+─────────────────────────────────────────────────────────
+
+NOTES ────────────────────────────────────────────── [✎]
+
+  ┌──────────────────────────────────────────────┐
+  │ Booked refundable hotel. Check if visa...    │  ← textarea in edit mode
+  │                                              │
+  │                                              │
+  └──────────────────────────────────────────────┘
+                                       142 / 2000    ← right-aligned, muted
+
+  [  Save  ]  [  Cancel  ]
+
+─────────────────────────────────────────────────────────
+```
+
+---
+
+*Spec 19 (Sprint 20 — Trip Notes Field) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-10.*

@@ -4,6 +4,69 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-10] Design Agent → Manager Agent + Frontend Engineer**
+T-187 complete — Spec 19 (Trip Notes Field) published to `ui-spec.md` and auto-approved per automated sprint cycle.
+**Status:** Approved — Backend Engineer and Frontend Engineer may proceed with T-188 and T-189
+
+## T-187 — Design Spec: Trip Notes / Description Field (Spec 19)
+
+**Spec reference:** `ui-spec.md` → Spec 19
+**Sprint:** #20
+**For:** Frontend Engineer (T-189), Backend Engineer (T-188)
+
+### Summary of Spec 19
+
+The `TripNotesSection` component is a freeform text field on `TripDetailsPage` for storing trip-specific observations, reminders, and context. It sits between the Destinations section and Calendar (though per TripDetailsPage layout: below Destinations, above Flights/Stays/Activities — Calendar is at top).
+
+**Key design decisions:**
+
+| Decision | Spec |
+|----------|------|
+| Placement | Below Destinations section; `1px solid var(--border-subtle)` separator above |
+| Interaction pattern | Inline edit-in-place (no separate edit page) |
+| Entry points to edit mode | Pencil button, clicking placeholder text, clicking existing notes text |
+| Textarea | `aria-label="Trip notes"`, `maxLength={2000}`, auto-grows vertically |
+| Character count | `"N / 2000"` right-aligned below textarea, `role="status"` + `aria-live="polite"` + `aria-describedby` on textarea |
+| Save shortcut | `Ctrl+Enter` / `Cmd+Enter` in textarea |
+| Cancel shortcut | `Escape` key while in edit mode |
+| Save → API | `PATCH /api/v1/trips/:id` with `{ notes: trimmedValue \| null }` |
+| Cleared notes | Trim to empty → send `null` (not `""`) |
+| Save feedback | Section header briefly reads `"NOTES — SAVED"` for 1500ms (no toast) |
+| Error feedback | Inline text below buttons, `role="alert"`, edit mode stays open |
+| Char count colors | Default muted → amber `rgba(240,180,60,0.85)` at 1800 → red `rgba(220,80,80,0.9)` at 2000 |
+| Styling | Japandi — IBM Plex Mono, existing palette, minimal visual weight |
+| New file | `frontend/src/components/TripNotesSection.jsx` |
+| Props | `tripId`, `initialNotes`, `onSaveSuccess` |
+
+**Accessibility requirements:**
+- Textarea `aria-label="Trip notes"` + `aria-describedby="trip-notes-char-count"`
+- Char count: `role="status"`, `aria-live="polite"`, `aria-atomic="true"`
+- Pencil button: `aria-label="Edit trip notes"`
+- Placeholder text (view mode): `tabIndex={0}`, `role="button"`, keyboard-activatable
+- Focus management: textarea autofocuses on edit mode entry; focus returns to pencil button on close
+- Save/cancel buttons: `aria-disabled` during loading
+- Error message: `role="alert"`
+
+**All sections of Spec 19 to read for full detail:**
+- 19.1 Placement on TripDetailsPage
+- 19.2 Section Header + Pencil Button
+- 19.3 View Mode (empty + notes-present states)
+- 19.4 Edit Mode (textarea, char count, buttons)
+- 19.5 Save Flow
+- 19.6 Cancel Flow
+- 19.7 Keyboard Interactions table
+- 19.8 All States table
+- 19.9 Responsive Behavior
+- 19.10 Accessibility Checklist
+- 19.11 Component Architecture Guidance
+- 19.12 Visual Mockup
+
+**Next steps:**
+- **Backend Engineer (T-188):** Proceed with migration 010 and API update. The `notes` field is `TEXT`, nullable, max 2000 chars per Joi validation. GET responses must include `notes: null` when unset.
+- **Frontend Engineer (T-189):** Proceed with `TripNotesSection.jsx` per Spec 19. Build exactly as specified. T-188 (backend) must be complete before integration testing, but component can be built in parallel with mock data.
+
+---
+
 **[2026-03-10] Manager Agent → All Agents**
 Sprint #20 planning complete. Sprint 19 summary written. All Sprint 19 feedback triaged.
 **Status:** Sprint 20 Ready — Agents may begin Phase 1 tasks immediately
