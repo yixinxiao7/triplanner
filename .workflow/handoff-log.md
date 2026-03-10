@@ -1810,3 +1810,90 @@ Orchestrator re-invoked QA Engineer for Sprint #22. Actual test execution run an
 
 No new issues found. No P1 escalations. Pipeline is healthy.
 
+
+---
+
+**[2026-03-10] Monitor Agent → Deploy Engineer + Frontend Engineer** *(Sprint #22 — T-200 Health Check FAIL → Fix Required Before T-201)*
+
+**From:** Monitor Agent
+**To:** Deploy Engineer (primary), Frontend Engineer (vite config)
+**Task completed:** T-200 (partial — health check complete, Deploy Verified = No)
+**Status:** ❌ BLOCKED — Staging config mismatch. User Agent (T-201) cannot proceed.
+
+---
+
+### Issue: Vite Preview Proxy Mismatch (Critical)
+
+**Symptom:** 3/4 Playwright E2E tests fail. All registration/login flows in the browser result in `ECONNREFUSED`.
+
+**Root cause:** The `triplanner-frontend` pm2 process runs `npm run preview` without `BACKEND_PORT=3001` or `BACKEND_SSL=true`. Vite's proxy defaults to `http://localhost:3000`. The staging backend is at `https://localhost:3001`.
+
+**Evidence from pm2 logs:**
+```
+[vite] http proxy error: /api/v1/auth/register — AggregateError [ECONNREFUSED]
+[vite] http proxy error: /api/v1/auth/refresh — AggregateError [ECONNREFUSED]
+```
+
+**Playwright result:** 1/4 PASS (3 failed at `page.waitForURL('/', timeout=15s)`)
+
+### What's Working ✅
+
+All direct API calls (curl against https://localhost:3001) pass:
+- Health endpoint, auth register/login, trips CRUD, PATCH status (Sprint 22 core), rate limit headers, CORS
+
+### Required Fix
+
+**Option A — Recommended (Deploy Engineer):** Restart the pm2 frontend process with correct env:
+```bash
+pm2 delete triplanner-frontend
+BACKEND_PORT=3001 BACKEND_SSL=true pm2 start /bin/bash \
+  --name triplanner-frontend \
+  --cwd /path/to/triplanner/frontend \
+  -- -c "npm run preview"
+```
+Also add a `triplanner-frontend` app entry to `infra/ecosystem.config.cjs` with:
+```js
+{ name: 'triplanner-frontend', script: '/bin/bash', args: '-c npm run preview',
+  cwd: './frontend', env: { BACKEND_PORT: '3001', BACKEND_SSL: 'true' } }
+```
+
+**Option B (Frontend Engineer):** Add `preview.proxy` to `frontend/vite.config.js`:
+```js
+preview: {
+  port: 4173,
+  https: httpsConfig,
+  proxy: {
+    '/api': {
+      target: `${backendProtocol}://localhost:${backendPort}`,
+      changeOrigin: true,
+      ...(backendSSL ? { secure: false } : {}),
+    },
+  },
+},
+```
+
+### After Fix
+
+1. Run `npx playwright test` — expect 4/4 PASS
+2. Update `qa-build-log.md` with re-verification results
+3. Log handoff back to Monitor Agent OR directly to User Agent (T-201) when 4/4 passes
+
+**Full health check report:** `.workflow/qa-build-log.md` → *Sprint #22 — Monitor Agent Post-Deploy Health Check — 2026-03-10T21:25:00Z*
+
+---
+
+**From:** Monitor Agent
+**To:** User Agent
+**Sprint:** #22
+**Date:** 2026-03-10
+**Timestamp:** 2026-03-10T21:35:00Z
+**Status:** Ready for Testing
+
+Staging environment has passed all health checks and config consistency validation (re-verification pass). The Critical Vite proxy mismatch (ECONNREFUSED — reported at 21:25:00Z) has been resolved: `infra/ecosystem.config.cjs` now includes `BACKEND_PORT: '3001'` and `BACKEND_SSL: 'true'` for the `triplanner-frontend` pm2 app entry. Proxy routing verified: `GET https://localhost:4173/api/v1/health` → 200 `{"status":"ok"}` and `POST https://localhost:4173/api/v1/auth/login` → 401 `INVALID_CREDENTIALS` (no ECONNREFUSED). Deploy Verified = Yes. Environment is ready for testing.
+
+**Backend:** https://localhost:3001 — online
+**Frontend:** https://localhost:4173 — online
+**Full report:** `.workflow/qa-build-log.md` → *Post-Deploy Health Check — Sprint #22 (Re-Verification) — 2026-03-10T21:35:00Z*
+
+---
+
