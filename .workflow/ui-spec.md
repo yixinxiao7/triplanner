@@ -8502,3 +8502,508 @@ These 4 tests bring the total frontend test count to 418+ (after T-170 reduces i
 ---
 
 *Spec 25 marked Approved (auto-approved per automated sprint cycle — Sprint 16). Published by Design Agent 2026-03-08.*
+
+---
+
+### Spec 18: Multi-Destination Chip UI (Sprint 19 — T-179)
+
+**Sprint:** #19
+**Related Task:** T-179 (Design), T-180 (Implementation)
+**Backlog Item:** B-007
+**Status:** Approved
+
+**Description:**
+Upgrades the destination input across three surfaces — the Create Trip Modal, the Trip Card on the home page, and the Trip Details Page header — from a plain text field to a structured chip/tag input model. Each destination is stored and displayed as an individual chip, allowing users to visually manage multiple destinations. The backend already stores destinations as a `TEXT ARRAY`; no schema changes are required. This spec only covers the UI layer.
+
+**Target User:** Detail-oriented travelers planning multi-destination itineraries (e.g., Tokyo → Osaka → Kyoto). They need to see all their destinations at a glance and edit them individually.
+
+---
+
+#### 18.1 Design System Alignment
+
+All components in this spec inherit the existing design system conventions:
+
+| Property | Value |
+|----------|-------|
+| Font family | IBM Plex Mono, monospace |
+| Background (app) | `#02111B` |
+| Surface / card | `#30292F` |
+| Accent / border | `#3F4045` |
+| Secondary accent | `#5D737E` |
+| Text primary | `#FCFCFC` |
+| Text muted | `rgba(252,252,252,0.5)` |
+| Border radius | `4px` (inputs, chips); `6px` (modals, cards) |
+| Focus ring | `outline: 2px solid #5D737E; outline-offset: 2px;` |
+| Transition | `150ms ease` for hover/focus state changes |
+| Font size (body) | `0.875rem` (14px) |
+| Font size (small / chip label) | `0.8125rem` (13px) |
+
+---
+
+#### 18.2 DestinationChipInput Component
+
+This is the reusable core component used in both the Create Trip Modal (18.3) and the Edit Destinations panel (18.5). It renders:
+- A row of existing destination chips (pills)
+- A text input to type and add new destinations
+- A "+" add button
+
+**Component anatomy:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  [Paris ×]  [Rome ×]  [Athens ×]  [_______________ ] [+]       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Container:**
+- `display: flex; flex-wrap: wrap; gap: 6px; align-items: center;`
+- `min-height: 44px;`
+- Background: `#02111B` (matches app background, so it reads as a field)
+- Border: `1px solid #3F4045`
+- Border radius: `4px`
+- Padding: `8px 10px`
+- On focus-within (when the inner text input is focused): border color transitions to `#5D737E` (`150ms ease`)
+
+**Chip element (each destination):**
+- `display: inline-flex; align-items: center; gap: 4px;`
+- Background: `rgba(93,115,126,0.2)` — subtle teal tint
+- Border: `1px solid rgba(93,115,126,0.4)`
+- Border radius: `4px`
+- Padding: `3px 6px 3px 8px`
+- Font: IBM Plex Mono, `0.8125rem`, `#FCFCFC`
+- Max chip width: `180px`; text overflows with `text-overflow: ellipsis; white-space: nowrap; overflow: hidden;`
+
+**Chip × (remove) button:**
+- `display: inline-flex; align-items: center; justify-content: center;`
+- Width / height: `16px × 16px`
+- Background: transparent
+- Color: `rgba(252,252,252,0.6)`; hover: `#FCFCFC`
+- Border: none
+- Cursor: pointer
+- Icon: `×` character (Unicode U+00D7) at `0.75rem`
+- `aria-label`: `"Remove [destination name]"` — e.g., `"Remove Paris"` (required for accessibility)
+- Focus ring: standard `outline: 2px solid #5D737E; outline-offset: 2px;`
+- On click: removes the chip immediately; keyboard focus moves to the next chip's × button, or if no next chip exists, moves to the text input
+
+**Text input (inline):**
+- `flex: 1 1 120px;` — expands to fill remaining width; minimum 120px before wrapping
+- `min-width: 120px;`
+- Background: transparent
+- Border: none; `outline: none;`
+- Color: `#FCFCFC`
+- Font: IBM Plex Mono, `0.875rem`
+- Placeholder: `"add destination…"` — color `rgba(252,252,252,0.35)`
+- On Enter keypress: add current value as chip (trim whitespace), clear input, keep focus in input
+- On comma keypress: same behavior as Enter (comma-delimited paste support)
+- On backspace when input is empty: remove the last chip in the array (visual cue for power users)
+- Max input length: 100 characters (prevents oversized chip labels)
+
+**"+" add button:**
+- `display: inline-flex; align-items: center; justify-content: center;`
+- Width / height: `28px × 28px`
+- Background: transparent
+- Border: `1px solid #3F4045`
+- Border radius: `4px`
+- Color: `rgba(252,252,252,0.7)`; hover: `#FCFCFC`, border color `#5D737E`
+- Icon: `+` character at `1rem`, centered
+- `aria-label`: `"Add destination"`
+- On click: add current text input value as chip (trim whitespace), clear input, return focus to text input
+- Disabled state: if text input is empty — button is visually dimmed (`opacity: 0.35`, `cursor: not-allowed`) and non-interactive
+
+**Empty input state (no chips, no text):**
+- Container shows only the text input and the "+" button
+- Placeholder `"add destination…"` is visible
+- Validation: if form is submitted with zero chips, show inline error (see 18.3.5)
+
+---
+
+#### 18.3 Create Trip Modal — Updated Destination Field
+
+**Surface:** `CreateTripModal.jsx`
+
+**Current behavior (to be replaced):** A single text input labeled `DESTINATIONS` that accepts a free-form string.
+
+**New behavior:** The `DestinationChipInput` component (18.2) replaces the single text input. The modal's overall layout, title ("new trip"), submit button ("create"), cancel button, loading state, and error banner remain unchanged (per existing Spec 2.5).
+
+##### 18.3.1 Modal Layout (Updated Destination Row)
+
+The modal form has two rows: TRIP NAME and DESTINATIONS. The DESTINATIONS row is updated:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  new trip                                                       │
+│                                                                 │
+│  TRIP NAME                                                      │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ California Coast Trip                                   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  DESTINATIONS                                                   │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │ [San Francisco ×] [Big Sur ×] [_____________] [+]      │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│                                      [cancel]  [create]        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+- Field label: `DESTINATIONS` — uppercase, `0.75rem`, `rgba(252,252,252,0.5)`, `letter-spacing: 0.08em`, `margin-bottom: 4px`
+- Below the chip container, an inline validation message zone (initially hidden, see 18.3.5)
+
+##### 18.3.2 State: Modal Open — No Destinations Added Yet
+
+- Chip container is empty; only the text input and "+" button are visible
+- Placeholder `"add destination…"` is shown
+- "create" button is **disabled** (see 18.3.4)
+- No validation message visible yet
+
+##### 18.3.3 State: Typing a Destination
+
+1. User clicks inside the chip container (focus moves to text input)
+2. User types `"Paris"`
+3. Container border transitions to `#5D737E`
+4. "+" button becomes active (not dimmed)
+5. On Enter keypress or "+" click:
+   - Chip `[Paris ×]` appears in the container
+   - Input clears
+   - "create" button becomes **enabled** (if TRIP NAME is also filled)
+   - Focus stays on text input
+
+##### 18.3.4 Submit Disabled Logic
+
+The "create" button is **disabled** if:
+- TRIP NAME is empty, OR
+- `destinations.length === 0`
+
+The button uses `disabled` HTML attribute when either condition is true. Styling for disabled: `opacity: 0.4; cursor: not-allowed;` (existing modal button disabled style).
+
+##### 18.3.5 Validation Error — Zero Destinations
+
+If the user somehow triggers submit with zero destinations (e.g., via keyboard shortcut or programmatic submit):
+- An inline error message appears directly below the chip container: `"add at least one destination."`
+- Color: amber — `#F5A623` (existing error text color)
+- Font: IBM Plex Mono, `0.8125rem`, no background
+- `role="alert"` on the error element so screen readers announce it immediately
+- The chip container border turns amber: `1px solid #F5A623`
+- Error clears as soon as the user adds a chip
+
+##### 18.3.6 State: Multiple Destinations Added
+
+```
+│  DESTINATIONS                                                   │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │ [Paris ×] [Rome ×] [Athens ×] [Santorini ×] [___] [+] │    │
+│  └────────────────────────────────────────────────────────┘    │
+```
+
+- Chips wrap to a new line if they exceed the container width (`flex-wrap: wrap`)
+- Modal body does NOT scroll — the modal height expands naturally with up to ~3 rows of chips before becoming too tall. In practice, users rarely add more than 5 destinations in the create flow.
+- Maximum chips: no hard limit, but the "+" button stays accessible.
+
+##### 18.3.7 State: Submit Loading
+
+- "create" button shows `"creating…"` with spinner (existing modal loading pattern)
+- Chip container is non-interactive during loading (pointer-events: none)
+- Chips remain visible
+
+##### 18.3.8 State: Submit Error
+
+- Existing error banner at top of modal fires (e.g., `"something went wrong. please try again."`)
+- Chips remain intact — user does not lose their entered destinations
+
+##### 18.3.9 State: Submit Success
+
+- Modal closes (existing behavior)
+- User is routed to new trip details page
+
+##### 18.3.10 Accessibility — Create Modal
+
+- The chip container has `role="group"` and `aria-label="Destinations"`
+- Each chip × button: `aria-label="Remove [destination]"` (see 18.2)
+- The text input: `aria-label="New destination"` and `aria-describedby` pointing to the validation error element ID (when error is visible)
+- Tab order: TRIP NAME input → first chip × button → second chip × button → … → text input → "+" button → "cancel" → "create"
+- Keyboard shortcut `Enter` on text input adds chip; does NOT submit the form (form submission only via "create" button click or explicit form submit)
+
+---
+
+#### 18.4 Trip Card — Destinations Display (Home Page)
+
+**Surface:** `TripCard.jsx`
+
+**Current behavior:** Destinations displayed as a comma-separated string from the destinations array (or as stored).
+
+**New behavior:** Destinations displayed as a readable human-formatted string with truncation at 3.
+
+##### 18.4.1 Display Rules
+
+| Scenario | Rendered Text |
+|----------|--------------|
+| 1 destination | `"Paris"` |
+| 2 destinations | `"Paris, Rome"` |
+| 3 destinations | `"Paris, Rome, Athens"` |
+| 4 destinations | `"Paris, Rome, Athens, +1 more"` |
+| 5 destinations | `"Paris, Rome, Athens, +2 more"` |
+| N > 3 destinations | `"[dest1], [dest2], [dest3], +[N-3] more"` |
+| 0 destinations (edge case) | `"—"` (em dash; should not normally occur post-validation) |
+
+**Truncation logic (pseudocode):**
+```js
+function formatDestinations(destinations) {
+  if (!destinations || destinations.length === 0) return '—';
+  if (destinations.length <= 3) return destinations.join(', ');
+  const visible = destinations.slice(0, 3).join(', ');
+  const overflow = destinations.length - 3;
+  return `${visible}, +${overflow} more`;
+}
+```
+
+##### 18.4.2 Visual Placement
+
+- The destination string appears below the trip name, in the same position as the current destination text
+- Font: IBM Plex Mono, `0.8125rem`, color: `rgba(252,252,252,0.65)` (muted, secondary)
+- No chips rendered on the card — it is plain formatted text to keep the card compact
+- The `+N more` suffix uses the same color/weight as the rest of the string (no special accent)
+
+##### 18.4.3 Full Destination Tooltip (Accessibility + UX)
+
+When destinations are truncated (`+N more`):
+- The wrapping element has `title="[full comma-separated list]"` — e.g., `title="Paris, Rome, Athens, Santorini"` — so mouse users can hover to see all destinations
+- Screen readers should read the full truncated string as-is; the tooltip is supplementary
+
+##### 18.4.4 Responsive
+
+- On mobile (<768px): the card is already full-width; the destination text wraps naturally. No layout changes.
+- No chip rendering on mobile cards — the text-only format remains.
+
+---
+
+#### 18.5 Trip Details Page — Destinations Header Display
+
+**Surface:** `TripDetailsPage.jsx` — the header section that currently shows the trip name and destination(s).
+
+**Current behavior:** Destinations displayed as plain text (comma-separated string or single string) in the trip header.
+
+**New behavior:** Each destination rendered as a chip in the header, followed by an "Edit destinations" control.
+
+##### 18.5.1 Header Layout
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  California Coast Trip                        [Print itinerary] │
+│                                                                 │
+│  [San Francisco]  [Big Sur]  [Monterey]        ✏ Edit           │
+│                                                                 │
+│  MAR 2025 → APR 2025                                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+- The destination chip row sits immediately below the trip name `<h1>`, above the date range line
+- Chips are displayed in a flex row with `gap: 6px; flex-wrap: wrap; align-items: center;`
+- The "✏ Edit" control appears inline at the end of the chip row (after the last chip or after wrapping)
+
+##### 18.5.2 Destination Chip Style (View Mode)
+
+These are **read-only display chips** (no × button):
+
+| Property | Value |
+|----------|-------|
+| Background | `rgba(93,115,126,0.15)` |
+| Border | `1px solid rgba(93,115,126,0.35)` |
+| Border radius | `4px` |
+| Padding | `3px 10px` |
+| Font | IBM Plex Mono, `0.8125rem`, `#FCFCFC` |
+| Max width | `200px` with `text-overflow: ellipsis` |
+
+Unlike the chip input component, these chips have NO × button and are NOT interactive (just display elements).
+
+##### 18.5.3 "Edit destinations" Control
+
+- **Label:** `"Edit"` with a pencil icon (✏ Unicode U+270F or SVG icon consistent with existing edit icons on the page)
+- **Appearance:** Minimal text button — no border, no background
+- **Color:** `#5D737E` (secondary accent); hover: `#FCFCFC` + underline; `150ms ease`
+- **Font:** IBM Plex Mono, `0.8125rem`
+- **`aria-label`:** `"Edit destinations"`
+- **Position:** After the last chip in the row. If chips wrap to multiple lines, the "Edit" control appears after the last chip on the last line.
+- **On click:** Opens the Edit Destinations panel (18.5.4)
+
+##### 18.5.4 Edit Destinations Panel
+
+On clicking "Edit", the destinations header area transitions inline into an edit panel — no modal, no route change:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  California Coast Trip                        [Print itinerary] │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ [San Francisco ×] [Big Sur ×] [Monterey ×] [______] [+]│   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                      [cancel] [save] │
+│                                                                 │
+│  MAR 2025 → APR 2025                                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+- The read-only chip row and "Edit" button are replaced by the `DestinationChipInput` component (18.2) pre-populated with all current destinations
+- Below the chip input, a row of two action buttons: `[cancel]` and `[save]`
+- The date range line and all other sections of TripDetailsPage remain visible and unchanged beneath the edit panel
+
+**"cancel" button:**
+- Secondary style: transparent background, `rgba(93,115,126,0.5)` border, `#FCFCFC` text
+- On click: discard all changes, return to read-only chip display (18.5.2), restore original destinations array in UI
+- Focus returns to the "Edit destinations" button
+
+**"save" button:**
+- Primary style: `#5D737E` background, `#FCFCFC` text, border: none
+- Loading state: button shows `"saving…"` with spinner, pointer-events: none
+- On click: call `PATCH /api/v1/trips/:id` with `{ destinations: [...currentChipsArray] }`
+- On success: return to read-only chip display with the updated destinations array; show brief success toast (see 18.5.6)
+- On error: show inline error message below the chip input; button returns to active state
+
+**"save" button disabled conditions:**
+- `destinations.length === 0` — disabled with `opacity: 0.4; cursor: not-allowed;`
+- Loading in progress
+
+##### 18.5.5 Edit Panel — States Detail
+
+| State | UI |
+|-------|----|
+| **Initial open** | ChipInput pre-populated with all current destinations. Both chips showing × buttons. Text input is empty and focused. `[cancel]` and `[save]` visible. |
+| **User removes a chip** | Chip disappears immediately. If last chip removed: "save" button dims (disabled). Inline validation: `"add at least one destination."` appears below the chip input. |
+| **User adds a chip** | Chip appears. If was previously at 0: validation error clears, "save" re-enables. |
+| **No changes made, user clicks cancel** | Returns to read-only view. No API call. |
+| **User clicks save (valid)** | Button shows `"saving…"` with spinner. |
+| **Save success** | Read-only chip display updates with new destinations. Toast: `"destinations updated."` (green, 3 seconds, auto-dismiss). Focus returns to the "Edit destinations" button. |
+| **Save error** | Inline error below chip input: `"could not update destinations. please try again."` (amber). Button returns to active `[save]` state. Chips remain as-is. |
+| **Zero destinations on save attempt** | "save" button remains disabled. Inline validation message visible. No API call made. |
+
+##### 18.5.6 Success Toast
+
+Reuses the existing toast pattern from the app (if one exists) or renders:
+- Fixed position, bottom-right of viewport: `bottom: 24px; right: 24px;`
+- Background: `rgba(30,42,35,0.95)` (dark green tint)
+- Border: `1px solid rgba(100,200,120,0.4)`
+- Text: `"destinations updated."`, IBM Plex Mono, `0.875rem`, `#FCFCFC`
+- Border radius: `6px`; padding: `10px 16px`
+- Auto-dismisses after 3 seconds; slide-in animation from right (100ms ease)
+- `role="status"` for screen reader announcement
+
+##### 18.5.7 Responsive — Trip Details Header
+
+**Desktop (≥1024px):**
+- Chips row and "Edit" control on one line (wraps if needed)
+- `[cancel]` and `[save]` right-aligned in a flex row below the chip input
+
+**Tablet (768px–1023px):**
+- Same as desktop; chips may wrap more frequently
+
+**Mobile (<768px):**
+- Chip row wraps freely
+- `[cancel]` and `[save]` stack as two full-width buttons below the chip input:
+  - `[cancel]` on top, `[save]` below; each `width: 100%;`
+
+##### 18.5.8 Accessibility — Trip Details Page
+
+- Read-only destination chips: `role="list"` on the container; each chip is `role="listitem"` (screen readers can count items and announce them)
+- "Edit destinations" button: `aria-label="Edit destinations"` (ensures screen readers announce the full purpose)
+- When edit panel opens: focus moves to the first × button of the first chip (or the text input if no chips)
+- When edit panel closes (cancel or save): focus returns to the "Edit destinations" button
+- Inline validation error: `role="alert"` so it's announced immediately
+- "save" button when disabled: `aria-disabled="true"` in addition to `disabled` HTML attribute (belt-and-suspenders for AT compatibility)
+
+---
+
+#### 18.6 Data Flow and API Integration
+
+No new API endpoints. The existing PATCH endpoint is used for editing destinations:
+
+```
+PATCH /api/v1/trips/:id
+Body: { destinations: string[] }
+```
+
+**Create trip:** POST /api/v1/trips continues to accept `{ destinations: string[] }` — the chip input builds this array in component state before submit.
+
+**Frontend state:**
+- In `CreateTripModal.jsx`: `const [destinations, setDestinations] = useState([])` — replaces the existing single-string state
+- In `TripDetailsPage.jsx`: `const [editDestinations, setEditDestinations] = useState(null)` — null = not editing; array = edit mode with current chips
+
+**No backend changes required.** The destinations array is the existing API contract.
+
+---
+
+#### 18.7 Component Reuse Summary
+
+| Component | Usage |
+|-----------|-------|
+| `DestinationChipInput` | Create Trip Modal (18.3) + Edit Destinations panel (18.5.4) |
+| Read-only destination chip | Trip Details header (18.5.2) — styled separately, no × button |
+| Destination text formatter | `formatDestinations()` — Trip Card (18.4) |
+
+The `DestinationChipInput` component should be extracted to `frontend/src/components/DestinationChipInput.jsx` and imported into both surfaces.
+
+---
+
+#### 18.8 Edge Cases
+
+| Edge Case | Handling |
+|-----------|---------|
+| Destination with only whitespace | Trim on add — reject if empty after trim; chip is NOT added |
+| Duplicate destination | Allow — no deduplication enforced; user may intentionally list variations (e.g., "Paris, France" and "Paris") |
+| Very long destination name | Chip max-width 180px with ellipsis + full name in `title` attribute for tooltip |
+| Paste multiple destinations at once | If pasted string contains commas, split on comma and add each as a separate chip |
+| Single destination (normal) | Fully supported — one chip is valid |
+| Trip created with 0 destinations | Blocked by disabled submit button + validation message; cannot reach this state via UI |
+| Existing trip with 0 destinations (legacy data) | Edit panel opens with empty chip input; user must add at least one before saving |
+| Rapid click on "+" | Debounce not needed — each click adds the current input value (which is cleared after each add) |
+
+---
+
+#### 18.9 Responsive Summary
+
+| Breakpoint | Create Modal | Trip Card | Trip Details Header | Edit Panel |
+|------------|-------------|-----------|---------------------|------------|
+| Desktop ≥1024px | Chips wrap within modal width | Text-only truncated string | Chips inline, "Edit" at end | Save/Cancel right-aligned |
+| Tablet 768–1023px | Same as desktop | Same | Same, may wrap more | Same |
+| Mobile <768px | Chips wrap; modal full-width | Same text format | Chips wrap; Edit below | Save/Cancel full-width, stacked |
+
+---
+
+#### 18.10 Animation and Transitions
+
+| Interaction | Animation |
+|-------------|-----------|
+| Chip added | Chip fades in: `opacity 0 → 1` over `120ms ease` |
+| Chip removed | Chip fades out: `opacity 1 → 0` and collapses width over `120ms ease`; avoid layout jank by using `max-width` transition |
+| Edit panel open | Panel slides down from header area: `max-height 0 → auto` proxy with `transform: translateY(-4px) → translateY(0)` over `150ms ease` |
+| Edit panel close | Reverse of open — `150ms ease` |
+| Success toast | Slides in from right: `transform: translateX(20px) → translateX(0)` over `100ms ease` |
+
+All animations should respect `prefers-reduced-motion: reduce` — if set, skip transitions (instant show/hide).
+
+---
+
+#### 18.11 Test Coverage Guidance (for T-180)
+
+| Test | Surface | Expected |
+|------|---------|---------|
+| Chip added on Enter | DestinationChipInput | Input value becomes chip; input clears |
+| Chip added on "+" click | DestinationChipInput | Same as Enter |
+| Chip added on comma keypress | DestinationChipInput | Text before comma becomes chip |
+| Whitespace-only input rejected | DestinationChipInput | No chip added; input clears |
+| Chip removed on × click | DestinationChipInput | Chip removed from array |
+| Backspace on empty input removes last chip | DestinationChipInput | Last chip removed |
+| Submit blocked with 0 chips | CreateTripModal | Button disabled; validation message present |
+| Submit allowed with ≥1 chip | CreateTripModal | Button enabled; PATCH/POST called |
+| TripCard: 1 destination | TripCard | `"Paris"` rendered |
+| TripCard: 3 destinations | TripCard | `"Paris, Rome, Athens"` rendered |
+| TripCard: 4 destinations | TripCard | `"Paris, Rome, Athens, +1 more"` rendered |
+| TripCard: 0 destinations | TripCard | `"—"` rendered |
+| Edit panel opens on click | TripDetailsPage | DestinationChipInput visible; chips pre-populated |
+| Save calls PATCH with correct array | TripDetailsPage | `api.trips.update(tripId, { destinations: [...] })` called |
+| Cancel discards changes | TripDetailsPage | Original chips restored; no API call |
+| Save disabled with 0 chips | TripDetailsPage | Button disabled; validation message present |
+| `aria-label` on × buttons | DestinationChipInput | Each × has `aria-label="Remove [destination]"` |
+
+---
+
+*Spec 18 (Sprint 19 — Multi-Destination Chip UI) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-09.*

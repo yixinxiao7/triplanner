@@ -933,3 +933,78 @@ From: Design Agent | To: Frontend Engineer | Status: ✅ Ready — Spec Approved
 
 ---
 
+
+---
+
+**From:** Design Agent
+**To:** Frontend Engineer
+**Sprint:** #19
+**Date:** 2026-03-09
+**Status:** Ready — Spec Approved (auto-approved, automated sprint cycle)
+
+## T-179 Complete — Spec 18 (Multi-Destination Chip UI) Ready for Implementation
+
+Spec 18 has been published to `.workflow/ui-spec.md` and is approved for implementation. T-180 (Frontend Engineer) is unblocked.
+
+### Spec Reference
+
+**Spec 18: Multi-Destination Chip UI** — located at the end of `ui-spec.md` (appended 2026-03-09).
+
+### What Was Designed
+
+Three surfaces are updated. All changes are UI-only — no backend schema changes. The `destinations` field continues to be stored and sent as a `string[]` (existing API contract unchanged).
+
+#### 1. `DestinationChipInput` Component (new — reusable)
+- Extract to `frontend/src/components/DestinationChipInput.jsx`
+- Chip container (`flex-wrap`) with inline text input and "+" button
+- Enter keypress, comma keypress, or "+" click → add chip (trim whitespace, reject empty)
+- Backspace on empty input → remove last chip
+- × button per chip → remove chip; `aria-label="Remove [destination]"`
+- Container `border: 1px solid #3F4045`, focus-within → `#5D737E`
+- Chips: `rgba(93,115,126,0.2)` bg, `1px solid rgba(93,115,126,0.4)` border, `4px` radius
+- Full spec: **ui-spec.md §18.2**
+
+#### 2. `CreateTripModal.jsx` — Replace destinations text input with `DestinationChipInput`
+- State: `destinations: string[]` replaces single string
+- Submit disabled when `destinations.length === 0`
+- Inline validation: `"add at least one destination."` with `role="alert"` when zero chips on submit
+- Full spec: **ui-spec.md §18.3**
+
+#### 3. `TripCard.jsx` — Destinations formatted text
+- 1–3 destinations: comma-separated (`"Paris, Rome, Athens"`)
+- 4+ destinations: first 3 + `"+N more"` (`"Paris, Rome, Athens, +1 more"`)
+- 0 destinations: `"—"` (edge case / legacy data)
+- Extract `formatDestinations()` helper (reusable)
+- Full spec: **ui-spec.md §18.4**
+
+#### 4. `TripDetailsPage.jsx` — Destination chip row + inline edit panel
+- Header: read-only chips (`role="list"`) + `"✏ Edit"` button
+- On "Edit" click: inline `DestinationChipInput` panel replaces chip row (no modal, no route change)
+- Pre-populate chips with current trip destinations
+- `[cancel]` restores original; `[save]` calls `PATCH /api/v1/trips/:id` with updated `destinations` array
+- Save success: success toast `"destinations updated."`, focus returns to "Edit" button
+- Save error: inline error message, chips preserved
+- Mobile `<768px`: save/cancel stack full-width
+- Full spec: **ui-spec.md §18.5**
+
+### Key Constraints to Honor
+- **No `dangerouslySetInnerHTML`** — all chip labels are React text nodes
+- **No new API endpoints** — use existing PATCH /api/v1/trips/:id
+- **`prefers-reduced-motion`** — skip all chip/panel animations if set
+- **`aria-label="Remove [destination]"`** on every × button — required for accessibility
+
+### Test Coverage Expected (T-180)
+See **ui-spec.md §18.11** for the full test table (15 tests). Key assertions:
+- Chip added on Enter, "+" click, and comma keypress
+- Whitespace-only input rejected
+- Submit blocked with 0 chips (validation message in DOM)
+- TripCard truncation at >3 destinations (`"+N more"` rendered)
+- TripDetailsPage save calls PATCH with correct array
+- Cancel discards changes (no API call)
+- All × buttons have correct `aria-label`
+
+### Regression Reminder
+- All 416+ existing frontend tests must continue to pass after T-180 changes
+- Sprint 17 regression: "Print itinerary" button must remain visible on TripDetailsPage after header restructuring
+
+---
