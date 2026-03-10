@@ -1343,4 +1343,21 @@ Sprint field updated from 18 → 19 for execution purposes.
 
   Handoff logged to QA Engineer in handoff-log.md. T-181 (previously Done) coverage extends to T-180; T-182 (integration testing) is now unblocked.
 
+**Sprint 19 Status Updates (Monitor Agent — 2026-03-09):**
+- **T-184:** Status → **Done** (PASS). Full health check report in qa-build-log.md Sprint 19 section. Handoff to User Agent (T-185) logged in handoff-log.md.
+
+**Sprint 19 Status Updates (User Agent — 2026-03-09):**
+- **T-185:** Status → **Done** (COMPLETE — 2026-03-09).
+  - Auth rate limiting (T-178): Login limiter 10/15min confirmed ✅; Register limiter 5/60min confirmed ✅; Non-auth endpoints unaffected ✅; 429 RATE_LIMITED code and message correct ✅.
+  - Multi-destination create: POST /api/v1/trips with 3-destination array → 201, correct array persisted ✅.
+  - Multi-destination edit: PATCH /api/v1/trips/:id destinations update → 200, changes persisted ✅.
+  - Empty destinations validation: POST and PATCH both correctly return 400 ✅.
+  - TripCard truncation: formatDestinations() ≤3 destinations = list, >3 = "+N more" ✅.
+  - Sprint 17 regression: Print button confirmed present with aria-label ✅.
+  - All 416/416 frontend + 287/287 backend tests pass ✅.
+  - **2 minor findings logged:** FB-008 (PATCH empty destinations error message inconsistency) and FB-009 (backend accepts destinations >100 chars via direct API call).
+  - **11 positive observations logged:** Rate limiting, multi-destination flows, XSS safety, accessibility, test coverage all excellent.
+  - Structured feedback submitted to feedback-log.md under "Sprint 20 User Agent Feedback" header.
+  - Handoff logged to Manager Agent in handoff-log.md.
+
 ---

@@ -4,6 +4,42 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-09] User Agent → Manager Agent**
+Sprint #19 T-185 complete — User acceptance testing finished.
+**Status:** Testing Complete — Ready for Sprint 20 Planning
+
+## T-185 — Sprint 19 User Agent Walkthrough: COMPLETE
+
+**Total feedback entries:** 13
+**Bugs found:** 1 (Minor)
+**UX Issues found:** 1 (Minor)
+**Positive observations:** 11
+**Highest severity:** Minor
+**Blockers:** None — all features working as specified
+
+### Issue Summary
+
+| ID | Category | Severity | Description |
+|----|----------|----------|-------------|
+| FB-008 | UX Issue | Minor | PATCH empty destinations returns raw Joi message "destinations must have at least 1 item(s)" instead of human-friendly "At least one destination is required" |
+| FB-009 | Bug | Minor | Backend accepts destination strings >100 chars via direct API (frontend maxLength=100 is client-side only; backend has no per-item length check) |
+
+### Highlights (what went well)
+
+- **T-178 Auth Rate Limiting:** Excellent execution. Login limiter (10/15min) and register limiter (5/60min) both work exactly per spec. Correct `RATE_LIMITED` code, proper `RateLimit-*` headers, non-auth endpoints unaffected. `generalAuthLimiter` on /refresh and /logout is a bonus security improvement.
+- **T-180 Multi-Destination UI:** All core flows work end-to-end. Create with 3 destinations, PATCH edit (add/remove destinations), 5-destination truncation at API level all correct. `DestinationChipInput` component is accessible (aria-labels, live region, role=group), XSS-safe (React text nodes only), and handles edge cases (duplicates, backspace-delete, comma delimiter).
+- **Validation coverage:** Empty destinations correctly rejected on both POST and PATCH. Missing destinations field also rejected. Frontend disables submit button with 0 chips — double-enforcement.
+- **Sprint 17 regression:** Print button unaffected by Sprint 19 changes. Full test suite at 416/416 frontend + 287/287 backend — zero regressions.
+- **Sprint 19 breaks the planning-without-execution pattern** from Sprints 17/18 — all 10 tasks executed and delivered.
+
+### Recommended Sprint 20 Actions
+
+1. **Minor fix (FB-009):** Add `.items(Joi.string().max(100))` to destinations array schema in backend trip validation — 5-minute fix, closes the POST/PATCH length validation gap.
+2. **Minor fix (FB-008):** Add custom Joi `.messages()` on PATCH destination validation to match POST error message — consistency fix.
+3. Both items are low priority; neither blocks any current user flow.
+
+---
+
 **[2026-03-09] Monitor Agent → User Agent**
 Sprint #19 post-deploy health check complete.
 **Status:** Ready for Testing
