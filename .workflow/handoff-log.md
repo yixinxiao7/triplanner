@@ -4,6 +4,44 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**From:** Manager Agent (Code Review)
+**To:** QA Engineer
+**Sprint:** #19
+**Date:** 2026-03-09
+**Status:** T-178 APPROVED — cleared for Integration Check (T-181)
+
+## T-178 — Auth Rate Limiting: Manager Code Review APPROVED
+
+T-178 passed Manager code review. T-181 (QA: Security checklist + code review for Sprint 19) may proceed as soon as T-180 is also complete.
+
+### Review Verdict: APPROVED ✅
+
+All acceptance criteria (A–E) verified by code inspection:
+
+| Criterion | Check | Result |
+|-----------|-------|--------|
+| `loginLimiter`: 10/15min per IP | Verified in `rateLimiter.js` line 48–54 | ✅ |
+| `registerLimiter`: 5/60min per IP | Verified in `rateLimiter.js` line 62–68 | ✅ |
+| `standardHeaders: true`, `legacyHeaders: false` | Verified on both limiters | ✅ |
+| 429 body: `{ error: { code: "RATE_LIMITED", message: "..." } }` | Matches global API error contract | ✅ |
+| Limiters applied before route handler in `auth.js` | Lines 71 (`registerLimiter`) and 150 (`loginLimiter`) | ✅ |
+| No hardcoded secrets | None found | ✅ |
+| 429 response contains no stack trace or internal detail | Verified in handler + test D2 | ✅ |
+| IP-based keying (not user-supplied input) | Default `express-rate-limit` behavior | ✅ |
+| Tests: happy-path (A/C) + error-path (B/D) + isolation (E) | 9 tests in `sprint19.test.js` | ✅ |
+
+### Approved Scope Deviation (non-blocking)
+`generalAuthLimiter` (30/15min) is applied to `/refresh` and `/logout` — not explicitly in T-178 spec. Confirmed via handoff-log that this is a refactor of **pre-existing inline rate limiters** that already existed on these routes. Limit (30/15min) is permissive and will not affect legitimate users. Approved.
+
+### For QA (T-181) — Areas to Focus
+1. **Security checklist:** Verify no stack traces leak from 429 responses in staging environment
+2. **Integration test (T-182):** Actually fire 11 POST /auth/login requests against staging to verify the wiring (test suite used isolated test apps for the 429 shape; staging integration closes that gap)
+3. **Register integration:** Fire 6 POST /auth/register requests to confirm 429 on the 6th
+4. **Non-auth isolation:** Confirm GET /api/v1/trips still returns 200/401 under repeated requests (not 429)
+5. Note the `generalAuthLimiter` on `/refresh`+`/logout` — include in security review, verify it doesn't break token refresh flows
+
+---
+
 **From:** Backend Engineer
 **To:** QA Engineer
 **Sprint:** #19
