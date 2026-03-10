@@ -9,6 +9,29 @@
  */
 
 /**
+ * Format a destinations array for compact display on trip cards.
+ * Shows up to 3 destinations joined by ", "; overflows with "+N more".
+ *
+ * Per Spec 18.4.1:
+ *   1 dest  → "Paris"
+ *   2 dests → "Paris, Rome"
+ *   3 dests → "Paris, Rome, Athens"
+ *   4 dests → "Paris, Rome, Athens, +1 more"
+ *   N > 3   → "[d1], [d2], [d3], +[N-3] more"
+ *   0 dests → "—"
+ *
+ * @param {string[]} destinations
+ * @returns {string}
+ */
+export function formatDestinations(destinations) {
+  if (!destinations || destinations.length === 0) return '\u2014';
+  if (destinations.length <= 3) return destinations.join(', ');
+  const visible = destinations.slice(0, 3).join(', ');
+  const overflow = destinations.length - 3;
+  return `${visible}, +${overflow} more`;
+}
+
+/**
  * Format an ISO 8601 UTC timestamp for display in a given timezone.
  * Example output: "Aug 7, 2026 · 6:00 AM"
  *

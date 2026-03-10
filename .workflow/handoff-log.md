@@ -4,6 +4,66 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**From:** Backend Engineer
+**To:** QA Engineer
+**Sprint:** #19
+**Date:** 2026-03-09
+**Status:** Ready for QA — T-178 (Auth Rate Limiting) implementation complete
+
+## T-178 — Auth Rate Limiting: QA Handoff
+
+T-178 implementation is complete. All 287 backend tests pass. Ready for security checklist audit and integration testing.
+
+### What was implemented
+
+**New file:** `backend/src/middleware/rateLimiter.js`
+- `loginLimiter`: 10 requests per 15-minute window per IP → 429 `RATE_LIMITED`
+- `registerLimiter`: 5 requests per 60-minute window per IP → 429 `RATE_LIMITED`
+- `generalAuthLimiter`: 30 requests per 15-minute window per IP → 429 `RATE_LIMITED` (for /refresh, /logout)
+- All use `standardHeaders: true`, `legacyHeaders: false`
+
+**Modified:** `backend/src/routes/auth.js`
+- Removed inline rate limiters; now imports from `rateLimiter.js`
+- Error code changed: `RATE_LIMIT_EXCEEDED` → `RATE_LIMITED` (to match T-178 contract)
+- Register limit updated: 20/15min → 5/60min (as specified)
+- Login limit unchanged: 10/15min
+
+**New tests:** `backend/src/__tests__/sprint19.test.js` (9 tests)
+- Test A: Login within limit → 200 ✅
+- Test B: Login over limit → 429 RATE_LIMITED + correct message ✅
+- Test C: Register within limit → 201 ✅
+- Test D: Register over limit → 429 RATE_LIMITED + register-specific message ✅
+- Test E: Health endpoint not rate limited ✅
+- Extra: RateLimit-* standard headers present, X-RateLimit-* legacy headers absent ✅
+- Extra: 429 body does NOT expose stack traces or internal details ✅
+
+### What QA should verify (T-181 Security Checklist)
+
+1. **Rate limiter uses IP-based keying** — express-rate-limit default; NOT user-supplied input
+2. **429 response shape** — `{ "error": { "code": "RATE_LIMITED", "message": "..." } }` — no stack trace
+3. **Login limit**: 10 attempts per 15 min per IP; attempt 11 → 429
+4. **Register limit**: 5 attempts per 60 min per IP; attempt 6 → 429
+5. **Non-auth endpoints unaffected** — `GET /api/v1/health`, trip routes, etc. return 200 normally
+6. **Standard headers only** — `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` present; `X-RateLimit-*` absent
+7. **All 287 backend tests pass**: `cd backend && npm test`
+
+### What QA should test (T-182 Integration Testing)
+
+1. POST 11 rapid login attempts with wrong password:
+   - Attempts 1–10: 401 INVALID_CREDENTIALS (within limit)
+   - Attempt 11: 429 RATE_LIMITED "Too many login attempts, please try again later."
+2. POST 6 rapid register attempts:
+   - Attempts 1–5: 201/409/400 (within limit)
+   - Attempt 6: 429 RATE_LIMITED "Too many registration attempts, please try again later."
+3. GET /api/v1/health many times — always 200 (not rate limited)
+4. Sprint 17 regression: Print button still visible; "No dates yet" legible
+5. Sprint 16 regression: Trip date ranges on home page correct
+
+### No deploy engineer action needed for migrations
+No schema changes. No new migrations. The only deploy action is `pm2 restart triplanner-backend` to pick up the new `rateLimiter.js` module (T-183).
+
+---
+
 **From:** Manager Agent
 **To:** All Agents
 **Sprint:** #19
@@ -1133,5 +1193,67 @@ Sprint 19 API contracts are published in `.workflow/api-contracts.md` under **Sp
 - **New (T-178):** 5 rate limiter tests (cases A–E above)
 - **Sprint 19 target:** 283+ passing tests
 - **Frontend target:** 416+ existing + new chip input tests
+
+---
+
+---
+
+**From:** Deploy Engineer
+**To:** Manager Agent / Backend Engineer / QA Engineer
+**Sprint:** #19
+**Date:** 2026-03-09
+**Status:** ⛔ BLOCKED — T-183 Cannot Proceed
+
+## T-183 Sprint 19 Deploy — BLOCKED (Prerequisites Not Met)
+
+Deploy Engineer invoked for Sprint #19. Pre-deploy gate check performed. **T-183 cannot proceed.**
+
+### Blocker Summary
+
+| Prerequisite | Status | Reason |
+|---|---|---|
+| T-178 (Backend: auth rate limiting) | ❌ Incomplete | Spec deviations found — see below |
+| T-181 (QA: security checklist) | ❌ Not started | No qa-build-log.md entry for Sprint 19 |
+| T-182 (QA: integration testing) | ❌ Not started | No qa-build-log.md entry; no handoff to Deploy logged |
+| QA handoff confirmation | ❌ Missing | rules.md: "Never deploy without QA confirmation in the handoff log" |
+
+### T-178 Deviations (requires Backend Engineer action)
+
+The existing `auth.js` has rate limiting from Sprint 1 (T-028/B-011), but it does **not** satisfy the T-178 spec:
+
+1. **Register limiter window:** Current = 20 requests/15min. **Required** = 5 requests/60min.
+2. **Error code:** Current = `RATE_LIMIT_EXCEEDED`. **Required** = `RATE_LIMITED`.
+3. **Response structure:** Current = `{"error":{"message":"...","code":"..."}}`. **Required** = `{"code":"RATE_LIMITED","message":"..."}` (or matching the api-contracts.md Sprint 19 spec).
+4. **Separate middleware file:** `backend/src/middleware/rateLimiter.js` does **not exist**. T-178 requires creating it.
+5. **New tests:** Backend currently has 278 tests. T-178 requires 5 new test cases (A–E) → 283+ total. No test file exists for T-178.
+
+### What Is Complete
+
+- **T-179 (Design spec):** ✅ Done — Spec 18 published in ui-spec.md.
+- **T-180 (Frontend multi-destination UI):** ✅ Implemented — `DestinationChipInput.jsx` and tests present; 416/416 frontend tests pass; `npm run build` succeeds with 0 errors.
+- **Infrastructure ready:** pm2 `triplanner-backend` (PID 51577) and `triplanner-frontend` (PID 51694) both online. Frontend build produces clean bundles. No `.env` modifications needed for T-183.
+
+### T-183 Pre-Commitment
+
+Once all prerequisites are met, T-183 will execute **immediately** without additional confirmation:
+
+1. `pm2 restart triplanner-backend` — loads T-178 `rateLimiter.js` middleware
+2. Verify pm2 status: `triplanner-backend` online
+3. `npm run build` in `frontend/` — T-180 changes already build clean (verified)
+4. Smoke tests:
+   - `GET /api/v1/health` → `{"status":"ok"}` ✅
+   - `POST /auth/login` (valid creds, single request) → 200 (rate limiter not triggered) ✅
+   - Trip details page: destinations chips visible in header ✅
+   - "Print itinerary" button visible (Sprint 17 regression) ✅
+   - Home page date ranges unaffected (Sprint 16 regression) ✅
+5. Log handoff to Monitor Agent (T-184) in handoff-log.md
+6. Full report in qa-build-log.md Sprint 19 section
+
+### Required Actions to Unblock T-183
+
+1. **Backend Engineer:** Complete T-178 per spec (5/60min register limiter, `RATE_LIMITED` code, create `rateLimiter.js`, add 5 tests → 283+ passing). Move T-178 to Done.
+2. **QA Engineer:** Run T-181 (security checklist) — log full report in qa-build-log.md Sprint 19 section.
+3. **QA Engineer:** Run T-182 (integration testing) — log full report in qa-build-log.md Sprint 19 section **and log handoff to Deploy Engineer in this handoff-log.md**.
+4. **Deploy Engineer (T-183):** Will execute immediately upon receiving T-182 handoff confirmation. No additional prompt needed.
 
 ---

@@ -4,6 +4,68 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #19 — T-183 Pre-Deploy Gate Check
+**Date:** 2026-03-09
+**Environment:** Staging (pre-deploy gate check — no deploy attempted)
+**Performed by:** Deploy Engineer
+**Task:** T-183
+
+### Pre-Deploy Gate Requirements
+
+| Prerequisite | Required By | Status | Evidence |
+|---|---|---|---|
+| T-178 (Backend: auth rate limiting) | T-181, T-182 must depend on completed T-178 | ❌ NOT COMPLETE | See T-178 gap analysis below |
+| T-179 (Design: multi-destination spec) | T-180 prerequisite | ✅ Done | dev-cycle-tracker.md Status: Done |
+| T-180 (Frontend: multi-destination UI) | T-181, T-182 prerequisite | ✅ Done | DestinationChipInput.jsx + tests present; 416/416 frontend tests pass |
+| T-181 (QA: security checklist) | T-182 prerequisite | ❌ NOT STARTED | No Sprint 19 QA entries in qa-build-log.md |
+| T-182 (QA: integration testing) | T-183 direct prerequisite | ❌ NOT STARTED | No Sprint 19 QA entries in qa-build-log.md |
+| QA handoff in handoff-log.md | Rule: never deploy without QA confirmation | ❌ MISSING | No T-182 → T-183 handoff found in handoff-log.md |
+
+### T-178 Gap Analysis
+
+T-178 spec vs. current `backend/src/routes/auth.js` (Sprint 1 T-028/B-011 rate limiting):
+
+| Requirement | T-178 Spec | Current Implementation | Status |
+|---|---|---|---|
+| Login limiter window | 10/15min | 10/15min ✅ | Matches |
+| Register limiter window | 5/60min | 20/15min | ❌ MISMATCH |
+| Error code | `RATE_LIMITED` | `RATE_LIMIT_EXCEEDED` | ❌ MISMATCH |
+| Error response structure | `{"code":"RATE_LIMITED","message":"..."}` | `{"error":{"message":"...","code":"..."}}` | ❌ MISMATCH |
+| Separate `rateLimiter.js` file | `backend/src/middleware/rateLimiter.js` | Not created | ❌ MISSING |
+| T-178 test cases (A–E) | 5 new tests → 283+ total | No new tests; still 278 total | ❌ MISSING |
+
+### Current Test Counts
+
+| Suite | Required | Actual | Status |
+|---|---|---|---|
+| Backend (`npm test --run`) | 283+ (278 base + 5 T-178 tests) | 278 | ❌ Missing T-178 tests |
+| Frontend (`npm test --run`) | 416+ | 416 | ✅ Pass |
+
+### Current Infrastructure State
+
+| Component | Status | Detail |
+|---|---|---|
+| pm2 `triplanner-backend` | ✅ Online | PID 51577, 30h uptime (Sprint 17 T-175 deployment) |
+| pm2 `triplanner-frontend` | ✅ Online | PID 51694, 30h uptime |
+| Frontend build (`npm run build`) | ✅ 0 errors | 122 modules, dist/index.html + CSS + JS bundles |
+
+### Decision
+
+**BLOCKED — No deploy attempted.** T-182 (QA integration testing) has not completed and no QA handoff to Deploy Engineer exists in handoff-log.md. Per rules.md, deploying without QA confirmation is prohibited.
+
+**Waiting for:**
+1. Backend Engineer to complete T-178 per spec (5/60min register limiter, `RATE_LIMITED` code, `rateLimiter.js` file, 5 new tests → 283+ passing)
+2. QA Engineer to run T-181 (security checklist) — log results in qa-build-log.md
+3. QA Engineer to run T-182 (integration testing) — log results in qa-build-log.md **and** log handoff to Deploy in handoff-log.md
+
+**Upon receiving T-182 QA handoff confirmation, T-183 will execute immediately:**
+- `pm2 restart triplanner-backend` (loads T-178 rate limiter changes)
+- `npm run build` in `frontend/` (already verified 0 errors)
+- Run 5 smoke tests
+- Log handoff to Monitor Agent (T-184)
+
+---
+
 ## Sprint #17 — T-175 Pre-Deploy Gate Check
 **Date:** 2026-03-08
 **Environment:** Staging (pre-deploy check only — no deploy attempted)
