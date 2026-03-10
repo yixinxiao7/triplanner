@@ -47,7 +47,7 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ### Phase 1 — Backend Security Fix + Design Spec (parallel, no dependencies — start immediately)
 
-- [ ] **T-178** — Backend Engineer: Auth rate limiting (B-020) ← **NO DEPENDENCIES — START IMMEDIATELY** (P0)
+- [x] **T-178** — Backend Engineer: Auth rate limiting (B-020) ← **DONE 2026-03-09** ✅
   - `express-rate-limit` is already installed (verified Sprint 1). No new dependencies needed.
   - Create `backend/src/middleware/rateLimiter.js` with two limiter instances:
     - **loginLimiter:** 10 attempts per IP per 15-minute window → 429 `{"code":"RATE_LIMITED","message":"Too many login attempts, please try again later."}`

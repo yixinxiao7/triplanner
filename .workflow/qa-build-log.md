@@ -508,3 +508,100 @@ No config mismatches found.
 
 ---
 
+## Sprint #19 — T-182 Re-Certification QA Run (2026-03-09)
+
+**QA Engineer:** Automated (Sprint #19 third QA invocation — T-180 test fixes complete)
+**Tasks:** T-182 (Integration testing — re-run after Frontend Engineer fixed 10 test failures)
+**Date:** 2026-03-09
+
+---
+
+### Unit Test Results
+
+**Backend Tests: PASS — 287/287 tests passed, 0 failed**
+
+- 14 test files, all passed
+- `sprint19.test.js`: 9 tests (rate limiter A–E + variants) — all pass ✅
+- 2 expected `[ErrorHandler]` stderr lines from `sprint2.test.js` (malformed JSON tests) — pre-existing, non-blocking
+- No regressions from any previous sprint
+
+**Frontend Tests: PASS — 416/416 tests passed, 0 failed**
+
+- 22 test files, all passed
+- `DestinationChipInput.test.jsx`: 18 tests — all pass ✅ (previously 6 failures — RESOLVED)
+- `CreateTripModal.test.jsx`: 11 tests — all pass ✅ (previously 3 failures — RESOLVED)
+- `HomePage.test.jsx`: 14 tests — all pass ✅ (previously 1 failure — RESOLVED)
+- All other test files unchanged and passing
+- Fix applied by Frontend Engineer (2026-03-09): updated test selectors from `getByLabelText(/add destination/i)` to `getByLabelText(/new destination/i)` to match component's `aria-label="New destination"` on the text input. Submit-disabled tests updated to supply valid form state before asserting validation. The `+` button retains `aria-label="Add destination"` per Spec 18.2.
+
+---
+
+### Integration Test Results
+
+**API contract compliance: PASS**
+
+- T-178 rate limiting: All 9 sprint19.test.js tests confirm 429 `RATE_LIMITED` at threshold; 200/401 below threshold; non-auth routes unaffected ✅
+- T-180 multi-destination: No backend contract changes. `destinations: string[]` API contract unchanged ✅
+
+**UI state coverage: PASS**
+
+- `DestinationChipInput.jsx`: chip add (Enter key), chip add (comma key), chip remove (× button), duplicate rejection (case-insensitive), Backspace to remove last chip, Escape to clear input, disabled state hides × buttons — all paths covered by 18 passing tests ✅
+- `CreateTripModal.jsx`: submit blocked with 0 chips; submit enabled with ≥1 chip + name; destinations sent as string array ✅
+- `TripCard.jsx`: destinations rendered as readable list ✅
+- `TripDetailsPage.jsx`: destinations chips in header; edit mode opens chip editor; save calls PATCH ✅
+- `HomePage.test.jsx`: successful create flow with chip input navigates correctly ✅
+
+**Auth enforcement: PASS** — All non-auth routes guarded by `authenticate` middleware ✅
+
+**Sprint regression checks: PASS**
+- Sprint 17: `TripDetailsPage.test.jsx` 70/70 pass ✅
+- Sprint 16: `TripCard.test.jsx` 17/17, `formatDate.test.js` 20/20 pass ✅
+- Sprint 15: title/favicon coverage in TripDetailsPage tests ✅
+- Sprint 14: `TripCalendar.test.jsx` 70/70 pass ✅
+
+---
+
+### Config Consistency Check
+
+**PORT alignment: PASS**
+- `backend/.env`: `PORT=3000`
+- `vite.config.js` proxy: `${backendProtocol}://localhost:${backendPort}` → resolves to `http://localhost:3000` in dev (BACKEND_PORT unset, BACKEND_SSL unset) ✅
+
+**SSL config: PASS**
+- Dev `.env`: SSL not configured → vite proxy uses `http://` ✅
+- Staging path: `BACKEND_SSL=true` → `https://` proxy + `secure: false` for self-signed cert ✅
+
+**CORS config: PASS**
+- `backend/.env`: `CORS_ORIGIN=http://localhost:5173`
+- Vite dev server: port 5173 ✅
+- Docker compose: `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}` — appropriate for Docker context (nginx on :80) ✅
+
+---
+
+### Security Scan Results
+
+**npm audit: PASS (no new Critical/High)**
+- Backend: 5 moderate vulnerabilities (esbuild chain via vite/vitest) — dev dependencies only, pre-existing, no change from prior sprint
+- Frontend: 5 moderate vulnerabilities (same esbuild chain) — dev dependencies only, pre-existing
+- No Critical or High severity vulnerabilities in either package ✅
+
+**Hardcoded secrets: PASS** — No new secrets introduced in T-180 test fixes ✅
+
+**XSS: PASS** — `DestinationChipInput.jsx` chip values rendered as `{dest}` inside `<span>` — React text node, no `dangerouslySetInnerHTML` ✅
+
+**SQL injection: PASS** — No backend changes in this fix cycle. Knex parameterized queries unchanged ✅
+
+**Auth enforcement: PASS** — No auth changes in this fix cycle ✅
+
+---
+
+### Overall: PASS
+
+**T-181 (Security checklist + code review): PASS** — Previously logged. No new security issues in T-180 test fix cycle. ✅
+
+**T-182 (Integration testing): PASS** — All 416/416 frontend tests pass. All 287/287 backend tests pass. API contracts verified. UI state coverage confirmed. Regression checks clean. ✅
+
+**Ready for Deploy:** T-183 (Deploy Engineer) is now unblocked.
+
+---
+
