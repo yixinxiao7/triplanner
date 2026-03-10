@@ -4,6 +4,220 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #19 QA Run — 2026-03-09
+
+**QA Engineer:** Automated (Sprint #19 orchestrator invocation)
+**Tasks:** T-181 (Security checklist + code review audit), T-182 (Integration testing)
+
+---
+
+### Unit Test Results
+
+**Backend Tests: PASS — 287/287 tests passed, 0 failed**
+
+- Test files: 14 files passed (`auth.test.js`, `trips.test.js`, `flights.test.js`, `stays.test.js`, `activities.test.js`, `tripStatus.test.js`, `sprint2.test.js` through `sprint7.test.js`, `sprint16.test.js`, `sprint19.test.js`)
+- `sprint19.test.js`: 9 new tests for T-178 (Tests A–E) all pass:
+  - Test A: POST /auth/login within limit → 200 ✅
+  - Test B: POST /auth/login after limit exceeded → 429 RATE_LIMITED ✅ (including RateLimit-* headers, no X-RateLimit-* legacy headers)
+  - Test C: POST /auth/register within limit → 201 ✅
+  - Test D: POST /auth/register after limit exceeded → 429 RATE_LIMITED ✅ (no stack trace, only `{error:{code,message}}`)
+  - Test E: Non-auth routes unaffected by auth rate limiters ✅
+- All 278 pre-existing tests continue to pass (no regression)
+- Note: Two expected `[ErrorHandler]` stderr lines from sprint2.test.js (malformed JSON tests) — pre-existing, non-blocking
+
+**Frontend Tests: FAIL — 406/416 tests passed, 10 failed (3 test files)**
+
+Failures introduced by Sprint 19 build commit (`2bb0067`) changes to `DestinationChipInput.jsx` and `CreateTripModal.jsx`:
+
+**Root cause 1 — `DestinationChipInput.jsx` aria-label change:**
+Sprint 19 renamed the text input `aria-label` from `"Add destination"` to `"New destination"` and added a new `<button aria-label="Add destination">` (+). All existing tests that used `getByLabelText(/add destination/i)` now match the button element instead of the input, causing 6 test failures in `DestinationChipInput.test.jsx` and cascading failures in `CreateTripModal.test.jsx` and `HomePage.test.jsx`.
+
+**Root cause 2 — `CreateTripModal.jsx` submit button disabled state change:**
+Sprint 19 added `disabled={isLoading || !name.trim() || destinations.length === 0}` to the submit button. Tests that click submit with an empty form to trigger validation error messages now fail because the button is disabled and the click is ignored.
+
+**Failing tests:**
+
+| Test File | Failing Test | Error |
+|-----------|-------------|-------|
+| `DestinationChipInput.test.jsx` | calls onChange when Enter is pressed with text | `expected "spy" to be called with arguments: [['Tokyo', 'Kyoto']]` — keyDown on button not input |
+| `DestinationChipInput.test.jsx` | calls onChange when comma is pressed with text | Same root cause |
+| `DestinationChipInput.test.jsx` | removes last destination on Backspace when input is empty | Same root cause |
+| `DestinationChipInput.test.jsx` | clears input on Escape key | `expected 'test' to be ''` — acting on button not input |
+| `DestinationChipInput.test.jsx` | input has aria-describedby pointing to dest-chip-hint when no error | `expected null to be 'dest-chip-hint'` — checking attribute on button not input |
+| `DestinationChipInput.test.jsx` | input has aria-describedby pointing to dest-chip-error when error is set | Same root cause |
+| `CreateTripModal.test.jsx` | shows validation error when trip name is empty on submit | `Unable to find text 'trip name is required'` — submit button is disabled, validation never fires |
+| `CreateTripModal.test.jsx` | shows validation error when destinations is empty on submit | `Unable to find text 'at least one destination is required'` — same cause |
+| `CreateTripModal.test.jsx` | calls onSubmit with form data when valid (chip input) | `expected "spy" to be called` — destinations not added because keyDown fires on button not input |
+| `HomePage.test.jsx` | navigates to new trip page after successful creation | `expected "spy" to be called at least once` — destinations not added, submit blocked |
+
+**Coverage notes:**
+- `rateLimitUtils.test.js`: 9 tests pass — `parseRetryAfterMinutes` utility fully covered ✅
+- Backend rate limiter logic: fully covered by sprint19.test.js ✅
+- Frontend component regressions: blocked by aria-label conflict from Sprint 19
+
+---
+
+### Integration Test Results
+
+**API contract compliance: PASS**
+- T-178 rate limiting: `rateLimiter.js` exports `loginLimiter` (10/15min), `registerLimiter` (5/60min), `generalAuthLimiter` (30/15min). Applied at lines 71 (`registerLimiter`), 150 (`loginLimiter`), 269 (`generalAuthLimiter`) in `auth.js`. Error response shape `{"error":{"code":"RATE_LIMITED","message":"..."}}` matches API error contract. ✅
+- No new endpoints introduced by Sprint 19 backend work. ✅
+- No database schema changes. ✅
+
+**UI state coverage: FAIL (due to broken frontend tests)**
+- T-180 (multi-destination UI) implementation is partially present in code but T-180 tracker status is still **Backlog**. The `DestinationChipInput.jsx` and `CreateTripModal.jsx` were modified in the Sprint 19 build commit but the changes broke pre-existing tests.
+- DestinationChipInput chip add/remove/keyboard flows: cannot be verified by tests (10 failures)
+
+**Auth enforcement: PASS**
+- All non-auth routes guarded by `authenticate` middleware ✅
+- Auth rate limiters applied before route handlers ✅
+- `generalAuthLimiter` applied to refresh and logout ✅
+
+**Input validation: PASS**
+- `validate()` middleware applied to register and login before rate limiter middleware in the route chain ✅
+- Destination inputs in `DestinationChipInput` sanitized via trim + duplicate check ✅ (code confirmed, tests blocked)
+
+**Details:**
+- Sprint 16 regression (start_date/end_date, formatDateRange): TripCard.test.jsx 17/17 pass ✅, formatDate.test.js 20/20 pass ✅
+- Sprint 15 regression (title, favicon): TripDetailsPage.test.jsx 70/70 pass ✅
+- Sprint 14 regression (calendar): TripCalendar.test.jsx 70/70 pass ✅
+
+---
+
+### Config Consistency Check
+
+**PORT alignment: PASS**
+- `backend/.env`: `PORT=3000`
+- `vite.config.js` proxy: `http://localhost:${BACKEND_PORT||'3000'}` → resolves to `http://localhost:3000` in dev ✅
+
+**SSL config: PASS**
+- Dev `.env`: SSL not set → vite proxy uses `http://` ✅
+- Staging: `BACKEND_SSL=true` triggers HTTPS proxy + `secure: false` for self-signed cert ✅
+
+**CORS config: PASS**
+- `backend/.env`: `CORS_ORIGIN=http://localhost:5173`
+- Vite dev server: port 5173 ✅
+
+**Details:**
+- Docker compose: `PORT: 3000` in backend service, `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}` — consistent with Docker context (nginx on :80). N/A for staging (pm2 deployment). ✅
+- No new environment variable requirements introduced by Sprint 19. ✅
+
+---
+
+### Security Scan Results
+
+**npm audit: PASS (no new Critical/High)**
+- Backend: 5 moderate vulnerabilities (esbuild chain via vite/vitest) — dev dependencies only, pre-existing from Sprint 15. No new findings from Sprint 19.
+- Frontend: 5 moderate vulnerabilities (same esbuild chain) — dev dependencies only, pre-existing.
+- No Critical or High severity vulnerabilities in either package.
+
+**Hardcoded secrets: PASS**
+- `backend/src/middleware/rateLimiter.js`: No secrets. Only `express-rate-limit` config with integer window/max values and string messages. ✅
+- `backend/src/routes/auth.js`: JWT_SECRET read from `process.env.JWT_SECRET` only. ✅
+- `frontend/src/components/DestinationChipInput.jsx`: No secrets. ✅
+- `frontend/src/components/CreateTripModal.jsx`: No secrets. ✅
+
+**SQL injection vectors: PASS**
+- No new DB queries introduced by Sprint 19 (T-178 is middleware only, no model changes). ✅
+- Existing `db.raw()` calls in `tripModel.js`, `activityModel.js`, `landTravelModel.js` use only fixed column references or parameterized bindings — no user input interpolated. ✅
+- Destination strings sent via PATCH `/api/v1/trips/:id` are stored through Knex parameterized updates — no raw SQL concatenation. ✅
+
+**Auth enforcement: PASS**
+- `loginLimiter` applied at route line 150, before handler ✅
+- `registerLimiter` applied at route line 71, before handler ✅
+- `generalAuthLimiter` applied to refresh/logout ✅
+- IP-based keying (default `express-rate-limit` behavior, not user-supplied input) ✅
+
+**XSS vulnerabilities: PASS**
+- `DestinationChipInput.jsx`: destination chips rendered as `{dest}` inside `<span>` — React text node, no `dangerouslySetInnerHTML`. ✅
+- 429 error message displayed in frontend via `parseRetryAfterMinutes` util — output is numeric string, no user data. ✅
+
+**Error response leakage: PASS**
+- `errorHandler.js`: logs stack server-side (`console.error('[ErrorHandler]', err.stack)`), returns generic message for 500s (`'An unexpected error occurred'`). ✅
+- `rateLimiter.js` `makeHandler`: returns `{error:{code:'RATE_LIMITED',message:'...'}}` — no stack, no internals. ✅
+- Test D2 (sprint19.test.js): confirms 429 body contains only `{error:{code,message}}` — `error.stack` is undefined. ✅
+
+**Details:**
+- Rate limiter uses MemoryStore (in-process). Acceptable for single-process staging/production. Redis store recommended if horizontal scaling is needed. Non-blocking.
+- T-178 resolves the long-standing known accepted risk (18 sprints deferred) from T-010/T-018: auth endpoints are now rate-limited. ✅
+- Pre-existing accepted risk: 5 moderate npm audit findings (esbuild chain) in dev dependencies — not in production runtime.
+
+---
+
+### Overall: BLOCKED
+
+**T-181 (Security checklist + code review): PASS** — No P1 security issues found. T-178 backend implementation is sound.
+
+**T-182 (Integration testing): BLOCKED** — 10 frontend test failures introduced by Sprint 19 build changes to `DestinationChipInput.jsx` and `CreateTripModal.jsx`. Specifically:
+1. Input `aria-label` renamed from `"Add destination"` to `"New destination"` while a new button with `aria-label="Add destination"` was added — breaks 6 tests using `getByLabelText(/add destination/i)`
+2. Submit button in `CreateTripModal` now disabled when `!name.trim() || destinations.length === 0` — breaks 2 validation error tests and 2 submit path tests
+
+**Blocked tasks:**
+- T-183 (Deploy): Cannot proceed — QA integration test failures unresolved
+- T-184 (Monitor), T-185 (User Agent): Transitively blocked
+
+**Required fix:** Frontend Engineer must either:
+- Update tests to use `getByLabelText(/new destination/i)` for the input (and update submit-button validation tests to fill in valid data before asserting validation, or to use the new aria-label), OR
+- Change the new button's `aria-label` to something that does not conflict with the existing test selectors (e.g., `aria-label="Add destination chip"`)
+
+The fix is in the test suite or in the component's aria-label — not in the backend. Backend work (T-178) is complete and sound.
+
+---
+
+## Sprint #19 — T-183 Pre-Deploy Gate Check (Attempt 2)
+**Date:** 2026-03-09
+**Environment:** Staging (pre-deploy gate check — no deploy attempted)
+**Performed by:** Deploy Engineer (second invocation)
+
+### Gate Check Result: ⛔ BLOCKED (same blocker as Attempt 1)
+
+| Prerequisite | Status | Evidence |
+|---|---|---|
+| T-178 (Backend: auth rate limiting) | ✅ COMPLETE | 287/287 backend tests pass; `rateLimiter.js` exists; Manager-approved |
+| T-179 (Design: multi-destination spec) | ✅ Done | ui-spec.md Spec 18 published |
+| T-180 (Frontend: multi-destination UI) | ✅ Done (code) | DestinationChipInput.jsx implemented |
+| T-181 (QA: security checklist) | ✅ PASS | qa-build-log.md Sprint 19 section: no P1 security issues |
+| T-182 (QA: integration testing) | ❌ BLOCKED | 10 frontend test failures — see below |
+| QA handoff in handoff-log.md | ❌ MISSING | T-182 not passed; no "Ready for Deploy" handoff logged |
+
+### T-182 Blocker — Frontend Test Failures (10 tests, 3 files)
+
+Backend is clean (287/287 pass). Frontend is **406/416 pass (10 fail)**:
+
+**Root cause 1 — `DestinationChipInput.jsx` aria-label conflict:**
+- Input `aria-label` was renamed `"Add destination"` → `"New destination"` in Sprint 19
+- New `+` button was added with `aria-label="Add destination"`
+- Tests still use `getByLabelText(/add destination/i)` which now matches the *button*, not the input
+- **6 tests fail** in `DestinationChipInput.test.jsx`
+
+**Root cause 2 — `CreateTripModal.jsx` submit button disabled state:**
+- Submit button is now `disabled` when `destinations.length === 0`
+- Tests that click submit with empty form to trigger validation error messages fail because click is no-op on disabled button
+- **3 tests fail** in `CreateTripModal.test.jsx` + **1 test fails** in `HomePage.test.jsx`
+
+### Infrastructure Readiness (all green — blocking only on tests)
+
+| Component | Status | Detail |
+|---|---|---|
+| pm2 `triplanner-backend` | ✅ Online | PID 51577, 30h uptime, `rateLimiter.js` loaded on disk |
+| pm2 `triplanner-frontend` | ✅ Online | PID 51694, 30h uptime |
+| Frontend build (`npm run build`) | ✅ 0 errors | 122 modules → 340KB JS, 75KB CSS |
+| Backend migration state | ✅ No migrations needed | T-178 is middleware only |
+
+### Decision: BLOCKED — No deploy attempted
+
+Per rules.md: "Never deploy without QA confirmation in the handoff log." T-182 has not passed. Deploying with 10 known test failures would ship unverified frontend code.
+
+### Required Fix (Frontend Engineer)
+
+Fix the 10 test failures by updating `DestinationChipInput.jsx` button aria-label to avoid conflict:
+- **Option A (recommended):** Change button `aria-label="Add destination"` → `aria-label="Add destination chip"` in `DestinationChipInput.jsx` (line 153). Tests using `/add destination/i` will then find the input. The hint text in tests using `getByLabelText(/add destination/i)` for the input will work again.
+- **Option B:** Update all test selectors in `DestinationChipInput.test.jsx`, `CreateTripModal.test.jsx`, `HomePage.test.jsx` to use `getByLabelText(/new destination/i)` for the input. Also update submit-disabled tests to supply valid form state before triggering submit assertions.
+
+After fix: frontend must reach **416/416 tests pass** before T-182 can be re-certified and T-183 can deploy.
+
+---
+
 ## Sprint #19 — T-183 Pre-Deploy Gate Check
 **Date:** 2026-03-09
 **Environment:** Staging (pre-deploy gate check — no deploy attempted)

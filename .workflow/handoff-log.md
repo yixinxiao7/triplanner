@@ -4,6 +4,71 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[Deploy Engineer → Frontend Engineer] Sprint #19 — T-183 Blocked: Fix 10 Frontend Test Failures**
+Date: 2026-03-09
+Status: Blocked — Awaiting Frontend Engineer Fix
+
+## T-183 Deploy — BLOCKED on Frontend Test Failures
+
+Deploy Engineer has been invoked for T-183 (Sprint 19 staging re-deployment). The deploy **cannot proceed** because T-182 (QA integration testing) has not passed. QA found 10 frontend test failures that must be resolved before the pipeline can continue.
+
+### What needs to be fixed
+
+**File:** `frontend/src/components/DestinationChipInput.jsx`
+
+**The conflict:** Sprint 19 renamed the input `aria-label` from `"Add destination"` to `"New destination"` and added a new `<button aria-label="Add destination">`. Tests using `getByLabelText(/add destination/i)` now match the *button* instead of the *input*, breaking 6 tests. Additionally, the `CreateTripModal.jsx` submit button is now disabled when the form is empty, breaking 3 validation error tests.
+
+**Recommended fix (one line):** In `DestinationChipInput.jsx` at the `+` button (line ~153), change:
+```
+aria-label="Add destination"
+```
+to:
+```
+aria-label="Add destination chip"
+```
+
+This unblocks all 6 `DestinationChipInput.test.jsx` failures with no test changes needed. Then update the 3+1 `CreateTripModal.test.jsx` / `HomePage.test.jsx` tests to supply a valid `destinations` array before clicking submit (since the button is now correctly disabled when empty).
+
+**Target:** `npm test --run` in `frontend/` → **416/416 PASS** (all 10 currently failing tests must pass)
+
+### Current test counts
+- Backend: ✅ 287/287 pass (no action needed)
+- Frontend: ❌ 406/416 pass (10 fail — need 416/416)
+
+### After fix: QA must re-certify T-182
+
+Once the 10 test failures are fixed:
+1. QA Engineer re-runs `npm test --run` in `frontend/` → confirms 416/416 PASS
+2. QA logs updated T-182 result in `qa-build-log.md` and logs a T-182 → T-183 handoff in this file
+3. Deploy Engineer (T-183) proceeds immediately
+
+### Infrastructure is ready — no other blockers
+
+| Component | Status |
+|---|---|
+| pm2 `triplanner-backend` (PID 51577) | ✅ Online |
+| pm2 `triplanner-frontend` (PID 51694) | ✅ Online |
+| Backend tests (T-178 rate limiter) | ✅ 287/287 pass |
+| Frontend build (`npm run build`) | ✅ 0 errors, 122 modules |
+| T-181 security checklist | ✅ PASS |
+| No migrations needed | ✅ T-178 is middleware only |
+
+---
+
+**[QA → Frontend Engineer] Sprint #19 — QA Blocked**
+Date: 2026-03-09
+Status: Blocked
+Issues:
+1. **DestinationChipInput aria-label conflict (6 test failures):** Sprint 19 renamed the text input `aria-label` from `"Add destination"` to `"New destination"` and added a new `<button aria-label="Add destination">`. All existing tests using `getByLabelText(/add destination/i)` now find the button instead of the input. Affected: `DestinationChipInput.test.jsx` tests: "calls onChange when Enter is pressed", "calls onChange when comma is pressed", "removes last destination on Backspace", "clears input on Escape key", "input has aria-describedby pointing to dest-chip-hint", "input has aria-describedby pointing to dest-chip-error".
+2. **CreateTripModal submit disabled state (3 test failures):** Sprint 19 changed the submit button to `disabled={isLoading || !name.trim() || destinations.length === 0}`. Tests that click submit with empty form to trigger validation errors now fail because the button is disabled. Affected: `CreateTripModal.test.jsx` tests: "shows validation error when trip name is empty on submit", "shows validation error when destinations is empty on submit", "calls onSubmit with form data when valid (chip input)".
+3. **HomePage cascade failure (1 test failure):** `HomePage.test.jsx` "navigates to new trip page after successful creation" fails because `getByLabelText(/add destination/i)` matches the button (same root cause as #1), so no destinations are added and submit remains disabled.
+
+**Required fix:** Update `DestinationChipInput.jsx` button aria-label to something non-conflicting (e.g., `"Add destination chip"` or `"Confirm destination"`), OR update the test selectors to `getByLabelText(/new destination/i)` for the input. Also update validation error tests to use a different approach (e.g., check that the submit button is disabled rather than clicking it and looking for an error message).
+
+See qa-build-log.md Sprint #19 QA Run section for full details.
+
+---
+
 **From:** Manager Agent (Code Review)
 **To:** QA Engineer
 **Sprint:** #19
