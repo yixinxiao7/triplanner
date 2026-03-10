@@ -5784,3 +5784,130 @@ All contracts from Sprints 1–20 remain in force unchanged. The complete author
 ---
 
 *Sprint 22 contracts published by Backend Engineer 2026-03-10. No new endpoints or schema changes. Sprint 22 is a frontend-feature-only sprint — `TripStatusSelector` (T-196) calls the existing `PATCH /api/v1/trips/:id` endpoint with `{ "status": "..." }`, which has accepted the `status` field since Sprint 1. The focused reference above (§ "Status Field on PATCH /api/v1/trips/:id") gives the Frontend Engineer everything needed for T-196 implementation. Test baseline: 304/304 backend | 429/429 frontend. No new backend tests expected — the status path is already covered by the existing trip PATCH test suite.*
+
+---
+
+## Sprint 24 — API Contracts
+
+**Date:** 2026-03-10
+**Published by:** Backend Engineer
+**Sprint Goal:** Execute T-202 (User Agent consolidated walkthrough), upgrade vitest 1.x → 4.x (T-203), and implement the home page status filter tabs (T-208, frontend-only, client-side).
+
+---
+
+### Sprint 24 — No New API Endpoints
+
+Sprint 24 introduces **zero new backend endpoints and zero schema changes**. The backend's sole engineering task is a **dev-tooling upgrade** (T-203): bumping `vitest` from `^1.x` to `^4.0.0` in `backend/package.json`. This is a test-runner change with no effect on runtime behaviour, API surface, or the database layer.
+
+The new frontend feature — `StatusFilterTabs` (T-208) — filters trips **client-side only**. The Design Agent's Spec 21 explicitly specifies "no new API calls." The existing `GET /api/v1/trips` response already returns the `status` field (`"PLANNING" | "ONGOING" | "COMPLETED"`) on every trip object, giving the frontend everything it needs to filter locally without any backend changes.
+
+| Task | Agent | API Impact |
+|------|-------|------------|
+| T-202 | User Agent | Consolidated walkthrough — no API changes. Exercises existing staging endpoints. |
+| T-203 (backend) | Backend Engineer | `vitest` upgrade 1.x → 4.x in `backend/package.json`. **Dev-tooling only. Zero production or runtime changes.** |
+| T-203 (frontend) | Frontend Engineer | `vitest` upgrade 1.x → 4.x in `frontend/package.json`. Dev-tooling only. |
+| T-207 | Design Agent | Spec 21 — status filter tabs. UI spec only, no API changes. |
+| T-208 | Frontend Engineer | `StatusFilterTabs` component — client-side filtering of existing trip data. **No new API calls.** Reads `status` from existing `GET /api/v1/trips` response. |
+| T-204 | QA Engineer | Security checklist + test re-verification. Exercises existing endpoints. |
+| T-205 | Deploy Engineer | Staging re-deployment. No migration required. |
+| T-206 | Monitor Agent | Staging health check. No API changes. |
+| T-209 | User Agent | Sprint 24 feature walkthrough. No API changes. |
+
+---
+
+### Sprint 24 — Status Field on GET /api/v1/trips (Reference for T-208)
+
+This is a **focused reference** for the Frontend Engineer implementing `StatusFilterTabs` (T-208). No changes are made to this endpoint — this excerpt confirms the existing data shape supports client-side filtering without modification.
+
+#### Endpoint
+
+| Field | Value |
+|-------|-------|
+| Method | `GET` |
+| Path | `/api/v1/trips` |
+| Auth Required | Yes — Bearer token (`Authorization: Bearer <access_token>`) |
+| Sprint introduced | 1 (T-005) |
+| Last updated | Sprint 20 (T-186, T-188) |
+| Contract status | ✅ Agreed, Applied on Staging |
+
+#### Query Parameters (unchanged from prior sprints)
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | `1` | Pagination page number |
+| `limit` | integer | `20` | Results per page (max 100) |
+| `status` | string | — | Optional server-side pre-filter: `PLANNING \| ONGOING \| COMPLETED`. (Not used by T-208 — T-208 fetches all trips then filters client-side.) |
+| `sort` | string | `created_at_desc` | Sort order. See Sprint 5 contract for full sort options. |
+| `search` | string | — | Optional substring match on trip `name`. |
+
+#### Success Response — 200 OK
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "user_id": "uuid",
+      "name": "string",
+      "destinations": ["string"],
+      "status": "PLANNING",
+      "start_date": "YYYY-MM-DD | null",
+      "end_date": "YYYY-MM-DD | null",
+      "notes": "string | null",
+      "created_at": "ISO 8601 timestamp",
+      "updated_at": "ISO 8601 timestamp"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 42
+  }
+}
+```
+
+**Key field for T-208:** The `status` field is always present and is one of `"PLANNING"`, `"ONGOING"`, or `"COMPLETED"`. The `StatusFilterTabs` component filters `trips` locally using:
+
+```js
+filteredTrips = activeFilter === "ALL" ? trips : trips.filter(t => t.status === activeFilter)
+```
+
+**No API call is made when the active filter changes.** All trip data is already in memory from the initial `GET /api/v1/trips` fetch on `HomePage` mount.
+
+#### T-208 Integration Notes
+
+- **No pagination concern for MVP:** The home page fetches the first page (default limit 20). Client-side filtering applies only to the trips in memory. If a user has more than 20 trips, filtered counts may not reflect totals accurately — this is accepted behaviour at current scale and matches prior sprint decisions.
+- **Stale data after status change:** If a user navigates from `TripDetailsPage` (where they changed a trip's status via `PATCH /api/v1/trips/:id`) back to `HomePage`, the existing home page refetch-on-mount behaviour ensures the trip list is fresh. No new synchronisation mechanism is required.
+- **Empty filtered state:** When `filteredTrips.length === 0` AND `trips.length > 0`, show `"No [Label] trips yet."` with a `"Show all"` reset link. Do NOT modify the global empty state (shown when `trips.length === 0`). The global empty state is a backend-independent UI concern.
+
+---
+
+### Sprint 24 — No Schema Changes
+
+No database migrations are introduced in Sprint 24. The migration set remains at 10 applied migrations (001–010), identical to Sprint 22.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table (includes `status VARCHAR(20) DEFAULT 'PLANNING'`) | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–24 | *(No new migrations through Sprint 24)* | Schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 24. Deploy Engineer: no `knex migrate:latest` run required.**
+
+---
+
+### Sprint 24 — All Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–22 remain in force unchanged. Full authoritative endpoint table is in the Sprint 22 section above. No endpoint signatures, request shapes, response shapes, auth requirements, or error codes have changed in Sprint 24.
+
+---
+
+*Sprint 24 contracts published by Backend Engineer 2026-03-10. No new endpoints or schema changes. T-203 (backend) is a dev-tooling-only vitest upgrade — zero API surface impact. T-208 is a client-side-only filter using data already returned by the existing `GET /api/v1/trips` endpoint. Test baseline entering Sprint 24: 304/304 backend | 451/451 frontend. After T-203 completes, all 304+ backend tests must pass under vitest 4.x.*

@@ -4,6 +4,67 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-10] Backend Engineer → Frontend Engineer** *(Sprint #24 — API contracts published)*
+
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Status:** ✅ CONTRACTS CONFIRMED — No new endpoints. T-208 may proceed using existing API.
+
+**Task completed:** Sprint 24 API contract review (pre-implementation gate)
+
+**Summary:**
+
+Sprint 24 introduces **zero new backend endpoints and zero schema changes**. The `StatusFilterTabs` feature (T-208) is fully supported by the existing `GET /api/v1/trips` response — no backend work is required to enable the frontend feature.
+
+**What the frontend needs to know for T-208:**
+
+- **Existing endpoint:** `GET /api/v1/trips` (auth required — Bearer token)
+- **Key field:** `status` — always present on every trip object; one of `"PLANNING"`, `"ONGOING"`, `"COMPLETED"`
+- **Filter logic (confirmed):** `filteredTrips = activeFilter === "ALL" ? trips : trips.filter(t => t.status === activeFilter)`
+- **No new API call is made when the filter changes** — all filtering is client-side using the trips already in memory from the initial page load
+- **Empty filtered state:** `filteredTrips.length === 0` AND `trips.length > 0` → show "No [Label] trips yet." + "Show all" reset link. Do NOT touch the global empty state (`trips.length === 0`)
+
+**Contract reference:** `.workflow/api-contracts.md` → "Sprint 24 — API Contracts" → "Status Field on GET /api/v1/trips (Reference for T-208)"
+
+**Backend blocker status for T-208:** None. The existing API is live on staging and unchanged. Frontend can begin T-208 immediately upon T-207 Manager approval (which has already been granted per Design Agent handoff above).
+
+**Backend blocker status for T-203 (frontend vitest portion):** T-203 is gated on T-202 feedback triage. Do not begin the vitest upgrade until Manager confirms T-202 is clean.
+
+---
+
+**[2026-03-10] Backend Engineer → QA Engineer** *(Sprint #24 — API contracts published for QA reference)*
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** ✅ CONTRACTS CONFIRMED — No new endpoints or schema changes. T-204 test scope is unchanged.
+
+**Task completed:** Sprint 24 API contract review (pre-implementation gate)
+
+**Summary for T-204 (QA: security checklist + test re-verification):**
+
+Sprint 24 backend changes are **dev-tooling only**:
+
+1. **T-203 (backend):** `vitest` upgraded from `^1.x` to `^4.0.0` in `backend/package.json`. This changes the test runner version but has **zero impact on production runtime code, API endpoints, or database schema**. All 304+ existing backend tests must pass under vitest 4.x.
+
+2. **T-208 (frontend):** `StatusFilterTabs` — client-side only. No new API endpoints are called. Existing `GET /api/v1/trips` endpoint is used unchanged.
+
+**QA test scope implications:**
+
+| Area | Change | QA Action |
+|------|--------|-----------|
+| Backend API endpoints | None — all endpoints unchanged | Re-run existing backend test suite (`npm test --run` in `backend/`) — all 304+ must pass |
+| Backend vitest upgrade | `^1.x` → `^4.0.0` | Confirm no breaking API changes in vitest 4.x affect test assertions or mocking patterns. Fix any failures. |
+| Frontend API integration | None — `StatusFilterTabs` is client-side only | Confirm `GET /api/v1/trips` still returns `status` field correctly (regression check) |
+| Database schema | None — no new migrations | Confirm `knex migrate:status` shows 10 applied, 0 pending |
+| Security checklist | No new auth, no new endpoints, no new env vars | Standard checklist re-verification; vitest upgrade should not introduce any security surface |
+| `npm audit` | Vitest upgrade should resolve B-021 (GHSA-67mh-4wv8-2f99) | Run `npm audit` in `backend/` — confirm 0 Moderate+ dev-dep vulnerabilities after upgrade |
+
+**Contract reference:** `.workflow/api-contracts.md` → "Sprint 24 — API Contracts"
+
+**No schema changes to verify.** Migration count remains 10 (001–010). `knex migrate:latest` is NOT required in T-205 — Deploy Engineer has been noted accordingly.
+
+---
+
 **[2026-03-10] Design Agent → Frontend Engineer** *(Sprint #24 — T-207 complete)*
 
 **From:** Design Agent
