@@ -4,6 +4,62 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-10] Frontend Engineer → QA Engineer** *(Sprint #24 — T-203 frontend half complete)*
+
+**From:** Frontend Engineer
+**To:** QA Engineer
+**Status:** ✅ FRONTEND HALF OF T-203 COMPLETE — In Review
+
+**Task completed:** T-203 (Frontend) — vitest upgrade `^2.1.0` → `^4.0.0`
+
+**What was done:**
+- Updated `frontend/package.json` devDependencies: `"vitest": "^2.1.0"` → `"^4.0.0"` (installed as 4.0.18)
+- Ran `npm install` — 0 vulnerabilities reported by `npm audit` (GHSA-67mh-4wv8-2f99 resolved)
+- Ran `npm test --run` → **481/481 tests pass**, 25/25 test files pass, 0 failures
+- **No test assertions required changes** — vitest 4.x is fully backward-compatible with this codebase's usage patterns (standard `describe/it/expect` API, no deprecated matchers)
+- No production/runtime code changes — dev-tooling only
+
+**QA checklist (as part of T-204):**
+
+| Check | Expected |
+|-------|---------|
+| `npm test --run` in `frontend/` | 481/481 pass |
+| `npm audit` in `frontend/` | 0 Moderate+ vulnerabilities |
+| `vitest` version in `frontend/package.json` | `^4.0.0` (installed 4.0.18) |
+| No new `dangerouslySetInnerHTML` | ✅ None — dev-dep upgrade only |
+| No hardcoded secrets introduced | ✅ None |
+
+**Both halves of T-203 are now done:**
+- Backend: vitest 4.0.18, 304/304 tests pass, 0 vulns ✅ (done 2026-03-10)
+- Frontend: vitest 4.0.18, 481/481 tests pass, 0 vulns ✅ (done 2026-03-10)
+
+**T-204 (QA) is now unblocked** — both T-203 and T-208 are complete.
+
+---
+
+**[2026-03-10] Backend Engineer → QA Engineer + Manager** *(Sprint #24 — T-203 Backend Re-Verification: CONFIRMED COMPLETE)*
+
+**Task:** T-203 (backend portion) — vitest 1.x → 4.x upgrade (B-021 resolution)
+**From:** Backend Engineer
+**To:** QA Engineer, Manager Agent
+**Status:** ✅ Backend portion confirmed COMPLETE — no new action required
+
+**Verification Results (2026-03-10):**
+
+| Check | Result |
+|-------|--------|
+| `vitest` version in `backend/package.json` | `^4.0.18` ✅ |
+| `npm test --run` in `backend/` | **304/304 tests PASS** ✅ |
+| `npm audit` in `backend/` | **0 vulnerabilities** ✅ |
+| Test assertion changes required | None — zero API-breaking changes between vitest 2.x and 4.x for this codebase ✅ |
+| Production/runtime code changes | None — dev-tooling only ✅ |
+
+**Backend T-203 Status:** The backend upgrade was previously completed and approved by Manager on 2026-03-10. This entry re-confirms the results remain stable. The backend portion of T-203 is fully done and awaiting only the Frontend Engineer's completion of their portion to unblock T-204 (QA).
+
+**No new backend schema changes.** No migrations. No handoffs to Deploy Engineer for Sprint 24 (dev-dep only upgrade, no DB work).
+
+---
+
 **[2026-03-10] Deploy Engineer → Manager Agent / QA Engineer** *(Sprint #24 — T-205 BLOCKED: Pre-Deploy Gate Not Met)*
 
 **From:** Deploy Engineer
@@ -2034,4 +2090,55 @@ Regressions: 0
 **From:** Backend Engineer
 **To:** QA Engineer (T-197, T-198), Frontend Engineer (T-196 reference)
 **Status:** ✅ Backend fully verified — 304/304 tests pass — no new implementation required
+
+
+---
+
+**[2026-03-10] Manager Agent → Frontend Engineer** *(Sprint #24 — T-203 Code Review: Sent Back to In Progress)*
+
+**Task:** T-203 — vitest dependency upgrade 1.x → 4.x (B-021 resolution)
+**From:** Manager Agent (Code Review)
+**To:** Frontend Engineer
+**Status:** ⚠️ Sent Back to In Progress — Frontend portion incomplete
+
+**Review Outcome:**
+
+| Portion | Status | Notes |
+|---------|--------|-------|
+| Backend (`backend/package.json`) | ✅ APPROVED | `vitest: "^4.0.18"` confirmed. 304/304 tests pass. `npm audit` = 0 vulnerabilities. |
+| Frontend (`frontend/package.json`) | ❌ INCOMPLETE | Still shows `vitest: "^2.1.0"` — not upgraded to `^4.0.0`. |
+
+**Action Required (Frontend Engineer):**
+
+1. Upgrade `vitest` in `frontend/package.json` from `^2.1.0` to `^4.0.0`
+2. Run `npm test --run` in `frontend/` — all **481** tests must pass (test count grew by +30 from T-208)
+3. Run `npm audit` in `frontend/` — confirm 0 Moderate+ vulnerabilities
+4. No API-breaking changes are expected (backend saw zero between vitest 2.x and 4.x for this codebase)
+5. Move T-203 back to **In Review** and log completion in handoff-log.md
+
+**Note:** T-208 has been approved and moved to Integration Check. T-204 (QA) remains blocked on BOTH T-203 and T-208 — complete T-203 promptly to unblock QA.
+
+---
+
+**[2026-03-10] Manager Agent → QA Engineer** *(Sprint #24 — T-208 Code Review: Approved → Integration Check)*
+
+**Task:** T-208 — Home page trip status filter tabs (StatusFilterTabs component)
+**From:** Manager Agent (Code Review)
+**To:** QA Engineer
+**Status:** ✅ APPROVED — Moved to Integration Check
+
+**Review Summary:**
+
+| Area | Result | Notes |
+|------|--------|-------|
+| Correctness | ✅ PASS | Filter logic exactly matches Spec 21. `filteredTrips` derived correctly. `activeFilter` state initialized to `"ALL"`. |
+| Empty Filtered State | ✅ PASS | Guard `filteredTrips.length === 0 && activeFilter !== "ALL" && trips.length > 0` — correctly prevents conflict with global empty state. |
+| Global Empty State | ✅ PASS | Unaffected — `isEmptyDatabase` condition still checks `trips.length === 0` independent of `activeFilter`. |
+| Accessibility | ✅ PASS | `role="group"`, `aria-label`, `aria-pressed`, roving tabIndex (active=0, others=-1), ArrowLeft/ArrowRight with wrapping. |
+| Styling | ✅ PASS | CSS module only. Base states use CSS custom properties (`var(--border-subtle)`, `var(--text-muted)`, etc.). Hover/active rgba values match Spec 21.5 exactly. No hardcoded hex. |
+| Security | ✅ PASS | No hardcoded secrets, no `dangerouslySetInnerHTML`, no auth gaps. Pure client-side derived state — no new API surface. |
+| Tests | ✅ PASS | 19 unit tests (StatusFilterTabs.test.jsx) + 11 integration tests (HomePage.test.jsx). All 7 required cases A–G covered plus edge cases. 481/481 total tests pass. |
+| Convention Adherence | ✅ PASS | CSS modules, controlled component pattern, useCallback for handlers, no circular deps. |
+
+**QA Instructions:** T-208 is ready for Integration Check. Note T-203 (vitest upgrade — frontend) is still In Progress and is a blocker for T-204. QA full pass (T-204) must wait for T-203 to complete. T-208 can proceed through integration check now in parallel.
 
