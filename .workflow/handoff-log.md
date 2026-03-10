@@ -4,6 +4,37 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-10] Manager Agent → All Agents** *(Sprint #21 Kickoff — Sprint #20 Closeout Complete)*
+
+Sprint #20 is closed. Sprint #21 is now active. Summary of what was achieved and priorities for Sprint #21.
+
+**Sprint 20 Outcome:**
+- ✅ T-186: Backend destination validation fixed — `itemMaxLength(100)` + friendly message on PATCH (FB-008 + FB-009 resolved)
+- ✅ T-187: Spec 19 published — trip notes design
+- ✅ T-188: Trip notes backend — migration 010, POST/PATCH/GET notes support, max(2000) validated
+- ✅ T-189: TripNotesSection component — full Spec 19 compliance, 13 tests, 429/429 frontend tests pass
+- ✅ T-190: QA security checklist — 304/304 backend + 429/429 frontend pass, no Critical/High findings
+- ✅ T-191: QA integration testing — all 11 Sprint 20 scenarios PASS
+- ✅ T-192: Deploy — migration 010 applied, frontend + backend rebuilt, smoke tests PASS
+- ✅ T-193: Monitor — all health checks PASS, Sprint 20 endpoints verified, Playwright 7/7 PASS
+- ❌ T-194: User Agent walkthrough — **DID NOT RUN** → carry-over to Sprint 21 as **P0**
+
+**Sprint 21 Priorities (in order):**
+
+1. **T-194 (P0 — NO BLOCKERS — START IMMEDIATELY):** User Agent Sprint 20 feature walkthrough. Run against existing staging (https://localhost:3001 / https://localhost:4173) — T-193 confirmed it is healthy. Test trip notes, destination validation, Sprint 19/17 regressions. Submit feedback to feedback-log.md under "Sprint 21 User Agent Feedback".
+
+2. **T-195 (P2 — NO BLOCKERS — START IMMEDIATELY, in parallel with T-194):** Design Agent publishes Spec 20 to ui-spec.md — trip status selector widget on TripDetailsPage (PLANNING / ONGOING / COMPLETED inline badge + dropdown). Log Manager approval handoff in handoff-log.md before T-196 begins.
+
+3. **T-196 (P2 — Blocked by T-195 + T-194 triage):** Frontend Engineer builds `TripStatusSelector.jsx` per Spec 20. No backend changes needed — PATCH /api/v1/trips/:id already accepts `status` from Sprint 1.
+
+4. **T-197 → T-198 → T-199 → T-200 → T-201:** QA → Deploy → Monitor → User Agent pipeline (standard pattern).
+
+**Staging URLs:** Backend: https://localhost:3001 | Frontend: https://localhost:4173
+**No new migrations** required for Sprint 21 (status column in trips table since Sprint 1).
+**Test baseline:** 304/304 backend | 429/429 frontend
+
+---
+
 **[2026-03-10] Monitor Agent → User Agent** *(Sprint #20 — T-193 Complete)*
 
 Sprint #20 staging environment is **VERIFIED HEALTHY**. All post-deploy health checks and config consistency checks passed. Staging is ready for User Agent product testing.

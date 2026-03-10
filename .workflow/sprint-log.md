@@ -2343,4 +2343,80 @@ All tasks remain in Backlog status. None progressed.
 
 ---
 
+### Sprint #20 — 2026-03-10 to 2026-03-10
+
+**Goal:** Fix two minor backend validation gaps from Sprint 19 (FB-008: inconsistent PATCH error message on empty destinations; FB-009: missing per-item max-length on destination strings). Deliver the trip notes/description feature (B-030): a freeform notes field on the trip details page. Complete the full QA → Deploy → Monitor → User Agent pipeline.
+
+**Goal Met:** ⚠️ PARTIAL — All 8 implementation + infrastructure tasks completed with zero rework (T-186, T-187, T-188, T-189, T-190, T-191, T-192, T-193). T-193 Monitor health check passed and handoff to User Agent was logged. However, **T-194 (User Agent Sprint 20 walkthrough) did not run** — carried forward as Sprint 21 P0.
+
+---
+
+**Tasks Completed (8/9):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-186 | Backend Engineer: Fix Sprint 19 Joi destination validation gaps — `.itemMaxLength(100)` on both POST + PATCH schemas; friendly `.messages()` on PATCH empty-array (FB-008 + FB-009) | ✅ Done |
+| T-187 | Design Agent: Trip notes/description field spec (Spec 19) — textarea, char count, edit/save/cancel, Japandi styling, accessibility | ✅ Done |
+| T-188 | Backend Engineer: Trip notes backend — migration 010 (`notes TEXT`), POST/PATCH/GET support, max(2000) validation, api-contracts.md update | ✅ Done |
+| T-189 | Frontend Engineer: `TripNotesSection.jsx` component — view/edit modes, char count, save/cancel, keyboard shortcuts, focus management, 13 tests | ✅ Done |
+| T-190 | QA Engineer: Security checklist + code review — 304/304 backend + 429/429 frontend tests PASS; no Critical/High audit findings | ✅ Done |
+| T-191 | QA Engineer: Integration testing — all 11 Sprint 20 scenarios PASS; regressions (Sprint 19, 17, 16) clean | ✅ Done |
+| T-192 | Deploy Engineer: Sprint 20 staging re-deployment — migration 010 applied, backend + frontend rebuilt and pm2-reloaded; all 7 smoke tests PASS | ✅ Done |
+| T-193 | Monitor Agent: Sprint 20 staging health check — HTTPS, pm2, health endpoint, notes field, destination validation, regression checks all PASS; handoff to User Agent logged | ✅ Done |
+
+**Tasks Carried Over (1 task → Sprint 21 Backlog):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-194 | User Agent: Sprint 20 feature walkthrough (trip notes + destination validation) | User Agent did not run this sprint. Staging is live and verified healthy. Zero blockers remain. **Must be P0 in Sprint 21.** |
+
+---
+
+**Key Decisions (This Sprint):**
+- **Trip notes pre-implementation (T-103 carry-forward):** The `notes TEXT` column (migration 010) and full API support for notes was already implemented as T-103 in Sprint 7. T-188 only needed to add acceptance test coverage — no new migration or model changes. This pattern of early schema work paying off later is a workflow positive.
+- **Custom `itemMaxLength` validator (T-186):** The codebase uses a custom `validate.js` middleware rather than direct Joi; the Backend Engineer correctly added `itemMaxLength` support there rather than switching to Joi. Semantics are equivalent. Manager approved — implementation is secure (no schema internals exposed in error messages).
+- **`TripNotesSection` focus management (T-189):** Textarea autofocuses on entering edit mode; pencil button is refocused when edit mode closes. This keyboard + screen reader UX pattern should be used consistently in future edit-in-place components.
+
+---
+
+**Feedback Summary (Sprint 20):**
+
+*No new Sprint 20 feedback entries — T-194 (User Agent walkthrough) did not run. The Sprint 20 feedback section in feedback-log.md contains Sprint 19 entries (FB-001 to FB-013), all of which were already triaged in Sprint 20 kickoff.*
+
+| Entry | Category | Severity | Status | Notes |
+|-------|----------|----------|--------|-------|
+| (none) | — | — | — | T-194 User Agent walkthrough did not run. No new Sprint 20 feedback submitted. |
+
+---
+
+**What Went Well:**
+- **Zero rework across all implementation tasks:** T-186 through T-192 all completed on first submission — no Manager send-backs, no QA failures, no Deploy errors. This continues the zero-rework streak started in Sprint 19.
+- **Trip notes feature fully correct on first review:** `TripNotesSection.jsx` met all 13 Spec 19 requirements — XSS-safe text rendering, correct aria attributes, save/cancel/keyboard shortcuts, error handling with generic message, loading skeleton, focus management. 13 tests covering all cases including error, loading, and keyboard paths.
+- **FB-008 + FB-009 both cleanly resolved by T-186:** The `itemMaxLength` validator implementation is secure — field-level error message does not leak schema internals, and the friendly "At least one destination is required" message is now consistent across POST and PATCH.
+- **Test suite at a new high:** 304/304 backend (15 files), 429/429 frontend (23 files). No regressions across all 20 sprints of feature development.
+- **Monitor completed full verification:** T-193 confirmed all Sprint 20 endpoints live — notes field in POST/GET/PATCH, destination validation, Sprint 19/17/16 regression checks, Playwright 7/7 PASS.
+
+**What Could Improve:**
+- **T-194 User Agent carry-over is now recurring:** This is the pattern observed across sprints 14–19 as well. The User Agent consistently fails to run as the final pipeline phase. Sprint 21 must treat T-194 as a P0 with no blockers — it should run on existing staging before any new implementation begins.
+- **Tracker sync gap:** T-193's task row in `dev-cycle-tracker.md` was not updated from "In Progress" to "Done" before closeout — the status update log entry was correct but the table row wasn't patched. Sprint 21 must correct this during kickoff.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-021: Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 — dev-only, no production impact
+- ⚠️ B-022: Production deployment — **20 consecutive sprints pending project owner hosting decision** — project owner action required
+- ⚠️ B-024: Auth rate limit is IP-based only (no per-account limiting)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+
+*Resolved this sprint:*
+- ✅ FB-008 (T-186): PATCH empty destinations now returns "At least one destination is required" (matches POST)
+- ✅ FB-009 (T-186): Backend now rejects destination strings >100 chars with 400 VALIDATION_ERROR
+- ✅ B-030 (T-187/T-188/T-189): Trip notes/description field fully implemented and deployed
+
+---
+
+*Sprint #20 began and closed 2026-03-10.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*
