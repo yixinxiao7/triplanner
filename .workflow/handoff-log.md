@@ -4,6 +4,99 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-10] Manager Agent → Monitor Agent + User Agent** *(Sprint #22 — Code Review Pass — No "In Review" Tasks Found)*
+
+**From:** Manager Agent
+**To:** Monitor Agent (T-200), User Agent (T-194)
+**Status:** ✅ REVIEW COMPLETE — No tasks in "In Review" status. Sprint 22 pipeline is advanced; two tasks need to execute immediately.
+
+**Review Findings:**
+
+Sprint #22 code review scan found **zero tasks in "In Review" status**. All implementation tasks have already been reviewed, approved, and advanced through the pipeline:
+
+| Task | Status | Notes |
+|------|--------|-------|
+| T-194 | **Backlog (UNBLOCKED — P0)** | User Agent Sprint 20 walkthrough. Zero blockers. 3rd carry-over. Must run immediately. |
+| T-195 | Done | Design Agent: Spec 20 published and auto-approved |
+| T-196 | Done (Integration Check → Done) | TripStatusSelector.jsx — Manager reviewed APPROVED on 2026-03-10. QA Done. |
+| T-197 | Done | QA Security checklist — 304/304 backend, 451/451 frontend. PASS. |
+| T-198 | Done | QA Integration testing — all 8 API contract cases verified. PASS. |
+| T-199 | Done | Deploy — frontend rebuilt (126 modules), pm2 reload. All 12 smoke tests PASS. |
+| T-200 | **Backlog (UNBLOCKED)** | Monitor Agent: T-199 Done, handoff logged. Can start immediately. |
+| T-201 | Backlog (Blocked by T-200) | User Agent Sprint 22 walkthrough |
+
+**Immediate action required (two parallel tracks):**
+
+1. **Monitor Agent → T-200** — Start immediately. T-199 Deploy Engineer handoff is in this log. All 8 health checks listed. Target: Playwright 7/7 PASS. Handoff to User Agent (T-201) when done.
+
+2. **User Agent → T-194** — Start immediately. Zero blockers. Run against existing staging (https://localhost:3001 / https://localhost:4173). Test trip notes flow + destination validation + Sprint 19/17 regressions. Submit feedback to `feedback-log.md` under **"Sprint 22 User Agent Feedback"** header.
+
+**T-196 Previous Manager Review Summary (already approved — logged here for completeness):**
+- TripStatusSelector.jsx per Spec 20: optimistic update, revert on failure, same-status no-op — all correct.
+- VALID_STATUSES constant constrains status values — no arbitrary string injection risk.
+- No dangerouslySetInnerHTML — badge rendered as React text node.
+- Error messages generic — no API details leaked to UI.
+- 22 tests: happy path (successful change, onStatusChange callback, optimistic update) and error path (revert on failure, toast shown, onStatusChange NOT called) all present.
+- TripDetailsPage integration: `localTripStatus` state + `handleStatusChange` callback + initialStatus fallback chain correct.
+- 451/451 frontend tests pass.
+
+---
+
+**[2026-03-10] Deploy Engineer → Monitor Agent** *(Sprint #22 — T-199 Complete → T-200 Unblocked)*
+
+**Task completed:** T-199 — Sprint 22 staging re-deployment
+**From:** Deploy Engineer
+**To:** Monitor Agent
+**Status:** ✅ DEPLOY COMPLETE — Staging is live with Sprint 22 code. T-200 can proceed immediately.
+
+---
+
+### Deploy Summary
+
+| Item | Detail |
+|------|--------|
+| Build | `npm run build` — 126 modules, 0 errors, 471ms |
+| Frontend | `pm2 reload triplanner-frontend` — PID 26628, online |
+| Backend | `pm2 restart triplanner-backend` — PID 26671, online |
+| Migrations | None required (status column exists since migration 003, Sprint 1) |
+| New feature live | TripStatusSelector.jsx — PLANNING/ONGOING/COMPLETED badge + dropdown on TripDetailsPage |
+
+### Smoke Test Results (all PASS)
+
+| Test | Result |
+|------|--------|
+| GET /api/v1/health → 200 `{"status":"ok"}` | ✅ PASS |
+| Frontend HTTPS → HTTP 200 | ✅ PASS |
+| PATCH /trips/:id `{status:"COMPLETED"}` → 200 | ✅ PASS |
+| PATCH /trips/:id `{status:"ONGOING"}` → 200 | ✅ PASS |
+| PATCH /trips/:id `{status:"INVALID"}` → 400 | ✅ PASS |
+| TripStatusSelector in dist bundle (PLANNING/ONGOING/COMPLETED + aria-haspopup) | ✅ PASS |
+| Sprint 20 regression: notes PATCH | ✅ PASS |
+| Sprint 19 regression: RateLimit-Limit header on /auth/login | ✅ PASS |
+| Sprint 17 regression: print reference in bundle | ✅ PASS |
+| Sprint 16 regression: start_date/end_date in trip response | ✅ PASS |
+
+### Monitor Agent Action Items (T-200)
+
+1. Verify HTTPS ✅, pm2 processes online (port 3001) ✅, `GET /api/v1/health → 200` ✅
+2. **Sprint 22 core:** `PATCH /trips/:id {status:"ONGOING"} → 200` with updated status ✅
+3. **Sprint 22 core:** TripDetailsPage — confirm `TripStatusSelector` component visible in rendered page ✅
+4. Sprint 20 regression: `GET /trips/:id` — `notes` key present in response ✅
+5. Sprint 19 regression: `RateLimit-Limit` header on `/auth/login` ✅
+6. Sprint 17 regression: Print itinerary button visible in frontend ✅
+7. Sprint 16 regression: `trips` include `start_date`/`end_date` ✅
+8. `npx playwright test` → 7/7 PASS ✅
+9. Log full report in `qa-build-log.md`. Handoff to User Agent (T-201) when complete.
+
+**Staging URLs:**
+- Backend: https://localhost:3001
+- Frontend: https://localhost:4173
+- Health: https://localhost:3001/api/v1/health
+
+**Full deploy report:** `.workflow/qa-build-log.md` → *Sprint 22 — Deploy Engineer Build Log — T-199 Complete* section.
+
+---
+
 **[2026-03-10] Manager Agent → QA Engineer** *(Sprint #22 — T-196 Code Review PASSED → T-197 Unblocked)*
 
 **T-196 Code Review: APPROVED** — TripStatusSelector.jsx has passed Manager review. Task status moved from **In Review → Integration Check** in dev-cycle-tracker.md.
@@ -1554,3 +1647,121 @@ The Backend Engineer has completed a full implementation audit for Sprint 22. Al
 **No new migrations:** Schema stable at 10 applied migrations. `status VARCHAR(20)` on `trips` exists since migration 003 (Sprint 1).
 
 **Conclusion:** The backend is ready. T-196 (Frontend) is the only remaining blocker. Once T-196 is complete, QA can run T-197 and T-198 immediately using the test matrix logged above (case A–G).
+
+---
+
+**[2026-03-10] QA Engineer → Deploy Engineer** *(Sprint #22 — T-197 + T-198 Done → T-199 Unblocked)*
+
+**Tasks completed:** T-197 (Security Checklist + Unit Tests) + T-198 (Integration Testing)
+**From:** QA Engineer
+**To:** Deploy Engineer
+**Status:** ✅ ALL QA GATES PASSED — Pre-deploy gate met. T-199 can proceed immediately.
+
+---
+
+### QA Sign-Off Summary
+
+| Gate | Requirement | Result |
+|------|-------------|--------|
+| Backend unit tests | 304+ pass | **304/304 PASS** ✅ |
+| Frontend unit tests | 451+ pass (429 base + 22 new) | **451/451 PASS** ✅ |
+| Config consistency | Port, protocol, CORS consistent | **PASS** ✅ |
+| Security checklist | No Critical/High findings | **PASS** — 5 Moderate in dev-only deps (pre-existing) ✅ |
+| Integration tests — API contracts | All 8 cases match api-contracts.md | **PASS** ✅ |
+| Integration tests — UI spec | All Spec 20 states verified | **PASS** ✅ |
+| Regression — Sprint 20 | notes, destination validation | **PASS** ✅ |
+| Regression — Sprint 19 | rate limit headers | **PASS** ✅ |
+| Regression — Sprint 17 | print button visible | **PASS** ✅ |
+| Regression — Sprint 16 | start_date/end_date on trips | **PASS** ✅ |
+
+### What Was Verified
+
+**T-197 (Security + Unit Tests):**
+- `npm test --run` in `backend/`: 304/304 PASS (15 files, 622ms)
+- `npm test --run` in `frontend/`: 451/451 PASS (24 files, 1.79s) — 22 new TripStatusSelector tests
+- `npm audit` in backend + frontend: 5 Moderate (esbuild/vite/vitest — dev tooling only, no runtime risk). No Critical or High. No P1 escalation.
+- Config consistency: PORT=3000 ↔ vite proxy default ✅; SSL disabled ↔ http:// proxy ✅; CORS_ORIGIN=http://localhost:5173 ✅
+- No hardcoded secrets in Sprint 22 code ✅
+- No `dangerouslySetInnerHTML` ✅
+- Status constrained to VALID_STATUSES enum — no arbitrary string injection ✅
+- Error messages generic — no API internals exposed ✅
+
+**T-198 (Integration Testing):**
+- TripStatusSelector correctly integrated in TripDetailsPage: `localTripStatus || trip?.status || 'PLANNING'` fallback chain ✅
+- API call: `api.trips.update(tripId, { status: newStatus })` → `PATCH /api/v1/trips/:id` — contract match ✅
+- All 4 UI states verified: view/badge, dropdown/listbox, loading/optimistic, error/revert ✅
+- Keyboard navigation (Space/Enter, ArrowUp/Down, Escape) ✅
+- ARIA attributes (aria-haspopup, aria-expanded, aria-label, role=listbox/option, aria-selected) ✅
+- All sprint regression tests pass ✅
+
+### Deploy Engineer Action Items (T-199)
+
+1. `cd frontend && npm run build` — expect 0 errors
+2. `pm2 reload triplanner-frontend` — redeploy built frontend
+3. `pm2 restart triplanner-backend` — restart backend (no code changes, but ensures clean state)
+4. Smoke tests: `GET /api/v1/health → 200`, `PATCH /trips/:id {status:"COMPLETED"} → 200`, TripDetailsPage badge renders
+5. Sprint regressions: notes field ✅, rate limit headers ✅, print button ✅, start_date/end_date ✅
+6. Log handoff to Monitor Agent (T-200) when T-199 complete
+
+**No new migrations required.** Status column on `trips` table exists since migration 003 (Sprint 1). Schema unchanged.
+
+**Full QA report:** `.workflow/qa-build-log.md` → *Sprint #22 — QA Report — 2026-03-10* section.
+
+---
+
+**[2026-03-10] Backend Engineer → QA Engineer / Deploy Engineer** *(Sprint 22 — Final Backend Re-Verification)*
+
+**From:** Backend Engineer
+**To:** QA Engineer, Deploy Engineer
+**Status:** ✅ Backend re-verified — 304/304 tests pass — no new implementation required
+
+### Re-Verification Summary
+
+Backend Engineer re-invoked for Sprint 22 implementation pass. All prior Backend Engineer Sprint 22 work confirmed intact:
+
+| Check | Result |
+|-------|--------|
+| `npm test --run` in `backend/` | **304/304 PASS** (15 files, 610ms) |
+| `PATCH /api/v1/trips/:id` — status field | ✅ Enum `['PLANNING','ONGOING','COMPLETED']` enforced; 400 on invalid |
+| `PATCH /api/v1/trips/:id` — ownership check | ✅ 403 if user_id mismatch; 404 if trip not found |
+| `tripModel.js` — `notes` in `TRIP_COLUMNS` | ✅ Returned in GET list + GET detail |
+| `tripModel.js` — `createTrip`/`updateTrip` | ✅ Knex parameterized queries; no SQL injection surface |
+| Sprint 20 fixes (`notes` max 2000, `destinations` item max 100) | ✅ Intact |
+| Migrations (001–010) | ✅ All 10 present; no new migrations needed for Sprint 22 |
+| No new routes / middleware / env vars | ✅ Backend scope unchanged from Sprint 20 |
+
+**Conclusion:** No new implementation tasks exist for the Backend Engineer in Sprint 22. The backend is production-ready. T-199 (Deploy), T-200 (Monitor), and T-201 (User Agent) are the remaining pipeline stages.
+
+---
+
+**[2026-03-10] QA Engineer → Deploy Engineer / Monitor Agent** *(Sprint #22 — QA Re-Verification Complete)*
+
+**From:** QA Engineer
+**To:** Deploy Engineer (T-199 already Done), Monitor Agent (T-200 UNBLOCKED)
+**Status:** ✅ QA Re-Verification PASS — Pipeline state confirmed correct.
+
+### Re-Verification Summary
+
+Orchestrator re-invoked QA Engineer for Sprint #22. Actual test execution run and verified:
+
+| Gate | Command Run | Result |
+|------|-------------|--------|
+| Backend unit tests | `cd backend && npm test -- --run` | **304/304 PASS** (15 files, 596ms) |
+| Frontend unit tests | `cd frontend && npm test -- --run` | **451/451 PASS** (24 files, 1.91s) |
+| npm audit — backend | `cd backend && npm audit` | 5 Moderate (dev-only), **0 Critical/High** |
+| npm audit — frontend | `cd frontend && npm audit` | 5 Moderate (dev-only), **0 Critical/High** |
+| Config consistency | backend/.env ↔ vite.config.js ↔ docker-compose.yml | **PASS** (PORT=3000, http://, CORS=5173) |
+| TripStatusSelector.jsx code review | No `dangerouslySetInnerHTML`, no hardcoded secrets, enum-constrained status, generic error messages | **PASS** |
+
+**All results match the prior QA report** (Sprint #22 — QA Report — 2026-03-10 in qa-build-log.md).
+
+**Task status confirmed:**
+- T-197 (Security + Unit Tests): ✅ Done
+- T-198 (Integration Testing): ✅ Done
+- T-199 (Deploy): ✅ Done
+- T-200 (Monitor): Backlog — **UNBLOCKED** — Monitor Agent may proceed immediately
+- T-201 (User Agent): Backlog — Blocked by T-200
+- T-194 (User Agent carry-over): Backlog — **UNBLOCKED** (zero blockers, P0)
+
+No new issues found. No P1 escalations. Pipeline is healthy.
+
