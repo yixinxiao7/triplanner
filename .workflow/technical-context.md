@@ -594,3 +594,61 @@ Sprint 14 is a focused regression-fix sprint with no backend implementation task
 ---
 
 *This document is maintained by the Manager Agent and Backend Engineer. Update it whenever the stack or conventions change.*
+
+---
+
+## Sprint 20 — Schema Analysis + T-188 Notes (2026-03-10)
+
+**Confirmed by:** Backend Engineer
+**Date:** 2026-03-10
+
+### T-188: No New Migration Required
+
+The active-sprint.md for Sprint 20 references "migration 010_add_notes_to_trips.js". However, a thorough review of the migration log confirms that **migration 010 (Add `notes TEXT NULL` to `trips`) was already created and applied in Sprint 7** (T-107, 2026-02-28).
+
+**Evidence from technical-context.md (Sprint 14 entry):**
+> `010 | 7 | Add notes TEXT NULL to trips | ✅ Applied on Staging (T-107, 2026-02-28)`
+
+**Evidence from api-contracts.md (Sprint 19 endpoint inventory):**
+> `PATCH /api/v1/trips/:id — notes updatable (Sprint 7); "" → null (Sprint 9)`
+
+**Conclusion:** The `notes TEXT NULL` column already exists on the `trips` table on staging. No DDL migration is needed for Sprint 20.
+
+### T-188 Actual Scope (Sprint 20)
+
+Sprint 20's T-188 work is **validation and response-shape formalization only**:
+
+1. **POST /api/v1/trips Joi schema:** Add `notes: Joi.string().max(2000).allow(null, '').optional()` — enforces the 2000-char cap at the API layer (previously no max was validated).
+2. **PATCH /api/v1/trips/:id Joi schema:** Add the same `notes` rule (previously no max was validated; `''` → `null` normalization existed since Sprint 9 but max was not enforced).
+3. **GET /trips list and GET /trips/:id model queries:** Confirm `notes` is included in `SELECT` output (it should be, but must be verified in the Knex model code).
+4. **POST /trips model insert:** Confirm `notes` is included in the Knex insert query (may have been omitted when the column was added but the POST contract was not updated).
+
+### Manager Approval (Schema Change)
+
+**Schema change:** None — no new migration.
+**Approval required:** Not applicable (validation-only changes do not require Manager schema approval per workflow rules).
+**Auto-approved:** T-188 may proceed to implementation. No blocking approval needed.
+
+### Current Schema State (Sprint 20 — 2026-03-10)
+
+All 10 migrations applied on staging. Schema is stable and unchanged from Sprint 14.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–20 | *(No new migrations)* | Schema-stable through Sprint 20 |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 20.**
+
+---
+
+*Sprint 20 schema analysis by Backend Engineer 2026-03-10. T-188 is validation-layer-only — no migration. T-186 is validation-layer-only — no migration. Schema remains stable at 10 migrations.*

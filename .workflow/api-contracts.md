@@ -5158,3 +5158,380 @@ All previously agreed contracts from Sprints 1–17 remain in force unchanged.
 ---
 
 *Sprint 19 contracts published by Backend Engineer 2026-03-09. T-178 adds 429 RATE_LIMITED behavior to POST /auth/login (10/15min) and POST /auth/register (5/60min). T-180 is frontend-only — no new endpoints or schema changes. All Sprint 1–17 contracts remain in force. Frontend Engineer may proceed with T-180 using existing PATCH /api/v1/trips/:id contract. QA: backend test suite target is 278+ base + 5 new rate limiter tests = 283+ total.*
+
+---
+
+## Sprint 20 Contracts — 2026-03-10
+
+**Tasks:** T-186 (Joi destination validation tightening), T-188 (Trip notes field validation + response contract)
+**Author:** Backend Engineer
+**Date:** 2026-03-10
+**Status:** Agreed (published for Frontend Engineer and QA reference)
+
+---
+
+### T-186 — Destination Validation Tightening
+
+**Summary:** Two Joi validation gaps from Sprint 19 are closed: (A) destination items now enforce a 100-character maximum, (B) the PATCH empty-destinations error message is standardized to match POST's human-friendly wording.
+
+No new endpoints. No schema changes. Changes are validation-layer only.
+
+---
+
+#### Updated: POST /api/v1/trips — destinations field
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-186) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Change from Sprint 1 / Sprint 19:** `destinations` array items now have a **100-character maximum per item**. Requests containing any destination string longer than 100 characters are rejected with `400 VALIDATION_ERROR`.
+
+**destinations validation rule (updated):**
+```
+destinations:
+  Joi.array()
+    .items(Joi.string().min(1).max(100))   ← NEW: .max(100) added
+    .min(1)
+    .required()
+```
+
+**New error case — 400 Validation Error (destination item too long):**
+```json
+{
+  "error": {
+    "message": "\"destinations[0]\" length must be less than or equal to 100 characters long",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+*Note: Joi's default message format is used. The index `[0]` reflects whichever item failed.*
+
+**All other request/response shapes:** Unchanged from the Sprint 1 contract.
+
+---
+
+#### Updated: PATCH /api/v1/trips/:id — destinations field
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-186) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Changes from Sprint 1 / Sprint 19:**
+1. `destinations` array items now have a **100-character maximum per item** (same as POST above).
+2. When `destinations: []` (empty array) is sent, the error message is now standardized to **"At least one destination is required"** — matching the POST endpoint's human-friendly error.
+
+**destinations validation rule (updated):**
+```
+destinations:
+  Joi.array()
+    .items(Joi.string().min(1).max(100))   ← NEW: .max(100) added
+    .min(1)
+    .messages({ 'array.min': 'At least one destination is required' })   ← NEW: friendly message
+    .optional()
+```
+
+**Error case — 400 Validation Error (destination item too long):**
+```json
+{
+  "error": {
+    "message": "\"destinations[0]\" length must be less than or equal to 100 characters long",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+
+**Error case — 400 Validation Error (empty destinations array) [UPDATED]:**
+```json
+{
+  "error": {
+    "message": "At least one destination is required",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+*Previously: Joi's raw message `"destinations" must contain at least 1 items`. Now standardized to match POST.*
+
+**All other request/response shapes:** Unchanged from the Sprint 1 contract.
+
+---
+
+#### T-186 Test Matrix
+
+| Case | Method | Input | Expected |
+|------|--------|-------|---------|
+| A | POST /api/v1/trips | destinations: ["X".repeat(101)] | 400 VALIDATION_ERROR |
+| B | PATCH /api/v1/trips/:id | destinations: ["X".repeat(101)] | 400 VALIDATION_ERROR |
+| C | PATCH /api/v1/trips/:id | destinations: [] | 400, message = "At least one destination is required" |
+| D | POST /api/v1/trips | destinations: ["X".repeat(100)] | 201 Created (happy path) |
+| E | PATCH /api/v1/trips/:id | destinations: ["X".repeat(100)] | 200 OK (happy path) |
+
+---
+
+### T-188 — Trip Notes Field Contract (Formalized)
+
+**Summary:** The `notes TEXT NULL` column on the `trips` table was added in Sprint 7 (migration 010, applied on staging). Sprint 20 formalizes: (1) explicit max-2000-character Joi validation on POST and PATCH, (2) `notes` is confirmed as part of all trip response shapes (POST 201, GET list, GET detail), (3) empty string normalization to `null`.
+
+**Schema status:** No new migration required. Column `notes TEXT NULL` already exists (migration 010, applied Sprint 7).
+
+---
+
+#### Updated: POST /api/v1/trips — notes field added
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-188) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Request Body (updated — notes field added):**
+
+```json
+{
+  "name": "string, required, min 1, max 200",
+  "destinations": ["string, min 1, max 100 each — see T-186"],
+  "status": "PLANNING | ONGOING | COMPLETED (optional, defaults to PLANNING)",
+  "start_date": "ISO 8601 date string YYYY-MM-DD (optional, nullable)",
+  "end_date": "ISO 8601 date string YYYY-MM-DD (optional, nullable)",
+  "notes": "string | null (optional, max 2000 chars, '' normalized to null)"
+}
+```
+
+**notes validation rule:**
+```
+notes:
+  Joi.string()
+    .max(2000)
+    .allow(null, '')
+    .optional()
+    .default(null)
+```
+*If `notes` is omitted or `null` or `""`, it is stored and returned as `null`.*
+
+**Success Response — 201 Created (updated — notes field now explicitly included):**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "name": "string",
+    "destinations": ["string"],
+    "status": "PLANNING | ONGOING | COMPLETED",
+    "start_date": "YYYY-MM-DD | null",
+    "end_date": "YYYY-MM-DD | null",
+    "notes": "string | null",
+    "created_at": "ISO 8601 timestamp",
+    "updated_at": "ISO 8601 timestamp"
+  }
+}
+```
+
+**New error case — 400 Validation Error (notes too long):**
+```json
+{
+  "error": {
+    "message": "\"notes\" length must be less than or equal to 2000 characters long",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+
+**All other request/response shapes:** Unchanged from Sprint 1 contract.
+
+---
+
+#### Updated: PATCH /api/v1/trips/:id — notes field
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-188) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**notes validation rule (updated — max 2000 now explicitly enforced):**
+```
+notes:
+  Joi.string()
+    .max(2000)
+    .allow(null, '')
+    .optional()
+```
+*Previously: no explicit max. Sprint 20 adds `.max(2000)` to enforce the 2000-char limit at the API layer.*
+*`""` is normalized to `null` before storage (behavior from Sprint 9, unchanged).*
+
+**Request Body (any combination of fields, all optional):**
+```json
+{
+  "name": "string (optional, min 1, max 200)",
+  "destinations": ["string (optional, each item min 1, max 100 — see T-186)"],
+  "status": "PLANNING | ONGOING | COMPLETED (optional)",
+  "start_date": "YYYY-MM-DD | null (optional)",
+  "end_date": "YYYY-MM-DD | null (optional)",
+  "notes": "string | null (optional, max 2000 chars, '' normalized to null)"
+}
+```
+
+**Success Response — 200 OK (updated — notes field explicitly included):**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "name": "string",
+    "destinations": ["string"],
+    "status": "PLANNING | ONGOING | COMPLETED",
+    "start_date": "YYYY-MM-DD | null",
+    "end_date": "YYYY-MM-DD | null",
+    "notes": "string | null",
+    "created_at": "ISO 8601 timestamp",
+    "updated_at": "ISO 8601 timestamp"
+  }
+}
+```
+
+**notes-specific error case — 400 Validation Error (notes too long):**
+```json
+{
+  "error": {
+    "message": "\"notes\" length must be less than or equal to 2000 characters long",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+
+**All other request/response shapes and error cases:** Unchanged from Sprint 1 / Sprint 7 / Sprint 9 contracts.
+
+---
+
+#### Updated: GET /api/v1/trips — notes field in list response
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-188) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Change:** `notes: string | null` is now **explicitly documented** as part of each trip object in the list response. The field has existed in the database since Sprint 7; this formalizes its presence in the response contract.
+
+**Success Response — 200 OK:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "string",
+      "destinations": ["string"],
+      "status": "PLANNING | ONGOING | COMPLETED",
+      "start_date": "YYYY-MM-DD | null",
+      "end_date": "YYYY-MM-DD | null",
+      "notes": "string | null",
+      "created_at": "ISO 8601 timestamp",
+      "updated_at": "ISO 8601 timestamp"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 42
+  }
+}
+```
+
+**All other request/response shapes:** Unchanged from Sprint 1 / Sprint 8 (search/filter) contracts.
+
+---
+
+#### Updated: GET /api/v1/trips/:id — notes field in detail response
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-188) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Change:** `notes: string | null` is now **explicitly documented** as part of the trip detail response.
+
+**Success Response — 200 OK:**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "name": "string",
+    "destinations": ["string"],
+    "status": "PLANNING | ONGOING | COMPLETED",
+    "start_date": "YYYY-MM-DD | null",
+    "end_date": "YYYY-MM-DD | null",
+    "notes": "string | null",
+    "created_at": "ISO 8601 timestamp",
+    "updated_at": "ISO 8601 timestamp"
+  }
+}
+```
+
+**All other request/response shapes:** Unchanged from Sprint 1 contract.
+
+---
+
+#### T-188 Test Matrix
+
+| Case | Method | Input | Expected |
+|------|--------|-------|---------|
+| A | POST /api/v1/trips | notes: "Hello world" | 201, response includes notes: "Hello world" |
+| B | PATCH /api/v1/trips/:id | notes: "Updated note" | 200, response includes notes: "Updated note" |
+| C | PATCH /api/v1/trips/:id | notes: null | 200, response includes notes: null |
+| D | PATCH /api/v1/trips/:id | notes: "" | 200, response includes notes: null (normalized) |
+| E | GET /api/v1/trips/:id | — | 200, response includes notes field (string or null) |
+| F | GET /api/v1/trips | — | 200, each trip object includes notes field |
+| G | POST /api/v1/trips | notes omitted | 201, response includes notes: null |
+| H | POST /api/v1/trips | notes: "x".repeat(2001) | 400 VALIDATION_ERROR |
+| I | PATCH /api/v1/trips/:id | notes: "x".repeat(2001) | 400 VALIDATION_ERROR |
+
+---
+
+### Sprint 20 — Schema State
+
+**No new migration required for Sprint 20.**
+
+The `notes TEXT NULL` column was added in Sprint 7 (migration 010, applied on staging). Sprint 20 adds validation and formalizes the API contract — no DDL changes.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–20 | *(No new migrations through Sprint 20)* | Schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 20.**
+
+---
+
+### Sprint 20 — Updated Endpoint Inventory
+
+All Sprint 1–19 contracts remain in force unchanged, with the following Sprint 20 updates:
+
+| Sprint | Endpoint | Sprint 20 Change |
+|--------|----------|-----------------|
+| 1 (updated 20) | `POST /api/v1/trips` | destinations `.max(100)` per item (T-186); notes `.max(2000)` validation + explicitly in response (T-188) |
+| 1 (updated 20) | `PATCH /api/v1/trips/:id` | destinations `.max(100)` per item + friendly empty-array message (T-186); notes `.max(2000)` validation + explicitly in response (T-188) |
+| 1 (updated 20) | `GET /api/v1/trips` | notes field explicitly documented in response (T-188) |
+| 1 (updated 20) | `GET /api/v1/trips/:id` | notes field explicitly documented in response (T-188) |
+
+All other endpoints unchanged.
+
+---
+
+*Sprint 20 contracts published by Backend Engineer 2026-03-10. T-186: validation-layer-only changes to destinations (max 100 chars per item, friendly PATCH empty-array message). T-188: formalized notes field contract — no new migration (column exists since Sprint 7), adds max-2000 Joi validation and confirms notes inclusion in all trip response shapes. Frontend Engineer may proceed with T-189 (TripNotesSection) using PATCH /api/v1/trips/:id contract above. QA test matrix: 287+ base + T-186 tests (5 cases) + T-188 tests (9 cases) = 301+ total.*

@@ -600,3 +600,104 @@ Wait for Manager to approve T-179 (Spec 18). Then implement multi-destination ch
 
 ---
 
+
+---
+
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Sprint:** #20
+**Date:** 2026-03-10
+**Status:** Ready
+
+## Sprint 20 API Contracts Ready — Frontend Engineer (T-189)
+
+The Sprint 20 API contracts are published in `.workflow/api-contracts.md` (Sprint 20 section, 2026-03-10). You may proceed with T-189 (TripNotesSection component).
+
+### Relevant contracts for T-189
+
+**PATCH /api/v1/trips/:id — notes field**
+- Send `{ notes: string | null }` in the request body
+- `notes` max 2000 characters
+- Empty string `""` is normalized to `null` server-side — you can safely send `null` directly (the component spec trims and converts empty to `null`: `editNotes.trim() || null`)
+- Success response `200 OK` includes `notes: string | null` in the trip data object
+
+**GET /api/v1/trips/:id — notes field in response**
+- `data.notes` is `string | null` — `null` when no notes have been set
+- Use `trip.notes` to populate the TripNotesSection initial state
+
+**Validation boundary:**
+- Backend enforces max 2000 chars — the `<textarea maxLength={2000}>` in the frontend prevents exceeding this in normal use, but the backend will reject oversized inputs with `400 VALIDATION_ERROR` if the limit is bypassed
+
+### Key fields in trip response shape (Sprint 20 confirmed)
+```json
+{
+  "data": {
+    "id": "uuid",
+    "name": "string",
+    "destinations": ["string"],
+    "status": "PLANNING | ONGOING | COMPLETED",
+    "start_date": "YYYY-MM-DD | null",
+    "end_date": "YYYY-MM-DD | null",
+    "notes": "string | null",
+    "created_at": "ISO 8601 timestamp",
+    "updated_at": "ISO 8601 timestamp"
+  }
+}
+```
+
+### No new endpoints
+T-189 uses only the existing `PATCH /api/v1/trips/:id` and `GET /api/v1/trips/:id` endpoints. No new endpoints are introduced.
+
+---
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Sprint:** #20
+**Date:** 2026-03-10
+**Status:** Ready for QA planning
+
+## Sprint 20 API Contracts — QA Reference (T-190, T-191)
+
+Sprint 20 backend contracts are published in `.workflow/api-contracts.md` (Sprint 20 section, 2026-03-10). Use this as the reference for your security checklist and integration tests.
+
+### T-186 — Destination Validation (QA checklist)
+
+**What changed:** Joi validation on `destinations` array items now enforces a 100-char max. PATCH empty-destinations error message is standardized.
+
+| Test Case | Endpoint | Input | Expected |
+|-----------|----------|-------|---------|
+| A | POST /api/v1/trips | destinations: ["X" × 101] | 400 VALIDATION_ERROR |
+| B | PATCH /api/v1/trips/:id | destinations: ["X" × 101] | 400 VALIDATION_ERROR |
+| C | PATCH /api/v1/trips/:id | destinations: [] | 400, message = "At least one destination is required" |
+| D | POST /api/v1/trips | destinations: ["X" × 100] | 201 Created |
+| E | PATCH /api/v1/trips/:id | destinations: ["X" × 100] | 200 OK |
+
+**Security note for T-190:** Joi `.max(100)` prevents oversized destination strings from reaching the database. The standardized error message does not leak schema internals — it is a human-readable string.
+
+### T-188 — Trip Notes Field (QA checklist)
+
+**What changed:** Formal max-2000 Joi validation added to POST and PATCH. `notes` field confirmed present in all trip response shapes.
+
+| Test Case | Endpoint | Input | Expected |
+|-----------|----------|-------|---------|
+| A | POST /api/v1/trips | notes: "Hello world" | 201, notes: "Hello world" in response |
+| B | PATCH /api/v1/trips/:id | notes: "Updated" | 200, notes: "Updated" in response |
+| C | PATCH /api/v1/trips/:id | notes: null | 200, notes: null in response |
+| D | PATCH /api/v1/trips/:id | notes: "" | 200, notes: null in response (normalized) |
+| E | GET /api/v1/trips/:id | — | 200, notes field present in data |
+| F | GET /api/v1/trips | — | 200, notes field present on each trip in list |
+| G | POST /api/v1/trips | notes omitted | 201, notes: null in response |
+| H | POST /api/v1/trips | notes: "x" × 2001 | 400 VALIDATION_ERROR |
+| I | PATCH /api/v1/trips/:id | notes: "x" × 2001 | 400 VALIDATION_ERROR |
+
+**Security note for T-190:**
+- `notes` is stored via parameterized Knex query — no SQL injection risk
+- Max 2000 enforced at the API layer — prevents oversized payloads from reaching the database
+- The `notes` value is returned as plain text and rendered in the frontend as a React text node (no `dangerouslySetInnerHTML`) — XSS safe
+
+### Schema note
+No new migration for Sprint 20. The `notes TEXT NULL` column on `trips` was applied in Sprint 7 (migration 010). The Deploy Engineer does NOT need to run a new migration for T-188. Confirm migration 010 is applied during T-192 smoke tests.
+
+### Backend test target
+287+ base (Sprint 19 target) + 5 T-186 cases + 9 T-188 cases = **301+ total backend tests**
+
