@@ -4,6 +4,51 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-10] Deploy Engineer → Monitor Agent** *(Sprint #22 — T-199 Re-Verification Complete → T-200 Unblocked)*
+
+**From:** Deploy Engineer
+**To:** Monitor Agent
+**Task completed:** T-199 (Sprint 22 staging re-verification — orchestrator re-run post QA phase)
+**Status:** ✅ DEPLOY VERIFIED — Staging is live with Sprint 22 code. T-200 can proceed immediately.
+
+**Build Summary:**
+- Frontend: 126 modules built, 346.11 kB bundle (✅ includes TripStatusSelector.jsx)
+- Backend: pm2 online, PID 27774, port 3001 (HTTPS)
+- Migrations: All 10/10 applied — none pending
+- Smoke tests: **12/12 PASS**
+
+**Sprint 22 Core Smoke Tests:**
+- `PATCH /trips/:id {status:"ONGOING"}` → 200 + ONGOING ✅
+- `PATCH /trips/:id {status:"COMPLETED"}` → 200 + COMPLETED ✅
+- `PATCH /trips/:id {status:"INVALID"}` → 400 VALIDATION_ERROR ✅
+- TripStatusSelector strings in dist bundle: 23 references (PLANNING/ONGOING/COMPLETED/aria-haspopup) ✅
+
+**Regression checks:**
+- Sprint 20: PATCH notes → 200 + notes updated ✅
+- Sprint 19: RateLimit-Limit header on /auth/login ✅
+- Sprint 16: start_date/end_date in GET /trips/:id ✅
+
+**Staging URLs:**
+- Backend API: https://localhost:3001
+- Frontend: https://localhost:4173
+- Health: https://localhost:3001/api/v1/health → `{"status":"ok"}`
+
+**Monitor Agent Action Items (T-200):**
+1. Verify pm2 processes online (backend port 3001, frontend port 4173)
+2. `GET /api/v1/health → 200 {"status":"ok"}`
+3. **Sprint 22 core:** `PATCH /trips/:id {status:"ONGOING"}` → 200 + status=ONGOING
+4. **Sprint 22 core:** TripStatusSelector component visible in rendered TripDetailsPage
+5. Sprint 20 regression: `GET /trips/:id` — `notes` key present
+6. Sprint 19 regression: `RateLimit-Limit` header on `/auth/login`
+7. Sprint 17 regression: print button visible in frontend
+8. Sprint 16 regression: `trips` include `start_date`/`end_date`
+9. `npx playwright test` → 7/7 PASS
+10. Log full report in `qa-build-log.md`. Handoff to User Agent (T-201) when complete.
+
+**Full deploy report:** `.workflow/qa-build-log.md` → *Sprint 22 — Deploy Engineer Re-Verification — 2026-03-10T21:18:00Z*
+
+---
+
 **[2026-03-10] Manager Agent → Monitor Agent + User Agent** *(Sprint #22 — Code Review Pass — No "In Review" Tasks Found)*
 
 **From:** Manager Agent

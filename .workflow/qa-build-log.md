@@ -161,6 +161,54 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint 22 — Deploy Engineer Re-Verification — 2026-03-10T21:18:00Z
+
+**Deploy Engineer:** Sprint 22 staging re-verification (orchestrator re-run after QA phase checkpoint)
+**Date:** 2026-03-10T21:18:00Z
+**Environment:** Staging
+**Build Status:** ✅ SUCCESS
+
+### Actions Performed
+
+| Step | Command | Result |
+|------|---------|--------|
+| Backend dependencies | `cd backend && npm install` | ✅ Up to date (169 packages, no changes) |
+| Frontend dependencies | `cd frontend && npm install` | ✅ Up to date (190 packages, no changes) |
+| Frontend production build | `cd frontend && npm run build` | ✅ 126 modules, 346.11 kB JS, 81.35 kB CSS, 0 errors, 471ms |
+| Database migrations | `cd backend && NODE_ENV=staging npm run migrate` | ✅ Already up to date (all 10 migrations applied) |
+| Backend reload | `pm2 reload triplanner-backend` | ✅ PID 27774, online |
+| Frontend reload | `pm2 reload triplanner-frontend` | ✅ PID 27815, online |
+
+### Smoke Tests (12/12 PASS)
+
+| # | Test | Expected | Actual | Result |
+|---|------|----------|--------|--------|
+| 1 | GET /api/v1/health | 200 `{"status":"ok"}` | 200 `{"status":"ok"}` | ✅ PASS |
+| 2 | Frontend HTTPS (port 4173) | HTTP 200 | HTTP 200 | ✅ PASS |
+| 3 | POST /auth/login | 200 + JWT | 200 + JWT | ✅ PASS |
+| 4 | POST /api/v1/trips | 201 + trip UUID | 201 + `35db8f12-...` | ✅ PASS |
+| 5 | PATCH /trips/:id `{status:"ONGOING"}` | 200 + ONGOING | 200 + ONGOING | ✅ PASS |
+| 6 | PATCH /trips/:id `{status:"COMPLETED"}` | 200 + COMPLETED | 200 + COMPLETED | ✅ PASS |
+| 7 | PATCH /trips/:id `{status:"INVALID"}` | 400 VALIDATION_ERROR | HTTP 400 | ✅ PASS |
+| 8 | PATCH notes (Sprint 20 regression) | 200 + notes updated | 200 + notes returned | ✅ PASS |
+| 9 | RateLimit-Limit header on /auth/login (Sprint 19) | Header present | `RateLimit-Limit: 10` | ✅ PASS |
+| 10 | start_date/end_date in GET /trips/:id (Sprint 16) | Fields present | `start_date` key present | ✅ PASS |
+| 11 | Status strings in dist bundle | PLANNING/ONGOING/COMPLETED + aria-haspopup | 23 total references | ✅ PASS |
+| 12 | Unauth GET /trips → 401 | HTTP 401 | HTTP 401 | ✅ PASS |
+
+**All 12 smoke tests: ✅ PASS**
+
+### Staging Environment State
+
+- **Backend:** https://localhost:3001 — pm2 online, PID 27774
+- **Frontend:** https://localhost:4173 — pm2 online, PID 27815
+- **Migrations:** All 10/10 applied (no pending)
+- **Sprint 22 feature (TripStatusSelector):** ✅ Confirmed live in bundle and API
+
+**Handoff:** Monitor Agent (T-200) — run post-deploy health checks. URLs: backend https://localhost:3001, frontend https://localhost:4173.
+
+---
+
 ## Sprint #22 — QA Report — 2026-03-10
 
 **QA Engineer:** T-197 (Security Checklist + Unit Tests) + T-198 (Integration Testing)
