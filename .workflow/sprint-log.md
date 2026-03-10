@@ -2419,4 +2419,56 @@ All tasks remain in Backlog status. None progressed.
 
 ---
 
+### Sprint #21 — 2026-03-10 to 2026-03-10
+
+**Goal:** Close the Sprint 20 User Agent carry-over (T-194 — P0, no blockers, staging live and verified). Deliver the trip status selector feature: an inline status badge + selector on TripDetailsPage allowing users to change trip status (PLANNING → ONGOING → COMPLETED) without a full page reload. Complete the full pipeline: T-195 (Design spec), T-196 (Frontend), T-197–T-198 (QA), T-199 (Deploy), T-200 (Monitor), T-201 (User Agent Sprint 21 walkthrough).
+
+**Goal Met:** ❌ NO — Sprint 21 was a planning-only sprint. Zero tasks executed. All 8 tasks (T-194 through T-201) remain in Backlog, identical to their state at Sprint 21 kickoff. This is the same failure mode as Sprint 18.
+
+---
+
+**Tasks Completed (0/8):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-194 | User Agent: Sprint 20 feature walkthrough (carry-over) | ❌ Backlog — carry to Sprint 22 |
+| T-195 | Design Agent: Trip status selector spec (Spec 20) | ❌ Backlog — carry to Sprint 22 |
+| T-196 | Frontend Engineer: TripStatusSelector component | ❌ Backlog — carry to Sprint 22 |
+| T-197 | QA Engineer: Security checklist + code review | ❌ Backlog — carry to Sprint 22 |
+| T-198 | QA Engineer: Integration testing | ❌ Backlog — carry to Sprint 22 |
+| T-199 | Deploy Engineer: Sprint 21 staging re-deployment | ❌ Backlog — carry to Sprint 22 |
+| T-200 | Monitor Agent: Sprint 21 staging health check | ❌ Backlog — carry to Sprint 22 |
+| T-201 | User Agent: Sprint 21 feature walkthrough | ❌ Backlog — carry to Sprint 22 |
+
+**Tasks Carried Over (8/8):** All Sprint 21 tasks carry to Sprint 22. Scope, priorities, and task IDs are unchanged.
+
+---
+
+**Key Decisions:** None. No implementation work occurred.
+
+**Feedback Summary:** No feedback received. T-194 (User Agent Sprint 20 walkthrough) and T-201 (User Agent Sprint 21 walkthrough) never ran. No new feedback-log.md entries for Sprint 21.
+
+---
+
+**Retrospective Notes:**
+
+- **What went well:** Sprint 21 planning was complete and well-structured — all 8 tasks were correctly specified with proper Blocked By chains, test plans, and agent assignments. The carry-forward work is fully spec'd and ready to execute immediately.
+
+- **What to improve:** The orchestrator must ensure agent execution phases actually run after the Manager planning phase. A planning-only sprint (Manager plans but no agents execute) should never silently close. Sprint 22 must break this cycle by executing all phases sequentially to completion. T-194 has zero blockers and must be treated as the absolute first action in Sprint 22 — before any new implementation begins.
+
+- **Action items for Sprint 22:** Execute all 8 carry-over tasks in order. T-194 (User Agent) and T-195 (Design) have no blockers and must start immediately in parallel. T-196 is blocked only by T-195 approval + T-194 feedback triage (no new blockers introduced). No new scope additions until the carry-over pipeline is fully closed.
+
+---
+
+**Technical Debt (no change from Sprint 20):**
+- ⚠️ B-021 (esbuild dev dep moderate vulnerabilities) — dev-only, no production impact
+- ⚠️ B-022 (Production deployment) — **21 consecutive sprints** — project owner action required
+- ⚠️ B-024 (Per-account rate limiting) — IP-based only, acceptable at current scale
+
+---
+
+*Sprint #21 began and closed 2026-03-10 with zero tasks completed.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*
