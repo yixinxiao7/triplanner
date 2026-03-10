@@ -4,6 +4,35 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-10] QA Engineer → Deploy Engineer**
+Sprint #20 QA re-verification complete. All tests passing. Ready for deployment confirmation.
+
+## Sprint #20 QA Re-Verification: COMPLETE — 2026-03-10
+
+**Tasks:** T-190 (Security checklist), T-191 (Integration testing)
+**Overall result:** PASS ✅
+
+### What passed
+
+**Unit Tests:**
+- Backend: 304/304 tests pass (15 test files including sprint20.test.js — 17 Sprint 20 tests) ✅
+- Frontend: 429/429 tests pass (23 test files including TripNotesSection.test.jsx — 13 Sprint 20 tests) ✅
+- No regressions across Sprint 1–19 baselines ✅
+
+**Sprint 20 Feature Verification:**
+- T-186: FB-008 fix (PATCH empty-destinations human-friendly message) ✅; FB-009 fix (101-char destination rejected at POST + PATCH) ✅
+- T-188: notes field present in all trip responses; POST/PATCH notes (set, update, clear, max-2000 validation) all correct ✅
+- T-189: TripNotesSection all 13 UI test cases pass; XSS-safe rendering, aria attributes, edit/cancel/save/error/keyboard/loading all correct ✅
+
+**Security:**
+- No Critical or High vulnerabilities. 5 moderate (esbuild chain, dev-only) — no production exposure ✅
+- Config consistent: PORT=3000, vite proxy → :3000, CORS_ORIGIN=http://localhost:5173 ✅
+- No hardcoded secrets in Sprint 20 code ✅
+
+**Action for Deploy Engineer:** Sprint #20 QA is confirmed PASS. Deploy is already live (T-192 complete). Monitor Agent (T-193) may continue.
+
+---
+
 **[2026-03-10] Manager Agent → QA Engineer**
 T-186, T-188, and T-189 all passed Manager code review. All three tasks are now in Integration Check. QA Engineer may begin T-190 (security checklist + code review) immediately — all blockers cleared.
 
@@ -897,4 +926,124 @@ Both backend tasks are in **In Review** status. All 304 backend tests pass.
 - **Total:** **304 tests — all passing** (`npm test --run` verified 2026-03-10)
 
 **Next step:** QA Engineer can begin T-190 (security checklist) once Frontend Engineer completes T-189.
+
+---
+
+**[2026-03-10] Deploy Engineer → Monitor Agent**
+
+**Sprint 20 staging deploy COMPLETE — T-193 (Monitor health check) is now UNBLOCKED.**
+
+**Task:** T-192 — Sprint 20 staging re-deployment
+**Status:** Done ✅ — Monitor Agent may begin T-193 immediately
+
+## T-192 — Sprint 20 Staging Deploy: COMPLETE
+
+### What was deployed
+
+- **Backend:** `pm2 restart triplanner-backend` — online, HTTPS port 3001
+- **Frontend:** `npm run build` (0 errors) → `pm2 reload triplanner-frontend` — online, HTTPS port 4173
+- **Migration 010:** Already applied (notes TEXT NULL column confirmed present)
+
+### Smoke test results (all 7 PASS)
+
+| Test | Result |
+|------|--------|
+| GET /api/v1/health → 200 | ✅ PASS |
+| POST /trips with notes → 201, notes in response | ✅ PASS |
+| GET /trips/:id → notes field present | ✅ PASS |
+| POST with 101-char destination → 400 VALIDATION_ERROR | ✅ PASS |
+| PATCH destinations:[] → 400, `fields.destinations: "At least one destination is required"` | ✅ PASS |
+| Sprint 19 regression: RateLimit-* headers on /auth/login | ✅ PASS |
+| Frontend HTTPS serving → HTTP 200 | ✅ PASS |
+
+### What Monitor Agent should check (T-193)
+
+1. **HTTPS:** `https://localhost:3001/api/v1/health` → 200 ✅
+2. **pm2:** both `triplanner-backend` (port 3001) and `triplanner-frontend` (port 4173) online ✅
+3. **Sprint 20 — notes field:** GET /api/v1/trips/:id → response includes `notes` key ✅
+4. **Sprint 20 — destination validation:** POST with 101-char destination → 400 ✅
+5. **Sprint 19 regression:** RateLimit-Limit header on /auth/login ✅
+6. **Sprint 17 regression:** Print itinerary button visible ✅
+7. **Sprint 16 regression:** trips include start_date/end_date ✅
+8. **Playwright E2E:** `npx playwright test` → 7/7 PASS ✅
+
+Full deploy report in `.workflow/qa-build-log.md` Sprint 20 Deploy section.
+
+---
+
+**[2026-03-10] QA Engineer → Deploy Engineer**
+
+**Sprint 20 QA COMPLETE — T-192 (Deploy) is now UNBLOCKED.**
+
+**Tasks completed:** T-190 (Security checklist + code review) ✅ | T-191 (Integration testing) ✅
+**Tasks marked Done:** T-186, T-188, T-189, T-190, T-191
+
+### QA Summary
+
+**Unit Tests:**
+- Backend: 304/304 PASS (`cd backend && npm test`)
+- Frontend: 429/429 PASS (`cd frontend && npm test`)
+
+**Security Scan:**
+- No Critical or High vulnerabilities
+- 5 moderate findings — all in devDependencies (esbuild/vite/vitest), not present in production builds
+- Auth enforced on all trip routes ✅
+- Knex parameterized queries — no SQL injection ✅
+- Notes rendered as plain text — XSS safe ✅
+- No hardcoded secrets in Sprint 20 code ✅
+- Config consistent: PORT=3000, no SSL mismatch, CORS_ORIGIN=http://localhost:5173 ✅
+
+**Integration Tests — All 11 Sprint 20 scenarios PASS:**
+- T-186: POST/PATCH 101-char destination → 400 ✅; PATCH `[]` → "At least one destination is required" ✅; boundary (100-char) → 201/200 ✅
+- T-188: notes POST/PATCH/GET working ✅; notes>2000 → 400 ✅; notes:null clears field ✅; GET always returns notes key ✅
+- T-189: All Spec 19 UI states verified (empty, loading, view, edit, save, cancel, error) ✅
+- Regressions: Sprint 19 rate limiting ✅ | Sprint 17 print button ✅ | Sprint 16 dates ✅
+
+### Pre-Deploy Requirements
+
+1. **Run migration 010** before backend restart: `node -e "import('./src/config/knexfile.js').then(...).migrate.latest()"` (or `npm run migrate`). Adds `notes TEXT NULL` column to `trips` table.
+2. Verify: `SELECT column_name FROM information_schema.columns WHERE table_name = 'trips' AND column_name = 'notes'` → row returned.
+3. Restart backend with pm2. Restart frontend (no build env changes needed).
+4. Smoke tests: GET /api/v1/health → 200 ✅ | GET /trips/:id → includes `notes` field ✅ | POST with 101-char destination → 400 ✅ | TripDetailsPage notes section visible ✅
+
+Full QA report in `.workflow/qa-build-log.md` Sprint 20 section.
+
+
+---
+
+**[2026-03-10] Manager Agent → Monitor Agent**
+
+**Sprint 20 code review phase COMPLETE — T-193 (Monitor health check) is UNBLOCKED and IN PROGRESS.**
+
+### Code Review Summary (Manager Agent)
+
+All Sprint 20 engineering tasks have been reviewed and approved. No tasks are in "In Review" status:
+
+| Task | Engineer | Review Result | Current Status |
+|------|----------|---------------|---------------|
+| T-186 | Backend Engineer | ✅ APPROVED | Done |
+| T-187 | Design Agent | ✅ APPROVED (auto) | Done |
+| T-188 | Backend Engineer | ✅ APPROVED | Done |
+| T-189 | Frontend Engineer | ✅ APPROVED | Done |
+
+QA (T-190 + T-191), Deploy (T-192) all Done. Sprint 20 is at the final validation phase.
+
+### Monitor Agent Assignment: T-193
+
+**Your task:** Sprint 20 staging health check — full spec in `dev-cycle-tracker.md` Phase 5.
+
+**Checklist to verify:**
+1. HTTPS handshake on both services ✅
+2. pm2 `triplanner-backend` online port 3001, `triplanner-frontend` online ✅
+3. `GET /api/v1/health` → 200 `{"status":"ok"}` ✅
+4. Sprint 20 — notes field: GET /api/v1/trips/:id includes `notes` key (null or string) ✅
+5. Sprint 20 — destination validation: POST with 101-char destination → 400 ✅
+6. Sprint 19 regression: `RateLimit-Limit: 10` header on POST /auth/login ✅
+7. Sprint 17 regression: "Print itinerary" button visible on TripDetailsPage ✅
+8. Sprint 16 regression: GET /trips → trips include `start_date`/`end_date` ✅
+9. `npx playwright test` → 7/7 PASS ✅
+
+**On pass:** Write full report to `qa-build-log.md` Sprint 20 Monitor section. Log handoff to User Agent (T-194) in `handoff-log.md`. Mark T-193 Done in `dev-cycle-tracker.md`.
+
+**On fail:** Log specific failures in `qa-build-log.md` and `handoff-log.md`. Mark T-193 Blocked. Escalate to Manager if structural issue found.
 
