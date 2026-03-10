@@ -701,3 +701,70 @@ No new migration for Sprint 20. The `notes TEXT NULL` column on `trips` was appl
 ### Backend test target
 287+ base (Sprint 19 target) + 5 T-186 cases + 9 T-188 cases = **301+ total backend tests**
 
+---
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Sprint:** #20
+**Date:** 2026-03-10
+**Status:** Ready for QA
+
+## Sprint 20 Implementation Complete — T-186 + T-188
+
+Both backend tasks are in **In Review** status. All 304 backend tests pass.
+
+### T-186 — Destination Validation Tightening (Bug Fix)
+
+**What was changed:**
+
+1. **`backend/src/middleware/validate.js`** — Added `itemMaxLength` and `itemMinLength` options for array field validation. When set, each string item in the array is checked against the limit. The first offending item triggers a `fields.<field>` error. Message can be overridden via `rules.messages.itemMaxLength`.
+
+2. **`backend/src/routes/trips.js`** — Updated `destinations` schema in both POST and PATCH handlers:
+   - POST: added `itemMaxLength: 100` + override message `'Each destination must be at most 100 characters'`
+   - PATCH: added `itemMaxLength: 100` + override message, plus `messages.minItems: 'At least one destination is required'` (fixes FB-008 — previously returned raw `destinations must have at least 1 item(s)`)
+
+3. **`backend/src/__tests__/sprint20.test.js`** (new) — Tests A–E cover all T-186 acceptance criteria.
+
+**Security check (T-190):**
+- `itemMaxLength: 100` prevents destination strings > 100 chars from reaching the DB ✅
+- Error messages are user-friendly strings, no internal schema details exposed ✅
+- All validation is pre-query; no SQL execution path affected ✅
+
+**Test coverage for QA to verify:**
+| Case | Input | Expected |
+|------|-------|---------|
+| A | POST destinations: ["X" × 101] | 400 VALIDATION_ERROR, fields.destinations present |
+| B | PATCH destinations: ["X" × 101] | 400 VALIDATION_ERROR, fields.destinations present |
+| C | PATCH destinations: [] | 400, fields.destinations = "At least one destination is required" |
+| D | POST destinations: ["X" × 100] | 201 Created |
+| E | PATCH destinations: ["X" × 100] | 200 OK |
+
+---
+
+### T-188 — Trip Notes Field (Feature)
+
+**What was verified:** All T-188 requirements were pre-implemented in Sprint 7 (T-103). No new code changes needed. Sprint 20 adds explicit acceptance tests in `sprint20.test.js` (tests F–K).
+
+**Existing implementation confirmed:**
+- `backend/src/migrations/20260227_010_add_trip_notes.js` — `notes TEXT NULL` column, with up/down ✅
+- `backend/src/models/tripModel.js` — `notes` in TRIP_COLUMNS (SELECT); `createTrip` / `updateTrip` handle `notes` field ✅
+- `backend/src/routes/trips.js` — POST + PATCH schemas include `notes: max(2000), nullable, optional`; GET returns notes via model ✅
+- `backend/src/__tests__/sprint7.test.js` — 9 existing T-103 notes tests ✅
+- `backend/src/__tests__/sprint20.test.js` — 6 additional T-188 acceptance tests (F–K) ✅
+
+**Security check (T-190):**
+- `notes` stored via parameterized Knex query (`db('trips').insert(data)`) — no SQL injection vector ✅
+- Max 2000 chars enforced at API layer before any DB interaction ✅
+- `notes` value is never executed as code ✅
+
+**Deploy note:** No new migration for T-188. Migration 010 (`notes TEXT NULL`) was applied in Sprint 7. Deploy Engineer should confirm it's present (`SELECT column_name FROM information_schema.columns WHERE table_name = 'trips' AND column_name = 'notes'`).
+
+---
+
+### Test counts
+- **Baseline (Sprint 19):** 287 tests
+- **Sprint 20 additions:** 17 new tests in `sprint20.test.js`
+- **Total:** **304 tests — all passing** (`npm test --run` verified 2026-03-10)
+
+**Next step:** QA Engineer can begin T-190 (security checklist) once Frontend Engineer completes T-189.
+

@@ -98,7 +98,11 @@ router.post(
       type: 'array',
       minItems: 1,
       maxItems: 50,
-      messages: { required: 'At least one destination is required' },
+      itemMaxLength: 100,
+      messages: {
+        required: 'At least one destination is required',
+        itemMaxLength: 'Each destination must be at most 100 characters',
+      },
     },
     // start_date and end_date are optional; validated as dateString when provided (T-029)
     start_date: {
@@ -200,6 +204,11 @@ router.patch(
       required: false,
       type: 'array',
       minItems: 1,
+      itemMaxLength: 100,
+      messages: {
+        minItems: 'At least one destination is required',
+        itemMaxLength: 'Each destination must be at most 100 characters',
+      },
     },
     status: {
       required: false,
