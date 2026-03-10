@@ -4,19 +4,17 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #18 — 2026-03-08
+## Sprint #19 — 2026-03-09
 
-**Sprint Goal:** Close the Sprint 17 pipeline carry-overs (Monitor Agent health check T-176 + User Agent walkthrough T-177 — staging is already live from T-175). Implement auth rate limiting (B-020) to resolve the 17-sprint security deferral on /auth/login and /auth/register. Produce the Spec 18 design spec for multi-destination structured UI (B-007), enabling Sprint 19 frontend implementation. Complete the full QA → Deploy → Monitor → User Agent pipeline for Sprint 18 changes.
+**Sprint Goal:** Execute the full Sprint 18 plan that failed to run — close the Sprint 17 pipeline carry-overs (T-176 Monitor + T-177 User Agent), ship auth rate limiting (B-020, now 18 sprints deferred — non-negotiable P0), produce the multi-destination structured UI spec (T-179) and implementation (T-180), and complete the full QA → Deploy → Monitor → User Agent pipeline. Sprint 19 must break the planning-without-execution pattern that caused Sprint 18 to close with zero tasks completed.
 
-**Context:** Sprint 17 delivered all 7 in-scope tasks cleanly (T-170 code cleanup, T-171 design spec, T-172 print/export implementation, T-173/T-174 QA, T-175 deploy, MGR-S17 code review). The staging build is live. T-176 (Monitor) and T-177 (User Agent) did not execute before sprint close — they are Sprint 18's first deliverables. Auth rate limiting (B-020) has been an accepted security risk since Sprint 1; 17 sprints is too long — it ships in Sprint 18. Multi-destination structured UI (B-007) gets its design spec this sprint so implementation can follow in Sprint 19.
+**Context:** Sprint 18 was fully planned but never executed. All 10 tasks (T-176–T-185) remain in Backlog. The Sprint 17 staging deployment (T-175) is live and ready for Monitor verification. Auth rate limiting (`express-rate-limit` is already installed) has been an accepted security risk since Sprint 1 — 18 sprints is the absolute limit. Multi-destination chip UI (B-007) has its spec defined in the Sprint 18 task T-179; Sprint 19 delivers both the spec and the implementation.
 
-**Feedback Triage (Sprint 17 → Sprint 18 — Manager Agent 2026-03-08):**
+**Feedback Triage (Sprint 18 → Sprint 19 — Manager Agent 2026-03-09):**
 
 | FB Entry | Category | Severity | Status | Disposition |
 |----------|----------|----------|--------|-------------|
-| — | — | — | N/A | No Sprint 17 User Agent feedback — T-177 not reached. T-176 + T-177 carry over as Sprint 18 Phase 0. |
-| B-020 | Security | Major | **Tasked → T-178** | Auth rate limiting on /auth/login + /auth/register. 17-sprint deferral closed in Sprint 18. |
-| B-007 | Feature Gap | Minor | **Tasked → T-179** | Multi-destination structured UI design spec (implementation Sprint 19). |
+| — | — | — | N/A | No Sprint 18 User Agent feedback — T-185 never reached (Sprint 18 did not execute). All Sprint 18 tasks carry forward to Sprint 19 unchanged. |
 
 ---
 
@@ -24,7 +22,7 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ### Phase 0 — Pipeline Carry-over (HIGHEST PRIORITY — start before all other work)
 
-*T-175 (Sprint 17 deploy) is live on staging. T-176 and T-177 simply need to run against it.*
+*T-175 (Sprint 17 deploy) is live on staging. T-176 and T-177 simply need to run against it. These have been pending since Sprint 17.*
 
 - [ ] **T-176** — Monitor Agent: Sprint 17 staging health check ← **NO DEPENDENCIES — START IMMEDIATELY** (P1)
   - HTTPS handshake + pm2 `triplanner-backend` online on port 3001
@@ -43,13 +41,13 @@ The operational reference for the current development cycle. Refreshed at the st
   - "No dates yet" text is legible (not over-dimmed after opacity fix) ✅
   - Home page date ranges still correct (formatTripDateRange removal did not affect formatDateRange) ✅
   - Sprint 16 + Sprint 15 + Sprint 14 + Sprint 13 + Sprint 11 regression ✅
-  - Submit structured feedback to `feedback-log.md` under Sprint 18 User Agent Feedback header
+  - Submit structured feedback to `feedback-log.md` under Sprint 19 User Agent Feedback header
 
 ---
 
 ### Phase 1 — Backend Security Fix + Design Spec (parallel, no dependencies — start immediately)
 
-- [ ] **T-178** — Backend Engineer: Auth rate limiting (B-020) ← **NO DEPENDENCIES — START IMMEDIATELY** (P1)
+- [ ] **T-178** — Backend Engineer: Auth rate limiting (B-020) ← **NO DEPENDENCIES — START IMMEDIATELY** (P0)
   - `express-rate-limit` is already installed (verified Sprint 1). No new dependencies needed.
   - Create `backend/src/middleware/rateLimiter.js` with two limiter instances:
     - **loginLimiter:** 10 attempts per IP per 15-minute window → 429 `{"code":"RATE_LIMITED","message":"Too many login attempts, please try again later."}`
@@ -96,7 +94,7 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ### Phase 3 — QA Review (after T-178 + T-180 complete)
 
-- [ ] **T-181** — QA Engineer: Security checklist + code review for Sprint 18 ← Blocked by T-178, T-180 (P1)
+- [ ] **T-181** — QA Engineer: Security checklist + code review for Sprint 19 ← Blocked by T-178, T-180 (P1)
   - **T-178 (rate limiting) security:**
     - Limiter uses IP as key (not user-supplied input) ✅
     - 429 response body uses `RATE_LIMITED` code — no stack trace, no internal details ✅
@@ -110,9 +108,9 @@ The operational reference for the current development cycle. Refreshed at the st
   - Run `npm test --run` in `backend/` (278+ base + new rate limiter tests)
   - Run `npm test --run` in `frontend/` (416+ base + new chip input tests)
   - Run `npm audit` — flag any new Critical/High findings
-  - Full report in qa-build-log.md Sprint 18 section
+  - Full report in qa-build-log.md Sprint 19 section
 
-- [ ] **T-182** — QA Engineer: Integration testing for Sprint 18 ← Blocked by T-181 (P1)
+- [ ] **T-182** — QA Engineer: Integration testing for Sprint 19 ← Blocked by T-181 (P1)
   - **Rate limiting:** Simulate 11 POST /auth/login requests → 10th returns 200/401, 11th returns 429 `RATE_LIMITED` ✅
   - **Rate limiting — register:** Simulate 6 POST /auth/register requests → 5th returns 201/409, 6th returns 429 ✅
   - **Destinations — create:** Open create modal → add 3 destination chips → submit → verify trip created with all 3 in array ✅
@@ -120,13 +118,13 @@ The operational reference for the current development cycle. Refreshed at the st
   - **Destinations — card:** Verify all trip card destination displays correct ✅
   - **Sprint 17 regression:** Print button still visible; "No dates yet" still legible after re-deploy ✅
   - **Sprint 16 + Sprint 15 + Sprint 14 regression** ✅
-  - Full report in qa-build-log.md Sprint 18 section. Handoff to Deploy (T-183).
+  - Full report in qa-build-log.md Sprint 19 section. Handoff to Deploy (T-183).
 
 ---
 
 ### Phase 4 — Deploy, Monitor, User Agent (sequential after Phase 3)
 
-- [ ] **T-183** — Deploy Engineer: Sprint 18 staging re-deployment ← Blocked by T-182 (P1)
+- [ ] **T-183** — Deploy Engineer: Sprint 19 staging re-deployment ← Blocked by T-182 (P1)
   - **Backend:** T-178 adds `rateLimiter.js` middleware — `pm2 restart triplanner-backend`. Verify online.
   - **Frontend:** `npm run build` in `frontend/`. Confirm 0 errors.
   - **Smoke tests:**
@@ -138,33 +136,32 @@ The operational reference for the current development cycle. Refreshed at the st
   - Do NOT modify `backend/.env` or `backend/.env.staging`
   - Log handoff to Monitor (T-184) in handoff-log.md. Full report in qa-build-log.md.
 
-- [ ] **T-184** — Monitor Agent: Sprint 18 staging health check ← Blocked by T-183 (P1)
+- [ ] **T-184** — Monitor Agent: Sprint 19 staging health check ← Blocked by T-183 (P1)
   - HTTPS ✅, pm2 port 3001 ✅, health 200 ✅
-  - **Sprint 18 — Rate limiting:** 11 rapid POST /auth/login requests → first 10: 200/401, 11th: 429 ✅
-  - **Sprint 18 — Destinations UI:** Trip details page shows destination chips; "Edit destinations" control visible ✅
+  - **Sprint 19 — Rate limiting:** 11 rapid POST /auth/login requests → first 10: 200/401, 11th: 429 ✅
+  - **Sprint 19 — Destinations UI:** Trip details page shows destination chips; "Edit destinations" control visible ✅
   - **Sprint 17 regression:** "Print itinerary" button visible ✅; "No dates yet" legible ✅
   - **Sprint 16 regression:** start_date/end_date on trips ✅
   - **Sprint 15 regression:** title "triplanner", favicon ✅
   - `npx playwright test` → 7/7 PASS ✅
-  - Full report in qa-build-log.md Sprint 18 section. Handoff to User Agent (T-185).
+  - Full report in qa-build-log.md Sprint 19 section. Handoff to User Agent (T-185).
 
-- [ ] **T-185** — User Agent: Sprint 18 feature walkthrough ← Blocked by T-184 (P2)
+- [ ] **T-185** — User Agent: Sprint 19 feature walkthrough ← Blocked by T-184 (P2)
   - **Rate limiting:** Attempt 11 rapid logins with wrong password → verify 429 (or user-facing error message) on 11th attempt ✅
   - **Multi-destination — Create:** Create trip with 3 destination chips → verify all 3 appear on trip card ✅
   - **Multi-destination — Edit:** Edit destinations on trip details → remove 1, add 1 → save → verify header updates ✅
   - **Sprint 17 regression:** Print button visible, "No dates yet" legible ✅
   - **Sprint 16 + Sprint 15 + Sprint 14 + Sprint 13 + Sprint 11 regression** ✅
-  - Submit structured feedback to `feedback-log.md` under Sprint 19 User Agent Feedback header
+  - Submit structured feedback to `feedback-log.md` under Sprint 20 User Agent Feedback header
 
 ---
 
 ## Out of Scope
 
-- **Multi-destination frontend implementation** — design spec (T-179) ships in Sprint 18; implementation (T-180) is in Sprint 18 too if spec is approved early — otherwise implementation goes to Sprint 19.
-- **Production deployment (B-022)** — Pending project owner hosting decision. `.workflow/hosting-research.md` (T-124) awaits review. **18 consecutive sprints with no decision. Project owner action required.**
+- **Production deployment (B-022)** — Pending project owner hosting decision. `.workflow/hosting-research.md` (T-124) awaits review. **19 consecutive sprints with no decision. Project owner action required.**
 - **B-021 (esbuild dev dep vulnerability)** — No production impact. Monitor for upstream vitest patch.
-- **B-024 (per-account rate limiting)** — Depends on B-020 completion. Defer to Sprint 19+ if needed.
-- **Redis for rate limiting** — express-rate-limit in-memory store sufficient at current scale. Redis upgrade is B-020 extended scope.
+- **B-024 (per-account rate limiting)** — Depends on B-020 completion. Defer to Sprint 20+ if needed.
+- **Redis for rate limiting** — express-rate-limit in-memory store sufficient at current scale.
 - **MFA login** — Explicitly out of scope per project brief.
 - **Home page summary calendar** — Explicitly out of scope per project brief.
 - **Auto-generated itinerary suggestions** — Explicitly out of scope per project brief.
@@ -177,14 +174,14 @@ The operational reference for the current development cycle. Refreshed at the st
 |-------|----------------------|-----------|
 | Monitor Agent | Complete Sprint 17 health check carry-over | T-176 (immediate) |
 | User Agent | Complete Sprint 17 walkthrough carry-over | T-177 (after T-176) |
-| Backend Engineer | Auth rate limiting (B-020 security fix) | T-178 |
+| Backend Engineer | Auth rate limiting (B-020 security fix — P0) | T-178 |
 | Design Agent | Multi-destination structured UI spec (B-007) | T-179 |
 | Frontend Engineer | Multi-destination structured UI implementation | T-180 |
 | QA Engineer | Security checklist + integration testing | T-181, T-182 |
-| Deploy Engineer | Sprint 18 staging re-deployment | T-183 |
-| Monitor Agent | Sprint 18 staging health check | T-184 |
-| User Agent | Sprint 18 feature walkthrough | T-185 |
-| Manager | Triage T-185 feedback → Sprint 19 plan | Feedback triage |
+| Deploy Engineer | Sprint 19 staging re-deployment | T-183 |
+| Monitor Agent | Sprint 19 staging health check | T-184 |
+| User Agent | Sprint 19 feature walkthrough | T-185 |
+| Manager | Triage T-185 feedback → Sprint 20 plan | Feedback triage |
 
 ---
 
@@ -193,7 +190,7 @@ The operational reference for the current development cycle. Refreshed at the st
 ```
 Track A — Pipeline Carry-over (start immediately, highest priority):
 T-176 (Monitor: Sprint 17 health check) → T-177 (User Agent: Sprint 17 walkthrough)
-        [T-177 submits feedback under Sprint 18 header — triaged at sprint end]
+        [T-177 submits feedback under Sprint 19 header — triaged at sprint end]
 
 Track B — Security Fix (start immediately, no blockers):
 T-178 (Backend: auth rate limiting — B-020)
@@ -211,52 +208,52 @@ T-179 (Design: multi-destination spec) → T-180 (Frontend: multi-destination im
                                                    |
                                               T-183 (Deploy)
                                                    |
-                                              T-184 (Monitor: Sprint 18 health)
+                                              T-184 (Monitor: Sprint 19 health)
                                                    |
-                                              T-185 (User Agent: Sprint 18 walkthrough)
+                                              T-185 (User Agent: Sprint 19 walkthrough)
                                                    |
-                                         Manager: Triage feedback → Sprint 19 plan
+                                         Manager: Triage feedback → Sprint 20 plan
 ```
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #18 is complete?*
+*How do we know Sprint #19 is complete?*
 
 - [ ] T-176: Monitor verifies Sprint 17 staging health — print button visible, opacity fix deployed, Playwright 7/7 PASS
 - [ ] T-177: User Agent verifies Sprint 17 features on staging — print button functional, "No dates yet" legible, regressions clean; feedback submitted to feedback-log.md
 - [ ] T-178: Auth rate limiting live — /auth/login returns 429 after 10 attempts in 15min window; /auth/register returns 429 after 5 in 60min window; all 278+ backend tests pass
 - [ ] T-179: Spec 18 (multi-destination UI) published to ui-spec.md; Manager-approved
 - [ ] T-180: Multi-destination chip input in create modal; destinations display on trip card; edit destinations on trip details page; all 416+ frontend tests pass
-- [ ] T-181: QA security checklist passed for Sprint 18 changes; no new Critical/High audit findings
+- [ ] T-181: QA security checklist passed for Sprint 19 changes; no new Critical/High audit findings
 - [ ] T-182: QA integration testing passed; rate limiting verified; Sprint 17/16/15 regression clean
 - [ ] T-183: Frontend + backend rebuilt and deployed to staging; smoke tests pass
-- [ ] T-184: Monitor confirms all Sprint 18 health checks pass
+- [ ] T-184: Monitor confirms all Sprint 19 health checks pass
 - [ ] T-185: User Agent verifies rate limiting and multi-destination UI on staging; structured feedback submitted
 - [ ] All feedback from T-185 triaged by Manager (Tasked, Won't Fix, or Acknowledged)
-- [ ] Sprint 18 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 19 plan written in `.workflow/active-sprint.md`
+- [ ] Sprint 19 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 20 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #18)
+## Success Criteria (Sprint #19)
 
-By end of Sprint #18, the following must be verifiable on staging:
+By end of Sprint #19, the following must be verifiable on staging:
 
 - [ ] **T-176/T-177 Done** — Sprint 17 pipeline complete; print button and opacity fix verified by Monitor and User Agent
 - [ ] **T-178 Done** — Auth endpoints are rate limited; 429 returned after threshold; existing tests unbroken
 - [ ] **T-180 Done** — Users can add multiple destinations via chip input in create modal and edit them from trip details
-- [ ] Sprint 18 staging deploy (T-183) completed successfully
+- [ ] Sprint 19 staging deploy (T-183) completed successfully
 - [ ] No Critical or Major bugs found in T-185 walkthrough
-- [ ] Sprint 19 plan written in `active-sprint.md`
+- [ ] Sprint 20 plan written in `active-sprint.md`
 
 ---
 
 ## Blockers
 
-- **B-022 (Production Deployment — 18 consecutive sprints):** Project owner must review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. **Project owner action required before production deployment can execute.**
+- **B-022 (Production Deployment — 19 consecutive sprints):** Project owner must review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. **Project owner action required before production deployment can execute.**
 
 ---
 
-*Previous sprint (Sprint #17) archived to `.workflow/sprint-log.md` on 2026-03-08. Sprint #18 plan written by Manager Agent 2026-03-08.*
+*Previous sprint (Sprint #18) archived to `.workflow/sprint-log.md` on 2026-03-09. Sprint #19 plan written by Manager Agent 2026-03-09.*

@@ -1258,3 +1258,33 @@ Users can print or save a clean, printer-friendly view of their trip itinerary. 
 | T-185 | User Agent: Sprint 18 feature walkthrough. (1) **Auth rate limiting:** Attempt 11 logins with wrong password in quick succession → verify 429 returned with friendly error message on attempt 11 (if rate limit response surfaced in UI). (2) **Multi-destination — Create:** Create a new trip with 3 destinations using chip input; verify all 3 appear on home page trip card. (3) **Multi-destination — Edit:** Open trip details; click "Edit destinations"; remove 1, add 1; save; verify header reflects updated list. (4) **Sprint 17 regression:** Print button visible; "No dates yet" legible. (5) **Sprint 16 + Sprint 15 + Sprint 14 regression.** Submit structured feedback to `feedback-log.md` under Sprint 19 User Agent Feedback header. | Documentation | User Agent | Backlog | P2 | M | 18 | T-184 | All Sprint 18 features verified on HTTPS staging. Rate limiting works (429 at threshold). Multi-destination create/edit/display correct. Sprint 17 + Sprint 16 + Sprint 15 + Sprint 14 regression clean. Structured feedback submitted to feedback-log.md under Sprint 19 header. |
 
 ---
+
+## Sprint 19 Tasks
+
+**Sprint 19 Kickoff (Manager Agent — 2026-03-09):** Sprint 18 was fully planned but did not execute — all 10 tasks (T-176 through T-185) remain in Backlog. Sprint 19 carries all Sprint 18 tasks forward unchanged. The staging deployment from T-175 (Sprint 17) remains live. Auth rate limiting (B-020) is now 18 sprints deferred — it is a non-negotiable P0 for Sprint 19.
+
+**Feedback triage (Sprint 18 → Sprint 19):**
+- No Sprint 18 User Agent feedback received (T-185 never reached — Sprint 18 did not execute).
+- All Sprint 18 tasks carry to Sprint 19 with identical scope and priorities.
+
+---
+
+### Sprint 19 — Carried Over Tasks (all 10 from Sprint 18)
+
+All tasks T-176 through T-185 defined under Sprint 18 Tasks section above are assigned to Sprint 19.
+Status of all tasks: **Backlog** (no execution occurred in Sprint 18).
+Sprint field updated from 18 → 19 for execution purposes.
+
+**Execution order:**
+1. T-176 (Monitor: Sprint 17 health check) — no blockers, start immediately
+2. T-177 (User Agent: Sprint 17 walkthrough) — blocked by T-176
+3. T-178 (Backend: auth rate limiting) — no blockers, start in parallel with T-176
+4. T-179 (Design: multi-destination spec) — no blockers, start in parallel
+5. T-180 (Frontend: multi-destination impl) — blocked by T-179
+6. T-181 (QA: security + review) — blocked by T-178, T-180
+7. T-182 (QA: integration) — blocked by T-181
+8. T-183 (Deploy) — blocked by T-182
+9. T-184 (Monitor: Sprint 19 health) — blocked by T-183
+10. T-185 (User Agent: Sprint 19 walkthrough) — blocked by T-184
+
+---
