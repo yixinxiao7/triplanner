@@ -5535,3 +5535,252 @@ All other endpoints unchanged.
 ---
 
 *Sprint 20 contracts published by Backend Engineer 2026-03-10. T-186: validation-layer-only changes to destinations (max 100 chars per item, friendly PATCH empty-array message). T-188: formalized notes field contract — no new migration (column exists since Sprint 7), adds max-2000 Joi validation and confirms notes inclusion in all trip response shapes. Frontend Engineer may proceed with T-189 (TripNotesSection) using PATCH /api/v1/trips/:id contract above. QA test matrix: 287+ base + T-186 tests (5 cases) + T-188 tests (9 cases) = 301+ total.*
+
+---
+
+## Sprint 21 — API Contracts
+
+**Date:** 2026-03-10
+**Reviewed by:** Backend Engineer
+**Outcome:** Sprint 21 was a planning-only sprint — zero tasks executed. All tasks carry to Sprint 22. No contract review action required.
+
+---
+
+*Sprint 21 was planning-only (0/8 tasks executed). No API contract changes.*
+
+---
+
+## Sprint 22 — API Contracts
+
+**Date:** 2026-03-10
+**Reviewed by:** Backend Engineer
+**Sprint Goal:** Close the Sprint 21 carry-over pipeline. Deliver the trip status selector (T-196): an inline status badge on TripDetailsPage that lets users change PLANNING → ONGOING → COMPLETED without a page reload. Complete the full QA → Deploy → Monitor → User Agent pipeline (T-197 through T-201).
+
+---
+
+### Sprint 22 — No New API Endpoints
+
+Sprint 22 introduces **zero new backend endpoints and zero schema changes**. The sole new frontend feature — the `TripStatusSelector` component (T-196) — operates exclusively against the existing `PATCH /api/v1/trips/:id` endpoint, which has supported the `status` field since Sprint 1.
+
+The `active-sprint.md` Sprint 22 Out-of-Scope note is authoritative: *"Backend changes for status — PATCH /api/v1/trips/:id already supports `status` field per Sprint 1 API contract. No migration or model changes needed."*
+
+| Task | Agent | API Impact |
+|------|-------|------------|
+| T-194 | User Agent | Sprint 20 walkthrough — no API changes. Tests existing endpoints. |
+| T-195 | Design Agent | Spec 20 UI spec — no API changes. Documents frontend component behaviour only. |
+| T-196 | Frontend Engineer | `TripStatusSelector.jsx` — calls existing `PATCH /api/v1/trips/:id` with `{ "status": "..." }`. **No new endpoint; no contract change.** |
+| T-197 | QA Engineer | Security checklist + code review — no API changes. |
+| T-198 | QA Engineer | Integration testing — exercises existing endpoints. |
+| T-199 | Deploy Engineer | Frontend rebuild + pm2 reload — no API changes. |
+| T-200 | Monitor Agent | Staging health check — no API changes. |
+| T-201 | User Agent | Sprint 22 feature walkthrough — no API changes. |
+
+---
+
+### Sprint 22 — Status Field on PATCH /api/v1/trips/:id (Reference for T-196)
+
+This section is a **focused reference** for the Frontend Engineer implementing T-196 (`TripStatusSelector.jsx`). The full contract is documented in the Sprint 1 section and updated through Sprint 20. No changes are made here — this is a convenience excerpt.
+
+#### Endpoint
+
+| Field | Value |
+|-------|-------|
+| Method | `PATCH` |
+| Path | `/api/v1/trips/:id` |
+| Auth Required | Yes — Bearer token (`Authorization: Bearer <access_token>`) |
+| Sprint introduced | 1 (T-005) |
+| Last updated | Sprint 20 (T-186, T-188) |
+| Contract status | ✅ Agreed, Applied on Staging |
+
+#### Request Body (status-only update — the T-196 use case)
+
+Only the `status` field needs to be sent. All PATCH fields are optional; only provided fields are updated.
+
+```json
+{
+  "status": "ONGOING"
+}
+```
+
+**Valid `status` values:**
+
+| Value | Meaning |
+|-------|---------|
+| `"PLANNING"` | Trip is in the planning phase (default for new trips) |
+| `"ONGOING"` | Trip is currently in progress |
+| `"COMPLETED"` | Trip has been completed |
+
+Any other string value (e.g., `"INVALID"`, `""`, `null`, an integer) will return `400 VALIDATION_ERROR`.
+
+#### Success Response — 200 OK
+
+```json
+{
+  "data": {
+    "id": "uuid",
+    "user_id": "uuid",
+    "name": "string",
+    "destinations": ["string"],
+    "status": "ONGOING",
+    "start_date": "YYYY-MM-DD | null",
+    "end_date": "YYYY-MM-DD | null",
+    "notes": "string | null",
+    "created_at": "ISO 8601 timestamp",
+    "updated_at": "ISO 8601 timestamp"
+  }
+}
+```
+
+The `status` field in the response reflects the **computed** status (based on `start_date`/`end_date` vs. current date per T-030 logic). When dates are not set, the stored status value is returned as-is. After a successful PATCH with an explicit `status`, the response will reflect the newly stored value.
+
+#### Error Responses
+
+**400 Bad Request — Invalid status value:**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "status": "Status must be one of: PLANNING, ONGOING, COMPLETED"
+    }
+  }
+}
+```
+
+**400 Bad Request — No updatable fields provided:**
+```json
+{
+  "error": {
+    "message": "No updatable fields provided",
+    "code": "NO_UPDATABLE_FIELDS"
+  }
+}
+```
+*(Not triggered by T-196 since status is always provided, but documented for completeness.)*
+
+**401 Unauthorized — Missing or expired token:**
+```json
+{
+  "error": {
+    "message": "Authentication required",
+    "code": "UNAUTHORIZED"
+  }
+}
+```
+
+**403 Forbidden — Trip belongs to a different user:**
+```json
+{
+  "error": {
+    "message": "You do not have access to this trip",
+    "code": "FORBIDDEN"
+  }
+}
+```
+
+**404 Not Found — Trip ID does not exist:**
+```json
+{
+  "error": {
+    "message": "Trip not found",
+    "code": "NOT_FOUND"
+  }
+}
+```
+
+**500 Internal Server Error:**
+```json
+{
+  "error": {
+    "message": "Internal server error",
+    "code": "INTERNAL_ERROR"
+  }
+}
+```
+
+#### T-196 Integration Notes
+
+- **Client-side validation:** The Frontend MUST validate that `status` is one of `"PLANNING"`, `"ONGOING"`, `"COMPLETED"` before sending the PATCH request. Since the UI presents only those three hardcoded options, this is inherently guaranteed. No user-typed string reaches the API.
+- **Optimistic update:** Per Spec 20, the badge should optimistically update to the new status before the API call resolves. On error (any non-200 response), revert to the previous status and display the generic error toast.
+- **Same-status no-op:** If the user selects the status that is already active, the Frontend should NOT send a PATCH request (close dropdown silently). This is a UI-only optimisation — the API would accept it, but there is no need to make the round-trip.
+- **Auth token:** Use the existing auth token from the app's auth context. If the request returns 401, follow the standard token refresh flow already in place.
+
+#### T-196 — QA Test Matrix (Backend-relevant cases)
+
+| Case | Method | Input | Expected |
+|------|--------|-------|----------|
+| A | PATCH /api/v1/trips/:id | `{ "status": "ONGOING" }` (valid, different from current) | 200, response includes `"status": "ONGOING"` |
+| B | PATCH /api/v1/trips/:id | `{ "status": "COMPLETED" }` | 200, response includes `"status": "COMPLETED"` |
+| C | PATCH /api/v1/trips/:id | `{ "status": "PLANNING" }` | 200, response includes `"status": "PLANNING"` |
+| D | PATCH /api/v1/trips/:id | `{ "status": "INVALID" }` (direct API call) | 400, `VALIDATION_ERROR`, `fields.status` present |
+| E | PATCH /api/v1/trips/:id | `{ "status": "" }` (direct API call) | 400, `VALIDATION_ERROR` |
+| F | PATCH /api/v1/trips/:id | `{ "status": "ONGOING" }` (no auth header) | 401, `UNAUTHORIZED` |
+| G | PATCH /api/v1/trips/:id | `{ "status": "ONGOING" }` (another user's trip) | 403, `FORBIDDEN` |
+| H | PATCH /api/v1/trips/:id | `{ "status": "ONGOING" }` (non-existent trip ID) | 404, `NOT_FOUND` |
+
+*Cases A–C are the normal flow exercised by T-196. Cases D–H are regression/security cases for T-198 integration testing.*
+
+---
+
+### Sprint 22 — No Schema Changes
+
+No new database migrations are introduced in Sprint 22. The `status` column (`VARCHAR(20)`) on the `trips` table has existed since migration 003 (Sprint 1). No DDL changes are required.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table (includes `status VARCHAR(20) DEFAULT 'PLANNING'`) | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–22 | *(No new migrations through Sprint 22)* | Schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 22.**
+
+---
+
+### Sprint 22 — Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–20 remain in force unchanged. The complete authoritative state of all endpoint groups:
+
+| Sprint | Endpoint Group | Contract Status | Key Notes |
+|--------|---------------|----------------|-----------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | Rate limiting added Sprint 19 (T-183). |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
+| 1 (updated 20) | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7. `notes` is always `null \| non-empty string` (Sprint 9 correction). `status` filter by computed status (Sprint 5). |
+| 1 (updated 20) | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | `destinations` item max 100 chars (T-186 Sprint 20). `notes` max 2000 chars (T-188 Sprint 20). |
+| 1 (updated 20) | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field present; returns `null` if unset. |
+| 1 (updated 20) | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | **`status` accepts `PLANNING \| ONGOING \| COMPLETED` (Sprint 1, unchanged).** `notes` updatable (Sprint 7); `""` → `null` (Sprint 9). `destinations` item max 100 chars + friendly empty-array message (Sprint 20). |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | `departure_tz` + `arrival_tz` fields present. |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | `check_in_tz` + `check_out_tz` fields present. |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | `location TEXT NULL` present. `start_time`/`end_time` nullable (Sprint 3). |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Path corrected from `/land-travels` to `/land-travel` (T-139, Sprint 13). |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+
+---
+
+*Sprint 22 contracts published by Backend Engineer 2026-03-10. No new endpoints or schema changes. Sprint 22 is a frontend-feature-only sprint — `TripStatusSelector` (T-196) calls the existing `PATCH /api/v1/trips/:id` endpoint with `{ "status": "..." }`, which has accepted the `status` field since Sprint 1. The focused reference above (§ "Status Field on PATCH /api/v1/trips/:id") gives the Frontend Engineer everything needed for T-196 implementation. Test baseline: 304/304 backend | 429/429 frontend. No new backend tests expected — the status path is already covered by the existing trip PATCH test suite.*

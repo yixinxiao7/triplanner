@@ -1496,3 +1496,20 @@ Sprint field updated from 18 → 19 for execution purposes.
 
 ---
 
+### Sprint 22 — Backend Engineer Status Update (2026-03-10)
+
+**Backend Engineer:** No implementation tasks assigned in Sprint 22. The Backend Engineer role this sprint is **API Contracts + Hotfix Standby only.**
+
+**API Contracts phase (complete):**
+- ✅ Reviewed `PATCH /api/v1/trips/:id` contract — `status` field fully documented since Sprint 1, no changes needed.
+- ✅ Published Sprint 22 contracts section to `.workflow/api-contracts.md` — confirms no new endpoints, no schema changes.
+- ✅ Added T-196 focused reference block to contracts (status PATCH quick-reference for Frontend Engineer).
+- ✅ Logged handoff to Frontend Engineer in `handoff-log.md` — contract ready for T-196.
+- ✅ Logged handoff to QA Engineer in `handoff-log.md` — security checklist notes + T-198 integration test case table.
+
+**Schema changes:** None. `status VARCHAR(20) DEFAULT 'PLANNING'` on `trips` table exists since migration 003 (Sprint 1). No migration required.
+
+**Hotfix standby:** Backend Engineer is monitoring. If T-194 (User Agent Sprint 20 walkthrough) or T-201 (Sprint 22 walkthrough) reveals a Critical or Major backend bug, the Manager will create an H-XXX task. Backend Engineer will document any contract changes in `api-contracts.md` before implementing.
+
+---
+

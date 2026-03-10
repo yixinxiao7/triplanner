@@ -1217,3 +1217,106 @@ Spec 20 has been published and auto-approved. The Frontend Engineer may begin T-
 8. **Tests (T-196):** See `dev-cycle-tracker.md` T-196 test plan (A–G). The "same status no-op" scenario should also be tested.
 
 Full spec with visual mockups in `.workflow/ui-spec.md` — Spec 20.
+
+---
+
+**[2026-03-10] Backend Engineer → Frontend Engineer** *(Sprint 22 API Contracts Ready — T-196)*
+
+**Task:** T-196 — Frontend: TripStatusSelector component
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Status:** ✅ API Contracts Published — T-196 may proceed (pending Phase 2 gate: T-194 feedback triage by Manager)
+
+### API Contract Summary for T-196
+
+The `TripStatusSelector` component (T-196) requires **no new backend endpoints**. It operates entirely against the existing, already-deployed `PATCH /api/v1/trips/:id` endpoint.
+
+**Endpoint to call:**
+
+| Field | Value |
+|-------|-------|
+| Method | `PATCH` |
+| Path | `/api/v1/trips/:id` |
+| Auth | `Authorization: Bearer <access_token>` |
+| Content-Type | `application/json` |
+
+**Request body (status change):**
+```json
+{ "status": "ONGOING" }
+```
+
+**Valid `status` values:** `"PLANNING"` · `"ONGOING"` · `"COMPLETED"` — no other value is accepted.
+
+**Success response — 200 OK:**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "name": "string",
+    "destinations": ["string"],
+    "status": "ONGOING",
+    "start_date": "YYYY-MM-DD | null",
+    "end_date": "YYYY-MM-DD | null",
+    "notes": "string | null",
+    "created_at": "ISO 8601 timestamp",
+    "updated_at": "ISO 8601 timestamp"
+  }
+}
+```
+
+**Error responses:**
+
+| HTTP | Code | When |
+|------|------|------|
+| 400 | `VALIDATION_ERROR` | `status` value is not one of the three valid enum values |
+| 401 | `UNAUTHORIZED` | Missing or expired Bearer token |
+| 403 | `FORBIDDEN` | Trip belongs to a different user |
+| 404 | `NOT_FOUND` | Trip ID does not exist |
+| 500 | `INTERNAL_ERROR` | Server-side failure |
+
+### Implementation Guidelines
+
+1. **Optimistic update:** Update `currentStatus` in state immediately on selection. Fire PATCH. On non-200 response, revert to previous status and show generic error toast — do NOT expose error details from the API response to the UI.
+2. **Same-status no-op:** If the user selects the status already shown, close the dropdown without calling the API.
+3. **Client-side validation:** Always send one of the three hardcoded enum strings. No raw user input reaches the API.
+4. **Token refresh:** If a 401 is returned, follow the standard token refresh flow already in place in the app.
+
+**Full contract detail:** `.workflow/api-contracts.md` → *Sprint 22 — Status Field on PATCH /api/v1/trips/:id (Reference for T-196)* section.
+
+---
+
+**[2026-03-10] Backend Engineer → QA Engineer** *(Sprint 22 API Contracts Ready — T-197, T-198)*
+
+**Task:** T-197, T-198 — QA: Security checklist + Integration testing
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** ✅ API Contracts Published — use this as the reference for integration test cases
+
+### QA Reference: What Changed in Sprint 22 (Backend)
+
+**Nothing changed in the backend.** Sprint 22 is a frontend-only feature sprint. The `status` field on `PATCH /api/v1/trips/:id` has existed and been tested since Sprint 1. The test baseline remains **304/304 backend tests** — no new backend tests are expected.
+
+### Endpoint Under Test for T-198 (Integration Testing)
+
+**`PATCH /api/v1/trips/:id` — status update path**
+
+| Case | Input | Expected |
+|------|-------|----------|
+| A | `{ "status": "ONGOING" }` (authenticated, own trip) | 200, response `"status": "ONGOING"` |
+| B | `{ "status": "COMPLETED" }` (authenticated, own trip) | 200, response `"status": "COMPLETED"` |
+| C | `{ "status": "PLANNING" }` (authenticated, own trip) | 200, response `"status": "PLANNING"` |
+| D | `{ "status": "INVALID" }` (direct API call) | 400, `VALIDATION_ERROR`, `fields.status` present |
+| E | `{ "status": "ONGOING" }` (no auth token) | 401, `UNAUTHORIZED` |
+| F | `{ "status": "ONGOING" }` (another user's trip) | 403, `FORBIDDEN` |
+| G | `{ "status": "ONGOING" }` (non-existent trip ID) | 404, `NOT_FOUND` |
+
+### Security Checklist Notes (T-197 — Backend Scope)
+
+- ✅ **No new endpoints:** Attack surface is unchanged from Sprint 20.
+- ✅ **Status validation is enum-only:** `status` must be one of three literal strings. No string injection vector.
+- ✅ **Auth middleware unchanged:** Bearer token required on all trip mutation endpoints. No bypass paths added.
+- ✅ **No new migrations:** Schema surface is identical to Sprint 20 staging.
+- ✅ **No secrets or environment changes:** No new environment variables added.
+- ✅ **Rate limiting still in force:** `/auth/login` rate limiting from Sprint 19 is unchanged.
+
+**Full contract detail:** `.workflow/api-contracts.md` → *Sprint 22 — Status Field on PATCH /api/v1/trips/:id (Reference for T-196)* section.
