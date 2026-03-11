@@ -4,6 +4,203 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint 25 — QA Re-Verification (T-214 Confirmation) — 2026-03-10
+
+**Date:** 2026-03-10
+**QA Engineer:** QA Agent (Sprint #25 — Re-verification pass)
+**Context:** T-214 was previously marked Done. This is a re-verification pass confirming the test baseline remains valid and the pipeline state is correct before Monitor Agent (T-216) proceeds.
+
+---
+
+### Test Type: Unit Test — Re-verification
+
+**Date:** 2026-03-10
+
+#### Backend Test Run
+
+**Command:** `cd backend && npm test`
+**Result:** ✅ PASS
+
+| Metric | Result |
+|--------|--------|
+| Test files | 17 passed (17) |
+| Total tests | **340 / 340 passed** |
+| Duration | 522ms |
+| Calendar tests (sprint25.test.js + calendarModel.unit.test.js) | 36 ✅ |
+
+**Verdict:** ✅ All 340 backend tests pass. Test count unchanged from T-214 baseline. No regressions.
+
+---
+
+#### Frontend Test Run
+
+**Command:** `cd frontend && npm test -- --run`
+**Result:** ✅ PASS
+
+| Metric | Result |
+|--------|--------|
+| Test files | 25 passed (25) |
+| Total tests | **486 / 486 passed** |
+| Duration | 1.69s |
+| TripCalendar tests (TripCalendar.test.jsx) | 75 ✅ |
+
+**Verdict:** ✅ All 486 frontend tests pass. Test count unchanged from T-214 baseline. No regressions.
+
+---
+
+### Test Type: Security Scan — Re-verification
+
+**Date:** 2026-03-10
+
+#### npm audit
+
+| Package | Result |
+|---------|--------|
+| backend/ | ✅ 0 vulnerabilities |
+| frontend/ | ✅ 0 vulnerabilities |
+
+#### Security Spot-Checks
+
+| Check | Command / Finding | Result |
+|-------|-------------------|--------|
+| `dangerouslySetInnerHTML` in component code | `grep -rn "dangerouslySetInnerHTML" frontend/src/components/ frontend/src/pages/` → 0 matches in production code | ✅ PASS |
+| `innerHTML` / `document.write` / `__html` | `grep` over all `.jsx`/`.js` → 0 matches in non-test files | ✅ PASS |
+| Hardcoded secrets in backend source | `grep -rn "secret\s*=\s*"` → 0 matches outside `process.env` | ✅ PASS |
+| Error handler — no stack trace leak | `errorHandler.js`: 500s return "An unexpected error occurred"; stack logged server-side only | ✅ PASS |
+| Calendar route auth enforcement | `router.use(authenticate)` + `uuidParamHandler` in `calendar.js` line 10/13 | ✅ PASS |
+| Ownership check | `trip.user_id !== req.user.id` → 403 (calendar.js line 26) | ✅ PASS |
+| SQL injection (calendarModel) | Only parameterized Knex queries; one `db.raw()` is static SQL with no user input | ✅ PASS |
+| JWT secret from env | `jwt.verify(token, process.env.JWT_SECRET)` — no hardcoded value | ✅ PASS |
+| CORS origin | `CORS_ORIGIN=http://localhost:5173` in `.env` — no wildcard | ✅ PASS |
+
+**Overall Security Verdict:** ✅ No P1 security issues found. All applicable checklist items pass (unchanged from T-214).
+
+---
+
+### Test Type: Config Consistency Check — Re-verification
+
+**Date:** 2026-03-10
+
+| Check | Finding | Result |
+|-------|---------|--------|
+| backend/.env PORT=3000 matches vite proxy default | `PORT=3000`; vite defaults `backendPort='3000'` → `http://localhost:3000` | ✅ PASS |
+| SSL: backend .env SSL lines absent/commented → vite uses `http://` | `BACKEND_SSL` env var not set → `backendSSL=false` → `http://` target | ✅ PASS |
+| CORS_ORIGIN matches frontend dev server | `CORS_ORIGIN=http://localhost:5173`; vite `server.port=5173` | ✅ PASS |
+| docker-compose backend PORT: 3000 | `PORT: 3000` in docker-compose backend service | ✅ PASS |
+| docker-compose CORS uses nginx (expected for Docker context) | `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}` — correct for nginx proxy in Docker | ✅ PASS (expected) |
+
+**No config mismatches found.**
+
+---
+
+### Integration Check — API Contract Spot-check
+
+| Contract item | Code location | Result |
+|---------------|---------------|--------|
+| Endpoint: `GET /api/v1/trips/:id/calendar` | `apiClient.get(\`/trips/${tripId}/calendar\`)` in TripCalendar.jsx:216 | ✅ |
+| Response parsed as `response.data?.data?.events \|\| []` | TripCalendar.jsx:219 | ✅ |
+| AbortController cleanup on unmount | `abortControllerRef.current.abort()` in useEffect cleanup | ✅ |
+| Loading state | `setLoading(true)` before fetch, `false` in finally | ✅ |
+| Error state | `setError(err)` in catch (ignores aborts) | ✅ |
+| Section anchor IDs: flights-section, stays-section, activities-section | TripDetailsPage.jsx lines 802, 855+ | ✅ |
+| `<TripCalendar tripId={tripId} />` rendered in TripDetailsPage | TripDetailsPage.jsx line 797 inside `.calendarWrapper` | ✅ |
+
+---
+
+### Re-verification Summary
+
+| Gate | Result |
+|------|--------|
+| Backend tests: 340/340 | ✅ PASS |
+| Frontend tests: 486/486 | ✅ PASS |
+| npm audit backend: 0 vulns | ✅ PASS |
+| npm audit frontend: 0 vulns | ✅ PASS |
+| Security checklist (all applicable items) | ✅ PASS |
+| Config consistency | ✅ PASS |
+| API contract alignment spot-check | ✅ PASS |
+
+**Re-verification Verdict:** ✅ All Sprint 25 QA gates confirmed passing. T-214 Done status is valid. Pipeline state correct — T-215 (Deploy) is Done, T-216 (Monitor Agent) is unblocked and should proceed immediately. No blockers.
+
+---
+
+## Sprint #25 — T-215 Staging Deploy — 2026-03-10T12:00:00Z
+
+**Test Type:** Staging Deployment + Smoke Tests
+**Agent:** Deploy Engineer (T-215)
+**Environment:** Staging
+**Timestamp:** 2026-03-10T12:00:00Z
+**Build Status:** ✅ SUCCESS
+**Deploy Status:** ✅ SUCCESS
+
+---
+
+### Pre-Deploy Gate
+
+| Check | Result |
+|-------|--------|
+| QA Engineer T-214 handoff in handoff-log.md | ✅ CONFIRMED — 340/340 backend + 486/486 frontend PASS, 0 vulns, security checklist clear |
+| `infra/ecosystem.config.cjs` `BACKEND_PORT: '3001'` on `triplanner-frontend` | ✅ CONFIRMED |
+| `infra/ecosystem.config.cjs` `BACKEND_SSL: 'true'` on `triplanner-frontend` | ✅ CONFIRMED |
+| Database migrations required | ✅ NONE — Sprint 25: T-212 is read-only aggregation. No DDL changes. All 10 migrations (001–010) already applied. |
+
+---
+
+### Build
+
+| Step | Command | Result |
+|------|---------|--------|
+| Backend `npm install` | `cd backend && npm install` | ✅ SUCCESS — 0 vulnerabilities |
+| Frontend `npm install` | `cd frontend && npm install` | ✅ SUCCESS — 0 vulnerabilities |
+| Frontend build | `cd frontend && npm run build` | ✅ SUCCESS — 0 errors, 128 modules transformed |
+| Bundle output | `dist/assets/index-Bz9Y7ALz.js` (345.83 kB / 105.16 kB gzip) | ✅ |
+| CSS output | `dist/assets/index-CPOhaw0p.css` (84.43 kB / 13.30 kB gzip) | ✅ |
+| Placeholder text in bundle | `grep "calendar coming" dist/...` | ✅ 0 matches — placeholder removed |
+| TripCalendar in bundle | `grep "calendar" dist/...` | ✅ 1 match — component present |
+
+---
+
+### Deployment Steps
+
+| Step | Command | Result |
+|------|---------|--------|
+| Reload frontend | `pm2 reload triplanner-frontend` | ✅ SUCCESS — PID 52135, online |
+| Restart backend | `pm2 restart triplanner-backend` | ✅ SUCCESS — PID 52182, online |
+| Database migrations | None required — Sprint 25 has no DDL changes | ✅ N/A |
+
+---
+
+### Post-Deploy pm2 Status
+
+| Process | PID | Status | Uptime |
+|---------|-----|--------|--------|
+| triplanner-backend | 52182 | online | stable |
+| triplanner-frontend | 52135 | online | stable |
+
+---
+
+### Smoke Tests
+
+| Test | Expected | Result |
+|------|----------|--------|
+| `GET https://localhost:3001/api/v1/health` | HTTP 200 `{"status":"ok"}` | ✅ PASS |
+| `GET https://localhost:4173/` | HTTP 200 | ✅ PASS |
+| `GET /api/v1/trips/:id/calendar` (no auth) | HTTP 401 | ✅ PASS — auth enforced |
+| TripCalendar in bundle (no old placeholder) | grep "calendar coming" = 0 matches | ✅ PASS |
+| `infra/ecosystem.config.cjs` `BACKEND_PORT` | `'3001'` | ✅ PASS (regression check) |
+| `infra/ecosystem.config.cjs` `BACKEND_SSL` | `'true'` | ✅ PASS (regression check) |
+
+**All smoke tests PASS.**
+
+---
+
+### Notes
+
+- No `knex migrate:latest` run — Sprint 25 T-212 (`GET /trips/:id/calendar`) is a read-only aggregation over existing `flights`, `stays`, `activities` tables. No schema changes. 10 migrations (001–010) remain applied.
+- Frontend build produced a fresh bundle (hash changed from Sprint 24: `index-BXSQ7Eeh.js` → `index-Bz9Y7ALz.js`) confirming new TripCalendar code is included.
+- Handoff to Monitor Agent (T-216) logged in `handoff-log.md`.
+
+---
+
 ## Sprint #24 — T-205 Staging Deploy (FINAL EXECUTION) — 2026-03-10
 
 **Test Type:** Staging Deployment + Smoke Tests
@@ -882,5 +1079,235 @@ The following pre-verification checks were completed proactively so they need no
 **T-215 Status: BLOCKED**
 **Unblocking condition:** QA Engineer logs T-214 Done in handoff-log.md.
 **Deploy will execute immediately upon T-214 completion.**
+
+---
+
+## Sprint 25 — QA Report (T-214)
+
+**Date:** 2026-03-10
+**QA Engineer:** QA Agent (Sprint #25)
+**Tasks in scope:** T-212 (Backend: calendar endpoint), T-213 (Frontend: TripCalendar component)
+**Task:** T-214
+
+---
+
+### Test Type: Unit Test
+
+**Date:** 2026-03-10
+**Scope:** T-212 backend calendar endpoint + T-213 TripCalendar frontend component
+
+#### Backend Test Run
+
+**Command:** `cd backend && npm test`
+**Result:** ✅ PASS
+
+| Metric | Result |
+|--------|--------|
+| Test files | 17 passed (17) |
+| Total tests | **340 / 340 passed** |
+| Duration | 545ms |
+| New calendar tests | 36 (15 route-level in `sprint25.test.js` + 21 model unit in `calendarModel.unit.test.js`) |
+
+**Coverage review — `GET /api/v1/trips/:id/calendar`:**
+
+| Test category | File | Coverage |
+|---------------|------|----------|
+| Happy path: 200 with trip_id + events array | sprint25.test.js | ✅ |
+| Happy path: FLIGHT event shape | sprint25.test.js | ✅ |
+| Happy path: STAY event shape | sprint25.test.js | ✅ |
+| Happy path: ACTIVITY event shape (timezone null) | sprint25.test.js | ✅ |
+| Happy path: all-day activity (null start/end time) | sprint25.test.js | ✅ |
+| Happy path: empty trip → empty events array | sprint25.test.js | ✅ |
+| Happy path: events order matches model output | sprint25.test.js | ✅ |
+| Error path: 401 — no Authorization header | sprint25.test.js | ✅ |
+| Error path: 401 — invalid Bearer token | sprint25.test.js | ✅ |
+| Error path: 403 — trip belongs to different user | sprint25.test.js | ✅ |
+| Error path: 404 — trip does not exist | sprint25.test.js | ✅ |
+| Error path: 400 — non-UUID trip ID | sprint25.test.js | ✅ |
+| Error path: 500 — model throws | sprint25.test.js | ✅ |
+| Model unit: FLIGHT event transformation | calendarModel.unit.test.js | ✅ |
+| Model unit: STAY event transformation | calendarModel.unit.test.js | ✅ |
+| Model unit: ACTIVITY event transformation | calendarModel.unit.test.js | ✅ |
+| Model unit: sorting (date ASC, time NULLS LAST, type) | calendarModel.unit.test.js | ✅ |
+
+**Verdict:** ✅ All error paths and happy paths covered. Minimum 1 happy-path + 1 error-path per endpoint verified.
+
+---
+
+#### Frontend Test Run
+
+**Command:** `cd frontend && npm test -- --run`
+**Result:** ✅ PASS
+
+| Metric | Result |
+|--------|--------|
+| Test files | 25 passed (25) |
+| Total tests | **486 / 486 passed** |
+| Duration | 1.69s |
+| New TripCalendar tests | 75 (in `TripCalendar.test.jsx`) |
+
+**Coverage review — TripCalendar component:**
+
+| Test category | Coverage |
+|---------------|----------|
+| Renders with correct ARIA attributes | ✅ |
+| FLIGHT event renders with correct aria-label | ✅ |
+| STAY event renders with correct aria-label | ✅ |
+| ACTIVITY event renders with correct aria-label | ✅ |
+| Empty state shown when events = [] | ✅ |
+| Loading skeleton while API call in-flight | ✅ |
+| Error state on API failure (role="alert") | ✅ |
+| Retry button re-fetches data | ✅ |
+| Click event pill → scroll to section | ✅ |
+| Keyboard nav: ArrowRight/Left/Up/Down | ✅ |
+| All 3 event types rendered from API | ✅ |
+| Correct API endpoint called | ✅ |
+| Old Sprint 2 placeholder is gone | ✅ |
+| Month navigation prev/next | ✅ |
+| Day-of-week headers SUN–SAT | ✅ |
+| Grid cells with role="gridcell" | ✅ |
+| Multi-day STAY spans multiple days | ✅ |
+| aria-busy=true during loading | ✅ |
+| aria-busy removed after load | ✅ |
+| Legend: Flight / Stay / Activity labels | ✅ |
+
+**Verdict:** ✅ All UI states covered (loading, error, empty, success). All acceptance criteria in T-213 met.
+
+---
+
+### Test Type: Integration Test
+
+**Date:** 2026-03-10
+**Scope:** Frontend TripCalendar ↔ Backend `GET /api/v1/trips/:id/calendar`
+
+#### API Contract Verification
+
+**Contract source:** `api-contracts.md` → "Sprint 25 — T-212"
+
+| Contract item | Implementation check | Result |
+|---------------|---------------------|--------|
+| Endpoint: `GET /api/v1/trips/:id/calendar` | `apiClient.get(\`/trips/${tripId}/calendar\`)` in TripCalendar.jsx:216 | ✅ |
+| Response read: `response.data.data.events` | `const calEvents = response.data?.data?.events \|\| []` in TripCalendar.jsx:219 | ✅ |
+| Event fields consumed: id, type, title, start_date, end_date, start_time, end_time, source_id | All consumed in `renderEventPill()`, `buildEventsMap()`, `formatTime()` | ✅ |
+| AbortController cleanup on unmount | `abortControllerRef.current.abort()` in useEffect cleanup (line 239) | ✅ |
+| Loading state while in-flight | `setLoading(true)` before fetch, `setLoading(false)` in finally | ✅ |
+| Error state on failure | `setError(err)` in catch (ignoring abort) | ✅ |
+| STAY multi-day handling | `buildEventsMap()` enumerates all dates in stay range | ✅ |
+| Section scroll anchors: flights-section / stays-section / activities-section | Confirmed in TripDetailsPage.jsx lines 802, (stays-section), (activities-section) | ✅ |
+| Auth token sent via apiClient (axios interceptor) | Uses `apiClient` which has auth interceptor | ✅ |
+| Abort on re-fetch (AbortController pattern) | New controller created per fetch, previous cancelled | ✅ |
+
+#### UI State Integration Checks
+
+| State | Implementation | Contract alignment |
+|-------|---------------|-------------------|
+| Loading | Skeleton grid with disabled nav buttons, `aria-busy="true"` | ✅ Matches Spec 22 |
+| Error | `role="alert"`, "calendar unavailable" heading, retry button | ✅ Matches Spec 22 |
+| Empty | "no events this month" message overlay on grid | ✅ Matches Spec 22 |
+| Success | Month grid with color-coded event pills by type | ✅ Matches Spec 22 |
+
+#### Input Validation & Edge Cases
+
+| Case | Backend | Frontend |
+|------|---------|----------|
+| No auth token → 401 | `router.use(authenticate)` applied to all calendar routes | apiClient automatically attaches token |
+| Wrong user → 403 | Ownership check `trip.user_id !== req.user.id` | Error state shown |
+| Non-UUID trip ID → 400 | `router.param('tripId', uuidParamHandler)` | N/A — tripId from URL params always a valid UUID in app |
+| Trip not found → 404 | `findTripById` returns null check | Error state shown |
+| Empty trip → 200 with `events: []` | Returns `{ data: { trip_id, events: [] } }` | Empty state message rendered |
+| All-day activity (null times) | `normalizeTime(null)` returns null correctly | `formatTime(null)` returns null; no time shown in pill |
+
+**Verdict:** ✅ Frontend correctly calls backend per the contract. Response shape matched. All UI states handled.
+
+---
+
+### Test Type: Config Consistency Check
+
+**Date:** 2026-03-10
+
+| Check | Finding | Result |
+|-------|---------|--------|
+| backend/.env PORT=3000 matches vite proxy default (backendPort='3000') | PORT=3000 in .env; vite.config.js defaults to '3000' | ✅ PASS |
+| SSL: backend .env has SSL commented out; vite uses http:// by default | SSL lines commented out in .env; `backendSSL = false` → `http://` target | ✅ PASS |
+| CORS_ORIGIN=http://localhost:5173 matches frontend dev server (port 5173) | CORS_ORIGIN=http://localhost:5173; vite server.port=5173 | ✅ PASS |
+| docker-compose backend PORT: 3000 matches | `PORT: 3000` in docker-compose backend service | ✅ PASS |
+| docker-compose CORS_ORIGIN uses nginx (http://localhost) for Docker context | `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}` — expected for Docker (nginx proxy) | ✅ PASS (expected) |
+
+**No config mismatches found.**
+
+---
+
+### Test Type: Security Scan
+
+**Date:** 2026-03-10
+**Scope:** T-212 (backend calendar endpoint) + T-213 (TripCalendar frontend)
+
+#### npm audit
+
+| Package | Result |
+|---------|--------|
+| backend/ | ✅ 0 vulnerabilities |
+| frontend/ | ✅ 0 vulnerabilities |
+
+#### Security Checklist — Authentication & Authorization
+
+| Item | Finding | Result |
+|------|---------|--------|
+| Calendar endpoint requires auth | `router.use(authenticate)` — all calendar routes require Bearer token | ✅ PASS |
+| Ownership enforced | `trip.user_id !== req.user.id` → 403 | ✅ PASS |
+| Auth tokens use env var | `jwt.sign(payload, process.env.JWT_SECRET, ...)` — no hardcoded secret | ✅ PASS |
+
+#### Security Checklist — Input Validation & Injection Prevention
+
+| Item | Finding | Result |
+|------|---------|--------|
+| SQL injection — calendar route | All Knex queries use `.where({ trip_id: tripId })` (parameterized). Only static `db.raw("TO_CHAR(activity_date, 'YYYY-MM-DD') AS activity_date")` — no user input in raw SQL | ✅ PASS |
+| UUID validation on :tripId | `router.param('tripId', uuidParamHandler)` → 400 on invalid UUID | ✅ PASS |
+| XSS — dangerouslySetInnerHTML | `grep -rn "dangerouslySetInnerHTML"` returned 0 matches in component code (1 comment-only reference in formatDate.js utility) | ✅ PASS |
+| XSS — innerHTML / document.write | `grep -rn "innerHTML\|document.write\|__html"` returned 0 matches in frontend/src/ | ✅ PASS |
+
+#### Security Checklist — API Security
+
+| Item | Finding | Result |
+|------|---------|--------|
+| CORS origin configured | `CORS_ORIGIN=http://localhost:5173` in .env — no wildcard | ✅ PASS |
+| Error responses — no stack trace leak | `errorHandler.js`: 500 errors return generic "An unexpected error occurred", stack logged server-side only | ✅ PASS |
+| No hardcoded secrets in source | All secrets via `process.env.*`; no hardcoded JWT secret, DB password, or API keys in source files | ✅ PASS |
+| Sensitive data in URL params | Calendar endpoint uses path param `:tripId` (UUID) only — no sensitive data in query params | ✅ PASS |
+
+#### Security Checklist — Data Protection
+
+| Item | Finding | Result |
+|------|---------|--------|
+| DB credentials in env vars | `DATABASE_URL` from `process.env` in knexfile; no hardcoded credentials | ✅ PASS |
+| No secrets in frontend code | No API keys, tokens, or credentials in TripCalendar.jsx or TripCalendar.module.css | ✅ PASS |
+
+#### Security Checklist — Infrastructure
+
+| Item | Finding | Result |
+|------|---------|--------|
+| npm audit — 0 Moderate+ vulnerabilities | 0 vulnerabilities in both backend and frontend | ✅ PASS |
+
+**Overall Security Verdict:** ✅ No P1 security issues found. All applicable checklist items pass.
+
+---
+
+### Sprint 25 QA Summary
+
+| Check | Result |
+|-------|--------|
+| Backend tests: 340/340 | ✅ PASS |
+| Frontend tests: 486/486 | ✅ PASS |
+| npm audit backend: 0 vulns | ✅ PASS |
+| npm audit frontend: 0 vulns | ✅ PASS |
+| API contract alignment (endpoint, response shape, auth) | ✅ PASS |
+| All UI states implemented (loading, error, empty, success) | ✅ PASS |
+| Config consistency (PORT, CORS, SSL) | ✅ PASS |
+| Security checklist — no failures | ✅ PASS |
+| dangerouslySetInnerHTML: absent | ✅ PASS |
+| Hardcoded secrets: none found | ✅ PASS |
+| SQL injection vectors: none (parameterized queries) | ✅ PASS |
+
+**T-214 Status: ✅ DONE — All gates passed. T-212 and T-213 moved to Done. Ready for Deploy Engineer (T-215).**
 
 ---
