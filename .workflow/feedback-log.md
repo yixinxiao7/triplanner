@@ -70,8 +70,9 @@ The `triplanner-frontend` pm2 process runs `npm run preview` without the environ
 | Sprint | 25 |
 | Category | Feature Gap |
 | Severity | Critical |
-| Status | New |
+| Status | Tasked |
 | Related Task | B-022 |
+| Tasked As | T-220, T-221, T-222, T-223, T-224, T-225 (Sprint 26) |
 
 **Description:** The project owner made a clear production hosting decision during Sprint 17, recorded as FB-109, FB-110, and FB-111 in the feedback log (now archived to `feedback-log-before-sprint-18.md`). The Manager Agent failed to triage these entries into actionable T-xxx tasks during the Sprint 17→18 closeout. Once the feedback log was archived, the decision was lost, and every subsequent sprint has incorrectly listed B-022 as "pending project owner decision."
 
@@ -89,7 +90,7 @@ The `triplanner-frontend` pm2 process runs `npm run preview` without the environ
 
 3. **render.yaml blueprint + deploy guide (from FB-111):** Create `render.yaml` infrastructure-as-code file defining both services (frontend static site + backend web service, both Ohio region, free plan). Create a production deploy guide covering: Render service setup, AWS RDS instance creation, environment variable configuration, database migration, DNS/domain setup, and post-deploy verification checklist.
 
-**Action required from Manager Agent:** Create T-xxx tasks from this decision immediately. B-022 is no longer blocked on the project owner — it is blocked on engineering work that should have started 8 sprints ago.
+**Manager Triage (Sprint 25 → Sprint 26):** Tasks T-220 through T-225 created. B-022 is no longer listed as "pending project owner decision" — it is blocked on engineering work (T-220/T-221/T-222) that must complete before T-224 (production deploy) can run.
 
 ---
 
@@ -100,8 +101,9 @@ The `triplanner-frontend` pm2 process runs `npm run preview` without the environ
 | **Category** | Monitor Alert |
 | **Severity** | Major |
 | **Sprint** | 25 |
-| **Status** | New |
+| **Status** | Tasked |
 | **Related Task** | T-216 |
+| **Tasked As** | T-218 (immediate Playwright rerun), T-226 (engineering fix — Sprint 26) |
 
 **Feedback:** Playwright E2E Tests 1/4 PASS — Registration rate limiter exhausted during health check; browser-based user flows blocked.
 
@@ -140,33 +142,18 @@ button: "please wait…" [disabled]
 ---
 
 
-### FB-112 — Production hosting decision lost — re-submit from Sprint 17
+### FB-112 — Production hosting decision lost — re-submit from Sprint 17 (DUPLICATE — see first entry above)
 
 | Field | Value |
 |-------|-------|
-| Feedback | Production hosting decision (Render + AWS RDS) was made in Sprint 17 (FB-109, FB-110, FB-111) but never triaged into sprint tasks; B-022 incorrectly blocked for 8 sprints |
+| Feedback | Duplicate of FB-112 above — Production hosting decision (Render + AWS RDS) |
 | Sprint | 25 |
 | Category | Feature Gap |
 | Severity | Critical |
-| Status | New |
+| Status | Tasked |
 | Related Task | B-022 |
+| Tasked As | T-220, T-221, T-222, T-223, T-224, T-225 (Sprint 26) — see primary FB-112 entry above |
 
-**Description:** The project owner made a clear production hosting decision during Sprint 17, recorded as FB-109, FB-110, and FB-111 in the feedback log (now archived to `feedback-log-before-sprint-18.md`). The Manager Agent failed to triage these entries into actionable T-xxx tasks during the Sprint 17→18 closeout. Once the feedback log was archived, the decision was lost, and every subsequent sprint has incorrectly listed B-022 as "pending project owner decision."
-
-**The decision (re-stated):**
-
-- **Frontend:** Render free tier — static site, region: Ohio
-- **Backend:** Render free tier — web service, runtime: node, region: Ohio
-- **Database:** AWS RDS free tier — us-east-1 (N. Virginia), engine: PostgreSQL 15+, instance class: db.t3.micro
-
-**Three critical implementation requirements:**
-
-1. **Knexfile production config (from FB-109):** Add SSL configuration and free-tier connection pool sizing for AWS RDS to `backend/knexfile.js`. AWS RDS requires `ssl: { rejectUnauthorized: false }` (or proper CA cert). Free-tier pool size should be conservative (max 5 connections for db.t3.micro).
-
-2. **Cookie SameSite fix (from FB-110):** Set cookie `SameSite` to `none` and `Secure` to `true` in production. On Render free tier, frontend and backend will be on different subdomains (e.g., `triplanner-frontend.onrender.com` and `triplanner-backend.onrender.com`), making this a cross-origin deployment. Without `SameSite=none`, refresh token cookies will not be sent, and auth will be completely broken.
-
-3. **render.yaml blueprint + deploy guide (from FB-111):** Create `render.yaml` infrastructure-as-code file defining both services (frontend static site + backend web service, both Ohio region, free plan). Create a production deploy guide covering: Render service setup, AWS RDS instance creation, environment variable configuration, database migration, DNS/domain setup, and post-deploy verification checklist.
-
-**Action required from Manager Agent:** Create T-xxx tasks from this decision immediately. B-022 is no longer blocked on the project owner — it is blocked on engineering work that should have started 8 sprints ago.
+**Manager Triage:** Duplicate entry. Dispositioned identically to primary FB-112 entry above. Tasks T-220–T-225 created for Sprint 26.
 
 ---

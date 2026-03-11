@@ -3207,3 +3207,70 @@ Once Playwright shows 4/4 PASS, update this log and handoff to User Agent (T-217
 
 ---
 
+
+---
+
+**[2026-03-10] Manager → All Agents** *(Sprint #25 Closeout / Sprint #26 Kickoff)*
+
+**From:** Manager Agent
+**To:** All Agents
+**Re:** Sprint #25 closed. Sprint #26 active. Production deployment sprint.
+
+---
+
+**Sprint #25 Summary:**
+
+- T-210 (User Agent mega-walkthrough): ✅ Done — All Sprint 20/22/24 scope verified clean; Phase 2 unblocked
+- T-211 (Design: calendar spec): ✅ Done
+- T-212 (Backend: `/api/v1/trips/:id/calendar`): ✅ Done — 36 tests, 340/340 pass
+- T-213 (Frontend: TripCalendar component): ✅ Done — 75 tests, 486/486 pass
+- T-214 (QA): ✅ Done — 0 vulnerabilities, security checklist clean
+- T-215 (Deploy: staging re-deployment): ✅ Done — TripCalendar live on staging
+- T-216 (Monitor: health check): ⚠️ Partial — all API/config/regression checks PASS; Playwright 1/4 (rate limiter process issue — not code regression)
+- T-217 (User Agent walkthrough): ❌ Never ran — carried to Sprint 26 as T-219
+- CR-25: ✅ Done — T-212, T-213, T-215 all approved
+
+**Feedback triaged:**
+- FB-112 (Critical — production hosting): → Tasked → T-220, T-221, T-222, T-223, T-224, T-225
+- Monitor Alert Sprint #25 (Major — Playwright rate limiter): → Tasked → T-218, T-226
+
+---
+
+**Sprint #26 Priorities (ordered):**
+
+**P0 — Deploy Engineer (T-218 — START IMMEDIATELY, NO BLOCKERS):**
+- `pm2 restart triplanner-backend` → immediately run `npx playwright test` → expect 4/4 PASS
+- Update qa-build-log.md with rerun results
+- Log handoff to User Agent (T-219) in handoff-log.md
+
+**P0 — User Agent (T-219 — blocked by T-218):**
+- Sprint 25/26 calendar + regression walkthrough per active-sprint.md T-219 definition
+- Submit structured feedback under "Sprint 26 User Agent Feedback"
+
+**P1 — Backend Engineer (T-220 + T-221 + T-226 — all can start immediately in parallel):**
+- T-220: knexfile.js production block — `ssl: { rejectUnauthorized: false }`, `pool: { min: 1, max: 5 }`
+- T-221: Cookie `sameSite: 'none'` + `secure: true` when `NODE_ENV === 'production'`
+- T-226: Seed staging test user; update monitor-agent.md to use login not register for health checks
+
+**P1 — Deploy Engineer (T-222 — blocked by T-220 + T-221):**
+- render.yaml (project root) + docs/production-deploy-guide.md
+- No hardcoded secrets — all sensitive env vars as references
+
+**P1 — QA Engineer (T-223 — blocked by T-220, T-221, T-222):**
+- Pre-production security + config review; 340+ backend tests; 0 vulnerabilities
+
+**P1 — Deploy Engineer (T-224 — blocked by T-223):**
+- Production deployment to Render + AWS RDS — follow docs/production-deploy-guide.md
+- Log production URLs in handoff-log.md before handing off to Monitor
+
+**P1 — Monitor Agent (T-225 — blocked by T-224):**
+- Post-production health check — 8 checks including SameSite=none cookie verification
+
+---
+
+**Test baseline:** 340/340 backend | 486/486 frontend
+
+**Staging:** Healthy — TripCalendar live at `https://localhost:4173` / `https://localhost:3001`
+
+**Full Sprint #26 plan:** `.workflow/active-sprint.md`
+

@@ -2660,4 +2660,81 @@ All tasks remain in Backlog status. None progressed.
 
 ---
 
+### Sprint #25 — 2026-03-10 to 2026-03-10
+
+**Goal:** Execute the T-210 User Agent mega-walkthrough (consolidating 6 sprints of deferred User Agent scope: Sprint 20 trip notes + destination validation, Sprint 22 TripStatusSelector, Sprint 24 StatusFilterTabs). If T-210 was clean, design and implement the Trip Details calendar integration (replacing the placeholder from Sprint 1).
+
+**Goal Met:** ✅ Partially — The calendar integration feature shipped in full (T-211–T-215 Done). T-216 executed with all API/config/regression checks passing but Playwright E2E 1/4 PASS due to a Monitor Agent process issue (rate limiter exhaustion from health-check curl calls before Playwright run — not a code regression). T-217 (User Agent walkthrough) did not run; carried to Sprint 26.
+
+---
+
+**Tasks Completed (7/9):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-210 | User Agent: Consolidated mega-walkthrough (Sprint 20 + 22 + 24 scope) — trip notes, destination validation, TripStatusSelector, StatusFilterTabs. All features verified. Feedback triage: clean — Phase 2 unblocked. | ✅ Done |
+| T-211 | Design Agent: Spec 22 — Trip Details page calendar integration. Published to ui-spec.md under Sprint 25 Specs. Manager-approved. | ✅ Done |
+| T-212 | Backend Engineer: `GET /api/v1/trips/:id/calendar` endpoint. Auth, ownership, 36 new tests (340/340 backend pass). No schema changes. Manager-approved. | ✅ Done |
+| T-213 | Frontend Engineer: `TripCalendar` component (month grid, event pills, click-to-scroll, mobile day-list, keyboard nav, ARIA). 75 new tests. 486/486 frontend tests pass. Manager-approved. | ✅ Done |
+| T-214 | QA Engineer: Full security checklist + test re-verification. 340/340 backend + 486/486 frontend. 0 vulnerabilities. All security items pass. | ✅ Done |
+| T-215 | Deploy Engineer: Sprint 25 staging re-deployment. 0-error build, pm2 reload, BACKEND_PORT/SSL confirmed, no migrations, smoke tests pass. Manager-approved. | ✅ Done |
+| CR-25 | Manager: Sprint 25 code review pass (T-212, T-213, T-215 all APPROVED). | ✅ Done |
+
+**Tasks Carried Over (2 tasks → Sprint 26 Backlog):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-216 | Monitor Agent: Sprint 25 health check | Executed — all API/config/regression checks PASS. Playwright 1/4 PASS only (Monitor Agent's health-check curl registration call exhausted the in-memory rate limiter before Playwright ran — confirmed NOT a code regression). T-218 (backend restart + Playwright rerun) created in Sprint 26 to resolve the process issue and clear T-217's blocker. |
+| T-217 | User Agent: Sprint 25 feature walkthrough (calendar + full regression suite) | T-216 Playwright gate not met; T-217 never ran. Carried to Sprint 26 as T-219. |
+
+---
+
+**Key Decisions:**
+- **Calendar endpoint (T-212):** `GET /api/v1/trips/:id/calendar` uses `Promise.all()` for parallel DB reads (flights, stays, activities), normalizes to a unified event shape, and sorts by `start_date` ASC / `start_time` ASC (NULLS LAST). No schema changes — fully read-only aggregation.
+- **TripCalendar component (T-213):** Month grid (7-column CSS grid), event pills color-coded by type using CSS custom properties (`--event-flight-*`, `--event-stay-*`, `--event-activity-*`). STAY events span multiple cells. Click-to-scroll uses `window.scrollTo` with 80px navbar offset. `hasNavigated` ref prevents initial-month override if user navigated. Calendar placeholder ("Calendar coming in Sprint 2") removed.
+- **Monitor Agent process fix (T-226):** Monitor Agent should use `POST /api/v1/auth/login` (with a seeded test account) rather than `POST /api/v1/auth/register` to obtain tokens during health checks. This avoids rate limiter exhaustion before Playwright runs.
+- **Production deploy unblocked (FB-112):** The production hosting decision (Render + AWS RDS, from Sprint 17) was recovered and tasked. Tasks T-220–T-225 created for Sprint 26. B-022 is no longer "pending project owner decision" — it is now pending engineering work.
+
+---
+
+**Feedback Summary (Sprint 25):**
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-112 | Feature Gap | Critical | **Tasked → T-220–T-225** | Production hosting decision (Render + AWS RDS) re-submitted; 3 engineering tasks created for Sprint 26 (knexfile SSL config, cookie SameSite fix, render.yaml + deploy guide) + QA + deploy + monitor phases |
+| Monitor Alert (Sprint #25) | Monitor Alert | Major | **Tasked → T-218, T-226** | Playwright 1/4 PASS due to rate limiter exhaustion from Monitor Agent curl health check. T-218 (backend restart) clears immediate blocker; T-226 fixes the Monitor Agent process long-term. |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- Calendar integration (the top remaining MVP feature, placeholder since Sprint 1) was fully designed, implemented, tested, QA'd, and deployed in a single sprint — clean code review pass on first submission for both T-212 and T-213.
+- Test suite expanded significantly: 340/340 backend (36 new calendar endpoint tests), 486/486 frontend (75 new TripCalendar tests). Well above minimum requirements.
+- T-210 mega-walkthrough finally ran after 6 consecutive carry-overs — all deferred User Agent scope (Sprint 20/22/24) verified clean on staging.
+- T-215 deploy confirmed the critical `BACKEND_PORT`/`BACKEND_SSL` regression check — ecosystem.config.cjs remains correctly configured.
+- FB-112 (lost production hosting decision) surfaced and was immediately tasked — 8 sprints of incorrectly blocked B-022 is now actionable.
+
+**What Could Improve:**
+- **Monitor Agent health check process** (T-226): Using `register` instead of `login` for token acquisition during health checks consumes rate limit quota and breaks Playwright. This process bug has now caused two consecutive sprints (Sprint 22 and Sprint 25) where T-216 completed with Playwright < 4/4. The fix (T-226) must be implemented in Sprint 26.
+- **T-216/T-217 carry-over** is now a 2-sprint pattern — if T-217 does not run in Sprint 26, a circuit-breaker should pause the pipeline.
+- **Production deployment** has been deferred 25+ consecutive sprints. Now that engineering blockers are tasked (T-220–T-225), Sprint 26 should prioritize landing production deploy.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence
+- ⚠️ B-024: Auth rate limit is IP-only — aggressive on shared-IP environments
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests in `formatDate.test.js`
+
+*Resolved this sprint:*
+- ✅ B-021: vitest esbuild vulnerability (resolved Sprint 24) — 0 vulnerabilities confirmed in Sprint 25 audit
+- ✅ Calendar placeholder removed — `TripCalendar` component live on staging
+
+---
+
+*Sprint #25 began and closed 2026-03-10.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*
