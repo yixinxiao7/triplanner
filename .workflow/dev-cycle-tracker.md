@@ -2184,7 +2184,7 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
-| T-230 | Design Agent / Frontend Engineer: Update `ui-spec.md` TripCalendar section to reflect that `TripCalendar.jsx` makes its own `GET /api/v1/trips/:id/calendar` fetch rather than reusing `useTripDetails` hook data. Remove the "no additional API calls" statement. Add a note explaining the design choice (calendar endpoint returns optimally shaped data; self-contained fetch is correct). No code changes required. | 28 | Design Agent | Backlog | P3 | None | From FB-122 (Sprint 27 User Agent feedback). Pure doc/spec update. Low effort. |
+| T-230 | Design Agent / Frontend Engineer: Update `ui-spec.md` TripCalendar section to reflect that `TripCalendar.jsx` makes its own `GET /api/v1/trips/:id/calendar` fetch rather than reusing `useTripDetails` hook data. Remove the "no additional API calls" statement. Add a note explaining the design choice (calendar endpoint returns optimally shaped data; self-contained fetch is correct). No code changes required. | 28 | Design Agent | Done | P3 | None | Completed 2026-03-11. Section 7.2.1 updated. Self-contained fetch pattern documented. Handoff logged. |
 
 ---
 

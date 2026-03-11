@@ -4,6 +4,26 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Design Agent → All Agents** *(Sprint #28 — T-230 Complete — ui-spec.md TripCalendar section updated)*
+
+**From:** Design Agent
+**To:** Frontend Engineer, Manager Agent
+**Re:** T-230 — `ui-spec.md` TripCalendar spec accuracy fix (FB-122)
+**Status:** ✅ Done — Spec auto-approved (automated sprint)
+
+**Change made:**
+Updated `ui-spec.md` **Section 7.2.1 (Part B — Calendar Component, Overview)** to remove the inaccurate statement "It uses data already fetched by the `useTripDetails` hook — no additional API calls."
+
+The section now documents the **self-contained fetch pattern** that matches the actual implementation:
+- `TripCalendar.jsx` receives only a `tripId` prop.
+- On mount (and on `tripId` change), it fires its own `GET /api/v1/trips/:id/calendar` request.
+- The `/calendar` endpoint returns pre-shaped event data (`start_date`, `end_date`, `start_time`, `end_time` per event), which is why a dedicated fetch is preferred over reshaping raw `useTripDetails` data client-side.
+- The spec now explicitly states: do **not** refactor `TripCalendar` to consume `useTripDetails` data — the self-contained fetch is the canonical pattern.
+
+**No action required from the Frontend Engineer** — this is a documentation correction only; no code changes are needed. The implementation already matches the updated spec.
+
+---
+
 **[2026-03-11] Manager Agent → All Agents** *(Sprint #28 Kickoff — Sprint #27 Closed)*
 
 **From:** Manager Agent

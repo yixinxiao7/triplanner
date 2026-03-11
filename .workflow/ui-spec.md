@@ -1380,7 +1380,12 @@ This update applies to the TripCard component on the Home page. The trip object 
 
 ##### 7.2.1 Overview
 
-The Calendar component replaces the `"calendar coming in sprint 2"` placeholder at the top of the Trip Details page. It renders a monthly view calendar grid populated with events from the trip's flights, stays, and activities. It uses data already fetched by the `useTripDetails` hook — no additional API calls.
+The Calendar component replaces the `"calendar coming in sprint 2"` placeholder at the top of the Trip Details page. It renders a monthly view calendar grid populated with events from the trip's flights, stays, and activities.
+
+**Data Fetching (implemented pattern — Sprint 28 spec update, T-230):**
+`TripCalendar.jsx` is a self-contained component that issues its own `GET /api/v1/trips/:id/calendar` request on mount, independent of the `useTripDetails` hook. This dedicated endpoint returns event data pre-shaped for calendar rendering — each event carries `start_date`, `end_date`, `start_time`, and `end_time` fields — avoiding the client-side reshaping that would otherwise be required when working from raw `flights`/`stays`/`activities` arrays returned by `useTripDetails`.
+
+The component receives only a `tripId` prop and manages its own `loading`, `error`, and `events` state. Every time `TripDetailsPage` mounts (or the tripId changes), `TripCalendar` fires one `GET /api/v1/trips/:id/calendar` call. This is the canonical fetch pattern; do **not** attempt to pass pre-fetched event data through props or refactor to consume `useTripDetails` data.
 
 **Calendar colors (new CSS custom properties to add to `:root`):**
 ```css
