@@ -1998,7 +1998,7 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
-| T-219 | User Agent: Sprint 25/26 feature walkthrough (carry-over from Sprint 25 T-217). (1) Calendar: TripDetailsPage shows live TripCalendar (not placeholder); flights/stays/activities render on calendar grid; each event type visually distinct; clicking an event scrolls to corresponding section. (2) Calendar empty state: trip with no sub-resources shows empty state (not placeholder). (3) Regression — StatusFilterTabs: All/Planning/Ongoing/Completed pills; 0-match filter → empty state + reset link. (4) Regression — TripStatusSelector: badge shows status; click → update; keyboard nav; Home page sync. (5) Regression — Trip notes: edit/save/clear/char count. (6) Regression — Destination validation: 101-char → 400 human-friendly error. (7) Regression — Rate limiting: lockout after 10 login attempts. (8) Print button (Sprint 17). Date range on trip cards (Sprint 16). Submit structured feedback to feedback-log.md under "Sprint 27 User Agent Feedback". | 27 | User Agent | Backlog | P0 | T-228 | Carry-over from Sprint 26 (originally Sprint 25 T-217). 4th consecutive carry-over. Must complete this sprint. |
+| T-219 | User Agent: Sprint 25/26 feature walkthrough (carry-over from Sprint 25 T-217). (1) Calendar: TripDetailsPage shows live TripCalendar (not placeholder); flights/stays/activities render on calendar grid; each event type visually distinct; clicking an event scrolls to corresponding section. (2) Calendar empty state: trip with no sub-resources shows empty state (not placeholder). (3) Regression — StatusFilterTabs: All/Planning/Ongoing/Completed pills; 0-match filter → empty state + reset link. (4) Regression — TripStatusSelector: badge shows status; click → update; keyboard nav; Home page sync. (5) Regression — Trip notes: edit/save/clear/char count. (6) Regression — Destination validation: 101-char → 400 human-friendly error. (7) Regression — Rate limiting: lockout after 10 login attempts. (8) Print button (Sprint 17). Date range on trip cards (Sprint 16). Submit structured feedback to feedback-log.md under "Sprint 27 User Agent Feedback". | 27 | User Agent | ✅ Done | P0 | T-228 | **[2026-03-11 Sprint 27 Closeout]** User Agent completed walkthrough and submitted 10 structured feedback entries (FB-113–FB-122) to feedback-log.md. All regression checks passed. 1 Major bug found (FB-113 → T-229). Task status updated to Done at Sprint 27 closeout. |
 
 ---
 
@@ -2006,8 +2006,8 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
-| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS. Follow `docs/production-deploy-guide.md`: (1) Create AWS RDS PostgreSQL 15 (db.t3.micro, us-east-1, free tier). (2) Set up Render services using render.yaml. (3) Configure env vars (DATABASE_URL, JWT_SECRET, NODE_ENV=production, FRONTEND_URL, CORS_ORIGIN). (4) Run `knex migrate:latest` against production RDS. (5) Trigger Render deploy. (6) Smoke tests: GET /api/v1/health → 200; POST /auth/register → 201; frontend loads at Render URL. Log production URLs in handoff-log.md; handoff to Monitor Agent (T-225). Full report in qa-build-log.md. | 27 | Deploy Engineer | Blocked | P1 | Project owner must provide AWS + Render access | Carry-over from Sprint 26. All code/config ready. Sole blocker: project owner must provision AWS account (RDS) + Render account. Full instructions in docs/production-deploy-guide.md. |
-| T-225 | Monitor Agent: Post-production health check. (1) GET https://[backend-render-url]/api/v1/health → 200. (2) Frontend loads at https://[frontend-render-url] — no JS errors. (3) POST /auth/register → 201. (4) POST /auth/login → 200. (5) GET /api/v1/trips → 200 (with auth). (6) GET /api/v1/trips/:id/calendar → 200 (with auth). (7) HTTPS enforced. (8) Set-Cookie: SameSite=None; Secure in response headers. Full report in qa-build-log.md Sprint 27 section. | 27 | Monitor Agent | Backlog | P1 | T-224 | Carry-over from Sprint 26. First production health check. |
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS. Follow `docs/production-deploy-guide.md`: (1) Create AWS RDS PostgreSQL 15 (db.t3.micro, us-east-1, free tier). (2) Set up Render services using render.yaml. (3) Configure env vars (DATABASE_URL, JWT_SECRET, NODE_ENV=production, FRONTEND_URL, CORS_ORIGIN). (4) Run `knex migrate:latest` against production RDS. (5) Trigger Render deploy. (6) Smoke tests: GET /api/v1/health → 200; POST /auth/register → 201; frontend loads at Render URL. Log production URLs in handoff-log.md; handoff to Monitor Agent (T-225). Full report in qa-build-log.md. | 28 | Deploy Engineer | Blocked | P1 | Project owner must provide AWS + Render access | **[2026-03-11 Sprint 28 Carry-over]** Carry-over from Sprint 26 + 27. All code/config ready. Sole blocker: project owner must provision AWS account (RDS) + Render account. Full instructions in docs/production-deploy-guide.md. Escalated to project owner for Sprint 28. |
+| T-225 | Monitor Agent: Post-production health check. (1) GET https://[backend-render-url]/api/v1/health → 200. (2) Frontend loads at https://[frontend-render-url] — no JS errors. (3) POST /auth/register → 201. (4) POST /auth/login → 200. (5) GET /api/v1/trips → 200 (with auth). (6) GET /api/v1/trips/:id/calendar → 200 (with auth). (7) HTTPS enforced. (8) Set-Cookie: SameSite=None; Secure in response headers. Full report in qa-build-log.md Sprint 28 section. | 28 | Monitor Agent | Backlog | P1 | T-224 | **[2026-03-11 Sprint 28 Carry-over]** Carry-over from Sprint 26 + 27. First production health check. Blocked on T-224. |
 
 ---
 
@@ -2161,6 +2161,57 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 **Handoff to Monitor Agent logged in handoff-log.md.**
 
 *Deploy Engineer Sprint #27 Pass #3 — 2026-03-11*
+
+---
+
+## Sprint 28 Tasks
+
+**Sprint 28 Kickoff (Manager Agent — 2026-03-11):** Primary objective: fix the Major trip date bug (FB-113/T-229) — `tripModel.js` TRIP_COLUMNS SQL must use COALESCE so user-provided `start_date`/`end_date` take precedence over the computed MIN/MAX from sub-resources. Secondary: carry T-224/T-225 forward with project owner escalation for production deployment. Minor: document spec deviation for TripCalendar self-contained fetch (FB-122).
+
+**Test baseline at Sprint 28 kickoff:** 363/363 backend | 486/486 frontend
+
+---
+
+### Phase 1 — Bug Fix (P0 — NO BLOCKERS — START IMMEDIATELY)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-229 | Backend Engineer: Fix `tripModel.js` TRIP_COLUMNS SQL so user-provided `start_date`/`end_date` are respected. Change the `TRIP_COLUMNS` `db.raw(...)` SELECT to use `COALESCE(trips.start_date, <computed MIN via LEAST()>)` and `COALESCE(trips.end_date, <computed MAX via GREATEST()>)` so the stored user value takes precedence over the computed sub-resource aggregate when a user has explicitly set a date. Also add/update backend tests: (1) PATCH trips with start_date/end_date on a trip with NO sub-resources → values returned in response; (2) PATCH trips with start_date/end_date on a trip WITH sub-resources → user values returned (not overridden by sub-resource dates); (3) PATCH with null start_date → computed aggregate returned (fallback). All 363+ existing tests must continue to pass. Log fix in qa-build-log.md Sprint 28 section. | 28 | Backend Engineer | Backlog | P0 | None — START IMMEDIATELY | From FB-113 (Sprint 27 User Agent feedback). "Set dates" UI on TripDetailsPage is non-functional without this fix. Files: `backend/src/models/tripModel.js` (TRIP_COLUMNS `db.raw`), add tests in `backend/src/__tests__/trips.test.js`. |
+
+---
+
+### Phase 2 — Documentation Update (P3 — no dependencies)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-230 | Design Agent / Frontend Engineer: Update `ui-spec.md` TripCalendar section to reflect that `TripCalendar.jsx` makes its own `GET /api/v1/trips/:id/calendar` fetch rather than reusing `useTripDetails` hook data. Remove the "no additional API calls" statement. Add a note explaining the design choice (calendar endpoint returns optimally shaped data; self-contained fetch is correct). No code changes required. | 28 | Design Agent | Backlog | P3 | None | From FB-122 (Sprint 27 User Agent feedback). Pure doc/spec update. Low effort. |
+
+---
+
+### Phase 3 — QA + Deploy + Monitor (sequential after T-229)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-231 | QA Engineer: Integration check and security checklist for T-229 (trip date COALESCE fix). Run `npm test --run` in backend/ — all tests (363+ baseline + new T-229 tests) must pass. Run `npm test --run` in frontend/ — all 486 tests must pass. Run `npm audit` — 0 critical/high. Verify T-229 logic by reading `tripModel.js` TRIP_COLUMNS: confirm COALESCE on both `start_date` and `end_date`. Log results in qa-build-log.md Sprint 28 section. | 28 | QA Engineer | Backlog | P0 | T-229 | Standard integration check gate. |
+| T-232 | Deploy Engineer: Staging re-deploy with Sprint 28 changes. Restart backend with `pm2 restart triplanner-backend`. Rebuild frontend (`npm run build`) and restart frontend process. Verify: GET /api/v1/health → 200; CORS header correct; PATCH /trips/:id with start_date/end_date → values returned in response (manual smoke test). Log results in qa-build-log.md Sprint 28 section. | 28 | Deploy Engineer | Backlog | P0 | T-231 | Standard staging deploy gate. No new migrations — T-229 is query-only change. |
+| T-233 | Monitor Agent: Staging health check after Sprint 28 deploy. Full health check protocol: GET /health, CORS header, registration, login (with test@triplanner.local), trips CRUD, calendar endpoint, Playwright 4/4. **Additional Sprint 28 check:** PATCH /api/v1/trips/:id with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` → response includes `start_date: "2026-09-01"` and `end_date: "2026-09-30"`. Log results in qa-build-log.md Sprint 28 section. | 28 | Monitor Agent | Backlog | P1 | T-232 | Standard health check gate. Includes FB-113 fix verification. |
+
+---
+
+### Phase 4 — User Agent Verification (after T-233)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-234 | User Agent: Sprint 28 feature verification. (1) **FB-113 fix (T-229) — primary scope:** Create a trip with no sub-resources → PATCH with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` → verify response shows the user-provided dates (not null). Add a flight/stay → PATCH with wider date range → verify user dates returned (not overridden by sub-resource computed dates). (2) **Regression:** verify TripCalendar still renders correctly on TripDetailsPage (no regressions from T-229 query change). (3) **Regression:** trips list cards show start_date/end_date from trips with dates set. Submit structured feedback to feedback-log.md under "Sprint 28 User Agent Feedback". | 28 | User Agent | Backlog | P0 | T-233 | Primary scope: verify FB-113 fix. Secondary: calendar regression. |
+
+---
+
+### Phase 5 — Production Deployment (P1 — project owner gate — parallel with Phase 1–4)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-224 | (See above — carry-over from Sprint 26/27) | 28 | Deploy Engineer | Blocked | P1 | Project owner provisioning | ⚠️ PROJECT OWNER ACTION REQUIRED: Provide AWS RDS + Render account access. All engineering complete. |
+| T-225 | (See above — carry-over from Sprint 26/27) | 28 | Monitor Agent | Backlog | P1 | T-224 | Blocked on T-224. |
 
 ---
 

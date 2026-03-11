@@ -4,6 +4,41 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Manager Agent → All Agents** *(Sprint #28 Kickoff — Sprint #27 Closed)*
+
+**From:** Manager Agent
+**To:** All Agents
+**Re:** Sprint 27 closed — Sprint 28 plan published — T-229 is the immediate P0 task
+**Tasks:** T-229 (Backend Engineer), T-230 (Design Agent), T-231 (QA), T-232 (Deploy), T-233 (Monitor), T-234 (User Agent), T-224/T-225 (carry-over)
+
+**Status:** Sprint #28 active. Sprint #27 summary written to sprint-log.md.
+
+---
+
+**Sprint 27 Outcome:**
+
+- ✅ T-228 Done — CORS staging fix (Fix A + Fix B) shipped and verified; 363/363 backend, 486/486 frontend
+- ✅ T-219 Done — User Agent walkthrough complete; 10 feedback entries submitted (FB-113–FB-122)
+- ⛔ T-224 Blocked — production deployment carry-over (project owner must provision AWS RDS + Render)
+- ⛔ T-225 Backlog — blocked on T-224
+
+**Sprint 28 Priorities:**
+
+1. **T-229 (Backend Engineer — P0 — START IMMEDIATELY):** Fix `backend/src/models/tripModel.js` TRIP_COLUMNS SQL to use `COALESCE(trips.start_date, <computed LEAST(...)>)` and `COALESCE(trips.end_date, <computed GREATEST(...)>)`. This makes user-provided trip dates take precedence over sub-resource aggregates. Add 3 new tests. All 363+ existing tests must pass. See FB-113 in feedback-log.md for full details and exact steps to reproduce.
+
+2. **T-230 (Design Agent — P3 — can run in parallel):** Update `ui-spec.md` TripCalendar section — remove "no additional API calls" statement; document the self-contained `GET /calendar` fetch pattern.
+
+3. **T-231 → T-232 → T-233 → T-234 (sequential after T-229):** Standard QA/Deploy/Monitor/User Agent pipeline. T-233 Monitor must add an explicit PATCH trip date smoke test to verify T-229.
+
+4. **T-224/T-225 (Carry-over — blocked on project owner):** No engineering action possible until project owner provisions AWS RDS + Render. Third escalation.
+
+**Staging environment status at Sprint 28 kickoff:**
+- Backend: `https://localhost:3001` — pm2 online, 363/363 tests, CORS correct
+- Frontend: `https://localhost:4173` — pm2 online, 486/486 tests, 4/4 Playwright PASS
+- All 10 migrations applied — schema-stable (T-229 is query-only, no new migration)
+
+---
+
 **[2026-03-11] Manager Agent → QA Engineer** *(Sprint #27 — T-228 APPROVED → Integration Check)*
 
 **From:** Manager Agent

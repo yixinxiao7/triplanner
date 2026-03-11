@@ -2820,4 +2820,89 @@ All tasks remain in Backlog status. None progressed.
 
 ---
 
+### Sprint #27 — 2026-03-11 to 2026-03-11
+
+**Goal:** (1) Fix the Major CORS staging bug (T-228) blocking all browser-initiated API calls. (2) Complete the User Agent feature walkthrough (T-219) — a four-sprint carry-over. (3) Carry T-224/T-225 forward, escalating to project owner for AWS RDS + Render provisioning.
+
+**Goal Met:** ⚠️ PARTIALLY MET — T-228 (CORS fix) fully shipped and verified. T-219 (User Agent walkthrough) was completed by the User Agent who submitted 10 structured feedback entries (FB-113 through FB-122); however the task status was not formally updated to Done mid-sprint. One Major bug (FB-113) was found and tasked for Sprint 28. T-224 (production deployment) and T-225 (health check) continue to carry over — project owner must provision AWS RDS and Render accounts before these can proceed.
+
+---
+
+**Tasks Completed (2/4):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-228 | CORS staging fix — Fix A (ecosystem.config.cjs CORS_ORIGIN) + Fix B (ESM dynamic import refactor); 8 new tests; 363/363 backend + 486/486 frontend | ✅ Done |
+| T-219 | User Agent: Sprint 25/26 feature walkthrough — TripCalendar, StatusFilterTabs, TripStatusSelector, notes, validation, rate limiting, print button; 10 feedback entries submitted (FB-113–FB-122) | ✅ Done |
+
+**Tasks Carried Over (2/4):**
+
+| ID | Description | Reason | Sprint 28 Status |
+|----|-------------|--------|-----------------|
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS | Blocked — project owner must provision AWS RDS + Render. All code/config production-ready; no engineering blockers remain. | Carry → Sprint 28 (blocked on project owner) |
+| T-225 | Monitor Agent: Post-production health check | Blocked on T-224 | Carry → Sprint 28 (blocked by T-224) |
+
+---
+
+**Key Decisions / Approvals This Sprint:**
+
+- **ESM dotenv hoisting fix confirmed:** Fix A (pm2 env block) and Fix B (dynamic import) both implemented and verified. Staging CORS header correctly returns `https://localhost:4173`. 8 new tests added; 363/363 backend tests passing.
+- **trip start_date/end_date bug identified (FB-113):** `tripModel.js` TRIP_COLUMNS SQL always computes dates via `LEAST()/GREATEST()` subqueries over sub-resources, discarding user-provided values stored in DB columns. Fix is a COALESCE on the SELECT: `COALESCE(trips.start_date, <computed MIN>)`. Tasked as T-229 for Sprint 28.
+- **TripCalendar self-contained fetch (FB-122):** Implementation uses its own `GET /api/v1/trips/:id/calendar` call instead of reusing `useTripDetails` hook data (as spec stated). This is architecturally defensible (calendar endpoint returns optimally shaped data); spec will be updated to reflect reality rather than refactoring the component.
+
+---
+
+**Feedback Summary (Sprint 27 — FB-113 through FB-122):**
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-113 | Bug | Major | **Tasked → T-229** | `tripModel.js` TRIP_COLUMNS SQL ignores user-provided start_date/end_date — always returns computed dates from sub-resources. "Set dates" UI is non-functional. |
+| FB-114 | Positive | — | Acknowledged | TripCalendar fully implemented: events, navigation, color-coding, accessibility, click-to-scroll, mobile fallback, empty state, error state. |
+| FB-115 | Positive | — | Acknowledged | T-228 CORS fix verified working — both Fix A and Fix B confirmed live on staging. |
+| FB-116 | Positive | — | Acknowledged | Print button visible on TripDetailsPage with printer icon and print.css imported. |
+| FB-117 | Positive | — | Acknowledged | StatusFilterTabs pill filter works correctly; 0-match filter returns clean empty data array. |
+| FB-118 | Positive | — | Acknowledged | Trip notes save, clear, and unauthorized PATCH all work correctly. |
+| FB-119 | Positive | — | Acknowledged | Destination validation returns structured 400 with field-level errors (no raw stack traces). |
+| FB-120 | Positive | — | Acknowledged | Login rate limiter correctly locks out after 10 attempts. Note: counts all login attempts (not only failures). |
+| FB-121 | UX Issue | Minor | Acknowledged (backlog) | Stay category field requires uppercase enum (`HOTEL`/`AIRBNB`/`VRBO`); lowercase is rejected with 400. Minor friction for API consumers. |
+| FB-122 | UX Issue | Minor | Acknowledged (backlog) | TripCalendar makes its own API call; ui-spec said "no additional API calls." Spec update preferred over refactor. |
+
+---
+
+**What Went Well:**
+
+- T-228 CORS fix was comprehensive — both the immediate pm2 fix (Fix A) and the permanent ESM refactor (Fix B) were implemented in the same sprint, along with 8 new targeted tests.
+- T-219 User Agent walkthrough finally completed after four consecutive carry-overs. The User Agent provided 10 well-structured feedback entries covering all required verification points.
+- Sprint 27 had a very clean quality signal: 9 of 10 feedback entries were positive (all regression checks passed). Only 1 bug found, and it is well-understood with a clear fix path.
+- Staging environment is now in a healthy, verified state: 363/363 backend, 486/486 frontend, 0 vulnerabilities, CORS confirmed correct, 4/4 Playwright E2E passing.
+
+**What Could Improve:**
+
+- T-219 completing without a formal status update in dev-cycle-tracker.md — the User Agent submitted feedback correctly but the task remained in "Backlog" status. Agent workflow should include a status self-update step.
+- T-224 / T-225 have now carried over into Sprint 28. This is a pure human gate (project owner must provision external cloud resources). A direct escalation note to the project owner is warranted — all engineering work is complete and production deployment is the only remaining MVP milestone.
+- FB-113 (trip date bug) existed in the codebase since migration 007 was added in Sprint 16 but was not caught until the Sprint 27 User Agent walkthrough. A regression test on the PATCH trips endpoint that explicitly verifies start_date/end_date round-trip would have caught this earlier.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence; will not survive pm2 restarts
+- ⚠️ B-024: Auth rate limit is IP-only
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests
+- ⚠️ knexfile.js staging block missing `seeds: { directory: seedsDir }` (workaround: use `NODE_ENV=development`)
+- ⚠️ Stay category field requires uppercase enum — minor friction for external API consumers (FB-121)
+- ⚠️ `ui-spec.md` TripCalendar section states "no additional API calls" but implementation makes a dedicated calendar fetch — spec is stale (FB-122)
+
+*New this sprint:*
+- ⚠️ `tripModel.js` TRIP_COLUMNS SQL ignores user-provided start_date/end_date — COALESCE fix needed (T-229, Sprint 28)
+
+*Resolved this sprint:*
+- ✅ CORS staging mismatch (ESM dotenv hoisting) — resolved by T-228 (Fix A + Fix B)
+- ✅ T-219 User Agent walkthrough — completed after 4-sprint carry-over
+
+---
+
+*Sprint #27 began 2026-03-11, closed 2026-03-11.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

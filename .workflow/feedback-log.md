@@ -232,7 +232,8 @@ button: "please wait…" [disabled]
 | Sprint | 27 |
 | Category | Bug |
 | Severity | Major |
-| Status | New |
+| Status | Tasked |
+| Tasked As | T-229 (Sprint 28 — fix tripModel.js COALESCE for user-provided start_date/end_date) |
 
 **Steps to reproduce:**
 1. Create a trip with no flights, stays, or activities
@@ -265,7 +266,7 @@ button: "please wait…" [disabled]
 | Sprint | 27 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **What was verified:**
 - `GET /api/v1/trips/:id/calendar` returns `{ trip_id, events: [] }` for an empty trip — empty state message shown ✅
@@ -288,7 +289,7 @@ button: "please wait…" [disabled]
 | Sprint | 27 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Verified:**
 - `curl -sk -D - https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173` ✅
@@ -306,7 +307,7 @@ button: "please wait…" [disabled]
 | Sprint | 27 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Verified:**
 - `TripDetailsPage.jsx` has a `<button className={styles.printBtn} onClick={() => window.print()}>Print itinerary</button>` with a printer SVG icon ✅
@@ -323,7 +324,7 @@ button: "please wait…" [disabled]
 | Sprint | 27 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Verified:**
 - `GET /api/v1/trips?status=PLANNING` → returned the 1 PLANNING trip ✅
@@ -341,7 +342,7 @@ button: "please wait…" [disabled]
 | Sprint | 27 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Verified:**
 - `PATCH {"notes":"..."}` → notes saved, returned in response ✅
@@ -358,7 +359,7 @@ button: "please wait…" [disabled]
 | Sprint | 27 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Verified:**
 - 101-char destination → `400 VALIDATION_ERROR` with human-readable `fields.destinations` message ✅
@@ -375,7 +376,7 @@ button: "please wait…" [disabled]
 | Sprint | 27 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Verified:** 10 sequential login attempts returned OK (status 200), attempt 11 returned `RATE_LIMITED` (429). Spec required lockout after 10 attempts ✅
 
@@ -391,7 +392,7 @@ button: "please wait…" [disabled]
 | Sprint | 27 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 
 **Steps to reproduce:**
 1. POST to `/api/v1/trips/:id/stays` with body `{"category":"hotel","name":"...","check_in_at":"...","check_in_tz":"...","check_out_at":"...","check_out_tz":"..."}`
@@ -411,7 +412,7 @@ button: "please wait…" [disabled]
 | Sprint | 27 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 
 **Details:**
 - The `ui-spec.md` Sprint 25 spec states: "It uses data already fetched by the `useTripDetails` hook — no additional API calls."

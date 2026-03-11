@@ -4,111 +4,150 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #27 — 2026-03-11
+## Sprint #28 — 2026-03-11
 
-**Sprint Goal:** (1) Fix the Major CORS staging bug (T-228) that is blocking all browser-initiated API calls on staging — this is the gate for User Agent testing and any subsequent browser-based verification. (2) Complete the User Agent walkthrough (T-219) that has now carried over for four consecutive sprints — this must not slip again. (3) Carry T-224 (production deployment) and T-225 (post-production health check) forward — escalate to project owner for AWS RDS + Render account provisioning, which is the sole remaining blocker for the production launch.
+**Sprint Goal:** (1) Fix the Major trip date bug (FB-113/T-229) — `tripModel.js` always returns computed sub-resource dates and silently discards user-provided `start_date`/`end_date`, making the "Set dates" UI on TripDetailsPage non-functional. This is the sole P0 engineering task. (2) Carry T-224/T-225 (production deployment) forward with a clear project owner escalation — all engineering is complete and this is the only remaining MVP milestone. (3) Update `ui-spec.md` to reflect the TripCalendar self-contained fetch pattern (FB-122 — spec accuracy cleanup, P3).
 
-**Context:** Sprint 26 shipped all three production deployment engineering pre-requisites (knexfile SSL config, cookie SameSite fix, render.yaml + deploy guide), the Monitor Agent process fix, and a clean staging re-deploy. All engineering is production-ready. However, two gates remain: (a) the CORS staging bug (Monitor Alert Sprint #26 — ESM dotenv hoisting causes wrong `Access-Control-Allow-Origin` header in staging) must be fixed before User Agent browser testing can proceed; (b) the project owner must provision AWS RDS + Render accounts for T-224 to execute. Test baseline entering Sprint 27: 355/355 backend | 486/486 frontend.
+**Context:** Sprint 27 shipped the T-228 CORS staging fix (both Fix A and Fix B), and the User Agent (T-219) finally completed its walkthrough after four consecutive carry-overs. Staging is healthy: 363/363 backend, 486/486 frontend, 0 vulnerabilities, CORS confirmed, 4/4 Playwright E2E. The User Agent found 1 Major bug (FB-113) and 9 positive findings. The application is feature-complete (per MVP scope) except for this date bug and the pending production deployment (project owner gate).
 
-**Feedback Triage (Sprint 26 → Sprint 27):**
+**Feedback Triage (Sprint 27 → Sprint 28):**
 
 | Entry | Category | Severity | Disposition | Description |
 |-------|----------|----------|-------------|-------------|
-| Monitor Alert Sprint #26 (CORS mismatch) | Monitor Alert | Major | **Tasked → T-228** | Staging backend serves wrong `Access-Control-Allow-Origin` header (ESM dotenv hoisting root cause). Blocks all browser-based API calls. |
-| Monitor Alert Sprint #26 (secondary: knexfile staging seeds) | Monitor Alert | Minor | **Acknowledged (backlog)** | Staging knexfile missing seeds directory config — `NODE_ENV=staging npm run seed` fails. Workaround exists. No Sprint 27 task. |
+| FB-113 (trip dates silently ignored) | Bug | Major | **Tasked → T-229** | `tripModel.js` TRIP_COLUMNS SQL uses LEAST/GREATEST subqueries that always override user-stored dates. COALESCE fix required. |
+| FB-114 (TripCalendar positive) | Positive | — | Acknowledged | TripCalendar fully verified. |
+| FB-115 (CORS fix verified) | Positive | — | Acknowledged | T-228 Fix A + Fix B confirmed live. |
+| FB-116 (print button) | Positive | — | Acknowledged | Print button verified present and functional. |
+| FB-117 (status filter tabs) | Positive | — | Acknowledged | StatusFilterTabs filtering verified at API level. |
+| FB-118 (trip notes) | Positive | — | Acknowledged | Notes save/clear/auth verified. |
+| FB-119 (destination validation) | Positive | — | Acknowledged | 400 structured error verified, no stack traces. |
+| FB-120 (rate limiting) | Positive | — | Acknowledged | Login rate limiter verified 10-attempt lockout. |
+| FB-121 (stay category case-sensitive) | UX Issue | Minor | Acknowledged (backlog) | Stay category requires uppercase enum. Minor friction. |
+| FB-122 (TripCalendar own API call) | UX Issue | Minor | Acknowledged (backlog — T-230 spec update) | ui-spec.md states "no additional API calls" but implementation makes a dedicated calendar fetch. Spec to be updated. |
 
 ---
 
 ## In Scope
 
-### Phase 1 — CORS Staging Fix (P0 — NO BLOCKERS — START IMMEDIATELY)
+### Phase 1 — Bug Fix (P0 — NO BLOCKERS — START IMMEDIATELY)
 
-- [ ] **T-228** — Backend Engineer + Deploy Engineer: Fix CORS staging mismatch — ESM dotenv hoisting root cause ← **NO DEPENDENCIES — START IMMEDIATELY**
+- [ ] **T-229** — Backend Engineer: Fix `tripModel.js` TRIP_COLUMNS COALESCE for user-provided start_date/end_date ← **NO DEPENDENCIES — START IMMEDIATELY**
 
-  **Root Cause:** In `backend/src/index.js`, the static `import app from './app.js'` is hoisted before `dotenv.config({ path: '.env.staging' })` runs. When `app.js` executes `cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' })`, `CORS_ORIGIN` is still `undefined`, so the fallback `'http://localhost:5173'` is captured as the fixed origin.
+  **Root Cause:** `backend/src/models/tripModel.js` defines `TRIP_COLUMNS` using a `db.raw(...)` SELECT that computes `start_date` via `LEAST()` subqueries over flights/stays/activities/land_travels and `end_date` via `GREATEST()` subqueries. Migration 007 (`20260225_007_add_trip_date_range.js`) added stored `start_date`/`end_date` columns to the `trips` table, and `db('trips').update({...})` writes the user values correctly — but the TRIP_COLUMNS SELECT never reads back the stored value. It always returns the computed aggregate, which is `null` when no sub-resources exist.
 
-  **Fix A — Immediate (no code change, Deploy Engineer):**
-  - Add `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`
-  - `pm2 restart triplanner-backend`
-  - Verify: `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`
+  **Fix:** Change the TRIP_COLUMNS `db.raw(...)` to:
+  ```sql
+  COALESCE(trips.start_date, <computed LEAST(...)>) AS start_date,
+  COALESCE(trips.end_date, <computed GREATEST(...)>) AS end_date
+  ```
+  So user-stored values take precedence, falling back to computed sub-resource aggregates when user value is null.
 
-  **Fix B — Permanent (code fix, Backend Engineer):**
-  - Refactor `backend/src/index.js` to use a dynamic `import()` for `app.js` so dotenv loads before the app module executes. Alternatively, move dotenv config into `app.js` as the first statement before any middleware.
-  - Re-run `npm test --run` in `backend/` — confirm all 355+ tests pass
-  - Unit test or integration test asserting the CORS header is correctly set from env
+  **Required tests (new or updated):**
+  1. PATCH `/api/v1/trips/:id` with `start_date`/`end_date` on a trip with NO sub-resources → response returns the user-provided dates (not null)
+  2. PATCH `/api/v1/trips/:id` with `start_date`/`end_date` on a trip WITH sub-resources (where computed dates differ from user values) → response returns user-provided dates (not sub-resource aggregates)
+  3. Trip with `start_date = null` in DB AND sub-resources → computed aggregate returned (fallback)
+  4. All 363+ existing tests must continue to pass
 
-  **Both A and B must be implemented.** Fix A unblocks User Agent testing immediately; Fix B prevents recurrence.
+  **Files:** `backend/src/models/tripModel.js` (TRIP_COLUMNS raw SQL), `backend/src/__tests__/trips.test.js` (new test cases)
 
-  - Log handoff to User Agent (T-219) in handoff-log.md once Fix A is deployed and CORS verified
-  - Full report in `qa-build-log.md` Sprint 27 section
+  - Log fix in `qa-build-log.md` Sprint 28 section
+  - Handoff to QA Engineer (T-231) when complete
 
 ---
 
-### Phase 2 — User Agent Walkthrough (P0 — after T-228)
+### Phase 2 — Spec/Documentation Update (P3 — no dependencies, can run in parallel)
 
-- [ ] **T-219** — User Agent: Sprint 25/26 feature walkthrough (carry-over from Sprint 25 T-217) ← Blocked by T-228
+- [ ] **T-230** — Design Agent: Update `ui-spec.md` TripCalendar section to remove the "no additional API calls" statement and document the self-contained `GET /api/v1/trips/:id/calendar` fetch pattern
 
-  **Calendar verification (Sprint 25 feature — primary scope):**
-  - TripDetailsPage shows live TripCalendar component at top of page (not the old "Calendar coming in Sprint 2" placeholder)
-  - Flights, stays, and activities render on the calendar grid with correct dates
-  - Each event type is visually distinct — FLIGHT / STAY / ACTIVITY color-coded pills
-  - Clicking an event scrolls to the corresponding section on the page
-  - Trip with no sub-resources shows empty state message (not placeholder)
+  **Change:** Remove or update the statement in the TripCalendar spec that reads "It uses data already fetched by the `useTripDetails` hook — no additional API calls." Replace with a note explaining that `TripCalendar.jsx` makes its own calendar endpoint fetch because the `/calendar` endpoint returns optimally shaped event data (with `start_date`/`end_date`/`start_time`/`end_time` per event) that avoids client-side reshaping.
 
-  **Regression suite:**
-  - StatusFilterTabs: All / Planning / Ongoing / Completed pills filter correctly; filter with 0 matches → empty state + "Show all" reset link
-  - TripStatusSelector: badge shows current status; click → update in place; keyboard nav (Space/Enter/Arrows/Escape); Home page reflects status change
-  - Trip notes: empty placeholder → edit → char count → save → displays; clear → placeholder returns
-  - Destination validation: 101-char destination → 400 human-friendly error (not raw stack trace)
-  - Rate limiting: login lockout after 10 attempts
-  - Print button visible on TripDetailsPage (Sprint 17)
-  - start_date/end_date visible on trip cards (Sprint 16)
+  **Files:** `.workflow/ui-spec.md` (TripCalendar / Spec 12 section)
 
-  - Submit structured feedback to `feedback-log.md` under **"Sprint 27 User Agent Feedback"**
+---
+
+### Phase 3 — QA + Deploy + Monitor (sequential after T-229)
+
+- [ ] **T-231** — QA Engineer: Integration check and security checklist for T-229 ← Blocked by T-229
+
+  - Run `npm test --run` in `backend/` — all 363+ tests (including new T-229 tests) must pass
+  - Run `npm test --run` in `frontend/` — all 486 tests must pass
+  - Run `npm audit` in backend/ and frontend/ — 0 critical/high vulnerabilities
+  - Read `backend/src/models/tripModel.js` TRIP_COLUMNS: confirm COALESCE on both `start_date` and `end_date`
+  - Security checklist: no new endpoints, no schema changes, no hardcoded secrets, no SQL injection surface
+  - Log results in `qa-build-log.md` Sprint 28 section
+  - Handoff to Deploy Engineer (T-232)
+
+- [ ] **T-232** — Deploy Engineer: Staging re-deploy with Sprint 28 changes ← Blocked by T-231
+
+  - `pm2 restart triplanner-backend` (no frontend code changes needed for T-229)
+  - Smoke test: `GET /api/v1/health` → 200 ✅
+  - Manual PATCH smoke test: `PATCH /api/v1/trips/:id` with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` on a trip with no sub-resources → response includes correct dates
+  - CORS header check: `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`
+  - Log results in `qa-build-log.md` Sprint 28 section
+  - Handoff to Monitor Agent (T-233)
+
+- [ ] **T-233** — Monitor Agent: Staging health check ← Blocked by T-232
+
+  Full health check protocol:
+  - GET `/api/v1/health` → 200 ✅
+  - CORS header → `https://localhost:4173` ✅
+  - Login with `test@triplanner.local` → 200 + access token ✅
+  - GET `/api/v1/trips` → 200 ✅
+  - GET `/api/v1/trips/:id/calendar` → 200 ✅
+  - Playwright `npx playwright test` → 4/4 PASS ✅
+  - **Sprint 28 specific check:** PATCH `/api/v1/trips/:id` with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` on a trip with no sub-resources → response `start_date: "2026-09-01"`, `end_date: "2026-09-30"` ✅
+  - Log results in `qa-build-log.md` Sprint 28 section
+  - Handoff to User Agent (T-234)
+
+---
+
+### Phase 4 — User Agent Verification (P0 — after T-233)
+
+- [ ] **T-234** — User Agent: Sprint 28 feature verification ← Blocked by T-233
+
+  **Primary scope (FB-113 fix):**
+  1. Create a trip with no sub-resources
+  2. PATCH the trip: `{"start_date":"2026-09-01","end_date":"2026-09-30"}` → verify response shows `start_date: "2026-09-01"`, `end_date: "2026-09-30"` (not null)
+  3. Add a flight (departure before 2026-09-01) and a stay (checkout after 2026-09-30) → PATCH with same dates → verify user dates returned (not overridden by sub-resource computed dates)
+  4. Verify trip cards on Home page show the user-set dates correctly
+
+  **Regression (calendar):**
+  5. TripCalendar still renders on TripDetailsPage with correct events (no regression from tripModel.js query change)
+  6. Calendar empty state shown for trips with no sub-resources
+
+  **Regression (general):**
+  7. StatusFilterTabs still filter correctly
+  8. Trip notes still save/clear correctly
+
+  - Submit structured feedback to `feedback-log.md` under **"Sprint 28 User Agent Feedback"**
   - All feedback entries must have Category, Severity, and Status: New
 
 ---
 
-### Phase 3 — Production Deployment (P1 — project owner gate + T-228)
+### Phase 5 — Production Deployment (P1 — project owner gate — parallel with all phases)
 
-> ⚠️ **PROJECT OWNER ACTION REQUIRED:** T-224 is blocked on the project owner providing:
-> 1. **AWS account access** to create an RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier)
-> 2. **Render account access** to apply the `render.yaml` Blueprint (or manual service creation)
-> All application code, configuration, and the deploy guide (`docs/production-deploy-guide.md`) are complete. The Deploy Engineer can execute T-224 as soon as credentials are provided.
+> ⚠️ **PROJECT OWNER ACTION REQUIRED (THIRD ESCALATION):**
+> T-224 has been blocked for three consecutive sprints. The project owner must:
+> 1. Provide **AWS account access** to create an RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier)
+> 2. Provide **Render account access** to apply the `render.yaml` Blueprint (or create services manually)
+>
+> All code, configuration (`render.yaml`, knexfile SSL, cookie SameSite), and documentation (`docs/production-deploy-guide.md`) are complete. Production deployment is the only remaining MVP milestone. This requires a human action — no agent can provision external cloud infrastructure.
 
-- [ ] **T-224** — Deploy Engineer: Production deployment to Render + AWS RDS ← Blocked on project owner (AWS + Render access)
+- [ ] **T-224** — Deploy Engineer: Production deployment to Render + AWS RDS ← Blocked on project owner
 
-  Follow `docs/production-deploy-guide.md` (T-222 output):
-  1. Create AWS RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier, public access for Render)
-  2. Set up Render services (frontend static site + backend web service, both Ohio region, free plan) using `render.yaml`
-  3. Configure all environment variables (DATABASE_URL pointing to RDS endpoint, JWT_SECRET generated, NODE_ENV=production, FRONTEND_URL, CORS_ORIGIN)
-  4. Run database migrations: `knex migrate:latest` against production RDS
-  5. Trigger Render deploy — confirm frontend and backend online
-  6. Smoke tests: GET /api/v1/health → 200; POST /auth/register → 201; frontend loads at Render URL
-  - Log production URLs in handoff-log.md; handoff to Monitor Agent (T-225)
-  - Full report in `qa-build-log.md` Sprint 27 section
+  Follow `docs/production-deploy-guide.md` step by step.
 
 - [ ] **T-225** — Monitor Agent: Post-production health check ← Blocked by T-224
-
-  - GET https://[backend-render-url]/api/v1/health → 200 `{"status":"ok"}`
-  - Frontend loads at https://[frontend-render-url] — no JS errors in browser console
-  - Registration: POST /auth/register → 201
-  - Login: POST /auth/login → 200
-  - Trips: GET /api/v1/trips → 200 (with auth)
-  - Calendar: GET /api/v1/trips/:id/calendar → 200 (with auth)
-  - HTTPS enforced
-  - Cookie: `SameSite=None; Secure` in Set-Cookie response header for refresh token
-  - Full report in `qa-build-log.md` Sprint 27 section
 
 ---
 
 ## Out of Scope
 
-- **Calendar edit mode** — Calendar is read-only; editing remains via section forms below the calendar.
-- **MFA login, Home page summary calendar, auto-generated itinerary** — Explicitly out of scope per project brief.
-- **B-020 (Redis rate limiting), B-024 (per-account rate limiting)** — In-memory store sufficient at current scale.
-- **knexfile.js staging seeds config fix** — Minor, acknowledged; workaround exists (use `NODE_ENV=development npm run seed`). Not Sprint 27.
-- **New features** — No new feature work this sprint. Stabilize and ship production first.
+- **New features** — No new feature work until the trip date bug is fixed and production is deployed.
+- **Stay category normalization (FB-121)** — Minor UX issue; stays in backlog. Frontend form sends correct uppercase values; this only affects direct API consumers.
+- **MFA, home page summary calendar, auto-generated itinerary** — Explicitly out of scope per project brief.
+- **B-020 (Redis rate limiting), B-024 (per-account rate limiting)** — Backlog; in-memory store sufficient at current scale.
+- **knexfile staging seeds config** — Minor workaround exists; not Sprint 28.
 
 ---
 
@@ -116,12 +155,13 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Backend Engineer | CORS ESM dotenv fix (Fix B) | T-228 |
-| Deploy Engineer | CORS pm2 ecosystem fix (Fix A) + production deploy | T-228, T-224 |
-| User Agent | Sprint 25/26 feature walkthrough (calendar + regression) | T-219 |
-| Monitor Agent | Post-production health check | T-225 |
-| Manager | T-228 code review; T-219 feedback triage; T-224 deploy gate review | Reviews |
-| QA Engineer | Add CORS header check to staging QA protocol (post-sprint improvement) | — |
+| Backend Engineer | Trip date COALESCE fix | T-229 |
+| Design Agent | ui-spec.md TripCalendar section update | T-230 |
+| QA Engineer | Integration check for T-229 | T-231 |
+| Deploy Engineer | Staging re-deploy + production deploy (if unblocked) | T-232, T-224 |
+| Monitor Agent | Staging health check + production health check (if unblocked) | T-233, T-225 |
+| User Agent | FB-113 fix verification + regression | T-234 |
+| Manager | Code review (T-229); T-234 feedback triage | Reviews |
 
 ---
 
@@ -129,57 +169,68 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ```
 Phase 1 (IMMEDIATE — NO BLOCKERS):
-T-228 (Backend + Deploy: Fix CORS staging — Fix A + Fix B)
+T-229 (Backend: tripModel.js COALESCE fix for start_date/end_date)
     |
-Phase 2:
-T-219 (User Agent: TripCalendar + regression walkthrough)
+T-231 (QA: Integration check + security checklist)
     |
-Manager triages T-219 feedback
+T-232 (Deploy: Staging re-deploy)
+    |
+T-233 (Monitor: Staging health check + FB-113 verification)
+    |
+T-234 (User Agent: Trip date fix verification + regression)
+    |
+Manager: Triage T-234 feedback → Sprint 29 plan
 
-Phase 3 (PROJECT OWNER GATE — parallel with Phase 1/2):
+Phase 2 (PARALLEL — NO BLOCKERS):
+T-230 (Design Agent: ui-spec.md TripCalendar update — standalone doc change)
+
+Phase 5 (PROJECT OWNER GATE — parallel with all phases):
 [Project owner provides AWS RDS + Render credentials]
     |
-T-224 (Deploy: Production deployment to Render + AWS RDS)
+T-224 (Deploy: Production deployment)
     |
 T-225 (Monitor: Post-production health check)
-    |
-Manager: Triage T-219 + T-225 feedback → Sprint 28 plan
 ```
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #27 is complete?*
+*How do we know Sprint #28 is complete?*
 
-- [ ] T-228: Fix A deployed — `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`
-- [ ] T-228: Fix B implemented — ESM dotenv hoisting refactored in `backend/src/index.js`; all 355+ backend tests pass
-- [ ] T-219: User Agent TripCalendar walkthrough complete; all regression checks pass; structured feedback submitted to feedback-log.md
-- [ ] T-219 feedback triaged by Manager (all entries Tasked, Acknowledged, or Won't Fix)
-- [ ] T-224: Production deployed to Render + AWS RDS; smoke tests pass; production URLs logged in handoff-log.md *(conditional on project owner providing access)*
-- [ ] T-225: Post-production health check complete; all 8 production checks pass; SameSite=None cookie verified *(conditional on T-224)*
-- [ ] Sprint 27 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 28 plan written in `.workflow/active-sprint.md`
+- [ ] T-229: COALESCE fix implemented — PATCH trips with start_date/end_date on a trip with no sub-resources → user values returned in response (not null)
+- [ ] T-229: PATCH trips with sub-resources and explicit user dates → user dates returned (not overridden by computed aggregates)
+- [ ] T-229: All 363+ existing backend tests pass + new date tests pass
+- [ ] T-230: ui-spec.md TripCalendar section updated — "no additional API calls" statement removed/corrected
+- [ ] T-231: QA integration check passes (tests + audit + config review)
+- [ ] T-232: Staging re-deployed and smoke tests pass
+- [ ] T-233: Monitor confirms staging healthy; FB-113 fix verified via PATCH smoke test; Playwright 4/4 PASS
+- [ ] T-234: User Agent confirms trip date "Set dates" UI works end-to-end; structured feedback submitted
+- [ ] T-234 feedback triaged by Manager (all entries Tasked, Acknowledged, or Won't Fix)
+- [ ] T-224: Production deployed to Render + AWS RDS *(conditional on project owner providing access)*
+- [ ] T-225: Post-production health check complete *(conditional on T-224)*
+- [ ] Sprint 28 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 29 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #27)
+## Success Criteria (Sprint #28)
 
-By end of Sprint #27, the following must be verifiable:
+By end of Sprint #28, the following must be verifiable:
 
-- [ ] **T-228 Done** — Staging backend returns `Access-Control-Allow-Origin: https://localhost:4173` on OPTIONS/GET requests from staging frontend origin; browser-based API calls no longer CORS-blocked
-- [ ] **T-219 Done** — User Agent confirms TripCalendar renders correctly on staging; all Sprint 16/17/25 regression checks pass; structured feedback submitted
-- [ ] **T-224 Done** *(project owner dependent)* — Application is live in production at Render URLs; AWS RDS connected; migrations run
-- [ ] **T-225 Done** *(project owner dependent)* — Monitor confirms: health 200, HTTPS, auth working, calendar endpoint working, SameSite=none cookie confirmed
-- [ ] **B-022 Resolved** *(project owner dependent)* — Production deployment shipped after 26+ sprint deferral
+- [ ] **T-229 Done** — `PATCH /api/v1/trips/:id` with `start_date`/`end_date` returns the user-provided values; "Set dates" UI on TripDetailsPage is functional end-to-end
+- [ ] **T-230 Done** — ui-spec.md TripCalendar section accurately reflects the implemented fetch pattern
+- [ ] **T-234 Done** — User Agent confirms the trip date fix works in a real browser flow on staging; all regressions pass
+- [ ] **T-224 Done** *(project owner dependent)* — Application is live in production; AWS RDS connected; migrations run
+- [ ] **T-225 Done** *(project owner dependent)* — Monitor confirms production health; SameSite=None cookie verified
 
 ---
 
 ## Blockers
 
-- **T-228 is the gate for T-219.** User Agent browser testing cannot reliably proceed until the CORS mismatch is fixed and staging is confirmed working in a browser context.
-- **T-224 / T-225 are blocked on the project owner.** The project owner must provide AWS account access (to create RDS instance) and Render account access (to apply render.yaml Blueprint or create services manually). All code, config, and documentation are complete. Once access is provided, T-224 can execute immediately.
+- **T-224/T-225 are blocked on the project owner.** This is the third consecutive sprint this escalation has been raised. AWS RDS + Render account provisioning is required. All application code, `render.yaml`, and `docs/production-deploy-guide.md` are complete and production-ready.
+- No blockers on the engineering track (T-229 through T-234). Work can begin immediately.
 
 ---
 
-*Previous sprint (Sprint #26) archived to `.workflow/sprint-log.md` on 2026-03-11. Sprint #27 plan written by Manager Agent 2026-03-11.*
+*Sprint #27 archived to `.workflow/sprint-log.md` on 2026-03-11. Sprint #28 plan written by Manager Agent 2026-03-11.*
