@@ -3118,3 +3118,52 @@ Full report in `qa-build-log.md` under Sprint 25 section. Handoff to User Agent 
 
 ---
 
+**[2026-03-10] Deploy Engineer → Monitor Agent** *(Sprint #25 — T-215 Orchestrator Re-run COMPLETE: Staging Deploy Confirmed → T-216 Proceed)*
+
+**From:** Deploy Engineer (T-215 — Orchestrator Sprint #25 re-run)
+**To:** Monitor Agent
+**Re:** Sprint 25 — T-215 staging deploy confirmed complete with fresh build. T-216 (health check) is confirmed unblocked.
+
+**Status:** ✅ T-215 DONE — Fresh build succeeded, both processes healthy, all smoke tests PASS.
+
+### What Was Done
+
+| Step | Result |
+|------|--------|
+| Backend `npm install` | ✅ 0 vulnerabilities |
+| Frontend `npm install` | ✅ 0 vulnerabilities |
+| Frontend `npm run build` | ✅ 128 modules, built in 476ms |
+| DB migrations | ✅ None — Sprint 25 T-212 is read-only; all 10 migrations (001–010) applied |
+| Backend restart (`NODE_ENV=staging node src/index.js`) | ✅ PID 53257 |
+| `GET https://localhost:3001/api/v1/health` | ✅ `{"status":"ok"}` |
+| Frontend Vite preview restart | ✅ Running |
+| `GET https://localhost:4173/` | ✅ HTML response |
+
+### Service URLs (Staging)
+
+| Service | URL |
+|---------|-----|
+| Backend API | `https://localhost:3001` |
+| Health endpoint | `https://localhost:3001/api/v1/health` |
+| Calendar endpoint | `https://localhost:3001/api/v1/trips/:id/calendar` (auth required) |
+| Frontend | `https://localhost:4173` |
+
+> Note: Self-signed TLS — use `curl -sk` or trust cert locally. Docker not available; local processes used.
+
+### Monitor Agent — T-216 Instructions
+
+Per `active-sprint.md` T-216 definition, verify:
+
+1. `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+2. **Sprint 25 — TripCalendar:** TripDetailsPage renders `<TripCalendar>` (not the old placeholder)
+3. **Sprint 25 — Calendar endpoint:** `GET https://localhost:3001/api/v1/trips/:id/calendar` → 200 with `events` array (auth required)
+4. No 5xx errors; frontend loads without JS errors at `https://localhost:4173`
+
+Log full report in `qa-build-log.md`. Handoff to User Agent (T-217) when complete.
+
+**Full deploy report:** `qa-build-log.md` → "Sprint #25 — T-215 Staging Deploy (Orchestrator Re-run) — 2026-03-10T23:10:00Z"
+
+**Related tasks:** T-215 (this — ✅ Done), T-216 (Monitor Agent — 🔵 Unblocked), T-217 (User Agent — after T-216)
+
+---
+

@@ -4,6 +4,89 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #25 — T-215 Staging Deploy (Orchestrator Re-run) — 2026-03-10T23:10:00Z
+
+**Date:** 2026-03-10
+**Agent:** Deploy Engineer (T-215 — Orchestrator Sprint #25 invocation)
+**Task:** T-215 — Sprint 25 staging re-deployment
+**Environment:** Staging (local — `https://localhost:3001` backend, `https://localhost:4173` frontend)
+
+---
+
+### Pre-Deploy Gate Verification
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| QA T-214 handoff confirmed in handoff-log.md | ✅ CONFIRMED | QA logged T-214 Done with 340/340 backend + 486/486 frontend, 0 vulnerabilities, all security checklist items passing |
+| All Sprint 25 tasks Done in dev-cycle-tracker.md | ✅ CONFIRMED | T-210 ✅, T-211 ✅, T-212 ✅, T-213 ✅, T-214 ✅ |
+| Database migrations required | ✅ NONE | Sprint 25 T-212 is a read-only aggregation endpoint (`GET /api/v1/trips/:id/calendar`). No DDL changes. All 10 migrations (001–010) confirmed applied. No `knex migrate:latest` run. |
+| TLS certificates present | ✅ EXISTS | `infra/certs/localhost-key.pem` + `infra/certs/localhost.pem` |
+| Calendar route code present | ✅ EXISTS | `backend/src/routes/calendar.js` confirmed |
+
+---
+
+### Build Step
+
+| Step | Command | Result |
+|------|---------|--------|
+| Backend `npm install` | `cd backend && npm install` | ✅ SUCCESS — 0 vulnerabilities |
+| Frontend `npm install` | `cd frontend && npm install` | ✅ SUCCESS — 0 vulnerabilities |
+| Frontend build | `cd frontend && npm run build` | ✅ SUCCESS |
+
+**Frontend build output:**
+```
+vite v6.4.1 building for production...
+✓ 128 modules transformed.
+dist/index.html                   0.46 kB │ gzip:  0.29 kB
+dist/assets/index-CPOhaw0p.css   84.43 kB │ gzip: 13.30 kB
+dist/assets/index-Bz9Y7ALz.js   345.83 kB │ gzip: 105.16 kB
+✓ built in 476ms
+```
+
+**Build Status: ✅ SUCCESS**
+
+---
+
+### Staging Deployment
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Docker / docker-compose | ⚠️ NOT AVAILABLE | Docker not installed on this machine — using local processes as documented fallback |
+| DB migrations | ✅ SKIPPED (none needed) | All 10 migrations (001–010) already applied; Sprint 25 has no new schema changes |
+| Backend restart | ✅ SUCCESS | PID 53257 — `NODE_ENV=staging node src/index.js` |
+| Backend health check | ✅ PASS | `curl -sk https://localhost:3001/api/v1/health` → `{"status":"ok"}` |
+| Frontend restart | ✅ SUCCESS | Vite preview restarted with `BACKEND_PORT=3001 BACKEND_SSL=true` |
+| Frontend smoke check | ✅ PASS | `curl -sk https://localhost:4173/` → HTML response confirmed |
+
+**Environment: Staging**
+**Build Status: ✅ SUCCESS**
+**Deploy Status: ✅ SUCCESS**
+
+---
+
+### Service URLs (Staging)
+
+| Service | URL | Protocol |
+|---------|-----|----------|
+| Backend API | `https://localhost:3001` | HTTPS (self-signed TLS) |
+| Backend health | `https://localhost:3001/api/v1/health` | HTTPS |
+| Calendar endpoint | `https://localhost:3001/api/v1/trips/:id/calendar` | HTTPS (auth required) |
+| Frontend | `https://localhost:4173` | HTTPS (Vite preview, self-signed TLS) |
+
+---
+
+### Notes
+
+- Docker is not available on this machine. Staging uses local Node.js processes with a local PostgreSQL instance (configured in `backend/.env.staging`: `postgres://yixinxiao@localhost:5432/triplanner`).
+- Backend log file: `/tmp/triplanner-backend.log`
+- Frontend log file: `/tmp/triplanner-frontend.log`
+- No `knex migrate:latest` was run — Sprint 25 T-212 is a read-only aggregation endpoint with no schema changes. Migration count remains at 10 (001–010).
+- Self-signed TLS certs in `infra/certs/` are used for both backend and frontend. Clients must use `-k` / `--insecure` flag or trust the cert locally.
+
+**T-215 Status: ✅ DONE**
+
+---
+
 ## Sprint 25 — QA Re-Verification (T-214 Confirmation) — 2026-03-10
 
 **Date:** 2026-03-10
