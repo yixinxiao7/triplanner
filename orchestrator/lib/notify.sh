@@ -81,7 +81,23 @@ send_sprint_email() {
 
     osascript <<EOF
 set bodyContent to read POSIX file "${body_file}" as «class utf8»
+
+-- Ensure Mail.app is running and ready before composing
 tell application "Mail"
+    activate
+    set maxWait to 30
+    set waited to 0
+    repeat while waited < maxWait
+        try
+            -- Test that Mail is responsive by reading inbox count
+            count of messages of inbox
+            exit repeat
+        on error
+            delay 1
+            set waited to waited + 1
+        end try
+    end repeat
+
     set newMessage to make new outgoing message with properties {subject:"${subject}", content:bodyContent}
     tell newMessage
         make new to recipient at end of to recipients with properties {address:"${email}"}
