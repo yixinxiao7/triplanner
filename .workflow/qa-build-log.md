@@ -1011,3 +1011,91 @@ stderr output: ErrorHandler stack traces from malformed-JSON and DB-error test c
 
 **Handoff to Deploy Engineer (T-224) logged in handoff-log.md (re-confirmation).**
 
+
+---
+
+## Sprint #27 — Backend Engineer CORS Verification (T-228 Fix B)
+
+**Date:** 2026-03-11
+**Task:** T-228 Fix B — ESM dotenv hoisting fix
+**Engineer:** Backend Engineer
+**Sprint goal:** Fix the CORS staging bug where `CORS_ORIGIN` env var was ignored due to ESM import hoisting
+
+---
+
+### Root Cause Summary
+
+`backend/src/index.js` used a static `import app from './app.js'` which was hoisted by the ESM engine before `dotenv.config()` ran. When `app.js` initialised the `cors()` middleware, `process.env.CORS_ORIGIN` was `undefined`, so the fallback `'http://localhost:5173'` was permanently captured. On staging (`CORS_ORIGIN=https://localhost:4173`) all browser-initiated API calls received the wrong `Access-Control-Allow-Origin` header.
+
+---
+
+### Fix Applied
+
+**Strategy:** Option A — dynamic import (ESM-pure, no changes to `app.js`)
+
+```diff
+- import app from './app.js';
+-
+  // dotenv.config() block (unchanged)
+  const nodeEnv = process.env.NODE_ENV;
+  ...
+  dotenv.config();
+
++ // Dynamic import: app.js evaluates AFTER dotenv populates process.env
++ const { default: app } = await import('./app.js');
+```
+
+File changed: `backend/src/index.js`
+
+---
+
+### CORS Behavior Verification
+
+| Scenario | Expected `Access-Control-Allow-Origin` | Result |
+|----------|----------------------------------------|--------|
+| `CORS_ORIGIN=https://custom.example.com`, request from same origin | `https://custom.example.com` | ✅ PASS |
+| `CORS_ORIGIN=https://localhost:4173` (staging), request from same origin | `https://localhost:4173` | ✅ PASS |
+| `CORS_ORIGIN` unset, request from `http://localhost:5173` | `http://localhost:5173` (fallback) | ✅ PASS |
+| `CORS_ORIGIN=https://allowed.com`, request from `https://evil.com` | No CORS header (blocked) | ✅ PASS |
+| `CORS_ORIGIN` set, `credentials: true` | `Access-Control-Allow-Credentials: true` | ✅ PASS |
+
+---
+
+### Test Count
+
+| Metric | Result |
+|--------|--------|
+| Prior test baseline (Sprint 26) | 355/355 ✅ |
+| New tests added (cors.test.js) | +8 |
+| **Total after Fix B** | **363/363 ✅** |
+| Regressions | 0 ✅ |
+
+New test file: `backend/src/__tests__/cors.test.js`
+
+---
+
+### Security Checklist — CORS Item
+
+- [x] CORS is configured to allow only expected origins — **FIXED** ✅ (`CORS_ORIGIN` env var now correctly read at server startup)
+- [x] No SQL changes — no injection risk introduced
+- [x] No new environment variables (CORS_ORIGIN pre-existed)
+- [x] No migrations — schema stable at 10 applied migrations
+
+---
+
+### Sprint #27 Backend Verification Summary
+
+| Gate | Result |
+|------|--------|
+| Backend tests: 363/363 | ✅ PASS |
+| New CORS regression tests: 8/8 | ✅ PASS |
+| ESM hoisting bug resolved | ✅ PASS |
+| CORS_ORIGIN env var respected | ✅ PASS |
+| CORS fallback correct when unset | ✅ PASS |
+| No regressions from prior sprints | ✅ PASS |
+| Security checklist (CORS item) | ✅ PASS |
+| No schema changes | ✅ CONFIRMED |
+
+**T-228 Fix B: ✅ COMPLETE — Ready for QA integration check.**
+
+*Backend Engineer Sprint #27 CORS verification — 2026-03-11.*

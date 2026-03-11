@@ -4136,3 +4136,47 @@ All application code is production-ready. T-224 (Production Deployment to Render
 **Deploy Engineer:** When the project owner provides AWS RDS + Render access, you may proceed with T-224 immediately — the pre-production QA gate is confirmed cleared.
 
 *QA Engineer Sprint #26 re-verification complete — 2026-03-11.*
+
+---
+
+## Handoff: Backend Engineer → QA Engineer — Sprint 27 T-228 Fix B
+
+**Date:** 2026-03-11
+**From:** Backend Engineer
+**To:** QA Engineer
+**Task:** T-228 Fix B — ESM dotenv hoisting fix in `backend/src/index.js`
+**Status:** In Review — ready for QA integration check
+
+### What was done
+
+**Root cause fixed:** In `backend/src/index.js`, the static ESM `import app from './app.js'` was hoisted before `dotenv.config()` ran. When `app.js` evaluated `cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' })`, `CORS_ORIGIN` was still `undefined`, permanently capturing the fallback `'http://localhost:5173'` regardless of the actual env var value.
+
+**Fix applied (Option A — dynamic import):** Converted the static `import app from './app.js'` to a dynamic `await import('./app.js')` placed after the `dotenv.config()` block. Top-level `await` is valid in Node.js ESM modules (package type: `"module"`). The env loading block itself is unchanged — only the `import` statement was converted to dynamic.
+
+**Files changed:**
+- `backend/src/index.js` — static import → dynamic import (after dotenv.config)
+- `backend/src/__tests__/cors.test.js` — NEW: 8 CORS regression tests
+
+### Test results
+
+- **New test file:** `backend/src/__tests__/cors.test.js` — 8 tests, all passing
+  - 5 tests: `CORS_ORIGIN` env var set → header reflects the configured value
+  - 3 tests: `CORS_ORIGIN` absent → fallback `http://localhost:5173` used
+- **Full test suite:** 363/363 ✅ (355 prior baseline + 8 new tests)
+- **No regressions** — all prior 355 tests continue to pass
+
+### What QA should verify
+
+1. **All 363 backend tests pass:** `cd backend && npm test` → `363/363`
+2. **New cors.test.js tests:** All 8 tests in `src/__tests__/cors.test.js` pass
+3. **Security checklist — CORS item:** The fix ensures `CORS_ORIGIN` is properly read from the env var (security checklist item: "CORS is configured to allow only expected origins" ✅)
+4. **No SQL queries changed** (this is a pure server-startup refactor — no model or route code was touched)
+5. **No schema changes** — migration count remains 10 (001–010)
+6. **No new environment variables** — `CORS_ORIGIN` already existed; no `.env.example` changes needed
+
+### No action required from
+
+- **Frontend Engineer** — API surface unchanged, no frontend code affected
+- **Deploy Engineer** — No new migrations; no `knex migrate:latest` needed. Fix B applies automatically when the backend process is restarted (the dynamic import is in `index.js`, which runs at server startup)
+
+*Backend Engineer Sprint #27 handoff — T-228 Fix B — 2026-03-11.*
