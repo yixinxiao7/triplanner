@@ -4,6 +4,68 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Backend Engineer → Frontend Engineer** *(Sprint #27 — API Contracts Published)*
+
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Re:** Sprint #27 API contracts — no new endpoints; no frontend integration work required
+**Task:** T-228 (Fix B — Backend Engineer scope)
+
+**Status:** ✅ Contracts Published — No Frontend Action Required
+
+**Summary:**
+
+Sprint #27 introduces **zero new API endpoints and zero schema changes**. The Backend Engineer's sole task (T-228 Fix B) is a pure internal code refactor that fixes ESM dotenv hoisting in `backend/src/index.js` so that `process.env.CORS_ORIGIN` is correctly populated before the CORS middleware captures it.
+
+**What this means for Frontend:**
+- All existing API contracts from Sprints 1–26 remain in force, unchanged
+- No new integration work is required this sprint
+- The observable effect of T-228 is that staging will start returning the correct `Access-Control-Allow-Origin: https://localhost:4173` header, which **unblocks** browser-based API calls — this is a fix, not a contract change
+- The calendar endpoint (`GET /api/v1/trips/:id/calendar`) and all other endpoints are unaffected
+
+**Sprint #27 API contract section:** `.workflow/api-contracts.md` → "Sprint 27 — API Contracts"
+
+No acknowledgement required; no new integration needed. Frontend should proceed with User Agent testing unblocked once T-228 Fix A (Deploy Engineer: pm2 env var) is confirmed live on staging.
+
+---
+
+**[2026-03-11] Backend Engineer → QA Engineer** *(Sprint #27 — API Contracts Published for QA Reference)*
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Re:** Sprint #27 API contracts — no new endpoints; QA scope limited to CORS regression test
+**Task:** T-228 (Fix B — Backend Engineer scope)
+
+**Status:** ✅ Contracts Published — QA Reference Ready
+
+**Summary:**
+
+Sprint #27 introduces **zero new API endpoints and zero schema changes**. All existing contracts from Sprints 1–26 remain valid and unchanged. The sole Backend Engineer task (T-228 Fix B) is a code refactor fixing ESM dotenv hoisting.
+
+**QA Testing Scope for T-228:**
+
+A **new CORS regression test** must be added (or verified as added by the Backend Engineer as part of Fix B). The test lives at `backend/src/__tests__/cors.test.js` (new file, or added to an existing integration suite):
+
+| Scenario | Expected Behavior |
+|----------|-------------------|
+| `process.env.CORS_ORIGIN` is set (e.g., `https://localhost:4173`) | `Access-Control-Allow-Origin: https://localhost:4173` is returned |
+| `process.env.CORS_ORIGIN` is unset | Fallback `Access-Control-Allow-Origin: http://localhost:5173` is returned |
+| OPTIONS preflight from staging origin | Response includes `Access-Control-Allow-Origin: https://localhost:4173` and `Access-Control-Allow-Credentials: true` |
+| Request from disallowed origin | No `Access-Control-Allow-Origin` header returned (or CORS error) |
+
+**Test baseline to maintain:** 355/355 backend tests must continue passing after the refactor.
+
+**Integration verification (post-Fix-A + Fix-B):**
+- `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → must include `Access-Control-Allow-Origin: https://localhost:4173`
+- `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → must include `Access-Control-Allow-Credentials: true`
+- Browser-initiated login flow from `https://localhost:4173` → must succeed without CORS error in browser console
+
+**No schema changes. No migration action required. No new endpoints to test.**
+
+**Full contract reference:** `.workflow/api-contracts.md` → "Sprint 27 — API Contracts"
+
+---
+
 **[2026-03-11] Design Agent → Manager Agent** *(Sprint #27 — Design Agent Assessment)*
 
 **From:** Design Agent

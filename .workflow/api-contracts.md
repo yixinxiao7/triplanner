@@ -6397,3 +6397,153 @@ All contracts from Sprints 1–25 remain in force unchanged. Sprint 26 adds no n
 ---
 
 *Sprint 26 contracts published by Backend Engineer 2026-03-11. No new endpoints. One behavioral amendment: T-221 changes the `Set-Cookie` cookie attributes on all four auth endpoints in the production environment only (`SameSite=None; Secure` instead of `SameSite=Strict`). This is required for cross-origin auth to work between `triplanner-frontend.onrender.com` and `triplanner-backend.onrender.com`. Dev/staging cookie behavior is unchanged. Test baseline entering Sprint 26: 340/340 backend | 486/486 frontend | 0 vulnerabilities.*
+
+---
+
+## Sprint 27 — API Contracts
+
+**Date:** 2026-03-11
+**Published by:** Backend Engineer
+**Sprint Goal:** Fix the CORS staging bug caused by ESM dotenv hoisting in `backend/src/index.js` (T-228 Fix B). No new features, no new API endpoints, no schema changes.
+
+---
+
+### Sprint 27 — No New API Endpoints
+
+Sprint 27 introduces **zero new API endpoints and zero schema changes**. The sole Backend Engineer task (T-228 Fix B) is a pure code refactor internal to `backend/src/index.js`. The existing API surface is entirely unchanged.
+
+| Task | Type | API Impact |
+|------|------|------------|
+| T-228 Fix B | Code refactor (ESM dotenv hoisting) | **Zero API surface change.** `backend/src/index.js` is refactored so that `dotenv.config()` loads before `app.js` is evaluated, ensuring `process.env.CORS_ORIGIN` is populated when the CORS middleware initialises. All endpoint signatures, request/response shapes, status codes, error codes, and auth logic remain unchanged. |
+
+---
+
+### T-228 — CORS Staging Fix: Technical Detail (Backend-Internal — No API Change)
+
+**Sprint:** 27
+**Task:** T-228 (Fix B — permanent code fix)
+**Status:** Confirmed — No API contract change
+**Auth Required:** N/A (internal refactor)
+
+#### Root Cause
+
+In `backend/src/index.js`, the top-level static ESM `import app from './app.js'` is hoisted by the JavaScript engine before any statement in the module body executes — including `dotenv.config()`. As a result, when `app.js` runs `cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' })`, `CORS_ORIGIN` is still `undefined`, and the fallback `'http://localhost:5173'` is permanently captured as the allowed origin.
+
+In the staging environment the correct value is `'https://localhost:4173'`, so every browser-initiated API call from the staging frontend is rejected with a CORS error.
+
+#### Fix B — Refactor Strategy
+
+Two acceptable approaches (implementer chooses one):
+
+**Option A — Dynamic import (preferred for ESM purity):**
+Convert the static `import app from './app.js'` to a dynamic `import()` inside an `async` IIFE that runs *after* `dotenv.config()`:
+
+```js
+import dotenv from 'dotenv';
+import { existsSync } from 'fs';
+
+// Load env FIRST — before any module that reads process.env is imported
+const nodeEnv = process.env.NODE_ENV;
+const envFile = nodeEnv ? `.env.${nodeEnv}` : null;
+if (envFile && existsSync(envFile)) {
+  dotenv.config({ path: envFile });
+} else {
+  dotenv.config();
+}
+
+// Now safe to import app (CORS_ORIGIN is populated)
+const { default: app } = await import('./app.js');
+
+// ... rest of server startup
+```
+
+**Option B — Move dotenv into app.js (simpler, no dynamic import):**
+Make `backend/src/app.js` the single source of truth for env loading. Add `dotenv.config()` as the very first statement in `app.js`, before any middleware or route imports. Remove the env loading block from `index.js`.
+
+#### Observable Behavior Change (Staging Only)
+
+After Fix B is applied and staging is restarted, requests from `https://localhost:4173` will receive:
+
+```
+Access-Control-Allow-Origin: https://localhost:4173
+Access-Control-Allow-Credentials: true
+```
+
+instead of the current incorrect:
+
+```
+Access-Control-Allow-Origin: http://localhost:5173
+```
+
+This is a **bug fix restoring correct behavior**, not a contract change. All endpoints behave identically; only the CORS response header is corrected to match the already-documented `CORS_ORIGIN` environment variable.
+
+#### New Test: CORS Origin from Environment Variable
+
+A new backend test (added as part of T-228) must assert that:
+
+- When `process.env.CORS_ORIGIN` is set, the CORS middleware reflects it in the `Access-Control-Allow-Origin` header
+- When `process.env.CORS_ORIGIN` is unset, the fallback `'http://localhost:5173'` is used
+
+This test covers the regression surface introduced by the hoisting bug.
+
+**Test locations:**
+- `backend/src/__tests__/cors.test.js` (new) — or added to an existing integration test suite
+
+**No schema changes. No migrations. No Deploy Engineer migration action required.**
+
+---
+
+### Sprint 27 — Schema State (Unchanged)
+
+No new database migrations are introduced in Sprint 27.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–010 | 1–7 | Core tables, date ranges, nullable times, land travels, notes | ✅ Applied on Staging |
+| — | 8–27 | *(No new migrations through Sprint 27)* | Schema-stable |
+
+**Total migrations: 10 (001–010). All applied. No `knex migrate:latest` required for Sprint 27.**
+
+---
+
+### Sprint 27 — Complete Endpoint Inventory
+
+All contracts from Sprints 1–26 remain in force unchanged. Sprint 27 adds no new endpoints.
+
+| Sprint | Endpoint | Status | Sprint 27 Notes |
+|--------|----------|--------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | Unchanged. T-228 fix: CORS header will now correctly reflect `CORS_ORIGIN` env var |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | Unchanged. Rate limiting (10 req/15min) unchanged. |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/health` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Agreed, Applied on Staging | Unchanged |
+
+---
+
+*Sprint 27 contracts published by Backend Engineer 2026-03-11. No new endpoints. No schema changes. T-228 Fix B is a pure internal code refactor to resolve ESM dotenv hoisting — the CORS middleware will correctly read `process.env.CORS_ORIGIN` once the fix is applied. All endpoint contracts remain in force from prior sprints. Test baseline entering Sprint 27: 355/355 backend | 486/486 frontend.*
