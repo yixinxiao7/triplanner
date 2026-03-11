@@ -1990,7 +1990,7 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
-| T-228 | Fix CORS staging mismatch — ESM dotenv hoisting root cause. **Fix A (Deploy Engineer):** Add `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`; `pm2 restart triplanner-backend`; verify via `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`. **Fix B (Backend Engineer):** Refactor `backend/src/index.js` to load dotenv before `app.js` executes — either use dynamic `import()` for app.js, or move `dotenv.config()` as the first statement in `app.js` before any middleware. Re-run `npm test --run` in backend/ — all 355+ tests must pass. Add/update integration test asserting CORS header is correctly read from env. Log CORS verification result in `qa-build-log.md` Sprint 27 section. Log handoff to User Agent (T-219) in `handoff-log.md`. | 27 | Backend Engineer + Deploy Engineer | Integration Check | P0 | None — START IMMEDIATELY | From Monitor Alert Sprint #26 (Tasked as T-228). **[2026-03-11 Backend Engineer]** API contracts review complete — no new endpoints, no schema changes. T-228 Fix B is a pure internal code refactor. Contracts documented in `api-contracts.md` Sprint 27 section. Handoffs logged to Frontend Engineer and QA Engineer. Proceeding to implementation (Fix B). **[2026-03-11 Deploy Engineer] Fix A: ✅ COMPLETE.** Added `CORS_ORIGIN: 'https://localhost:4173'` to `infra/ecosystem.config.cjs` triplanner-backend env block. Deployed via `pm2 delete + pm2 start` from updated ecosystem config. Verified: `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173` ✅. OPTIONS preflight → 204 + CORS headers ✅. Health endpoint → 200 ✅. 7/7 verification checks PASS. Full report in `qa-build-log.md` Sprint 27 section. Handoffs logged to User Agent (T-219 unblocked) and Monitor Agent in `handoff-log.md`. **[2026-03-11 Backend Engineer] Fix B: ✅ COMPLETE.** Refactored `backend/src/index.js` to use dynamic `import('./app.js')` after `dotenv.config()` — ESM hoisting bug resolved. All 8 new CORS tests pass. Total backend tests: 363/363 ✅. Handoff logged to QA Engineer. CORS verification logged in `qa-build-log.md` Sprint 27 section. |
+| T-228 | Fix CORS staging mismatch — ESM dotenv hoisting root cause. **Fix A (Deploy Engineer):** Add `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`; `pm2 restart triplanner-backend`; verify via `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`. **Fix B (Backend Engineer):** Refactor `backend/src/index.js` to load dotenv before `app.js` executes — either use dynamic `import()` for app.js, or move `dotenv.config()` as the first statement in `app.js` before any middleware. Re-run `npm test --run` in backend/ — all 355+ tests must pass. Add/update integration test asserting CORS header is correctly read from env. Log CORS verification result in `qa-build-log.md` Sprint 27 section. Log handoff to User Agent (T-219) in `handoff-log.md`. | 27 | Backend Engineer + Deploy Engineer | ✅ Done | P0 | None — START IMMEDIATELY | From Monitor Alert Sprint #26 (Tasked as T-228). **[2026-03-11 Backend Engineer]** API contracts review complete — no new endpoints, no schema changes. T-228 Fix B is a pure internal code refactor. Contracts documented in `api-contracts.md` Sprint 27 section. Handoffs logged to Frontend Engineer and QA Engineer. Proceeding to implementation (Fix B). **[2026-03-11 Deploy Engineer] Fix A: ✅ COMPLETE.** Added `CORS_ORIGIN: 'https://localhost:4173'` to `infra/ecosystem.config.cjs` triplanner-backend env block. Deployed via `pm2 delete + pm2 start` from updated ecosystem config. Verified: `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173` ✅. OPTIONS preflight → 204 + CORS headers ✅. Health endpoint → 200 ✅. 7/7 verification checks PASS. Full report in `qa-build-log.md` Sprint 27 section. Handoffs logged to User Agent (T-219 unblocked) and Monitor Agent in `handoff-log.md`. **[2026-03-11 Backend Engineer] Fix B: ✅ COMPLETE.** Refactored `backend/src/index.js` to use dynamic `import('./app.js')` after `dotenv.config()` — ESM hoisting bug resolved. All 8 new CORS tests pass. Total backend tests: 363/363 ✅. Handoff logged to QA Engineer. CORS verification logged in `qa-build-log.md` Sprint 27 section. **[2026-03-11 QA Engineer] Integration Check: ✅ DONE.** 363/363 backend PASS, 486/486 frontend PASS, 0 npm audit vulnerabilities, config consistency PASS, security checklist PASS. T-228 moved to Done. Handoff to Deploy Engineer logged in handoff-log.md. |
 
 ---
 
@@ -2067,6 +2067,40 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 - T-225: Backlog (blocked on T-224)
 
 **Handoff to QA Engineer logged in handoff-log.md.**
+
+---
+
+**Sprint 27 QA Integration Check Outcome (QA Engineer — 2026-03-11):**
+- T-228: ✅ Done — 363/363 backend PASS, 486/486 frontend PASS, 0 vulnerabilities, config consistent, security checklist clear
+- T-219: Backlog — User Agent walkthrough (T-228 gate passed; unblocked — awaiting User Agent)
+- T-224: ⛔ Blocked — project owner must provision AWS RDS + Render (carry-over)
+- T-225: Backlog — blocked on T-224 (carry-over)
+
+**Handoff to Deploy Engineer logged in handoff-log.md.**
+
+---
+
+### Sprint 27 — Manager Agent: Code Review Pass #2 (2026-03-11)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-27B | Manager: Sprint 27 code review pass #2 | Review | Manager Agent | ✅ Done | P1 | S | 27 | — | **No tasks in "In Review" status.** Prior pass (CR-27, 2026-03-11) reviewed and approved T-228. It has since moved through QA Integration Check → Done. T-219 is Backlog (User Agent gate). T-224 is Blocked (project owner must provision AWS RDS + Render). T-225 is Backlog (blocked on T-224). Deploy Engineer escalation acknowledged — T-224 blocker escalated to project owner. |
+
+**Sprint 27 Code Review Pass #2 Summary (Manager Agent — 2026-03-11):**
+
+**Review scope:** All tasks in "In Review" status at time of invocation.
+
+**Result: No tasks were in "In Review" status.** Prior Manager pass (CR-27, 2026-03-11) already reviewed T-228 (CORS staging fix — Fix A: ecosystem.config.cjs; Fix B: backend/src/index.js + cors.test.js). T-228 was APPROVED → Integration Check → Done (QA Engineer Sprint 27 Integration Check confirmed: 363/363 backend PASS, 486/486 frontend PASS, 0 vulnerabilities).
+
+**Current Sprint 27 task board:**
+- T-228: ✅ Done (CORS fix fully deployed, QA passed, 363/363 backend + 486/486 frontend)
+- T-219: Backlog — User Agent walkthrough (unblocked; T-228 gate cleared; awaiting User Agent)
+- T-224: ⛔ Blocked — project owner must provision AWS RDS + Render account
+- T-225: Backlog — blocked on T-224
+
+**Deploy Engineer escalation acknowledged (handoff-log.md, 2026-03-11):** T-224 requires project owner to provision (1) AWS RDS PostgreSQL 15 (db.t3.micro, us-east-1, free tier) and (2) Render account to apply render.yaml Blueprint. All application engineering is production-ready. This is a human gate — no agent can unblock it.
+
+**No handoffs to QA or engineers required — no code changes pending review.**
 
 ---
 

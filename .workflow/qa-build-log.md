@@ -1099,3 +1099,419 @@ New test file: `backend/src/__tests__/cors.test.js`
 **T-228 Fix B: ✅ COMPLETE — Ready for QA integration check.**
 
 *Backend Engineer Sprint #27 CORS verification — 2026-03-11.*
+
+---
+
+## Sprint #27 — T-228 QA Integration Check — 2026-03-11
+
+**Task:** T-228 (CORS staging fix — Fix A: ecosystem.config.cjs; Fix B: index.js dynamic import)
+**Date:** 2026-03-11
+**Engineer:** QA Engineer
+**Sprint:** 27
+**Environment:** Local + Staging (config verification)
+
+---
+
+### Unit Test Results
+
+#### Backend
+
+| Metric | Result |
+|--------|--------|
+| Test files | 19 / 19 passed |
+| Total tests | 363 / 363 passed |
+| New Sprint 27 tests (cors.test.js) | 8 / 8 passed |
+| Prior sprint regressions | 0 |
+| Runner | Vitest |
+
+**Test file breakdown:**
+- `cors.test.js` — 8 tests (T-228 CORS env var and fallback behavior) — all PASS
+- `sprint26.test.js` — 15 tests — PASS
+- `sprint25.test.js` — 15 tests — PASS
+- `sprint20.test.js` — 17 tests — PASS
+- `sprint19.test.js` — 9 tests — PASS
+- `sprint7.test.js` — 19 tests — PASS
+- `sprint6.test.js` — 51 tests — PASS
+- `sprint5.test.js` — 28 tests — PASS
+- `sprint4.test.js` — 19 tests — PASS
+- `sprint3.test.js` — 33 tests — PASS
+- `sprint2.test.js` — 37 tests — PASS
+- `sprint16.test.js` — 12 tests — PASS
+- `calendarModel.unit.test.js` — 21 tests — PASS
+- `tripStatus.test.js` — 19 tests — PASS
+- `trips.test.js` — 16 tests — PASS
+- `auth.test.js` — 14 tests — PASS
+- `flights.test.js` — 10 tests — PASS
+- `stays.test.js` — 8 tests — PASS
+- `activities.test.js` — 12 tests — PASS
+
+**Happy path coverage (T-228 CORS tests):**
+- CORS_ORIGIN env var used as allowed origin: PASS
+- 200 returned for same-origin request when CORS_ORIGIN matches: PASS
+- Access-Control-Allow-Credentials: true set when CORS_ORIGIN configured: PASS
+- Staging origin https://localhost:4173 allowed when CORS_ORIGIN=https://localhost:4173: PASS
+- Fallback http://localhost:5173 used when CORS_ORIGIN absent: PASS
+- 200 returned for fallback origin when CORS_ORIGIN absent: PASS
+
+**Error path coverage (T-228 CORS tests):**
+- Disallowed origin not echoed back when CORS_ORIGIN is set to a specific value: PASS
+- Staging origin NOT allowed when CORS_ORIGIN is absent (uses fallback only): PASS
+
+**Verdict: PASS — 363/363**
+
+---
+
+#### Frontend
+
+| Metric | Result |
+|--------|--------|
+| Test files | 25 / 25 passed |
+| Total tests | 486 / 486 passed |
+| Warnings | act() warnings in ActivitiesEditPage, StaysEditPage, FlightsEditPage (pre-existing, non-blocking) |
+| Runner | Vitest (jsdom) |
+
+No frontend tasks were assigned in Sprint 27. All 486 tests pass with zero failures — confirms no regressions from the backend-only T-228 fix.
+
+**Verdict: PASS — 486/486**
+
+---
+
+### Integration Test Results
+
+**Scope:** T-228 is a backend-only fix (no new endpoints, no schema changes, no frontend changes).
+
+| Check | Result |
+|-------|--------|
+| No new API contracts introduced | CONFIRMED |
+| Frontend API call code unchanged | CONFIRMED |
+| Prior sprint API contracts unaffected | CONFIRMED |
+| No request/response shape changes | CONFIRMED |
+| Auth middleware unchanged (`authenticate` function in `middleware/auth.js`) | CONFIRMED |
+| CORS middleware retained `credentials: true` in `app.js` | CONFIRMED |
+| `helmet()` middleware retained in `app.js` | CONFIRMED |
+| Fix B: `backend/src/index.js` uses `await import('./app.js')` (dynamic import after dotenv) | CONFIRMED |
+| Fix A: `infra/ecosystem.config.cjs` has `CORS_ORIGIN: 'https://localhost:4173'` in triplanner-backend env block | CONFIRMED |
+
+**Verdict: PASS**
+
+---
+
+### Config Consistency Check
+
+| Item | Value | Status |
+|------|-------|--------|
+| `backend/.env` PORT | 3000 | — |
+| `vite.config.js` default proxy target port | 3000 (when BACKEND_PORT unset) | MATCH |
+| `vite.config.js` staging proxy port | 3001 (when BACKEND_PORT=3001) | MATCH with ecosystem.config.cjs PORT=3001 |
+| `infra/docker-compose.yml` backend internal PORT | 3000 | MATCH with backend/.env PORT |
+| `backend/.env` CORS_ORIGIN | `http://localhost:5173` (dev fallback) | Correct for local dev |
+| `infra/ecosystem.config.cjs` CORS_ORIGIN (staging) | `https://localhost:4173` | Correct for staging |
+| `vite.config.js` preview port | 4173 | MATCH with staging CORS_ORIGIN |
+| SSL in staging backend | Yes — SSL_KEY_PATH / SSL_CERT_PATH in index.js | `vite.config.js` BACKEND_SSL=true path uses `https://` proxy — MATCH |
+| CORS_ORIGIN includes `http://localhost:5173` for dev | Yes | CONFIRMED |
+
+**Config port chain:** dev — backend:3000 ↔ vite proxy→3000 ✅ | staging — pm2 backend:3001 (SSL) ↔ vite preview proxy→3001 (https) ✅ | docker — backend:3000 internal, nginx:80 external ✅
+
+**Verdict: PASS — all configs consistent**
+
+---
+
+### Security Scan Results
+
+#### npm audit
+
+```
+found 0 vulnerabilities
+```
+
+**Verdict: PASS**
+
+#### Security Checklist — T-228 Scope
+
+| Item | Status | Notes |
+|------|--------|-------|
+| No hardcoded secrets in changed files | PASS | `ecosystem.config.cjs` CORS_ORIGIN is a non-secret URL, not a credential |
+| JWT_SECRET from env (not hardcoded) | PASS | `middleware/auth.js` uses `process.env.JWT_SECRET` |
+| No SQL injection vectors in changed files | PASS | No DB access in T-228 changes |
+| No XSS surface in changed files | PASS | No frontend changes; `dangerouslySetInnerHTML` not used |
+| Auth middleware unchanged | PASS | `middleware/auth.js` unmodified |
+| CORS configured to expected origins only | PASS | `app.js` uses `process.env.CORS_ORIGIN || 'http://localhost:5173'` (single-origin, no wildcard) |
+| `credentials: true` retained in CORS config | PASS | Verified in `app.js` line 22 |
+| `helmet()` security headers middleware present | PASS | `app.js` line 18 |
+| No PII/token/secret leakage in console logs | PASS | No `console.log` with password, token, or secret found |
+| Rate limiting unchanged | PASS | `middleware/rateLimiter.js` unmodified |
+| No info leakage in error responses | PASS | `middleware/errorHandler.js` unmodified |
+| Knex parameterized queries (no raw string concatenation in app code) | PASS | Only `knex.raw` in migrations with static DDL strings — no user input |
+| Database credentials from env | PASS | `DATABASE_URL` from environment in all configs |
+| Refresh token as httpOnly cookie | PASS | `routes/auth.js` confirmed — token handling unchanged |
+
+**Security Verdict: PASS — all checklist items clear**
+
+---
+
+### Summary
+
+| Section | Result |
+|---------|--------|
+| Backend unit tests | 363/363 PASS |
+| Frontend unit tests | 486/486 PASS |
+| Integration check | PASS |
+| Config consistency | PASS |
+| Security scan (npm audit) | 0 vulnerabilities |
+| Security checklist | All items PASS |
+
+**Overall QA Verdict: T-228 APPROVED — Ready for Done.**
+
+*QA Engineer Sprint #27 Integration Check — 2026-03-11*
+
+---
+
+## Sprint #27 — Deploy Engineer Final Staging Verification — 2026-03-11T18:21:00Z
+
+**Task:** Sprint 27 Deploy Engineer wrap-up — staging health re-verification + T-224 escalation
+**Date:** 2026-03-11
+**Engineer:** Deploy Engineer
+**Sprint:** 27
+**Environment:** Staging
+
+---
+
+### Context
+
+QA integration check passed (T-228 Done). Deploy Engineer performed a final staging re-verification to confirm the environment is healthy for User Agent testing (T-219), and to document T-224 blocker status.
+
+---
+
+### Staging Health Re-Verification (2026-03-11T18:21:00Z)
+
+| Check | Command | Expected | Result |
+|-------|---------|----------|--------|
+| Health endpoint | `curl -sk https://localhost:3001/api/v1/health` | `{"status":"ok"}` | ✅ PASS |
+| CORS header (GET) | `curl -sk -I … -H "Origin: https://localhost:4173"` | `Access-Control-Allow-Origin: https://localhost:4173` | ✅ PASS |
+| Credentials header | Same as above | `Access-Control-Allow-Credentials: true` | ✅ PASS |
+| OPTIONS preflight | `curl -sk -I -X OPTIONS … -H "Origin: https://localhost:4173"` | `204 No Content` | ✅ PASS |
+| pm2 triplanner-backend | `pm2 list` | online | ✅ online (pid 70180, 0 restarts, 11m uptime) |
+| pm2 triplanner-frontend | `pm2 list` | online | ✅ online (pid 64982, 4h uptime) |
+
+**All 6 checks PASS. Staging is healthy and ready for User Agent testing.**
+
+---
+
+### T-224 Production Deployment — Blocked Status
+
+**Status: ⛔ BLOCKED — Awaiting project owner provisioning**
+
+T-224 (production deployment to Render + AWS RDS) cannot proceed until the project owner provides:
+1. **AWS account access** — to create RDS PostgreSQL 15 instance (`db.t3.micro`, `us-east-1`, free tier)
+2. **Render account access** — to apply the `render.yaml` Blueprint or create services manually
+
+All engineering prerequisites are complete:
+- `render.yaml` — present in repo root ✅
+- `docs/production-deploy-guide.md` — step-by-step instructions written ✅
+- `backend/knexfile.js` — production SSL config ready ✅
+- `backend/src/routes/auth.js` — SameSite=None; Secure cookie for production ✅
+- All 10 migrations applied and tested on staging ✅
+- No new migrations required for Sprint 27 ✅
+
+**This blocker is a project owner gate, not an engineering gate. Deploy Engineer cannot unblock T-224 unilaterally.**
+
+---
+
+### Sprint 27 Deploy Engineer Summary
+
+| Task | Status | Notes |
+|------|--------|-------|
+| T-228 Fix A | ✅ Complete | `CORS_ORIGIN` in pm2 ecosystem config; verified 7/7 checks |
+| T-228 (overall) | ✅ Done | QA integration check passed; 363/363 backend + 486/486 frontend |
+| Staging health | ✅ Healthy | All services online; CORS correctly configured |
+| No new migrations | ✅ Confirmed | Sprint 27 has no DDL changes |
+| T-224 | ⛔ Blocked | Project owner must provision AWS RDS + Render account |
+
+---
+
+## Sprint #27 — QA Re-Verification Pass — 2026-03-11
+
+**QA Engineer:** Re-verification pass (orchestrator Sprint #27 second invocation)
+**Date:** 2026-03-11
+**Sprint:** 27
+**Scope:** Re-verify all Sprint #27 QA gates — no new tasks in Integration Check; confirming stable state before sprint close
+
+---
+
+### Context
+
+T-228 (CORS staging fix) was previously moved to Done by the prior QA invocation this sprint (363/363 backend, 486/486 frontend, 0 vulnerabilities). This pass re-runs all tests from the actual file system to confirm the code is still in the verified state and logs the current findings.
+
+**Tasks in "Integration Check" at time of invocation:** None — T-228 already Done.
+
+---
+
+### Test Type: Unit Test
+
+**Date:** 2026-03-11
+**Command:** `cd backend && npm test`
+
+| File | Tests | Result |
+|------|-------|--------|
+| `src/__tests__/sprint2.test.js` | 37 | ✅ PASS |
+| `src/__tests__/sprint3.test.js` | 33 | ✅ PASS |
+| `src/__tests__/sprint4.test.js` | 19 | ✅ PASS |
+| `src/__tests__/sprint5.test.js` | 28 | ✅ PASS |
+| `src/__tests__/sprint6.test.js` | 51 | ✅ PASS |
+| `src/__tests__/sprint7.test.js` | 19 | ✅ PASS |
+| `src/__tests__/sprint16.test.js` | 12 | ✅ PASS |
+| `src/__tests__/sprint19.test.js` | 9 | ✅ PASS |
+| `src/__tests__/sprint20.test.js` | 17 | ✅ PASS |
+| `src/__tests__/sprint25.test.js` | 15 | ✅ PASS |
+| `src/__tests__/sprint26.test.js` | 15 | ✅ PASS |
+| `src/__tests__/cors.test.js` | 8 | ✅ PASS |
+| `src/__tests__/auth.test.js` | 14 | ✅ PASS |
+| `src/__tests__/trips.test.js` | 16 | ✅ PASS |
+| `src/__tests__/flights.test.js` | 10 | ✅ PASS |
+| `src/__tests__/stays.test.js` | 8 | ✅ PASS |
+| `src/__tests__/activities.test.js` | 12 | ✅ PASS |
+| `src/__tests__/calendarModel.unit.test.js` | 21 | ✅ PASS |
+| `src/__tests__/tripStatus.test.js` | 19 | ✅ PASS |
+| **TOTAL** | **363** | **✅ 363/363 PASS** |
+
+**Backend test verdict:** ✅ PASS — 363/363, 19 test files, 0 failures, 0 regressions
+
+---
+
+**Command:** `cd frontend && npm test`
+
+| Metric | Result |
+|--------|--------|
+| Test Files | 25 passed (25) |
+| Tests | 486 passed (486) |
+| Failures | 0 |
+| Duration | ~2.7s |
+
+**Frontend test verdict:** ✅ PASS — 486/486, 25 test files, 0 failures, 0 regressions
+
+---
+
+### Test Type: Unit Test — Coverage Check
+
+**T-228 CORS tests (cors.test.js — 8 tests):**
+- Happy path: `CORS_ORIGIN` env var set → correct `Access-Control-Allow-Origin` header ✅
+- Happy path: fallback `http://localhost:5173` when `CORS_ORIGIN` absent ✅
+- Happy path: `Access-Control-Allow-Credentials: true` set correctly ✅
+- Happy path: staging origin `https://localhost:4173` allowed when `CORS_ORIGIN` set ✅
+- Error path: disallowed origin not echoed back when `CORS_ORIGIN` set ✅
+- Error path: staging origin blocked when `CORS_ORIGIN` absent (fallback only) ✅
+- `afterEach` restores `process.env.CORS_ORIGIN` — no test pollution ✅
+
+Coverage assessment: Happy-path + error-path per endpoint/component — **PASS**
+
+---
+
+### Test Type: Integration Test
+
+**Date:** 2026-03-11
+**Scope:** T-228 — ESM dotenv hoisting fix in `backend/src/index.js`
+
+#### Code Verification
+
+| File | Check | Result |
+|------|-------|--------|
+| `backend/src/index.js` | `dotenv.config()` called before `await import('./app.js')` | ✅ PASS — dynamic import on line 31, after dotenv block lines 20-26 |
+| `backend/src/index.js` | No static `import app from './app.js'` present | ✅ PASS — confirmed dynamic import pattern only |
+| `backend/src/app.js` | `cors({ origin: process.env.CORS_ORIGIN \|\| 'http://localhost:5173', credentials: true })` | ✅ PASS — lines 19-24 |
+| `backend/src/app.js` | `helmet()` security middleware present | ✅ PASS — line 18 |
+| `infra/ecosystem.config.cjs` | `CORS_ORIGIN: 'https://localhost:4173'` in triplanner-backend env block | ✅ PASS — line 27 (T-228 Fix A) |
+| `infra/ecosystem.config.cjs` | staging port 3001, `BACKEND_PORT: '3001'`, `BACKEND_SSL: 'true'` | ✅ PASS — lines 26 + 53-54 |
+
+#### API Contract Check
+
+T-228 is a pure internal server-startup refactor. No API endpoints were added, changed, or removed. No request/response shapes changed. API contracts unchanged. N/A ✅
+
+#### UI Spec Check
+
+Backend-only change. No frontend code modified. UI spec unchanged. N/A ✅
+
+**Integration test verdict:** ✅ PASS
+
+---
+
+### Test Type: Config Consistency Check
+
+**Date:** 2026-03-11
+
+| Environment | Check | Expected | Actual | Result |
+|-------------|-------|----------|--------|--------|
+| Dev | backend `PORT` in `.env` | 3000 | 3000 | ✅ PASS |
+| Dev | vite proxy default `BACKEND_PORT` | 3000 | 3000 (unset → default) | ✅ PASS |
+| Dev | vite proxy protocol | `http://` | `http` (backendSSL unset → false) | ✅ PASS |
+| Dev | `CORS_ORIGIN` in `.env` | `http://localhost:5173` | `http://localhost:5173` | ✅ PASS |
+| Dev | `CORS_ORIGIN` includes frontend origin | `http://localhost:5173` | matches | ✅ PASS |
+| Staging | pm2 backend `PORT` | 3001 | 3001 | ✅ PASS |
+| Staging | vite `BACKEND_PORT` | 3001 | 3001 | ✅ PASS |
+| Staging | backend SSL enabled | true (SSL_KEY + SSL_CERT in `.env.staging`) | true | ✅ PASS |
+| Staging | vite proxy protocol | `https://` | `https` (BACKEND_SSL=true) | ✅ PASS |
+| Staging | `CORS_ORIGIN` in pm2 ecosystem | `https://localhost:4173` | `https://localhost:4173` | ✅ PASS |
+| Docker | backend `PORT` | 3000 | 3000 | ✅ PASS |
+| Docker | nginx external port | 80 | 80 | ✅ PASS |
+| Docker | DB creds from env | `${DB_PASSWORD:?required}`, `${JWT_SECRET:?required}` | mandatory env vars (fail-fast) | ✅ PASS |
+
+**Config consistency verdict:** ✅ PASS — No mismatches found across dev, staging, or Docker environments
+
+---
+
+### Test Type: Security Scan
+
+**Date:** 2026-03-11
+**Command:** `cd backend && npm audit`
+**Result:** `found 0 vulnerabilities` ✅
+
+**Security checklist verification:**
+
+| Category | Item | Result | Notes |
+|----------|------|--------|-------|
+| Auth | All API endpoints require authentication | ✅ PASS | `authenticate` middleware in all protected routes; public only: `/health`, `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` |
+| Auth | Auth tokens have expiration + refresh | ✅ PASS | `JWT_EXPIRES_IN=15m`, `JWT_REFRESH_EXPIRES_IN=7d` from env; refresh token as httpOnly cookie |
+| Auth | Password hashing uses bcrypt | ✅ PASS | `bcrypt.hash(password, 12)` in `routes/auth.js:122` |
+| Auth | Failed login rate-limited | ✅ PASS | `loginLimiter`: 10 attempts / 15 min per IP; `registerLimiter`: 5 / 60 min |
+| Injection | SQL queries use parameterized statements / query builder | ✅ PASS | All queries via Knex; `sortBy`/`sortOrder` validated against allowlist before use in `db.raw()`; no user-supplied strings interpolated directly |
+| Injection | No XSS surface | ✅ PASS | `dangerouslySetInnerHTML` not used (comment in `formatDate.js` explicitly notes absence) |
+| API | CORS configured to expected origins only | ✅ PASS | Single-origin (`process.env.CORS_ORIGIN || 'http://localhost:5173'`), no wildcard |
+| API | Rate limiting on public endpoints | ✅ PASS | `loginLimiter`, `registerLimiter`, `generalAuthLimiter` applied |
+| API | Error responses do not leak stack traces / internal details | ✅ PASS | `errorHandler.js`: 500s return `'An unexpected error occurred'`; stack trace logged server-side only |
+| API | Sensitive data not in URL params | ✅ PASS | Credentials passed in request body / headers only |
+| API | HTTP security headers | ✅ PASS | `helmet()` middleware in `app.js` |
+| Data | DB credentials + JWT_SECRET from env | ✅ PASS | `DATABASE_URL`, `JWT_SECRET` — only from `process.env`; no hardcoded values found |
+| Data | No hardcoded secrets in source | ✅ PASS | Scanned all `*.js` files in `backend/src` — no hardcoded credentials |
+| Data | Logs do not contain PII / passwords / tokens | ✅ PASS | `auth.js` routes have no `console.log` with credentials; `errorHandler` logs `err.stack` (no user data) |
+| Data | `backend/.env` `JWT_SECRET` uses placeholder | ✅ NOTE | `JWT_SECRET=change-me-to-a-random-string` — this is the **dev** `.env` only; expected to be overridden with a strong secret in staging/production via ecosystem config / Render env vars |
+| Infra | HTTPS enforced on staging | ✅ PASS | SSL server branch in `index.js`; pm2 staging runs on port 3001 with TLS certs |
+| Infra | Dependencies checked for vulnerabilities | ✅ PASS | `npm audit`: 0 vulnerabilities |
+
+**Security scan verdict:** ✅ PASS — All applicable checklist items clear. No P1 security issues found.
+
+> **Note on `backend/.env` placeholder secret:** `JWT_SECRET=change-me-to-a-random-string` is the local dev default and is expected. Staging and production must override this with a strong random value via environment variable injection (pm2 ecosystem / Render dashboard). This is a known-acceptable state for the dev env file and does not constitute a hardcoded secret in production code.
+
+---
+
+### Summary
+
+| Test Type | Result | Details |
+|-----------|--------|---------|
+| Unit Test — Backend | ✅ PASS | 363/363, 19 files, 0 failures |
+| Unit Test — Frontend | ✅ PASS | 486/486, 25 files, 0 failures |
+| Integration Test | ✅ PASS | Code verified, CORS fix confirmed, API contracts unchanged |
+| Config Consistency | ✅ PASS | Dev/staging/Docker all consistent |
+| Security Scan (npm audit) | ✅ PASS | 0 vulnerabilities |
+| Security Checklist | ✅ PASS | All applicable items clear |
+
+**Overall QA verdict: ✅ ALL GATES PASS — Sprint #27 code is stable and verified.**
+
+**Sprint #27 task board (QA view):**
+- T-228: ✅ Done — CORS fix verified; all test suites pass; no regressions
+- T-219: Backlog — User Agent walkthrough; T-228 gate cleared; staging healthy; unblocked
+- T-224: ⛔ Blocked — Project owner must provision AWS RDS + Render (human gate)
+- T-225: Backlog — Blocked on T-224
+
+*QA Engineer Sprint #27 Re-Verification Pass — 2026-03-11*
+
+
+*Deploy Engineer Sprint #27 final verification — 2026-03-11*

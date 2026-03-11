@@ -4218,3 +4218,164 @@ All application code is production-ready. T-224 (Production Deployment to Render
 - **Deploy Engineer** — No new migrations; no `knex migrate:latest` needed. Fix B applies automatically when the backend process is restarted (the dynamic import is in `index.js`, which runs at server startup)
 
 *Backend Engineer Sprint #27 handoff — T-228 Fix B — 2026-03-11.*
+
+---
+
+**[2026-03-11] QA Engineer → Deploy Engineer** *(Sprint #27 — T-228 Integration Check PASSED — Ready for Deploy)*
+
+**From:** QA Engineer
+**To:** Deploy Engineer
+**Re:** T-228 QA integration check complete — all gates passed — T-228 is Done
+**Task:** T-228 (CORS staging fix)
+**Date:** 2026-03-11
+
+**Status:** ✅ QA Integration Check PASSED — T-228 is now **Done**
+
+---
+
+**What was verified:**
+
+T-228 fixes the P0 CORS staging bug caused by ESM `import` hoisting in `backend/src/index.js`. QA verified both Fix A and Fix B end-to-end.
+
+**Test Results:**
+- Backend: **363/363 PASS** (19 test files, including 8 new cors.test.js tests)
+- Frontend: **486/486 PASS** (25 test files — no Sprint 27 frontend changes, zero regressions)
+- npm audit: **0 vulnerabilities**
+
+**Code Verification:**
+- `backend/src/index.js`: Uses `await import('./app.js')` (dynamic import after `dotenv.config()`) — Fix B confirmed correct
+- `infra/ecosystem.config.cjs`: Has `CORS_ORIGIN: 'https://localhost:4173'` in triplanner-backend env block — Fix A confirmed correct
+- `backend/src/app.js`: `cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials: true })` and `helmet()` both present — security middleware unchanged
+
+**Config Consistency:**
+- Dev: backend port 3000 matches vite proxy target port 3000 — PASS
+- Staging: pm2 backend port 3001 (SSL) matches vite BACKEND_PORT=3001 + BACKEND_SSL=true — PASS
+- Docker: backend internal port 3000, nginx external port 80 — PASS
+- CORS_ORIGIN: dev=`http://localhost:5173`, staging=`https://localhost:4173` — correct per environment
+
+**Security Checklist:**
+- No hardcoded secrets — PASS
+- No SQL injection surface in changed files — PASS
+- No XSS surface — PASS
+- Auth middleware unchanged — PASS
+- CORS restricted to single configured origin (no wildcard) — PASS
+- helmet() present — PASS
+- 0 npm audit vulnerabilities — PASS
+
+---
+
+**Action required from Deploy Engineer:**
+
+T-228 is Done. The staging environment was already verified by Deploy Engineer (Fix A) and Backend Engineer (Fix B) during implementation. No further deployment action is needed for T-228.
+
+**Carry-forward items:**
+- T-219 (User Agent walkthrough): T-228 gate has passed — User Agent may proceed with browser testing on staging
+- T-224 (Production deployment): Remains Blocked — project owner must provision AWS RDS + Render account. All application code and config are production-ready. Full instructions in `docs/production-deploy-guide.md`.
+
+*QA Engineer Sprint #27 Handoff — 2026-03-11*
+
+---
+
+**[2026-03-11] Deploy Engineer → Monitor Agent + Manager Agent** *(Sprint #27 — Staging Healthy, T-224 Still Blocked — Escalation)*
+
+**From:** Deploy Engineer
+**To:** Monitor Agent, Manager Agent
+**Re:** Sprint 27 final staging status — staging confirmed healthy; T-224 escalated to project owner
+**Date:** 2026-03-11
+
+**Status:** ✅ Staging Healthy | ⛔ T-224 Blocked (project owner gate)
+
+---
+
+**Staging Re-Verification (2026-03-11T18:21:00Z):**
+
+All staging services remain healthy after T-228 fix and QA integration check:
+
+| Check | Result |
+|-------|--------|
+| `GET https://localhost:3001/api/v1/health` | ✅ `200 {"status":"ok"}` |
+| `Access-Control-Allow-Origin: https://localhost:4173` | ✅ PASS |
+| `Access-Control-Allow-Credentials: true` | ✅ PASS |
+| OPTIONS preflight → 204 No Content | ✅ PASS |
+| pm2 `triplanner-backend` | ✅ online (pid 70180, 0 restarts) |
+| pm2 `triplanner-frontend` | ✅ online (pid 64982) |
+
+User Agent (T-219) is **unblocked** — browser-based testing from `https://localhost:4173` will succeed.
+Login credentials: `test@triplanner.local` / `TestPass123!`
+
+---
+
+**T-224 Production Deployment — ⛔ BLOCKED (Project Owner Gate):**
+
+T-224 cannot proceed without the project owner providing:
+1. **AWS RDS access** — Create PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier)
+2. **Render account access** — Apply `render.yaml` Blueprint or create services manually
+
+All application engineering is production-ready:
+- `render.yaml` ✅ | `docs/production-deploy-guide.md` ✅ | SSL + cookie config ✅ | All 10 migrations staged and tested ✅
+
+**Action required from Manager Agent:** Escalate T-224 blocker to project owner. Request AWS + Render access provisioning to unblock production launch.
+
+Full Sprint 27 Deploy Engineer report: `.workflow/qa-build-log.md` → "Sprint #27 — Deploy Engineer Final Staging Verification"
+
+*Deploy Engineer Sprint #27 — 2026-03-11*
+
+---
+
+**[2026-03-11] Manager Agent → (No agent handoff required) — Sprint 27 Code Review Pass #2**
+
+**From:** Manager Agent
+**To:** N/A — no tasks passed or failed review; no engineer handoffs needed
+**Re:** Sprint 27 Code Review Pass #2 — No tasks in "In Review" status
+**Date:** 2026-03-11
+
+**Review outcome:** No tasks were in "In Review" status at time of invocation.
+
+Prior Manager pass (CR-27, 2026-03-11) already reviewed and approved T-228. It has since moved through QA Integration Check and is ✅ Done. The sprint pipeline is clean:
+
+| Task | Status | Notes |
+|------|--------|-------|
+| T-228 | ✅ Done | CORS fix reviewed, approved, QA passed. 363/363 backend, 486/486 frontend. |
+| T-219 | Backlog | User Agent walkthrough — unblocked, awaiting User Agent. |
+| T-224 | ⛔ Blocked | Project owner must provision AWS RDS + Render. Human gate. |
+| T-225 | Backlog | Blocked on T-224. |
+
+**Deploy Engineer escalation acknowledged:** T-224 is a human gate. The project owner must provide AWS RDS (PostgreSQL 15, db.t3.micro, us-east-1) and a Render account before production deployment can proceed. All application code and configuration are production-ready. No further agent action can unblock T-224.
+
+**Next action:** User Agent should proceed with T-219 (Sprint 25/26 feature walkthrough on staging at `https://localhost:4173`). Credentials: `test@triplanner.local` / `TestPass123!`.
+
+*Manager Agent Sprint #27 Code Review Pass #2 — 2026-03-11*
+
+---
+
+**[2026-03-11] QA Engineer → (No new handoffs required) — Sprint #27 Re-Verification Pass**
+
+**From:** QA Engineer
+**To:** N/A — all gates already clear; no new issues found
+**Re:** Sprint #27 QA re-verification — confirming stable state
+**Date:** 2026-03-11
+
+**Status:** ✅ All QA gates confirmed PASS — no new action required from any agent
+
+---
+
+**Re-verification results:**
+
+| Gate | Result |
+|------|--------|
+| Backend unit tests | ✅ 363/363 PASS (19 test files) |
+| Frontend unit tests | ✅ 486/486 PASS (25 test files) |
+| npm audit | ✅ 0 vulnerabilities |
+| Config consistency (dev/staging/Docker) | ✅ PASS — all ports, protocols, CORS origins consistent |
+| Security checklist | ✅ PASS — no hardcoded secrets, no SQL injection, no XSS, auth enforced, rate limiting active |
+| Integration check | ✅ PASS — T-228 code confirmed correct (dynamic import after dotenv.config; CORS_ORIGIN from env) |
+
+**Sprint #27 task board (confirmed):**
+- T-228: ✅ Done — CORS staging fix verified; all tests pass
+- T-219: Backlog — User Agent walkthrough (unblocked; staging healthy at `https://localhost:4173`)
+- T-224: ⛔ Blocked — project owner must provision AWS RDS + Render (human gate; no engineer action possible)
+- T-225: Backlog — blocked on T-224
+
+**No new handoffs required.** Deploy Engineer already received the prior readiness handoff and confirmed staging healthy. User Agent (T-219) is unblocked and may proceed.
+
+*QA Engineer Sprint #27 Re-Verification Pass — 2026-03-11*
