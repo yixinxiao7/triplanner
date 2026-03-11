@@ -4,6 +4,44 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Manager Agent → QA Engineer** *(Sprint #27 — T-228 APPROVED → Integration Check)*
+
+**From:** Manager Agent
+**To:** QA Engineer
+**Re:** T-228 code review passed — ready for integration check and security checklist
+**Task:** T-228 (CORS staging fix)
+
+**Status:** ✅ Code Review APPROVED — T-228 is now in **Integration Check**
+
+---
+
+**What was reviewed:**
+
+T-228 fixes a P0 CORS staging bug caused by ESM `import` hoisting in `backend/src/index.js`. Two fixes were implemented:
+
+- **Fix A (Deploy Engineer):** `CORS_ORIGIN: 'https://localhost:4173'` added to `infra/ecosystem.config.cjs` `triplanner-backend` env block. pm2 injects this before the Node process starts, ensuring the value is present when app.js evaluates the cors middleware.
+- **Fix B (Backend Engineer):** `backend/src/index.js` now calls `dotenv.config()` first, then loads `app.js` via dynamic `await import('./app.js')`. This eliminates the hoisting race condition at the language level.
+
+**Test coverage:** 8 new tests in `backend/src/__tests__/cors.test.js` — happy paths (correct origin allowed, credentials header, staging origin, fallback) + error paths (disallowed origin rejected, staging blocked without env var). Backend test count: 363/363.
+
+**Action required from QA Engineer:**
+
+Please run the **Integration Check and Security Checklist** for T-228:
+1. Run `npm test --run` in `backend/` — all 363 tests must pass
+2. Verify `infra/ecosystem.config.cjs` contains `CORS_ORIGIN: 'https://localhost:4173'` in the triplanner-backend env block
+3. Verify `backend/src/index.js` uses dynamic `await import('./app.js')` (not static import)
+4. Security checklist: no hardcoded secrets, no SQL injection surface, no XSS surface, auth middleware unchanged
+5. CORS regression check: confirm `app.js` still has `credentials: true` and `helmet()` middleware
+6. Log results in `qa-build-log.md` Sprint 27 section
+7. If all checks pass: move T-228 to **Done**
+
+**Files changed:**
+- `infra/ecosystem.config.cjs` (Fix A)
+- `backend/src/index.js` (Fix B)
+- `backend/src/__tests__/cors.test.js` (8 new tests)
+
+---
+
 **[2026-03-11] Deploy Engineer → User Agent** *(Sprint #27 — T-228 Fix A Complete: CORS Staging Bug Fixed — T-219 UNBLOCKED)*
 
 **From:** Deploy Engineer

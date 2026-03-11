@@ -1990,7 +1990,7 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
-| T-228 | Fix CORS staging mismatch — ESM dotenv hoisting root cause. **Fix A (Deploy Engineer):** Add `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`; `pm2 restart triplanner-backend`; verify via `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`. **Fix B (Backend Engineer):** Refactor `backend/src/index.js` to load dotenv before `app.js` executes — either use dynamic `import()` for app.js, or move `dotenv.config()` as the first statement in `app.js` before any middleware. Re-run `npm test --run` in backend/ — all 355+ tests must pass. Add/update integration test asserting CORS header is correctly read from env. Log CORS verification result in `qa-build-log.md` Sprint 27 section. Log handoff to User Agent (T-219) in `handoff-log.md`. | 27 | Backend Engineer + Deploy Engineer | In Review | P0 | None — START IMMEDIATELY | From Monitor Alert Sprint #26 (Tasked as T-228). **[2026-03-11 Backend Engineer]** API contracts review complete — no new endpoints, no schema changes. T-228 Fix B is a pure internal code refactor. Contracts documented in `api-contracts.md` Sprint 27 section. Handoffs logged to Frontend Engineer and QA Engineer. Proceeding to implementation (Fix B). **[2026-03-11 Deploy Engineer] Fix A: ✅ COMPLETE.** Added `CORS_ORIGIN: 'https://localhost:4173'` to `infra/ecosystem.config.cjs` triplanner-backend env block. Deployed via `pm2 delete + pm2 start` from updated ecosystem config. Verified: `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173` ✅. OPTIONS preflight → 204 + CORS headers ✅. Health endpoint → 200 ✅. 7/7 verification checks PASS. Full report in `qa-build-log.md` Sprint 27 section. Handoffs logged to User Agent (T-219 unblocked) and Monitor Agent in `handoff-log.md`. **[2026-03-11 Backend Engineer] Fix B: ✅ COMPLETE.** Refactored `backend/src/index.js` to use dynamic `import('./app.js')` after `dotenv.config()` — ESM hoisting bug resolved. All 8 new CORS tests pass. Total backend tests: 363/363 ✅. Handoff logged to QA Engineer. CORS verification logged in `qa-build-log.md` Sprint 27 section. |
+| T-228 | Fix CORS staging mismatch — ESM dotenv hoisting root cause. **Fix A (Deploy Engineer):** Add `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`; `pm2 restart triplanner-backend`; verify via `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`. **Fix B (Backend Engineer):** Refactor `backend/src/index.js` to load dotenv before `app.js` executes — either use dynamic `import()` for app.js, or move `dotenv.config()` as the first statement in `app.js` before any middleware. Re-run `npm test --run` in backend/ — all 355+ tests must pass. Add/update integration test asserting CORS header is correctly read from env. Log CORS verification result in `qa-build-log.md` Sprint 27 section. Log handoff to User Agent (T-219) in `handoff-log.md`. | 27 | Backend Engineer + Deploy Engineer | Integration Check | P0 | None — START IMMEDIATELY | From Monitor Alert Sprint #26 (Tasked as T-228). **[2026-03-11 Backend Engineer]** API contracts review complete — no new endpoints, no schema changes. T-228 Fix B is a pure internal code refactor. Contracts documented in `api-contracts.md` Sprint 27 section. Handoffs logged to Frontend Engineer and QA Engineer. Proceeding to implementation (Fix B). **[2026-03-11 Deploy Engineer] Fix A: ✅ COMPLETE.** Added `CORS_ORIGIN: 'https://localhost:4173'` to `infra/ecosystem.config.cjs` triplanner-backend env block. Deployed via `pm2 delete + pm2 start` from updated ecosystem config. Verified: `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173` ✅. OPTIONS preflight → 204 + CORS headers ✅. Health endpoint → 200 ✅. 7/7 verification checks PASS. Full report in `qa-build-log.md` Sprint 27 section. Handoffs logged to User Agent (T-219 unblocked) and Monitor Agent in `handoff-log.md`. **[2026-03-11 Backend Engineer] Fix B: ✅ COMPLETE.** Refactored `backend/src/index.js` to use dynamic `import('./app.js')` after `dotenv.config()` — ESM hoisting bug resolved. All 8 new CORS tests pass. Total backend tests: 363/363 ✅. Handoff logged to QA Engineer. CORS verification logged in `qa-build-log.md` Sprint 27 section. |
 
 ---
 
@@ -2008,6 +2008,65 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
 | T-224 | Deploy Engineer: Production deployment to Render + AWS RDS. Follow `docs/production-deploy-guide.md`: (1) Create AWS RDS PostgreSQL 15 (db.t3.micro, us-east-1, free tier). (2) Set up Render services using render.yaml. (3) Configure env vars (DATABASE_URL, JWT_SECRET, NODE_ENV=production, FRONTEND_URL, CORS_ORIGIN). (4) Run `knex migrate:latest` against production RDS. (5) Trigger Render deploy. (6) Smoke tests: GET /api/v1/health → 200; POST /auth/register → 201; frontend loads at Render URL. Log production URLs in handoff-log.md; handoff to Monitor Agent (T-225). Full report in qa-build-log.md. | 27 | Deploy Engineer | Blocked | P1 | Project owner must provide AWS + Render access | Carry-over from Sprint 26. All code/config ready. Sole blocker: project owner must provision AWS account (RDS) + Render account. Full instructions in docs/production-deploy-guide.md. |
 | T-225 | Monitor Agent: Post-production health check. (1) GET https://[backend-render-url]/api/v1/health → 200. (2) Frontend loads at https://[frontend-render-url] — no JS errors. (3) POST /auth/register → 201. (4) POST /auth/login → 200. (5) GET /api/v1/trips → 200 (with auth). (6) GET /api/v1/trips/:id/calendar → 200 (with auth). (7) HTTPS enforced. (8) Set-Cookie: SameSite=None; Secure in response headers. Full report in qa-build-log.md Sprint 27 section. | 27 | Monitor Agent | Backlog | P1 | T-224 | Carry-over from Sprint 26. First production health check. |
+
+---
+
+### Sprint 27 — Manager Agent: Code Review Pass (2026-03-11)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-27 | Manager: Sprint 27 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 27 | — | **T-228 reviewed and APPROVED → Integration Check.** Fix A (ecosystem.config.cjs) and Fix B (index.js dynamic import) both verified correct. 8 CORS tests reviewed. No issues found. Handoff logged to QA Engineer. |
+
+**Sprint 27 Code Review Summary (Manager Agent — 2026-03-11):**
+
+**Review scope:** T-228 — CORS staging fix (Fix A: ecosystem.config.cjs; Fix B: backend/src/index.js + cors.test.js)
+
+---
+
+#### T-228 — CORS Staging Fix (ESM dotenv hoisting) — ✅ APPROVED
+
+**Fix A — `infra/ecosystem.config.cjs`:**
+- ✅ `CORS_ORIGIN: 'https://localhost:4173'` added to `triplanner-backend` env block — correct staging value
+- ✅ No hardcoded secrets — this is a non-secret origin URL, appropriate in pm2 config
+- ✅ Comment references task ID (T-228 Fix A)
+- ✅ All other pm2 settings (autorestart, max_memory_restart, kill_timeout) unchanged — no regressions
+
+**Fix B — `backend/src/index.js`:**
+- ✅ `dotenv.config()` called before `await import('./app.js')` — ESM hoisting bug fully resolved
+- ✅ Dynamic import pattern is idiomatic and correct for Node.js ESM
+- ✅ `app.js` retains `cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' })` — reads env at evaluation time, now correctly populated
+- ✅ Env-specific `.env.${NODE_ENV}` loading logic preserved and unchanged
+- ✅ HTTPS/HTTP server branching logic unchanged — no regressions
+- ✅ No hardcoded credentials or secrets
+- ✅ No SQL injection surface (config file only)
+- ✅ No XSS surface
+
+**Tests — `backend/src/__tests__/cors.test.js` (8 tests):**
+- ✅ Happy path: CORS_ORIGIN env var → correct `Access-Control-Allow-Origin` header
+- ✅ Happy path: fallback to `http://localhost:5173` when CORS_ORIGIN absent
+- ✅ Happy path: `Access-Control-Allow-Credentials: true` set correctly
+- ✅ Happy path: staging origin `https://localhost:4173` allowed when CORS_ORIGIN set
+- ✅ Error path: disallowed origin not echoed back
+- ✅ Error path: staging origin blocked when CORS_ORIGIN absent (fallback only)
+- ✅ `afterEach` restores `process.env.CORS_ORIGIN` — no test pollution
+- ✅ Test strategy documented clearly (explains why singleton ESM can't be re-imported)
+- ✅ Backend test count: 363/363 (up from 355 baseline — 8 new tests)
+
+**API contract check:** No new endpoints or schema changes — N/A ✅
+**UI spec check:** Backend-only change — N/A ✅
+**Security checklist:** No secrets, no SQL injection, no XSS, no auth regressions ✅
+
+**Decision: APPROVED → Integration Check**
+
+---
+
+**Sprint 27 Code Review Outcome:**
+- T-228: ✅ APPROVED → Integration Check
+- T-219: Backlog (User Agent — unblocked by T-228)
+- T-224: ⛔ Blocked (project owner must provision AWS + Render)
+- T-225: Backlog (blocked on T-224)
+
+**Handoff to QA Engineer logged in handoff-log.md.**
 
 ---
 
