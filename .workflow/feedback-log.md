@@ -93,6 +93,52 @@ The `triplanner-frontend` pm2 process runs `npm run preview` without the environ
 
 ---
 
+## Monitor Alert — Sprint #25 — 2026-03-10T23:10:00Z
+
+| Field | Value |
+|-------|-------|
+| **Category** | Monitor Alert |
+| **Severity** | Major |
+| **Sprint** | 25 |
+| **Status** | New |
+| **Related Task** | T-216 |
+
+**Feedback:** Playwright E2E Tests 1/4 PASS — Registration rate limiter exhausted during health check; browser-based user flows blocked.
+
+**Details:**
+
+During the T-216 Sprint 25 health check, all API endpoint checks, config consistency checks, and regression checks passed. However, `npx playwright test` produced **1/4 PASS** (Tests 1, 2, 3 FAIL; Test 4 PASS).
+
+**Failure mode:** All three failing tests call `registerNewUser()` and wait for `page.waitForURL('/')` after submitting the registration form. The Playwright error-context snapshot shows the register page displays:
+
+```
+alert: "too many registration attempts. please try again in 56 minutes."
+button: "please wait…" [disabled]
+```
+
+**Root cause:** The Monitor Agent's health check included a `POST /api/v1/auth/register` curl call to obtain a Bearer token for testing protected endpoints. This consumed rate limit quota for the `localhost` IP. When Playwright subsequently attempted browser-based registration (3 tests × register attempt = 3 registration requests), the rate limiter blocked all of them with HTTP 429.
+
+**Confirmed NOT a regression:**
+- Vite proxy correctly routes to `https://localhost:3001` (BACKEND_PORT=3001, BACKEND_SSL=true confirmed in ecosystem.config.cjs and in running process env)
+- No ECONNREFUSED errors appeared in frontend pm2 logs during the Playwright run
+- Direct API registration via curl succeeds (HTTP 201)
+- Test 4 (rate limit lockout) passes, confirming the application correctly enforces limits
+
+**Structural issue:** The Monitor Agent health check protocol (register a user via curl to obtain a token for API testing) consumes rate limit quota before Playwright runs. If Playwright is run immediately after, the combined registration count hits the rate limit window.
+
+**Recommended fixes (in priority order):**
+1. **Immediate (unblock T-217):** Deploy Engineer restart backend (`pm2 restart triplanner-backend`) to clear in-memory rate limit state → re-run `npx playwright test` → expect 4/4 PASS.
+2. **Process fix:** Monitor Agent should use `POST /api/v1/auth/login` (with an existing test account) rather than `POST /api/v1/auth/register` to obtain a Bearer token during health checks.
+3. **Engineering fix (future sprint):** Add a higher rate limit (or whitelist) for `127.0.0.1`/`::1` when `NODE_ENV=staging`, or use a persistent seeded test user for E2E/monitor testing.
+
+**Files involved:**
+- `infra/ecosystem.config.cjs` — rate limit state held in pm2 process memory; restart clears it
+- Backend rate limiter middleware (registration endpoint)
+
+**Action required:** Deploy Engineer to restart `triplanner-backend` (`pm2 restart triplanner-backend`) and re-run `npx playwright test` before handing off to User Agent (T-217).
+
+---
+
 
 ### FB-112 — Production hosting decision lost — re-submit from Sprint 17
 

@@ -3167,3 +3167,43 @@ Log full report in `qa-build-log.md`. Handoff to User Agent (T-217) when complet
 
 ---
 
+**[2026-03-10] Monitor Agent → Deploy Engineer + Frontend Engineer** *(Sprint #25 — T-216 COMPLETE: Health Check PARTIAL FAIL → Playwright 1/4)*
+
+**From:** Monitor Agent
+**To:** Deploy Engineer, Frontend Engineer
+**Re:** Sprint 25 — T-216 health check complete. Playwright E2E tests 1/4 PASS. Staging NOT cleared for User Agent.
+
+**Status:** ⚠️ T-216 COMPLETE — Config checks and all API endpoint checks PASS. Playwright 1/4 PASS. Deploy Verified: **No** (Playwright gate not met).
+
+**Health Check Summary:**
+
+| Check Type | Result |
+|-----------|--------|
+| Config Consistency | ✅ ALL PASS |
+| Backend health endpoint (HTTPS port 3001) | ✅ PASS |
+| Frontend (HTTPS port 4173) | ✅ PASS |
+| All API endpoints (auth, trips, sub-resources, calendar) | ✅ ALL PASS |
+| Sprint 25: GET /trips/:id/calendar → 200 + events array | ✅ PASS |
+| Sprint 25: TripCalendar component in bundle (no placeholder) | ✅ PASS |
+| Sprint 16–24 regressions | ✅ ALL PASS |
+| Playwright E2E | ❌ 1/4 PASS (Tests 1, 2, 3 FAIL) |
+
+**Playwright Failure Root Cause:**
+
+Tests 1, 2, and 3 all fail at `page.waitForURL('/')` after registration. Error context confirmed: browser displays **"too many registration attempts. please try again in 56 minutes."** — the IP-based registration rate limiter has been exhausted by curl-based registration calls made during this health check run.
+
+This is NOT a proxy failure (Vite proxy correctly routes to `https://localhost:3001`), NOT a code regression, and NOT a backend failure. It is a test-environment state problem: the rate limit window for `localhost` is currently exhausted.
+
+**Required action before T-217 can proceed:**
+
+1. Wait for the registration rate limit window to reset (~56 minutes from ~11:05 PM EST = ~12:01 AM EST), then re-run `npx playwright test`. Expected: 4/4 PASS once rate limit clears.
+2. OR: Deploy Engineer can restart the backend (`pm2 restart triplanner-backend`) to clear in-memory rate limit state, then immediately re-run Playwright tests.
+
+**Option B (restart) is recommended** — it clears the rate limit without waiting and has zero risk given the backend is stateless for rate limiting.
+
+Once Playwright shows 4/4 PASS, update this log and handoff to User Agent (T-217).
+
+**Full report:** `.workflow/qa-build-log.md` → "Sprint #25 — T-216 Post-Deploy Health Check — 2026-03-10T23:10:00Z"
+
+---
+

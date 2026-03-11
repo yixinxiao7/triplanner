@@ -4,6 +4,114 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #25 — T-216 Post-Deploy Health Check — 2026-03-10T23:10:00Z
+
+**Date:** 2026-03-10
+**Agent:** Monitor Agent (T-216)
+**Task:** T-216 — Sprint 25 post-deploy health check
+**Environment:** Staging (local — `https://localhost:3001` backend, `https://localhost:4173` frontend)
+
+---
+
+### Test Type: Config Consistency Check
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Staging backend PORT | 3001 | 3001 (from `backend/.env.staging`) | ✅ PASS |
+| SSL active on backend | Yes (SSL_KEY_PATH + SSL_CERT_PATH set) | Yes — HTTPS confirmed on port 3001 | ✅ PASS |
+| Vite proxy target protocol | https:// (BACKEND_SSL=true) | `https://localhost:3001` (BACKEND_SSL=true set in ecosystem.config.cjs) | ✅ PASS |
+| Vite proxy target port | 3001 | 3001 (BACKEND_PORT=3001 in ecosystem.config.cjs) | ✅ PASS |
+| Vite dev server port | 4173 (preview) | 4173 | ✅ PASS |
+| CORS_ORIGIN (staging) | https://localhost:4173 | `https://localhost:4173` (from `backend/.env.staging`) | ✅ PASS |
+| Docker-compose backend PORT | 3000 | `PORT: 3000` (environment override in docker-compose.yml) | ✅ PASS |
+| ecosystem.config.cjs BACKEND_PORT | 3001 | `'3001'` confirmed | ✅ PASS |
+| ecosystem.config.cjs BACKEND_SSL | true | `'true'` confirmed | ✅ PASS |
+
+**Config Consistency Result: ✅ ALL PASS**
+
+**Notes:**
+- Staging uses `backend/.env.staging` (PORT=3001, SSL enabled, CORS_ORIGIN=https://localhost:4173). Base `backend/.env` (PORT=3000, no SSL, CORS_ORIGIN=http://localhost:5173) applies only to local development — not a mismatch.
+- Docker-compose defines PORT=3000 which matches the base `backend/.env` for containerized deployment — no mismatch.
+- A second backend process (PID 53257) is listening on port 3000 over HTTPS — started by Deploy Engineer during T-215 execution. Not a config error; staging checks target port 3001.
+
+---
+
+### Test Type: Post-Deploy Health Check
+
+#### Infrastructure
+
+| Check | Result | Details |
+|-------|--------|---------|
+| pm2 `triplanner-backend` | ✅ ONLINE | PID 53244, uptime 6m, NODE_ENV=staging, PORT=3001 |
+| pm2 `triplanner-frontend` | ✅ ONLINE | PID 53278, uptime 6m, BACKEND_PORT=3001, BACKEND_SSL=true |
+| Backend HTTPS port 3001 | ✅ ACTIVE | `lsof -iTCP:3001` → PID 53244 listening |
+| Frontend HTTPS port 4173 | ✅ ACTIVE | `lsof -iTCP:4173` → PID 53295 listening |
+| frontend/dist/ build artifacts | ✅ PRESENT | `index-Bz9Y7ALz.js` + `index-CPOhaw0p.css` |
+
+#### API Endpoint Health
+
+| Endpoint | Method | Expected | Status | Body |
+|----------|--------|----------|--------|------|
+| `https://localhost:3001/api/v1/health` | GET | 200 | ✅ 200 | `{"status":"ok"}` |
+| `https://localhost:4173/` | GET | 200 | ✅ 200 | HTML |
+| `https://localhost:4173/api/v1/health` (proxy) | GET | 200 | ✅ 200 | `{"status":"ok"}` |
+| `POST /api/v1/auth/login` (invalid creds) | POST | 401 | ✅ 401 | `{"error":{"message":"Incorrect email or password","code":"INVALID_CREDENTIALS"}}` |
+| `GET /api/v1/trips` (no auth) | GET | 401 | ✅ 401 | UNAUTHORIZED |
+| `GET /api/v1/trips/:id/calendar` (no auth) | GET | 401 | ✅ 401 | UNAUTHORIZED |
+| `POST /api/v1/auth/register` | POST | 201 | ✅ 201 | User created, access_token returned |
+| `GET /api/v1/trips` (with auth) | GET | 200 | ✅ 200 | Empty list + pagination |
+| `POST /api/v1/trips` | POST | 201 | ✅ 201 | Trip created with id, status=PLANNING, notes/start_date/end_date fields present |
+| `GET /api/v1/trips/:id` | GET | 200 | ✅ 200 | Trip with `notes` key present ✅ (Sprint 20 regression) |
+| `PATCH /api/v1/trips/:id` status=ONGOING | PATCH | 200 | ✅ 200 | Sprint 22 regression ✅ |
+| `GET /api/v1/trips/:id/flights` | GET | 200 | ✅ 200 | Empty array |
+| `GET /api/v1/trips/:id/stays` | GET | 200 | ✅ 200 | Empty array |
+| `GET /api/v1/trips/:id/activities` | GET | 200 | ✅ 200 | Empty array |
+| `GET /api/v1/trips/:id/land-travel` | GET | 200 | ✅ 200 | Empty array |
+| `GET /api/v1/trips/:id/calendar` (with auth) | GET | 200 | ✅ 200 | `{"data":{"trip_id":"...","events":[]}}` |
+| `POST /api/v1/auth/refresh` (no cookie) | POST | 401 | ✅ 401 | INVALID_REFRESH_TOKEN |
+| `POST /api/v1/auth/logout` (with auth) | POST | 204 | ✅ 204 | Empty body |
+
+#### Regression Checks
+
+| Sprint | Feature | Result |
+|--------|---------|--------|
+| Sprint 16 | `start_date`/`end_date` keys on trip objects | ✅ PASS — both present (`null` as expected for new trip) |
+| Sprint 19 | `RateLimit-Limit: 10` header on `POST /auth/login` | ✅ PASS — `RateLimit-Limit: 10` confirmed |
+| Sprint 20 | `notes` key on `GET /api/v1/trips/:id` | ✅ PASS — `"notes":null` present |
+| Sprint 22 | `PATCH /trips/:id` `{status:"ONGOING"}` → 200 | ✅ PASS |
+| Sprint 24 | Frontend loads (StatusFilterTabs in bundle) | ✅ PASS — HTTP 200, build confirmed |
+
+#### Sprint 25 New Feature Checks
+
+| Check | Result | Details |
+|-------|--------|---------|
+| TripCalendar NOT placeholder | ✅ PASS | Bundle contains `_calendarPanel_vbjjk_4`, legend, event pills, month nav — no old "Calendar coming in Sprint 2" text |
+| `GET /api/v1/trips/:id/calendar` → 200 with `events` array | ✅ PASS | `{"data":{"trip_id":"...","events":[]}}` |
+| Calendar API call in bundle | ✅ PASS | `Le.get('/trips/${r}/calendar')` confirmed in minified JS |
+
+#### Playwright E2E Tests
+
+| Test | Result | Notes |
+|------|--------|-------|
+| Test 1: Core user flow | ❌ FAIL | `page.waitForURL('/')` timeout — registration blocked by IP rate limit |
+| Test 2: Sub-resource CRUD | ❌ FAIL | `page.waitForURL('/')` timeout — registration blocked by IP rate limit |
+| Test 3: Search, filter, sort | ❌ FAIL | `page.waitForURL('/')` timeout — registration blocked by IP rate limit |
+| Test 4: Rate limit lockout | ✅ PASS | 429 banner + disabled submit confirmed |
+
+**Playwright result: 1/4 PASS**
+
+**Playwright failure root cause:** The IP-based registration rate limiter (`Too many registration attempts, please try again in 56 minutes.`) is blocking all three browser-based E2E test flows. This occurs because multiple Monitor Agent curl test registrations during health check setup exhausted the registration rate limit window for `localhost`. This is the same failure mode documented as resolved in Sprint 22 (Monitor Alert, feedback-log.md) — however, it is recurring here due to test-environment rate limit exhaustion, NOT a Vite proxy failure. Direct API calls through curl confirm the proxy routes correctly to `https://localhost:3001`.
+
+**No 5xx errors observed on any endpoint. ✅**
+
+---
+
+### Deploy Verified: No
+
+**Reason:** Playwright E2E tests 1/4 PASS (3 fail due to registration rate limit exhaustion). Per monitoring protocol, Deploy Verified = No unless ALL checks pass. All API checks, config checks, and regression checks pass. Playwright failure is environment-state (rate limit) rather than code regression, but the gate requires all Playwright tests to pass.
+
+---
+
 ## Sprint #25 — T-215 Staging Deploy (Orchestrator Re-run) — 2026-03-10T23:10:00Z
 
 **Date:** 2026-03-10
