@@ -1608,3 +1608,360 @@ The following pre-verification checks were completed proactively so they need no
 
 **T-222 Status: ✅ DONE — render.yaml and deploy guide published. Handoff to QA (T-223) logged.**
 
+---
+
+## Sprint 26 — QA Engineer Log (T-223)
+
+**Date:** 2026-03-11
+**Agent:** QA Engineer
+**Task:** T-223 — Pre-production security + configuration review
+
+---
+
+### Unit Test Run — Backend
+
+**Test Type:** Unit Test
+**Command:** `cd backend && npm test -- --run`
+**Date:** 2026-03-11
+
+| Metric | Result |
+|--------|--------|
+| Test files | 18 passed / 18 total |
+| Tests | 355 passed / 355 total |
+| Sprint 26 new tests (sprint26.test.js) | 15 passed / 15 |
+| Duration | 2.68s |
+| Baseline (pre-Sprint 26) | 340 |
+| New tests added | +15 (T-220: 5, T-221: 3, T-226: 7) |
+
+**Result: ✅ PASS — 355/355 (exceeds 340+ baseline requirement)**
+
+**Sprint 26 test breakdown (sprint26.test.js):**
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| T-220 — knexfile.js production config | 5 | ✅ All pass |
+| T-221 — Cookie SameSite in non-production | 1 | ✅ Pass |
+| T-221 — Cookie SameSite in production | 2 | ✅ Pass |
+| T-226 — test_user seed script | 7 | ✅ All pass |
+
+---
+
+### Unit Test Run — Frontend
+
+**Test Type:** Unit Test
+**Command:** `cd frontend && npm test -- --run`
+**Date:** 2026-03-11
+
+| Metric | Result |
+|--------|--------|
+| Test files | 25 passed / 25 total |
+| Tests | 486 passed / 486 total |
+| Duration | 1.87s |
+
+**Result: ✅ PASS — 486/486 (baseline unchanged — no frontend scope in Sprint 26)**
+
+Note: `act()` warnings present in several test files — these are pre-existing React state update warnings in test output, not failures. All tests pass.
+
+---
+
+### npm audit — Security Vulnerability Scan
+
+**Test Type:** Security Scan
+**Command:** `cd backend && npm audit`
+**Date:** 2026-03-11
+
+| Result |
+|--------|
+| 0 vulnerabilities found |
+
+**Result: ✅ PASS — 0 vulnerabilities**
+
+---
+
+### T-220 Code Verification — knexfile.js Production SSL + Pool Config
+
+**Test Type:** Integration Test
+**File:** `backend/src/config/knexfile.js`
+
+| Check | Expected | Actual | Status |
+|-------|----------|--------|--------|
+| production.connection type | object | object | ✅ |
+| production.connection.connectionString | `process.env.DATABASE_URL` | `process.env.DATABASE_URL` | ✅ |
+| production.connection.ssl.rejectUnauthorized | `false` | `false` | ✅ |
+| production.pool.min | `1` | `1` | ✅ |
+| production.pool.max | `5` | `5` | ✅ |
+| development config unchanged (no ssl) | no ssl block | no ssl block | ✅ |
+| staging config unchanged (no ssl) | no ssl block | no ssl block | ✅ |
+| No hardcoded DATABASE_URL value | env var only | `process.env.DATABASE_URL` | ✅ |
+
+**Result: ✅ PASS — All T-220 checks verified**
+
+---
+
+### T-221 Code Verification — Cookie SameSite=None in Production
+
+**Test Type:** Integration Test
+**File:** `backend/src/routes/auth.js`
+
+| Check | Expected | Actual | Status |
+|-------|----------|--------|--------|
+| `getSameSite()` in production | `'none'` | `return process.env.NODE_ENV === 'production' ? 'none' : 'strict'` | ✅ |
+| `getSameSite()` in dev/staging | `'strict'` | `'strict'` | ✅ |
+| `isSecureCookie()` in production | `true` | gates on `COOKIE_SECURE==='true'` or `NODE_ENV==='production'` | ✅ |
+| `setRefreshCookie()` uses `getSameSite()` | ✅ | `sameSite: getSameSite()` | ✅ |
+| `clearRefreshCookie()` uses `getSameSite()` | ✅ | `sameSite: getSameSite()` | ✅ |
+| `httpOnly: true` preserved | ✅ | `httpOnly: true` | ✅ |
+| No hardcoded secrets | ✅ | JWT_SECRET from `process.env.JWT_SECRET` | ✅ |
+| Test: non-production → SameSite=Strict | ✅ | verified by sprint26 test suite | ✅ |
+| Test: production → SameSite=None | ✅ | verified by sprint26 test suite | ✅ |
+| Test: production → Secure flag present | ✅ | verified by sprint26 test suite | ✅ |
+
+**Result: ✅ PASS — All T-221 checks verified**
+
+---
+
+### T-226 Code Verification — test_user Seed Script
+
+**Test Type:** Integration Test
+**File:** `backend/src/seeds/test_user.js`
+
+| Check | Expected | Actual | Status |
+|-------|----------|--------|--------|
+| Target table | `users` | `knex('users')` | ✅ |
+| email field | `test@triplanner.local` | `'test@triplanner.local'` | ✅ |
+| name field | `Test User` | `'Test User'` | ✅ |
+| password_hash | bcrypt 12 rounds of `TestPass123!` | `bcrypt.hash(TEST_PASSWORD, 12)` | ✅ |
+| Idempotency | `onConflict('email').ignore()` | `onConflict('email').ignore()` | ✅ |
+| Minimal fields (no extras) | `[email, name, password_hash]` only | `[email, name, password_hash]` | ✅ |
+| Re-run safety | Does not throw on duplicate | Confirmed by test — `.ignore()` | ✅ |
+
+**Result: ✅ PASS — All T-226 checks verified**
+
+---
+
+### T-222 Verification — render.yaml + Production Deploy Guide
+
+**Test Type:** Integration Test
+**Files:** `render.yaml` (project root), `docs/production-deploy-guide.md`
+
+#### render.yaml Checklist
+
+| Check | Status |
+|-------|--------|
+| Two services defined (backend web + frontend static) | ✅ |
+| Both services in ohio region | ✅ |
+| Both services on free plan | ✅ |
+| Backend: `NODE_ENV=production` set | ✅ |
+| Backend: `DATABASE_URL` is `sync: false` (no hardcoded value) | ✅ |
+| Backend: `JWT_SECRET` is `generateValue: true` (auto-generated) | ✅ |
+| Backend: `CORS_ORIGIN` is `sync: false` (no hardcoded value) | ✅ |
+| Frontend: `VITE_API_URL` is `sync: false` (no hardcoded value) | ✅ |
+| Backend: `healthCheckPath: /api/v1/health` | ✅ |
+| SPA rewrite rule `/* → /index.html` for React Router | ✅ |
+| No hardcoded secrets anywhere in file | ✅ |
+
+#### docs/production-deploy-guide.md Checklist
+
+| Section | Status |
+|---------|--------|
+| AWS RDS setup (PostgreSQL 15, db.t3.micro, us-east-1) | ✅ |
+| Render Blueprint deploy via render.yaml | ✅ |
+| Environment variable configuration (all vars, both services) | ✅ |
+| Database migration step (`knex migrate:latest`, Option A + B) | ✅ |
+| Deploy trigger + verification | ✅ |
+| Post-deploy smoke test checklist (7 curl-based checks) | ✅ |
+| SameSite=None cookie verification in post-deploy checklist | ✅ |
+| Custom domain setup (optional) | ✅ |
+| Rollback procedure | ✅ |
+
+**Result: ✅ PASS — render.yaml and deploy guide verified complete**
+
+---
+
+### Config Consistency Check
+
+**Test Type:** Config Consistency
+**Files:** `backend/.env`, `frontend/vite.config.js`, `infra/docker-compose.yml`
+
+| Check | Expected | Actual | Status |
+|-------|----------|--------|--------|
+| Backend PORT | 3000 | `PORT=3000` in backend/.env | ✅ |
+| Vite proxy port | matches backend PORT | `BACKEND_PORT \|\| '3000'` (default 3000) | ✅ |
+| SSL enabled in backend | No (certs commented out) | SSL_KEY_PATH/SSL_CERT_PATH commented out | ✅ |
+| Vite proxy protocol | http (SSL off) | `http` (backendSSL=false default) | ✅ |
+| CORS_ORIGIN | `http://localhost:5173` | `CORS_ORIGIN=http://localhost:5173` in .env | ✅ |
+| Docker compose backend PORT | 3000 | `PORT: 3000` in docker-compose backend env | ✅ |
+
+**Result: ✅ PASS — No config mismatches found**
+
+---
+
+### Security Verification
+
+**Test Type:** Security Scan
+**Date:** 2026-03-11
+
+#### Authentication & Authorization
+| Item | Status | Notes |
+|------|--------|-------|
+| All API endpoints require appropriate auth | ✅ | `authenticate` middleware on all protected routes |
+| Auth tokens have expiration | ✅ | JWT: 15m (access), 7d (refresh); refresh tokens stored hashed |
+| Password hashing uses bcrypt | ✅ | bcrypt 12 rounds on all password hashing |
+| Failed login attempts rate-limited | ✅ | `loginLimiter`: 10 attempts / 15-min window |
+| Register attempts rate-limited | ✅ | `registerLimiter`: 5 attempts / 60-min window |
+| Timing-safe login (prevents user enumeration) | ✅ | `DUMMY_HASH` used when user not found |
+
+#### Input Validation & Injection Prevention
+| Item | Status | Notes |
+|------|--------|-------|
+| Server-side input validation | ✅ | `validate()` middleware on all write endpoints |
+| SQL queries use parameterized statements | ✅ | Knex query builder throughout; all `db.raw()` uses static SQL strings only (date formatting, ordering) — no user input in raw calls |
+| HTML output sanitized | ✅ | API returns JSON only; no HTML rendering |
+| No user input in `db.raw()` calls | ✅ | Verified: all raw() calls use static SQL strings |
+
+#### API Security
+| Item | Status | Notes |
+|------|--------|-------|
+| CORS configured to expected origins only | ✅ | `CORS_ORIGIN` env var; defaults to localhost:5173 |
+| Rate limiting on public endpoints | ✅ | Login, register, and general auth limiters |
+| API responses do not leak stack traces | ✅ | `errorHandler` logs stack server-side; returns generic 500 message to client |
+| Sensitive data not in URL query params | ✅ | Credentials sent in request body only |
+| Security headers (Helmet) | ✅ | `app.use(helmet())` — provides X-Content-Type-Options, X-Frame-Options, HSTS etc. |
+
+#### Data Protection
+| Item | Status | Notes |
+|------|--------|-------|
+| DB credentials in env vars (not code) | ✅ | `DATABASE_URL` from `process.env` only |
+| JWT_SECRET in env vars | ✅ | `process.env.JWT_SECRET` only |
+| TEST_PASSWORD constant in seed | ⚠️ NOTED | `'TestPass123!'` in `test_user.js` — this is an intentionally documented staging test account credential, not a production secret. Acceptable by design; documented in monitor-agent.md |
+| JWT_SECRET in backend/.env | ⚠️ NOTED | `change-me-to-a-random-string` — development placeholder only; production uses Render auto-generated value. Not a security issue |
+| Logs do not contain PII / passwords | ✅ | errorHandler logs `err.stack` only |
+| Refresh tokens stored as bcrypt hash | ✅ | `hashToken()` applied before storage |
+
+#### Infrastructure
+| Item | Status | Notes |
+|------|--------|-------|
+| HTTPS enforced on production | ✅ | Render provides HTTPS automatically; render.yaml uses `https://` |
+| npm audit: 0 vulnerabilities | ✅ | Confirmed |
+| Default credentials removed | ✅ | No default/sample credentials in production paths |
+| Error pages do not reveal server technology | ✅ | `errorHandler` returns generic messages |
+
+**Security Scan Result: ✅ PASS — No P1 security issues. Two non-blocking observations noted.**
+
+---
+
+### Outstanding Issue — Playwright E2E Regression (T-218, not blocking T-223)
+
+**Noted for record — not in T-223 scope:**
+
+Playwright suite remains at 2/4 PASS due to two test spec regressions first identified by Deploy Engineer:
+1. **Test 2 (getByText strict mode):** Sprint 25 TripCalendar component adds `'SFO'` text to DOM via event pills, creating 3 matches for `getByText('SFO')`. Playwright strict mode rejects ambiguous selectors.
+2. **Test 3 (intra-run rate limiter):** Each test registers a fresh user; by Test 3 the IP-level rate limit is exhausted within a single test run.
+
+These are test spec issues (not application bugs). T-218 fix remains on Manager's tracking list. This is NOT a blocker for T-223 or T-224 — the application code is correct.
+
+---
+
+### T-223 Summary — Pre-Production QA Gate
+
+| Check | Result |
+|-------|--------|
+| T-220: knexfile.js production SSL + pool config | ✅ PASS |
+| T-221: Cookie SameSite=None in production; Strict in dev/staging | ✅ PASS |
+| T-222: render.yaml — no hardcoded secrets, correct service config | ✅ PASS |
+| T-222: docs/production-deploy-guide.md — complete with migration + post-deploy steps | ✅ PASS |
+| Backend unit tests: 355/355 pass (including 15 new Sprint 26 tests) | ✅ PASS |
+| Frontend unit tests: 486/486 pass | ✅ PASS |
+| npm audit: 0 vulnerabilities | ✅ PASS |
+| Config consistency (PORT, SSL, CORS) | ✅ PASS |
+| Security checklist | ✅ PASS (no P1 issues) |
+
+**T-223 Status: ✅ COMPLETE — All pre-production gates passed. Handoff to Deploy Engineer (T-224) logged.**
+
+---
+
+## Sprint #26 — T-218 Playwright Rerun (Second Attempt) — 2026-03-11
+
+**Date:** 2026-03-11
+**Agent:** Deploy Engineer
+**Task:** T-218 second attempt — backend restart + Playwright 4/4
+
+### Context
+
+Previous T-218 run resulted in 2/4 PASS due to two test spec issues (strict mode SFO ambiguity + intra-run rate limiter exhaustion). Both issues have since been resolved by QA/Frontend engineers:
+- Test 2 fix: Selector now scoped to flights section, resolving strict mode violation
+- Test 3 fix: Tests use seeded test user (`test@triplanner.local`) instead of registering fresh users each run, preventing rate limiter exhaustion
+
+### Backend Restart
+
+| Step | Result |
+|------|--------|
+| `pm2 restart triplanner-backend` | ✅ New PID 63803, status online |
+| Health check `GET http://localhost:3000/api/v1/health` | ✅ `{"status":"ok"}` |
+| Rate limiter state cleared | ✅ Confirmed (fresh process) |
+
+### Playwright Results — Post-Restart
+
+| Test | Result | Notes |
+|------|--------|-------|
+| Test 1: Core user flow | ✅ PASS | 1.3s |
+| Test 2: Sub-resource CRUD | ✅ PASS | 1.2s — strict mode SFO ambiguity resolved |
+| Test 3: Search, filter, sort | ✅ PASS | 3.7s — rate limiter no longer exhausted between tests |
+| Test 4: Rate limit lockout | ✅ PASS | 3.9s |
+
+**Final result: 4/4 PASS (11.1s total)**
+
+**T-218 Status: ✅ DONE — Playwright 4/4 confirmed. T-219 (User Agent) unblocked.**
+
+---
+
+## Sprint #26 — T-224 Production Deployment Attempt — 2026-03-11
+
+**Date:** 2026-03-11
+**Agent:** Deploy Engineer
+**Task:** T-224 — Production deployment to Render + AWS RDS
+**Pre-deploy gate:** T-223 ✅ (QA confirmed 2026-03-11)
+
+### Deployment Steps Status
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 1. Create AWS RDS PostgreSQL 15 (db.t3.micro, us-east-1) | ⛔ BLOCKED | No AWS credentials / AWS CLI available in agent environment |
+| 2. Set up Render services via render.yaml Blueprint | ⛔ BLOCKED | No Render CLI / Render API token available in agent environment |
+| 3. Configure env vars (DATABASE_URL, JWT_SECRET, CORS_ORIGIN, VITE_API_URL) | ⛔ BLOCKED | Requires Render dashboard + RDS endpoint from Step 1 |
+| 4. Run `knex migrate:latest` against production RDS | ⛔ BLOCKED | Requires DATABASE_URL from Step 1 |
+| 5. Trigger Render deploy | ⛔ BLOCKED | Requires Render dashboard |
+| 6. Smoke tests (health, register, frontend load) | ⛔ BLOCKED | Requires production URLs from Steps 1–5 |
+
+### Pre-Deployment Readiness Verification (What CAN be verified locally)
+
+| Check | Result |
+|-------|--------|
+| `render.yaml` present at project root | ✅ VERIFIED |
+| `docs/production-deploy-guide.md` present | ✅ VERIFIED |
+| Backend entry point `src/index.js` matches render.yaml `startCommand: node src/index.js` | ✅ VERIFIED |
+| knexfile.js production SSL + pool config (T-220) | ✅ VERIFIED (QA-approved) |
+| Cookie SameSite=None in production (T-221) | ✅ VERIFIED (QA-approved) |
+| Backend tests: 355/355 pass | ✅ VERIFIED (QA-confirmed) |
+| Frontend tests: 486/486 pass | ✅ VERIFIED (QA-confirmed) |
+| npm audit: 0 vulnerabilities | ✅ VERIFIED (QA-confirmed) |
+| No hardcoded secrets in render.yaml | ✅ VERIFIED |
+| Playwright 4/4 PASS | ✅ VERIFIED (this run) |
+
+### Blocker Summary
+
+T-224 cannot be completed by the Deploy Engineer agent without the following project-owner actions:
+
+1. **AWS account access** — Create RDS PostgreSQL 15 instance (`db.t3.micro`, `us-east-1`, free tier). Follow Step 1 in `docs/production-deploy-guide.md`.
+2. **Render account** — Create account at render.com, connect GitHub repository, apply `render.yaml` Blueprint. Follow Steps 2–3 in `docs/production-deploy-guide.md`.
+3. **Set `sync: false` env vars** in Render dashboard:
+   - `triplanner-backend`: `DATABASE_URL` (from RDS Step 1), `CORS_ORIGIN` = `https://triplanner-frontend.onrender.com`
+   - `triplanner-frontend`: `VITE_API_URL` = `https://triplanner-backend.onrender.com/api/v1`
+4. **Run migrations** locally: `export DATABASE_URL="<rds-connection-string>" && export NODE_ENV=production && cd backend && npx knex migrate:latest --knexfile src/config/knexfile.js`
+5. **Trigger deploy** in Render dashboard → confirm both services online
+6. **Run smoke tests** from Step 6 of `docs/production-deploy-guide.md`
+
+All application code is production-ready. The codebase just needs cloud infrastructure provisioned by the project owner.
+
+**T-224 Status: ⛔ BLOCKED — Requires project owner to provision AWS RDS + Render services. All code is production-ready. See `docs/production-deploy-guide.md` for step-by-step instructions.**
+
