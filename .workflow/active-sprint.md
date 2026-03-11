@@ -4,139 +4,101 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #26 — 2026-03-10
+## Sprint #27 — 2026-03-11
 
-**Sprint Goal:** (1) Close out Sprint 25 carry-overs — restart backend to clear rate limiter, confirm Playwright 4/4, run User Agent calendar walkthrough. (2) Ship production deployment — implement the three engineering pre-requisites (knexfile SSL config, cookie SameSite fix, render.yaml + deploy guide), then deploy to Render + AWS RDS and verify. (3) Fix the Monitor Agent health check process to prevent rate limiter exhaustion from recurring.
+**Sprint Goal:** (1) Fix the Major CORS staging bug (T-228) that is blocking all browser-initiated API calls on staging — this is the gate for User Agent testing and any subsequent browser-based verification. (2) Complete the User Agent walkthrough (T-219) that has now carried over for four consecutive sprints — this must not slip again. (3) Carry T-224 (production deployment) and T-225 (post-production health check) forward — escalate to project owner for AWS RDS + Render account provisioning, which is the sole remaining blocker for the production launch.
 
-**Context:** Sprint 25 shipped the TripCalendar component (the top remaining MVP feature, placeholder since Sprint 1). The calendar is live on staging with 340/340 backend + 486/486 frontend tests passing. Two carry-overs from Sprint 25: T-216 (Playwright 1/4 — process issue, not code regression) and T-217 (User Agent walkthrough never ran). Additionally, FB-112 recovered the lost production hosting decision from Sprint 17 — Render (frontend + backend) + AWS RDS — and tasked all three engineering pre-requisites. Production deploy has been deferred 25+ sprints; Sprint 26 is the production launch sprint.
+**Context:** Sprint 26 shipped all three production deployment engineering pre-requisites (knexfile SSL config, cookie SameSite fix, render.yaml + deploy guide), the Monitor Agent process fix, and a clean staging re-deploy. All engineering is production-ready. However, two gates remain: (a) the CORS staging bug (Monitor Alert Sprint #26 — ESM dotenv hoisting causes wrong `Access-Control-Allow-Origin` header in staging) must be fixed before User Agent browser testing can proceed; (b) the project owner must provision AWS RDS + Render accounts for T-224 to execute. Test baseline entering Sprint 27: 355/355 backend | 486/486 frontend.
 
-**Feedback Triage (Sprint 25 → Sprint 26):**
+**Feedback Triage (Sprint 26 → Sprint 27):**
 
 | Entry | Category | Severity | Disposition | Description |
 |-------|----------|----------|-------------|-------------|
-| FB-112 | Feature Gap | Critical | **Tasked → T-220, T-221, T-222, T-223, T-224, T-225** | Production hosting decision (Render + AWS RDS, Sprint 17) recovered and tasked. 3 engineering pre-reqs + QA + deploy + monitor phases created. |
-| Monitor Alert (Sprint #25) | Monitor Alert | Major | **Tasked → T-218, T-226** | Playwright 1/4 PASS — rate limiter exhaustion from Monitor Agent curl registration. T-218 clears immediate blocker; T-226 fixes the process long-term. |
+| Monitor Alert Sprint #26 (CORS mismatch) | Monitor Alert | Major | **Tasked → T-228** | Staging backend serves wrong `Access-Control-Allow-Origin` header (ESM dotenv hoisting root cause). Blocks all browser-based API calls. |
+| Monitor Alert Sprint #26 (secondary: knexfile staging seeds) | Monitor Alert | Minor | **Acknowledged (backlog)** | Staging knexfile missing seeds directory config — `NODE_ENV=staging npm run seed` fails. Workaround exists. No Sprint 27 task. |
 
 ---
 
 ## In Scope
 
-### Phase 1 — Resolve T-216 Carry-Over + User Agent Walkthrough (P0 — NO BLOCKERS — START IMMEDIATELY)
+### Phase 1 — CORS Staging Fix (P0 — NO BLOCKERS — START IMMEDIATELY)
 
-- [ ] **T-218** — Deploy Engineer: Restart `triplanner-backend` to clear in-memory rate limiter, re-run Playwright → 4/4 PASS ← **NO DEPENDENCIES — START IMMEDIATELY**
+- [ ] **T-228** — Backend Engineer + Deploy Engineer: Fix CORS staging mismatch — ESM dotenv hoisting root cause ← **NO DEPENDENCIES — START IMMEDIATELY**
 
+  **Root Cause:** In `backend/src/index.js`, the static `import app from './app.js'` is hoisted before `dotenv.config({ path: '.env.staging' })` runs. When `app.js` executes `cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' })`, `CORS_ORIGIN` is still `undefined`, so the fallback `'http://localhost:5173'` is captured as the fixed origin.
+
+  **Fix A — Immediate (no code change, Deploy Engineer):**
+  - Add `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`
   - `pm2 restart triplanner-backend`
-  - `npx playwright test` immediately after restart — expect 4/4 PASS
-  - Update qa-build-log.md T-216 section with rerun results
-  - Log handoff to User Agent (T-219) in handoff-log.md
+  - Verify: `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`
 
-- [ ] **T-219** — User Agent: Sprint 25/26 feature walkthrough ← Blocked by T-218
+  **Fix B — Permanent (code fix, Backend Engineer):**
+  - Refactor `backend/src/index.js` to use a dynamic `import()` for `app.js` so dotenv loads before the app module executes. Alternatively, move dotenv config into `app.js` as the first statement before any middleware.
+  - Re-run `npm test --run` in `backend/` — confirm all 355+ tests pass
+  - Unit test or integration test asserting the CORS header is correctly set from env
 
-  **Calendar verification (Sprint 25 feature):**
+  **Both A and B must be implemented.** Fix A unblocks User Agent testing immediately; Fix B prevents recurrence.
+
+  - Log handoff to User Agent (T-219) in handoff-log.md once Fix A is deployed and CORS verified
+  - Full report in `qa-build-log.md` Sprint 27 section
+
+---
+
+### Phase 2 — User Agent Walkthrough (P0 — after T-228)
+
+- [ ] **T-219** — User Agent: Sprint 25/26 feature walkthrough (carry-over from Sprint 25 T-217) ← Blocked by T-228
+
+  **Calendar verification (Sprint 25 feature — primary scope):**
   - TripDetailsPage shows live TripCalendar component at top of page (not the old "Calendar coming in Sprint 2" placeholder)
-  - Flights, stays, and activities render on the calendar grid
-  - Each event type visually distinct — FLIGHT / STAY / ACTIVITY color-coded pills
-  - Clicking an event scrolls to the corresponding section on the page (flights / stays / activities)
+  - Flights, stays, and activities render on the calendar grid with correct dates
+  - Each event type is visually distinct — FLIGHT / STAY / ACTIVITY color-coded pills
+  - Clicking an event scrolls to the corresponding section on the page
   - Trip with no sub-resources shows empty state message (not placeholder)
 
   **Regression suite:**
-  - StatusFilterTabs: All / Planning / Ongoing / Completed pills; filter with 0 matches → empty state + "Show all" reset link
-  - TripStatusSelector: badge shows current status; click → update in place; keyboard nav (Space/Enter/Arrows/Escape); Home page sync after change
+  - StatusFilterTabs: All / Planning / Ongoing / Completed pills filter correctly; filter with 0 matches → empty state + "Show all" reset link
+  - TripStatusSelector: badge shows current status; click → update in place; keyboard nav (Space/Enter/Arrows/Escape); Home page reflects status change
   - Trip notes: empty placeholder → edit → char count → save → displays; clear → placeholder returns
-  - Destination validation: 101-char destination → 400 human-friendly error
-  - Rate limiting: login lockout after 10 attempts; multi-destination chip UI
+  - Destination validation: 101-char destination → 400 human-friendly error (not raw stack trace)
+  - Rate limiting: login lockout after 10 attempts
   - Print button visible on TripDetailsPage (Sprint 17)
   - start_date/end_date visible on trip cards (Sprint 16)
 
-  - Submit structured feedback to `feedback-log.md` under **"Sprint 26 User Agent Feedback"**
+  - Submit structured feedback to `feedback-log.md` under **"Sprint 27 User Agent Feedback"**
+  - All feedback entries must have Category, Severity, and Status: New
 
 ---
 
-### Phase 2 — Production Deployment Engineering Pre-Requisites (P1 — parallel tracks)
+### Phase 3 — Production Deployment (P1 — project owner gate + T-228)
 
-- [ ] **T-220** — Backend Engineer: `backend/knexfile.js` production config — SSL + connection pool for AWS RDS
+> ⚠️ **PROJECT OWNER ACTION REQUIRED:** T-224 is blocked on the project owner providing:
+> 1. **AWS account access** to create an RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier)
+> 2. **Render account access** to apply the `render.yaml` Blueprint (or manual service creation)
+> All application code, configuration, and the deploy guide (`docs/production-deploy-guide.md`) are complete. The Deploy Engineer can execute T-224 as soon as credentials are provided.
 
-  - Add `production` config block reading `process.env.DATABASE_URL`
-  - `ssl: { rejectUnauthorized: false }` (AWS RDS self-signed cert)
-  - `pool: { min: 1, max: 5 }` (conservative for db.t3.micro)
-  - No schema changes, no migrations
-  - Unit test or integration assertion covering ssl and pool config
-  - Log change notes in handoff-log.md
+- [ ] **T-224** — Deploy Engineer: Production deployment to Render + AWS RDS ← Blocked on project owner (AWS + Render access)
 
-- [ ] **T-221** — Backend Engineer: Cookie `SameSite=none` + `Secure=true` in production (parallel with T-220)
-
-  - Set `sameSite: 'none'` and `secure: true` on refresh token cookie when `NODE_ENV === 'production'`
-  - Keep `sameSite: 'strict'` for development and staging
-  - Frontend (`triplanner-frontend.onrender.com`) and backend (`triplanner-backend.onrender.com`) are cross-origin on Render — this fix is required for auth to work in production
-  - Unit/integration test asserting production cookie config values
-  - Log change notes in handoff-log.md
-
-- [ ] **T-222** — Deploy Engineer: `render.yaml` blueprint + production deploy guide ← Blocked by T-220, T-221
-
-  **render.yaml** (project root) must define:
-  - Frontend: static site, buildCommand: `cd frontend && npm install && npm run build`, publishDir: `frontend/dist`, region: ohio, plan: free, envVar: `VITE_API_URL` pointing to backend service URL
-  - Backend: web service, runtime: node, buildCommand: `npm install`, startCommand: `node src/server.js`, region: ohio, plan: free, envVars: `NODE_ENV=production`, `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`
-  - No hardcoded secret values — all sensitive envVars as references/sync values
-
-  **docs/production-deploy-guide.md** must cover:
-  1. Render account setup + connecting repo
-  2. AWS RDS free-tier instance (PostgreSQL 15+, db.t3.micro, us-east-1, public access for Render)
-  3. Environment variable configuration in Render dashboard
-  4. Database migration: `knex migrate:latest` against RDS DATABASE_URL
-  5. Deploy trigger and confirm frontend/backend online
-  6. Post-deploy verification checklist (health, register, login, trips, calendar)
-
-  - Log handoff to QA (T-223) in handoff-log.md
-
----
-
-### Phase 3 — Pre-Production QA + Production Deploy + Monitor (sequential)
-
-- [ ] **T-223** — QA Engineer: Pre-production security + configuration review ← Blocked by T-220, T-221, T-222
-
-  - Verify T-220: knexfile.js production block has `ssl.rejectUnauthorized=false`, `pool.max=5`
-  - Verify T-221: production cookie config has `sameSite='none'`, `secure=true`; staging/dev unchanged
-  - Verify render.yaml: no hardcoded secrets (all as env var references)
-  - Review `docs/production-deploy-guide.md`: migration step present, env var setup documented, post-deploy checklist included
-  - Re-run `npm test --run` in `backend/` — confirm 340+ tests pass
-  - Re-run `npm audit` — confirm 0 vulnerabilities
-  - Full report in `qa-build-log.md` Sprint 26 section
-  - Log handoff to Deploy Engineer (T-224) in handoff-log.md
-
-- [ ] **T-224** — Deploy Engineer: Production deployment to Render + AWS RDS ← Blocked by T-223
-
-  Follow `docs/production-deploy-guide.md`:
-  1. Create AWS RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier)
-  2. Set up Render services using render.yaml
-  3. Configure all environment variables (DATABASE_URL, JWT_SECRET, NODE_ENV=production, FRONTEND_URL)
-  4. Run `knex migrate:latest` against production RDS
-  5. Trigger Render deploy — confirm frontend + backend online
-  6. Smoke tests: GET /health → 200; POST /auth/register → 201; frontend loads at Render URL
+  Follow `docs/production-deploy-guide.md` (T-222 output):
+  1. Create AWS RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier, public access for Render)
+  2. Set up Render services (frontend static site + backend web service, both Ohio region, free plan) using `render.yaml`
+  3. Configure all environment variables (DATABASE_URL pointing to RDS endpoint, JWT_SECRET generated, NODE_ENV=production, FRONTEND_URL, CORS_ORIGIN)
+  4. Run database migrations: `knex migrate:latest` against production RDS
+  5. Trigger Render deploy — confirm frontend and backend online
+  6. Smoke tests: GET /api/v1/health → 200; POST /auth/register → 201; frontend loads at Render URL
   - Log production URLs in handoff-log.md; handoff to Monitor Agent (T-225)
-  - Full report in `qa-build-log.md`
+  - Full report in `qa-build-log.md` Sprint 27 section
 
 - [ ] **T-225** — Monitor Agent: Post-production health check ← Blocked by T-224
 
   - GET https://[backend-render-url]/api/v1/health → 200 `{"status":"ok"}`
-  - Frontend loads at https://[frontend-render-url] — no JS errors
+  - Frontend loads at https://[frontend-render-url] — no JS errors in browser console
   - Registration: POST /auth/register → 201
   - Login: POST /auth/login → 200
   - Trips: GET /api/v1/trips → 200 (with auth)
   - Calendar: GET /api/v1/trips/:id/calendar → 200 (with auth)
   - HTTPS enforced
-  - Cookie: `SameSite=none; Secure` in Set-Cookie response header
-  - Full report in `qa-build-log.md` Sprint 26 section
-
----
-
-### Phase 4 — Monitor Agent Process Fix (P2 — parallel with Phase 2/3)
-
-- [ ] **T-226** — Backend Engineer: Monitor Agent health check process fix ← No blockers
-
-  - Create a seed script (`backend/seeds/test_user.js` or migration) that inserts a persistent staging test user (e.g., `test@triplanner.local` / `TestPass123!`)
-  - Update `.agents/monitor-agent.md` to document that health checks must use `POST /api/v1/auth/login` with the seeded test account to obtain a token — NOT `POST /api/v1/auth/register`
-  - Unit test: seed script creates user; login with seeded credentials returns 200
-  - This prevents the rate limiter exhaustion pattern (Sprint 22, Sprint 25) from recurring
+  - Cookie: `SameSite=None; Secure` in Set-Cookie response header for refresh token
+  - Full report in `qa-build-log.md` Sprint 27 section
 
 ---
 
@@ -145,7 +107,8 @@ The operational reference for the current development cycle. Refreshed at the st
 - **Calendar edit mode** — Calendar is read-only; editing remains via section forms below the calendar.
 - **MFA login, Home page summary calendar, auto-generated itinerary** — Explicitly out of scope per project brief.
 - **B-020 (Redis rate limiting), B-024 (per-account rate limiting)** — In-memory store sufficient at current scale.
-- **Custom domain setup** — Optional step in production deploy guide; not required for Sprint 26 success criteria.
+- **knexfile.js staging seeds config fix** — Minor, acknowledged; workaround exists (use `NODE_ENV=development npm run seed`). Not Sprint 27.
+- **New features** — No new feature work this sprint. Stabilize and ship production first.
 
 ---
 
@@ -153,82 +116,70 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Deploy Engineer | Playwright rerun (carry-over resolution) + render.yaml + production deploy | T-218, T-222, T-224 |
-| User Agent | Sprint 25/26 calendar + regression walkthrough | T-219 |
-| Backend Engineer | knexfile SSL config + cookie SameSite fix + Monitor process fix | T-220, T-221, T-226 |
-| QA Engineer | Pre-production security + configuration review | T-223 |
+| Backend Engineer | CORS ESM dotenv fix (Fix B) | T-228 |
+| Deploy Engineer | CORS pm2 ecosystem fix (Fix A) + production deploy | T-228, T-224 |
+| User Agent | Sprint 25/26 feature walkthrough (calendar + regression) | T-219 |
 | Monitor Agent | Post-production health check | T-225 |
-| Manager | T-219 feedback triage; T-220/T-221/T-222 code reviews; T-224 deploy gate review | Reviews |
+| Manager | T-228 code review; T-219 feedback triage; T-224 deploy gate review | Reviews |
+| QA Engineer | Add CORS header check to staging QA protocol (post-sprint improvement) | — |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-Phase 1 — Immediate (NO BLOCKERS):
-T-218 (Deploy: restart backend → Playwright 4/4)
+Phase 1 (IMMEDIATE — NO BLOCKERS):
+T-228 (Backend + Deploy: Fix CORS staging — Fix A + Fix B)
     |
-T-219 (User Agent: calendar + regression walkthrough)
+Phase 2:
+T-219 (User Agent: TripCalendar + regression walkthrough)
     |
 Manager triages T-219 feedback
 
-Phase 2 (parallel, no blockers except T-222):
-T-220 (Backend: knexfile SSL + pool)     T-221 (Backend: cookie SameSite fix)     T-226 (Backend: Monitor process fix — independent)
-          |                                          |
-          └──────────────────┬───────────────────────┘
-                             |
-T-222 (Deploy: render.yaml + deploy guide)
+Phase 3 (PROJECT OWNER GATE — parallel with Phase 1/2):
+[Project owner provides AWS RDS + Render credentials]
     |
-Phase 3 (sequential):
-T-223 (QA: pre-production review)
+T-224 (Deploy: Production deployment to Render + AWS RDS)
     |
-T-224 (Deploy: production deploy to Render + RDS)
+T-225 (Monitor: Post-production health check)
     |
-T-225 (Monitor: post-production health check)
-    |
-Manager: Triage T-219 + T-225 feedback → Sprint 27 plan
+Manager: Triage T-219 + T-225 feedback → Sprint 28 plan
 ```
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #26 is complete?*
+*How do we know Sprint #27 is complete?*
 
-- [ ] T-218: Backend restarted; `npx playwright test` → 4/4 PASS; qa-build-log.md updated
-- [ ] T-219: User Agent calendar walkthrough complete; all regression checks pass; structured feedback submitted to feedback-log.md
+- [ ] T-228: Fix A deployed — `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`
+- [ ] T-228: Fix B implemented — ESM dotenv hoisting refactored in `backend/src/index.js`; all 355+ backend tests pass
+- [ ] T-219: User Agent TripCalendar walkthrough complete; all regression checks pass; structured feedback submitted to feedback-log.md
 - [ ] T-219 feedback triaged by Manager (all entries Tasked, Acknowledged, or Won't Fix)
-- [ ] T-220: knexfile.js production config with SSL + pool — Manager-approved
-- [ ] T-221: Cookie SameSite=none + Secure=true in production — Manager-approved
-- [ ] T-222: render.yaml published to project root; `docs/production-deploy-guide.md` written; no hardcoded secrets
-- [ ] T-223: Pre-production QA PASS; 340+ backend tests; 0 vulnerabilities; security checklist complete
-- [ ] T-224: Production deployed to Render + AWS RDS; smoke tests pass; production URLs logged
-- [ ] T-225: Post-production health check complete; all 8 production checks pass; cookie SameSite verified
-- [ ] T-226: Monitor Agent process fix implemented; `.agents/monitor-agent.md` updated
-- [ ] Sprint 26 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 27 plan written in `.workflow/active-sprint.md`
+- [ ] T-224: Production deployed to Render + AWS RDS; smoke tests pass; production URLs logged in handoff-log.md *(conditional on project owner providing access)*
+- [ ] T-225: Post-production health check complete; all 8 production checks pass; SameSite=None cookie verified *(conditional on T-224)*
+- [ ] Sprint 27 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 28 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #26)
+## Success Criteria (Sprint #27)
 
-By end of Sprint #26, the following must be verifiable:
+By end of Sprint #27, the following must be verifiable:
 
-- [ ] **T-219 Done** — User Agent confirms TripCalendar renders correctly on staging with full regression suite passing
-- [ ] **T-224 Done** — Application is live in production at Render URLs; AWS RDS connected; migrations run
-- [ ] **T-225 Done** — Monitor confirms: health 200, HTTPS, auth working, calendar endpoint working, SameSite=none cookie confirmed
-- [ ] **B-022 Resolved** — Production deployment shipped after 25+ sprint deferral
-- [ ] **T-226 Done** — Monitor Agent health check process fixed; no future Playwright rate limiter failures
+- [ ] **T-228 Done** — Staging backend returns `Access-Control-Allow-Origin: https://localhost:4173` on OPTIONS/GET requests from staging frontend origin; browser-based API calls no longer CORS-blocked
+- [ ] **T-219 Done** — User Agent confirms TripCalendar renders correctly on staging; all Sprint 16/17/25 regression checks pass; structured feedback submitted
+- [ ] **T-224 Done** *(project owner dependent)* — Application is live in production at Render URLs; AWS RDS connected; migrations run
+- [ ] **T-225 Done** *(project owner dependent)* — Monitor confirms: health 200, HTTPS, auth working, calendar endpoint working, SameSite=none cookie confirmed
+- [ ] **B-022 Resolved** *(project owner dependent)* — Production deployment shipped after 26+ sprint deferral
 
 ---
 
 ## Blockers
 
-- **T-219 gate:** T-218 must complete (backend restart + Playwright 4/4) before User Agent can run T-219.
-- **T-222 gate:** T-220 and T-221 must both complete before render.yaml and deploy guide are written.
-- **T-224 gate:** T-223 QA review must pass before production deployment executes.
-- **AWS RDS credentials:** Deploy Engineer will need AWS account access to create the RDS instance. If project owner needs to provide AWS credentials, this must be noted in the T-224 handoff.
+- **T-228 is the gate for T-219.** User Agent browser testing cannot reliably proceed until the CORS mismatch is fixed and staging is confirmed working in a browser context.
+- **T-224 / T-225 are blocked on the project owner.** The project owner must provide AWS account access (to create RDS instance) and Render account access (to apply render.yaml Blueprint or create services manually). All code, config, and documentation are complete. Once access is provided, T-224 can execute immediately.
 
 ---
 
-*Previous sprint (Sprint #25) archived to `.workflow/sprint-log.md` on 2026-03-10. Sprint #26 plan written by Manager Agent 2026-03-10.*
+*Previous sprint (Sprint #26) archived to `.workflow/sprint-log.md` on 2026-03-11. Sprint #27 plan written by Manager Agent 2026-03-11.*

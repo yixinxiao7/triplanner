@@ -4,6 +4,94 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Manager Agent → All Agents** *(Sprint #26 Closed → Sprint #27 Kickoff)*
+
+**From:** Manager Agent
+**To:** Backend Engineer, Deploy Engineer, User Agent, Monitor Agent, QA Engineer
+**Re:** Sprint #26 closed — Sprint #27 plan published; priorities and assignments below
+
+**Status:** Sprint #27 Active — Begin Phase 1 (T-228) immediately
+
+---
+
+**Sprint #26 Outcome Summary:**
+
+| Task | Status |
+|------|--------|
+| T-218 (Deploy: Playwright 4/4 restart) | ✅ Done |
+| T-220 (Backend: knexfile.js production SSL + pool) | ✅ Done |
+| T-221 (Backend: Cookie SameSite=None in production) | ✅ Done |
+| T-222 (Deploy: render.yaml + deploy guide) | ✅ Done |
+| T-223 (QA: Pre-production review, 355/355 tests, 0 vulns) | ✅ Done |
+| T-226 (Backend: Monitor process fix — seeded test user) | ✅ Done |
+| T-227 (Deploy: Sprint 26 staging re-deploy) | ✅ Done |
+| T-219 (User Agent: walkthrough) | ⏭ Carried to Sprint 27 (4th carry-over) |
+| T-224 (Deploy: Production deploy) | ⛔ Blocked — project owner must provide AWS + Render access |
+| T-225 (Monitor: Post-production health check) | ⏭ Blocked on T-224 |
+
+**Sprint #27 Priorities:**
+
+**P0 — Backend Engineer + Deploy Engineer: T-228 — CORS staging fix (START IMMEDIATELY)**
+
+The Monitor Agent's Sprint 26 post-deploy health check found a Major bug:
+- Staging backend serves `Access-Control-Allow-Origin: http://localhost:5173` instead of `https://localhost:4173`
+- Root cause: ESM import hoisting in `backend/src/index.js` — `app.js` is imported before `dotenv.config()` runs, so `process.env.CORS_ORIGIN` is `undefined` when CORS middleware captures it
+- Impact: All browser-initiated API calls from staging frontend (`https://localhost:4173`) are CORS-blocked; login, trip creation, all authenticated flows fail in browser
+
+**Fix A (Deploy Engineer — immediate, no code change):**
+1. Add `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`
+2. `pm2 restart triplanner-backend`
+3. Verify: `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`
+
+**Fix B (Backend Engineer — permanent code fix):**
+1. Refactor `backend/src/index.js` to ensure dotenv loads before `app.js` executes
+   - Option: Use dynamic `import()` for `app.js` so dotenv runs synchronously first
+   - Option: Move `dotenv.config()` to the first line of `app.js` before any middleware
+2. Re-run `npm test --run` in `backend/` — confirm all 355+ tests still pass
+3. Add/update integration test asserting CORS origin is correctly read from `process.env.CORS_ORIGIN`
+4. Log results in `qa-build-log.md` Sprint 27 section
+5. Log handoff to User Agent (T-219) in handoff-log.md once Fix A is confirmed working
+
+Both fixes must be implemented. Fix A unblocks User Agent testing immediately; Fix B prevents recurrence.
+
+---
+
+**P0 — User Agent: T-219 — Feature walkthrough (after T-228 Fix A confirmed)**
+
+This is the 4th consecutive carry-over of the User Agent walkthrough. It **must** complete this sprint.
+
+Scope:
+1. TripCalendar component (Sprint 25 feature — primary verification)
+2. Full regression suite (StatusFilterTabs, TripStatusSelector, trip notes, destination validation, rate limiting, print button, date range on cards)
+
+Submit structured feedback to `feedback-log.md` under **"Sprint 27 User Agent Feedback"** with Category, Severity, and Status: New for each entry.
+
+---
+
+**P1 — Deploy Engineer: T-224 — Production deployment (PROJECT OWNER GATE)**
+
+⚠️ **Escalation to project owner:** Production deployment has been deferred for 26 sprints. All engineering is complete:
+- `render.yaml` Blueprint: ready (`/render.yaml`)
+- Production deploy guide: ready (`docs/production-deploy-guide.md`)
+- Backend config (SSL, SameSite): ready (T-220, T-221)
+- QA-verified: 355/355 tests pass, 0 vulnerabilities
+
+**What the project owner must provide:**
+1. AWS account access to create an RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier, ~$0/month within free tier)
+2. Render account — connect the GitHub repo, apply the render.yaml Blueprint (or create services manually per the deploy guide)
+
+Once access is provided, Deploy Engineer can execute T-224 immediately. All steps are documented in `docs/production-deploy-guide.md`.
+
+---
+
+**P1 — Monitor Agent: T-225 — Post-production health check (after T-224)**
+
+8-point production health check. Blockers: T-224 must complete first. Instructions in active-sprint.md.
+
+**Token acquisition reminder:** Use `POST /api/v1/auth/login` with `test@triplanner.local` / `TestPass123!` (seeded via T-226) — do NOT use `POST /auth/register` for token acquisition. This was the root cause of Sprint 22 and Sprint 25 Playwright failures.
+
+---
+
 **[2026-03-11] Deploy Engineer → Monitor Agent** *(Sprint #26 — T-227 Done: Staging Deploy Complete → Post-Deploy Health Check)*
 
 **From:** Deploy Engineer

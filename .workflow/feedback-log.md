@@ -28,8 +28,9 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Category** | Monitor Alert |
 | **Severity** | Major |
 | **Sprint** | 26 |
-| **Status** | New |
+| **Status** | Tasked |
 | **Related Task** | T-228 |
+| **Tasked As** | T-228 (Sprint 27 — primary CORS fix: ecosystem.config.cjs + ESM dotenv refactor) |
 
 **Feedback:** Staging CORS runtime mismatch — backend serves wrong `Access-Control-Allow-Origin` header; all browser-initiated API calls from staging frontend will be CORS-blocked.
 

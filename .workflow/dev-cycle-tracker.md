@@ -1870,7 +1870,7 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
 | T-218 | Deploy Engineer: Restart triplanner-backend to clear in-memory rate limiter state (`pm2 restart triplanner-backend`), then immediately re-run `npx playwright test` — expect 4/4 PASS. This resolves the T-216 Playwright partial-fail (root cause: Monitor Agent health check curl registration exhausted localhost rate limit window; restart clears in-memory state). Once 4/4 PASS confirmed: update qa-build-log.md T-216 section with rerun results; log handoff to User Agent (T-219) in handoff-log.md. | 26 | Deploy Engineer | Done | P0 | None — START IMMEDIATELY | Resolves carry-over T-216 Playwright gate. **Done 2026-03-11 (second attempt):** pm2 restart triplanner-backend (PID 63803) ✅. `npx playwright test` → **4/4 PASS** (11.1s). Health check 200 ✅. qa-build-log.md updated. Handoff to User Agent (T-219) logged. |
-| T-219 | User Agent: Sprint 25/26 feature walkthrough (carry-over of T-217). (1) Calendar component: TripDetailsPage shows live TripCalendar (not placeholder) at top of page; flights/stays/activities render on calendar grid; each event type visually distinct (FLIGHT/STAY/ACTIVITY color-coded pills); clicking an event scrolls to corresponding section. (2) Calendar empty state: trip with no sub-resources shows empty state message (not placeholder). (3) Regression — StatusFilterTabs: All/Planning/Ongoing/Completed pills; filter with 0 matches → empty state + reset link. (4) Regression — TripStatusSelector: badge shows status; click → update in place; keyboard nav; Home page sync. (5) Regression — Trip notes: edit/save/clear/char count. (6) Regression — Destination validation: 101-char → 400 human-friendly error. (7) Regression — Rate limiting: lockout after 10 login attempts. (8) Regression — Sprint 17: print button. Sprint 16: date range on trip cards. Submit structured feedback to feedback-log.md under "Sprint 26 User Agent Feedback". | 26 | User Agent | Backlog | P0 | T-218 | Carry-over of T-217 (Sprint 25). |
+| T-219 | User Agent: Sprint 25/26 feature walkthrough (carry-over of T-217). (1) Calendar component: TripDetailsPage shows live TripCalendar (not placeholder) at top of page; flights/stays/activities render on calendar grid; each event type visually distinct (FLIGHT/STAY/ACTIVITY color-coded pills); clicking an event scrolls to corresponding section. (2) Calendar empty state: trip with no sub-resources shows empty state message (not placeholder). (3) Regression — StatusFilterTabs: All/Planning/Ongoing/Completed pills; filter with 0 matches → empty state + reset link. (4) Regression — TripStatusSelector: badge shows status; click → update in place; keyboard nav; Home page sync. (5) Regression — Trip notes: edit/save/clear/char count. (6) Regression — Destination validation: 101-char → 400 human-friendly error. (7) Regression — Rate limiting: lockout after 10 login attempts. (8) Regression — Sprint 17: print button. Sprint 16: date range on trip cards. Submit structured feedback to feedback-log.md under "Sprint 27 User Agent Feedback". | 26 | User Agent | Backlog | P0 | T-218 | Carry-over of T-217 (Sprint 25). **Carried to Sprint 27 — blocked by T-228 (CORS staging fix must complete before browser-based User Agent testing can proceed).** Now a 4-sprint carry-over. |
 
 ---
 
@@ -1975,6 +1975,39 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 - T-225: Backlog — Monitor health check (blocked on T-224)
 
 **Pipeline is healthy. No rework required.**
+
+---
+
+## Sprint 27 Tasks
+
+**Sprint 27 Kickoff (Manager Agent — 2026-03-11):** Three priorities: (1) Fix the Major CORS staging bug (T-228) — ESM dotenv hoisting causes wrong `Access-Control-Allow-Origin` header in staging, blocking all browser-initiated API calls. Fix A = add `CORS_ORIGIN` to pm2 ecosystem.config.cjs env block + restart; Fix B = refactor ESM import order in `backend/src/index.js`. (2) Complete T-219 User Agent walkthrough — now 4-sprint carry-over; must not slip again. (3) Carry T-224/T-225 forward — project owner must provision AWS RDS + Render accounts before production deploy can proceed.
+
+**Test baseline at Sprint 27 kickoff:** 355/355 backend | 486/486 frontend
+
+---
+
+### Phase 1 — CORS Staging Fix (P0 — NO BLOCKERS — START IMMEDIATELY)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-228 | Fix CORS staging mismatch — ESM dotenv hoisting root cause. **Fix A (Deploy Engineer):** Add `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`; `pm2 restart triplanner-backend`; verify via `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`. **Fix B (Backend Engineer):** Refactor `backend/src/index.js` to load dotenv before `app.js` executes — either use dynamic `import()` for app.js, or move `dotenv.config()` as the first statement in `app.js` before any middleware. Re-run `npm test --run` in backend/ — all 355+ tests must pass. Add/update integration test asserting CORS header is correctly read from env. Log CORS verification result in `qa-build-log.md` Sprint 27 section. Log handoff to User Agent (T-219) in `handoff-log.md`. | 27 | Backend Engineer + Deploy Engineer | Backlog | P0 | None — START IMMEDIATELY | From Monitor Alert Sprint #26 (Tasked as T-228). |
+
+---
+
+### Phase 2 — User Agent Walkthrough (P0 — after T-228)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-219 | User Agent: Sprint 25/26 feature walkthrough (carry-over from Sprint 25 T-217). (1) Calendar: TripDetailsPage shows live TripCalendar (not placeholder); flights/stays/activities render on calendar grid; each event type visually distinct; clicking an event scrolls to corresponding section. (2) Calendar empty state: trip with no sub-resources shows empty state (not placeholder). (3) Regression — StatusFilterTabs: All/Planning/Ongoing/Completed pills; 0-match filter → empty state + reset link. (4) Regression — TripStatusSelector: badge shows status; click → update; keyboard nav; Home page sync. (5) Regression — Trip notes: edit/save/clear/char count. (6) Regression — Destination validation: 101-char → 400 human-friendly error. (7) Regression — Rate limiting: lockout after 10 login attempts. (8) Print button (Sprint 17). Date range on trip cards (Sprint 16). Submit structured feedback to feedback-log.md under "Sprint 27 User Agent Feedback". | 27 | User Agent | Backlog | P0 | T-228 | Carry-over from Sprint 26 (originally Sprint 25 T-217). 4th consecutive carry-over. Must complete this sprint. |
+
+---
+
+### Phase 3 — Production Deployment (P1 — project owner gate)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS. Follow `docs/production-deploy-guide.md`: (1) Create AWS RDS PostgreSQL 15 (db.t3.micro, us-east-1, free tier). (2) Set up Render services using render.yaml. (3) Configure env vars (DATABASE_URL, JWT_SECRET, NODE_ENV=production, FRONTEND_URL, CORS_ORIGIN). (4) Run `knex migrate:latest` against production RDS. (5) Trigger Render deploy. (6) Smoke tests: GET /api/v1/health → 200; POST /auth/register → 201; frontend loads at Render URL. Log production URLs in handoff-log.md; handoff to Monitor Agent (T-225). Full report in qa-build-log.md. | 27 | Deploy Engineer | Blocked | P1 | Project owner must provide AWS + Render access | Carry-over from Sprint 26. All code/config ready. Sole blocker: project owner must provision AWS account (RDS) + Render account. Full instructions in docs/production-deploy-guide.md. |
+| T-225 | Monitor Agent: Post-production health check. (1) GET https://[backend-render-url]/api/v1/health → 200. (2) Frontend loads at https://[frontend-render-url] — no JS errors. (3) POST /auth/register → 201. (4) POST /auth/login → 200. (5) GET /api/v1/trips → 200 (with auth). (6) GET /api/v1/trips/:id/calendar → 200 (with auth). (7) HTTPS enforced. (8) Set-Cookie: SameSite=None; Secure in response headers. Full report in qa-build-log.md Sprint 27 section. | 27 | Monitor Agent | Backlog | P1 | T-224 | Carry-over from Sprint 26. First production health check. |
 
 ---
 

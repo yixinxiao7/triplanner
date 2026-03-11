@@ -2737,4 +2737,87 @@ All tasks remain in Backlog status. None progressed.
 
 ---
 
+### Sprint #26 — 2026-03-10 to 2026-03-11
+
+**Goal:** (1) Close Sprint 25 carry-overs — restart backend to clear rate limiter, confirm Playwright 4/4, run User Agent calendar walkthrough. (2) Ship production deployment — implement three engineering pre-requisites (knexfile SSL config, cookie SameSite fix, render.yaml + deploy guide), then deploy to Render + AWS RDS and verify. (3) Fix Monitor Agent health check process to prevent rate limiter exhaustion from recurring.
+
+**Goal Met:** ⚠️ PARTIALLY MET — All engineering pre-requisites for production deployment completed, QA-verified, and staged. The Monitor Agent process fix shipped. However, T-224 (production deployment) is blocked on the project owner providing AWS account and Render account access — no agent tool has permission to provision external cloud infrastructure. T-219 (User Agent walkthrough) did not run, carrying over for the fourth consecutive sprint. T-225 (post-production health check) is blocked on T-224. A new Major staging CORS bug was discovered by the Monitor Agent post-deploy check, blocking browser-based testing on staging.
+
+---
+
+**Tasks Completed (8/11):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-218 | Deploy Engineer: Restart triplanner-backend to clear in-memory rate limiter; Playwright 4/4 PASS | ✅ Done |
+| T-220 | Backend Engineer: knexfile.js production SSL + connection pool config for AWS RDS | ✅ Done |
+| T-221 | Backend Engineer: Cookie SameSite=none + Secure=true in production (cross-origin Render deploy) | ✅ Done |
+| T-222 | Deploy Engineer: render.yaml blueprint + docs/production-deploy-guide.md | ✅ Done |
+| T-223 | QA Engineer: Pre-production security + configuration review (355/355 backend, 486/486 frontend, 0 vulns) | ✅ Done |
+| T-226 | Backend Engineer: Monitor Agent process fix — seeded test user; monitor-agent.md updated to login not register | ✅ Done |
+| T-227 | Deploy Engineer: Sprint 26 staging re-deployment (pm2 restart/reload, smoke tests pass) | ✅ Done |
+| CR-26 | Manager: Code review pass #2 — spot-checked T-220/T-221/T-222/T-226; all prior approvals confirmed correct | ✅ Done |
+
+**Tasks Carried Over (3/11):**
+
+| ID | Description | Reason | Sprint 27 Status |
+|----|-------------|--------|-----------------|
+| T-219 | User Agent: Sprint 25/26 feature walkthrough (TripCalendar + full regression) | Did not run (fourth consecutive carry-over). T-228 CORS fix must complete first. | Carry → Sprint 27 (blocked by T-228) |
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS | Blocked — project owner must provision AWS RDS instance and Render account. All code/config is production-ready; no engineering blockers remain. | Carry → Sprint 27 (blocked on project owner) |
+| T-225 | Monitor Agent: Post-production health check | Blocked on T-224 (production deploy must complete first) | Carry → Sprint 27 (blocked by T-224) |
+
+---
+
+**Key Decisions / Approvals This Sprint:**
+
+- **Production stack finalized (from FB-112, Sprint 17 recovery):** Frontend → Render free tier static site (Ohio). Backend → Render free tier web service (Ohio). Database → AWS RDS PostgreSQL 15, db.t3.micro, us-east-1. render.yaml blueprint and production deploy guide written and reviewed.
+- **ESM dotenv hoisting root cause confirmed:** `backend/src/index.js` statically imports `app.js` before `dotenv.config()` runs, so `process.env.CORS_ORIGIN` is undefined at the time CORS middleware captures it. This causes the staging CORS mismatch. Fix requires adding `CORS_ORIGIN` to pm2 ecosystem env block (fast fix) and refactoring the ESM import order (permanent fix) — both tasked as T-228.
+- **Monitor Agent token acquisition protocol updated:** `test@triplanner.local` seeded in `backend/src/seeds/test_user.js`. Monitor Agent must use `POST /auth/login` with this account to obtain tokens — not `POST /auth/register`. Protocol documented in `.agents/monitor-agent.md`.
+- **knexfile.js production config:** `ssl: { rejectUnauthorized: false }` and `pool: { min: 1, max: 5 }` confirmed correct for AWS RDS free tier. No hardcoded secrets — reads `DATABASE_URL` from env.
+- **Cookie SameSite strategy for cross-origin Render deploy:** `getSameSite()` returns `'none'` in production only; `isSecureCookie()` returns `true` in production. Both `setRefreshCookie` and `clearRefreshCookie` use helpers. Staging/dev unchanged at `'strict'`.
+
+---
+
+**Feedback Summary (Sprint 26):**
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| Monitor Alert Sprint #26 (CORS mismatch) | Monitor Alert | Major | **Tasked → T-228** | Staging backend serves `Access-Control-Allow-Origin: http://localhost:5173` instead of `https://localhost:4173` — ESM import hoisting root cause. All browser-initiated API calls fail on staging. |
+| Monitor Alert Sprint #26 (secondary: knexfile seeds config) | Monitor Alert | Minor | **Acknowledged** | Staging knexfile.js missing `seeds: { directory: seedsDir }` block — `NODE_ENV=staging npm run seed` fails with ENOENT. Workaround: use `NODE_ENV=development`. Backlog. |
+
+---
+
+**What Went Well:**
+- All three production deployment engineering pre-requisites (T-220, T-221, T-222) shipped in a single sprint with zero rework — clean code review and QA pass first time.
+- Monitor Agent process fix (T-226) finally implemented after causing Playwright failures in Sprint 22 and Sprint 25. Seeded test user + login-not-register protocol prevents future rate limiter exhaustion from health checks.
+- T-223 QA pass was comprehensive: 355/355 backend tests, 486/486 frontend tests, 0 npm vulnerabilities, all security checklist items pass, render.yaml verified for secret hygiene.
+- T-218 Playwright 4/4 PASS confirmed on restart — the T-216 carry-over root cause was correctly identified as a process issue (not a regression), and the fix took seconds.
+- render.yaml and production deploy guide are complete and reviewed. As soon as the project owner provisions AWS RDS + Render, production deployment can execute immediately with no further engineering prep.
+
+**What Could Improve:**
+- **T-219 User Agent walkthrough is now a 4-sprint carry-over.** The User Agent has not run since Sprint 24 (T-210 mega-walkthrough). This creates a growing feedback gap. Sprint 27 must treat T-219 as the highest-priority non-infra task; the pipeline should not advance to the next sprint without it completing.
+- **CORS staging bug not caught pre-deploy.** The Monitor Agent post-deploy check found the CORS mismatch only after T-227 staging re-deploy. QA should add an explicit CORS header check (curl with `Origin: https://localhost:4173` header, verify response header) to the pre-deploy gate.
+- **T-224 project owner dependency is now the sole blocker for production launch.** Production has been deferred 26 sprints. An explicit escalation to the project owner (with clear action items: provide AWS + Render access) should be in the Sprint 27 handoff.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence; will not survive pm2 restarts in production
+- ⚠️ B-024: Auth rate limit is IP-only — aggressive on shared-IP environments
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests in `formatDate.test.js`
+
+*New this sprint:*
+- ⚠️ knexfile.js staging block missing `seeds: { directory: seedsDir }` — `NODE_ENV=staging npm run seed` fails; workaround is `NODE_ENV=development npm run seed` (Minor, backlog)
+- ⚠️ ESM dotenv hoisting in `backend/src/index.js` — static import of `app.js` before `dotenv.config()` runs; any env var not in pm2 ecosystem config will silently default (T-228 fixes this)
+
+*Resolved this sprint:*
+- ✅ Monitor Agent health check rate limiter exhaustion (Sprint 22, Sprint 25 pattern) — resolved by T-226 (seeded test user + login protocol)
+- ✅ Production knexfile, cookie SameSite, and render.yaml all production-ready (T-220, T-221, T-222)
+
+---
+
+*Sprint #26 began 2026-03-10, closed 2026-03-11.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*
