@@ -25,9 +25,19 @@ export function deduplicateDestinations(destinations) {
 /**
  * Trip column selection.
  *
- * start_date / end_date — T-163 (Sprint 16):
- *   Computed at read time as the MIN/MAX date across all event tables for the trip.
- *   Sources:
+ * start_date / end_date — T-163 (Sprint 16) + T-229 (Sprint 28):
+ *   Resolved at read time with the following priority:
+ *     1. User-provided value stored in trips.start_date / trips.end_date (highest priority).
+ *     2. Computed MIN/MAX date across all event tables for the trip (fallback when stored
+ *        value is NULL — i.e., the user has not explicitly set a date).
+ *
+ *   T-229 fix: Wraps the LEAST()/GREATEST() sub-resource aggregate in
+ *   COALESCE(trips.start_date, LEAST(...)) so that a value explicitly saved by the user
+ *   via PATCH /trips/:id is always returned as-is, regardless of what sub-resource dates
+ *   are attached to the trip. When trips.start_date IS NULL, the aggregate is used instead,
+ *   preserving the original Sprint 16 behaviour for trips with no explicit date set.
+ *
+ *   Event sources for the aggregate fallback:
  *     flights     — DATE(departure_at), DATE(arrival_at)
  *     stays       — DATE(check_in_at),  DATE(check_out_at)
  *     activities  — activity_date
@@ -35,7 +45,7 @@ export function deduplicateDestinations(destinations) {
  *
  *   PostgreSQL LEAST()/GREATEST() ignore individual NULL arguments and return NULL
  *   only when ALL inputs are NULL (i.e., the trip has no events at all).
- *   Dates are returned as YYYY-MM-DD strings via TO_CHAR on the LEAST/GREATEST result.
+ *   Dates are returned as YYYY-MM-DD strings via TO_CHAR on the outer COALESCE result.
  *
  *   No schema migration is required — these are pure read-time computations.
  */
@@ -48,28 +58,34 @@ const TRIP_COLUMNS = [
   'notes',   // T-103 — nullable trip notes/description field (max 2000 chars)
   db.raw(`
     TO_CHAR(
-      LEAST(
-        (SELECT MIN(DATE(departure_at)) FROM flights      WHERE trip_id = trips.id),
-        (SELECT MIN(DATE(arrival_at))   FROM flights      WHERE trip_id = trips.id),
-        (SELECT MIN(DATE(check_in_at))  FROM stays        WHERE trip_id = trips.id),
-        (SELECT MIN(DATE(check_out_at)) FROM stays        WHERE trip_id = trips.id),
-        (SELECT MIN(activity_date)      FROM activities   WHERE trip_id = trips.id),
-        (SELECT MIN(departure_date)     FROM land_travels WHERE trip_id = trips.id),
-        (SELECT MIN(arrival_date)       FROM land_travels WHERE trip_id = trips.id)
+      COALESCE(
+        trips.start_date,
+        LEAST(
+          (SELECT MIN(DATE(departure_at)) FROM flights      WHERE trip_id = trips.id),
+          (SELECT MIN(DATE(arrival_at))   FROM flights      WHERE trip_id = trips.id),
+          (SELECT MIN(DATE(check_in_at))  FROM stays        WHERE trip_id = trips.id),
+          (SELECT MIN(DATE(check_out_at)) FROM stays        WHERE trip_id = trips.id),
+          (SELECT MIN(activity_date)      FROM activities   WHERE trip_id = trips.id),
+          (SELECT MIN(departure_date)     FROM land_travels WHERE trip_id = trips.id),
+          (SELECT MIN(arrival_date)       FROM land_travels WHERE trip_id = trips.id)
+        )
       ),
       'YYYY-MM-DD'
     ) AS start_date
   `),
   db.raw(`
     TO_CHAR(
-      GREATEST(
-        (SELECT MAX(DATE(departure_at)) FROM flights      WHERE trip_id = trips.id),
-        (SELECT MAX(DATE(arrival_at))   FROM flights      WHERE trip_id = trips.id),
-        (SELECT MAX(DATE(check_in_at))  FROM stays        WHERE trip_id = trips.id),
-        (SELECT MAX(DATE(check_out_at)) FROM stays        WHERE trip_id = trips.id),
-        (SELECT MAX(activity_date)      FROM activities   WHERE trip_id = trips.id),
-        (SELECT MAX(departure_date)     FROM land_travels WHERE trip_id = trips.id),
-        (SELECT MAX(arrival_date)       FROM land_travels WHERE trip_id = trips.id)
+      COALESCE(
+        trips.end_date,
+        GREATEST(
+          (SELECT MAX(DATE(departure_at)) FROM flights      WHERE trip_id = trips.id),
+          (SELECT MAX(DATE(arrival_at))   FROM flights      WHERE trip_id = trips.id),
+          (SELECT MAX(DATE(check_in_at))  FROM stays        WHERE trip_id = trips.id),
+          (SELECT MAX(DATE(check_out_at)) FROM stays        WHERE trip_id = trips.id),
+          (SELECT MAX(activity_date)      FROM activities   WHERE trip_id = trips.id),
+          (SELECT MAX(departure_date)     FROM land_travels WHERE trip_id = trips.id),
+          (SELECT MAX(arrival_date)       FROM land_travels WHERE trip_id = trips.id)
+        )
       ),
       'YYYY-MM-DD'
     ) AS end_date
