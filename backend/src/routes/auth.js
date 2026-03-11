@@ -36,11 +36,17 @@ function isSecureCookie() {
   return process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
 }
 
+function getSameSite() {
+  // Production (Render cross-origin): SameSite=None required for cross-domain cookies.
+  // Dev/staging: SameSite=Strict is sufficient and more secure.
+  return process.env.NODE_ENV === 'production' ? 'none' : 'strict';
+}
+
 function setRefreshCookie(res, token) {
   res.cookie('refresh_token', token, {
     httpOnly: true,
     secure: isSecureCookie(),
-    sameSite: 'strict',
+    sameSite: getSameSite(),
     path: '/api/v1/auth',
     maxAge: REFRESH_TOKEN_SECONDS * 1000, // ms
   });
@@ -50,7 +56,7 @@ function clearRefreshCookie(res) {
   res.cookie('refresh_token', '', {
     httpOnly: true,
     secure: isSecureCookie(),
-    sameSite: 'strict',
+    sameSite: getSameSite(),
     path: '/api/v1/auth',
     maxAge: 0,
     expires: new Date(0),
