@@ -1513,5 +1513,120 @@ Backend-only change. No frontend code modified. UI spec unchanged. N/A ✅
 
 *QA Engineer Sprint #27 Re-Verification Pass — 2026-03-11*
 
+---
+
+## Sprint #27 — Deploy Engineer Build + Staging Verification (Pass #2)
+
+**Date:** 2026-03-11
+**Agent:** Deploy Engineer
+**Sprint:** 27
+**Tasks:** T-228 (deployed), T-219 (staging ready), T-224 (Blocked — project owner gate)
+
+---
+
+### Pre-Deploy Checks
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| QA confirmation in handoff-log.md | ✅ CONFIRMED | QA Engineer Sprint #27 handoff (2026-03-11): T-228 Integration Check PASSED — 363/363 backend + 486/486 frontend, 0 vulnerabilities |
+| Pending migrations | ✅ NONE | Sprint 27: No new migrations. Sprint 26: No new migrations. All 10 migrations (001–010) applied on staging. No `knex migrate:latest` required. |
+| Sprint 27 tasks verified Done | ✅ T-228 Done | T-219 Backlog (User Agent gate), T-224 Blocked (project owner gate), T-225 Backlog (blocked on T-224) |
+
+---
+
+### Build
+
+**Date:** 2026-03-11
+**Branch:** Current working branch (T-228 CORS fix)
+
+#### Backend Dependencies
+
+```
+cd backend && npm install
+→ 0 vulnerabilities ✅
+```
+
+#### Frontend Dependencies
+
+```
+cd frontend && npm install
+→ 0 vulnerabilities ✅
+```
+
+#### Frontend Production Build
+
+```
+cd frontend && npm run build
+
+vite v6.4.1 building for production...
+✓ 128 modules transformed.
+dist/index.html                   0.46 kB │ gzip:   0.29 kB
+dist/assets/index-CPOhaw0p.css   84.43 kB │ gzip:  13.30 kB
+dist/assets/index-Bz9Y7ALz.js   345.83 kB │ gzip: 105.16 kB
+✓ built in 469ms
+```
+
+**Build Status: ✅ SUCCESS** — 128 modules transformed, 0 errors, 0 warnings.
+
+---
+
+### Staging Environment Verification
+
+**Environment:** Local staging via pm2 (SSL on port 3001 backend, port 4173 frontend)
+**No new deployment required** — pm2 processes already running with T-228 Fix A (ecosystem.config.cjs) and Fix B (index.js dynamic import). Verified against fresh build output.
+
+#### pm2 Process Status
+
+| Process | PID | Status | Restarts | Uptime |
+|---------|-----|--------|----------|--------|
+| triplanner-backend | 70180 | ✅ online | 0 | 19m |
+| triplanner-frontend | 64982 | ✅ online | 6 | 4h |
+
+#### Health Check Results
+
+| Check | Command | Result |
+|-------|---------|--------|
+| Health endpoint | `curl -sk https://localhost:3001/api/v1/health` | ✅ `200 {"status":"ok"}` |
+| CORS — GET origin header | `-H "Origin: https://localhost:4173"` | ✅ `Access-Control-Allow-Origin: https://localhost:4173` |
+| CORS — credentials | — | ✅ `Access-Control-Allow-Credentials: true` |
+| OPTIONS preflight | `curl -sk -I -X OPTIONS ...` | ✅ `204 No Content` |
+| Preflight CORS methods | — | ✅ `Access-Control-Allow-Methods: GET,HEAD,PUT,PATCH,POST,DELETE` |
+
+**Staging Status: ✅ HEALTHY**
+
+---
+
+### Deployment Log
+
+| Field | Value |
+|-------|-------|
+| Environment | Staging (local pm2) |
+| Backend URL | `https://localhost:3001` |
+| Frontend URL | `https://localhost:4173` |
+| Backend process | pm2 `triplanner-backend` (pid 70180) |
+| Frontend process | pm2 `triplanner-frontend` (pid 64982) |
+| Build Status | ✅ Success |
+| Migrations run | None (all 10 already applied; no new migrations for Sprint 27) |
+| CORS fix (T-228) | ✅ Verified — Fix A (ecosystem.config.cjs) + Fix B (index.js dynamic import) both active |
+
+---
+
+### Summary
+
+| Step | Status | Notes |
+|------|--------|-------|
+| Pre-deploy: QA confirmation | ✅ PASS | T-228 Integration Check PASSED (363/363 backend, 486/486 frontend) |
+| Pre-deploy: migration check | ✅ PASS | No pending migrations for Sprint 27 |
+| Backend `npm install` | ✅ PASS | 0 vulnerabilities |
+| Frontend `npm install` | ✅ PASS | 0 vulnerabilities |
+| Frontend `npm run build` | ✅ PASS | 128 modules, built in 469ms |
+| Staging health check | ✅ PASS | `GET /api/v1/health` → `200 {"status":"ok"}` |
+| CORS verification | ✅ PASS | `Access-Control-Allow-Origin: https://localhost:4173` |
+| T-219 staging ready | ✅ PASS | User Agent may proceed at `https://localhost:4173` |
+| T-224 production deploy | ⛔ BLOCKED | Project owner must provision AWS RDS + Render — human gate |
+
+**Overall: ✅ Staging build and deployment VERIFIED — Sprint #27**
+
+*Deploy Engineer Sprint #27 Pass #2 — 2026-03-11*
 
 *Deploy Engineer Sprint #27 final verification — 2026-03-11*

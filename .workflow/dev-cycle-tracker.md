@@ -2104,3 +2104,35 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 
 ---
 
+### Sprint 27 — Deploy Engineer: Build + Staging Verification Pass #2 (2026-03-11)
+
+**Deploy Engineer pass #2 complete (2026-03-11):**
+
+Fresh build verified and staging re-confirmed healthy. No new code changes since prior Deploy Engineer pass.
+
+**Build results:**
+- Backend `npm install` → ✅ 0 vulnerabilities
+- Frontend `npm install` → ✅ 0 vulnerabilities
+- Frontend `npm run build` → ✅ 128 modules, built in 469ms (0 errors, 0 warnings)
+
+**Staging health:**
+- `triplanner-backend` pm2 online (pid 70180, 0 restarts) — `GET https://localhost:3001/api/v1/health` → `200 {"status":"ok"}` ✅
+- `triplanner-frontend` pm2 online (pid 64982) ✅
+- CORS: `Access-Control-Allow-Origin: https://localhost:4173` ✅
+- OPTIONS preflight → `204 No Content` + correct CORS headers ✅
+- T-228 Fix A + Fix B both confirmed active ✅
+
+**No migrations needed** — Sprint 27 is schema-stable. All 10 migrations (001–010) applied on staging.
+
+**Handoff logged** to Monitor Agent in `handoff-log.md` — requesting post-deploy health check pass.
+
+**Sprint 27 final task board:**
+- T-228: ✅ Done — CORS fix deployed, QA passed, staging healthy
+- T-219: Backlog — User Agent walkthrough (unblocked; staging ready at `https://localhost:4173`)
+- T-224: ⛔ Blocked — project owner must provision AWS RDS + Render (human gate)
+- T-225: Backlog — blocked on T-224
+
+*Deploy Engineer Sprint #27 Pass #2 — 2026-03-11*
+
+---
+

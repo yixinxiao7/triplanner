@@ -4379,3 +4379,66 @@ Prior Manager pass (CR-27, 2026-03-11) already reviewed and approved T-228. It h
 **No new handoffs required.** Deploy Engineer already received the prior readiness handoff and confirmed staging healthy. User Agent (T-219) is unblocked and may proceed.
 
 *QA Engineer Sprint #27 Re-Verification Pass — 2026-03-11*
+
+---
+
+**[2026-03-11] Deploy Engineer → Monitor Agent** *(Sprint #27 — Build Verified + Staging Healthy — Health Check Requested)*
+
+**From:** Deploy Engineer
+**To:** Monitor Agent
+**Re:** Sprint #27 staging build verified — requesting post-deploy health check pass
+**Date:** 2026-03-11
+
+**Status:** ✅ Build SUCCESS | ✅ Staging HEALTHY | ⛔ T-224 Blocked (project owner gate)
+
+---
+
+**Build Summary:**
+
+- Backend `npm install` → ✅ 0 vulnerabilities
+- Frontend `npm install` → ✅ 0 vulnerabilities
+- Frontend `npm run build` → ✅ 128 modules transformed, built in 469ms (vite v6.4.1)
+- No new migrations (Sprint 27 is schema-stable; all 10 migrations 001–010 applied on staging)
+
+**Staging Services:**
+
+| Service | URL | pm2 Status | Restarts |
+|---------|-----|-----------|---------|
+| Backend | `https://localhost:3001` | ✅ online (pid 70180) | 0 |
+| Frontend | `https://localhost:4173` | ✅ online (pid 64982) | 6 |
+
+**Health Verification (Deploy Engineer):**
+
+| Check | Result |
+|-------|--------|
+| `GET https://localhost:3001/api/v1/health` | ✅ `200 {"status":"ok"}` |
+| `Access-Control-Allow-Origin: https://localhost:4173` | ✅ PASS |
+| `Access-Control-Allow-Credentials: true` | ✅ PASS |
+| OPTIONS preflight → 204 No Content | ✅ PASS |
+| T-228 CORS fix active | ✅ Fix A (ecosystem.config.cjs) + Fix B (index.js dynamic import) confirmed |
+
+---
+
+**Action Required from Monitor Agent:**
+
+Please run your full post-deploy health check suite against staging:
+
+1. `GET https://localhost:3001/api/v1/health` → verify `200 {"status":"ok"}`
+2. Frontend loads at `https://localhost:4173` — no JS errors
+3. Auth flow: login as `test@triplanner.local` / `TestPass123!` → verify `200` + tokens
+4. `GET https://localhost:3001/api/v1/trips` (with auth) → verify `200`
+5. `GET https://localhost:3001/api/v1/trips/:id/calendar` (with auth, valid trip ID) → verify `200`
+6. CORS headers present: `Access-Control-Allow-Origin: https://localhost:4173`
+7. `Access-Control-Allow-Credentials: true`
+
+Log your health check results in `qa-build-log.md` under Sprint #27 and log your findings back here in `handoff-log.md`.
+
+**Note on T-219:** User Agent is unblocked and may proceed with the Sprint 25/26 walkthrough at `https://localhost:4173` using credentials `test@triplanner.local` / `TestPass123!`.
+
+**Note on T-224:** Production deployment remains ⛔ Blocked pending project owner provisioning of AWS RDS + Render account. No agent action can unblock this — it is a human gate. Full instructions in `docs/production-deploy-guide.md`.
+
+Full build report: `.workflow/qa-build-log.md` → "Sprint #27 — Deploy Engineer Build + Staging Verification (Pass #2)"
+
+*Deploy Engineer Sprint #27 Pass #2 — 2026-03-11*
+
+---
