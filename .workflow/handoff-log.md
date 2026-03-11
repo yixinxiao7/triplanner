@@ -2874,3 +2874,75 @@ Contract implemented in `frontend/src/utils/api.js` under `api.calendar.get(trip
 - Mobile day-list shows all days with events in the currently displayed month (not just today).
 - Multi-day STAY events span across day cells in the desktop grid (start/middle/end visual treatment).
 
+
+---
+
+**[2026-03-10] Manager Agent → QA Engineer** *(Sprint #25 — T-212 + T-213 Code Review PASSED → T-214 Unblocked)*
+
+**From:** Manager Agent
+**To:** QA Engineer
+**Re:** Sprint 25 — T-212 (calendar backend) and T-213 (TripCalendar frontend) passed Manager code review. T-214 is now unblocked.
+
+**Status:** Both T-212 and T-213 moved to **Integration Check**. T-214 (QA: security checklist + test re-verification) is **UNBLOCKED — start immediately**.
+
+---
+
+### T-212 Review Result — APPROVED
+
+**What was reviewed:** `GET /api/v1/trips/:id/calendar` endpoint
+- Route: `backend/src/routes/calendar.js`
+- Model: `backend/src/models/calendarModel.js`
+- Tests: 15 route-level + 21 model unit = 36 total
+
+**Key approvals:**
+- ✅ Auth + ownership enforced (401 / 403 / 404 all correct)
+- ✅ UUID input validated via middleware
+- ✅ Parameterized Knex queries — no SQL injection risk
+- ✅ No hardcoded secrets
+- ✅ Error forwarded to centralized handler — no internal detail leakage
+- ✅ API contract in api-contracts.md matches implementation exactly
+- ✅ All error paths tested (401 no token, 401 invalid token, 403 wrong user, 404 missing trip, 400 bad UUID, 500 model failure)
+
+**Backend test count: 340/340 (was 304 + 36 new calendar tests)**
+
+---
+
+### T-213 Review Result — APPROVED
+
+**What was reviewed:** `TripCalendar` React component + TripDetailsPage integration
+- Component: `frontend/src/components/TripCalendar.jsx`
+- Styles: `frontend/src/components/TripCalendar.module.css`
+- Integration: `frontend/src/pages/TripDetailsPage.jsx`
+- Tests: `frontend/src/__tests__/TripCalendar.test.jsx` (75 tests)
+
+**Key approvals:**
+- ✅ Calls correct endpoint with AbortController cleanup
+- ✅ All Spec 22 requirements met (month grid, event pills, click-to-scroll, mobile day-list, keyboard nav, ARIA)
+- ✅ No `dangerouslySetInnerHTML`, no XSS vectors
+- ✅ No hardcoded secrets
+- ✅ Old "Calendar coming in Sprint 2" placeholder removed
+- ✅ Section anchor IDs confirmed: `flights-section`, `stays-section`, `activities-section`
+- ✅ CSS uses design tokens throughout
+- ✅ 75 tests cover all acceptance criteria
+
+**Frontend test count: 486/486 (was 481 + 75 new TripCalendar tests, minus replaced tests)**
+
+---
+
+### T-214 QA Checklist (your immediate task)
+
+1. **Re-run backend tests:** `cd backend && npm test --run` → confirm **340+ tests pass**
+2. **Re-run frontend tests:** `cd frontend && npm test --run` → confirm **486+ tests pass**
+3. **npm audit:** run in both `backend/` and `frontend/` → confirm **0 Moderate+ vulnerabilities**
+4. **Calendar endpoint security spot-check:**
+   - `GET /api/v1/trips/:id/calendar` without token → expect 401
+   - `GET /api/v1/trips/:id/calendar` with wrong-user token → expect 403
+   - `GET /api/v1/trips/not-a-uuid/calendar` → expect 400
+5. **No new `dangerouslySetInnerHTML`** — grep confirm (already verified in review but QA should re-confirm)
+6. **No hardcoded secrets** — grep confirm
+7. **Full report** in `qa-build-log.md` Sprint 25 section
+
+When T-214 is Done, handoff to Deploy Engineer (T-215).
+
+**Test baseline entering QA:** 340/340 backend | 486/486 frontend | 0 known vulnerabilities
+
