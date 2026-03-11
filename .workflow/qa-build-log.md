@@ -796,3 +796,91 @@ Notes: All checks pass. StatusFilterTabs (T-208) frontend build deployed and fro
 **Issues Found:** None
 
 ---
+
+## Sprint #25 — T-215 Pre-Deploy Pre-Verification — 2026-03-10
+
+**Test Type:** Pre-Deploy Infrastructure Pre-Verification
+**Environment:** Staging (pre-deploy — no deploy executed yet)
+**Timestamp:** 2026-03-10
+**Agent:** Deploy Engineer
+**Task:** T-215 (BLOCKED pending T-214)
+
+---
+
+### Status: ⛔ BLOCKED — Awaiting T-214 completion
+
+T-215 cannot execute. The pre-deploy gate requires T-214 (QA) to be Done.
+T-214 is blocked by T-212 (backend calendar endpoint not implemented) and T-213 (frontend pending T-212).
+
+The following pre-verification checks were completed proactively so they need not be repeated at deploy time.
+
+---
+
+### Pre-Verification Checks
+
+#### 1. ecosystem.config.cjs — Mandatory Regression Check
+
+| Config Key | Required Value | Actual Value | Result |
+|------------|---------------|--------------|--------|
+| `BACKEND_PORT` (frontend env) | `'3001'` | `'3001'` | ✅ PASS |
+| `BACKEND_SSL` (frontend env) | `'true'` | `'true'` | ✅ PASS |
+
+**File:** `infra/ecosystem.config.cjs`
+**Verdict:** ✅ PASS — No changes required. Config is staging-correct.
+
+#### 2. Database Migration Check
+
+| Question | Answer |
+|----------|--------|
+| Does T-212 require schema changes? | No — read-only aggregation over existing `flights`, `stays`, `activities` tables |
+| Migration needed? | **No** — confirm `knex migrate:latest` will be a no-op at deploy time |
+
+**Verdict:** ✅ NO MIGRATION NEEDED — T-215 does not need to run `knex migrate:latest`.
+
+#### 3. Backend Test Baseline (pre-T-212 implementation)
+
+| Metric | Result |
+|--------|--------|
+| Test files | 15 passed (15) |
+| Tests | **304/304 PASS** |
+| Calendar route in source | ❌ Not yet — T-212 implementation pending |
+
+**Verdict:** ✅ 304/304 baseline confirmed — T-214 QA target is 304+ (including new calendar tests once T-212 is done)
+
+#### 4. Frontend Test Baseline (pre-T-213 API integration)
+
+| Metric | Result |
+|--------|--------|
+| Test files | 25 passed (25) |
+| Tests | **481/481 PASS** |
+| TripCalendar.jsx | Exists (Sprint 7 props-based calendar — pre-T-213 API version) |
+
+**Verdict:** ✅ 481/481 baseline confirmed — T-214 QA target is 481+ (including 10+ new T-213 tests once T-213 is done)
+
+#### 5. Blocker Triage
+
+| Item | Status | Action Required |
+|------|--------|-----------------|
+| T-212 backend calendar endpoint | Not implemented in source | Backend Engineer must implement `GET /api/v1/trips/:id/calendar` |
+| T-213 frontend calendar API integration | Blocked by T-212 | Frontend Engineer must update TripCalendar after T-212 is done |
+| T-214 QA | Backlog | QA Engineer must run after T-212 + T-213 are Done |
+| T-215 deploy | **BLOCKED** | Deploy Engineer will execute immediately when T-214 Done handoff is received |
+
+---
+
+### Summary
+
+| Check | Result |
+|-------|--------|
+| ecosystem.config.cjs BACKEND_PORT='3001' | ✅ PASS |
+| ecosystem.config.cjs BACKEND_SSL='true' | ✅ PASS |
+| Migration needed (T-212) | ✅ None |
+| Backend tests baseline (304) | ✅ PASS |
+| Frontend tests baseline (481) | ✅ PASS |
+| T-214 pre-deploy gate | ⛔ NOT MET — Blocked |
+
+**T-215 Status: BLOCKED**
+**Unblocking condition:** QA Engineer logs T-214 Done in handoff-log.md.
+**Deploy will execute immediately upon T-214 completion.**
+
+---

@@ -10,6 +10,7 @@ import flightsRoutes from './routes/flights.js';
 import staysRoutes from './routes/stays.js';
 import activitiesRoutes from './routes/activities.js';
 import landTravelRoutes from './routes/landTravel.js';
+import calendarRoutes from './routes/calendar.js';
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api/v1/trips/:tripId/flights', flightsRoutes);
 app.use('/api/v1/trips/:tripId/stays', staysRoutes);
 app.use('/api/v1/trips/:tripId/activities', activitiesRoutes);
 app.use('/api/v1/trips/:tripId/land-travel', landTravelRoutes);
+app.use('/api/v1/trips/:tripId/calendar', calendarRoutes);
 
 // ---- Error handling (must be last) ----
 app.use(errorHandler);
