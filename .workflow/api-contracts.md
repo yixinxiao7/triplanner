@@ -6547,3 +6547,228 @@ All contracts from Sprints 1–26 remain in force unchanged. Sprint 27 adds no n
 ---
 
 *Sprint 27 contracts published by Backend Engineer 2026-03-11. No new endpoints. No schema changes. T-228 Fix B is a pure internal code refactor to resolve ESM dotenv hoisting — the CORS middleware will correctly read `process.env.CORS_ORIGIN` once the fix is applied. All endpoint contracts remain in force from prior sprints. Test baseline entering Sprint 27: 355/355 backend | 486/486 frontend.*
+
+---
+
+## Sprint 28 Contracts
+
+---
+
+### T-229 — Trip Date COALESCE Fix (Behavior Correction for `start_date` / `end_date`)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 28 |
+| Task | T-229 |
+| Type | Bug Fix |
+| Status | **Agreed** *(automated sprint — self-approved per sprint rules)* |
+| Feedback Source | FB-113 |
+| Schema Changes | **None** — query-only fix; no new migration required |
+| New Endpoints | **None** |
+
+---
+
+#### Background — What Was Broken
+
+The `TRIP_COLUMNS` SQL constant in `backend/src/models/tripModel.js` defined `start_date` and `end_date` as **pure computed aggregates** — always using `LEAST()` / `GREATEST()` subqueries over flights, stays, activities, and land_travels. Migration `20260225_007_add_trip_date_range.js` (Sprint 16 / T-163) added `start_date DATE NULL` and `end_date DATE NULL` stored columns to the `trips` table, and `PATCH /api/v1/trips/:id` correctly writes user-provided values into those columns — but **TRIP_COLUMNS never read them back**. The aggregate subquery always overrode the stored values.
+
+**Symptom (FB-113):** A user calls `PATCH /api/v1/trips/:id` with `{"start_date": "2026-09-01", "end_date": "2026-09-30"}` on a trip with no sub-resources. The database `UPDATE` writes the dates correctly. But the response (and all subsequent GETs) returns `"start_date": null, "end_date": null` because LEAST/GREATEST over empty subqueries returns `NULL`. The "Set dates" UI on TripDetailsPage appears to silently discard the input.
+
+---
+
+#### The Fix
+
+The TRIP_COLUMNS SQL is updated to use `COALESCE`:
+
+```sql
+-- start_date (COALESCE — user-stored value takes precedence)
+TO_CHAR(
+  COALESCE(
+    trips.start_date,
+    LEAST(
+      (SELECT MIN(DATE(departure_at)) FROM flights      WHERE trip_id = trips.id),
+      (SELECT MIN(DATE(arrival_at))   FROM flights      WHERE trip_id = trips.id),
+      (SELECT MIN(DATE(check_in_at))  FROM stays        WHERE trip_id = trips.id),
+      (SELECT MIN(DATE(check_out_at)) FROM stays        WHERE trip_id = trips.id),
+      (SELECT MIN(activity_date)      FROM activities   WHERE trip_id = trips.id),
+      (SELECT MIN(departure_date)     FROM land_travels WHERE trip_id = trips.id),
+      (SELECT MIN(arrival_date)       FROM land_travels WHERE trip_id = trips.id)
+    )
+  ),
+  'YYYY-MM-DD'
+) AS start_date
+
+-- end_date (COALESCE — user-stored value takes precedence)
+TO_CHAR(
+  COALESCE(
+    trips.end_date,
+    GREATEST(
+      (SELECT MAX(DATE(departure_at)) FROM flights      WHERE trip_id = trips.id),
+      (SELECT MAX(DATE(arrival_at))   FROM flights      WHERE trip_id = trips.id),
+      (SELECT MAX(DATE(check_in_at))  FROM stays        WHERE trip_id = trips.id),
+      (SELECT MAX(DATE(check_out_at)) FROM stays        WHERE trip_id = trips.id),
+      (SELECT MAX(activity_date)      FROM activities   WHERE trip_id = trips.id),
+      (SELECT MAX(departure_date)     FROM land_travels WHERE trip_id = trips.id),
+      (SELECT MAX(arrival_date)       FROM land_travels WHERE trip_id = trips.id)
+    )
+  ),
+  'YYYY-MM-DD'
+) AS end_date
+```
+
+**Precedence rule (new canonical behavior):**
+1. If `trips.start_date` (stored) is non-null → return it as `start_date`
+2. Else → return the computed LEAST aggregate across sub-resources (or `null` if no sub-resources)
+
+Same rule applies to `end_date` via GREATEST.
+
+---
+
+#### Affected Endpoints — Behavior Change
+
+All four trip-returning endpoints share the `TRIP_COLUMNS` constant and are affected by this fix. **No signature changes** — method, path, query parameters, auth requirements, and response shape are identical to prior sprint contracts. Only the **semantic value** of `start_date` and `end_date` in responses changes.
+
+| Endpoint | Affected | Behavior Before Fix | Behavior After Fix |
+|----------|----------|--------------------|--------------------|
+| `GET /api/v1/trips` | ✅ | `start_date`/`end_date` always computed from sub-resources; user-stored values silently ignored | User-stored values take precedence; sub-resource aggregate used as fallback |
+| `POST /api/v1/trips` | ✅ | If `start_date`/`end_date` provided at creation but no sub-resources exist → response returns `null` | Response correctly returns user-provided values |
+| `GET /api/v1/trips/:id` | ✅ | Same as GET list | Same as GET list |
+| `PATCH /api/v1/trips/:id` | ✅ | User-provided `start_date`/`end_date` written to DB but overridden at read time → response returns `null` | Response correctly returns user-provided values |
+
+---
+
+#### Updated Date Semantics — All Trip Responses
+
+All trip objects returned by the four affected endpoints now follow this logic for `start_date` and `end_date`:
+
+| Scenario | `start_date` returned | `end_date` returned |
+|----------|----------------------|---------------------|
+| User set dates via PATCH, no sub-resources exist | User-stored value (e.g. `"2026-09-01"`) | User-stored value (e.g. `"2026-09-30"`) |
+| User set dates via PATCH, sub-resources exist with different dates | User-stored value (takes precedence) | User-stored value (takes precedence) |
+| User never set dates (`trips.start_date` is NULL), sub-resources exist | Computed LEAST across sub-resources | Computed GREATEST across sub-resources |
+| User never set dates, no sub-resources exist | `null` | `null` |
+| User explicitly cleared dates (`PATCH` with `start_date: null`) | `null` (sub-resource fallback applies if events exist) | `null` (sub-resource fallback applies if events exist) |
+
+**Key distinction:** Setting `start_date: null` via PATCH is the only way to re-enable sub-resource fallback. While `trips.start_date` is non-null, it always wins.
+
+---
+
+#### PATCH /api/v1/trips/:id — Reference Contract (Sprint 28 Behavior)
+
+This is a summary re-statement of the PATCH contract with the corrected behavior. The full contract is documented in Sprint 2 and Sprint 4 above; only the `start_date`/`end_date` return semantics change.
+
+**Method:** `PATCH`
+**Path:** `/api/v1/trips/:id`
+**Auth:** Bearer token (required)
+
+**Request Body (unchanged from prior sprints):**
+```json
+{
+  "name": "string (optional)",
+  "destinations": ["string array (optional)"],
+  "status": "PLANNING | ONGOING | COMPLETED (optional)",
+  "start_date": "YYYY-MM-DD | null (optional)",
+  "end_date": "YYYY-MM-DD | null (optional)"
+}
+```
+
+**Success Response — 200 OK (corrected behavior after T-229):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka"],
+    "status": "PLANNING",
+    "notes": null,
+    "start_date": "2026-09-01",
+    "end_date": "2026-09-30",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-03-11T10:00:00.000Z"
+  }
+}
+```
+
+> **Sprint 28 guarantee:** If the request body includes `"start_date": "2026-09-01"`, the response will return `"start_date": "2026-09-01"` — even if the trip has zero sub-resources. This was not guaranteed before T-229.
+
+**Error Responses (unchanged from Sprint 2/4 contracts):**
+
+| Status | Code | Condition |
+|--------|------|-----------|
+| 400 | `VALIDATION_ERROR` | `end_date` before `start_date`, invalid date format, no updatable fields provided |
+| 401 | `UNAUTHORIZED` | Missing or invalid Bearer token |
+| 403 | `FORBIDDEN` | Trip belongs to another user |
+| 404 | `NOT_FOUND` | Trip ID does not exist |
+
+---
+
+#### Test Requirements (new tests for T-229)
+
+The following tests must be written in `backend/src/__tests__/trips.test.js`:
+
+1. **Happy path — no sub-resources:**
+   - PATCH `/api/v1/trips/:id` with `{"start_date": "2026-09-01", "end_date": "2026-09-30"}` on a trip with no flights/stays/activities/land_travels
+   - Assert response `data.start_date === "2026-09-01"` and `data.end_date === "2026-09-30"` (not null)
+
+2. **Happy path — sub-resources present with different computed dates:**
+   - Create a trip; add a flight with `departure_at` in November 2026
+   - PATCH the trip with `{"start_date": "2026-09-01", "end_date": "2026-09-30"}`
+   - Assert response returns `"2026-09-01"` / `"2026-09-30"` (user values win over computed November dates)
+
+3. **Fallback to computed aggregate:**
+   - Create a trip where `trips.start_date` is NULL (never set); add a flight with `departure_at = "2026-08-15"`
+   - GET `/api/v1/trips/:id`
+   - Assert response `data.start_date === "2026-08-15"` (computed fallback)
+
+4. **All 363+ existing tests must continue to pass.** T-229 is a read-time behavior change only — no writes are affected. Existing tests should not break.
+
+---
+
+#### No Schema Changes (T-229)
+
+T-229 requires **no database migration**. The `trips.start_date` and `trips.end_date` columns already exist (added in migration `20260225_007_add_trip_date_range.js`). The COALESCE fix only changes the SELECT query in TRIP_COLUMNS — no DDL changes. No handoff to Deploy Engineer for a migration is required.
+
+---
+
+### Sprint 28 — All-Endpoints Reference
+
+All contracts from Sprints 1–27 remain in force unchanged. Sprint 28 adds no new endpoints and no schema changes.
+
+| Sprint | Endpoint | Status | Sprint 28 Notes |
+|--------|----------|--------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/health` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | **T-229:** `start_date`/`end_date` now use COALESCE (user-stored → computed fallback). Response shape unchanged. |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | **T-229:** If `start_date`/`end_date` provided at creation, response now correctly reflects them. |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | **T-229:** `start_date`/`end_date` now use COALESCE (user-stored → computed fallback). Response shape unchanged. |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | **T-229 PRIMARY FIX:** User-provided `start_date`/`end_date` are now correctly returned in response. See corrected semantics above. |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Agreed, Applied on Staging | Unchanged |
+
+---
+
+*Sprint 28 contracts published by Backend Engineer 2026-03-11. No new endpoints. No schema changes. T-229 is a pure SQL query correction (COALESCE on TRIP_COLUMNS) — the only API-observable change is that `start_date`/`end_date` in trip responses now correctly reflect user-stored values when present, rather than always returning computed sub-resource aggregates. Test baseline entering Sprint 28: 363/363 backend | 486/486 frontend.*

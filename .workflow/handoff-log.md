@@ -4,6 +4,70 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Backend Engineer → Frontend Engineer** *(Sprint #28 — T-229 API Contract Ready)*
+
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Re:** T-229 — Trip date COALESCE fix — API contract published, no frontend changes required
+**Status:** 📋 Contract published — awaiting implementation (code fix in next phase)
+
+**Summary:**
+Sprint 28's T-229 is a pure backend bug fix. No new endpoints, no request/response shape changes, no frontend code changes are needed. This handoff is informational — once T-229 is implemented, the existing "Set dates" UI on TripDetailsPage will begin working correctly.
+
+**What's changing (backend-side only):**
+- `PATCH /api/v1/trips/:id` with `start_date`/`end_date` will now correctly return the user-provided values in the response. Previously, trips with no sub-resources always returned `"start_date": null, "end_date": null` even after a successful PATCH.
+- All trip-returning endpoints (`GET /api/v1/trips`, `POST /api/v1/trips`, `GET /api/v1/trips/:id`, `PATCH /api/v1/trips/:id`) now use COALESCE: user-stored dates take precedence over computed sub-resource aggregates.
+
+**Response shape:** Unchanged. Same `{ "data": { ... "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD" ... } }` envelope.
+
+**Frontend action required:** None. The existing `TripDetailsPage` "Set dates" form already calls `PATCH /api/v1/trips/:id` with the correct payload — it will work correctly once T-229 is deployed to staging.
+
+**Full contract details:** See `.workflow/api-contracts.md` → "Sprint 28 Contracts → T-229" section.
+
+---
+
+**[2026-03-11] Backend Engineer → QA Engineer** *(Sprint #28 — T-229 API Contract Ready for Testing Reference)*
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Re:** T-229 — Trip date COALESCE fix — contract published; QA scope defined
+**Task:** T-231 (QA Integration Check) ← Blocked by T-229 implementation
+**Status:** 📋 Contract published — QA unblocked to prepare test plan; execution blocked on T-229 completion
+
+**Contract location:** `.workflow/api-contracts.md` → "Sprint 28 Contracts → T-229" section
+
+**What QA must verify for T-229:**
+
+1. **Code review check:**
+   - Open `backend/src/models/tripModel.js`
+   - Confirm `TRIP_COLUMNS` now wraps both `LEAST(...)` and `GREATEST(...)` in `COALESCE(trips.start_date, ...)` and `COALESCE(trips.end_date, ...)` respectively
+   - Confirm `trips.start_date` and `trips.end_date` are referenced (reading the stored column)
+
+2. **New test cases (must all pass in `backend/src/__tests__/trips.test.js`):**
+   - Test A: PATCH with `start_date`/`end_date` on trip with NO sub-resources → response returns user values (not null)
+   - Test B: PATCH with `start_date`/`end_date` on trip WITH sub-resources (differing computed dates) → response returns user values (not sub-resource aggregates)
+   - Test C: Trip with `start_date = null` in DB AND sub-resources → computed aggregate returned (fallback behavior preserved)
+
+3. **Regression check:**
+   - Run `npm test --run` in `backend/` — all 363+ tests (including new T-229 tests) must pass
+   - Run `npm test --run` in `frontend/` — all 486 tests must pass
+
+4. **Security checklist (T-229 specific):**
+   - No new endpoints introduced — attack surface unchanged
+   - No schema changes — no migration risk
+   - No hardcoded secrets — COALESCE is pure SQL with no user input interpolation
+   - No SQL injection surface — TRIP_COLUMNS is a static constant, not user-influenced
+
+5. **Integration smoke test (after staging re-deploy T-232):**
+   - `PATCH /api/v1/trips/:id` with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` on a trip with no sub-resources → response must show `"start_date": "2026-09-01"`, `"end_date": "2026-09-30"`
+   - `GET /api/v1/trips/:id` for same trip → same dates returned
+
+**No schema changes to verify** — no migration was needed or created for T-229. No handoff to Deploy Engineer for migration.
+
+**Log results** in `.workflow/qa-build-log.md` Sprint 28 section.
+
+---
+
 **[2026-03-11] Design Agent → All Agents** *(Sprint #28 — T-230 Complete — ui-spec.md TripCalendar section updated)*
 
 **From:** Design Agent
