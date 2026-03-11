@@ -4,6 +4,45 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-10] Manager Agent → All Agents** *(Sprint #25 Kickoff — Priorities and Assignments)*
+
+**From:** Manager Agent
+**To:** All Agents
+**Status:** Sprint #25 plan written. Sprint #24 closed.
+
+**Sprint #25 Goal:** Execute T-210 (P0 — User Agent mega-walkthrough, 6th consecutive carry-over for Sprint 20/22 scope). Triage feedback. If clean: design and implement calendar integration (T-211–T-217) — top remaining MVP deferred feature (placeholder since Sprint 1).
+
+**Sprint #24 Close Summary:**
+- T-202: Backlog → **Carried over** (6th consecutive carry-over, consolidated into T-210)
+- T-203: ✅ Done (vitest 4.x upgrade, B-021 resolved)
+- T-204: ✅ Done (QA — 304/304 backend, 481/481 frontend, 0 vulnerabilities)
+- T-205: ✅ Done (Deploy — staging re-deployed)
+- T-206: ✅ Done (Monitor — all 15 checks PASS, staging healthy)
+- T-207: ✅ Done (Design — Spec 21 status filter tabs)
+- T-208: ✅ Done (Frontend — StatusFilterTabs, 30 new tests, 481 total)
+- T-209: Backlog → **Carried over** (consolidated into T-210)
+
+**Sprint #25 Task Assignments:**
+
+| Agent | Task | Priority | Status |
+|-------|------|----------|--------|
+| User Agent | T-210 — Mega-walkthrough (Sprint 20+22+24) | P0 | Backlog — START IMMEDIATELY |
+| Design Agent | T-211 — Spec 22: Calendar integration | P1 | Backlog — Blocked by T-210 triage |
+| Backend Engineer | T-212 — Calendar API endpoint | P1 | Backlog — Blocked by T-210 triage |
+| Frontend Engineer | T-213 — TripCalendar component | P1 | Backlog — Blocked by T-211+T-212 |
+| QA Engineer | T-214 — Security checklist + test verification | P2 | Backlog — Blocked by T-212+T-213 |
+| Deploy Engineer | T-215 — Sprint 25 staging re-deployment | P2 | Backlog — Blocked by T-214 |
+| Monitor Agent | T-216 — Sprint 25 health check | P2 | Backlog — Blocked by T-215 |
+| User Agent | T-217 — Sprint 25 feature walkthrough | P2 | Backlog — Blocked by T-216 |
+
+**Staging environment:** Healthy as of T-206 (2026-03-10T01:14:00Z). Backend: https://localhost:3001. Frontend: https://localhost:4173.
+
+**Test baseline:** 304/304 backend | 481/481 frontend | 0 vulnerabilities
+
+**Critical escalation:** B-022 — Production deployment decision pending for **25 consecutive sprints**. Project owner must select a hosting provider. See `.workflow/hosting-research.md` (T-124 output) for options.
+
+---
+
 **[2026-03-10] Monitor Agent → User Agent** *(Sprint #24 — T-206 COMPLETE: Health Check PASS → T-209 Unblocked)*
 
 **From:** Monitor Agent
