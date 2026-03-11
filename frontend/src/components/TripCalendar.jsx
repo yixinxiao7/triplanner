@@ -1,90 +1,28 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { apiClient } from '../utils/api';
 import styles from './TripCalendar.module.css';
 
 /**
- * TripCalendar — monthly calendar grid showing flights, stays, activities, and land travel.
- * Custom implementation (no external library) using CSS Grid.
- *
+ * TripCalendar — Sprint 25 (T-213)
+ * Self-contained calendar component. Fetches from GET /api/v1/trips/:id/calendar.
+ * Renders a monthly grid with events color-coded by type (FLIGHT / STAY / ACTIVITY).
  * Props:
- *   trip         — trip object { start_date, end_date }
- *   flights      — array of flight objects
- *   stays        — array of stay objects
- *   activities   — array of activity objects
- *   landTravels  — array of land travel objects (T-088)
- *   isLoading    — true while sub-resources are loading
- *
- * Sprint 7 changes (T-097, T-101):
- *   T-097: DayPopover now renders via ReactDOM.createPortal to document.body with
- *          position:fixed to prevent CSS grid layout corruption when popover opens.
- *   T-101: Added checkout time on last day of multi-day stays ("check-out Xa"),
- *          flight arrival time on arrival day when different from departure day ("arrives Xa").
- *          Land travel arrival day was already implemented in Sprint 6.
+ *   tripId (string, required) — the trip UUID
  */
 
-const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'];
+const DAYS_OF_WEEK = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
 
-const LAND_TRAVEL_MODE_LABELS = {
-  RENTAL_CAR: 'rental car',
-  BUS: 'bus',
-  TRAIN: 'train',
-  RIDESHARE: 'rideshare',
-  FERRY: 'ferry',
-  OTHER: 'other',
-};
+// ── Helpers ──────────────────────────────────────────────────
 
-// ── Date helpers ─────────────────────────────────────────────
-
-/** Format YYYY-MM-DD string as { year, month (0-indexed), day } */
-function parseDateStr(str) {
-  if (!str) return null;
-  const [y, m, d] = str.split('-').map(Number);
-  return { year: y, month: m - 1, day: d };
-}
-
-/** Convert a UTC ISO string to local YYYY-MM-DD in a given IANA timezone (best-effort) */
-function toLocalDate(isoString, timezone) {
-  if (!isoString) return null;
-  try {
-    const date = new Date(isoString);
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    return formatter.format(date); // "YYYY-MM-DD"
-  } catch {
-    return isoString.slice(0, 10);
-  }
-}
-
-/** Convert a UTC ISO string to local "HH:MM" in a given IANA timezone */
-function isoToLocalHHMM(isoString, timezone) {
-  if (!isoString) return null;
-  try {
-    const date = new Date(isoString);
-    const formatter = new Intl.DateTimeFormat('en-GB', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-    return formatter.format(date); // "HH:MM"
-  } catch {
-    return null;
-  }
-}
-
-/** Format "HH:MM" or "HH:MM:SS" into compact 12h string: "9a", "2:30p", "12p" */
-function formatCalendarTime(timeStr) {
+/** Format "HH:MM" or "HH:MM:SS" → compact 12h: "9a", "2:30p" */
+function formatTime(timeStr) {
   if (!timeStr) return null;
   try {
-    const parts = timeStr.split(':');
-    const h = parseInt(parts[0], 10);
-    const m = parseInt(parts[1] || '0', 10);
+    const [h, m] = timeStr.split(':').map(Number);
     if (isNaN(h) || isNaN(m)) return null;
     const suffix = h >= 12 ? 'p' : 'a';
     const hour = ((h + 11) % 12) + 1;
@@ -95,709 +33,471 @@ function formatCalendarTime(timeStr) {
   }
 }
 
-/** Get all dates between start and end (inclusive), as YYYY-MM-DD strings */
-function getDateRange(startStr, endStr) {
-  const dates = [];
-  if (!startStr || !endStr) return dates;
-  const start = new Date(startStr + 'T00:00:00');
-  const end = new Date(endStr + 'T00:00:00');
-  const current = new Date(start);
-  while (current <= end) {
-    dates.push(current.toISOString().slice(0, 10));
-    current.setDate(current.getDate() + 1);
-  }
-  return dates;
-}
-
 /** Get today as YYYY-MM-DD */
-function todayStr() {
+function todayDateStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// ── T-128: Initial month — earliest planned event ─────────────────────────
-//
-// Find the earliest event date across flights, stays, activities (and land travels
-// since they are already rendered on the calendar). Returns a Date set to the
-// first day of that month. Falls back to the first day of the current month when
-// no events exist or all date fields are null / malformed.
-
-function getInitialMonth(flights = [], stays = [], activities = [], landTravels = []) {
-  const dates = [];
-
-  flights.forEach((f) => {
-    if (f.departure_at) {
-      const d = new Date(f.departure_at);
-      if (!isNaN(d)) dates.push(d);
-    }
-  });
-
-  stays.forEach((s) => {
-    if (s.check_in_at) {
-      const d = new Date(s.check_in_at);
-      if (!isNaN(d)) dates.push(d);
-    }
-  });
-
-  // Parse activity_date as local time to avoid UTC-midnight offset issues
-  activities.forEach((a) => {
-    if (a.activity_date) {
-      const [year, month, day] = a.activity_date.split('-').map(Number);
-      const d = new Date(year, month - 1, day);
-      if (!isNaN(d)) dates.push(d);
-    }
-  });
-
-  // Include land travel departure dates if they are calendar-rendered
-  landTravels.forEach((lt) => {
-    if (lt.departure_date) {
-      const [year, month, day] = lt.departure_date.split('-').map(Number);
-      const d = new Date(year, month - 1, day);
-      if (!isNaN(d)) dates.push(d);
-    }
-  });
-
-  if (dates.length === 0) {
+/** Determine initial displayed month from events array (first event's start_date) */
+function getInitialMonth(events) {
+  if (!events || events.length === 0) {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    return { year: now.getFullYear(), month: now.getMonth() };
   }
-
-  const earliest = dates.reduce((min, d) => (d < min ? d : min), dates[0]);
-  return new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+  const first = events[0]; // already ordered ASC by start_date
+  const [y, m] = first.start_date.split('-').map(Number);
+  return { year: y, month: m - 1 }; // month is 0-indexed
 }
 
-// ── Build events map: date → { flights, stays, activities, landTravels } ──
-// T-101: Added flight arrival day + stay checkout time on last day
-
-function buildEventsMap(flights, stays, activities, landTravels) {
+/** Build a map: dateStr → array of event objects (with _dayType metadata for STAY) */
+function buildEventsMap(events) {
   const map = {};
-
-  function addEvent(dateStr, type, item) {
-    if (!dateStr) return;
-    if (!map[dateStr]) map[dateStr] = { flights: [], stays: [], activities: [], landTravels: [] };
-    map[dateStr][type].push(item);
-  }
-
-  // ── Flights ──
-  // Shows departure chip on departure_date.
-  // T-101: Also shows arrival chip on arrival_date when different from departure_date.
-  for (const flight of flights) {
-    const localDepartureDate = toLocalDate(flight.departure_at, flight.departure_tz);
-    const depCalTime = formatCalendarTime(isoToLocalHHMM(flight.departure_at, flight.departure_tz));
-    addEvent(localDepartureDate, 'flights', { ...flight, _calTime: depCalTime });
-
-    // T-101 CAL-3.3: Add arrival chip on arrival_date if different from departure_date
-    const localArrivalDate = toLocalDate(flight.arrival_at, flight.arrival_tz);
-    if (localArrivalDate && localArrivalDate !== localDepartureDate) {
-      const arrCalTime = formatCalendarTime(isoToLocalHHMM(flight.arrival_at, flight.arrival_tz));
-      addEvent(localArrivalDate, 'flights', {
-        ...flight,
-        _calTime: arrCalTime,
-        _isArrival: true,
-      });
+  for (const event of events) {
+    if (event.type === 'FLIGHT' || event.type === 'ACTIVITY') {
+      const d = event.start_date;
+      if (!map[d]) map[d] = [];
+      map[d].push({ ...event, _dayType: 'single' });
+    } else if (event.type === 'STAY') {
+      const start = event.start_date;
+      const end = event.end_date || event.start_date;
+      // Enumerate all dates in the stay range
+      const dates = [];
+      const cur = new Date(start + 'T00:00:00');
+      const endDate = new Date(end + 'T00:00:00');
+      while (cur <= endDate) {
+        dates.push(cur.toISOString().slice(0, 10));
+        cur.setDate(cur.getDate() + 1);
+      }
+      for (let i = 0; i < dates.length; i++) {
+        const d = dates[i];
+        if (!map[d]) map[d] = [];
+        const isFirst = i === 0;
+        const isLast = i === dates.length - 1;
+        map[d].push({
+          ...event,
+          _dayType: dates.length === 1 ? 'single' : isFirst ? 'start' : isLast ? 'end' : 'middle',
+          _isFirst: isFirst,
+          _isLast: isLast,
+        });
+      }
     }
   }
-
-  // ── Stays ──
-  // T-101 CAL-3.2: Added checkout time on the last day of multi-day stays.
-  // Single-day stays (check_in === check_out) are both _isFirst and _isLast.
-  for (const stay of stays) {
-    const checkIn = toLocalDate(stay.check_in_at, stay.check_in_tz);
-    const checkOut = toLocalDate(stay.check_out_at, stay.check_out_tz);
-    const checkInTime = formatCalendarTime(isoToLocalHHMM(stay.check_in_at, stay.check_in_tz));
-    const checkOutTime = formatCalendarTime(isoToLocalHHMM(stay.check_out_at, stay.check_out_tz));
-    const dates = getDateRange(checkIn, checkOut);
-    for (let i = 0; i < dates.length; i++) {
-      const isFirst = i === 0;
-      const isLast = i === dates.length - 1;
-      addEvent(dates[i], 'stays', {
-        ...stay,
-        _isFirst: isFirst,
-        _isLast: isLast,
-        _calTime: isFirst ? checkInTime : null,
-        // T-101: expose checkout time on last day cell
-        _checkOutTime: isLast ? checkOutTime : null,
-      });
-    }
-  }
-
-  for (const activity of activities) {
-    const calTime = activity.start_time ? formatCalendarTime(activity.start_time) : null;
-    addEvent(activity.activity_date, 'activities', { ...activity, _calTime: calTime });
-  }
-
-  for (const lt of landTravels) {
-    // Land travel appears on departure_date
-    const calTime = lt.departure_time ? formatCalendarTime(lt.departure_time) : null;
-    const modeLabel = LAND_TRAVEL_MODE_LABELS[lt.mode] || lt.mode.toLowerCase();
-    // T-155: _location for departure day = from_location (pick-up/origin)
-    addEvent(lt.departure_date, 'landTravels', {
-      ...lt,
-      _calTime: calTime,
-      _modeLabel: modeLabel,
-      _location: lt.from_location,
-    });
-    // Also on arrival_date if different from departure_date (Sprint 6 T-088)
-    if (lt.arrival_date && lt.arrival_date !== lt.departure_date) {
-      const arrCalTime = lt.arrival_time ? formatCalendarTime(lt.arrival_time) : null;
-      // T-155: _location for arrival day = to_location (drop-off/destination)
-      addEvent(lt.arrival_date, 'landTravels', {
-        ...lt,
-        _calTime: arrCalTime,
-        _modeLabel: modeLabel,
-        _isArrival: true,
-        _location: lt.to_location,
-      });
-    }
-  }
-
   return map;
 }
 
-// ── Day Popover ───────────────────────────────────────────────
-// T-097: DayPopover now accepts a `position` prop ({ top, left }) for fixed positioning
-// via portal. Previously rendered inside DayCell's overflowWrapper which caused
-// CSS grid layout corruption (cells expanding when popover opened).
+/** Scroll to section with 80px offset for sticky navbar */
+function scrollToSection(sectionId) {
+  const el = document.getElementById(sectionId);
+  if (!el) return;
+  const top = el.getBoundingClientRect().top + window.scrollY - 80;
+  window.scrollTo({ top, behavior: 'smooth' });
+}
 
-function DayPopover({ day, events, onClose, triggerRef, position }) {
-  const popoverRef = useRef(null);
-  const allEvents = [
-    ...(events?.flights || []).map((f) => ({ type: 'flight', item: f })),
-    ...(events?.stays || []).map((s) => ({ type: 'stay', item: s })),
-    ...(events?.activities || []).map((a) => ({ type: 'activity', item: a })),
-    ...(events?.landTravels || []).map((lt) => ({ type: 'landTravel', item: lt })),
-  ];
+function getSectionId(type) {
+  if (type === 'FLIGHT') return 'flights-section';
+  if (type === 'STAY') return 'stays-section';
+  if (type === 'ACTIVITY') return 'activities-section';
+  return null;
+}
 
-  const parsed = parseDateStr(day);
-  const dateLabel = parsed
-    ? `${DAYS_OF_WEEK[(new Date(`${day}T00:00:00`)).getDay()]}, ${MONTHS[parsed.month]} ${parsed.day}`
-    : day;
+// ── Mobile Day List ───────────────────────────────────────────
 
-  // T-137: Build document-relative positioning style (position: absolute).
-  // Computed once at mount time; position: absolute on a document.body child
-  // means the popover scrolls with the document and stays pinned to the trigger.
-  // In JSDOM tests, getBoundingClientRect/scrollX/scrollY all return zeros → top:4,left:0 (fine).
-  const positionStyle = (() => {
-    const scrollX = (typeof window !== 'undefined' ? (window.scrollX ?? window.pageXOffset) : 0) || 0;
-    const scrollY = (typeof window !== 'undefined' ? (window.scrollY ?? window.pageYOffset) : 0) || 0;
-    const viewportWidth = (typeof window !== 'undefined' ? window.innerWidth : 0) || 0;
-    const viewportHeight = (typeof window !== 'undefined' ? window.innerHeight : 0) || 0;
-    const popoverWidth = 240;
-    const popoverEstimatedHeight = 200;
-
-    if (!position) {
-      return { position: 'absolute', top: 4, left: 0, zIndex: 1000 };
-    }
-
-    let top = (position.bottom || 0) + scrollY + 4;
-    let left = (position.left || 0) + scrollX;
-
-    // Right-edge clamping: prevent overflow off the right side of the viewport
-    if (viewportWidth > 0 && left + popoverWidth > scrollX + viewportWidth - 16) {
-      left = scrollX + viewportWidth - popoverWidth - 16;
-    }
-    left = Math.max(scrollX, left);
-
-    // Bottom-edge: render above trigger if insufficient space below
-    if (viewportHeight > 0 && (position.bottom || 0) + popoverEstimatedHeight > viewportHeight) {
-      top = (position.top || 0) + scrollY - popoverEstimatedHeight;
-    }
-
-    return { position: 'absolute', top, left, zIndex: 1000 };
-  })();
-
-  // Focus the popover on open
-  useEffect(() => {
-    if (popoverRef.current) {
-      popoverRef.current.focus();
-    }
-  }, []);
-
-  // T-137: Scroll does NOT close the popover (Spec 19 reverses T-126 scroll-close behavior).
-  // position: absolute keeps the popover anchored to the trigger's document position.
-
-  // Close on Escape
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.key === 'Escape') {
-        onClose();
-        triggerRef?.current?.focus();
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, triggerRef]);
-
-  // Close on click outside
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
-        // Don't close if clicking the trigger button itself (it handles toggle)
-        if (triggerRef?.current && triggerRef.current.contains(e.target)) return;
-        onClose();
-      }
-    }
-    // Use mousedown so it fires before click handlers
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onClose, triggerRef]);
-
-  function getEventDot(type) {
-    const dotStyles = {
-      width: 8, height: 8, borderRadius: '50%', flexShrink: 0, marginTop: 2,
-    };
-    if (type === 'flight') return <span style={{ ...dotStyles, background: 'var(--color-flight, #5D737E)' }} aria-hidden="true" />;
-    if (type === 'stay') return <span style={{ ...dotStyles, background: 'var(--color-stay, #3D8F82)' }} aria-hidden="true" />;
-    if (type === 'activity') return <span style={{ ...dotStyles, background: 'var(--color-activity, #C47A2E)' }} aria-hidden="true" />;
-    if (type === 'landTravel') return <span style={{ ...dotStyles, background: 'var(--color-land-travel, #7B6B8E)' }} aria-hidden="true" />;
-    return null;
-  }
-
-  function getEventLabel(type, item) {
-    if (type === 'flight') return item.flight_number || item.airline || 'flight';
-    if (type === 'stay') return item.name || 'stay';
-    if (type === 'activity') return item.name || 'activity';
-    if (type === 'landTravel') {
-      // T-155: use _location (from_location on pick-up day, to_location on drop-off day)
-      const prefix = item._isArrival ? 'arr.' : 'dep.';
-      return `${item._modeLabel} ${prefix} ${item._location || item.to_location || ''}`.trim();
-    }
-    return 'event';
-  }
-
-  function getEventTime(type, item) {
-    if (type === 'flight') {
-      if (!item._calTime) return null;
-      return item._isArrival ? `arrives ${item._calTime}` : `dep. ${item._calTime}`;
-    }
-    if (type === 'stay') {
-      if (!item._calTime) return null;
-      if (item._isFirst) return `check-in ${item._calTime}`;
-      return null;
-    }
-    if (type === 'activity') return item._calTime || null;
-    // T-138: RENTAL_CAR land travel shows "pick-up Xp" / "drop-off Xp" labels.
-    // Other modes fall through to standard arr./dep. labels.
-    if (type === 'landTravel') {
-      if (item.mode === 'RENTAL_CAR') {
-        if (item._isArrival) {
-          return item._calTime ? `drop-off ${item._calTime}` : 'drop-off';
+function MobileDayList({ events, displayedMonth }) {
+  const { year, month } = displayedMonth;
+  // Filter events that have at least one day in the displayed month
+  const daysWithEvents = useMemo(() => {
+    const dayMap = {};
+    for (const event of events) {
+      if (event.type === 'FLIGHT' || event.type === 'ACTIVITY') {
+        const [ey, em] = event.start_date.split('-').map(Number);
+        if (ey === year && em - 1 === month) {
+          if (!dayMap[event.start_date]) dayMap[event.start_date] = [];
+          dayMap[event.start_date].push(event);
         }
-        return item._calTime ? `pick-up ${item._calTime}` : 'pick-up';
+      } else if (event.type === 'STAY') {
+        // Add stay to each day in this month it spans
+        const start = event.start_date;
+        const end = event.end_date || event.start_date;
+        const cur = new Date(start + 'T00:00:00');
+        const endDate = new Date(end + 'T00:00:00');
+        while (cur <= endDate) {
+          const [ey, em] = cur.toISOString().slice(0, 10).split('-').map(Number);
+          if (ey === year && em - 1 === month) {
+            const d = cur.toISOString().slice(0, 10);
+            if (!dayMap[d]) dayMap[d] = [];
+            dayMap[d].push(event);
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
       }
-      if (!item._calTime) return null;
-      return item._isArrival ? `arr. ${item._calTime}` : `dep. ${item._calTime}`;
     }
-    return item._calTime || null;
+    return Object.entries(dayMap).sort(([a], [b]) => a.localeCompare(b));
+  }, [events, year, month]);
+
+  if (daysWithEvents.length === 0) {
+    return (
+      <p className={styles.mobileNoEvents}>No events this month.</p>
+    );
   }
 
   return (
-    <div
-      ref={popoverRef}
-      className={styles.popover}
-      style={positionStyle}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Events for ${dateLabel}`}
-      tabIndex={-1}
-    >
-      <div className={styles.popoverHeader}>
-        <span className={styles.popoverDate}>{dateLabel}</span>
-        <button
-          className={styles.popoverCloseBtn}
-          onClick={() => { onClose(); triggerRef?.current?.focus(); }}
-          aria-label="Close events popover"
-        >
-          ×
-        </button>
-      </div>
-      <div className={styles.popoverList}>
-        {allEvents.map((ev, i) => {
-          const label = getEventLabel(ev.type, ev.item);
-          const time = getEventTime(ev.type, ev.item);
-          return (
-            <div key={i} className={styles.popoverItem}>
-              {getEventDot(ev.type)}
-              <div className={styles.popoverItemContent}>
-                <span className={styles.popoverItemName}>{label}</span>
-                {time && <span className={styles.popoverItemTime}>{time}</span>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ── Day Cell ─────────────────────────────────────────────────
-// T-097: No longer renders DayPopover inline. Instead calls onOpenPopover with the
-//         trigger button's bounding rect so TripCalendar can portal the popover.
-// T-101: Stay chips now show checkout time on last day. Flight chips show "arrives X"
-//         label on arrival day.
-
-function DayCell({ day, isOutsideMonth, isToday, events, openPopoverDay, onOpenPopover }) {
-  const parsed = parseDateStr(day);
-  const dateLabel = `${DAYS_OF_WEEK[(new Date(`${day}T00:00:00`)).getDay()]}, ${
-    MONTHS[parsed.month]
-  } ${parsed.day}`;
-
-  const overflowBtnRef = useRef(null);
-  const isPopoverOpen = openPopoverDay === day;
-
-  const allEvents = [
-    ...(events?.flights || []).map((f) => ({ type: 'flight', item: f })),
-    ...(events?.stays || []).map((s) => ({ type: 'stay', item: s })),
-    ...(events?.activities || []).map((a) => ({ type: 'activity', item: a })),
-    ...(events?.landTravels || []).map((lt) => ({ type: 'landTravel', item: lt })),
-  ];
-
-  const visible = allEvents.slice(0, 3);
-  const overflow = allEvents.length - 3;
-
-  return (
-    <div
-      className={`${styles.dayCell} ${isOutsideMonth ? styles.dayCellOutside : ''}`}
-      aria-label={dateLabel}
-      aria-current={isToday ? 'date' : undefined}
-      aria-disabled={isOutsideMonth ? 'true' : undefined}
-    >
-      {/* Date number */}
-      <div className={`${styles.dayNumber} ${isToday ? styles.dayNumberToday : ''} ${isOutsideMonth ? styles.dayNumberOutside : ''}`}>
-        {parsed.day}
-      </div>
-
-      {/* Events */}
-      <div className={styles.eventsArea}>
-        {visible.map((ev, i) => {
-          if (ev.type === 'flight') {
-            const isArrival = ev.item._isArrival;
-            return (
-              <div
-                key={`f-${i}`}
-                className={`${styles.eventChip} ${styles.eventChipFlight}`}
-                aria-label={isArrival ? `Flight arrives: ${ev.item.flight_number}` : `Flight: ${ev.item.flight_number}`}
-                title={`${ev.item.airline} ${ev.item.flight_number}`}
-              >
-                <span className={styles.eventName}>{ev.item.flight_number || ev.item.airline}</span>
-                {/* T-101: show "arrives X" on arrival day, normal time on departure day */}
-                {isArrival && ev.item._calTime && (
-                  <span className={styles.eventTime}>arrives {ev.item._calTime}</span>
-                )}
-                {!isArrival && ev.item._calTime && (
-                  <span className={styles.eventTime}>{ev.item._calTime}</span>
-                )}
-              </div>
-            );
-          }
-          if (ev.type === 'stay') {
-            const { _isFirst, _isLast, _calTime, _checkOutTime } = ev.item;
-            // T-101: Determine what time text to show
-            // _isFirst && _isLast (single-day): "checkInTime → check-out checkOutTime"
-            // _isFirst && !_isLast: show check-in time only
-            // !_isFirst && _isLast: show "check-out checkOutTime"
-            // !_isFirst && !_isLast: no text (visual span bar)
-            let timeText = null;
-            if (_isFirst && _isLast) {
-              // Single-day stay: both check-in and check-out
-              // T-127: prepend "check-in " to the check-in time, matching "check-out" label format
-              if (_calTime && _checkOutTime) {
-                timeText = `check-in ${_calTime} → check-out ${_checkOutTime}`;
-              } else if (_calTime) {
-                timeText = `check-in ${_calTime}`;
-              } else if (_checkOutTime) {
-                timeText = `check-out ${_checkOutTime}`;
-              }
-            } else if (_isFirst) {
-              // T-127: prepend "check-in " to first-day time chip
-              timeText = _calTime ? `check-in ${_calTime}` : null;
-            } else if (_isLast) {
-              timeText = _checkOutTime ? `check-out ${_checkOutTime}` : null;
-            }
-
-            return (
-              <div
-                key={`s-${i}`}
-                className={`${styles.eventChip} ${styles.eventChipStay} ${_isFirst ? styles.chipFirst : ''} ${_isLast ? styles.chipLast : ''}`}
-                aria-label={`Stay: ${ev.item.name}`}
-                title={ev.item.name}
-              >
-                {/* Show content on first day (name + time) OR last day (checkout time) */}
-                {(_isFirst || _isLast) && (
-                  <>
-                    {_isFirst && <span className={styles.eventName}>{ev.item.name}</span>}
-                    {timeText && <span className={styles.eventTime}>{timeText}</span>}
-                  </>
-                )}
-              </div>
-            );
-          }
-          if (ev.type === 'activity') {
-            return (
-              <div
-                key={`a-${i}`}
-                className={`${styles.eventChip} ${styles.eventChipActivity}`}
-                aria-label={`Activity: ${ev.item.name}`}
-                title={ev.item.name}
-              >
-                <span className={styles.eventName}>{ev.item.name}</span>
-                {ev.item._calTime && <span className={styles.eventTime}>{ev.item._calTime}</span>}
-              </div>
-            );
-          }
-          if (ev.type === 'landTravel') {
-            // T-155: use _location (from_location on pick-up day, to_location on drop-off day)
-            const chipLabel = `${ev.item._modeLabel} → ${ev.item._location || ev.item.to_location}`;
-            // T-138: RENTAL_CAR shows "pick-up Xp" on pick-up day and "drop-off Xp" on drop-off day.
-            // All other modes show the plain departure/arrival time (existing behavior).
-            let timeLabel = null;
-            if (ev.item.mode === 'RENTAL_CAR') {
-              if (ev.item._isArrival) {
-                timeLabel = ev.item._calTime ? `drop-off ${ev.item._calTime}` : 'drop-off';
-              } else {
-                timeLabel = ev.item._calTime ? `pick-up ${ev.item._calTime}` : 'pick-up';
-              }
-            } else {
-              timeLabel = ev.item._calTime || null;
-            }
-            return (
-              <div
-                key={`lt-${i}`}
-                className={`${styles.eventChip} ${styles.eventChipLandTravel}`}
-                aria-label={`Land travel: ${chipLabel}`}
-                title={chipLabel}
-              >
-                <span className={styles.eventName}>{chipLabel}</span>
-                {timeLabel && <span className={styles.eventTime}>{timeLabel}</span>}
-              </div>
-            );
-          }
-          return null;
-        })}
-
-        {/* T-097: overflow button now only calls onOpenPopover with trigger ref + rect.
-             DayPopover is NO LONGER rendered inside DayCell — it's portaled in TripCalendar. */}
-        {overflow > 0 && (
-          <div className={styles.overflowWrapper}>
-            <button
-              ref={overflowBtnRef}
-              className={styles.overflowBtn}
-              onClick={(e) => {
-                e.stopPropagation();
-                // T-097: pass bounding rect so TripCalendar can position the portal popover
-                const rect = overflowBtnRef.current?.getBoundingClientRect() || null;
-                onOpenPopover(day, overflowBtnRef, rect);
-              }}
-              aria-haspopup="dialog"
-              aria-expanded={isPopoverOpen}
-              aria-label={`${overflow + visible.length} events on this day. Show all`}
-            >
-              +{overflow} more
-            </button>
-            {/* DayPopover is NO LONGER here — moved to TripCalendar portal */}
+    <div className={styles.mobileList}>
+      {daysWithEvents.map(([dateStr, dayEvents]) => {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
+        const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
+        return (
+          <div key={dateStr} className={styles.mobileDayEntry}>
+            <div className={styles.mobileDayLabel}>{dayLabel}</div>
+            <hr className={styles.mobileDaySep} aria-hidden="true" />
+            {dayEvents.map((ev, i) => {
+              const icon = ev.type === 'FLIGHT' ? '✈' : ev.type === 'STAY' ? '⌂' : '●';
+              const timeStr = formatTime(ev.start_time);
+              const sectionId = getSectionId(ev.type);
+              const typeClass = ev.type === 'FLIGHT' ? styles.mobileEventFlight
+                : ev.type === 'STAY' ? styles.mobileEventStay
+                : styles.mobileEventActivity;
+              return (
+                <div
+                  key={i}
+                  className={`${styles.mobileEventRow} ${typeClass}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${ev.type.charAt(0) + ev.type.slice(1).toLowerCase()}: ${ev.title}`}
+                  onClick={() => sectionId && scrollToSection(sectionId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      sectionId && scrollToSection(sectionId);
+                    }
+                  }}
+                >
+                  <span className={styles.mobileEventIcon}>{icon}</span>
+                  {timeStr && <span className={styles.mobileEventTime}>{timeStr}</span>}
+                  <span className={styles.mobileEventTitle}>{ev.title}</span>
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+        );
+      })}
     </div>
   );
 }
 
-// ── Main Calendar Component ──────────────────────────────────
+// ── Main Component ────────────────────────────────────────────
 
-export default function TripCalendar({
-  trip,
-  flights = [],
-  stays = [],
-  activities = [],
-  landTravels = [],
-  isLoading = false,
-}) {
-  // T-128: Determine initial month from earliest planned event across all event types.
-  // Falls back to current month when no events exist.
-  // Lazy initializer ensures this only runs once at mount (no flash from wrong month).
-  const [viewYear, setViewYear] = useState(() =>
-    getInitialMonth(flights, stays, activities, landTravels).getFullYear()
-  );
-  const [viewMonth, setViewMonth] = useState(() =>
-    getInitialMonth(flights, stays, activities, landTravels).getMonth()
-  );
+export default function TripCalendar({ tripId }) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [displayedMonth, setDisplayedMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
 
-  // T-146: Track whether the user has manually navigated the calendar.
-  // Prevents the async data-arrival effect from overriding an explicit user choice.
-  const hasNavigated = useRef(false);
+  const hasSetInitialMonth = useRef(false);
+  const abortControllerRef = useRef(null);
+  // Grid keyboard navigation: focused cell index
+  const [focusedCellIndex, setFocusedCellIndex] = useState(null);
+  const cellRefs = useRef([]);
 
-  // T-097: Popover state now includes bounding rect for portal positioning.
-  // Shape: { day: "YYYY-MM-DD", triggerRef: React.RefObject, rect: DOMRect | null } | null
-  const [openPopover, setOpenPopover] = useState(null);
-
-  const handleOpenPopover = useCallback((day, triggerRef, rect) => {
-    if (!day) {
-      setOpenPopover(null);
-    } else {
-      setOpenPopover({ day, triggerRef, rect });
+  const fetchCalendar = useCallback(async () => {
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
-  }, []);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
-  // Build events map from all sub-resources
-  const eventsMap = useMemo(
-    () => buildEventsMap(flights, stays, activities, landTravels),
-    [flights, stays, activities, landTravels]
-  );
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.get(`/trips/${tripId}/calendar`, {
+        signal: controller.signal,
+      });
+      const calEvents = response.data?.data?.events || [];
+      setEvents(calEvents);
+      // Set initial month to first event's month (only once)
+      if (!hasSetInitialMonth.current) {
+        hasSetInitialMonth.current = true;
+        setDisplayedMonth(getInitialMonth(calEvents));
+      }
+    } catch (err) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+        return; // ignore abort
+      }
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [tripId]);
 
-  const hasAnyEvents =
-    flights.length > 0 || stays.length > 0 || activities.length > 0 || landTravels.length > 0;
+  useEffect(() => {
+    fetchCalendar();
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchCalendar]);
 
-  // Build calendar grid for the current view month
+  // Build events map
+  const eventsMap = useMemo(() => buildEventsMap(events), [events]);
+
+  // Build calendar grid for current month
+  const { year, month } = displayedMonth;
   const calendarDays = useMemo(() => {
-    const firstDay = new Date(viewYear, viewMonth, 1);
-    const lastDay = new Date(viewYear, viewMonth + 1, 0);
-    const startPad = firstDay.getDay();
+    const today = todayDateStr();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startPad = firstDay.getDay(); // 0=Sun
     const totalCells = Math.ceil((startPad + lastDay.getDate()) / 7) * 7;
-
     const days = [];
     for (let i = 0; i < totalCells; i++) {
-      const d = new Date(viewYear, viewMonth, 1 - startPad + i);
+      const d = new Date(year, month, 1 - startPad + i);
       const dateStr = d.toISOString().slice(0, 10);
       days.push({
         dateStr,
-        isOutsideMonth: d.getMonth() !== viewMonth,
-        isToday: dateStr === todayStr(),
+        isOutsideMonth: d.getMonth() !== month,
+        isToday: dateStr === today,
+        dayOfMonth: d.getDate(),
       });
     }
     return days;
-  }, [viewYear, viewMonth]);
+  }, [year, month]);
 
-  // T-146: Data-arrival effect — auto-initialize calendar to the first-event month
-  // the first time non-empty event data arrives, but only if the user has not
-  // already manually navigated (hasNavigated.current === false).
+  // Reset cell refs array length
   useEffect(() => {
-    if (hasNavigated.current) return;
-
-    const hasData =
-      flights.length > 0 ||
-      stays.length > 0 ||
-      activities.length > 0 ||
-      landTravels.length > 0;
-
-    if (!hasData) return;
-
-    const firstEventMonth = getInitialMonth(flights, stays, activities, landTravels);
-    const newYear = firstEventMonth.getFullYear();
-    const newMonth = firstEventMonth.getMonth();
-
-    // Only update if the computed month differs from what is already displayed
-    // (React will bail out automatically for primitives, but be explicit)
-    setViewYear(newYear);
-    setViewMonth(newMonth);
-  }, [flights, stays, activities, landTravels]); // eslint-disable-line react-hooks/exhaustive-deps
+    cellRefs.current = cellRefs.current.slice(0, calendarDays.length);
+  }, [calendarDays.length]);
 
   function prevMonth() {
-    hasNavigated.current = true; // T-146: mark user navigation
-    setOpenPopover(null);
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear((y) => y - 1);
-    } else {
-      setViewMonth((m) => m - 1);
-    }
+    setDisplayedMonth(({ year, month }) =>
+      month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 }
+    );
+    setFocusedCellIndex(null);
   }
 
   function nextMonth() {
-    hasNavigated.current = true; // T-146: mark user navigation
-    setOpenPopover(null);
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear((y) => y + 1);
-    } else {
-      setViewMonth((m) => m + 1);
+    setDisplayedMonth(({ year, month }) =>
+      month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 }
+    );
+    setFocusedCellIndex(null);
+  }
+
+  // Grid keyboard navigation handler
+  function handleGridKeyDown(e, cellIndex) {
+    const totalCells = calendarDays.length;
+    let newIndex = null;
+    if (e.key === 'ArrowLeft') {
+      newIndex = Math.max(0, cellIndex - 1);
+    } else if (e.key === 'ArrowRight') {
+      newIndex = Math.min(totalCells - 1, cellIndex + 1);
+    } else if (e.key === 'ArrowUp') {
+      newIndex = Math.max(0, cellIndex - 7);
+    } else if (e.key === 'ArrowDown') {
+      newIndex = Math.min(totalCells - 1, cellIndex + 7);
+    }
+    if (newIndex !== null) {
+      e.preventDefault();
+      setFocusedCellIndex(newIndex);
+      cellRefs.current[newIndex]?.focus();
     }
   }
 
-  // T-147: Navigate to current month. Sets hasNavigated so async init won't override.
-  function handleToday() {
-    hasNavigated.current = true;
-    const now = new Date();
-    setViewYear(now.getFullYear());
-    setViewMonth(now.getMonth());
-    setOpenPopover(null);
+  // Render an event pill
+  function renderEventPill(event, idx) {
+    const sectionId = getSectionId(event.type);
+    const timeStr = formatTime(event.start_time);
+    const endTimeStr = formatTime(event.end_time);
+
+    let pillClass = styles.eventPill;
+    if (event.type === 'FLIGHT') pillClass += ` ${styles.eventPillFlight}`;
+    else if (event.type === 'STAY') pillClass += ` ${styles.eventPillStay}`;
+    else if (event.type === 'ACTIVITY') pillClass += ` ${styles.eventPillActivity}`;
+
+    // Stay pill border-radius based on position
+    let pillStyle = {};
+    if (event.type === 'STAY') {
+      if (event._dayType === 'start') {
+        pillStyle = { borderRadius: 'var(--radius-sm) 0 0 var(--radius-sm)' };
+      } else if (event._dayType === 'end') {
+        pillStyle = { borderRadius: '0 var(--radius-sm) var(--radius-sm) 0', borderLeft: 'none' };
+      } else if (event._dayType === 'middle') {
+        pillStyle = { borderRadius: 0, borderLeft: 'none' };
+      }
+    }
+
+    const ariaLabel = `${event.type.charAt(0) + event.type.slice(1).toLowerCase()}: ${event.title}${timeStr ? `, ${timeStr}${endTimeStr ? `–${endTimeStr}` : ''}` : ''}`;
+    // For STAY: only show text on first/single day
+    const showText = event.type !== 'STAY' || event._isFirst || event._dayType === 'single';
+    const displayText = showText ? (timeStr ? `${timeStr} ${event.title}` : event.title) : null;
+
+    return (
+      <div
+        key={idx}
+        className={pillClass}
+        style={pillStyle}
+        role="button"
+        tabIndex={0}
+        aria-label={ariaLabel}
+        onClick={() => sectionId && scrollToSection(sectionId)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            sectionId && scrollToSection(sectionId);
+          }
+        }}
+      >
+        {displayText && (
+          <span className={styles.eventPillText}>{displayText}</span>
+        )}
+      </div>
+    );
   }
 
   return (
-    <div className={styles.calendar} role="application" aria-label="Trip calendar">
-      {/* Calendar Header */}
-      <div className={styles.calendarHeader}>
-        <button
-          className={styles.navBtn}
-          onClick={prevMonth}
-          aria-label="Previous month"
-        >
-          ‹
-        </button>
-        <div className={styles.monthLabel} aria-live="polite">
-          {MONTHS[viewMonth].toUpperCase()} {viewYear}
+    <div
+      className={styles.calendarPanel}
+      role="region"
+      aria-label="Trip calendar"
+      aria-busy={loading ? 'true' : undefined}
+    >
+      {/* Panel header: "CALENDAR" label + legend */}
+      <div className={styles.panelHeader}>
+        <span className={styles.panelLabel}>CALENDAR</span>
+        <div className={styles.legend} aria-hidden="true">
+          <span className={styles.legendItem}>
+            <span className={`${styles.legendDot} ${styles.legendDotFlight}`} />
+            <span className={styles.legendText}>Flight</span>
+          </span>
+          <span className={styles.legendItem}>
+            <span className={`${styles.legendDot} ${styles.legendDotStay}`} />
+            <span className={styles.legendText}>Stay</span>
+          </span>
+          <span className={styles.legendItem}>
+            <span className={`${styles.legendDot} ${styles.legendDotActivity}`} />
+            <span className={styles.legendText}>Activity</span>
+          </span>
         </div>
-        <button
-          className={styles.navBtn}
-          onClick={nextMonth}
-          aria-label="Next month"
-        >
-          ›
-        </button>
-
-        {/* T-147: "Today" button — always visible, returns calendar to current month */}
-        <button
-          className={styles.todayBtn}
-          onClick={handleToday}
-          aria-label="Go to current month"
-        >
-          today
-        </button>
       </div>
+      <hr className={styles.panelDivider} aria-hidden="true" />
 
-      {/* Day of week header */}
-      <div className={styles.dowHeader}>
-        {DAYS_OF_WEEK.map((d) => (
-          <div key={d} className={styles.dowCell}>{d}</div>
-        ))}
-      </div>
-
-      {/* Grid */}
-      {isLoading ? (
-        <div className={styles.loadingOverlay}>
-          <div className={styles.loadingSkeleton} />
-        </div>
-      ) : (
-        <div className={styles.grid}>
-          {calendarDays.map(({ dateStr, isOutsideMonth, isToday }) => (
-            <DayCell
-              key={dateStr}
-              day={dateStr}
-              isOutsideMonth={isOutsideMonth}
-              isToday={isToday}
-              events={eventsMap[dateStr]}
-              openPopoverDay={openPopover?.day || null}
-              onOpenPopover={handleOpenPopover}
-            />
-          ))}
+      {/* ── Loading State ── */}
+      {loading && (
+        <div className={styles.loadingArea} aria-label="Loading calendar…">
+          <div className={styles.monthNav}>
+            <button className={styles.navArrow} disabled aria-label="Previous month">←</button>
+            <span className={styles.monthTitle}>— —</span>
+            <button className={styles.navArrow} disabled aria-label="Next month">→</button>
+          </div>
+          <div className={styles.dowHeader}>
+            {DAYS_OF_WEEK.map((d) => (
+              <div key={d} className={styles.dowCell}>{d}</div>
+            ))}
+          </div>
+          <div className={styles.grid} aria-hidden="true">
+            {Array.from({ length: 35 }).map((_, i) => (
+              <div key={i} className={`${styles.dayCell} ${styles.dayCellSkeleton}`} />
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Empty state message */}
-      {!isLoading && !hasAnyEvents && (
-        <div className={styles.emptyMessage}>no events this month</div>
+      {/* ── Error State ── */}
+      {!loading && error && (
+        <div className={styles.errorArea} role="alert">
+          <span className={styles.errorTitle}>calendar unavailable</span>
+          <p className={styles.errorMsg}>Could not load calendar data.</p>
+          <button className={styles.retryBtn} onClick={fetchCalendar}>
+            Try again
+          </button>
+        </div>
       )}
 
-      {/* T-097: DayPopover rendered via portal to document.body.
-           This prevents the popover from being constrained by the CSS grid layout,
-           fixing the visual corruption where day cells would expand when popover opened. */}
-      {openPopover && createPortal(
-        <DayPopover
-          day={openPopover.day}
-          events={eventsMap[openPopover.day]}
-          onClose={() => handleOpenPopover(null, null, null)}
-          triggerRef={openPopover.triggerRef}
-          position={openPopover.rect}
-        />,
-        document.body
+      {/* ── Success / Empty State ── */}
+      {!loading && !error && (
+        <>
+          {/* Month navigation */}
+          <div className={styles.monthNav}>
+            <button className={styles.navArrow} onClick={prevMonth} aria-label="Previous month">
+              ←
+            </button>
+            <span className={styles.monthTitle} aria-live="polite">
+              {MONTHS[month].toUpperCase()} {year}
+            </span>
+            <button className={styles.navArrow} onClick={nextMonth} aria-label="Next month">
+              →
+            </button>
+          </div>
+
+          {/* Desktop grid (hidden on mobile via CSS) */}
+          <div className={styles.desktopGrid}>
+            {/* Day of week header */}
+            <div className={styles.dowHeader} role="row">
+              {DAYS_OF_WEEK.map((d) => (
+                <div key={d} className={styles.dowCell} role="columnheader">
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Empty state overlay (when no events at all) */}
+            {events.length === 0 && (
+              <div
+                className={styles.emptyMsg}
+                aria-label="No events. Add flights, stays, or activities to populate the calendar."
+              >
+                Add flights, stays, or activities
+                <br />
+                to see them here.
+              </div>
+            )}
+
+            {/* Calendar grid */}
+            <div className={styles.grid} role="grid" aria-label={`${MONTHS[month]} ${year}`}>
+              {calendarDays.map(({ dateStr, isOutsideMonth, isToday, dayOfMonth }, cellIndex) => {
+                const dayEvents = eventsMap[dateStr] || [];
+                const visible = isOutsideMonth ? [] : dayEvents.slice(0, 3);
+                const overflow = isOutsideMonth ? 0 : dayEvents.length - 3;
+                const [dy, dm, dd] = dateStr.split('-').map(Number);
+                const dayName = new Date(dy, dm - 1, dd).toLocaleDateString('en-US', { weekday: 'long' });
+                const cellLabel = `${dayName}, ${MONTHS[dm - 1]} ${dd}, ${dy}`;
+                const isFocused = focusedCellIndex === cellIndex;
+
+                return (
+                  <div
+                    key={dateStr}
+                    ref={(el) => { cellRefs.current[cellIndex] = el; }}
+                    role="gridcell"
+                    tabIndex={isFocused ? 0 : -1}
+                    className={`${styles.dayCell} ${isOutsideMonth ? styles.dayCellOutside : ''}`}
+                    aria-label={cellLabel}
+                    aria-current={isToday ? 'date' : undefined}
+                    onFocus={() => setFocusedCellIndex(cellIndex)}
+                    onKeyDown={(e) => handleGridKeyDown(e, cellIndex)}
+                  >
+                    <div className={`${styles.dayNumber} ${isToday ? styles.dayNumberToday : ''} ${isOutsideMonth ? styles.dayNumberOutside : ''}`}>
+                      {dayOfMonth}
+                    </div>
+                    <div className={styles.eventsArea}>
+                      {visible.map((ev, idx) => renderEventPill(ev, idx))}
+                      {overflow > 0 && (
+                        <span className={styles.overflowLabel}>+{overflow} more</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Mobile day list (hidden on desktop via CSS) */}
+          <div className={styles.mobileView}>
+            <MobileDayList events={events} displayedMonth={displayedMonth} />
+          </div>
+        </>
       )}
     </div>
   );

@@ -2639,3 +2639,238 @@ Log handoff to Monitor Agent (T-206) upon successful deploy.
 
 **Related tasks:** T-212 (Backend), T-213 (Frontend), T-214 (this QA task)
 
+---
+
+**[2026-03-10] Deploy Engineer → Manager Agent / QA Engineer** *(T-215 — BLOCKED: Pre-deploy gate requires T-214 completion)*
+
+**From:** Deploy Engineer
+**To:** Manager Agent, QA Engineer
+**Status:** ⛔ BLOCKED — T-215 cannot proceed. Pre-deploy gate (T-214 Done) not met.
+
+**Task:** T-215 — Sprint 25 staging re-deployment
+
+---
+
+### Blocker Summary
+
+| Blocker | Details |
+|---------|---------|
+| T-214 (QA) | Status: **Backlog** — blocked by T-212 + T-213 |
+| T-212 (Backend) | Status: **In Progress** — API contract published, but `/api/v1/trips/:id/calendar` route **not yet implemented** in `backend/src/routes/`. No calendar endpoint found in codebase. |
+| T-213 (Frontend) | Status: **Backlog** — the existing `TripCalendar.jsx` is the Sprint 7 props-based calendar, not the API-calling version planned for T-213. |
+
+**Root cause:** Backend Engineer needs to complete T-212 implementation (calendar route + controller + model). Frontend Engineer needs to complete T-213 (update TripCalendar to call `GET /api/v1/trips/:id/calendar`). QA must run T-214 after both are done. Only then can T-215 proceed.
+
+---
+
+### Pre-Deploy Pre-Verification (completed by Deploy Engineer — safe to use when T-214 is done)
+
+The following checks have been completed now so they don't need re-doing at deploy time:
+
+| Check | Result | Detail |
+|-------|--------|--------|
+| `infra/ecosystem.config.cjs` — `BACKEND_PORT` | ✅ PASS | `BACKEND_PORT: '3001'` — confirmed |
+| `infra/ecosystem.config.cjs` — `BACKEND_SSL` | ✅ PASS | `BACKEND_SSL: 'true'` — confirmed |
+| DB migration needed (T-212)? | ✅ NONE | T-212 is a read-only aggregation over existing tables — no schema changes. No `knex migrate:latest` needed. |
+| Backend tests baseline | ✅ 304/304 PASS | All 304 backend tests pass as of 2026-03-10 |
+| Frontend tests baseline | ✅ 481/481 PASS | All 481 frontend tests pass as of 2026-03-10 |
+
+**ecosystem.config.cjs regression check: PASS** — No changes needed. Config is correct for staging.
+
+---
+
+### Deploy Plan (execute once T-214 is Done)
+
+Once Manager or QA logs that T-214 is complete in handoff-log.md, execute the following:
+
+```bash
+# 1. Build frontend
+cd frontend && npm run build   # Must exit 0
+
+# 2. Reload frontend process (zero-downtime)
+pm2 reload triplanner-frontend
+
+# 3. Restart backend (picks up new calendar route)
+pm2 restart triplanner-backend
+
+# 4. Smoke tests (with auth token)
+curl -sk https://localhost:3001/api/v1/health             # → 200 {"status":"ok"}
+curl -sk https://localhost:4173                            # → 200
+# With auth: GET /api/v1/trips/:id/calendar               # → 200 {"data":{"events":[...]}}
+# TripDetailsPage must show TripCalendar, not placeholder
+# StatusFilterTabs must still be visible on home page
+```
+
+```
+# 5. Log full report to qa-build-log.md under Sprint 25 section
+# 6. Log handoff to Monitor Agent (T-216)
+```
+
+---
+
+### Required Action
+
+- **Backend Engineer:** Complete T-212 implementation (add `/api/v1/trips/:id/calendar` route, controller, model with SQL aggregation across flights/stays/activities tables). Write unit tests.
+- **Frontend Engineer:** Complete T-213 once T-212 is merged (update TripCalendar or create API-calling version; min 10 new tests).
+- **QA Engineer:** Run T-214 once T-212 + T-213 are Done.
+- **Manager Agent:** Unblock T-212 by approving API contract (already published to `api-contracts.md`).
+
+**When T-214 is complete:** Post a handoff to Deploy Engineer in this log so T-215 can execute immediately.
+
+**Related tasks:** T-212, T-213, T-214 (this blocks T-215), T-215 (this), T-216, T-217
+
+---
+
+**[2026-03-10] Backend Engineer → QA Engineer** *(T-212 — DONE — Ready for QA)*
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** ✅ T-212 Implementation Complete — In Review
+
+**Task:** T-212 — `GET /api/v1/trips/:id/calendar` — Calendar data aggregation endpoint
+
+---
+
+### What Was Built
+
+| File | Description |
+|------|-------------|
+| `backend/src/models/calendarModel.js` | Aggregation model — queries flights, stays, activities in parallel via `Promise.all`; transforms each row into a normalized calendar event; sorts by `start_date ASC → start_time ASC NULLS LAST → type ASC` |
+| `backend/src/routes/calendar.js` | Route handler — `GET /` under `mergeParams` router; runs `authenticate` middleware; enforces trip existence (404) and ownership (403) before calling model |
+| `backend/src/app.js` | Registered `calendarRoutes` at `GET /api/v1/trips/:tripId/calendar` |
+| `backend/src/__tests__/sprint25.test.js` | 15 route-level tests (happy paths, auth, ownership, 404, 400 UUID, 500) |
+| `backend/src/__tests__/calendarModel.unit.test.js` | 21 model unit tests (event shape per type, field derivation, sorting, null times) |
+
+**No schema changes** — read-only aggregation over existing `flights`, `stays`, `activities` tables. No `knex migrate:latest` needed.
+
+**Test result:** 340/340 backend tests pass (304 pre-existing + 36 new).
+
+---
+
+### What QA Should Test (T-214)
+
+| # | Test Scenario | Expected Result |
+|---|--------------|-----------------|
+| 1 | `GET /api/v1/trips/:id/calendar` — authenticated, own trip with flights/stays/activities | 200, `data.events` array with FLIGHT, STAY, ACTIVITY events in correct shape |
+| 2 | Empty trip (no sub-resources) | 200, `data.events: []` |
+| 3 | No `Authorization` header | 401 `UNAUTHORIZED` |
+| 4 | Invalid JWT token | 401 `UNAUTHORIZED` |
+| 5 | Valid auth but trip belongs to another user | 403 `FORBIDDEN` |
+| 6 | Unknown trip UUID | 404 `NOT_FOUND` |
+| 7 | Non-UUID `:id` (e.g. `/trips/not-a-uuid/calendar`) | 400 `VALIDATION_ERROR` |
+| 8 | Events sort order: `start_date ASC`, `start_time ASC NULLS LAST`, `type ASC` | Chronological, all-day after timed on same date |
+| 9 | FLIGHT event fields: `id = "flight-{uuid}"`, title = `"{airline} {number} — {from} → {to}"`, `timezone = departure_tz` | Correct derivation |
+| 10 | STAY event: multi-night `start_date ≠ end_date`, `timezone = check_in_tz` | Correct |
+| 11 | ACTIVITY event: `timezone = null`, times are `HH:MM` (not `HH:MM:SS`), all-day activity has `start_time = null` | Correct |
+| 12 | `npm audit` in `backend/` — 0 Moderate+ vulnerabilities | Pass |
+| 13 | No hardcoded secrets in `calendarModel.js` or `calendar.js` | Pass |
+| 14 | No `dangerouslySetInnerHTML` introduced | Pass |
+
+**Related tasks:** T-212 (this), T-213 (Frontend — still in Backlog), T-214 (QA), T-215 (Deploy)
+
+---
+
+**[2026-03-10] Backend Engineer → Frontend Engineer** *(T-212 → T-213 — API ready)*
+
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Status:** ✅ T-212 Done — Calendar API is live and tested
+
+**Task:** T-213 unblocked — `GET /api/v1/trips/:tripId/calendar` is implemented and ready for integration
+
+---
+
+### API Summary for T-213
+
+**Endpoint:** `GET /api/v1/trips/:id/calendar`
+**Auth:** Bearer token (same as all other authenticated endpoints)
+**Response:**
+
+```json
+{
+  "data": {
+    "trip_id": "uuid",
+    "events": [
+      {
+        "id": "flight-{uuid}",
+        "type": "FLIGHT | STAY | ACTIVITY",
+        "title": "string",
+        "start_date": "YYYY-MM-DD",
+        "end_date": "YYYY-MM-DD",
+        "start_time": "HH:MM | null",
+        "end_time": "HH:MM | null",
+        "timezone": "IANA string | null",
+        "source_id": "uuid"
+      }
+    ]
+  }
+}
+```
+
+Events are pre-sorted: `start_date ASC → start_time ASC NULLS LAST → type ASC`. No query parameters needed — the API returns all events for the trip in one call.
+
+Full contract is in `api-contracts.md` under "Sprint 25 — T-212".
+
+**Related tasks:** T-212 (this), T-213 (Frontend — next), T-214 (QA after T-213)
+
+
+
+---
+
+**[2026-03-10] Frontend Engineer → API Contract Acknowledgment (T-212 / T-213)**
+
+**From:** Frontend Engineer
+**To:** (acknowledgment — no action needed)
+**Re:** Sprint 25 — `GET /api/v1/trips/:id/calendar` contract
+
+Acknowledged the T-212 API contract published in `api-contracts.md`:
+- Endpoint: `GET /api/v1/trips/:id/calendar`
+- Auth: Bearer token required (401 unauthenticated, 403 wrong user, 404 unknown trip)
+- Response shape: `{ data: { trip_id, events: [{ id, type, title, start_date, end_date, start_time, end_time, timezone, source_id }] } }`
+- Event types: `FLIGHT | STAY | ACTIVITY`
+- Ordering: start_date ASC, start_time ASC
+
+Contract implemented in `frontend/src/utils/api.js` under `api.calendar.get(tripId)`.
+
+---
+
+**[2026-03-10] Frontend Engineer → QA Engineer (T-213 → T-214)**
+
+**From:** Frontend Engineer
+**To:** QA Engineer
+**Re:** Sprint 25 — T-213 TripCalendar component ready for review
+
+**Status:** In Review — implementation complete.
+
+**What was built:**
+- `frontend/src/components/TripCalendar.jsx` — Self-contained component accepting `{ tripId }` prop. Fetches `GET /api/v1/trips/:id/calendar` with AbortController cleanup. Renders: loading skeleton (35 cells), error state + retry button, empty state, success state with month-grid view + mobile day-list.
+- `frontend/src/components/TripCalendar.module.css` — All styles via CSS custom properties (`--event-flight-*`, `--event-stay-*`, `--event-activity-*`). No hardcoded hex. Responsive: desktop grid hidden on mobile, day-list shown.
+- `frontend/src/styles/global.css` — Added event color tokens (`--event-flight-bg/border/text`, `--event-stay-bg/border/text`, `--event-activity-bg/border/text`, `--color-land-travel`).
+- `frontend/src/utils/api.js` — Added `api.calendar.get(tripId)`.
+- `frontend/src/pages/TripDetailsPage.jsx` — Replaced old prop-based `<TripCalendar>` with `<TripCalendar tripId={tripId} />`. Added section anchor IDs: `id="flights-section"`, `id="stays-section"`, `id="activities-section"`, `id="land-travel-section"`.
+- `frontend/src/__tests__/TripCalendar.test.jsx` — 75 tests covering all acceptance criteria.
+
+**Test results:** 486/486 frontend tests pass (baseline was 481).
+
+**What to test (T-214):**
+1. Re-run `npm test --run` in `frontend/` → expect ≥486 tests pass
+2. Calendar renders on TripDetailsPage (not placeholder text)
+3. FLIGHT events render with correct label and blue-grey pill color
+4. STAY events render multi-day spans with green pill color
+5. ACTIVITY events render with orange/amber pill color
+6. Empty state: "Add flights, stays, or activities to see them here" when no events
+7. Loading skeleton: 35 cells visible while fetching
+8. Error state: error message + Retry button on API failure; retry re-fetches
+9. Click FLIGHT pill → scrolls to `#flights-section`; click STAY → `#stays-section`; click ACTIVITY → `#activities-section`
+10. Keyboard nav: ArrowLeft/Right/Up/Down moves focus through grid cells
+11. ARIA: `role="grid"` on grid, `aria-label` on each event pill, `aria-current="date"` on today, `aria-live="polite"` on month display
+12. Month nav: Previous/Next buttons change displayed month; wraps year at Dec→Jan / Jan→Dec
+13. Mobile view (≤479px): desktop grid hidden, day-list shown with ✈/⌂/● icons
+14. Overflow: "+N more" label appears when day has >3 events
+15. No hardcoded hex in component styles — verify via CSS custom properties only
+
+**Known limitations:**
+- Calendar initial month auto-sets to the month of the first event; if no events, defaults to current month.
+- Mobile day-list shows all days with events in the currently displayed month (not just today).
+- Multi-day STAY events span across day cells in the desktop grid (start/middle/end visual treatment).
+

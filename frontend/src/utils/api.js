@@ -155,6 +155,9 @@ export const api = {
     update: (tripId, id, body) => apiClient.patch(`/trips/${tripId}/land-travel/${id}`, body),
     delete: (tripId, id) => apiClient.delete(`/trips/${tripId}/land-travel/${id}`),
   },
+  calendar: {
+    get: (tripId) => apiClient.get(`/trips/${tripId}/calendar`),
+  },
 };
 
 export default api;

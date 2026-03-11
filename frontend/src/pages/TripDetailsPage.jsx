@@ -794,19 +794,12 @@ export default function TripDetailsPage() {
 
           {/* ── Calendar ── */}
           <div className={styles.calendarWrapper}>
-            <TripCalendar
-              trip={trip || {}}
-              flights={flights}
-              stays={stays}
-              activities={activities}
-              landTravels={landTravels}
-              isLoading={flightsLoading || staysLoading || activitiesLoading || landTravelsLoading}
-            />
+            <TripCalendar tripId={tripId} />
           </div>
 
           {/* ── Flights Section ── */}
           {/* T-099: Section order is Flights → Land Travel → Stays → Activities */}
-          <section className={styles.section}>
+          <section id="flights-section" className={styles.section}>
             <SectionHeader title="flights" actionLabel="edit flights" actionHref={`/trips/${tripId}/edit/flights`} />
             {flightsLoading ? (
               <SkeletonBar width="100%" height="80px" />
@@ -827,7 +820,7 @@ export default function TripDetailsPage() {
 
           {/* ── Land Travel Section ── */}
           {/* T-099: Moved to between Flights and Stays for logical travel flow */}
-          <section className={styles.section}>
+          <section id="land-travel-section" className={styles.section}>
             <SectionHeader title="land travel" actionLabel="edit land travel" actionHref={`/trips/${tripId}/land-travel/edit`} />
             {landTravelsLoading ? (
               <div>
@@ -859,7 +852,7 @@ export default function TripDetailsPage() {
           </section>
 
           {/* ── Stays Section ── */}
-          <section className={styles.section}>
+          <section id="stays-section" className={styles.section}>
             <SectionHeader title="stays" actionLabel="edit stays" actionHref={`/trips/${tripId}/edit/stays`} />
             {staysLoading ? (
               <SkeletonBar width="100%" height="80px" />
@@ -880,7 +873,7 @@ export default function TripDetailsPage() {
 
           {/* ── Activities Section ── */}
           {/* T-099: Activities is now last; moved sectionLast class here from Land Travel */}
-          <section className={`${styles.section} ${styles.sectionLast}`}>
+          <section id="activities-section" className={`${styles.section} ${styles.sectionLast}`}>
             <SectionHeader title="activities" actionLabel="edit activities" actionHref={`/trips/${tripId}/edit/activities`} />
             {activitiesLoading ? (
               <div>
