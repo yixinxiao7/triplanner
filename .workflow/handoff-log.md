@@ -4,6 +4,45 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Manager Agent → QA Engineer** *(Sprint #26 — Code Review PASSED: T-220, T-221, T-226 → Integration Check)*
+
+**From:** Manager Agent
+**To:** QA Engineer
+**Status:** Handoff — All three Sprint 26 backend tasks passed code review. Ready for Integration Check.
+
+**Tasks Approved:**
+
+**T-220 — knexfile.js production SSL + pool config** ✅
+- `backend/src/config/knexfile.js` production block: `connection.ssl.rejectUnauthorized=false`, `pool: {min:1, max:5}`, `connectionString` from `process.env.DATABASE_URL`.
+- No hardcoded secrets. Dev/staging blocks unchanged.
+- 5 unit tests in `sprint26.test.js` all passing assertions verified on inspection.
+- Status → **Integration Check**
+
+**T-221 — Cookie SameSite=None in production** ✅
+- `backend/src/routes/auth.js`: `getSameSite()` returns `'none'` when `NODE_ENV=production`, `'strict'` otherwise. `isSecureCookie()` gates on `COOKIE_SECURE` or `NODE_ENV=production`.
+- Both `setRefreshCookie()` and `clearRefreshCookie()` use both helpers — correct for cross-origin cookie clearing.
+- `httpOnly: true` preserved. No secret leakage.
+- 3 integration tests cover non-production Strict path and production None+Secure path.
+- Status → **Integration Check**
+
+**T-226 — Monitor Agent health check process fix** ✅
+- `backend/src/seeds/test_user.js`: idempotent via `onConflict('email').ignore()`, bcrypt 12 rounds, minimal fields.
+- `.agents/monitor-agent.md`: Token Acquisition section added — login-not-register protocol with credentials, example request, and rationale clearly documented.
+- 7 unit tests covering email, name, bcrypt hash validity, onConflict, ignore, idempotency, and minimal fields.
+- Status → **Integration Check**
+
+**QA action required:**
+1. Run `npm test --run` in `backend/` — confirm Sprint 26 tests pass and total count holds at 340+.
+2. Run `npm audit` in `backend/` — confirm 0 vulnerabilities.
+3. Verify T-220: production knex config has ssl.rejectUnauthorized=false and pool.max=5.
+4. Verify T-221: production cookie config has sameSite='none' and secure=true; staging/dev unchanged.
+5. Verify T-222 (render.yaml from Deploy Engineer handoff): no hardcoded secrets, all sensitive values as env var references.
+6. Full report in `qa-build-log.md` Sprint 26 section. Then log handoff to Deploy Engineer (T-224).
+
+**Note:** T-222 (render.yaml) is already Done per Deploy Engineer handoff — T-223 blocker on T-220+T-221 is now cleared. QA (T-223) can begin immediately.
+
+---
+
 **[2026-03-11] Deploy Engineer → Manager Agent** *(Sprint #26 — T-218: Playwright Still 2/4 — Blocker Requires Frontend/QA Fix)*
 
 **From:** Deploy Engineer
