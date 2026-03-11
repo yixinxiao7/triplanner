@@ -37,6 +37,38 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | — | 8 | *(No new migrations this sprint)* | — | — | Sprint 8 features (T-113 timezone abbreviations, T-114 activity URL links) are frontend-only. Existing schema (001–010) is sufficient. Migration 010 is the only pending deploy (T-107). Confirmed by Backend Engineer 2026-02-27. |
 | — | 9–24 | *(No new migrations Sprints 9–24)* | — | — | Schema-stable. All 10 migrations applied on staging. |
 | — | 25 | *(No new migrations this sprint)* | — | — | Sprint 25 `GET /api/v1/trips/:id/calendar` (T-212) is a read-only aggregation over existing `flights`, `stays`, `activities` tables. No DDL changes required. Confirmed by Backend Engineer 2026-03-10. **[Auto-approved — no schema change]** |
+| — | 26 | *(No new migrations this sprint)* | — | — | Sprint 26 tasks (T-220 knexfile SSL config, T-221 cookie SameSite fix, T-226 seed script) require no DDL changes. T-226 seeds the existing `users` table — no new columns or tables. Confirmed by Backend Engineer 2026-03-11. **[Auto-approved — no schema change]** |
+
+---
+
+### Sprint 26 — No Schema Changes
+
+**Date:** 2026-03-11
+**Confirmed by:** Backend Engineer
+**Tasks:** T-220, T-221, T-226
+
+**Reason:** All three Sprint 26 backend tasks are configuration, cookie-attribute, and seed-data changes. No DDL is required.
+
+**T-220 — knexfile.js Production SSL Config:**
+- Modifies `backend/knexfile.js` (or `backend/src/config/knexfile.js`) production config block only
+- Adds `ssl: { rejectUnauthorized: false }` for AWS RDS self-signed certificate compatibility
+- Changes pool from `{ min: 2, max: 10 }` to `{ min: 1, max: 5 }` (right-sized for `db.t3.micro`)
+- **No schema change. No migration. No `knex migrate:latest` required.**
+
+**T-221 — Cookie SameSite=None + Secure in Production:**
+- Modifies `backend/src/routes/auth.js` helper functions `setRefreshCookie` and `clearRefreshCookie`
+- Guards `SameSite=None; Secure` behind `NODE_ENV === 'production'`
+- Keeps `SameSite=Strict` for development and staging
+- **No schema change. No migration.**
+
+**T-226 — Monitor Agent Seed Script:**
+- Creates `backend/src/seeds/test_user.js`
+- Inserts a persistent test user: `test@triplanner.local` / `TestPass123!` into the existing `users` table
+- Seed is idempotent (upsert pattern — safe to re-run)
+- No new columns or tables. The `users` table (migration 001) already has all required columns (`id`, `email`, `password_hash`, `name`, `created_at`, `updated_at`)
+- **No schema change. No migration.**
+
+**Manager Approval Note:** No schema changes across all Sprint 26 backend tasks → no Manager handoff required for DDL approval. This note is for the Deploy Engineer's reference: **do not run `knex migrate:latest` for Sprint 26** — the migration log remains at 10 applied migrations (001–010). The seed script (`test_user.js`) may be run against staging via `knex seed:run` as part of T-226 if the Deploy Engineer chooses to seed staging; it is not required for production.
 
 ---
 

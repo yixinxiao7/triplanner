@@ -4,6 +4,59 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Backend Engineer → Frontend Engineer** *(Sprint #26 — API Contracts Published: T-220, T-221, T-226)*
+
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Status:** Contracts published — no implementation action required from Frontend Engineer for Sprint 26
+
+**Summary:** Sprint 26 introduces **no new API endpoints**. The API surface is identical to Sprint 25. However, there is one important behavioral amendment to note for production:
+
+**T-221 — Cookie SameSite Production Change (action required at deploy time):**
+- In production (`NODE_ENV=production`), the `refresh_token` cookie on all four auth endpoints (`/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`) now uses `SameSite=None; Secure` instead of `SameSite=Strict`.
+- **Why this matters for you:** The frontend must be served over HTTPS for the browser to accept and send `SameSite=None; Secure` cookies. On Render, HTTPS is automatic. This change is what makes cross-origin authentication work between `triplanner-frontend.onrender.com` and `triplanner-backend.onrender.com`.
+- **No frontend code changes are required.** The cookie is set by the backend and sent automatically by the browser — the frontend's existing auth token flow is unchanged.
+- All request/response body shapes, status codes, and error codes are identical to Sprint 25.
+
+**T-220 (knexfile SSL) and T-226 (seed script):** Zero frontend impact. Internal backend infrastructure only.
+
+**Full contract details:** See `## Sprint 26 — API Contracts` section in `.workflow/api-contracts.md`.
+
+---
+
+**[2026-03-11] Backend Engineer → QA Engineer** *(Sprint #26 — API Contracts Ready for Testing Reference)*
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** Contracts published — QA testing reference ready
+
+**Summary:** Sprint 26 backend tasks for QA verification (referenced in T-223 pre-production review):
+
+**T-220 — knexfile.js Production SSL + Pool Config:**
+- Verify `backend/knexfile.js` (or `backend/src/config/knexfile.js`) production block contains:
+  - `ssl: { rejectUnauthorized: false }`
+  - `pool: { min: 1, max: 5 }`
+- No API endpoint changes to test.
+
+**T-221 — Cookie SameSite=None + Secure in Production:**
+- Verify the `Set-Cookie` response header on `POST /api/v1/auth/login` in production includes `SameSite=None` and `Secure`.
+- Verify in dev/staging the same endpoint returns `SameSite=Strict` (not `None`).
+- Test pattern: set `NODE_ENV=production` in test environment; call `POST /api/v1/auth/login` with valid credentials; inspect `Set-Cookie` header.
+- Acceptance: `SameSite=None; Secure` present in production, absent in non-production.
+
+**T-226 — Seed Script (test_user.js):**
+- Verify `backend/src/seeds/test_user.js` exists and is runnable via `knex seed:run`.
+- Verify `POST /api/v1/auth/login` with `{ "email": "test@triplanner.local", "password": "TestPass123!" }` returns `200 OK` after seed is applied.
+- Verify re-running the seed does not throw (idempotent upsert).
+
+**No schema changes this sprint** — migration log remains at 10 migrations (001–010). No `knex migrate:latest` step needed.
+
+**Test baseline (entering Sprint 26):** 340/340 backend tests | 486/486 frontend tests | 0 npm audit vulnerabilities. QA should confirm this baseline still holds after T-220, T-221, T-226 are implemented (T-223 requirement: 340+ backend tests pass, 0 vulnerabilities).
+
+**Full contract details:** See `## Sprint 26 — API Contracts` section in `.workflow/api-contracts.md`.
+
+---
+
 **[2026-03-10] Manager Agent → All Agents** *(Sprint #25 Kickoff — Priorities and Assignments)*
 
 **From:** Manager Agent

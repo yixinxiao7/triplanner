@@ -6186,3 +6186,214 @@ All other endpoints remain unchanged. Full authoritative endpoint table is in th
 ---
 
 *Sprint 25 contracts published by Backend Engineer 2026-03-10. One new endpoint: `GET /api/v1/trips/:id/calendar` (T-212). No schema changes — pure read aggregation over existing tables. Test baseline entering Sprint 25: 304/304 backend | 481/481 frontend | 0 vulnerabilities. After T-212 implementation, backend test count must be 304+ (new calendar endpoint tests included).*
+
+---
+
+## Sprint 26 — API Contracts
+
+**Date:** 2026-03-11
+**Published by:** Backend Engineer
+**Sprint Goal:** Production deployment hardening — knexfile SSL config (T-220), auth cookie SameSite fix for cross-origin production (T-221), and Monitor Agent health check process fix via seed script (T-226). No new API endpoints this sprint.
+
+---
+
+### Sprint 26 — No New API Endpoints
+
+Sprint 26 introduces **zero new API endpoints and zero schema changes**. All three backend tasks are production configuration and infrastructure hardening. The only externally observable change is a **cookie attribute amendment** to the existing auth endpoints in the production environment (T-221).
+
+| Task | Type | API Impact |
+|------|------|------------|
+| T-220 | Config change | `backend/knexfile.js` gets a production SSL block + conservative pool settings for AWS RDS. **Zero API surface change.** |
+| T-221 | Behavioral amendment | Auth endpoints' `Set-Cookie` response header changes `SameSite` attribute from `Strict` to `None` (and enforces `Secure=true`) **in production only**. Dev/staging cookie behavior is unchanged. See contract amendment below. |
+| T-226 | Infrastructure | Seed script creates a persistent test user (`test@triplanner.local`). No new endpoints. Uses existing `POST /api/v1/auth/login`. |
+
+---
+
+### T-221 — Cookie SameSite Amendment (Production Only)
+
+**Sprint:** 26
+**Task:** T-221
+**Status:** Agreed
+**Affects:** `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`
+**Auth Required:** As per each endpoint's existing contract (unchanged)
+
+#### Summary
+
+The frontend (`triplanner-frontend.onrender.com`) and backend (`triplanner-backend.onrender.com`) are cross-origin on Render. Browsers block `SameSite=Strict` cookies from being sent in cross-origin requests, which breaks authentication in production. T-221 fixes this by changing the `Set-Cookie` header on all auth endpoints to use `SameSite=None; Secure` when `NODE_ENV === 'production'`.
+
+**This is the only change.** All request/response body shapes, status codes, error codes, and auth logic are unchanged.
+
+---
+
+#### Updated: Set-Cookie Header — Environment-Specific Behavior
+
+The `refresh_token` cookie is set by `POST /auth/register`, `POST /auth/login`, and `POST /auth/refresh`. It is cleared by `POST /auth/logout`. The cookie attributes now vary by environment:
+
+| Attribute | Development | Staging | Production |
+|-----------|-------------|---------|------------|
+| `HttpOnly` | `true` | `true` | `true` |
+| `Secure` | `false` (or `true` if `COOKIE_SECURE=true`) | `false` (or `true` if `COOKIE_SECURE=true`) | `true` (always) |
+| `SameSite` | `Strict` | `Strict` | `None` |
+| `Path` | `/api/v1/auth` | `/api/v1/auth` | `/api/v1/auth` |
+| `Max-Age` | `604800` (7 days) | `604800` (7 days) | `604800` (7 days) |
+
+**Production `Set-Cookie` header (after T-221):**
+```
+Set-Cookie: refresh_token=<OPAQUE_TOKEN>; HttpOnly; Secure; SameSite=None; Path=/api/v1/auth; Max-Age=604800
+```
+
+**Development/Staging `Set-Cookie` header (unchanged):**
+```
+Set-Cookie: refresh_token=<OPAQUE_TOKEN>; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800
+```
+
+**Logout clear-cookie header — Production:**
+```
+Set-Cookie: refresh_token=; HttpOnly; Secure; SameSite=None; Path=/api/v1/auth; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT
+```
+
+#### Implementation Rule
+
+The production cookie config is gated **solely on `NODE_ENV === 'production'`**:
+
+```js
+function getRefreshCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    secure: isProduction || process.env.COOKIE_SECURE === 'true',
+    sameSite: isProduction ? 'none' : 'strict',
+    path: '/api/v1/auth',
+    maxAge: REFRESH_TOKEN_SECONDS * 1000,
+  };
+}
+```
+
+**Security note:** `SameSite=None` requires `Secure=true` (HTTPS-only). The browser will silently ignore or reject a `SameSite=None` cookie without `Secure`. Render enforces HTTPS on all services, so this is safe in production.
+
+#### Affected Endpoints (Response Shape Unchanged)
+
+All four auth endpoints are affected only in their `Set-Cookie` response header. No body, status code, or error shape changes:
+
+| Endpoint | Cookie Action | Body Shape |
+|----------|--------------|------------|
+| `POST /api/v1/auth/register` | Sets `refresh_token` cookie | Unchanged from Sprint 1 |
+| `POST /api/v1/auth/login` | Sets `refresh_token` cookie | Unchanged from Sprint 1 |
+| `POST /api/v1/auth/refresh` | Rotates `refresh_token` cookie | Unchanged from Sprint 1 |
+| `POST /api/v1/auth/logout` | Clears `refresh_token` cookie (Max-Age=0) | 204 No Content (unchanged) |
+
+#### Test Plan — T-221
+
+**Happy paths:**
+- With `NODE_ENV=production`: `POST /auth/login` response `Set-Cookie` header includes `SameSite=None` and `Secure`
+- With `NODE_ENV=production`: `POST /auth/register` response `Set-Cookie` header includes `SameSite=None` and `Secure`
+- With `NODE_ENV=production`: `POST /auth/refresh` response `Set-Cookie` header includes `SameSite=None` and `Secure`
+- With `NODE_ENV=production`: `POST /auth/logout` clear-cookie header includes `SameSite=None` and `Secure` with `Max-Age=0`
+- With `NODE_ENV=development` (default): all four endpoints return `SameSite=Strict` (no `SameSite=None`, no bare `Secure`)
+- With `NODE_ENV=staging` (or unset): same as development — `SameSite=Strict`
+
+**Error paths:**
+- Cookie attribute change does not affect any error response — 400, 401, 403, 404, 429 responses are unchanged
+
+---
+
+### T-220 — knexfile.js Production Config (Backend-Internal — No API Change)
+
+**Sprint:** 26
+**Task:** T-220
+**Status:** Confirmed — No API contract change
+
+This is a backend-internal configuration change. The production block in `backend/knexfile.js` gains:
+- `ssl: { rejectUnauthorized: false }` — required for AWS RDS self-signed certificates
+- `pool: { min: 1, max: 5 }` — conservative pool for a `db.t3.micro` free-tier instance (was `{ min: 2, max: 10 }`)
+
+No endpoint signatures, request/response shapes, status codes, or error codes change. This change is invisible to all API consumers (Frontend Engineer, QA, Monitor Agent). It affects only the backend's database connection layer.
+
+**No schema changes. No migrations. No Deploy Engineer migration action required.**
+
+---
+
+### T-226 — Monitor Agent Seed Script (Backend-Internal — No API Change)
+
+**Sprint:** 26
+**Task:** T-226
+**Status:** Confirmed — No API contract change
+
+A Knex seed script (`backend/src/seeds/test_user.js`) inserts a persistent staging test user:
+
+| Field | Value |
+|-------|-------|
+| `email` | `test@triplanner.local` |
+| `password` (plaintext) | `TestPass123!` |
+| `name` | `Test User` |
+
+The seed is idempotent — it uses an upsert (insert-or-ignore) so re-running it is safe. After seeding, the Monitor Agent and QA Engineer may use this account to obtain tokens via the **existing** `POST /api/v1/auth/login` endpoint — no new endpoint is introduced.
+
+**Relevant existing endpoint for Monitor Agent reference:**
+
+```
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "test@triplanner.local", "password": "TestPass123!" }
+```
+
+Expected response: `200 OK` with `access_token` in body and `refresh_token` in `Set-Cookie` header. Full contract is in the Sprint 1 section above.
+
+**No schema changes. No migrations. The `users` table (migration 001) already has all required columns.**
+
+---
+
+### Sprint 26 — Schema State (Unchanged)
+
+No new database migrations are introduced in Sprint 26.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–010 | 1–7 | Core tables, date ranges, nullable times, land travels, notes | ✅ Applied on Staging |
+| — | 8–26 | *(No new migrations through Sprint 26)* | Schema-stable |
+
+**Total migrations: 10 (001–010). All applied. No `knex migrate:latest` required for Sprint 26.**
+
+---
+
+### Sprint 26 — Complete Endpoint Inventory
+
+All contracts from Sprints 1–25 remain in force unchanged. Sprint 26 adds no new endpoints. The one behavioral amendment (T-221 cookie `SameSite`) is documented above.
+
+| Sprint | Endpoint | Status | Sprint 26 Notes |
+|--------|----------|--------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | **T-221: `Set-Cookie` uses `SameSite=None; Secure` in production** |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | **T-221: `Set-Cookie` uses `SameSite=None; Secure` in production**. Rate limiting unchanged (10 req/15min). |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | **T-221: `Set-Cookie` uses `SameSite=None; Secure` in production** |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | **T-221: Clear-cookie uses `SameSite=None; Secure` in production** |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Agreed, Applied on Staging | Unchanged |
+
+---
+
+*Sprint 26 contracts published by Backend Engineer 2026-03-11. No new endpoints. One behavioral amendment: T-221 changes the `Set-Cookie` cookie attributes on all four auth endpoints in the production environment only (`SameSite=None; Secure` instead of `SameSite=Strict`). This is required for cross-origin auth to work between `triplanner-frontend.onrender.com` and `triplanner-backend.onrender.com`. Dev/staging cookie behavior is unchanged. Test baseline entering Sprint 26: 340/340 backend | 486/486 frontend | 0 vulnerabilities.*
