@@ -10126,3 +10126,472 @@ MAX CONTENT WIDTH: 1120px, centered
 ---
 
 *Spec 21 (Sprint 24 — Home Page Trip Status Filter Tabs) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-10.*
+
+---
+
+## Sprint 25 Specs
+
+---
+
+### Spec 22: Trip Details Page — Calendar Integration (TripCalendar Component)
+
+**Sprint:** #25
+**Related Task:** T-211
+**Status:** Approved
+
+**Description:**
+Replace the "Calendar coming in Sprint 2" placeholder at the top of TripDetailsPage with a fully functional `TripCalendar` component. The calendar provides a visual, month/week overview of all trip events — flights, stays, and activities — overlaid on a date grid. It is read-only; all editing continues to happen through the section forms below the calendar. Clicking an event scrolls to the relevant section on the page. The calendar is the first thing a user sees when they open a trip, giving them an immediate spatial understanding of their itinerary.
+
+**Target Users:** Detail-oriented travelers who want an at-a-glance visual overview of their trip schedule before diving into section-level detail.
+
+---
+
+#### 22.1 Page Placement
+
+The `TripCalendar` component occupies the top slot of `TripDetailsPage.jsx`, replacing the existing placeholder. Layout order from top to bottom:
+
+```
+[ Navbar ]
+[ Page Header: Trip Name + Destinations + Status Badge + Print Button ]
+[ TripCalendar ]                          ← replaces placeholder
+[ Flights Section ]
+[ Stays Section ]
+[ Activities Section ]
+```
+
+- **Spacing above calendar:** 32px (`var(--space-8)`) below the page header
+- **Spacing below calendar:** 48px (`var(--space-12)`) before the Flights section header
+- **Component width:** Full content width (inherits the 1120px max-width container)
+- **Component background:** `var(--surface)` (`#30292F`), border `1px solid var(--border-subtle)`, border-radius `var(--radius-md)` (4px), padding 24px
+
+---
+
+#### 22.2 Data Source
+
+The component fetches from the calendar aggregation endpoint:
+
+```
+GET /api/v1/trips/:id/calendar
+```
+
+**Response shape:**
+```json
+{
+  "events": [
+    {
+      "id": "flight-uuid",
+      "type": "FLIGHT",
+      "title": "DL12345 — SFO → LAX",
+      "start_date": "2026-08-07",
+      "end_date": "2026-08-07",
+      "start_time": "06:00",
+      "end_time": "08:00",
+      "timezone": "America/New_York",
+      "source_id": "original-flight-uuid"
+    }
+  ]
+}
+```
+
+- Events are ordered by `start_date ASC`, `start_time ASC`
+- STAY events may span multiple days (`start_date ≠ end_date`)
+- FLIGHT events are single-day (`start_date === end_date`) with `start_time` and `end_time`
+- ACTIVITY events are single-day with `start_time` and `end_time`
+- Use the existing `api` axios instance (with interceptors) for the fetch call
+
+---
+
+#### 22.3 Event Color Coding
+
+Each event type uses a distinct CSS custom property — never hardcoded hex.
+
+Add these tokens to the `:root` block in `index.css` (or the component's `.module.css` as component-scoped vars):
+
+```css
+--event-flight-bg:    rgba(93, 115, 126, 0.25);   /* accent-tinted */
+--event-flight-border: #5D737E;
+--event-flight-text:  #FCFCFC;
+
+--event-stay-bg:      rgba(100, 160, 120, 0.2);   /* muted green */
+--event-stay-border:  rgba(100, 180, 120, 0.6);
+--event-stay-text:    rgba(140, 210, 160, 0.9);
+
+--event-activity-bg:  rgba(180, 140, 80, 0.18);   /* muted amber */
+--event-activity-border: rgba(200, 160, 90, 0.5);
+--event-activity-text: rgba(220, 185, 110, 0.9);
+```
+
+**Color Legend Strip** — rendered inside the calendar panel, top-right corner, as a horizontal row of three labeled swatches:
+
+```
+● Flight   ● Stay   ● Activity
+```
+
+Each swatch: 10px × 10px circle (`border-radius: 50%`), background = event type color, followed by label text in IBM Plex Mono 10px uppercase letter-spacing 0.08em, muted color. Gap between swatches: 16px. The entire legend row is `flex`, `align-items: center`, `gap: 16px`. Positioned at the top-right of the calendar panel using `display: flex; justify-content: space-between` on the panel header row (left: "CALENDAR" section header label; right: legend strip).
+
+---
+
+#### 22.4 Calendar View — Month Grid (Default)
+
+**Default view:** Month grid. Shows the calendar month that contains the trip's first event. If no events exist, shows the current month.
+
+**Grid structure:**
+- **Header row:** 7 cells for day-of-week abbreviations — `SUN MON TUE WED THU FRI SAT` — font-size 10px, font-weight 600, letter-spacing 0.1em, uppercase, color `var(--text-muted)`. Each cell: `text-align: center`, padding-bottom 8px.
+- **Day cells:** 7 columns × up to 6 rows. Each cell: minimum height 80px on desktop (auto-expands if many events). Border: `1px solid var(--border-subtle)` on all four sides — creates a grid of cells. Background: `var(--bg-primary)`. Border-radius: 0 (no rounded corners on individual cells — clean grid).
+- **Day number:** top-left corner of each cell, font-size 12px, font-weight 500, color `var(--text-muted)`. Padding: 6px 8px.
+- **Current day:** If today falls within the displayed month, the day number uses color `var(--text-primary)` with a 2px bottom border in `var(--accent)`. No filled circle — Japandi minimal.
+- **Out-of-month days:** Cells from the previous/next month that fill the grid rows. Day number: `rgba(252, 252, 252, 0.15)`. Background: `rgba(2, 17, 27, 0.4)` (slightly darker). No events rendered in out-of-month cells.
+
+**Month Navigation:**
+- Header row above the grid:
+  ```
+  [ ← ]   August 2026   [ → ]
+  ```
+  - Month + year: IBM Plex Mono 14px, font-weight 500, `var(--text-primary)`, centered
+  - Arrows: `←` and `→` as secondary button style (transparent background, border `1px solid var(--border-subtle)`, padding 4px 10px, border-radius 2px). Hover: background `rgba(252,252,252,0.05)`.
+  - `aria-label="Previous month"` and `aria-label="Next month"` on each arrow button
+  - Clicking `←` or `→` switches the displayed month. Does NOT change the data — all events remain loaded.
+
+---
+
+#### 22.5 Event Rendering Inside Grid Cells
+
+**Single-day events (FLIGHT, ACTIVITY):**
+- Rendered as a horizontal pill inside the day cell
+- Pill: width fills the cell (with 4px horizontal margin on each side), height 20px, background `var(--event-[type]-bg)`, border-left `3px solid var(--event-[type]-border)`, border-radius 2px, overflow hidden
+- Text inside pill: `start_time` then truncated `title`. Font: IBM Plex Mono 10px, color `var(--event-[type]-text)`. No wrapping — `text-overflow: ellipsis; white-space: nowrap; overflow: hidden`.
+- Format: `06:00 DL12345 — SFO → LAX` (time first, then title)
+- If multiple events on same day: stack pills vertically with 2px gap. If more than 3 events fit (cell height exceeded), show the first 2 pills + a `+N more` text label (font 10px, muted color) below them. `+N more` is not interactive (no click behavior in MVP).
+
+**Multi-day events (STAY):**
+- Rendered as a horizontal spanning bar across the cells it occupies
+- Implemented as a pill in each individual day cell — not a true CSS span (simpler implementation)
+- On the start day: pill with left border-radius 2px, right border-radius 0, no right border
+- On a middle continuation day: pill with 0 border-radius on both sides, no left or right border (border-left only for visual start indicator on first day)
+- On the end day: pill with left border-radius 0, right border-radius 2px, no left border
+- Pill background: `var(--event-stay-bg)`, border-left `3px solid var(--event-stay-border)` only on the start day
+- Text: shown only in the start day cell. Middle/end day cells show the pill with no text (visual continuation). Font: IBM Plex Mono 10px, `var(--event-stay-text)`.
+- Format in start cell: `name` (e.g., "Hyatt Regency SF"), truncated with ellipsis
+
+---
+
+#### 22.6 Click-to-Scroll Behavior
+
+Each event pill is interactive — clicking it scrolls the page to the corresponding section.
+
+| Event Type | Scrolls To |
+|------------|-----------|
+| FLIGHT | `#flights-section` anchor |
+| STAY | `#stays-section` anchor |
+| ACTIVITY | `#activities-section` anchor |
+
+**Scroll behavior:** `element.scrollIntoView({ behavior: 'smooth', block: 'start' })` with a top offset of 80px to account for the sticky navbar. Implement using a ref or `id` attribute on each section header.
+
+**Cursor:** `cursor: pointer` on all event pills.
+**Focus:** Event pills must be keyboard-focusable (see §22.10 Accessibility).
+
+**No edit modal opens** — the click only scrolls. Editing is done by using the section forms below.
+
+---
+
+#### 22.7 Component States
+
+##### State 1: Loading
+
+While `GET /api/v1/trips/:id/calendar` is in-flight:
+
+- Show the calendar panel chrome (border, heading row with "CALENDAR" label and legend placeholders)
+- Replace the grid area with a skeleton:
+  - 7-column grid skeleton with the same day-of-week header row (real labels, not skeletons)
+  - Day cells: filled with `var(--surface-alt)` background, border `var(--border-subtle)`. No shimmer needed — static muted cells are sufficient.
+  - 3 randomly-placed skeleton event pills per row (fixed positions, not random): gray pill shapes `var(--surface-alt)`, opacity 0.5, no text
+  - Aria: `aria-busy="true"` on the calendar container, `aria-label="Loading calendar…"`
+
+##### State 2: Empty
+
+When `events` array is empty (trip has no flights, stays, or activities yet):
+
+- Show the full calendar grid for the current month (navigable)
+- Inside the grid area, centered vertically and horizontally over the grid, display an overlay message:
+  ```
+  Add flights, stays, or activities
+  to see them here.
+  ```
+  - Font: IBM Plex Mono 13px, font-weight 400, color `var(--text-muted)`, `text-align: center`
+  - The grid is still visible behind the message (grid is rendered but has no event pills)
+  - **Do NOT show** the old placeholder text "Calendar coming in Sprint 2"
+  - The empty message is NOT a full overlay with background — it sits in the space above the grid rows, between the day-of-week header and the first row of cells. Height: 120px, flexbox centered.
+
+##### State 3: Error
+
+When the API call fails (network error, 4xx, 5xx):
+
+- Hide the grid entirely
+- Show an error state inside the calendar panel:
+  ```
+  [ calendar unavailable ]
+
+  Could not load calendar data.
+  [ Try again ]
+  ```
+  - "calendar unavailable": 11px, uppercase, letter-spacing 0.1em, `var(--text-muted)`
+  - Message: 13px, `var(--text-muted)`
+  - "Try again": secondary button style, triggers a re-fetch of the calendar endpoint
+  - Layout: vertically and horizontally centered within the panel. Minimum height: 200px for the error area.
+  - The rest of the TripDetailsPage (flights, stays, activities sections) remains fully functional. The calendar error is isolated to the TripCalendar component.
+
+##### State 4: Success (Data Loaded)
+
+- Full month grid rendered with event pills
+- Month navigation (← →) works
+- Legend strip visible in top-right
+- All event pills are interactive (click-to-scroll)
+
+---
+
+#### 22.8 Month Display Logic
+
+When events are loaded:
+
+1. Parse the `start_date` of the first event (earliest, since events are ordered ASC)
+2. Display the month that contains that `start_date` on initial render
+3. If the trip spans multiple months, user can navigate forward/backward with the arrow buttons
+4. If no events: display the current calendar month (use `new Date()`)
+
+Navigation state is local to the component (`useState` for displayed month/year). Navigation does not re-fetch data — all events are loaded once and the component filters by displayed month on render.
+
+---
+
+#### 22.9 Responsive Behavior
+
+**Desktop (≥ 768px):** Full 7-column month grid as described above.
+
+**Tablet (768px — 480px):** Same 7-column grid. Day cell minimum height reduces to 64px. Font sizes remain the same. Navigation header remains horizontal. Event pills may truncate earlier due to narrower cells.
+
+**Mobile (< 480px):** Switch from month grid to a **day list** layout:
+
+- No 7-column grid. Instead, render a vertically scrolling list of days that have events.
+- Each day entry:
+  ```
+  ┌────────────────────────────────────────────┐
+  │  MON, AUG 7                                │
+  │  ─────────────────────────────────────     │
+  │  [✈ 06:00] DL12345 — SFO → LAX            │
+  │  [🏨] Hyatt Regency SF (check-in)          │
+  └────────────────────────────────────────────┘
+  ```
+  - Day label: 11px, font-weight 600, uppercase, letter-spacing 0.08em, `var(--text-primary)`
+  - Separator: `1px solid var(--border-subtle)`, margin-bottom 8px
+  - Event row: type icon (text emoji or unicode character — ✈ for FLIGHT, ⌂ for STAY, ● for ACTIVITY) + time (if available) + truncated title
+  - Event row: 12px, color `var(--event-[type]-text)`, padding 4px 0
+  - Background: each day entry is `var(--surface)` with `1px solid var(--border-subtle)`, border-radius 2px, padding 12px, margin-bottom 8px
+  - Days with no events are NOT listed (show only days that have ≥ 1 event)
+- Month navigation header (← month → ) remains at the top of the component on mobile. Tapping ← / → replaces the day list with days from the new month.
+- If the selected month has no events: "No events this month." in muted text, centered.
+- The month/week toggle described in desktop spec becomes a single "Month" view label on mobile (no toggle — always day list on mobile).
+- Click-to-scroll behavior works the same on mobile.
+
+**Breakpoint implementation:** Use a CSS custom property or media query inside `TripCalendar.module.css`. The component renders different JSX based on viewport width, detected via a `useWindowWidth` hook (or CSS `display:none` toggling for simpler implementation — CSS approach preferred for performance).
+
+---
+
+#### 22.10 Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Calendar container role | `role="region"` with `aria-label="Trip calendar"` |
+| Grid role | `role="grid"` on the `<table>` or CSS grid container |
+| Row role | `role="row"` on each week row |
+| Cell role | `role="gridcell"` on each day cell. `aria-label="August 7, 2026"` (full date string) |
+| Event pills | `role="button"` (since they're interactive), `tabIndex={0}`, `aria-label="[Type]: [Title], [start_time]–[end_time]"` — e.g., `aria-label="Flight: DL12345 — SFO → LAX, 06:00–08:00"` |
+| Keyboard: Tab | Tab cycles through the month navigation buttons and then through all event pills in document order |
+| Keyboard: ArrowLeft/Right/Up/Down | When focus is inside the grid, arrow keys move focus between day cells |
+| Keyboard: Enter/Space on event pill | Triggers the click-to-scroll behavior |
+| Keyboard: Enter/Space on nav arrows | Navigates to the previous/next month |
+| Loading state | `aria-busy="true"` on calendar container while fetching |
+| Error state | `role="alert"` on the error message container |
+| Empty state | `aria-label="No events. Add flights, stays, or activities to populate the calendar."` on the empty area |
+| Month nav buttons | `aria-label="Previous month"` and `aria-label="Next month"` |
+| Color contrast | All event text colors against event backgrounds must meet WCAG AA (4.5:1). The proposed tokens meet this. Do not change without contrast check. |
+| Focus ring | `outline: 2px solid var(--accent); outline-offset: 2px` on all focusable elements (event pills, nav buttons, day cells when in grid navigation mode) |
+
+---
+
+#### 22.11 Component File Structure
+
+```
+frontend/src/components/
+  TripCalendar.jsx          ← main component
+  TripCalendar.module.css   ← all styles, CSS custom properties for event colors
+
+frontend/src/__tests__/
+  TripCalendar.test.jsx     ← minimum 10 tests (see T-213 acceptance criteria)
+```
+
+**Props:**
+```jsx
+<TripCalendar tripId={tripId} />
+```
+
+- `tripId` (string, required): the trip UUID, used to build the API URL
+- No other props — the component is self-contained and fetches its own data
+
+**Internal state:**
+```
+displayedMonth  — { year: number, month: number } (0-indexed month, JS Date convention)
+events          — array from API response, or []
+loading         — boolean
+error           — null | Error
+```
+
+---
+
+#### 22.12 Integration with TripDetailsPage
+
+**Section anchor IDs** (must be added to `TripDetailsPage.jsx` if not already present):
+
+```jsx
+<section id="flights-section">   {/* Flights section header + content */}
+<section id="stays-section">     {/* Stays section header + content */}
+<section id="activities-section"> {/* Activities section header + content */}
+```
+
+These IDs are the scroll targets for calendar event click-to-scroll. The Frontend Engineer must verify these IDs exist or add them.
+
+**Placeholder removal:** Delete the following placeholder from `TripDetailsPage.jsx`:
+```jsx
+{/* Sprint 2 calendar placeholder — remove when TripCalendar is implemented */}
+<div className={styles.calendarPlaceholder}>
+  Calendar coming in Sprint 2
+</div>
+```
+(Exact text may vary — search for "Calendar coming" or "Sprint 2" in the file and remove that block.)
+
+**Replacement:**
+```jsx
+import TripCalendar from '../components/TripCalendar';
+
+// Inside TripDetailsPage render, at the top of the content area:
+<TripCalendar tripId={tripId} />
+```
+
+---
+
+#### 22.13 Annotated Wireframe — Desktop (Success State)
+
+```
+MAX CONTENT WIDTH: 1120px, centered
+═══════════════════════════════════════════════════════════════════════════════
+
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  CALENDAR                            ● Flight  ● Stay  ● Activity   │  ← panel header row
+  │  ──────────────────────────────────────────────────────────────────  │
+  │                                                                      │
+  │              [ ← ]   August 2026   [ → ]                            │  ← month nav
+  │                                                                      │
+  │  SUN    MON    TUE    WED    THU    FRI    SAT                       │  ← DOW header
+  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐                  │
+  │  │ 26 │ │ 27 │ │ 28 │ │ 29 │ │ 30 │ │ 31 │ │  1 │                  │  ← out-of-month
+  │  └────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘                  │
+  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐                  │
+  │  │  2 │ │  3 │ │  4 │ │  5 │ │  6 │ │  7 │ │  8 │                  │
+  │  │    │ │    │ │    │ │    │ │    │ │╔══╗│ │ ╠══╗│                  │
+  │  │    │ │    │ │    │ │    │ │    │ │║✈ ║│ │ ║  ║│  ← flight pill  │
+  │  │    │ │    │ │    │ │    │ │    │ │╚══╝│ │ ╟──╢│  ← stay start  │
+  │  │    │ │    │ │    │ │    │ │    │ │║🏨 ║│ │ ║  ║│                  │
+  │  └────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘                  │
+  │  ...                                                                 │
+  │                                                                      │
+  └──────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+
+---
+
+#### 22.14 Annotated Wireframe — Desktop (Empty State)
+
+```
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  CALENDAR                                                            │
+  │  ──────────────────────────────────────────────────────────────────  │
+  │                                                                      │
+  │              [ ← ]   March 2026   [ → ]                             │
+  │                                                                      │
+  │  SUN    MON    TUE    WED    THU    FRI    SAT                       │
+  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐                  │
+  │  │    │ │    │ │    │ │    │ │    │ │    │ │    │                   │
+  │  └────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘                  │
+  │                                                                      │
+  │            Add flights, stays, or activities                         │
+  │                  to see them here.                                   │
+  │                                                                      │
+  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐                  │
+  │  │    │ │    │ │    │ │    │ │    │ │    │ │    │                   │
+  │  └────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘                  │
+  └──────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 22.15 Annotated Wireframe — Mobile (< 480px, Day List View)
+
+```
+  ┌─────────────────────────────────────┐
+  │  CALENDAR                           │
+  │  ─────────────────────────────────  │
+  │  [ ← ]     August 2026     [ → ]   │
+  │  ─────────────────────────────────  │
+  │                                     │
+  │  THU, AUG 7                         │
+  │  ─────────────────                  │
+  │  ✈ 06:00  DL12345 — SFO → LAX      │
+  │  ⌂        Hyatt Regency SF          │
+  │                                     │
+  │  FRI, AUG 8                         │
+  │  ─────────────────                  │
+  │  ⌂        Hyatt Regency SF          │
+  │  ●  09:00 Fisherman's Wharf         │
+  │  ●  15:00 Golden Gate Bridge        │
+  │                                     │
+  │  SAT, AUG 9                         │
+  │  ─────────────────                  │
+  │  ●  09:00 Dimsum in Chinatown       │
+  │                                     │
+  └─────────────────────────────────────┘
+```
+
+---
+
+#### 22.16 Edge Cases
+
+| Scenario | Behavior |
+|----------|---------|
+| Trip spans multiple months | Calendar shows the month of the first event. User navigates forward with `→` to see later months. All events loaded at once — no additional fetches on navigation. |
+| Single-day trip (all events on same date) | Calendar shows that month; all events stack in one day cell |
+| Event `start_time` is null/undefined | Pill shows title only, no time prefix. No crash. |
+| Event `title` is very long | Truncated with `text-overflow: ellipsis` in pill. Full title is in `aria-label` of the pill element. |
+| Stay check-out on same day as another event's start | Both appear in the same cell. Stay continuation pill + new event pill, stacked. |
+| Stay with start_date === end_date (same-day stay) | Treated as single-day event (pill with left border-radius and right border-radius). |
+| API returns events from different years | Month navigation works across years. Year is displayed alongside month in the header. |
+| No internet / API timeout (> 5s) | Component catches the error and shows the error state with "Try again" button. Does not block other page sections. |
+| TripCalendar unmounts before fetch completes | Cancel or ignore the response (use AbortController or check mounted flag in useEffect cleanup). No state-update-on-unmounted-component warnings. |
+| `+N more` overflow label | Shown when > 3 event pills would overflow a cell. Label is not clickable. Scrolling to the section (via clicking visible pills) is the intended interaction. |
+
+---
+
+#### 22.17 Styling Conventions Checklist
+
+All styles must adhere to the Design System Conventions table at the top of this document:
+
+- [x] All colors via CSS custom properties — no hardcoded hex in JSX or CSS
+- [x] Font: `var(--font-mono)` (IBM Plex Mono) for all text
+- [x] Spacing: multiples of 8px base unit using `var(--space-*)` tokens
+- [x] Border radius: `var(--radius-sm)` (2px) or `var(--radius-md)` (4px)
+- [x] Borders: `var(--border-subtle)` or `var(--border-accent)` — no other border values
+- [x] Japandi aesthetic: no gradients, no box-shadow. Borders only for depth. Generous whitespace.
+- [x] Transitions: `transition: all 150ms ease` for hover/focus on interactive elements
+
+---
+
+*Spec 22 (Sprint 25 — Trip Details Page Calendar Integration) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-10.*

@@ -2496,3 +2496,44 @@ pm2 restart triplanner-backend
 Log handoff to Monitor Agent (T-206) upon successful deploy.
 
 ---
+
+---
+
+**[2026-03-10] Design Agent → Frontend Engineer** *(T-211 COMPLETE: Spec 22 — TripCalendar Component — Approved)*
+
+**From:** Design Agent
+**To:** Frontend Engineer
+**Status:** ✅ T-211 COMPLETE — Spec 22 published and auto-approved. Frontend Engineer is unblocked to begin T-213 once T-212 (Backend: calendar API endpoint) is also marked Done and Manager-approved.
+
+**Spec Reference:** `ui-spec.md` → "Sprint 25 Specs" → "Spec 22: Trip Details Page — Calendar Integration (TripCalendar Component)"
+
+**Summary of what to build:**
+
+| Item | Detail |
+|------|--------|
+| Component file | `frontend/src/components/TripCalendar.jsx` + `TripCalendar.module.css` |
+| Placement | Top of `TripDetailsPage.jsx`, replacing the "Calendar coming in Sprint 2" placeholder |
+| Data source | `GET /api/v1/trips/:id/calendar` (T-212 endpoint — must be Done before T-213 starts) |
+| Default view | Month grid (7-column), desktop. Day list on mobile (< 480px). |
+| Event types | FLIGHT (accent/steel), STAY (muted green, multi-day span), ACTIVITY (muted amber) |
+| Interaction | Click event pill → smooth scroll to `#flights-section` / `#stays-section` / `#activities-section` |
+| States | Loading (skeleton), Empty (overlay message), Error (with retry button), Success (full grid) |
+| Accessibility | `role="grid"`, `role="gridcell"`, `aria-label` on every event pill, keyboard ArrowKey nav, Tab through pills |
+| Tests | Minimum 10 new tests in `TripCalendar.test.jsx` — see T-213 test plan in `active-sprint.md` |
+| All existing tests | All 481+ existing frontend tests must still pass |
+| Styling | CSS custom properties only — no hardcoded hex. Event color tokens defined in spec §22.3. |
+
+**Key implementation notes from spec:**
+1. Add section anchor IDs to `TripDetailsPage.jsx`: `id="flights-section"`, `id="stays-section"`, `id="activities-section"` — these are the scroll targets
+2. New CSS tokens for event colors must be added (see spec §22.3 for exact values)
+3. Month navigation is purely local state — no re-fetching on month change
+4. Multi-day STAY events render as per-cell continuation pills (not a true CSS span)
+5. Use `AbortController` in `useEffect` cleanup to avoid state updates on unmounted component
+6. Mobile breakpoint (< 480px): switch to day-list layout instead of month grid
+
+**Dependency gate:** T-213 must NOT start until BOTH:
+- [x] T-211 (this spec) — ✅ Done
+- [ ] T-212 (Backend calendar endpoint + api-contracts.md published) — Pending Manager approval
+
+**Related tasks:** T-211 (this), T-212 (Backend), T-213 (Frontend implementation), T-214 (QA)
+
