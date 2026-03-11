@@ -54,13 +54,12 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ### Phase 2 — vitest Upgrade + Home Page Status Filter Design (after T-202 clean — parallel tracks)
 
-- [ ] **T-203** — Frontend + Backend Engineer: vitest upgrade 1.x → 4.x (B-021 resolution) ← Blocked by T-202 feedback triage (clean) (P2)
-  - **Frontend:** Upgrade `vitest` in `frontend/package.json` to `^4.0.0`. All 451+ tests must pass. Fix any breaking API changes.
-  - **Backend:** Upgrade `vitest` in `backend/package.json` to `^4.0.0`. All 304+ tests must pass.
-  - Run `npm audit` in both — verify 5 moderate dev-only vulnerabilities (GHSA-67mh-4wv8-2f99) resolved.
-  - Dev-tooling only — zero production/runtime code changes.
+- [x] **T-203** — Frontend + Backend Engineer: vitest upgrade 1.x → 4.x (B-021 resolution) ✅ DONE (Manager-approved 2026-03-10)
+  - **Frontend:** `vitest ^4.0.0` (4.0.18) in `frontend/package.json`. 481/481 tests pass. 0 vulnerabilities. ✅
+  - **Backend:** `vitest ^4.0.18` in `backend/package.json`. 304/304 tests pass. 0 vulnerabilities. ✅
+  - GHSA-67mh-4wv8-2f99 resolved. Dev-tooling only — zero production/runtime code changes. ✅
 
-- [ ] **T-207** — Design Agent: Spec 21 — Home page trip status filter tabs ← Blocked by T-202 feedback triage (clean) (P2)
+- [x] **T-207** — Design Agent: Spec 21 — Home page trip status filter tabs ✅ DONE (auto-approved 2026-03-10)
   - Four filter pills: "All" / "Planning" / "Ongoing" / "Completed"
   - Client-side filtering (no new API calls)
   - Accessibility: `role="group"`, `aria-pressed`, keyboard navigable
@@ -71,21 +70,19 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ### Phase 3 — Status Filter Implementation (after T-207 approved)
 
-- [ ] **T-208** — Frontend Engineer: Home page status filter tabs ← Blocked by T-207 (P2)
-  - `StatusFilterTabs` component integrated into `HomePage.jsx`
-  - Filter logic: `filteredTrips = activeFilter === "ALL" ? trips : trips.filter(t => t.status === activeFilter)`
-  - Empty filtered state: "No [status] trips yet." with "Show all" reset link
-  - 7 new tests covering all filter cases, empty state, and accessibility
-  - Does NOT change the global empty state (shown when no trips exist at all)
+- [x] **T-208** — Frontend Engineer: Home page status filter tabs ✅ DONE (Manager-approved 2026-03-10)
+  - `StatusFilterTabs` component at `frontend/src/components/StatusFilterTabs.jsx` — integrated into `HomePage.jsx` ✅
+  - Filter logic: `filteredTrips = activeFilter === "ALL" ? trips : trips.filter(t => t.status === activeFilter)` ✅
+  - Empty filtered state: "No [Label] trips yet." + "Show all" reset button ✅
+  - 30 new tests (19 unit + 11 integration) — all 7 required cases A–G covered ✅
+  - Global empty state (`trips.length === 0`) unaffected ✅ — 481/481 total tests pass ✅
 
 ---
 
 ### Phase 4 — QA, Deploy, Monitor, User Agent (sequential after Phase 2 + Phase 3)
 
-- [ ] **T-204** — QA Engineer: Security checklist + test re-verification ← Blocked by T-203, T-208 (P2)
-  - `npm test --run` in both dirs — 304+ backend, 451+ frontend
-  - `npm audit` — confirm 0 Moderate+ in dev deps
-  - Verify no new security issues from vitest upgrade or status filter
+- [x] **T-204** — QA Engineer: Security checklist + test re-verification ✅ DONE (2026-03-10)
+  - 304/304 backend tests pass. 481/481 frontend tests pass. 0 vulnerabilities in both. Security checklist clear. ✅
 
 - [ ] **T-205** — Deploy Engineer: Sprint 24 staging re-deployment ← Blocked by T-204 (P2)
   - CRITICAL pre-deploy: confirm `infra/ecosystem.config.cjs` has `BACKEND_PORT: '3001'` + `BACKEND_SSL: 'true'` for `triplanner-frontend`
