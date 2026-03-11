@@ -4,6 +4,121 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Deploy Engineer → User Agent** *(Sprint #27 — T-228 Fix A Complete: CORS Staging Bug Fixed — T-219 UNBLOCKED)*
+
+**From:** Deploy Engineer
+**To:** User Agent
+**Re:** T-228 Fix A deployed — staging CORS fixed — T-219 walkthrough is now unblocked
+**Task:** T-228 (Fix A), T-219 (now unblocked)
+
+**Status:** ✅ Fix A Live — User Agent browser testing is UNBLOCKED
+
+---
+
+**What was fixed:**
+
+The staging backend was returning `Access-Control-Allow-Origin: http://localhost:5173` (the wrong fallback origin) instead of `https://localhost:4173`. This CORS mismatch caused all browser-initiated API calls from the staging frontend to be blocked by the browser.
+
+**Root cause:** ESM static import hoisting in `backend/src/index.js` caused `app.js` to capture `process.env.CORS_ORIGIN` as `undefined` before `dotenv.config()` ran.
+
+**Fix applied:** Added `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`. pm2 injects this env var before the Node.js process starts, so the value is correctly captured at module initialization.
+
+**Verification:**
+
+```
+curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"
+→ Access-Control-Allow-Origin: https://localhost:4173  ✅
+→ Access-Control-Allow-Credentials: true  ✅
+→ HTTP/1.1 200 OK  ✅
+
+OPTIONS preflight:
+→ 204 No Content  ✅
+→ Access-Control-Allow-Origin: https://localhost:4173  ✅
+→ Access-Control-Allow-Methods: GET,HEAD,PUT,PATCH,POST,DELETE  ✅
+```
+
+**Staging environment status:**
+- `triplanner-backend`: online (pid 70180)
+- `triplanner-frontend`: online (pid 64982)
+- Staging frontend: `https://localhost:4173`
+- Staging backend: `https://localhost:3001`
+- Login credentials: `test@triplanner.local` / `TestPass123!`
+
+**Action required from User Agent:**
+
+Please proceed with **T-219** — the Sprint 25/26 feature walkthrough:
+
+1. **TripCalendar** (primary verification):
+   - TripDetailsPage shows live TripCalendar component (not placeholder)
+   - Flights, stays, and activities render on calendar grid with correct dates
+   - FLIGHT / STAY / ACTIVITY color-coded pills are visually distinct
+   - Clicking an event scrolls to the corresponding section
+   - Trip with no sub-resources shows empty state message
+
+2. **Regression suite:**
+   - StatusFilterTabs: All / Planning / Ongoing / Completed filter correctly; 0 matches → empty state + "Show all" reset
+   - TripStatusSelector: badge shows status; click → update; keyboard nav (Space/Enter/Arrows/Escape); Home page reflects change
+   - Trip notes: empty → edit → char count → save → displays; clear → placeholder returns
+   - Destination validation: 101-char destination → 400 human-friendly error
+   - Rate limiting: login lockout after 10 attempts
+   - Print button visible on TripDetailsPage
+   - start_date/end_date visible on trip cards
+
+3. Submit structured feedback to `feedback-log.md` under **"Sprint 27 User Agent Feedback"** with Category, Severity, and Status: New for each entry.
+
+Full Fix A details: `.workflow/qa-build-log.md` → Sprint #27 section.
+
+---
+
+**[2026-03-11] Deploy Engineer → Monitor Agent** *(Sprint #27 — T-228 Fix A Complete: CORS Fixed — Post-Restart Health Check Requested)*
+
+**From:** Deploy Engineer
+**To:** Monitor Agent
+**Re:** T-228 Fix A deployed — CORS_ORIGIN injected via pm2 — backend restarted — post-restart health check requested
+**Task:** T-228 Fix A
+
+**Status:** ✅ Fix A Live — Health check requested for Monitor Agent validation
+
+---
+
+**Deploy action taken:**
+
+- `infra/ecosystem.config.cjs`: added `CORS_ORIGIN: 'https://localhost:4173'` to `triplanner-backend` env block
+- pm2: `delete triplanner-backend` → `pm2 start infra/ecosystem.config.cjs --only triplanner-backend` (fresh start from updated config)
+- Deploy Engineer self-verification: 7/7 checks PASS (see `qa-build-log.md` Sprint #27 section)
+
+**Monitor Agent verification requested:**
+
+Please run your standard staging health check and confirm:
+1. `GET https://localhost:3001/api/v1/health` → `200 {"status":"ok"}`
+2. `Access-Control-Allow-Origin: https://localhost:4173` header present on response
+3. `Access-Control-Allow-Credentials: true` header present
+4. OPTIONS preflight → `204 No Content` with correct CORS headers
+5. Login flow: `POST /api/v1/auth/login` with `test@triplanner.local` / `TestPass123!` → `200 OK`
+
+Note: **T-224** (production deployment) remains blocked pending project owner providing AWS RDS + Render account access. Escalation in progress.
+
+---
+
+**[2026-03-11] Frontend Engineer → (No QA Handoff Required)** *(Sprint #27 — No Frontend Tasks Assigned)*
+
+**From:** Frontend Engineer
+**To:** N/A — no QA handoff required (no frontend implementation this sprint)
+**Status:** ✅ API contract acknowledged — no frontend tasks assigned in Sprint #27
+
+**API Contract Acknowledgment:**
+
+Reviewed Sprint #27 API contracts in `.workflow/api-contracts.md`. Confirmed:
+- **Zero new endpoints.** All existing API contracts from Sprints 1–26 remain in force, unchanged.
+- **Zero schema changes.** T-228 (Fix B) is a pure internal dotenv/ESM hoisting refactor with no observable API contract impact for the frontend.
+- **No new frontend integration work required.** The CORS fix means browser-initiated API calls (which were previously failing due to wrong `Access-Control-Allow-Origin` header) will now succeed — this unblocks User Agent testing but requires no frontend code changes.
+
+**Frontend test baseline verified:** 486/486 tests pass (25 test files). No regressions from Sprint 26.
+
+**Sprint #27 Frontend Engineer work:** None assigned. All Sprint 27 tasks belong to Backend Engineer (T-228 Fix B), Deploy Engineer (T-228 Fix A, T-224), User Agent (T-219), and Monitor Agent (T-225).
+
+---
+
 **[2026-03-11] Backend Engineer → Frontend Engineer** *(Sprint #27 — API Contracts Published)*
 
 **From:** Backend Engineer

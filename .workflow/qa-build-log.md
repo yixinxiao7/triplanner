@@ -4,6 +4,71 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #27 — T-228 Fix A: CORS Staging Fix — 2026-03-11T18:09:00Z
+
+**Task:** T-228 (Deploy Engineer: Fix A — CORS_ORIGIN env var injected via pm2 ecosystem config)
+**Date:** 2026-03-11
+**Engineer:** Deploy Engineer
+**Sprint:** 27
+**Environment:** Staging
+
+---
+
+### Fix A Summary
+
+**Problem:** `infra/ecosystem.config.cjs` was missing `CORS_ORIGIN` in the `triplanner-backend` env block. ESM static import hoisting caused `app.js` to capture `process.env.CORS_ORIGIN` as `undefined` before `dotenv.config()` ran in `index.js`, resulting in the fallback `'http://localhost:5173'` being used for the CORS origin. All browser-initiated API calls from the staging frontend (`https://localhost:4173`) were rejected with a CORS error.
+
+**Fix Applied:** Added `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`. pm2 injects env vars before the Node process starts, so the value is correct when `app.js` captures it at module initialization.
+
+**Deployment Method:** `pm2 delete triplanner-backend && pm2 start infra/ecosystem.config.cjs --only triplanner-backend`
+
+---
+
+### CORS Verification Results
+
+| Test | Command | Expected | Actual | Result |
+|------|---------|----------|--------|--------|
+| GET from staging origin | `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` | `Access-Control-Allow-Origin: https://localhost:4173` | `Access-Control-Allow-Origin: https://localhost:4173` | ✅ PASS |
+| `Access-Control-Allow-Credentials` | Same as above | `true` | `Access-Control-Allow-Credentials: true` | ✅ PASS |
+| OPTIONS preflight from staging origin | `curl -sk -I -X OPTIONS https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173" -H "Access-Control-Request-Method: GET"` | `204 No Content` + ACAO header | `204 No Content` + `Access-Control-Allow-Origin: https://localhost:4173` | ✅ PASS |
+| Preflight `Access-Control-Allow-Credentials` | Same as above | `true` | `Access-Control-Allow-Credentials: true` | ✅ PASS |
+| Preflight methods | Same as above | GET,HEAD,PUT,PATCH,POST,DELETE | `Access-Control-Allow-Methods: GET,HEAD,PUT,PATCH,POST,DELETE` | ✅ PASS |
+| Health endpoint response | `curl -sk https://localhost:3001/api/v1/health` | `{"status":"ok"}` | `{"status":"ok"}` | ✅ PASS |
+| pm2 process status | `pm2 list` | `triplanner-backend` online | `online`, pid 70180 | ✅ PASS |
+
+**All 7 checks PASS.** Fix A is live and verified.
+
+---
+
+### pm2 Status After Fix
+
+| App | Status | PID | Restarts |
+|-----|--------|-----|---------|
+| triplanner-backend | online | 70180 | 0 (clean start) |
+| triplanner-frontend | online | 64982 | 6 |
+
+---
+
+### Fix A Definition of Done
+
+- [x] `CORS_ORIGIN: 'https://localhost:4173'` added to `infra/ecosystem.config.cjs` triplanner-backend env block
+- [x] `pm2 delete + pm2 start` applied (fresh start from updated ecosystem config)
+- [x] `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173` ✅
+- [x] OPTIONS preflight → `204 No Content` with correct CORS headers ✅
+- [x] Backend health endpoint → `{"status":"ok"}` ✅
+
+**Fix A Status: ✅ COMPLETE — User Agent browser testing is now UNBLOCKED**
+
+---
+
+### Notes for Monitor Agent
+
+- Handoff logged separately in `handoff-log.md`
+- Fix B (Backend Engineer: ESM dotenv hoisting refactor) is a separate task in T-228 — deploy engineer scope is complete
+- T-224 (production deployment) remains blocked pending project owner provisioning of AWS RDS + Render access
+
+---
+
 ## Sprint #26 — T-227 Staging Deploy — 2026-03-11T00:00:00Z
 
 **Task:** T-227 (Deploy Engineer: Sprint 26 staging re-deployment)

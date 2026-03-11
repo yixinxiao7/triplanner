@@ -24,6 +24,7 @@ module.exports = {
       env: {
         NODE_ENV: 'staging',
         PORT: 3001,
+        CORS_ORIGIN: 'https://localhost:4173', // T-228 Fix A — prevents ESM dotenv hoisting fallback
       },
       // Log configuration
       error_file: './logs/backend-error.log',
