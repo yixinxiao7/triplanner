@@ -1502,3 +1502,109 @@ The following pre-verification checks were completed proactively so they need no
 **T-214 Status: ✅ DONE — All gates passed. T-212 and T-213 moved to Done. Ready for Deploy Engineer (T-215).**
 
 ---
+
+---
+
+## Sprint 26 — Deploy Engineer Log
+
+### T-218: Backend Restart + Playwright Rerun
+**Date:** 2026-03-11
+**Agent:** Deploy Engineer
+**Task:** Resolve T-216 carry-over — restart backend to clear rate limiter, rerun Playwright
+
+#### Backend Restart
+- Command: `pm2 restart triplanner-backend`
+- Previous state: `triplanner-backend` PID 55180, uptime 10h, 11 restarts
+- After restart: PID 61952, status online ✅
+- Health check immediately after restart: `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}` ✅
+
+#### Playwright Results (First Run — Post-Restart)
+| Test | Result | Notes |
+|------|--------|-------|
+| Test 1: Core user flow | ❌ FAIL | Wrong aria-label in test spec — `getByLabel('Add destination')` resolved to disabled button, not input |
+| Test 2: Sub-resource CRUD | ❌ FAIL | Same aria-label issue |
+| Test 3: Search, filter, sort | ❌ FAIL | Same aria-label issue |
+| Test 4: Rate limit lockout | ✅ PASS | Rate limiter cleared by restart — working correctly |
+
+**Root cause of Tests 1–3 failure:** Test spec (line 88, `critical-flows.spec.js`) used stale selector `getByLabel('Add destination')` which resolves to the disabled `<button aria-label="Add destination">+</button>` in `DestinationChipInput`. The actual text input has `aria-label="New destination"`. This is a test spec bug, not application code.
+
+#### Test Spec Fix Applied
+- File: `e2e/critical-flows.spec.js` line 88
+- Changed: `dialog.getByLabel('Add destination')` → `dialog.getByLabel('New destination')`
+- Also corrected stale comment on line 87
+
+#### Playwright Results (Second Run — After Aria-Label Fix)
+| Test | Result | Notes |
+|------|--------|-------|
+| Test 1: Core user flow | ✅ PASS | |
+| Test 2: Sub-resource CRUD | ❌ FAIL | Strict mode violation — `getByText('SFO')` now matches 3 elements due to Sprint 25 TripCalendar pills in DOM |
+| Test 3: Search, filter, sort | ❌ FAIL | Rate limiter hit within test run — Tests 1+2 each register a user, exhausting quota before Test 3 |
+| Test 4: Rate limit lockout | ✅ PASS | |
+
+**Final result: 2/4 PASS**
+
+#### Root Cause Analysis — Remaining Failures
+| Test | Root Cause | Type |
+|------|-----------|------|
+| Test 2 | `getByText('SFO')` strict mode violation — Sprint 25 TripCalendar event pills add airport text to DOM, creating 3 matches. Spec predates calendar component. | Test spec regression — Frontend/QA scope |
+| Test 3 | Rate limiter exhausted during test run — each test registers a new user; by Test 3 the per-IP limit is hit. Tests need a shared test user or wider window between runs. | Test architecture — QA scope |
+
+**Assessment:** The backend restart DID clear the rate limiter state. T-218's original hypothesis (rate limiter from Monitor Agent registration) was correct for the Sprint 25 failure. However, the test spec contained pre-existing bugs (wrong aria-label, strict mode, intra-run rate exhaustion) now exposed. Tests require QA/Frontend updates.
+
+**Blocker:** Playwright 4/4 gate cannot be reached without test spec updates to account for Sprint 25 TripCalendar DOM changes. Logged in handoff-log.md for Manager and QA.
+
+---
+
+### T-222: render.yaml Blueprint + Production Deploy Guide
+**Date:** 2026-03-11
+**Agent:** Deploy Engineer
+**Task:** Create render.yaml and docs/production-deploy-guide.md
+
+#### Files Created
+| File | Status |
+|------|--------|
+| `render.yaml` (project root) | ✅ Created |
+| `docs/production-deploy-guide.md` | ✅ Created |
+
+#### render.yaml — Verification Checklist
+| Check | Result |
+|-------|--------|
+| Two services defined (backend web + frontend static) | ✅ |
+| Backend region: ohio | ✅ |
+| Frontend region: ohio | ✅ |
+| Backend plan: free | ✅ |
+| Frontend plan: free | ✅ |
+| Backend buildCommand: `npm install` (in rootDir: backend) | ✅ |
+| Backend startCommand: `node src/index.js` | ✅ |
+| Frontend buildCommand: `cd frontend && npm install && npm run build` | ✅ |
+| Frontend staticPublishPath: `frontend/dist` | ✅ |
+| SPA routing: rewrite rule `/* → /index.html` | ✅ |
+| `NODE_ENV=production` set for backend | ✅ |
+| DATABASE_URL: `sync: false` (no hardcoded value) | ✅ |
+| JWT_SECRET: `generateValue: true` (Render auto-generates) | ✅ |
+| CORS_ORIGIN: `sync: false` (no hardcoded value) | ✅ |
+| VITE_API_URL: `sync: false` (no hardcoded value) | ✅ |
+| No hardcoded secrets in file | ✅ |
+| healthCheckPath defined: `/api/v1/health` | ✅ |
+
+#### docs/production-deploy-guide.md — Coverage Checklist
+| Section | Status |
+|---------|--------|
+| Render account setup + connecting repo | ✅ |
+| AWS RDS free-tier instance setup (PostgreSQL 15, db.t3.micro, us-east-1) | ✅ |
+| Security group configuration for Render egress | ✅ |
+| Environment variable configuration table (all vars, both services) | ✅ |
+| Database migration step (`knex migrate:latest` — Option A local, Option B Render shell) | ✅ |
+| Deploy trigger + verification steps | ✅ |
+| Post-deploy smoke test checklist (7 curl commands + browser checklist) | ✅ |
+| Cookie SameSite=None verification step | ✅ |
+| Custom domain setup (optional) | ✅ |
+| Rollback procedure | ✅ |
+
+**T-220 and T-221 verified implemented (In Review):**
+- `backend/src/config/knexfile.js` production block: `ssl: { rejectUnauthorized: false }`, `pool: { min: 1, max: 5 }` ✅
+- `backend/src/routes/auth.js` `getSameSite()` returns `'none'` in production, `'strict'` otherwise; `isSecureCookie()` returns `true` in production ✅
+- Both T-222 blockers are satisfied. T-223 can complete its full checklist.
+
+**T-222 Status: ✅ DONE — render.yaml and deploy guide published. Handoff to QA (T-223) logged.**
+

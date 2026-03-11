@@ -84,8 +84,9 @@ async function createTrip(page, tripName, destinations) {
   await dialog.getByLabel(/trip name/i).fill(tripName);
 
   // Add destinations via the chip input.
-  // The inner <input> has aria-label="Add destination".
-  const destInput = dialog.getByLabel('Add destination');
+  // The inner <input> has aria-label="New destination".
+  // (The "+" button has aria-label="Add destination" — do not confuse the two.)
+  const destInput = dialog.getByLabel('New destination');
   for (const dest of destinations) {
     await destInput.fill(dest);
     await destInput.press('Enter');

@@ -4,6 +4,78 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Deploy Engineer → Manager Agent** *(Sprint #26 — T-218: Playwright Still 2/4 — Blocker Requires Frontend/QA Fix)*
+
+**From:** Deploy Engineer
+**To:** Manager Agent
+**Status:** Blocker — Playwright 4/4 gate not achieved; test spec regressions from Sprint 25
+
+**Summary of T-218:**
+
+Backend `triplanner-backend` was restarted via `pm2 restart triplanner-backend`. Rate limiter state was cleared (confirmed by Test 4 passing). However Playwright 2/4 PASS — not the expected 4/4.
+
+**Two test spec bugs discovered:**
+
+**Bug 1 — Wrong aria-label selector (Test 2):**
+- The e2e spec at `e2e/critical-flows.spec.js:202` uses `getByText('SFO')` to verify a flight was added.
+- Sprint 25 TripCalendar component added event pills to TripDetailsPage. These pills now also render 'SFO' text, creating 3 DOM elements matching `getByText('SFO')`. Playwright's strict mode rejects this.
+- Fix needed: Use a more specific selector (e.g., `getByTestId`, `page.locator('.airportCode').first()`, or scoped to the flights section).
+- **Owner: Frontend Engineer or QA Engineer**
+
+**Bug 2 — Intra-run rate limiter exhaustion (Test 3):**
+- Tests 1 and 2 each call `POST /auth/register` to create a new user. By the time Test 3 tries to register a third user, the rate limiter blocks the registration.
+- Fix needed: Either (a) use the seeded test user (T-226) for auth in tests instead of registering fresh users per test, or (b) increase rate limit window for staging, or (c) add `rateLimit.resetKey()` between tests in a `beforeEach` hook.
+- **Owner: QA Engineer**
+
+**Fix applied (Deploy Engineer scope):**
+- Line 88: Changed `dialog.getByLabel('Add destination')` → `dialog.getByLabel('New destination')` (the input's actual aria-label). This fixed Test 1 (now ✅). The button was labeled "Add destination"; the input is "New destination". Comment corrected.
+
+**Current state:** Playwright 2/4 (Tests 1 ✅, 4 ✅ pass; Tests 2, 3 ❌ require test spec updates).
+
+**Action required:** Manager to assign test spec fix to Frontend Engineer or QA Engineer before T-219 (User Agent) runs, to ensure Playwright gate is clear.
+
+---
+
+**[2026-03-11] Deploy Engineer → QA Engineer** *(Sprint #26 — T-222 DONE: render.yaml + Deploy Guide Ready for Review)*
+
+**From:** Deploy Engineer
+**To:** QA Engineer
+**Status:** Ready for T-223 pre-production review
+
+**Summary of T-222:**
+
+Two files published:
+
+**1. `render.yaml` (project root)**
+- Defines `triplanner-backend` (Node.js web service, Ohio, free) and `triplanner-frontend` (static site, Ohio, free)
+- No hardcoded secrets — `DATABASE_URL` is `sync: false`, `JWT_SECRET` is `generateValue: true`, `CORS_ORIGIN` and `VITE_API_URL` are `sync: false`
+- `NODE_ENV=production` is set (activates T-221 SameSite=None cookie behavior)
+- SPA rewrite rule (`/* → /index.html`) included for React Router
+
+**2. `docs/production-deploy-guide.md`**
+- Covers: AWS RDS PostgreSQL 15 setup (db.t3.micro, us-east-1), Render Blueprint deploy, all environment variables for both services, database migration (Option A: local via env var, Option B: Render shell), post-deploy smoke test checklist (7 curl-based checks including SameSite cookie verification), custom domain (optional), rollback procedure.
+
+**QA Review Checklist for T-223:**
+- [ ] `render.yaml`: no hardcoded secrets (DATABASE_URL, JWT_SECRET, CORS_ORIGIN, VITE_API_URL are all sync:false or generateValue:true)
+- [ ] `render.yaml`: NODE_ENV=production present for backend service
+- [ ] `render.yaml`: both services in ohio region, free plan
+- [ ] `docs/production-deploy-guide.md`: migration step present (Step 4)
+- [ ] `docs/production-deploy-guide.md`: env var configuration documented for both services (Step 3)
+- [ ] `docs/production-deploy-guide.md`: post-deploy checklist present with SameSite cookie check (Step 6)
+- [ ] T-220: `backend/src/config/knexfile.js` production block has `ssl: { rejectUnauthorized: false }` and `pool: { max: 5 }` ← **Backend Engineer must complete this before T-223**
+- [ ] T-221: `backend/src/routes/auth.js` production cookie has `sameSite: 'none'`, `secure: true` ← **Backend Engineer must complete this before T-223**
+- [ ] Backend tests: 340+ passing (`npm test --run` in `backend/`)
+- [ ] npm audit: 0 vulnerabilities
+
+**T-220 and T-221 confirmed implemented (In Review):**
+- `backend/src/config/knexfile.js` production block: `ssl: { rejectUnauthorized: false }`, `pool: { min: 1, max: 5 }` ✅
+- `backend/src/routes/auth.js` `getSameSite()` returns `'none'` when `NODE_ENV === 'production'`; `isSecureCookie()` returns `true` in production ✅
+- T-222's blockers (T-220, T-221) are satisfied — QA can proceed with T-223 full checklist.
+
+Full T-218 + T-222 build report in `.workflow/qa-build-log.md` Sprint 26 section.
+
+---
+
 **[2026-03-11] Backend Engineer → QA Engineer** *(Sprint #26 — Implementation Complete: T-220, T-221, T-226)*
 
 **From:** Backend Engineer
