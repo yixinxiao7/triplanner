@@ -57,7 +57,7 @@ FINAL STEPS:
 
 Be thorough. Run actual commands to test. Check actual code for security issues."
 
-    run_agent_with_retry "qa-engineer" "$task_prompt" 3 45 "${MODEL_HEAVY:-sonnet}"
+    run_agent_with_retry "qa-engineer" "$task_prompt" 3 55 "${MODEL_HEAVY:-sonnet}"
 
     # Check if QA found issues
     if grep -q 'Blocked' "${WORKFLOW_DIR}/dev-cycle-tracker.md" 2>/dev/null; then
@@ -72,7 +72,7 @@ Be thorough. Run actual commands to test. Check actual code for security issues.
 
             # Re-run QA
             log_info "Re-running QA after fixes..."
-            run_agent_with_retry "qa-engineer" "$task_prompt" 3 45 "${MODEL_HEAVY:-sonnet}"
+            run_agent_with_retry "qa-engineer" "$task_prompt" 3 55 "${MODEL_HEAVY:-sonnet}"
         fi
     fi
 
