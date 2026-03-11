@@ -1888,7 +1888,7 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
-| T-223 | QA Engineer: Pre-production security + configuration review. (1) Review T-220 changes: knexfile.js production block has ssl.rejectUnauthorized=false and pool.max=5. (2) Review T-221 changes: production cookie config has sameSite='none' and secure=true; staging/dev unchanged. (3) Review render.yaml: no hardcoded secrets (all sensitive values as env var references, not literal values). (4) Review docs/production-deploy-guide.md: covers migration step, environment variable setup, post-deploy verification. (5) Re-run `npm test --run` in backend — confirm 340+ tests pass (including any new tests from T-220/T-221). (6) Re-run `npm audit` — confirm 0 vulnerabilities. Full report in qa-build-log.md Sprint 26 section. Log handoff to Deploy Engineer (T-224) in handoff-log.md. | 26 | QA Engineer | Done | P1 | T-220, T-221, T-222 | **QA 2026-03-11: DONE.** Backend 355/355 pass, frontend 486/486 pass, npm audit 0 vulnerabilities, all T-220/T-221/T-222/T-226 checks verified, security checklist clear. Handoff to Deploy (T-224) logged. |
+| T-223 | QA Engineer: Pre-production security + configuration review. (1) Review T-220 changes: knexfile.js production block has ssl.rejectUnauthorized=false and pool.max=5. (2) Review T-221 changes: production cookie config has sameSite='none' and secure=true; staging/dev unchanged. (3) Review render.yaml: no hardcoded secrets (all sensitive values as env var references, not literal values). (4) Review docs/production-deploy-guide.md: covers migration step, environment variable setup, post-deploy verification. (5) Re-run `npm test --run` in backend — confirm 340+ tests pass (including any new tests from T-220/T-221). (6) Re-run `npm audit` — confirm 0 vulnerabilities. Full report in qa-build-log.md Sprint 26 section. Log handoff to Deploy Engineer (T-224) in handoff-log.md. | 26 | QA Engineer | Done | P1 | T-220, T-221, T-222 | **QA 2026-03-11: DONE.** Backend 355/355 pass, frontend 486/486 pass, npm audit 0 vulnerabilities, all T-220/T-221/T-222/T-226 checks verified, security checklist clear. Handoff to Deploy (T-224) logged. **Re-verification 2026-03-11 (orchestrator pass #2): 355/355 backend ✅, 486/486 frontend ✅, 0 vulnerabilities ✅, all code spot-checks ✅, config consistency ✅, security checklist ✅. Gate confirmed green.** |
 | T-224 | Deploy Engineer: Production deployment to Render + AWS RDS. Pre-deploy gate: T-223 Done. Follow `docs/production-deploy-guide.md` (T-222 output): (1) Create AWS RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier). (2) Set up Render services (frontend static site + backend web service, both Ohio region, free plan) using render.yaml. (3) Configure all environment variables (DATABASE_URL pointing to RDS, JWT_SECRET, NODE_ENV=production, FRONTEND_URL). (4) Run database migrations: `knex migrate:latest` against production RDS. (5) Trigger Render deploy. (6) Smoke tests: GET /api/v1/health → 200; POST /api/v1/auth/register → 201; frontend loads at Render URL. Log production URLs in handoff-log.md; handoff to Monitor Agent (T-225). Full report in qa-build-log.md. | 26 | Deploy Engineer | Blocked | P1 | T-223 | **Blocked 2026-03-11:** T-223 pre-production gate ✅ PASSED. All application code is production-ready. Deployment cannot proceed without project owner providing: (1) AWS account access to create RDS instance, (2) Render account to apply render.yaml Blueprint. No AWS CLI or Render CLI available in agent environment. Full instructions in `docs/production-deploy-guide.md`. Handoff to Manager logged in handoff-log.md. |
 | T-225 | Monitor Agent: Post-production health check. Verify the production environment (Render + AWS RDS) after T-224. (1) GET https://[backend-render-url]/api/v1/health → 200 `{"status":"ok"}`. (2) Frontend loads at https://[frontend-render-url] — no JS errors. (3) Registration flow: POST /auth/register → 201. (4) Login flow: POST /auth/login → 200. (5) Trips endpoint: GET /api/v1/trips → 200 (with auth). (6) Calendar endpoint: GET /api/v1/trips/:id/calendar → 200 (with auth). (7) HTTPS enforced (HTTP → HTTPS redirect or HTTPS-only). (8) Cookie behavior: refresh token cookie present with SameSite=none; Secure=true in response headers. Full report in qa-build-log.md Sprint 26 section. | 26 | Monitor Agent | Backlog | P1 | T-224 | Production health check — first production deploy. |
 
@@ -1899,6 +1899,81 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
 | T-226 | Backend Engineer: Monitor Agent health check process fix. The health check protocol currently calls `POST /api/v1/auth/register` to obtain a Bearer token, which consumes rate limit quota before Playwright runs (causing 1/4 Playwright failures in Sprint 22 and Sprint 25). Fix: seed a persistent test user in the staging database (e.g., `test@triplanner.local` / `TestPass123!`) and update the Monitor Agent's token acquisition to use `POST /api/v1/auth/login` with this seeded account instead of registering a new user. Create a migration or seed script for the test user. Document in `.agents/monitor-agent.md` that health checks should use login, not register. Unit test: seed script creates user with correct credentials; health check helper login call returns 200. | 26 | Backend Engineer | Done | P2 | None | From Monitor Alert Sprint #25. Implemented 2026-03-11: seed script backend/src/seeds/test_user.js created (idempotent upsert); monitor-agent.md updated with login-not-register protocol. **Manager Review 2026-03-11: APPROVED.** Seed uses onConflict('email').ignore() — idempotent; bcrypt 12 rounds; minimal fields (name/email/password_hash only); monitor-agent.md section added with credentials, example, and rationale. 7 unit tests cover email/name/hash/onConflict/ignore/idempotency/minimal-fields. No secrets exposed beyond a known staging-only test account. **QA 2026-03-11: DONE — all checks verified, seed script structure correct.** |
+
+---
+
+### Sprint 26 — Manager Agent: Code Review Pass (2026-03-11)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-26 | Manager: Sprint 26 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 26 | — | **No tasks in "In Review" status at invocation time.** All Sprint 26 implementation tasks (T-220, T-221, T-222, T-226) were reviewed and approved in a prior pass (2026-03-11). On-disk code spot-checked and all prior approvals confirmed correct. T-224 is Blocked pending project owner provisioning of AWS RDS + Render. T-219 and T-225 remain Backlog (User Agent and Monitor Agent gates). |
+
+**Sprint 26 Code Review Summary (Manager Agent — 2026-03-11):**
+
+**Review scope:** All tasks in "In Review" status at time of invocation. This is a pass #2 spot-check to validate prior approvals are accurate.
+
+**Result: No tasks were in "In Review" status.** A prior Manager pass (2026-03-11) already reviewed T-220, T-221, T-226, and T-222. All four were approved and have since moved through QA (T-223 Done). The following on-disk spot-checks were performed to validate prior approvals:
+
+---
+
+#### T-220 — knexfile.js production SSL + pool config — SPOT-CHECK ✅ CONFIRMED
+
+- ✅ `production.connection.connectionString = process.env.DATABASE_URL` — no hardcoded credentials
+- ✅ `production.connection.ssl = { rejectUnauthorized: false }` — correct for AWS RDS
+- ✅ `production.pool = { min: 1, max: 5 }` — correct for db.t3.micro
+- ✅ `development` and `staging` configs are bare connection strings — unchanged, no ssl block
+- ✅ 5 unit tests confirmed on disk — ssl, pool.max, pool.min, object shape, dev/staging guard
+
+**Prior approval confirmed correct.**
+
+---
+
+#### T-221 — Cookie SameSite=None in production — SPOT-CHECK ✅ CONFIRMED
+
+- ✅ `getSameSite()` returns `'none'` when `NODE_ENV === 'production'`, `'strict'` otherwise
+- ✅ `isSecureCookie()` returns `true` when `COOKIE_SECURE === 'true'` or `NODE_ENV === 'production'`
+- ✅ Both `setRefreshCookie()` and `clearRefreshCookie()` use both helpers
+- ✅ `httpOnly: true` preserved in both functions
+- ✅ 3 integration tests confirmed on disk: non-production SameSite=Strict; production SameSite=None; production Secure flag
+
+**Prior approval confirmed correct.**
+
+---
+
+#### T-222 — render.yaml + production deploy guide — SPOT-CHECK ✅ CONFIRMED
+
+- ✅ No hardcoded secrets: `DATABASE_URL` is `sync: false`; `JWT_SECRET` is `generateValue: true`; `CORS_ORIGIN` and `VITE_API_URL` are `sync: false`
+- ✅ Both services: `region: ohio`, `plan: free`
+- ✅ `startCommand: node src/index.js` matches actual backend entry point (`backend/src/index.js` confirmed on disk)
+- ✅ Frontend `staticPublishPath: frontend/dist` — correct Render YAML field
+- ✅ SPA rewrite rule `/* → /index.html` — required for React Router
+- ✅ `docs/production-deploy-guide.md`: all 6 required steps present including migration (Step 4) and post-deploy checklist with SameSite=None verification (Step 6)
+
+**Prior approval confirmed correct.**
+
+---
+
+#### T-226 — Monitor Agent process fix — SPOT-CHECK ✅ CONFIRMED
+
+- ✅ `backend/src/seeds/test_user.js`: `onConflict('email').ignore()` idempotent; bcrypt 12 rounds; minimal fields only
+- ✅ `.agents/monitor-agent.md`: "Token Acquisition (login, not register)" section added with credentials, example, and rationale
+- ✅ Health Check Template updated — specifies `test@triplanner.local` login, not register
+- ✅ 7 unit tests confirmed on disk
+
+**Prior approval confirmed correct.**
+
+---
+
+**Sprint 26 Code Review Outcome — Pass #2:**
+- T-220: ✅ Confirmed — remains Done
+- T-221: ✅ Confirmed — remains Done
+- T-222: ✅ Confirmed — remains Done
+- T-226: ✅ Confirmed — remains Done
+- T-224: ⛔ Blocked — project owner must provision AWS RDS + Render
+- T-219: Backlog — User Agent walkthrough (T-218 gate passed; unblocked)
+- T-225: Backlog — Monitor health check (blocked on T-224)
+
+**Pipeline is healthy. No rework required.**
 
 ---
 

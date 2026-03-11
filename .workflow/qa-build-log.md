@@ -1965,3 +1965,193 @@ All application code is production-ready. The codebase just needs cloud infrastr
 
 **T-224 Status: ⛔ BLOCKED — Requires project owner to provision AWS RDS + Render services. All code is production-ready. See `docs/production-deploy-guide.md` for step-by-step instructions.**
 
+---
+
+## Sprint #26 — QA Re-Verification Pass (Orchestrator Invocation #2) — 2026-03-11
+
+**Date:** 2026-03-11
+**Agent:** QA Engineer
+**Scope:** Full re-verification of Sprint 26 — fresh test runs + code spot-checks. No new tasks moved to Integration Check since prior T-223 pass. This pass confirms the gate is still green before orchestrator proceeds.
+
+---
+
+### Unit Test Run — Backend (Re-Run)
+
+**Test Type:** Unit Test
+**Command:** `cd backend && npm test -- --run`
+**Date:** 2026-03-11T10:10:47Z
+
+| Metric | Result |
+|--------|--------|
+| Test files | 18 passed / 18 total |
+| Tests | **355 passed / 355 total** |
+| Duration | 2.68s |
+| Baseline | 340 (pre-Sprint 26) |
+| Sprint 26 new tests (sprint26.test.js) | 15 passed / 15 |
+
+stderr output: ErrorHandler stack traces from malformed-JSON and DB-error test cases — these are expected log noise from error-path tests. All 355 tests pass.
+
+**Result: ✅ PASS — 355/355**
+
+---
+
+### Unit Test Run — Frontend (Re-Run)
+
+**Test Type:** Unit Test
+**Command:** `cd frontend && npm test -- --run`
+**Date:** 2026-03-11T10:10:55Z
+
+| Metric | Result |
+|--------|--------|
+| Test files | 25 passed / 25 total |
+| Tests | **486 passed / 486 total** |
+| Duration | 1.89s |
+
+`act()` warnings: pre-existing React state update warnings in test output — not failures, not new this sprint.
+
+**Result: ✅ PASS — 486/486**
+
+---
+
+### npm audit — Security Vulnerability Scan (Re-Run)
+
+**Test Type:** Security Scan
+**Command:** `cd backend && npm audit`
+**Date:** 2026-03-11
+
+| Result |
+|--------|
+| **0 vulnerabilities found** |
+
+**Result: ✅ PASS — 0 vulnerabilities**
+
+---
+
+### Code Spot-Checks (Re-Verification)
+
+**Test Type:** Integration Test / Code Review
+
+#### T-220 — knexfile.js Production SSL + Pool
+
+| Check | Status |
+|-------|--------|
+| `production.connection.connectionString = process.env.DATABASE_URL` | ✅ |
+| `production.connection.ssl = { rejectUnauthorized: false }` | ✅ |
+| `production.pool = { min: 1, max: 5 }` | ✅ |
+| `development` / `staging` configs: bare `process.env.DATABASE_URL` string (no ssl block) | ✅ |
+| No hardcoded DATABASE_URL value | ✅ |
+
+**Result: ✅ PASS**
+
+---
+
+#### T-221 — Cookie SameSite=None in Production
+
+| Check | Status |
+|-------|--------|
+| `getSameSite()` returns `'none'` when `NODE_ENV === 'production'` | ✅ |
+| `getSameSite()` returns `'strict'` in dev/staging | ✅ |
+| `isSecureCookie()` gates on `COOKIE_SECURE==='true'` OR `NODE_ENV==='production'` | ✅ |
+| `setRefreshCookie()` uses `getSameSite()` | ✅ |
+| `clearRefreshCookie()` uses `getSameSite()` (cross-origin logout correct) | ✅ |
+| `httpOnly: true` preserved in both functions | ✅ |
+
+**Result: ✅ PASS**
+
+---
+
+#### T-222 — render.yaml No Hardcoded Secrets
+
+| Check | Status |
+|-------|--------|
+| `DATABASE_URL`: `sync: false` | ✅ |
+| `JWT_SECRET`: `generateValue: true` | ✅ |
+| `CORS_ORIGIN`: `sync: false` | ✅ |
+| `VITE_API_URL`: `sync: false` | ✅ |
+| Both services: `region: ohio`, `plan: free` | ✅ |
+| Backend startCommand: `node src/index.js` (matches entry point on disk) | ✅ |
+| SPA rewrite `/* → /index.html` present | ✅ |
+
+**Result: ✅ PASS**
+
+---
+
+#### T-226 — test_user Seed Script
+
+| Check | Status |
+|-------|--------|
+| `onConflict('email').ignore()` — idempotent | ✅ |
+| bcrypt 12 rounds | ✅ |
+| Fields: `name`, `email`, `password_hash` only | ✅ |
+| No production secrets exposed | ✅ (intentional staging account, documented in monitor-agent.md) |
+
+**Result: ✅ PASS**
+
+---
+
+### Config Consistency Check (Re-Verification)
+
+**Test Type:** Config Consistency
+**Files:** `backend/.env`, `frontend/vite.config.js`, `infra/docker-compose.yml`
+
+| Check | Expected | Actual | Status |
+|-------|----------|--------|--------|
+| Backend PORT (dev) | 3000 | `PORT=3000` in backend/.env | ✅ |
+| Vite proxy target port (dev) | 3000 | `process.env.BACKEND_PORT \|\| '3000'` | ✅ |
+| Backend SSL (dev) | Disabled | SSL_KEY_PATH/SSL_CERT_PATH commented out in .env | ✅ |
+| Vite proxy protocol (dev) | http | `backendSSL=false` → `http://localhost:3000` | ✅ |
+| CORS_ORIGIN (dev) | `http://localhost:5173` | `CORS_ORIGIN=http://localhost:5173` in .env | ✅ |
+| Docker-compose backend PORT | 3000 | `PORT: 3000` | ✅ |
+| Docker-compose CORS_ORIGIN | `http://localhost` (port 80, nginx) | `${CORS_ORIGIN:-http://localhost}` | ✅ (Docker uses nginx on :80, correct) |
+
+**Result: ✅ PASS — No config mismatches**
+
+---
+
+### Security Verification (Re-Check)
+
+**Test Type:** Security Scan
+
+| Category | Item | Status |
+|----------|------|--------|
+| Auth | All protected routes use `authenticate` middleware | ✅ |
+| Auth | JWT: 15m access / 7d refresh tokens, bcrypt 12 rounds | ✅ |
+| Auth | Login rate-limited (10/15min); register rate-limited (5/60min) | ✅ |
+| Auth | Timing-safe login with DUMMY_HASH (prevents user enumeration) | ✅ |
+| Injection | `db.raw()` in tripModel.js uses ternary (`sortOrder === 'asc' ? 'ASC' : 'DESC'`) — no direct user input in SQL | ✅ |
+| Injection | All other DB queries via Knex query builder (parameterized) | ✅ |
+| XSS | No `dangerouslySetInnerHTML` in frontend code | ✅ |
+| XSS | All event content (TripCalendar) rendered as React text nodes | ✅ |
+| API | CORS gated to `CORS_ORIGIN` env var | ✅ |
+| API | `helmet()` provides X-Content-Type-Options, X-Frame-Options, HSTS | ✅ |
+| API | Error handler returns generic messages (no stack trace leakage to client) | ✅ |
+| Data | `DATABASE_URL`, `JWT_SECRET` from env vars only | ✅ |
+| Data | `JWT_SECRET=change-me-to-a-random-string` in backend/.env — development placeholder; production uses Render auto-generated value | ⚠️ NOTED (non-blocking) |
+| Data | `TestPass123!` in test_user.js — intentional documented staging test account; not a production secret | ⚠️ NOTED (non-blocking) |
+| Infra | Render provides HTTPS automatically; `render.yaml` references `https://` | ✅ |
+| Infra | npm audit: 0 vulnerabilities | ✅ |
+
+**Result: ✅ PASS — 0 P1 security issues. 2 non-blocking observations (same as T-223 pass, both by design).**
+
+---
+
+### Sprint #26 Re-Verification Summary
+
+| Gate | Result |
+|------|--------|
+| Backend unit tests: 355/355 | ✅ PASS |
+| Frontend unit tests: 486/486 | ✅ PASS |
+| npm audit: 0 vulnerabilities | ✅ PASS |
+| T-220: knexfile.js production SSL + pool | ✅ PASS |
+| T-221: Cookie SameSite=None in production | ✅ PASS |
+| T-222: render.yaml no hardcoded secrets | ✅ PASS |
+| T-226: test_user seed script correct | ✅ PASS |
+| Config consistency (PORT, SSL, CORS) | ✅ PASS |
+| Security checklist | ✅ PASS |
+
+**Overall: ✅ ALL GATES PASS — Application code is production-ready.**
+
+**Deployment blocker:** T-224 remains ⛔ BLOCKED — project owner must provision AWS RDS instance + Render account. All engineering prerequisites are complete. See `docs/production-deploy-guide.md` for step-by-step instructions.
+
+**Handoff to Deploy Engineer (T-224) logged in handoff-log.md (re-confirmation).**
+
