@@ -73,9 +73,16 @@ send_sprint_email() {
         return 0
     fi
 
+    # Write body to a temp file so AppleScript reads it cleanly —
+    # avoids syntax errors from markdown characters (braces, quotes, backslashes)
+    local body_file
+    body_file=$(mktemp)
+    printf '%s' "$body" > "$body_file"
+
     osascript <<EOF
+set bodyContent to read POSIX file "${body_file}" as «class utf8»
 tell application "Mail"
-    set newMessage to make new outgoing message with properties {subject:"${subject}", content:"${body//\"/\\\"}"}
+    set newMessage to make new outgoing message with properties {subject:"${subject}", content:bodyContent}
     tell newMessage
         make new to recipient at end of to recipients with properties {address:"${email}"}
     end tell
@@ -84,6 +91,7 @@ end tell
 EOF
 
     local exit_code=$?
+    rm -f "$body_file"
     if [[ $exit_code -eq 0 ]]; then
         log_success "Sprint summary email sent to ${email}"
     else
