@@ -4,6 +4,83 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #24 — T-205 Staging Deploy — 2026-03-10
+
+**Test Type:** Staging Deployment + Smoke Tests
+**Agent:** Deploy Engineer (T-205)
+**Environment:** Staging
+**Timestamp:** 2026-03-10T23:00:00Z
+**Build Status:** ✅ SUCCESS
+**Deploy Status:** ✅ SUCCESS
+
+---
+
+### Pre-Deploy Gate
+
+| Check | Result |
+|-------|--------|
+| T-204 (QA) Done with handoff to Deploy | ✅ CONFIRMED — QA → Deploy handoff in handoff-log.md (2026-03-10) |
+| `infra/ecosystem.config.cjs` `BACKEND_PORT: '3001'` | ✅ CONFIRMED |
+| `infra/ecosystem.config.cjs` `BACKEND_SSL: 'true'` | ✅ CONFIRMED |
+| Database migrations required | ✅ NONE — T-203 (dev-dep only) + T-208 (client-side only) |
+
+---
+
+### Build
+
+| Step | Command | Result |
+|------|---------|--------|
+| Frontend build | `npm run build` in `frontend/` | ✅ SUCCESS — 0 errors, 128 modules transformed |
+| Bundle output | `dist/assets/index-BXSQ7Eeh.js` (347.85 kB, 105.60 kB gzip) | ✅ |
+| CSS output | `dist/assets/index-Dcllg0GU.css` (82.94 kB, 13.18 kB gzip) | ✅ |
+
+---
+
+### Deployment Steps
+
+| Step | Command | Result |
+|------|---------|--------|
+| Reload frontend | `pm2 reload triplanner-frontend` | ✅ SUCCESS — PID 37955, online |
+| Restart backend | `pm2 restart triplanner-backend` | ✅ SUCCESS — PID 38046, online |
+| Database migrations | None required | ✅ N/A |
+
+---
+
+### Post-Deploy pm2 Status
+
+| Process | PID | Status | Uptime |
+|---------|-----|--------|--------|
+| triplanner-backend | 38046 | online | stable |
+| triplanner-frontend | 37955 | online | stable |
+
+---
+
+### Smoke Tests
+
+| Test | Expected | Result |
+|------|----------|--------|
+| `GET https://localhost:3001/api/v1/health` | `{"status":"ok"}` | ✅ PASS |
+| `GET https://localhost:4173/` | HTTP 200 | ✅ PASS |
+| Frontend JS bundle loads | HTTP 200, bundle served | ✅ PASS |
+| StatusFilterTabs code in bundle | `statusFilter`, `activeFilter`, `aria-pressed` strings present | ✅ PASS |
+| POST /auth/register → create user | HTTP 200, access_token returned | ✅ PASS |
+| POST /trips → create trip | HTTP 201, trip ID returned | ✅ PASS |
+| GET /trips/:id → `notes` key present | `notes` key in response | ✅ PASS (Sprint 20 regression) |
+| PATCH /trips/:id `{status:"ONGOING"}` | HTTP 200 | ✅ PASS (Sprint 22 regression) |
+
+**All 8 smoke tests PASS. No regressions detected.**
+
+---
+
+### Notes
+
+- No `knex migrate:latest` run — 10 migrations (001–010) remain unchanged on staging.
+- `ecosystem.config.cjs` required no changes — `BACKEND_PORT` and `BACKEND_SSL` were already correct.
+- Sprint 24 feature (StatusFilterTabs) is confirmed present in deployed bundle.
+- Handoff logged to Monitor Agent (T-206).
+
+---
+
 ## Sprint #20 — Post-Deploy Health Check — 2026-03-10
 
 **Test Type:** Post-Deploy Health Check + Config Consistency Validation
@@ -159,5 +236,353 @@ When T-204 completes and issues a handoff, T-205 will perform:
 **Environment:** Staging
 **Pre-Verification:** ✅ PASS (infrastructure ready — no config changes required)
 **Blocker:** T-204 (QA confirmation) not done → T-205 cannot proceed
+
+---
+
+---
+
+## Sprint #24 — T-204 QA: Security Checklist + Test Re-Verification — 2026-03-10
+
+**Test Type:** Unit Test + Integration Test + Security Scan + Config Consistency
+**Agent:** QA Engineer (T-204)
+**Sprint:** 24
+**Tasks Covered:** T-203 (vitest upgrade), T-208 (StatusFilterTabs)
+**Date:** 2026-03-10
+
+---
+
+### 1. Unit Tests — Backend
+
+**Test Type:** Unit Test
+**Command:** `cd backend && npm test -- --run`
+
+| Metric | Result |
+|--------|--------|
+| Test Files | 15/15 passed |
+| Total Tests | **304/304 passed** |
+| Failures | 0 |
+| Duration | ~552ms |
+
+**Verdict:** ✅ PASS — meets the 304+ requirement.
+
+---
+
+### 2. Unit Tests — Frontend
+
+**Test Type:** Unit Test
+**Command:** `cd frontend && npm test -- --run`
+
+| Metric | Result |
+|--------|--------|
+| Test Files | 25/25 passed |
+| Total Tests | **481/481 passed** |
+| Failures | 0 |
+| Duration | ~1.93s |
+
+**Key test files covering Sprint 24 scope:**
+
+| File | Tests | Coverage |
+|------|-------|---------|
+| `src/__tests__/StatusFilterTabs.test.jsx` | 19 | Pill render, aria-pressed, tabIndex, click → onFilterChange, keyboard arrow nav, wrapping |
+| `src/__tests__/HomePage.test.jsx` | 25 (11 new) | A–G spec cases + no-API-call guard + global-empty-state isolation |
+
+**Happy-path and error-path coverage confirmed:**
+- ✅ Happy path: filters render, active filter changes, "All" shows everything
+- ✅ Error path: empty filtered state (0 matches), "Show all" reset, global empty state not suppressed
+
+**Verdict:** ✅ PASS — meets the 481+ requirement (was 451 pre-T-208; +30 new tests).
+
+---
+
+### 3. npm audit — Backend
+
+**Test Type:** Security Scan
+**Command:** `cd backend && npm audit`
+
+| Metric | Result |
+|--------|--------|
+| Vulnerabilities | **0** |
+| B-021 (GHSA-67mh-4wv8-2f99) | ✅ Resolved by vitest 4.0.18 upgrade |
+
+**Verdict:** ✅ PASS
+
+---
+
+### 4. npm audit — Frontend
+
+**Test Type:** Security Scan
+**Command:** `cd frontend && npm audit`
+
+| Metric | Result |
+|--------|--------|
+| Vulnerabilities | **0** |
+| B-021 (GHSA-67mh-4wv8-2f99) | ✅ Resolved by vitest 4.0.18 upgrade (installed as 4.0.18) |
+
+**Verdict:** ✅ PASS
+
+---
+
+### 5. Code Security Review — Sprint 24 New Files
+
+**Test Type:** Security Scan
+**Files reviewed:** `StatusFilterTabs.jsx`, `StatusFilterTabs.module.css`, `HomePage.jsx` (changes only)
+
+| Check | Result |
+|-------|--------|
+| `dangerouslySetInnerHTML` introduced | ✅ NONE — all text via React children (`filter.label`, `activeFilterLabel`) |
+| Hardcoded secrets in new files | ✅ NONE |
+| XSS vectors | ✅ NONE — no raw HTML insertion |
+| API call on filter change | ✅ NONE — client-side filter only, confirmed via code inspection |
+
+**Verdict:** ✅ PASS
+
+---
+
+### 6. Security Checklist — Full Applicable Items
+
+**Test Type:** Security Scan
+**Scope:** Full codebase audit for all applicable checklist items
+
+#### Authentication & Authorization
+
+| Item | Status | Notes |
+|------|--------|-------|
+| All API endpoints require authentication | ✅ PASS | All routes (`/api/v1/trips`, `/stays`, `/flights`, `/activities`, `/land-travel`) use `router.use(authenticate)` — blanket auth on every sub-route |
+| Auth tokens have appropriate expiration | ✅ PASS | JWT 15m expiry, refresh token 7d, configured via env vars |
+| Password hashing uses bcrypt/scrypt/argon2 | ✅ PASS | `bcrypt.hash(password, 12)` — cost factor 12 ✅ |
+| Failed login attempts are rate-limited | ✅ PASS | `generalAuthLimiter` applied to `/auth/login`, `/auth/register` |
+
+#### Input Validation & Injection Prevention
+
+| Item | Status | Notes |
+|------|--------|-------|
+| User inputs validated server-side | ✅ PASS | Validation in route handlers; whitelist-based sort field/order validation |
+| SQL queries use parameterized statements | ✅ PASS | Knex query builder used throughout. `sortBy` and `sortOrder` validated against whitelist (`VALID_SORT_BY`, `VALID_SORT_ORDER`) before use in `db.raw()`. ILIKE search uses escape-safe parameterization (B-033 fix) |
+| HTML output sanitized (XSS) | ✅ PASS | No `dangerouslySetInnerHTML` anywhere in `frontend/src/` — only in a comment in `formatDate.js` confirming it is NOT used |
+
+#### API Security
+
+| Item | Status | Notes |
+|------|--------|-------|
+| CORS configured for expected origins only | ✅ PASS | `CORS_ORIGIN` env var (dev: `http://localhost:5173`). Not wildcard |
+| Rate limiting on public endpoints | ✅ PASS | Auth endpoints rate-limited |
+| API errors do not leak stack traces | ✅ PASS | `errorHandler.js` logs stack server-side only; returns `"An unexpected error occurred"` for 500s to clients |
+| Security headers | ✅ PASS | `helmet()` applied in `app.js` — sets X-Content-Type-Options, X-Frame-Options, HSTS, etc. |
+
+#### Data Protection
+
+| Item | Status | Notes |
+|------|--------|-------|
+| DB credentials in env vars, not code | ✅ PASS | `DATABASE_URL`, `JWT_SECRET` read from `process.env`; `.env` is in `.gitignore` |
+| `.env` not committed to repo | ✅ PASS | `.gitignore` includes `.env` and `.env.local` |
+
+#### Infrastructure
+
+| Item | Status | Notes |
+|------|--------|-------|
+| HTTPS enforced on staging | ✅ PASS | `ecosystem.config.cjs`: `BACKEND_SSL: 'true'`, `BACKEND_PORT: '3001'` — confirmed by Deploy Engineer pre-check |
+| Dependencies free of known vulns | ✅ PASS | `npm audit` → 0 vulnerabilities in both backend and frontend |
+
+**Verdict:** ✅ PASS — No security failures found.
+
+---
+
+### 7. Integration Test — API Contract Verification (T-208 / StatusFilterTabs)
+
+**Test Type:** Integration Test
+
+The Sprint 24 `StatusFilterTabs` feature is **fully client-side**. API contract verification:
+
+| Contract Item | Expected | Actual |
+|--------------|----------|--------|
+| `GET /api/v1/trips` returns `status` field on each trip | `"PLANNING"` \| `"ONGOING"` \| `"COMPLETED"` | ✅ CONFIRMED — field exists in API contract; used in `trips.filter(t => t.status === activeFilter)` |
+| No new API endpoint for filter change | None | ✅ CONFIRMED — `StatusFilterTabs` triggers no network call on click (code inspection + test coverage) |
+| Filter logic matches contract mapping | `ALL` → no filter; others → exact match on `t.status` | ✅ CONFIRMED — code matches Spec 21.4 exactly |
+
+**Verdict:** ✅ PASS
+
+---
+
+### 8. Integration Test — UI Spec Verification (Spec 21)
+
+**Test Type:** Integration Test
+
+| Spec Item | Expected | Actual |
+|-----------|----------|--------|
+| Four pills: All / Planning / Ongoing / Completed | Rendered in order | ✅ CONFIRMED — `FILTERS` array in exact order |
+| Defaults to "All" | `activeFilter = "ALL"` on mount | ✅ CONFIRMED — `useState('ALL')` in `HomePage.jsx` |
+| Active pill visually distinct | CSS `pillActive` class applied | ✅ CONFIRMED — conditional className on `isActive` |
+| `role="group"` on container | Present | ✅ CONFIRMED — in JSX |
+| `aria-pressed` on each pill | `true` for active, `false` for others | ✅ CONFIRMED — `aria-pressed={isActive}` |
+| Roving tabIndex | Active pill `tabIndex=0`, others `-1` | ✅ CONFIRMED — `tabIndex={isActive ? 0 : -1}` |
+| ArrowLeft/ArrowRight keyboard nav | Focus moves between pills with wrapping | ✅ CONFIRMED — `handleKeyDown` implementation |
+| Empty filtered state message | `"No [Label] trips yet."` | ✅ CONFIRMED — `No {activeFilterLabel} trips yet.` |
+| "Show all" link resets filter | `setActiveFilter("ALL")` | ✅ CONFIRMED — `onClick={() => setActiveFilter('ALL')}` |
+| Global empty state not suppressed | `trips.length === 0` guard | ✅ CONFIRMED — `filteredTrips.length === 0 && activeFilter !== 'ALL' && trips.length > 0` guard prevents override |
+| Location: above trip list, below heading | `StatusFilterTabs` between heading and grid | ✅ CONFIRMED — rendered after `initialLoadDone` check, before trip grid |
+| Mobile: horizontal scroll, no wrapping | `overflow-x: auto` in CSS | ✅ CONFIRMED — `StatusFilterTabs.module.css` |
+
+**Verdict:** ✅ PASS — All Spec 21 requirements met.
+
+---
+
+### 9. Config Consistency Check
+
+**Test Type:** Config Consistency
+
+| File | Config Item | Value | Match? |
+|------|------------|-------|--------|
+| `backend/.env` | `PORT` | `3000` | — |
+| `frontend/vite.config.js` | proxy target port (dev default) | `BACKEND_PORT \|\| '3000'` → `3000` | ✅ Match |
+| `backend/.env` | SSL enabled | No (commented out) | — |
+| `frontend/vite.config.js` | proxy protocol | `BACKEND_SSL` unset → `http://` | ✅ Match |
+| `backend/.env` | `CORS_ORIGIN` | `http://localhost:5173` | ✅ Includes frontend dev server origin |
+| `infra/docker-compose.yml` | backend `PORT` | `3000` | ✅ Consistent with dev |
+| `infra/ecosystem.config.cjs` (staging) | `BACKEND_PORT` + `BACKEND_SSL` | `3001` + `'true'` | ✅ Vite proxy reads env vars dynamically — correct for staging |
+
+**No config mismatches found.**
+
+**Verdict:** ✅ PASS
+
+---
+
+### Summary
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests (304 tests) | ✅ 304/304 PASS |
+| Frontend unit tests (481 tests) | ✅ 481/481 PASS |
+| Backend npm audit | ✅ 0 vulnerabilities |
+| Frontend npm audit | ✅ 0 vulnerabilities |
+| vitest versions upgraded (B-021) | ✅ backend `^4.0.18`, frontend `^4.0.0` (4.0.18) |
+| No dangerouslySetInnerHTML introduced | ✅ PASS |
+| No hardcoded secrets introduced | ✅ PASS |
+| Security checklist (all applicable) | ✅ PASS |
+| API contract compliance (T-208) | ✅ PASS |
+| UI Spec 21 compliance (T-208) | ✅ PASS |
+| Global empty state not suppressed | ✅ PASS |
+| Config consistency | ✅ PASS |
+
+**Overall QA Result: ✅ ALL CHECKS PASS**
+**T-203 → Done. T-208 → Done. T-204 → Done.**
+**Sprint 24 is cleared for deployment. Handoff to Deploy Engineer (T-205).**
+
+---
+
+## Sprint #24 — T-204 QA Re-Verification Pass — 2026-03-10
+
+---
+**Sprint:** #24
+**Date:** 2026-03-10
+**Test Type:** Unit Test | Security Scan | Config Consistency | Integration Test
+**Task IDs:** T-203, T-208, T-204
+**Tester:** QA Engineer
+
+**Summary:** Pass
+
+**Details:**
+
+### 1. Backend Unit Tests
+
+| Metric | Result |
+|--------|--------|
+| Command | `cd backend && npm test -- --run` |
+| Test Files | 15/15 passed |
+| Total Tests | **304/304 passed** |
+| Failures | 0 |
+| Duration | ~526ms |
+
+**Verdict:** ✅ PASS
+
+### 2. Frontend Unit Tests
+
+| Metric | Result |
+|--------|--------|
+| Command | `cd frontend && npm test -- --run --passWithNoTests` |
+| Test Files | 25/25 passed |
+| Total Tests | **481/481 passed** |
+| Failures | 0 |
+| Duration | ~1.77s |
+
+Key Sprint 24 test files confirmed on disk:
+- `src/__tests__/StatusFilterTabs.test.jsx` — 19 tests (pill render, aria-pressed, tabIndex, click, keyboard nav, wrapping)
+- `src/__tests__/HomePage.test.jsx` — 25 tests (11 new integration tests covering Spec 21 cases A–G)
+
+**Verdict:** ✅ PASS
+
+### 3. npm audit — Backend
+
+| Metric | Result |
+|--------|--------|
+| Vulnerabilities | **0** |
+| B-021 (GHSA-67mh-4wv8-2f99) | ✅ Resolved — vitest `^4.0.18` in backend/package.json |
+
+**Verdict:** ✅ PASS
+
+### 4. npm audit — Frontend
+
+| Metric | Result |
+|--------|--------|
+| Vulnerabilities | **0** |
+| B-021 (GHSA-67mh-4wv8-2f99) | ✅ Resolved — vitest `^4.0.0` (installed 4.0.18) in frontend/package.json |
+
+**Verdict:** ✅ PASS
+
+### 5. Security Checks (Re-Verification)
+
+| Check | Result |
+|-------|--------|
+| `dangerouslySetInnerHTML` in frontend/src/ (excl. tests) | ✅ NONE — only in a comment in formatDate.js confirming it is NOT used |
+| Hardcoded secrets in source | ✅ NONE — password strings in source are error messages, not credentials |
+| SQL injection prevention | ✅ PASS — Knex query builder used throughout all models; no string concatenation of user input into SQL |
+| Auth middleware on protected routes | ✅ PASS — `router.use(authenticate)` in trips, stays, flights, activities, landTravel routes |
+| Error handler exposes stack traces | ✅ PASS — errorHandler.js logs server-side only; 500s return "An unexpected error occurred" |
+| CORS_ORIGIN in backend .env | ✅ PASS — `http://localhost:5173` matches frontend dev server |
+
+**Verdict:** ✅ PASS
+
+### 6. Config Consistency (Re-Verification)
+
+| Config Item | Value | Status |
+|-------------|-------|--------|
+| backend/.env PORT | 3000 | — |
+| vite.config.js proxy target (dev default) | `BACKEND_PORT \|\| '3000'` → port 3000 | ✅ Match |
+| backend/.env SSL | disabled (commented out) | — |
+| vite.config.js proxy protocol | `BACKEND_SSL` unset → `http://` | ✅ Match |
+| backend/.env CORS_ORIGIN | `http://localhost:5173` | ✅ Includes frontend dev origin |
+| docker-compose.yml backend PORT | 3000 | ✅ Consistent |
+| ecosystem.config.cjs (staging) | BACKEND_PORT=3001, BACKEND_SSL=true | ✅ Dynamic env var read by Vite — correct for staging |
+
+**Verdict:** ✅ PASS — No config mismatches.
+
+### 7. Integration Verification — T-208 (StatusFilterTabs)
+
+- `StatusFilterTabs` component confirmed at `frontend/src/components/StatusFilterTabs.jsx` ✅
+- Integrated into `HomePage.jsx` with `activeFilter` state (init `'ALL'`) ✅
+- Filter logic: `filteredTrips = activeFilter === 'ALL' ? trips : trips.filter(t => t.status === activeFilter)` ✅
+- Empty filtered state guard: `filteredTrips.length === 0 && activeFilter !== 'ALL' && trips.length > 0` ✅
+- Global empty state (`trips.length === 0`) unaffected ✅
+- A11y: `role="group"`, `aria-pressed`, roving `tabIndex`, ArrowLeft/ArrowRight keyboard nav ✅
+- No new API call on filter change (client-side only) ✅
+
+**Verdict:** ✅ PASS
+
+### Summary
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests (304 tests) | ✅ 304/304 PASS |
+| Frontend unit tests (481 tests) | ✅ 481/481 PASS |
+| Backend npm audit | ✅ 0 vulnerabilities |
+| Frontend npm audit | ✅ 0 vulnerabilities |
+| vitest upgrade confirmed (B-021 resolved) | ✅ backend ^4.0.18, frontend ^4.0.0 (4.0.18) |
+| Security checklist | ✅ PASS |
+| Config consistency | ✅ PASS |
+| T-208 integration verification | ✅ PASS |
+
+**Overall QA Result: ✅ ALL CHECKS PASS**
+**T-204 re-confirmed Done. T-205 (Deploy) is unblocked. Safe to deploy.**
+
+**Issues Found:** None
 
 ---
