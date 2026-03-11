@@ -666,3 +666,133 @@ Key Sprint 24 test files confirmed on disk:
 **Issues Found:** None
 
 ---
+
+## Sprint #24 — T-206 Post-Deploy Health Check — 2026-03-10T01:14:00Z
+
+**Test Type:** Post-Deploy Health Check + Config Consistency Validation
+**Environment:** Staging
+**Timestamp:** 2026-03-10T01:14:00Z (2026-03-11T01:14:00Z UTC clock)
+**Agent:** Monitor Agent
+**Task:** T-206
+**Deploy Reference:** T-205 (Deploy Engineer handoff 2026-03-10 — Backend https://localhost:3001, Frontend https://localhost:4173)
+
+---
+
+### Config Consistency Validation
+
+> **Files read:** `backend/.env.staging` (loaded by `backend/src/index.js` when `NODE_ENV=staging`), `infra/ecosystem.config.cjs`, `frontend/vite.config.js`, `infra/docker-compose.yml`, `infra/certs/`
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| **Port match** — backend `.env.staging` PORT vs Vite proxy `BACKEND_PORT` | Both 3001 | `.env.staging` PORT=3001; ecosystem.config.cjs backend PORT=3001; frontend BACKEND_PORT='3001' → Vite proxy `https://localhost:3001` | ✅ PASS |
+| **Protocol match** — SSL certs set → backend HTTPS; Vite proxy must use `https://` | HTTPS if SSL_KEY_PATH + SSL_CERT_PATH set and files exist | `.env.staging` SSL_KEY_PATH=../infra/certs/localhost-key.pem, SSL_CERT_PATH=../infra/certs/localhost.pem; cert files exist at `infra/certs/localhost.pem` + `localhost-key.pem`; `backend/src/index.js` starts HTTPS server; ecosystem.config.cjs frontend BACKEND_SSL='true' → `backendProtocol='https'` → proxy target `https://localhost:3001` | ✅ PASS |
+| **CORS match** — CORS_ORIGIN includes frontend dev server origin | CORS_ORIGIN = `https://localhost:4173` | `.env.staging` CORS_ORIGIN=https://localhost:4173; Vite preview: port 4173 + TLS certs exist → serves HTTPS → origin `https://localhost:4173` | ✅ PASS |
+| **Docker port mapping** — backend container PORT matches `.env` PORT | N/A (Docker not used for staging — pm2 ecosystem is used) | `docker-compose.yml` has backend `PORT: 3000` (hardcoded, no host port mapping — internal Docker network only). Docker is a separate production deployment path and is not active for this staging deploy. No mismatch. | ✅ N/A (Docker not active) |
+
+**Config Consistency Result: ✅ PASS — All 3 active checks pass. Docker compose is not in use for this staging environment.**
+
+**Additional config observation (non-blocking):**
+- `backend/.env` (dev file) contains `JWT_SECRET=change-me-to-a-random-string`. This is a placeholder for local development and is never loaded in staging (staging loads `.env.staging` with a proper 64-char hex secret). Not a staging issue — flagged for awareness only.
+
+---
+
+### Post-Deploy Health Checks
+
+**Backend URL:** https://localhost:3001
+**Frontend URL:** https://localhost:4173
+**Protocol:** HTTPS (self-signed cert, TLS confirmed active)
+**pm2 Processes:** triplanner-backend (PID 39827), triplanner-frontend (PID 39784)
+
+#### Liveness & Auth
+
+| Check | Method | URL | Expected | Actual | Result |
+|-------|--------|-----|----------|--------|--------|
+| App responds | GET | /api/v1/health | HTTP 200, `{"status":"ok"}` | HTTP 200, `{"status":"ok"}` | ✅ PASS |
+| Register new user | POST | /api/v1/auth/register | HTTP 201, user object + access_token | HTTP 201, `{"data":{"user":{...},"access_token":"eyJ..."}}` | ✅ PASS |
+| Login | POST | /api/v1/auth/login | HTTP 200, user object + access_token | HTTP 200, `{"data":{"user":{...},"access_token":"eyJ..."}}` | ✅ PASS |
+| Auth required enforced | GET | /api/v1/trips (no token) | HTTP 401 | HTTP 401 | ✅ PASS |
+| Rate limiting header | POST | /api/v1/auth/login | `RateLimit-Limit: 10` header present | `RateLimit-Limit: 10`, `RateLimit-Policy: 10;w=900`, `RateLimit-Remaining: 8`, `RateLimit-Reset: 885` | ✅ PASS (Sprint 19 regression ✅) |
+
+#### Core Trip Endpoints
+
+| Check | Method | URL | Expected | Actual | Result |
+|-------|--------|-----|----------|--------|--------|
+| List trips | GET | /api/v1/trips | HTTP 200, `{"data":[...],"pagination":{...}}` | HTTP 200, `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}` | ✅ PASS |
+| Create trip | POST | /api/v1/trips | HTTP 201, trip object with `status`, `notes`, `start_date`, `end_date` | HTTP 201, trip created with `status:"PLANNING"`, `notes:null`, `start_date:"2026-06-01"`, `end_date:"2026-06-14"` | ✅ PASS (Sprint 16 ✅) |
+| Get trip by ID — `notes` key | GET | /api/v1/trips/:id | HTTP 200, `notes` key present (null or string) | HTTP 200, `"notes":null` present in response | ✅ PASS (Sprint 20 regression ✅) |
+| Patch trip status | PATCH | /api/v1/trips/:id | HTTP 200, `status:"ONGOING"` in response | HTTP 200, `{"data":{...,"status":"ONGOING",...}}` | ✅ PASS (Sprint 22 regression ✅) |
+| Get flights | GET | /api/v1/trips/:id/flights | HTTP 200 | HTTP 200 | ✅ PASS |
+| Get stays | GET | /api/v1/trips/:id/stays | HTTP 200 | HTTP 200 | ✅ PASS |
+| Get activities | GET | /api/v1/trips/:id/activities | HTTP 200 | HTTP 200 | ✅ PASS |
+| Get land-travel | GET | /api/v1/trips/:id/land-travel | HTTP 200 | HTTP 200 | ✅ PASS |
+
+#### Frontend
+
+| Check | Method | URL | Expected | Actual | Result |
+|-------|--------|-----|----------|--------|--------|
+| Frontend accessible | GET | https://localhost:4173 | HTTP 200 | HTTP 200 | ✅ PASS |
+| Build artifacts present | — | frontend/dist/ | index.html, assets/ present | `index.html`, `assets/`, `favicon.png` present | ✅ PASS |
+
+#### Database
+
+| Check | How verified | Result |
+|-------|-------------|--------|
+| DB connected | POST /api/v1/auth/register → 201 (requires DB write), GET /api/v1/trips → 200 (requires DB read) | ✅ PASS |
+| 10 migrations applied | Confirmed by Deploy Engineer (T-205 handoff): 0 pending migrations, all 10 applied | ✅ PASS |
+
+---
+
+### No 5xx Errors Observed
+
+All 13 tested endpoints returned expected 2xx/4xx status codes. No 5xx errors detected in health check probe.
+
+---
+
+### Full Health Check Checklist
+
+```
+Environment: Staging
+Timestamp: 2026-03-10T01:14:00Z
+Checks:
+  - [x] App responds (GET /api/v1/health → 200) ✅
+  - [x] Auth works (POST /api/v1/auth/login → 200 with access_token) ✅
+  - [x] Key endpoints respond (all 13 endpoints tested — see table above) ✅
+  - [x] No 5xx errors in logs ✅
+  - [x] Database connected (register + trips CRUD verified) ✅
+  - [x] Config consistency: backend PORT 3001 matches Vite proxy BACKEND_PORT 3001 ✅
+  - [x] Config consistency: SSL certs exist → backend HTTPS; BACKEND_SSL=true → Vite proxy https:// ✅
+  - [x] Config consistency: CORS_ORIGIN=https://localhost:4173 matches frontend preview origin ✅
+  - [x] Frontend accessible at https://localhost:4173 → 200 ✅
+  - [x] Rate limiting active: RateLimit-Limit: 10 on /auth/login ✅ (Sprint 19)
+  - [x] notes key present on GET /trips/:id ✅ (Sprint 20)
+  - [x] PATCH /trips/:id {status:"ONGOING"} → 200 ✅ (Sprint 22)
+  - [x] start_date/end_date on POST /trips → confirmed in response ✅ (Sprint 16)
+Result: PASS
+Notes: All checks pass. StatusFilterTabs (T-208) frontend build deployed and frontend responding 200.
+```
+
+---
+
+### Summary
+
+| Test Type | Result |
+|-----------|--------|
+| Config Consistency | ✅ PASS |
+| App Liveness | ✅ PASS |
+| Auth Flow (register + login) | ✅ PASS |
+| Trip CRUD Endpoints | ✅ PASS |
+| Sub-resource Endpoints (flights, stays, activities, land-travel) | ✅ PASS |
+| Database Connectivity | ✅ PASS |
+| Frontend Accessibility | ✅ PASS |
+| Sprint 16 Regression (start_date/end_date) | ✅ PASS |
+| Sprint 19 Regression (rate limiting header) | ✅ PASS |
+| Sprint 20 Regression (notes key on GET /trips/:id) | ✅ PASS |
+| Sprint 22 Regression (PATCH status → ONGOING) | ✅ PASS |
+| No 5xx Errors | ✅ PASS |
+
+**Deploy Verified: Yes**
+**Overall Result: ✅ ALL CHECKS PASS — Staging environment is healthy. T-206 complete. T-209 (User Agent) unblocked.**
+
+**Issues Found:** None
+
+---

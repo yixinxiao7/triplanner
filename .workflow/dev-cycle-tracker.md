@@ -1670,8 +1670,8 @@ No schema changes, no migrations, no API changes in Sprint 24. Schema remains st
 - T-207: ✅ Done
 - T-208: ✅ Done
 - T-204: ✅ Done
-- T-205: Backlog — **NOW UNBLOCKED** (T-204 Done). Deploy Engineer pre-deploy checks already completed. Proceed with `npm run build` → `pm2 reload` → smoke tests immediately.
-- T-206: Backlog — Blocked by T-205
-- T-209: Backlog — Blocked by T-206
+- T-205: ✅ Done — Staging deploy complete (Deploy Engineer, 2026-03-10)
+- T-206: ✅ Done — Post-deploy health check PASS, Deploy Verified: Yes (Monitor Agent, 2026-03-10T01:14:00Z)
+- T-209: Backlog — **NOW UNBLOCKED** (T-206 Done). User Agent may begin Sprint 24 feature walkthrough immediately.
 
-**Handoff:** Logged to Deploy Engineer (T-205 unblocked) and User Agent (T-202 ZERO BLOCKERS) in handoff-log.md.
+**Handoff:** T-206 → User Agent (T-209 unblocked) logged in handoff-log.md. Full health check report in qa-build-log.md.
