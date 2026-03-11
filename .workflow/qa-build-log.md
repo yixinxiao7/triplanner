@@ -4,6 +4,65 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #28 — T-232 Deploy Status — 2026-03-11T00:00:00Z
+
+**Task:** T-232 (Deploy Engineer: Staging re-deploy with Sprint 28 changes)
+**Date:** 2026-03-11
+**Engineer:** Deploy Engineer
+**Sprint:** 28
+**Environment:** Staging (not yet deployed)
+
+---
+
+### Status: ⛔ BLOCKED — Cannot Deploy
+
+**Reason:** T-232 requires QA confirmation (T-231) in the handoff log before staging deployment can proceed. Per Deploy Engineer rules: *Never deploy without QA confirmation in the handoff log.*
+
+**Dependency chain not satisfied:**
+- T-229 (Backend Engineer: `tripModel.js` COALESCE fix) — **Status: Backlog** — not yet implemented
+  - Verified by reading `backend/src/models/tripModel.js`: `TRIP_COLUMNS` still uses raw LEAST/GREATEST without COALESCE wrapping. User-provided `start_date`/`end_date` are not yet respected.
+- T-231 (QA Engineer: Integration check + security checklist) — **Status: Backlog** — blocked on T-229; no QA handoff to Deploy Engineer found in handoff-log.md for Sprint 28
+- T-232 (Deploy Engineer: Staging re-deploy) — **Status: Backlog / Blocked** — cannot proceed
+
+**What the staging deploy will require once T-231 clears:**
+1. `pm2 restart triplanner-backend` — no migrations needed (T-229 is a query-only change)
+2. Smoke test: `GET /api/v1/health` → 200
+3. CORS check: `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`
+4. PATCH smoke test: `PATCH /api/v1/trips/:id` with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` on a trip with no sub-resources → response includes correct dates (not null)
+5. No frontend rebuild needed — T-229 is backend-only
+
+**Current staging environment state (from Sprint 27 baseline):**
+- Backend: `https://localhost:3001` — pm2 online, 363/363 tests, CORS verified ✅
+- Frontend: `https://localhost:4173` — pm2 online, 486/486 tests, 4/4 Playwright PASS ✅
+- All 10 migrations applied — schema stable (no new migrations in Sprint 28)
+- T-229 backend change not yet deployed — trip date bug (FB-113) still present on staging
+
+---
+
+### T-224 Production Deployment — ⛔ BLOCKED (Project Owner Gate — Sprint 28, 3rd Escalation)
+
+**Task:** T-224 (Deploy Engineer: Production deployment to Render + AWS RDS)
+**Blocker:** Project owner has not provided AWS RDS + Render account access
+**Status:** This is the **third consecutive sprint** this escalation has been raised (Sprint 26, 27, 28)
+
+**What is ready (complete — no engineering work outstanding):**
+- `render.yaml` Blueprint — backend + frontend services configured
+- `docs/production-deploy-guide.md` — step-by-step provisioning guide
+- `backend/knexfile.js` — SSL configuration for RDS connection
+- Cookie `SameSite=None; Secure` — configured for cross-origin production cookie
+
+**What the project owner must provide:**
+1. AWS account access to create: RDS PostgreSQL 15, db.t3.micro, us-east-1, free tier
+2. Render account access to apply the `render.yaml` Blueprint (or manual service creation)
+
+**No Deploy Engineer action possible until project owner provisions the cloud infrastructure.**
+
+---
+
+*Deploy Engineer Sprint #28 status logged — 2026-03-11*
+
+---
+
 ## Sprint #27 — T-228 Fix A: CORS Staging Fix — 2026-03-11T18:09:00Z
 
 **Task:** T-228 (Deploy Engineer: Fix A — CORS_ORIGIN env var injected via pm2 ecosystem config)
