@@ -5911,3 +5911,278 @@ All contracts from Sprints 1–22 remain in force unchanged. Full authoritative 
 ---
 
 *Sprint 24 contracts published by Backend Engineer 2026-03-10. No new endpoints or schema changes. T-203 (backend) is a dev-tooling-only vitest upgrade — zero API surface impact. T-208 is a client-side-only filter using data already returned by the existing `GET /api/v1/trips` endpoint. Test baseline entering Sprint 24: 304/304 backend | 451/451 frontend. After T-203 completes, all 304+ backend tests must pass under vitest 4.x.*
+
+---
+
+## Sprint 25 — API Contracts
+
+**Sprint Goal:** Calendar data aggregation endpoint (T-212) — `GET /api/v1/trips/:id/calendar` returns a unified timeline merging flights, stays, and activities for a trip, normalized to a common event shape for the `TripCalendar` component.
+
+**Published by:** Backend Engineer
+**Date:** 2026-03-10
+**Status:** ✅ Draft — Pending Manager Approval
+
+---
+
+## T-212 — Calendar Data Aggregation Endpoint
+
+### GET /api/v1/trips/:id/calendar
+
+| Field | Value |
+|-------|-------|
+| Sprint | 25 |
+| Task | T-212 |
+| Status | Draft — Pending Manager Approval |
+| Auth Required | Yes — Bearer token (`Authorization: Bearer <access_token>`) |
+
+**Description:** Returns a unified, chronologically ordered timeline of all calendar events for a given trip. Events are aggregated from three source tables — `flights`, `stays`, and `activities` — and normalized to a common event shape. This is a **read-only** endpoint; all editing still happens via the existing resource-specific CRUD endpoints. No query parameters are accepted; all events for the trip are returned in a single response (no pagination — trips are expected to have a manageable number of sub-resources).
+
+---
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID v4 string | The trip ID to fetch calendar events for |
+
+**Request Body:** None (GET request)
+
+**Query Parameters:** None
+
+---
+
+**Event Shape:**
+
+Each element in the `events` array conforms to the following shape:
+
+```json
+{
+  "id": "string",
+  "type": "FLIGHT | STAY | ACTIVITY",
+  "title": "string",
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD",
+  "start_time": "HH:MM | null",
+  "end_time": "HH:MM | null",
+  "timezone": "IANA timezone string | null",
+  "source_id": "UUID v4 string"
+}
+```
+
+**Field definitions:**
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `id` | string | No | Composite ID: `"{type_lowercase}-{source_id}"` (e.g., `"flight-550e8400-..."`, `"stay-550e8400-..."`, `"activity-550e8400-..."`). Stable and unique within the response. |
+| `type` | enum | No | One of: `FLIGHT`, `STAY`, `ACTIVITY` |
+| `title` | string | No | Human-readable label for display on the calendar. See derivation rules per type below. |
+| `start_date` | string | No | Event start date in `YYYY-MM-DD` format, expressed in the event's local timezone. |
+| `end_date` | string | No | Event end date in `YYYY-MM-DD` format, expressed in the event's local timezone. Equal to `start_date` for single-day events (flights, activities). May differ from `start_date` for multi-day stays. |
+| `start_time` | string | Yes | Local start time in `HH:MM` (24-hour) format. `null` for all-day activities (when `start_time` is not set on the activity). |
+| `end_time` | string | Yes | Local end time in `HH:MM` (24-hour) format. `null` for all-day activities (when `end_time` is not set on the activity). |
+| `timezone` | string | Yes | IANA timezone string (e.g., `"America/New_York"`). `null` for activities, which have no timezone column. |
+| `source_id` | string | No | The original UUID of the source record (`flight.id`, `stay.id`, or `activity.id`). Used by the frontend to build deep-link scroll targets. |
+
+---
+
+**Event Derivation Rules by Type:**
+
+#### FLIGHT events (sourced from `flights` table)
+
+| Calendar field | Derived from |
+|----------------|-------------|
+| `id` | `"flight-" + flight.id` |
+| `type` | `"FLIGHT"` |
+| `title` | `"{airline} {flight_number} — {from_location} → {to_location}"` |
+| `start_date` | Local calendar date of `departure_at` in `departure_tz` (YYYY-MM-DD) |
+| `end_date` | Local calendar date of `arrival_at` in `arrival_tz` (YYYY-MM-DD) |
+| `start_time` | Local time of `departure_at` in `departure_tz` (HH:MM, 24-hour) |
+| `end_time` | Local time of `arrival_at` in `arrival_tz` (HH:MM, 24-hour) |
+| `timezone` | `departure_tz` |
+| `source_id` | `flight.id` |
+
+*Note: `start_date` and `end_date` may differ for overnight flights (e.g., departure 23:00 → arrival 06:00 next day).*
+
+#### STAY events (sourced from `stays` table)
+
+| Calendar field | Derived from |
+|----------------|-------------|
+| `id` | `"stay-" + stay.id` |
+| `type` | `"STAY"` |
+| `title` | `stay.name` |
+| `start_date` | Local calendar date of `check_in_at` in `check_in_tz` (YYYY-MM-DD) |
+| `end_date` | Local calendar date of `check_out_at` in `check_out_tz` (YYYY-MM-DD) |
+| `start_time` | Local time of `check_in_at` in `check_in_tz` (HH:MM, 24-hour) |
+| `end_time` | Local time of `check_out_at` in `check_out_tz` (HH:MM, 24-hour) |
+| `timezone` | `check_in_tz` |
+| `source_id` | `stay.id` |
+
+*Note: `end_date` will typically differ from `start_date` for multi-night stays. Frontend renders these as multi-day spans on the calendar grid.*
+
+#### ACTIVITY events (sourced from `activities` table)
+
+| Calendar field | Derived from |
+|----------------|-------------|
+| `id` | `"activity-" + activity.id` |
+| `type` | `"ACTIVITY"` |
+| `title` | `activity.name` |
+| `start_date` | `activity.activity_date` (already stored as YYYY-MM-DD) |
+| `end_date` | `activity.activity_date` (same day — activities are always single-day) |
+| `start_time` | `activity.start_time` — `null` if not set (all-day activity) |
+| `end_time` | `activity.end_time` — `null` if not set (all-day activity) |
+| `timezone` | `null` — activities have no timezone column in the DB |
+| `source_id` | `activity.id` |
+
+---
+
+**Ordering:**
+
+Events in the `events` array are ordered by:
+1. `start_date` ASC (chronological by local start date)
+2. `start_time` ASC NULLS LAST (timed events before all-day events on the same date)
+3. `type` ASC as tiebreaker (`ACTIVITY` < `FLIGHT` < `STAY` — alphabetical, deterministic)
+
+---
+
+**Response (Success — 200 OK):**
+
+```json
+{
+  "data": {
+    "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+    "events": [
+      {
+        "id": "flight-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "type": "FLIGHT",
+        "title": "Delta DL12345 — SFO → LAX",
+        "start_date": "2026-08-07",
+        "end_date": "2026-08-07",
+        "start_time": "06:00",
+        "end_time": "08:30",
+        "timezone": "America/Los_Angeles",
+        "source_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      },
+      {
+        "id": "stay-b2c3d4e5-f6a7-8901-bcde-f12345678901",
+        "type": "STAY",
+        "title": "Grand Hyatt LA",
+        "start_date": "2026-08-07",
+        "end_date": "2026-08-10",
+        "start_time": "15:00",
+        "end_time": "11:00",
+        "timezone": "America/Los_Angeles",
+        "source_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+      },
+      {
+        "id": "activity-c3d4e5f6-a7b8-9012-cdef-123456789012",
+        "type": "ACTIVITY",
+        "title": "Getty Museum Visit",
+        "start_date": "2026-08-08",
+        "end_date": "2026-08-08",
+        "start_time": "10:00",
+        "end_time": "13:00",
+        "timezone": null,
+        "source_id": "c3d4e5f6-a7b8-9012-cdef-123456789012"
+      },
+      {
+        "id": "activity-d4e5f6a7-b8c9-0123-defa-234567890123",
+        "type": "ACTIVITY",
+        "title": "Free afternoon",
+        "start_date": "2026-08-09",
+        "end_date": "2026-08-09",
+        "start_time": null,
+        "end_time": null,
+        "timezone": null,
+        "source_id": "d4e5f6a7-b8c9-0123-defa-234567890123"
+      }
+    ]
+  }
+}
+```
+
+**Empty trip (no sub-resources):**
+
+```json
+{
+  "data": {
+    "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+    "events": []
+  }
+}
+```
+
+---
+
+**Error Responses:**
+
+| HTTP Status | Code | Message | Condition |
+|-------------|------|---------|-----------|
+| `401 Unauthorized` | `UNAUTHORIZED` | `"Authentication required."` | No `Authorization` header, or token is missing, expired, or malformed. |
+| `403 Forbidden` | `FORBIDDEN` | `"You do not have access to this trip."` | Trip exists but belongs to a different user. |
+| `404 Not Found` | `NOT_FOUND` | `"Trip not found."` | No trip with the given `:id` exists in the database. |
+| `400 Bad Request` | `VALIDATION_ERROR` | `"Invalid trip ID format."` | The `:id` path parameter is not a valid UUID v4. |
+| `500 Internal Server Error` | `INTERNAL_ERROR` | `"An unexpected error occurred."` | Unhandled server error (database failure, etc.). Stack trace never exposed. |
+
+**Error response shape (all errors):**
+```json
+{
+  "error": {
+    "message": "<human-readable message>",
+    "code": "<ERROR_CODE>"
+  }
+}
+```
+
+---
+
+**Auth Enforcement Detail:**
+
+1. Middleware `authenticate` runs first — validates the Bearer token. Returns `401` if invalid.
+2. Route handler fetches the trip by `:id`. If not found → `404`.
+3. Ownership check: `trip.user_id !== req.user.id` → `403`.
+4. Only after passing ownership check does the handler query flights, stays, and activities.
+
+This mirrors the auth pattern used by all existing sub-resource endpoints (T-012).
+
+---
+
+**Implementation Notes (for Backend Engineer — not part of the public contract):**
+
+- Query flights, stays, and activities in parallel (`Promise.all`) for performance.
+- Derive `start_date`, `end_date`, `start_time`, `end_time` from UTC timestamps + IANA timezone strings in JavaScript (using `Intl.DateTimeFormat` with `timeZone` option), **not** in SQL. This keeps the DB layer thin and avoids PostgreSQL timezone casting complexity.
+- Activities already return `activity_date` as `YYYY-MM-DD` via `TO_CHAR` in `activityModel.js` — use that directly without further transformation.
+- Sort the merged array in JavaScript after fetching (sort by `start_date` → `start_time` NULLS LAST → `type`).
+- Route file: `backend/src/routes/calendar.js`. Register under trips router as a sub-path: `GET /api/v1/trips/:id/calendar`.
+- Model file: `backend/src/models/calendarModel.js` — contains the aggregation logic, keeping route handler thin.
+- No new schema required — pure read aggregation over existing tables.
+
+---
+
+### Sprint 25 — No Schema Changes Required
+
+**Conclusion:** `GET /api/v1/trips/:id/calendar` is a **read-only aggregation** endpoint over the existing `flights`, `stays`, and `activities` tables. No new columns, tables, or indexes are required.
+
+The migration log remains at **10 applied migrations (001–010)**. No `knex migrate:latest` is needed for Sprint 25. Deploy Engineer: no migration step required.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–010 | 1–7 | (existing migrations — see technical-context.md) | ✅ Applied |
+| — | 8–25 | *(No new migrations through Sprint 25)* | Schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 25.**
+
+---
+
+### Sprint 25 — Endpoint Inventory Update
+
+All contracts from Sprints 1–24 remain in force unchanged. Sprint 25 adds one new endpoint:
+
+| Sprint | Endpoint | Status | Notes |
+|--------|----------|--------|-------|
+| 25 (new) | `GET /api/v1/trips/:id/calendar` | Draft — Pending Manager Approval | New calendar aggregation endpoint (T-212). Read-only. Auth + ownership enforced. |
+
+All other endpoints remain unchanged. Full authoritative endpoint table is in the Sprint 22 section above.
+
+---
+
+*Sprint 25 contracts published by Backend Engineer 2026-03-10. One new endpoint: `GET /api/v1/trips/:id/calendar` (T-212). No schema changes — pure read aggregation over existing tables. Test baseline entering Sprint 25: 304/304 backend | 481/481 frontend | 0 vulnerabilities. After T-212 implementation, backend test count must be 304+ (new calendar endpoint tests included).*

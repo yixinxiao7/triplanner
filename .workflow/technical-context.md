@@ -35,6 +35,26 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 009 | 6 | Create `land_travels` table | Create Table | `20260227_009_create_land_travels.js` | ✅ Implemented (2026-02-27, T-086). Awaiting staging deploy by Deploy Engineer (T-092). |
 | 010 | 7 | Add `notes TEXT NULL` to `trips` table | Alter Table | `20260227_010_add_trip_notes.js` | ✅ Implemented (2026-02-27, T-103). **Manager Code Review APPROVED** — Integration Check. Awaiting staging deploy by Deploy Engineer (T-107). |
 | — | 8 | *(No new migrations this sprint)* | — | — | Sprint 8 features (T-113 timezone abbreviations, T-114 activity URL links) are frontend-only. Existing schema (001–010) is sufficient. Migration 010 is the only pending deploy (T-107). Confirmed by Backend Engineer 2026-02-27. |
+| — | 9–24 | *(No new migrations Sprints 9–24)* | — | — | Schema-stable. All 10 migrations applied on staging. |
+| — | 25 | *(No new migrations this sprint)* | — | — | Sprint 25 `GET /api/v1/trips/:id/calendar` (T-212) is a read-only aggregation over existing `flights`, `stays`, `activities` tables. No DDL changes required. Confirmed by Backend Engineer 2026-03-10. **[Auto-approved — no schema change]** |
+
+---
+
+### Sprint 25 — No Schema Changes
+
+**Date:** 2026-03-10
+**Confirmed by:** Backend Engineer
+**Task:** T-212
+
+**Reason:** The new `GET /api/v1/trips/:id/calendar` endpoint is a **read-only aggregation** over three existing tables:
+
+- `flights` — uses existing `departure_at`, `departure_tz`, `arrival_at`, `arrival_tz`, `flight_number`, `airline`, `from_location`, `to_location` columns
+- `stays` — uses existing `check_in_at`, `check_in_tz`, `check_out_at`, `check_out_tz`, `name` columns
+- `activities` — uses existing `activity_date`, `start_time`, `end_time`, `name` columns (already formatted as YYYY-MM-DD via `TO_CHAR` in `activityModel.js`)
+
+No new tables, columns, or indexes are required. The endpoint merges and sorts results in the application layer. The migration log remains at **10 applied migrations (001–010)**. No `knex migrate:latest` is needed for Sprint 25.
+
+**Manager Approval Note:** No schema change → no Manager handoff required. This note is for the Deploy Engineer's reference: **do not run `knex migrate:latest` for Sprint 25** unless another agent has added a new migration in the interim.
 
 ---
 

@@ -2537,3 +2537,105 @@ Log handoff to Monitor Agent (T-206) upon successful deploy.
 
 **Related tasks:** T-211 (this), T-212 (Backend), T-213 (Frontend implementation), T-214 (QA)
 
+---
+
+**[2026-03-10] Backend Engineer → Frontend Engineer** *(T-212 API Contracts Published — Calendar Endpoint Ready for Review)*
+
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Status:** ✅ API Contract published — Pending Manager approval. Frontend Engineer may begin reading the contract now. **Do NOT start T-213 implementation until Manager approves and T-212 implementation is marked Done.**
+
+**Contract Location:** `.workflow/api-contracts.md` → "Sprint 25 — API Contracts" → "T-212 — Calendar Data Aggregation Endpoint"
+
+**New endpoint:**
+
+| Method | Path | Auth | Returns |
+|--------|------|------|---------|
+| `GET` | `/api/v1/trips/:id/calendar` | Bearer token required | `{ data: { trip_id, events: [...] } }` |
+
+**Summary of the `events` array item shape:**
+
+```json
+{
+  "id": "flight-<uuid> | stay-<uuid> | activity-<uuid>",
+  "type": "FLIGHT | STAY | ACTIVITY",
+  "title": "string",
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD",
+  "start_time": "HH:MM | null",
+  "end_time": "HH:MM | null",
+  "timezone": "IANA string | null",
+  "source_id": "<original-resource-uuid>"
+}
+```
+
+**Key points for Frontend Engineer (T-213):**
+
+1. **Ordered:** Events are returned sorted by `start_date ASC`, `start_time ASC NULLS LAST`, `type ASC`. No client-side sort required.
+2. **Empty trips:** If the trip has no flights, stays, or activities, the response is `{ data: { trip_id: "...", events: [] } }` — show the empty state UI per Spec 22.
+3. **All-day activities:** `start_time` and `end_time` are both `null` for activities without a time set. Handle gracefully — these are all-day events.
+4. **Multi-day stays:** `start_date` ≠ `end_date` for multi-night stays. Frontend must render these as spanning multiple calendar cells.
+5. **`timezone` is null for activities:** Activities don't have a timezone stored. Display them timezone-agnostically.
+6. **`source_id`:** Use this to build the scroll target ID (e.g., `#flights-section`, `#stays-section`, `#activities-section`) when a user clicks an event.
+7. **Auth:** Call with the existing `api` axios instance (which attaches the Bearer token automatically via the interceptor in `api.js`). Do not construct the Authorization header manually.
+8. **Error handling:** Handle 401, 403, 404, and 500 gracefully per the error states spec in T-211.
+9. **No pagination:** All events are returned in a single response. No `page`/`limit` query params needed.
+
+**Error codes to handle:**
+
+| HTTP Status | Code | UI Action |
+|-------------|------|-----------|
+| `401` | `UNAUTHORIZED` | Redirect to login (interceptor handles this) |
+| `403` | `FORBIDDEN` | Show error state with generic "access denied" message |
+| `404` | `NOT_FOUND` | Trip-level 404 (TripDetailsPage already handles this) |
+| `500` | `INTERNAL_ERROR` | Show error state with retry button |
+
+**Dependency reminder:** T-213 is gated on BOTH:
+- [x] T-211 (Design spec — ✅ Done)
+- [ ] T-212 (this backend implementation — **Pending**)
+
+**Related tasks:** T-212 (this backend task), T-213 (Frontend implementation), T-211 (Design spec)
+
+---
+
+**[2026-03-10] Backend Engineer → QA Engineer** *(T-212 API Contracts Published — Calendar Endpoint Test Reference)*
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** ✅ API Contract published — for QA reference (T-214). Full contract in `api-contracts.md` → "Sprint 25 — API Contracts".
+
+**New endpoint for T-214 QA verification:**
+
+| Method | Path | Auth | Task |
+|--------|------|------|------|
+| `GET` | `/api/v1/trips/:id/calendar` | Bearer token required | T-212 |
+
+**Required unit tests (Backend Engineer will write these in T-212 implementation):**
+
+| # | Test | Expected |
+|---|------|----------|
+| 1 | Happy path — all 3 event types present | 200 with `events` array containing FLIGHT, STAY, ACTIVITY entries in correct order |
+| 2 | Empty trip (no sub-resources) | 200 with `events: []` |
+| 3 | Auth enforcement — no token | 401 `UNAUTHORIZED` |
+| 4 | Auth enforcement — expired/invalid token | 401 `UNAUTHORIZED` |
+| 5 | Ownership enforcement — token belongs to different user | 403 `FORBIDDEN` |
+| 6 | Trip not found — unknown UUID | 404 `NOT_FOUND` |
+| 7 | Invalid UUID format in `:id` | 400 `VALIDATION_ERROR` |
+
+**QA checklist items for T-214:**
+- [ ] Auth enforced: unauthenticated request → 401
+- [ ] Ownership enforced: other user's trip → 403
+- [ ] Input validated: non-UUID `:id` → 400 (not 500)
+- [ ] Events ordered correctly: `start_date ASC`, `start_time ASC NULLS LAST`
+- [ ] No new `dangerouslySetInnerHTML` introduced
+- [ ] No secrets hardcoded in new route/model files
+- [ ] All 304+ backend tests pass (new calendar tests included in count)
+- [ ] `npm audit` in `backend/` — 0 Moderate+ vulnerabilities
+
+**Security notes:**
+- Trip ownership check runs before sub-resource queries (no data leakage)
+- `source_id` is always the original DB UUID — no internal structure exposed
+- Error messages do not expose stack traces or raw SQL
+
+**Related tasks:** T-212 (Backend), T-213 (Frontend), T-214 (this QA task)
+
