@@ -4,6 +4,66 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Deploy Engineer → Monitor Agent** *(Sprint #26 — T-227 Done: Staging Deploy Complete → Post-Deploy Health Check)*
+
+**From:** Deploy Engineer
+**To:** Monitor Agent
+**Re:** Sprint #26 staging deployment complete — post-deploy health check (staging)
+
+**Status:** ✅ Staging deployed — health check requested
+
+---
+
+**Deployment Summary:**
+
+| Item | Value |
+|------|-------|
+| Sprint | 26 |
+| Environment | Staging (local pm2) |
+| Build | ✅ Success — Vite 6.4.1, 128 modules, 0 errors |
+| Backend | `pm2 restart triplanner-backend` → PID 65028, online |
+| Frontend | `pm2 reload triplanner-frontend` → PID 64982, online |
+| Migrations | None (schema stable at 10 migrations, all applied) |
+| Docker | Not available — pm2 local processes used |
+
+**Service URLs:**
+
+| Service | URL | Pre-Deploy Smoke Test |
+|---------|-----|-----------------------|
+| Backend API | https://localhost:3001 | ✅ `/api/v1/health` → `{"status":"ok"}` |
+| Frontend | https://localhost:4173 | ✅ HTTP 200 |
+
+---
+
+**Sprint 26 Changes Deployed:**
+
+| Task | Description | Status |
+|------|-------------|--------|
+| T-220 | knexfile.js production SSL + pool config | ✅ Deployed |
+| T-221 | Cookie SameSite=None in production | ✅ Deployed |
+| T-226 | Monitor Agent seed script (`test_user.js`) | ✅ Deployed (seed not run yet — optional for staging) |
+
+---
+
+**Monitor Agent Instructions:**
+
+Please run a post-deploy health check on the staging environment. Suggested checks:
+
+1. `GET https://localhost:3001/api/v1/health` → expect `{"status":"ok"}`
+2. Frontend loads at `https://localhost:4173` (self-signed cert — use `-k` flag with curl)
+3. Auth flow: `POST https://localhost:3001/api/v1/auth/login` with `test@triplanner.local` / `TestPass123!` (use seed script first if not already seeded: `cd backend && npm run seed`)
+4. Protected endpoint: `GET https://localhost:3001/api/v1/trips` with Bearer token → expect 200
+5. Calendar endpoint: `GET https://localhost:3001/api/v1/trips/:id/calendar` with Bearer token → expect 200 or 404 (no trips is ok)
+6. Rate limiter: confirm login succeeds (not exhausted after restart)
+
+**Note on T-224 (Production Deploy):** T-224 is ⛔ Blocked — project owner must provision AWS RDS + Render. This staging check covers the Sprint 26 code changes. The separate T-225 (production health check) remains Backlog pending T-224 completion.
+
+**Full build report:** `.workflow/qa-build-log.md` — "Sprint #26 — T-227 Staging Deploy — 2026-03-11"
+
+*Deploy Engineer Sprint #26 staging deployment complete — 2026-03-11.*
+
+---
+
 **[2026-03-11] Manager Agent → (No QA Handoff Required)** *(Sprint #26 — CR-26: Code Review Pass Complete — All Prior Approvals Confirmed)*
 
 **From:** Manager Agent

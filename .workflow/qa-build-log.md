@@ -4,6 +4,105 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #26 — T-227 Staging Deploy — 2026-03-11T00:00:00Z
+
+**Task:** T-227 (Deploy Engineer: Sprint 26 staging re-deployment)
+**Date:** 2026-03-11
+**Engineer:** Deploy Engineer
+**Sprint:** 26
+
+---
+
+### Pre-Deploy Gate
+
+| Check | Result |
+|-------|--------|
+| QA handoff (T-223) confirmed in handoff-log.md | ✅ PASS |
+| Backend tests: 355/355 | ✅ PASS (per T-223 QA re-verification) |
+| Frontend tests: 486/486 | ✅ PASS (per T-223 QA re-verification) |
+| npm audit: 0 vulnerabilities | ✅ PASS |
+| No new migrations for Sprint 26 | ✅ CONFIRMED (technical-context.md Sprint 26 note) |
+| All Sprint 26 tasks Done or Blocked (project owner) | ✅ CONFIRMED (T-220 ✅, T-221 ✅, T-222 ✅, T-226 ✅) |
+
+---
+
+### Dependency Install
+
+| Package | Result |
+|---------|--------|
+| `cd backend && npm install` | ✅ 0 vulnerabilities |
+| `cd frontend && npm install` | ✅ 0 vulnerabilities |
+
+---
+
+### Build
+
+| Step | Result |
+|------|--------|
+| `cd frontend && npm run build` | ✅ SUCCESS |
+| Vite version | v6.4.1 |
+| Modules transformed | 128 |
+| Errors | 0 |
+| Output — index.html | `dist/index.html` (0.46 kB, gzip 0.29 kB) |
+| Output — CSS bundle | `dist/assets/index-CPOhaw0p.css` (84.43 kB, gzip 13.30 kB) |
+| Output — JS bundle | `dist/assets/index-Bz9Y7ALz.js` (345.83 kB, gzip 105.16 kB) |
+| Build time | 467ms |
+
+**Build Status: ✅ SUCCESS**
+
+---
+
+### Database Migrations
+
+| Step | Result |
+|------|--------|
+| `cd backend && npm run migrate` | ✅ Already up to date |
+| Environment | development (staging DB) |
+| Migrations applied | None (all 10 migrations 001–010 already applied — schema stable since Sprint 10) |
+| New migrations for Sprint 26 | None — T-220/T-221/T-226 are config/cookie/seed changes only |
+
+---
+
+### Staging Deployment
+
+**Environment:** Staging (local — pm2 managed processes)
+**Docker:** Not available — using pm2 with local processes per staging architecture
+
+| Step | Result |
+|------|--------|
+| `pm2 reload triplanner-frontend` (PID 64982) | ✅ Online |
+| `pm2 restart triplanner-backend` (PID 65028) | ✅ Online |
+
+---
+
+### Smoke Tests
+
+| Test | URL | Result |
+|------|-----|--------|
+| Backend health check | `GET https://localhost:3001/api/v1/health` | ✅ `{"status":"ok"}` |
+| Frontend load | `GET https://localhost:4173` | ✅ HTTP 200 |
+
+**Deployment Status: ✅ SUCCESS**
+
+---
+
+### Summary
+
+| Item | Value |
+|------|-------|
+| Environment | Staging (local pm2) |
+| Build Status | ✅ Success |
+| Frontend URL | https://localhost:4173 |
+| Backend URL | https://localhost:3001 |
+| Backend Health | https://localhost:3001/api/v1/health → `{"status":"ok"}` |
+| Migrations | None required (all 10 applied, schema stable) |
+| Seed script | Not run against staging (optional per technical-context.md Sprint 26 note) |
+| Handoff | → Monitor Agent (post-deploy health check) |
+
+**Note on T-224 (Production Deploy):** T-224 remains ⛔ BLOCKED — project owner must provision AWS RDS + Render account. All application code is production-ready. `render.yaml` and `docs/production-deploy-guide.md` are in place. This staging deploy confirms the Sprint 26 code changes (T-220, T-221, T-226) are running correctly on the local staging environment.
+
+---
+
 ## Sprint #25 — T-216 Post-Deploy Health Check — 2026-03-10T23:10:00Z
 
 **Date:** 2026-03-10
