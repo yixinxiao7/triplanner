@@ -21,6 +21,65 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
+## Monitor Alert — Sprint #26 — 2026-03-11T14:20:00Z
+
+| Field | Value |
+|-------|-------|
+| **Category** | Monitor Alert |
+| **Severity** | Major |
+| **Sprint** | 26 |
+| **Status** | New |
+| **Related Task** | T-228 |
+
+**Feedback:** Staging CORS runtime mismatch — backend serves wrong `Access-Control-Allow-Origin` header; all browser-initiated API calls from staging frontend will be CORS-blocked.
+
+**Details:**
+
+The staging backend (`https://localhost:3001`) is serving `Access-Control-Allow-Origin: http://localhost:5173` instead of the expected `https://localhost:4173`. This causes all browser-initiated API calls from the staging frontend (`https://localhost:4173`) to be rejected by browser CORS policy.
+
+**Root Cause:** ESM module hoisting in `backend/src/index.js`.
+
+In ESM, `import` statements are statically hoisted and resolved before the module body executes. `import app from './app.js'` is evaluated first — before the subsequent `dotenv.config({ path: '.env.staging' })` call. When `app.js` executes `cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' })`, `process.env.CORS_ORIGIN` is still `undefined` (dotenv hasn't run yet). The cors middleware captures `'http://localhost:5173'` as its fixed origin.
+
+`PORT=3001` is unaffected because it lives in the pm2 `ecosystem.config.cjs` env block (set by pm2 before node launches). `CORS_ORIGIN` is not in that block — it is only in `.env.staging`.
+
+**Confirmed via live header check:**
+```
+$ curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"
+Access-Control-Allow-Origin: http://localhost:5173   ← wrong
+```
+
+**Impact:**
+- All browser-initiated API calls from staging frontend (`https://localhost:4173`) will be CORS-blocked
+- Login, trip creation, and all authenticated flows will fail in the browser on staging
+- Direct curl and Playwright tests are unaffected (no browser CORS enforcement)
+- Deploy Verified = **No** for Sprint 26 staging
+
+**Required Fix (Option A — fastest, no code change):**
+Add `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`:
+```js
+env: {
+  NODE_ENV: 'staging',
+  PORT: 3001,
+  CORS_ORIGIN: 'https://localhost:4173',  // ← add this
+},
+```
+Then: `pm2 restart triplanner-backend`
+Then: re-run health check to confirm `Access-Control-Allow-Origin: https://localhost:4173`
+
+**Required Fix (Option B — code fix for long-term robustness):**
+Refactor `backend/src/index.js` to load dotenv before importing `app.js` (requires dynamic import since ESM hoists static imports).
+
+**Secondary Issue (Minor):**
+`backend/src/config/knexfile.js` `staging` environment block is missing `seeds: { directory: seedsDir }`. Running `NODE_ENV=staging npm run seed` fails with ENOENT. Workaround: run `NODE_ENV=development npm run seed`. Should be fixed for reliability.
+
+**Files involved:**
+- `infra/ecosystem.config.cjs` — missing `CORS_ORIGIN` in backend env block (primary fix)
+- `backend/src/index.js` — ESM dotenv hoisting root cause (secondary fix for robustness)
+- `backend/src/config/knexfile.js` — missing seeds config in staging block (minor fix)
+
+---
+
 ## Monitor Alert — Sprint #22 — 2026-03-10T21:25:00Z
 
 | Field | Value |

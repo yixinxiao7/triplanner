@@ -103,6 +103,122 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #26 — T-228 Post-Deploy Health Check — 2026-03-11T14:20:00Z
+
+**Task:** T-228 (Monitor Agent: Sprint 26 post-deploy health check)
+**Date:** 2026-03-11
+**Agent:** Monitor Agent
+**Sprint:** 26
+**Environment:** Staging (local — `https://localhost:3001` backend, `https://localhost:4173` frontend)
+
+---
+
+### Test Type: Config Consistency Check
+
+**Sources read:** `backend/.env.staging` (active on staging, loaded when NODE_ENV=staging), `frontend/vite.config.js`, `infra/ecosystem.config.cjs`, `infra/docker-compose.yml`
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Staging backend PORT (`.env.staging`) | 3001 | 3001 | ✅ PASS |
+| ecosystem.config.cjs backend PORT env | 3001 | `PORT: 3001` confirmed | ✅ PASS |
+| ecosystem.config.cjs BACKEND_PORT (frontend) | 3001 | `BACKEND_PORT: '3001'` confirmed | ✅ PASS |
+| ecosystem.config.cjs BACKEND_SSL (frontend) | true | `BACKEND_SSL: 'true'` confirmed | ✅ PASS |
+| SSL active on backend (`.env.staging`) | Yes — SSL_KEY_PATH + SSL_CERT_PATH set | Both set; cert files confirmed present at `infra/certs/localhost.pem` + `infra/certs/localhost-key.pem` | ✅ PASS |
+| Vite proxy target protocol | `https://` (BACKEND_SSL=true) | `https://localhost:3001` | ✅ PASS |
+| CORS_ORIGIN config value (`.env.staging`) | `https://localhost:4173` | `https://localhost:4173` | ✅ PASS (config file) |
+| **CORS_ORIGIN runtime (actual HTTP header)** | `https://localhost:4173` | **`http://localhost:5173` (fallback default)** | ❌ **FAIL** |
+| Docker-compose backend PORT | 3000 (container-internal, not in use) | `PORT: 3000` — confirmed not running (pm2 only) | ✅ PASS (N/A) |
+| knexfile.js staging seeds directory | Present | **Missing** — staging block has no `seeds` config | ⚠️ MINOR |
+
+**Config Consistency Result: ❌ FAIL — CORS runtime mismatch**
+
+**Root Cause (CORS failure):**
+
+`backend/src/index.js` uses ESM static imports. In ESM, all `import` statements are hoisted and executed before the module body runs. This means `import app from './app.js'` causes `app.js` to be fully evaluated — including `cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' })` — **before** the `dotenv.config({ path: '.env.staging' })` call runs. At the moment the cors middleware is initialized, `process.env.CORS_ORIGIN` is `undefined`, so it captures the hardcoded fallback `http://localhost:5173`.
+
+`PORT=3001` works correctly because it is explicitly set in `ecosystem.config.cjs`'s `env` block (injected by pm2 before node starts). `CORS_ORIGIN` is not in that block — it only lives in `.env.staging` — so it is never available at app.js load time.
+
+**Confirmed via live HTTP response header:**
+```
+curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"
+→ Access-Control-Allow-Origin: http://localhost:5173   ← WRONG (should be https://localhost:4173)
+```
+
+**Impact:** The staging frontend at `https://localhost:4173` cannot make browser-initiated API calls to the staging backend. All fetch/XHR requests from the staging frontend will be blocked by the browser's CORS enforcement. Direct curl and Playwright tests against the API are unaffected (no browser CORS enforcement on those).
+
+**Required Fix (two options — either resolves the issue):**
+
+*Option A (preferred — no code change, fastest fix):*
+Add `CORS_ORIGIN: 'https://localhost:4173'` to the `triplanner-backend` env block in `infra/ecosystem.config.cjs`:
+```js
+env: {
+  NODE_ENV: 'staging',
+  PORT: 3001,
+  CORS_ORIGIN: 'https://localhost:4173',  // ← add this line
+},
+```
+Then `pm2 restart triplanner-backend`.
+
+*Option B (code fix — makes dotenv robust for ESM):*
+Move dotenv loading to a dedicated `loadEnv.js` module that is imported before `app.js`, ensuring env vars are populated before any middleware is configured.
+
+**Secondary Issue — knexfile.js staging seeds missing (Minor):**
+The `staging` environment block in `backend/src/config/knexfile.js` has no `seeds` directory configured. Running `NODE_ENV=staging npm run seed` fails with `ENOENT: no such file or directory, scandir .../src/config/seeds`. Workaround used: `NODE_ENV=development npm run seed` (same local DB). Fix: add `seeds: { directory: seedsDir }` to the staging block in `knexfile.js`.
+
+---
+
+### Test Type: Post-Deploy Health Check
+
+**Environment:** Staging
+**Timestamp:** 2026-03-11T14:18:00Z
+**Token:** Acquired via `POST https://localhost:3001/api/v1/auth/login` with `test@triplanner.local` / `TestPass123!` (seed run first: `NODE_ENV=development npm run seed`)
+
+#### Endpoint Checks
+
+| Check | Method | URL | Status Code | Response | Result |
+|-------|--------|-----|-------------|----------|--------|
+| Health endpoint | GET | `https://localhost:3001/api/v1/health` | 200 | `{"status":"ok"}` | ✅ PASS |
+| Auth — login (seeded user) | POST | `https://localhost:3001/api/v1/auth/login` | 200 | `{"data":{"user":{...},"access_token":"eyJ..."}}` | ✅ PASS |
+| Auth — refresh (no cookie) | POST | `https://localhost:3001/api/v1/auth/refresh` | 401 | `UNAUTHORIZED` | ✅ PASS (expected) |
+| Auth — logout | POST | `https://localhost:3001/api/v1/auth/logout` | 204 | (no body) | ✅ PASS |
+| Trips — list (empty) | GET | `https://localhost:3001/api/v1/trips` | 200 | `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}` | ✅ PASS |
+| Trips — list with status filter | GET | `https://localhost:3001/api/v1/trips?status=PLANNING` | 200 | `{"data":[...],"pagination":{...}}` | ✅ PASS |
+| Trips — create | POST | `https://localhost:3001/api/v1/trips` | 201 | Trip object with UUID, `status: "PLANNING"` | ✅ PASS |
+| Trips — get single | GET | `https://localhost:3001/api/v1/trips/:id` | 200 | Trip object | ✅ PASS |
+| Trips — update | PATCH | `https://localhost:3001/api/v1/trips/:id` | 200 | Updated trip | ✅ PASS |
+| Trips — delete | DELETE | `https://localhost:3001/api/v1/trips/:id` | 204 | (no body) | ✅ PASS |
+| Calendar aggregation (T-212) | GET | `https://localhost:3001/api/v1/trips/:id/calendar` | 200 | `{"data":{"trip_id":"...","events":[]}}` | ✅ PASS |
+| Flights — list | GET | `https://localhost:3001/api/v1/trips/:id/flights` | 200 | `{"data":[]}` | ✅ PASS |
+| Stays — list | GET | `https://localhost:3001/api/v1/trips/:id/stays` | 200 | `{"data":[]}` | ✅ PASS |
+| Activities — list | GET | `https://localhost:3001/api/v1/trips/:id/activities` | 200 | `{"data":[]}` | ✅ PASS |
+| Frontend build (dist/) | — | `frontend/dist/index.html` | — | Present: `index.html`, `assets/` | ✅ PASS |
+| Frontend server | GET | `https://localhost:4173` | 200 | HTML page loads | ✅ PASS |
+| CORS header (runtime) | GET | `https://localhost:3001/api/v1/health` (Origin: https://localhost:4173) | — | `Access-Control-Allow-Origin: http://localhost:5173` | ❌ **FAIL** |
+| No 5xx errors in logs | — | `pm2 logs triplanner-backend --lines 20` | — | 0 5xx errors; 2 SyntaxError entries (bad JSON from monitor test tooling) | ✅ PASS |
+| Database connectivity | — | Validated via health + trips CRUD | — | Postgres reads/writes succeed | ✅ PASS |
+| Rate limiter not exhausted | — | Login succeeds, no 429 | 200 | Token returned | ✅ PASS |
+
+#### Summary
+
+| Item | Value |
+|------|-------|
+| Environment | Staging (local pm2) |
+| Backend URL | `https://localhost:3001` |
+| Frontend URL | `https://localhost:4173` |
+| Seed required | Yes — `NODE_ENV=development npm run seed` (1 seed file applied) |
+| API endpoints tested | 14 |
+| Passed | 13 |
+| Failed | 1 (CORS runtime) |
+| Database | ✅ Connected and responding |
+| 5xx errors | 0 |
+| **Deploy Verified** | ❌ **No** |
+
+**Error Summary:**
+- **[MAJOR] CORS Runtime Mismatch** — Backend serving `Access-Control-Allow-Origin: http://localhost:5173` instead of `https://localhost:4173`. ESM hoisting causes `app.js` CORS middleware to capture `process.env.CORS_ORIGIN` before `dotenv.config()` loads `.env.staging`. Fastest fix: add `CORS_ORIGIN: 'https://localhost:4173'` to ecosystem.config.cjs backend env block, then `pm2 restart triplanner-backend`.
+- **[MINOR] knexfile.js staging seeds** — `staging` block missing `seeds.directory` config; `npm run seed` fails with NODE_ENV=staging.
+
+---
+
 ## Sprint #25 — T-216 Post-Deploy Health Check — 2026-03-10T23:10:00Z
 
 **Date:** 2026-03-10
