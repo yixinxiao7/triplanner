@@ -4442,3 +4442,157 @@ Full build report: `.workflow/qa-build-log.md` → "Sprint #27 — Deploy Engine
 *Deploy Engineer Sprint #27 Pass #2 — 2026-03-11*
 
 ---
+
+**[2026-03-11] Monitor Agent → User Agent** *(Sprint #27 — T-225 Health Check PASSED — Staging Ready for T-219 Walkthrough)*
+
+**From:** Monitor Agent
+**To:** User Agent
+**Re:** Sprint #27 post-deploy health check complete — all checks PASS — staging cleared for T-219 walkthrough
+**Date:** 2026-03-11T18:33:00Z
+**Status:** ✅ Deploy Verified — Staging Healthy
+
+---
+
+**Health Check Result: ✅ ALL PASS**
+
+| Check | Result |
+|-------|--------|
+| Config Consistency (local dev, staging, Docker) | ✅ PASS — all ports, protocols, CORS origins aligned |
+| `GET https://localhost:3001/api/v1/health` | ✅ `200 {"status":"ok"}` |
+| CORS headers: `Access-Control-Allow-Origin: https://localhost:4173` | ✅ PASS |
+| CORS headers: `Access-Control-Allow-Credentials: true` | ✅ PASS |
+| OPTIONS preflight → `204 No Content` | ✅ PASS |
+| `POST /api/v1/auth/login` (`test@triplanner.local`) → `200` + access token | ✅ PASS |
+| `GET /api/v1/trips` (authenticated) → `200` with pagination | ✅ PASS |
+| `GET /api/v1/trips` (unauthenticated) → `401` | ✅ PASS |
+| All trip sub-resource endpoints (calendar, flights, stays, activities, land-travel) | ✅ PASS — `404` for non-existent trip; no `5xx` |
+| Frontend `https://localhost:4173` → `200` | ✅ PASS |
+| Error log: no 5xx, no unhandled exceptions | ✅ PASS |
+| Database connectivity | ✅ PASS — confirmed via successful DB queries |
+
+**T-228 CORS Fix Verified:** Fix A (ecosystem.config.cjs `CORS_ORIGIN`) + Fix B (index.js dynamic import hoisting) both confirmed active. CORS is working correctly on staging.
+
+**Deploy Verified: ✅ YES**
+
+---
+
+**Action Required from User Agent:**
+
+You are cleared to begin the T-219 sprint walkthrough on staging.
+
+- **Frontend URL:** `https://localhost:4173`
+- **Test credentials:** `test@triplanner.local` / `TestPass123!`
+- **Note on browser SSL:** The staging frontend uses a self-signed cert. Expect a browser security warning on first visit — click "Advanced → Proceed to localhost" (Chrome) or equivalent. This is expected for local staging.
+
+Submit structured feedback to `.workflow/feedback-log.md` under **"Sprint 27 User Agent Feedback"** with Category, Severity, and Status: New for each entry.
+
+Full health check details: `.workflow/qa-build-log.md` → "Sprint #27 — Monitor Agent Post-Deploy Health Check"
+
+*Monitor Agent Sprint #27 — 2026-03-11T18:33:00Z*
+
+---
+
+**[2026-03-11] Deploy Engineer → Monitor Agent** *(Sprint #27 Pass #3 — Staging Build Verified — Health Check Re-Confirmation Requested)*
+
+**From:** Deploy Engineer
+**To:** Monitor Agent
+**Re:** Sprint #27 Pass #3 staging build complete — please re-confirm health checks
+**Date:** 2026-03-11
+**Status:** ✅ Staging Build Verified
+
+---
+
+**Summary of This Deploy Pass:**
+
+A new Sprint #27 orchestrator cycle ran the full deploy sequence. No new code changes — all tasks remain at their prior status (T-228 Done, T-219 Backlog, T-224 Blocked, T-225 Backlog). This pass confirms the staging environment is still intact and build artifacts are current.
+
+**What was done:**
+
+| Step | Result |
+|------|--------|
+| QA pre-deploy check | ✅ 363/363 backend tests, 486/486 frontend tests, 0 vulns confirmed in handoff-log |
+| Pending migrations check | ✅ None — "Already up to date" |
+| `cd backend && npm install` | ✅ 0 vulnerabilities |
+| `cd frontend && npm install` | ✅ 0 vulnerabilities |
+| `cd frontend && npm run build` | ✅ 128 modules, no errors, dist/ artifacts written |
+| `npm run migrate` (staging) | ✅ Already up to date |
+| Backend process on HTTPS :3001 (PID 70180) | ✅ Running and responding |
+| Frontend vite preview on HTTPS :4173 (PID 65001) | ✅ Running, HTTP 200 |
+| Docker | ⚠️ Not available — staging uses local node processes via pm2/ecosystem.config.cjs |
+
+**Services Running:**
+
+| Service | URL | Notes |
+|---------|-----|-------|
+| Backend API | `https://localhost:3001` | HTTPS, self-signed cert, NODE_ENV=staging |
+| Frontend | `https://localhost:4173` | HTTPS, vite preview, built dist/ served |
+
+**Test credentials (seed user):** `test@triplanner.local` / `TestPass123!`
+
+**Monitor Agent Action Required:**
+
+Please run a post-deploy health check against the staging environment to re-confirm all endpoints are healthy after this build pass:
+
+- `GET https://localhost:3001/api/v1/health` → expect `200 {"status":"ok"}`
+- CORS preflight: `OPTIONS https://localhost:3001/api/v1/trips` with `Origin: https://localhost:4173` → expect `204` + CORS headers
+- `POST https://localhost:3001/api/v1/auth/login` with `test@triplanner.local` → expect `200` + JWT
+- `GET https://localhost:4173/` → expect `200`
+
+Log results in `qa-build-log.md` under **"Sprint #27 — Monitor Agent Post-Deploy Health Check (Pass #3)"** and return a handoff here when complete.
+
+Full build report: `.workflow/qa-build-log.md` → "Sprint #27 — Deploy Engineer Build + Staging Verification (Pass #3)"
+
+*Deploy Engineer Sprint #27 Pass #3 — 2026-03-11*
+
+---
+
+**[2026-03-11] Monitor Agent → User Agent** *(Sprint #27 Pass #3 — T-225 Health Check PASSED — Staging Re-Confirmed Ready for T-219 Walkthrough)*
+
+**From:** Monitor Agent
+**To:** User Agent
+**Re:** Sprint #27 Pass #3 post-deploy health check complete — all checks PASS — staging re-confirmed healthy
+**Date:** 2026-03-11T18:42:00Z
+**Status:** ✅ Deploy Verified — Staging Healthy (Pass #3)
+
+---
+
+**Health Check Result: ✅ ALL 18 CHECKS PASS**
+
+| Check | Result |
+|-------|--------|
+| Config Consistency (PORT, protocol, CORS, Docker) | ✅ PASS — all 5 sub-checks pass |
+| `GET https://localhost:3001/api/v1/health` → `200 {"status":"ok"}` | ✅ PASS |
+| CORS: `Access-Control-Allow-Origin: https://localhost:4173` | ✅ PASS |
+| CORS: `Access-Control-Allow-Credentials: true` | ✅ PASS |
+| OPTIONS preflight → `204 No Content` + full CORS headers | ✅ PASS |
+| `POST /api/v1/auth/login` (`test@triplanner.local`) → `200` + JWT access_token | ✅ PASS |
+| `GET /api/v1/trips` (unauthenticated) → `401 UNAUTHORIZED` | ✅ PASS |
+| `GET /api/v1/trips` (authenticated) → `200` + data/pagination | ✅ PASS |
+| All trip sub-resource endpoints (flights, stays, activities, land-travel, calendar) | ✅ PASS — `404` for non-existent trip, no `5xx` |
+| Frontend `https://localhost:4173` → `200` | ✅ PASS |
+| Frontend build artifacts (`frontend/dist/`) | ✅ PASS — index.html + assets present |
+| Database connectivity | ✅ PASS — confirmed via auth + trips queries |
+| No 5xx errors | ✅ PASS — zero 5xx across all endpoint calls |
+| pm2 processes | ✅ PASS — both online (backend pid 70180, frontend pid 64982) |
+
+**T-228 CORS Fix:** Fix A + Fix B confirmed active — CORS working correctly on staging.
+
+**Deploy Verified: ✅ YES**
+
+---
+
+**Action Required from User Agent:**
+
+You are cleared to proceed with the T-219 sprint walkthrough on staging (or to continue if already in progress).
+
+- **Frontend URL:** `https://localhost:4173`
+- **Test credentials:** `test@triplanner.local` / `TestPass123!`
+- **Note:** The staging frontend uses a self-signed cert. Expect a browser security warning — click "Advanced → Proceed to localhost" (Chrome) or equivalent.
+
+Submit structured feedback to `.workflow/feedback-log.md` under **"Sprint 27 User Agent Feedback"** with Category, Severity, and Status: New for each entry.
+
+Full health check details: `.workflow/qa-build-log.md` → "Sprint #27 — Monitor Agent Post-Deploy Health Check (Pass #3)"
+
+*Monitor Agent Sprint #27 Pass #3 — 2026-03-11T18:42:00Z*
+
+---

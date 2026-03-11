@@ -1630,3 +1630,289 @@ dist/assets/index-Bz9Y7ALz.js   345.83 kB │ gzip: 105.16 kB
 *Deploy Engineer Sprint #27 Pass #2 — 2026-03-11*
 
 *Deploy Engineer Sprint #27 final verification — 2026-03-11*
+
+---
+
+## Sprint #27 — Monitor Agent Post-Deploy Health Check — 2026-03-11T18:33:00Z
+
+**Task:** T-225 (Monitor Agent: Post-Deploy Health Check + Config Consistency)
+**Date:** 2026-03-11
+**Agent:** Monitor Agent
+**Sprint:** 27
+**Environment:** Staging
+**Trigger:** Deploy Engineer handoff (Build Verified + Staging Healthy — Health Check Requested)
+
+---
+
+### Config Consistency Validation
+
+#### Local Dev Stack (backend/.env + frontend/vite.config.js defaults)
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| **Port match** | `backend/.env PORT` = Vite proxy port | `.env PORT=3000`; `vite.config.js` default `BACKEND_PORT=3000` → proxy `http://localhost:3000` | ✅ PASS |
+| **Protocol match** | SSL not set → both HTTP | `SSL_KEY_PATH` + `SSL_CERT_PATH` commented out in `.env` → backend HTTP; `BACKEND_SSL` unset → Vite proxy `http://` | ✅ PASS |
+| **CORS match** | `CORS_ORIGIN` includes `http://localhost:5173` | `CORS_ORIGIN=http://localhost:5173`; Vite dev server port 5173 | ✅ PASS |
+
+#### Staging Stack (backend/.env.staging + infra/ecosystem.config.cjs)
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| **Port match** | `.env.staging PORT` = pm2 PORT = Vite proxy port | `.env.staging PORT=3001`; pm2 `PORT: 3001`; pm2 `BACKEND_PORT: '3001'` → Vite proxy `https://localhost:3001` | ✅ PASS |
+| **Protocol match** | SSL set + certs exist → HTTPS; Vite proxy `https://` | `.env.staging SSL_KEY_PATH=../infra/certs/localhost-key.pem` + `SSL_CERT_PATH=../infra/certs/localhost.pem`; both cert files confirmed present; `backend/src/index.js` starts HTTPS server; pm2 `BACKEND_SSL: 'true'` → Vite proxy `https://localhost:3001` | ✅ PASS |
+| **CORS match** | `CORS_ORIGIN` includes `https://localhost:4173` | `.env.staging CORS_ORIGIN=https://localhost:4173`; pm2 `CORS_ORIGIN: 'https://localhost:4173'` (T-228 Fix A); Vite preview port 4173 with HTTPS | ✅ PASS |
+| **SSL cert files exist** | Both PEM files present on disk | `infra/certs/localhost-key.pem` ✅ exists; `infra/certs/localhost.pem` ✅ exists | ✅ PASS |
+
+#### Docker Compose (infra/docker-compose.yml)
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| **Backend port** | Container `PORT` matches internal healthcheck | Container env `PORT: 3000`; healthcheck `http://localhost:3000/api/v1/health` | ✅ PASS |
+| **No backend host port exposure** | Backend not directly exposed (nginx proxies) | No `ports:` mapping on `backend` service; `frontend` nginx exposes `${FRONTEND_PORT:-80}:80` | ✅ PASS |
+| **CORS default** | `CORS_ORIGIN` env var required at deploy time | `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}` — parameterized; operator must set at deploy | ✅ CONSISTENT (operator responsibility) |
+
+**Config Consistency Result: ✅ ALL PASS — No mismatches detected across local dev, staging, or Docker**
+
+---
+
+### Post-Deploy Health Check
+
+**Environment:** Staging
+**Timestamp:** 2026-03-11T18:33:00Z
+**Backend URL:** `https://localhost:3001`
+**Frontend URL:** `https://localhost:4173`
+**Token acquisition method:** `POST /api/v1/auth/login` with `test@triplanner.local` / `TestPass123!` (NOT /auth/register)
+
+#### Health Check Results
+
+| # | Check | Command / Method | Expected | Actual | Result |
+|---|-------|-----------------|----------|--------|--------|
+| 1 | App responds | `GET https://localhost:3001/api/v1/health` | `200 {"status":"ok"}` | `200 {"status":"ok"}` | ✅ PASS |
+| 2 | CORS headers on health | Response headers | `Access-Control-Allow-Origin: https://localhost:4173`; `Access-Control-Allow-Credentials: true` | Both headers present and correct | ✅ PASS |
+| 3 | Auth — login | `POST /api/v1/auth/login` (`test@triplanner.local`) | `200` + `data.access_token` | `200` + JWT access token + user object (`id`, `name`, `email`, `created_at`) | ✅ PASS |
+| 4 | OPTIONS preflight | `OPTIONS /api/v1/trips` with `Origin: https://localhost:4173` | `204 No Content` + CORS headers | `204 No Content`; `Access-Control-Allow-Origin: https://localhost:4173`; `Access-Control-Allow-Credentials: true`; `Access-Control-Allow-Methods: GET,HEAD,PUT,PATCH,POST,DELETE` | ✅ PASS |
+| 5 | Trips list (authenticated) | `GET /api/v1/trips` with Bearer token | `200` + `{data: [], pagination: {...}}` | `200 {"data":[],"pagination":{"page":1,"limit":20,"total":0}}` | ✅ PASS |
+| 6 | Trips list (unauthenticated) | `GET /api/v1/trips` — no auth | `401` | `401` | ✅ PASS |
+| 7 | Trip sub-resources (non-existent UUID v4) | `GET /api/v1/trips/{uuid}/calendar` with auth | `404` (no 5xx) | `404 {"error":{"message":"Trip not found.","code":"NOT_FOUND"}}` | ✅ PASS |
+| 8 | Flights sub-resource | `GET /api/v1/trips/{uuid}/flights` with auth | `404` (no 5xx) | `404` | ✅ PASS |
+| 9 | Stays sub-resource | `GET /api/v1/trips/{uuid}/stays` with auth | `404` (no 5xx) | `404` | ✅ PASS |
+| 10 | Activities sub-resource | `GET /api/v1/trips/{uuid}/activities` with auth | `404` (no 5xx) | `404` | ✅ PASS |
+| 11 | Land Travel sub-resource | `GET /api/v1/trips/{uuid}/land-travel` with auth | `404` (no 5xx) | `404` | ✅ PASS |
+| 12 | Frontend build output | `ls frontend/dist/` | `index.html` + assets | `index.html`, `assets/`, `favicon.png` present | ✅ PASS |
+| 13 | Frontend preview | `GET https://localhost:4173` | `200` | `200` | ✅ PASS |
+| 14 | No 5xx errors in logs | pm2 backend-error.log review | No application errors | Only `SyntaxError` from Monitor Agent's own malformed JSON test probes (14:32:37, 14:33:14) — correctly handled by `errorHandler` → `400 INVALID_JSON`. No 5xx. No unhandled exceptions. | ✅ PASS |
+| 15 | Database connected | Health endpoint response + no DB errors in logs | `{"status":"ok"}` | `200 {"status":"ok"}` — DB queries against `trips` table succeeded (GET /api/v1/trips returned 200 with pagination), confirming DB connectivity | ✅ PASS |
+
+**Note on error log entries:** Two `SyntaxError` entries in `backend-error.log` at 14:32:37 and 14:33:14 were generated by this Monitor Agent health check session. An initial `curl` invocation sent a malformed JSON body (heredoc introduced trailing newline / shell quoting issue). The `errorHandler` caught the parse failure and returned `400 INVALID_JSON` as designed — no 5xx, no crash. Subsequent requests using `--data @/tmp/login.json` succeeded. These are not production issues.
+
+---
+
+### Summary
+
+| Test Type | Result | Notes |
+|-----------|--------|-------|
+| Config Consistency (Local Dev) | ✅ PASS | Port, protocol, and CORS all aligned |
+| Config Consistency (Staging) | ✅ PASS | Port 3001, HTTPS, CORS `https://localhost:4173` — all correct |
+| Config Consistency (Docker) | ✅ PASS | Internal port wiring consistent; CORS parameterized correctly |
+| Health Endpoint | ✅ PASS | `GET /api/v1/health` → `200 {"status":"ok"}` |
+| CORS (T-228 Fix A + Fix B) | ✅ PASS | `Access-Control-Allow-Origin: https://localhost:4173` confirmed |
+| Auth Flow | ✅ PASS | Login returns `200` + access token |
+| Protected Endpoints | ✅ PASS | All respond correctly; no 5xx |
+| Frontend | ✅ PASS | Preview at `https://localhost:4173` returns `200` |
+| Error Log | ✅ PASS | No unhandled exceptions; no 5xx errors |
+| Database | ✅ PASS | Confirmed connected via successful query responses |
+
+**Deploy Verified: ✅ YES**
+
+All health checks passed. All config consistency checks passed. T-228 CORS fix confirmed active on staging. Staging environment is ready for User Agent walkthrough (T-219).
+
+*Monitor Agent Sprint #27 — 2026-03-11T18:33:00Z*
+
+---
+
+## Sprint #27 — Deploy Engineer Build + Staging Verification (Pass #3) — 2026-03-11
+
+**Agent:** Deploy Engineer
+**Sprint:** #27
+**Pass:** #3 (orchestrator re-invocation)
+**Date:** 2026-03-11
+**Status:** ✅ SUCCESS
+
+---
+
+### Pre-Deploy Checks
+
+| Check | Result | Detail |
+|-------|--------|--------|
+| QA Handoff Confirmation | ✅ PASS | handoff-log.md confirms 363/363 backend tests, 486/486 frontend tests, 0 vulnerabilities. T-228 CORS fix Done. |
+| Pending Migrations | ✅ NONE | `npm run migrate` → "Already up to date". Schema stable since Sprint 8; all 10 migrations previously applied to staging. |
+| Sprint #27 Task Readiness | ✅ VERIFIED | T-228: Done. T-219: Backlog (unblocked). T-224: ⛔ Blocked (external — project owner gate). T-225: Backlog (awaiting T-224). |
+
+---
+
+### Dependency Installation
+
+| Package Set | Command | Result |
+|-------------|---------|--------|
+| Backend | `cd backend && npm install` | ✅ 0 vulnerabilities |
+| Frontend | `cd frontend && npm install` | ✅ 0 vulnerabilities |
+
+---
+
+### Frontend Build
+
+| Step | Command | Result |
+|------|---------|--------|
+| Production build | `cd frontend && npm run build` | ✅ SUCCESS |
+| Modules transformed | — | 128 modules |
+| Output: index.html | dist/index.html | 0.46 kB (gzip: 0.29 kB) |
+| Output: CSS bundle | dist/assets/index-CPOhaw0p.css | 84.43 kB (gzip: 13.30 kB) |
+| Output: JS bundle | dist/assets/index-Bz9Y7ALz.js | 345.83 kB (gzip: 105.16 kB) |
+| Build time | — | 461ms |
+| Errors | — | None |
+
+---
+
+### Staging Environment Status
+
+> **Note:** Docker is not available in this environment. Staging runs as local processes managed by pm2 / ecosystem.config.cjs. The staging environment was already running from a previous sprint cycle; this pass confirms continued service availability.
+
+| Service | PID | Protocol | Port | Status |
+|---------|-----|----------|------|--------|
+| Backend (node src/index.js) | 70180 | HTTPS | 3001 | ✅ Running — HTTP 404 on undefined route confirms server alive |
+| Frontend (vite preview) | 65001 | HTTPS | 4173 | ✅ Running — HTTP 200, 456 bytes |
+| Old backend instance | 53257 | HTTP | 3000 | Running (stale — dev instance, not staging) |
+
+**Migrations on Staging:** `npm run migrate` → "Already up to date" (environment: development/staging)
+
+**HTTPS Configuration:** Backend loads `.env.staging` → `PORT=3001`, `SSL_KEY_PATH=../infra/certs/localhost-key.pem`, `SSL_CERT_PATH=../infra/certs/localhost.pem`. Self-signed certs confirmed present at `infra/certs/`.
+
+**CORS Configuration (T-228):** `CORS_ORIGIN=https://localhost:4173` via ecosystem.config.cjs (Fix A) + dynamic import hoisting in index.js (Fix B).
+
+---
+
+### Verified Endpoint Responses
+
+| Endpoint | Protocol | Expected | Actual | Result |
+|----------|----------|----------|--------|--------|
+| `https://localhost:3001/health` | HTTPS | Server alive | 404 (route not defined, server responding) | ✅ PASS |
+| `https://localhost:4173/` | HTTPS | 200 OK | 200, 456 bytes | ✅ PASS |
+
+*(Full API endpoint verification performed by Monitor Agent in prior health check — all 15 checks PASS. See "Sprint #27 — Monitor Agent Post-Deploy Health Check" section above.)*
+
+---
+
+### Overall Result
+
+| Component | Status |
+|-----------|--------|
+| Dependencies installed | ✅ 0 vulnerabilities |
+| Frontend build | ✅ 128 modules, no errors |
+| Database migrations | ✅ Already up to date |
+| Backend HTTPS :3001 | ✅ Running and responding |
+| Frontend HTTPS :4173 | ✅ Running and serving |
+| Docker | ⚠️ Not available — local process staging used instead |
+
+**Overall: ✅ Staging build and deployment VERIFIED — Sprint #27 Pass #3**
+
+*Deploy Engineer Sprint #27 Pass #3 — 2026-03-11*
+
+---
+
+## Sprint #27 — Monitor Agent Post-Deploy Health Check (Pass #3) — 2026-03-11T18:42:00Z
+
+**Task:** T-225 (Monitor Agent — Post-Deploy Health Check, Pass #3)
+**Date:** 2026-03-11T18:42:00Z
+**Engineer:** Monitor Agent
+**Sprint:** 27
+**Environment:** Staging
+**Trigger:** Deploy Engineer Pass #3 handoff requesting health check re-confirmation
+
+---
+
+### Config Consistency Validation
+
+#### Source Files Inspected
+
+| File | Key Values Extracted |
+|------|---------------------|
+| `backend/.env` | `PORT=3000`, `SSL_KEY_PATH` = NOT SET (commented out), `SSL_CERT_PATH` = NOT SET (commented out), `CORS_ORIGIN=http://localhost:5173` |
+| `frontend/vite.config.js` | Proxy target: `${backendProtocol}://localhost:${backendPort}` — defaults to `http://localhost:3000` (when `BACKEND_PORT` and `BACKEND_SSL` unset); dev server port: `5173` |
+| `infra/docker-compose.yml` | Backend container `PORT=3000` (env), healthcheck `http://localhost:3000`; no host port exposed for backend (nginx internal); frontend `ports: ${FRONTEND_PORT:-80}:80`; `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}` |
+
+#### Config Consistency Checks
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| **Port match** (backend/.env PORT vs vite proxy target port) | 3000 = 3000 | `PORT=3000` in .env; vite default proxy `http://localhost:3000` | ✅ PASS |
+| **Protocol match** (SSL configured → HTTPS proxy required) | SSL not set → HTTP proxy OK | `SSL_KEY_PATH`/`SSL_CERT_PATH` commented out → no HTTPS; vite defaults to `http://` | ✅ PASS |
+| **CORS match** (`CORS_ORIGIN` includes vite dev server origin) | `http://localhost:5173` | `CORS_ORIGIN=http://localhost:5173`; vite dev port = 5173 | ✅ PASS |
+| **Docker backend port** (container `PORT` env matches healthcheck) | 3000 = 3000 | `PORT=3000` in compose env; healthcheck `http://localhost:3000/api/v1/health` | ✅ PASS |
+| **Docker CORS_ORIGIN** (frontend serves on port 80; CORS default matches) | `http://localhost` | `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}` — matches nginx port 80 | ✅ PASS |
+
+**Staging override note:** Staging uses `infra/ecosystem.config.cjs` (pm2) to override `PORT=3001`, `SSL_KEY_PATH`, `SSL_CERT_PATH`, and `CORS_ORIGIN=https://localhost:4173`. Docker is NOT used on staging. T-228 Fix A (ecosystem.config.cjs) + Fix B (index.js ESM hoisting) confirmed active by Deploy Engineer. Staging config is internally consistent with those overrides.
+
+**Config Consistency Result: ✅ PASS — All 5 checks pass**
+
+---
+
+### Post-Deploy Health Check
+
+**Environment:** Staging
+**Timestamp:** 2026-03-11T18:42:00Z
+**Backend URL:** `https://localhost:3001` (HTTPS, self-signed cert, pm2 pid 70180)
+**Frontend URL:** `https://localhost:4173` (HTTPS, vite preview, pm2 pid 64982)
+**Token:** Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` — NOT /auth/register
+
+#### pm2 Process Status
+
+| App | Status | PID | Restarts | Uptime |
+|-----|--------|-----|---------|--------|
+| triplanner-backend | ✅ online | 70180 | 0 | 33m |
+| triplanner-frontend | ✅ online | 64982 | 6 | 4h |
+
+*Note: 6 frontend restarts is a pre-existing condition from prior pass; process is online and serving correctly.*
+
+#### Health Check Results
+
+| # | Check | Command / Method | Expected | Actual | Result |
+|---|-------|-----------------|----------|--------|--------|
+| 1 | App responds (health endpoint) | `GET https://localhost:3001/api/v1/health` | `200 {"status":"ok"}` | `200 {"status":"ok"}` | ✅ PASS |
+| 2 | CORS header present | `GET` with `Origin: https://localhost:4173` | `Access-Control-Allow-Origin: https://localhost:4173` | `Access-Control-Allow-Origin: https://localhost:4173` | ✅ PASS |
+| 3 | CORS credentials header | Same request as #2 | `Access-Control-Allow-Credentials: true` | `Access-Control-Allow-Credentials: true` | ✅ PASS |
+| 4 | OPTIONS preflight | `OPTIONS /api/v1/trips` with staging Origin | `204 No Content` + CORS headers | `204 No Content`, ACAO + ACAC + methods present | ✅ PASS |
+| 5 | Auth — login with seeded account | `POST /api/v1/auth/login` (`test@triplanner.local`) | `200` + `access_token` + user object | `200 {"data":{"user":{...},"access_token":"eyJ..."}}` | ✅ PASS |
+| 6 | Auth — unauthenticated request blocked | `GET /api/v1/trips` (no token) | `401 UNAUTHORIZED` | `401 {"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS |
+| 7 | Trips list (authenticated) | `GET /api/v1/trips` (Bearer token) | `200` + data array + pagination | `200 {"data":[],"pagination":{"page":1,"limit":20,"total":0}}` | ✅ PASS |
+| 8 | Trips — single trip not found | `GET /api/v1/trips/:id` (non-existent UUID) | `404 NOT_FOUND` | `404 {"error":{"message":"Trip not found","code":"NOT_FOUND"}}` | ✅ PASS |
+| 9 | Flights sub-resource | `GET /api/v1/trips/:id/flights` (non-existent trip) | `404 NOT_FOUND`, no 5xx | `404 {"error":{"message":"Trip not found","code":"NOT_FOUND"}}` | ✅ PASS |
+| 10 | Stays sub-resource | `GET /api/v1/trips/:id/stays` (non-existent trip) | `404 NOT_FOUND`, no 5xx | `404 {"error":{"message":"Trip not found","code":"NOT_FOUND"}}` | ✅ PASS |
+| 11 | Activities sub-resource | `GET /api/v1/trips/:id/activities` (non-existent trip) | `404 NOT_FOUND`, no 5xx | `404 {"error":{"message":"Trip not found","code":"NOT_FOUND"}}` | ✅ PASS |
+| 12 | Land-travel sub-resource | `GET /api/v1/trips/:id/land-travel` (non-existent trip) | `404 NOT_FOUND`, no 5xx | `404 {"error":{"message":"Trip not found","code":"NOT_FOUND"}}` | ✅ PASS |
+| 13 | Calendar sub-resource | `GET /api/v1/trips/:id/calendar` (non-existent trip) | `404 NOT_FOUND`, no 5xx | `404 {"error":{"message":"Trip not found.","code":"NOT_FOUND"}}` | ✅ PASS |
+| 14 | Frontend accessible | `GET https://localhost:4173/` | `200` | `200` | ✅ PASS |
+| 15 | Frontend build artifacts | Check `frontend/dist/` | `index.html` + assets exist | `index.html` (456B) + `assets/` present, built 2026-03-11T14:36 | ✅ PASS |
+| 16 | Database connectivity | Implicit via auth login + trips query | No DB errors | Successful JWT issuance + trips query returned pagination | ✅ PASS |
+| 17 | No 5xx errors | All endpoint responses above | No 5xx responses | No 5xx observed across all 17 endpoint calls | ✅ PASS |
+| 18 | Config consistency | See section above | All 5 checks PASS | All 5 checks PASS | ✅ PASS |
+
+**All 18 checks: PASS**
+
+---
+
+### Test Type Summary
+
+| Test Type | Result | Notes |
+|-----------|--------|-------|
+| Config Consistency | ✅ PASS | local dev + Docker consistent; staging ecosystem.config.cjs overrides valid |
+| Post-Deploy Health Check | ✅ PASS | 17/17 endpoint + process checks pass |
+
+### Deploy Verified: ✅ YES
+
+**T-228 CORS Fix:** Fix A (ecosystem.config.cjs) + Fix B (ESM hoisting in index.js) confirmed active — CORS headers correct on all requests.
+
+**T-224 Production Deploy:** Still ⛔ Blocked — no change from prior pass (human gate; requires AWS RDS + Render provisioning by project owner).
+
+*Monitor Agent Sprint #27 Pass #3 — 2026-03-11T18:42:00Z*
+
+---
