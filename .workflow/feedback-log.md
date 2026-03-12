@@ -424,3 +424,63 @@ button: "please wait…" [disabled]
 **Recommendation:** Either update the spec to reflect the self-contained fetch approach (preferred — it's cleaner), or refactor the calendar to accept pre-shaped event data as a prop. Given the calendar endpoint is optimized for this use case, updating the spec is the lower-effort path.
 
 ---
+
+## Monitor Alert — Sprint #28 — 2026-03-11T01:30:00Z
+
+| Field | Value |
+|-------|-------|
+| **Category** | Monitor Alert |
+| **Severity** | Major |
+| **Sprint** | 28 |
+| **Status** | New |
+| **Related Task** | T-233 |
+
+**Feedback:** Playwright E2E Test 2 FAIL — `getByText('SFO')` strict mode violation caused by Sprint 27 TripCalendar rendering airport code in multiple elements; 3/4 Playwright tests PASS; Deploy Verified = No.
+
+**Details:**
+
+During T-233 Sprint 28 health check, all API endpoint checks, config consistency checks, and the Sprint 28 specific PATCH dates regression test (FB-113/T-229) passed. However, `npx playwright test` produced **3/4 PASS** (Test 2 FAIL; Tests 1, 3, 4 PASS).
+
+**Failure mode:** Test 2 ("create trip, add flight, add stay, verify on details page") fails at line 202:
+
+```
+Error: strict mode violation: getByText('SFO') resolved to 3 elements:
+    1) <span> inside flight calendar event pill (TripCalendar)
+    2) <span> inside MobileDayList event title (TripCalendar)
+    3) <div class="_airportCode_...">SFO</div> (flight card in trips section)
+```
+
+**Root cause:** The Sprint 27 TripCalendar feature (FB-114) added calendar event pills and a MobileDayList to TripDetailsPage. Both render the flight's `arrival_airport` ('SFO') as visible text. The existing Playwright locator `page.getByText('SFO')` was written before TripCalendar existed; it was unambiguous then (one element: the airport code div in the flight card). Now 3 elements match — Playwright strict mode requires exactly one match and throws.
+
+**Confirmed NOT an application regression:**
+- GET /api/v1/trips/:id/calendar → 200, events rendered correctly
+- PATCH /api/v1/trips/:id with dates → T-229 COALESCE fix working (start_date/end_date returned)
+- All API endpoints return correct HTTP status codes and response bodies
+- pm2 processes both online (backend pid 82174, frontend pid 64982)
+- Config consistency: PASS on all checks
+
+**Impact:**
+- User Agent (T-234) is blocked — cannot proceed with 4/4 requirement unmet
+- No production functionality is broken; this is a test-code-only issue
+- All 3 failing assertions in Test 2 are about element visibility after the flight is added and user navigates back to TripDetailsPage
+
+**Required Fix:**
+Update `e2e/critical-flows.spec.js` lines 201–202 to use specific locators:
+
+```js
+// Before (ambiguous after TripCalendar added):
+await expect(page.getByText('JFK')).toBeVisible();
+await expect(page.getByText('SFO')).toBeVisible();
+
+// After (target the flight card airport code specifically):
+await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()).toBeVisible();
+await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible();
+// OR use data-testid if available on airport code elements
+```
+
+**Files involved:**
+- `e2e/critical-flows.spec.js` — lines 201–202, `getByText('JFK')` and `getByText('SFO')` locators need to be scoped to the flight card section
+
+**Action required:** QA Engineer or Frontend Engineer to fix the Playwright locator in `e2e/critical-flows.spec.js:201-202`, re-run `npx playwright test` → expect 4/4 PASS, then re-hand off to Monitor Agent or proceed to User Agent.
+
+---

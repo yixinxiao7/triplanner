@@ -4,6 +4,142 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint 28 — Post-Deploy Health Check
+**Task:** T-233 (Monitor Agent)
+**Date:** 2026-03-11
+**Environment:** Staging (https://localhost:3001 backend, https://localhost:4173 frontend)
+**Test Type:** Post-Deploy Health Check + Config Consistency
+
+---
+
+### Config Consistency Check
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Port match (backend .env PORT vs Vite proxy target) | PASS | backend .env: PORT=3000 (dev). Staging backend runs on PORT=3001 via pm2 ecosystem.config.cjs env override. Vite proxy reads BACKEND_PORT env var (default 3000); pm2 triplanner-frontend sets BACKEND_PORT=3001. Ports consistent at runtime. |
+| Protocol match (SSL keys → proxy uses https://) | PASS | SSL_KEY_PATH and SSL_CERT_PATH are commented out in backend/.env (dev). Staging uses pm2 ecosystem.config.cjs to set TLS. Vite proxy uses BACKEND_SSL=true (set in pm2 env) → `https://localhost:3001`. Protocol consistent at runtime. |
+| CORS match (CORS_ORIGIN includes http://localhost:5173) | PASS | backend/.env: CORS_ORIGIN=http://localhost:5173 (dev). Staging overrides via pm2 ecosystem.config.cjs: CORS_ORIGIN=https://localhost:4173. Live CORS header verified: `Access-Control-Allow-Origin: https://localhost:4173`. |
+| Docker match (container PORT vs .env PORT) | N/A — INFO | docker-compose.yml sets backend container PORT=3000 (hardcoded in environment block). backend/.env also specifies PORT=3000. Staging does NOT use Docker (pm2 local process manager per infra note in qa-build-log). Docker config is consistent with dev .env but not used in staging. |
+
+**Config Consistency: PASS** (all active staging config is consistent; Docker is present but not in use on this host)
+
+---
+
+### Health Checks
+
+#### 1. Backend Health — GET /api/v1/health
+- **HTTP Status:** 200
+- **Response:** `{"status":"ok"}`
+- **Result:** PASS
+
+#### 2. CORS Header Check
+- **Request:** `curl -sk -D - https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"`
+- **Response Header:** `Access-Control-Allow-Origin: https://localhost:4173`
+- **Response Header:** `Access-Control-Allow-Credentials: true`
+- **Result:** PASS
+
+#### 3. Auth Login — POST /api/v1/auth/login (test@triplanner.local)
+- **HTTP Status:** 200
+- **Response:** `{"data":{"user":{"id":"60567cb2-c8c2-43a1-a914-96016f3d1574","name":"Test User","email":"test@triplanner.local","created_at":"2026-03-11T14:18:27.767Z"},"access_token":"<JWT>"}}`
+- **Result:** PASS — seeded test account exists and authenticates correctly
+
+#### 4. Unauthenticated Access Guard — GET /api/v1/trips (no token)
+- **HTTP Status:** 401
+- **Result:** PASS — auth guard working correctly
+
+#### 5. Trips List — GET /api/v1/trips
+- **HTTP Status:** 200
+- **Response:** `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}`
+- **Result:** PASS
+
+#### 6. Create Trip — POST /api/v1/trips
+- **HTTP Status:** 201
+- **Trip ID:** 6877fcf9-e58a-4438-a043-73d0509615d5 (monitor test trip, deleted after checks)
+- **Result:** PASS
+
+#### 7. Get Trip — GET /api/v1/trips/:id
+- **HTTP Status:** 200
+- **Result:** PASS
+
+#### 8. Sprint 28 Specific — PATCH /api/v1/trips/:id with user dates (FB-113 COALESCE fix)
+- **Request:** `PATCH /api/v1/trips/:id {"start_date":"2026-09-01","end_date":"2026-09-30"}` (trip with no sub-resources)
+- **HTTP Status:** 200
+- **Response:** `start_date: "2026-09-01"`, `end_date: "2026-09-30"`
+- **Result:** PASS — T-229 COALESCE fix confirmed live; user-provided dates are returned correctly (not null, not overridden by sub-resource aggregates)
+
+#### 9. Status Filter — GET /api/v1/trips?status=PLANNING
+- **HTTP Status:** 200
+- **Result:** PASS
+
+#### 10. Calendar Endpoint — GET /api/v1/trips/:id/calendar
+- **HTTP Status:** 200
+- **Response:** `{"data":{"trip_id":"...","events":[]}}`
+- **Result:** PASS
+
+#### 11. Delete Trip — DELETE /api/v1/trips/:id (cleanup)
+- **HTTP Status:** 204
+- **Result:** PASS
+
+#### 12. Auth Refresh — POST /api/v1/auth/refresh (no cookie)
+- **HTTP Status:** 401
+- **Result:** PASS — correct rejection when no refresh token cookie present
+
+#### 13. Auth Logout — POST /api/v1/auth/logout
+- **HTTP Status:** 204
+- **Result:** PASS
+
+#### 14. Frontend Build (dist/)
+- **Location:** frontend/dist/
+- **Contents:** index.html, assets/index-Bz9Y7ALz.js (345.83 kB), assets/index-CPOhaw0p.css (84.43 kB)
+- **Result:** PASS — build artifacts present
+
+#### 15. pm2 Process Status
+| Process | PID | Uptime | Status |
+|---------|-----|--------|--------|
+| triplanner-backend | 82174 | 27m | online |
+| triplanner-frontend | 64982 | 11h | online |
+- **Result:** PASS — both processes online
+
+#### 16. Playwright E2E — npx playwright test
+- **Result:** 3/4 PASS — 1 FAIL
+- **Failing test:** Test 2: Sub-resource CRUD → "create trip, add flight, add stay, verify on details page"
+- **Failure location:** `e2e/critical-flows.spec.js:202` — `await expect(page.getByText('SFO')).toBeVisible()`
+- **Error:** Strict mode violation — `getByText('SFO')` resolves to 3 elements:
+  1. `<span>` inside flight calendar event pill (TripCalendar component, Sprint 27)
+  2. `<span>` inside mobile day list event title (TripCalendar MobileDayList, Sprint 27)
+  3. `<div class="_airportCode_...">SFO</div>` (flight card in flights section)
+- **Root cause:** The Sprint 27 TripCalendar implementation (FB-114) renders calendar event pills and mobile day list entries that also contain 'SFO'. The test's `getByText('SFO')` locator was non-strict before the calendar was added; now 3 elements match the text. This is a **test regression, not an application regression** — the application renders the data correctly.
+- **Not a regression in T-229:** The COALESCE fix is confirmed working independently (check #8 above).
+- **Impact:** Playwright Test 2 FAIL blocks the 4/4 requirement for User Agent handoff.
+
+---
+
+### Summary
+
+| Check | Result |
+|-------|--------|
+| Config Consistency | PASS |
+| Backend health (GET /api/v1/health) | PASS |
+| CORS header | PASS |
+| Auth login (test@triplanner.local) | PASS |
+| Auth guard (401 on no token) | PASS |
+| Trips CRUD (GET, POST, PATCH, DELETE) | PASS |
+| PATCH with user dates — FB-113 COALESCE fix | PASS |
+| Status filter (?status=PLANNING) | PASS |
+| Calendar endpoint | PASS |
+| Frontend dist present | PASS |
+| pm2 processes online | PASS |
+| Playwright E2E | FAIL — 3/4 PASS (1 test: strict mode violation on 'SFO' locator) |
+
+- **Config Consistency:** PASS
+- **Deploy Verified:** No
+
+**Notes:** All API endpoints and server-side behavior are correct. The single Playwright failure is a test-code regression (non-strict locator `getByText('SFO')` now ambiguous after Sprint 27 TripCalendar feature added calendar event pills to TripDetailsPage). The fix required is to update `e2e/critical-flows.spec.js:202` to use a more specific locator (e.g., `page.getByText('SFO', { exact: true }).first()` or use a role/testid selector targeting the flight card's airport code). This is a QA/Frontend engineering fix — no backend changes needed.
+
+*Monitor Agent Sprint #28 T-233 — 2026-03-11*
+
+---
+
 ## Sprint #28 — Deploy Engineer Re-Verification Pass — 2026-03-11
 
 **Task:** T-232 (Deploy Engineer: Staging re-verification — orchestrator re-invocation)

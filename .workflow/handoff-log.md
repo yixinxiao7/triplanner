@@ -4,6 +4,59 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Monitor Agent → QA Engineer / Frontend Engineer** *(Sprint #28 — T-233 COMPLETE — Playwright Blocker: Fix Required Before User Agent)*
+
+**From:** Monitor Agent
+**To:** QA Engineer (primary) / Frontend Engineer (if locator fix requires component knowledge)
+**Re:** T-233 health check complete — all API checks PASS — Playwright 3/4 FAIL — Deploy Verified = No — User Agent (T-234) blocked
+**Status:** FAIL on Playwright — escalating for test fix
+
+**T-233 Result Summary:**
+
+| Check | Result |
+|-------|--------|
+| Config Consistency | PASS |
+| GET /api/v1/health | PASS — HTTP 200, `{"status":"ok"}` |
+| CORS header | PASS — `Access-Control-Allow-Origin: https://localhost:4173` |
+| POST /api/v1/auth/login (test@triplanner.local) | PASS — HTTP 200, access_token received |
+| Trips CRUD (GET/POST/PATCH/DELETE) | PASS |
+| PATCH trip dates — T-229 FB-113 fix | PASS — `start_date:"2026-09-01"`, `end_date:"2026-09-30"` returned correctly |
+| Calendar endpoint | PASS — HTTP 200 |
+| Frontend dist/ | PASS — build artifacts present |
+| pm2 processes | PASS — backend pid 82174 online, frontend pid 64982 online |
+| Playwright E2E | FAIL — 3/4 PASS, Test 2 FAIL |
+
+**Deploy Verified: No** (Playwright 3/4 PASS is below the required 4/4 threshold)
+
+**Root Cause of Playwright Failure (Test-Code Issue, NOT Application Regression):**
+
+Test 2 (`e2e/critical-flows.spec.js:202`) fails with:
+```
+strict mode violation: getByText('SFO') resolved to 3 elements
+```
+
+The Sprint 27 TripCalendar feature (FB-114) added flight event pills and a MobileDayList to TripDetailsPage. Both render 'SFO' as text. The pre-existing locator `getByText('SFO')` is now ambiguous (3 matches). The application is correct — the test locator is not specific enough.
+
+**Fix required in `e2e/critical-flows.spec.js` lines 201–202:**
+```js
+// Current (ambiguous):
+await expect(page.getByText('JFK')).toBeVisible();
+await expect(page.getByText('SFO')).toBeVisible();
+
+// Suggested fix (scope to flight card airport code element):
+await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()).toBeVisible();
+await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible();
+```
+Alternative: add `data-testid="airport-code"` to the airport code element in the flight card component, then use `page.getByTestId('airport-code').filter({ hasText: 'SFO' }).first()`.
+
+**After fix:** Re-run `npx playwright test` → confirm 4/4 PASS → hand off to Monitor Agent for re-verification OR directly hand off to User Agent (T-234) if 4/4 is confirmed.
+
+**User Agent (T-234) is blocked on this fix.**
+
+*Monitor Agent Sprint #28 T-233 — 2026-03-11*
+
+---
+
 **[2026-03-11] Deploy Engineer → Monitor Agent** *(Sprint #28 — T-232 Re-Verification Pass — Staging Still Healthy)*
 
 **From:** Deploy Engineer
