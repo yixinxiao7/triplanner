@@ -40,6 +40,18 @@
   --color-flight: #5D737E;   /* Same as --accent for flights */
   --color-stay: #3D8F82;     /* Teal for accommodation stays */
   --color-activity: #C47A2E; /* Warm amber for activities */
+
+  /* Sprint 25 Calendar event color tokens */
+  --event-flight-bg:    rgba(93, 115, 126, 0.25);
+  --event-flight-border: #5D737E;
+  --event-flight-text:  #FCFCFC;
+  --event-stay-bg:      rgba(100, 160, 120, 0.2);
+  --event-stay-border:  rgba(100, 180, 120, 0.6);
+  --event-stay-text:    rgba(140, 210, 160, 0.9);
+  --event-activity-bg:  rgba(180, 140, 80, 0.18);
+  --event-activity-border: rgba(200, 160, 90, 0.5);
+  --event-activity-text: rgba(220, 185, 110, 0.9);
+  --color-land-travel: #7B6B8E;
 }
 
 /* ============================================================

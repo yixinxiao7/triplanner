@@ -5,7 +5,6 @@ import {
   formatActivityDate,
   formatTime,
   formatDateRange,
-  formatTripDateRange,
   formatTimezoneAbbr,
 } from '../utils/formatDate';
 
@@ -88,39 +87,6 @@ describe('formatDateRange', () => {
     expect(result).toContain('\u2013'); // en-dash
     expect(result).not.toContain('\u2014'); // em-dash
     expect(result).not.toContain('-'); // hyphen
-  });
-});
-
-describe('formatTripDateRange', () => {
-  it('formats same-year date range: "Aug 7 – Aug 14, 2026"', () => {
-    const result = formatTripDateRange('2026-08-07', '2026-08-14');
-    expect(result).toContain('Aug 7');
-    expect(result).toContain('Aug 14');
-    expect(result).toContain('2026');
-    expect(result).toContain('\u2013'); // en-dash
-  });
-
-  it('formats cross-year date range with both years', () => {
-    const result = formatTripDateRange('2025-12-28', '2026-01-04');
-    expect(result).toContain('2025');
-    expect(result).toContain('2026');
-    expect(result).toContain('Dec 28');
-    expect(result).toContain('Jan 4');
-  });
-
-  it('formats start-only date with "From" prefix', () => {
-    const result = formatTripDateRange('2026-08-07', null);
-    expect(result).toContain('From');
-    expect(result).toContain('Aug 7');
-    expect(result).toContain('2026');
-  });
-
-  it('returns null when both dates are null', () => {
-    expect(formatTripDateRange(null, null)).toBeNull();
-  });
-
-  it('returns null when both dates are undefined', () => {
-    expect(formatTripDateRange(undefined, undefined)).toBeNull();
   });
 });
 

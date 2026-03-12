@@ -64,6 +64,19 @@ const mockTrips = [
   },
 ];
 
+// Extended mock trips set used in status filter tests (T-208)
+const mockTripsAllStatuses = [
+  ...mockTrips,
+  {
+    id: 'trip-003',
+    name: 'Europe 2025',
+    destinations: ['Paris', 'Rome'],
+    status: 'COMPLETED',
+    created_at: '2025-06-01T12:00:00.000Z',
+    updated_at: '2025-06-30T12:00:00.000Z',
+  },
+];
+
 const mockAuthContext = {
   user: { id: 'u1', name: 'Jane Doe', email: 'jane@test.com' },
   isAuthenticated: true,
@@ -236,8 +249,8 @@ describe('HomePage', () => {
     });
 
     // Destinations now uses DestinationChipInput (Sprint 3 T-046)
-    // Add destinations via the chip input: type + Enter
-    const destInput = screen.getByLabelText(/add destination/i);
+    // Input aria-label is "New destination" (Spec 18.3.10); "+" button has aria-label="Add destination" (Spec 18.2)
+    const destInput = screen.getByLabelText(/new destination/i);
     fireEvent.change(destInput, { target: { value: 'Paris' } });
     fireEvent.keyDown(destInput, { key: 'Enter' });
     fireEvent.change(destInput, { target: { value: 'Rome' } });
@@ -353,6 +366,234 @@ describe('HomePage', () => {
     // Card restored (trip name visible again after error)
     await waitFor(() => {
       expect(screen.getByText('Japan 2026')).toBeDefined();
+    });
+  });
+
+  // ── T-208: StatusFilterTabs integration tests ─────────────────────────────
+  // Tests A–G from T-208 task definition (Spec 21 — Sprint 24)
+  // Filter logic: filteredTrips = activeFilter === "ALL" ? trips : trips.filter(t => t.status === activeFilter)
+
+  describe('StatusFilterTabs — status filter pills', () => {
+    // ── A: All trips shown when filter = "ALL" (default) ────────────────────
+    it('(A) shows all trips when filter is "All" (default)', async () => {
+      api.trips.list.mockResolvedValue({ data: { data: mockTripsAllStatuses } });
+
+      renderHomePage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Japan 2026')).toBeDefined();
+      });
+      expect(screen.getByText('California Road Trip')).toBeDefined();
+      expect(screen.getByText('Europe 2025')).toBeDefined();
+    });
+
+    // ── B: "PLANNING" filter shows only PLANNING trips ──────────────────────
+    it('(B) shows only PLANNING trips when Planning pill is clicked', async () => {
+      api.trips.list.mockResolvedValue({ data: { data: mockTripsAllStatuses } });
+
+      renderHomePage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Japan 2026')).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /^planning$/i }));
+
+      // PLANNING trip visible
+      expect(screen.getByText('Japan 2026')).toBeDefined();
+      // Other trips hidden
+      expect(screen.queryByText('California Road Trip')).toBeNull();
+      expect(screen.queryByText('Europe 2025')).toBeNull();
+    });
+
+    // ── C: "ONGOING" filter shows only ONGOING trips ─────────────────────────
+    it('(C) shows only ONGOING trips when Ongoing pill is clicked', async () => {
+      api.trips.list.mockResolvedValue({ data: { data: mockTripsAllStatuses } });
+
+      renderHomePage();
+
+      await waitFor(() => {
+        expect(screen.getByText('California Road Trip')).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /^ongoing$/i }));
+
+      expect(screen.getByText('California Road Trip')).toBeDefined();
+      expect(screen.queryByText('Japan 2026')).toBeNull();
+      expect(screen.queryByText('Europe 2025')).toBeNull();
+    });
+
+    // ── D: "COMPLETED" filter shows only COMPLETED trips ────────────────────
+    it('(D) shows only COMPLETED trips when Completed pill is clicked', async () => {
+      api.trips.list.mockResolvedValue({ data: { data: mockTripsAllStatuses } });
+
+      renderHomePage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Europe 2025')).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /^completed$/i }));
+
+      expect(screen.getByText('Europe 2025')).toBeDefined();
+      expect(screen.queryByText('Japan 2026')).toBeNull();
+      expect(screen.queryByText('California Road Trip')).toBeNull();
+    });
+
+    // ── E: Empty filtered state shown when no matching trips ─────────────────
+    it('(E) shows empty filtered state message when filter matches no trips', async () => {
+      // Only PLANNING and ONGOING trips — no COMPLETED
+      api.trips.list.mockResolvedValue({ data: { data: mockTrips } });
+
+      renderHomePage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Japan 2026')).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /^completed$/i }));
+
+      // Empty filtered state message
+      await waitFor(() => {
+        expect(screen.getByText('No Completed trips yet.')).toBeDefined();
+      });
+      // Global empty state NOT shown (trips.length > 0)
+      expect(screen.queryByText('no trips yet')).toBeNull();
+    });
+
+    it('(E) empty filtered state shows correct label for each filter', async () => {
+      // Only COMPLETED trips — no PLANNING or ONGOING
+      api.trips.list.mockResolvedValue({
+        data: {
+          data: [{
+            id: 'trip-003',
+            name: 'Europe 2025',
+            destinations: ['Paris'],
+            status: 'COMPLETED',
+            created_at: '2025-06-01T12:00:00.000Z',
+            updated_at: '2025-06-30T12:00:00.000Z',
+          }],
+        },
+      });
+
+      renderHomePage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Europe 2025')).toBeDefined();
+      });
+
+      // Filter by PLANNING — no PLANNING trips exist
+      fireEvent.click(screen.getByRole('button', { name: /^planning$/i }));
+      await waitFor(() => {
+        expect(screen.getByText('No Planning trips yet.')).toBeDefined();
+      });
+
+      // Switch to ONGOING — no ONGOING trips exist
+      fireEvent.click(screen.getByRole('button', { name: /^ongoing$/i }));
+      await waitFor(() => {
+        expect(screen.getByText('No Ongoing trips yet.')).toBeDefined();
+      });
+    });
+
+    // ── F: "Show all" resets filter to "ALL" ─────────────────────────────────
+    it('(F) "Show all" resets filter to ALL and shows all trips again', async () => {
+      // Only PLANNING and ONGOING trips — clicking Completed shows empty filtered state
+      api.trips.list.mockResolvedValue({ data: { data: mockTrips } });
+
+      renderHomePage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Japan 2026')).toBeDefined();
+      });
+
+      // Trigger empty filtered state
+      fireEvent.click(screen.getByRole('button', { name: /^completed$/i }));
+      await waitFor(() => {
+        expect(screen.getByText('No Completed trips yet.')).toBeDefined();
+      });
+
+      // Click "Show all"
+      fireEvent.click(screen.getByRole('button', { name: /show all trips/i }));
+
+      // All trips visible again; empty filtered message gone
+      await waitFor(() => {
+        expect(screen.getByText('Japan 2026')).toBeDefined();
+      });
+      expect(screen.getByText('California Road Trip')).toBeDefined();
+      expect(screen.queryByText('No Completed trips yet.')).toBeNull();
+    });
+
+    // ── G: Active pill has aria-pressed=true ─────────────────────────────────
+    it('(G) active filter pill has aria-pressed=true; others have aria-pressed=false', async () => {
+      api.trips.list.mockResolvedValue({ data: { data: mockTrips } });
+
+      renderHomePage();
+
+      // Default state: All is active
+      await waitFor(() => {
+        const allBtn = screen.getByRole('button', { name: /^all$/i });
+        expect(allBtn.getAttribute('aria-pressed')).toBe('true');
+      });
+
+      const planningBtn = screen.getByRole('button', { name: /^planning$/i });
+      expect(planningBtn.getAttribute('aria-pressed')).toBe('false');
+
+      // Click Planning — Planning becomes active
+      fireEvent.click(planningBtn);
+      await waitFor(() => {
+        expect(planningBtn.getAttribute('aria-pressed')).toBe('true');
+        expect(screen.getByRole('button', { name: /^all$/i }).getAttribute('aria-pressed')).toBe('false');
+      });
+    });
+
+    // ── Edge cases ───────────────────────────────────────────────────────────
+
+    it('does NOT show empty filtered state when trips.length === 0 (global empty state instead)', async () => {
+      // No trips at all in DB
+      api.trips.list.mockResolvedValue({ data: { data: [] } });
+
+      renderHomePage();
+
+      await waitFor(() => {
+        expect(screen.getByText('no trips yet')).toBeDefined();
+      });
+
+      // Clicking a filter pill when DB is empty should NOT show "No X trips yet."
+      fireEvent.click(screen.getByRole('button', { name: /^planning$/i }));
+      // Global empty state still visible — not the empty filtered state
+      expect(screen.queryByText('No Planning trips yet.')).toBeNull();
+      expect(screen.getByText('no trips yet')).toBeDefined();
+    });
+
+    it('StatusFilterTabs renders after initial load completes', async () => {
+      api.trips.list.mockResolvedValue({ data: { data: mockTrips } });
+
+      renderHomePage();
+
+      await waitFor(() => {
+        // Pills are present after load
+        expect(screen.getByRole('button', { name: /^all$/i })).toBeDefined();
+        expect(screen.getByRole('button', { name: /^planning$/i })).toBeDefined();
+        expect(screen.getByRole('button', { name: /^ongoing$/i })).toBeDefined();
+        expect(screen.getByRole('button', { name: /^completed$/i })).toBeDefined();
+      });
+    });
+
+    it('no API call is made when filter pill is clicked (client-side only)', async () => {
+      api.trips.list.mockResolvedValue({ data: { data: mockTripsAllStatuses } });
+
+      renderHomePage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Japan 2026')).toBeDefined();
+      });
+
+      const callsBefore = api.trips.list.mock.calls.length;
+
+      fireEvent.click(screen.getByRole('button', { name: /^planning$/i }));
+
+      // No additional API call
+      expect(api.trips.list.mock.calls.length).toBe(callsBefore);
     });
   });
 });

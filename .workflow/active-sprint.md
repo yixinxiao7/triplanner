@@ -4,135 +4,121 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #16 — 2026-03-08
+## Sprint #29 — 2026-03-12
 
-**Sprint Goal:** Close the long-overdue User Agent and Monitor pipeline (T-159, T-152, T-160 — 7th carry-over of T-152, circuit-breaker active). Deliver the first post-MVP feature: trip date range display on home page trip cards, fulfilling the project brief's "timeline of the trip" requirement that has been deferred since Sprint 1 (B-006). Complete the full QA → Deploy → Monitor → User Agent cycle for the new feature.
+**Sprint Goal:** Achieve a clean Deploy Verified = Yes status on staging by fixing the Playwright E2E Test 2 locator bug (FB-124/T-235) — the sole remaining QA gate blocking full staging verification. Once the locator is fixed and the Monitor Agent confirms 4/4 Playwright, staging will be fully verified and the application will be in a production-ready state pending project owner action on T-224 (AWS RDS + Render provisioning, 4th escalation).
 
-**Context:** Sprint 15 delivered all implementation tasks (T-153–T-158) cleanly: browser title/favicon fixed (T-154), calendar land travel chip locations fixed (T-155), formatTimezoneAbbr() tests added (T-153), QA passed (T-156, T-157), and staging deployed (T-158, pm2 PID 9274, HTTPS port 3001). However, T-152 (User Agent comprehensive walkthrough — 7th carry-over), T-159 (Monitor Sprint 15 health check), and T-160 (User Agent Sprint 15 walkthrough) did not run. The circuit-breaker threshold has been reached for T-152 — this is the final acceptable carry-over before project owner escalation halts Sprint 17 scoping.
+**Context:** Sprint 28 delivered the T-229 trip date COALESCE fix cleanly — User Agent confirmed all three scenarios pass and zero regressions exist. The application is MVP feature-complete. The only open engineering item is a test-code locator bug in `e2e/critical-flows.spec.js` (not an application bug) that prevents `npx playwright test` from reaching 4/4. This was introduced in Sprint 27 when TripCalendar began rendering airport codes in additional DOM elements, making the pre-existing `getByText('SFO')` locator ambiguous. All other health checks pass cleanly.
 
-**Feedback Triage (Sprint 16 — Manager Agent 2026-03-08):**
+**Feedback Triage (Sprint 28 → Sprint 29):**
 
-| FB Entry | Category | Severity | Status | Disposition |
-|----------|----------|----------|--------|-------------|
-| FB-096 | UX Issue | Minor | Resolved | T-154 Done — browser title "triplanner" |
-| FB-097 | UX Issue | Minor | Resolved | T-154 Done — favicon linked |
-| FB-098 | Bug | Major | Resolved | T-155 Done — calendar land travel chip locations fixed |
-| — | — | — | — | No new feedback. T-152/T-160 User Agent walkthroughs not yet run. |
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| Monitor Alert Sprint #28 (Playwright locator) | Monitor Alert | Major | **Tasked → T-235** | `getByText('SFO')` resolves to 3 elements — TripCalendar adds airport codes to pills and MobileDayList. Test-code fix needed. |
+| FB-123 (T-229 COALESCE fix working) | Positive | — | Acknowledged | Trip date "Set dates" UI fully functional end-to-end. |
+| FB-124 (Playwright locator bug) | Bug | Major | **Tasked → T-235** | Same root cause as Monitor Alert. Test 2 fails; application is correct. |
+| FB-125 (Calendar endpoint regression-free) | Positive | — | Acknowledged | GET /api/v1/trips/:id/calendar returns correct events after tripModel.js change. |
+| FB-126 (Validation + security edge cases) | Positive | — | Acknowledged | All date validation + security edge cases pass. |
+| FB-127 (StatusFilterTabs + notes regression-free) | Positive | — | Acknowledged | Status filtering and notes unaffected by COALESCE change. |
+| FB-128 (Rate limiter triggered during testing) | UX Issue | Minor | Acknowledged (B-020 backlog) | In-memory store resets on restart; Redis-backed limiter on backlog. |
 
 ---
 
 ## In Scope
 
-### Phase 0 — Pipeline Carry-overs (P0 — run immediately — highest priority)
+### Phase 1 — Playwright Locator Fix (P0 — NO BLOCKERS — START IMMEDIATELY)
 
-- [ ] **T-159** — Monitor Agent: Sprint 15 staging health check ← **ZERO BLOCKERS — START IMMEDIATELY** (P0)
-  - Staging is live: `https://localhost:3001`, pm2 PID 9274 (verified T-158 Done 2026-03-07)
-  - Verify: HTTPS ✅, pm2 online ✅, health 200 ✅, title "triplanner" ✅, favicon ✅
-  - Verify: Calendar land travel chips — pick-up shows from_location, drop-off shows to_location ✅
-  - Playwright 7/7 ✅, Sprint 14 + Sprint 13 regression pass ✅
-  - Full report in qa-build-log.md Sprint 15 section. Handoff to User Agent (T-160).
+- [ ] **T-235** — QA Engineer: Fix `e2e/critical-flows.spec.js` Playwright Test 2 locator (FB-124) ← **NO DEPENDENCIES — START IMMEDIATELY**
 
-- [ ] **T-152** — User Agent: Comprehensive Sprint 12+13+14+15 walkthrough ← **P0 HARD-BLOCK — 8th carry-over — CIRCUIT-BREAKER ACTIVE — MUST EXECUTE**
-  - Staging is live: `https://localhost:3001`, pm2 PID 9274
-  - **Can run in parallel with T-159** — zero blockers, staging is healthy
-  - Scope: (1) Browser title "triplanner" + favicon (T-154); (2) Land travel chip location fix (T-155); (3) Calendar first-event-month (T-146); (4) "Today" button (T-147); (5) DayPopover stay-open (T-137); (6) Rental car chips (T-138); (7) Sprint 12 regression; (8) Sprint 11 regression
-  - Submit structured feedback to `feedback-log.md` under Sprint 16 header
-  - **If T-152 does not run in Sprint 16, Manager must halt Sprint 17 scoping and escalate to project owner.**
+  **Root Cause:** Sprint 27 TripCalendar feature renders flight `arrival_airport` ('SFO') and `departure_airport` ('JFK') in multiple DOM elements:
+  1. `<span>` inside flight calendar event pill (TripCalendar)
+  2. `<span>` inside MobileDayList event title (TripCalendar)
+  3. `<div class="_airportCode_...">SFO</div>` (flight card in flights section)
 
-- [ ] **T-160** — User Agent: Sprint 15 feature walkthrough ← Blocked by T-159 (P2)
-  - Verify T-154 (title, favicon), T-155 (land travel chip locations), T-138 regression, T-146 regression, T-137 regression, Sprint 11 regression
-  - Submit structured feedback to `feedback-log.md` under Sprint 16 header
+  The pre-existing `page.getByText('SFO')` locator at `e2e/critical-flows.spec.js:202` was written before TripCalendar and now resolves to 3 elements, triggering Playwright strict mode violation.
 
----
+  **Fix (test-code only — no app changes):**
+  ```js
+  // Before (ambiguous):
+  await expect(page.getByText('JFK')).toBeVisible();
+  await expect(page.getByText('SFO')).toBeVisible();
 
-### Phase 1 — Design Spec + API Contract (parallel with Phase 0 — no cross-dependencies)
+  // After (scoped to flight card airport code element):
+  await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()).toBeVisible();
+  await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible();
+  ```
+  Alternative: if `data-testid="airport-code"` is available on the airport code div in the flight card, use that instead.
 
-- [ ] **T-161** — Design Agent: Spec 16 — Trip date range display on home page cards ← NO DEPENDENCIES — START IMMEDIATELY (P1)
-  - Date range format: "May 1 – 15, 2026" (same year abbreviated) / "Dec 28, 2025 – Jan 3, 2026" (cross-year full)
-  - Empty state: "No dates yet" in muted secondary text when trip has no events
-  - Source: backend-computed `start_date` + `end_date` fields (YYYY-MM-DD); frontend formats for display
-  - Placement: below existing trip card content (destinations + status badge), new line, secondary/muted color
-  - Publish to `ui-spec.md` as Spec 16
+  **Acceptance criteria:**
+  1. `npx playwright test` from project root → **4/4 PASS** (no failures)
+  2. No changes to any application source files (`frontend/`, `backend/`, `shared/`)
+  3. Log fix and test results in `qa-build-log.md` Sprint 29 section
+  4. Handoff to Monitor Agent (T-236)
 
-- [ ] **T-162** — Backend Engineer: API contract for trip date range ← NO DEPENDENCIES — START IMMEDIATELY (P1)
-  - Document in `api-contracts.md` Sprint 16 section before T-163 begins
-  - Fields: `start_date: string | null` (YYYY-MM-DD, MIN of all event dates), `end_date: string | null` (YYYY-MM-DD, MAX of all event dates)
-  - Endpoints affected: `GET /trips` (per-trip object) and `GET /trips/:id`
-  - No new endpoints; no schema migration; computed on read via SQL MIN/MAX subquery
-  - Manager must approve before T-163 begins
+  **Files:** `e2e/critical-flows.spec.js` lines 201–202 only
 
 ---
 
-### Phase 2 — Implementation (after T-161 + T-162 approved)
+### Phase 2 — Monitor Health Check (after T-235)
 
-- [ ] **T-163** — Backend Engineer: Implement computed trip date range ← Blocked by T-162 (P1)
-  - SQL subquery across flights (departure_at, arrival_at), stays (check_in_at, check_out_at), activities (activity_date), land_travels (departure_date, arrival_date)
-  - DATE() cast to YYYY-MM-DD; null when no events
-  - Add to both GET /trips (list) and GET /trips/:id (single trip)
-  - No schema migration required
-  - Tests: (A) no events → null/null; (B) flights only → correct; (C) mixed events → correct overall min/max; (D) list endpoint includes fields; (E) existing tests pass
-  - All 266+ backend tests must pass
+- [ ] **T-236** — Monitor Agent: Full staging health check post-Playwright fix ← Blocked by T-235
 
-- [ ] **T-164** — Frontend Engineer: Display trip date range on home page trip cards ← Blocked by T-161, T-163 (P1)
-  - Add `formatDateRange(startDate, endDate)` utility to `formatDate.js` (same-year abbreviation, cross-year full, null handling)
-  - Render in `TripCard.jsx`: date range below existing content in muted secondary text
-  - Tests: (A) start + end same year; (B) cross-year; (C) both null → "No dates yet"; (D) only start_date; (E) existing TripCard tests pass
-  - All 410+ frontend tests must pass
-
----
-
-### Phase 3 — QA Review (after T-163 + T-164 complete)
-
-- [ ] **T-165** — QA Engineer: Security checklist + code review for Sprint 16 ← Blocked by T-163, T-164
-  - T-163: Confirm parameterized Knex queries (no raw SQL with user input); null returns safely; no authorization gap
-  - T-164: Confirm `formatDateRange()` output is React text node (no dangerouslySetInnerHTML); null guard present; CSS tokens not hardcoded hex
-  - Run full test suites: backend (271+ expected), frontend (416+ expected)
-
-- [ ] **T-166** — QA Engineer: Integration testing for Sprint 16 ← Blocked by T-165
-  - Scenario 1: Trip with no events → `start_date: null`, `end_date: null`, card shows "No dates yet"
-  - Scenario 2: Trip with only flights → `start_date` = flight departure date, `end_date` = arrival date
-  - Scenario 3: Trip with mixed events → correct overall min/max across all event types
-  - Scenario 4: GET /trips list includes `start_date`/`end_date` per entry
-  - Sprint 15 + 14 + 13 regression pass
-  - Handoff to Deploy (T-167) in handoff-log.md
+  Full health check protocol:
+  - GET `/api/v1/health` → 200 ✅
+  - CORS header → `Access-Control-Allow-Origin: https://localhost:4173` ✅
+  - Login with `test@triplanner.local` → 200 + access token ✅
+  - GET `/api/v1/trips` → 200 ✅
+  - GET `/api/v1/trips/:id/calendar` → 200 ✅
+  - **`npx playwright test` → 4/4 PASS** ← required for Deploy Verified = Yes
+  - Regression: PATCH `/api/v1/trips/:id` with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` → user values returned (T-229 check)
+  - Log results in `qa-build-log.md` Sprint 29 section
+  - If 4/4 PASS: mark **Deploy Verified = Yes**, handoff to User Agent (T-237)
+  - If still failing: escalate to Manager before proceeding
 
 ---
 
-### Phase 4 — Deploy, Monitor, User Agent (sequential after Phase 3)
+### Phase 3 — User Agent Final Verification (after T-236, if Deploy Verified = Yes)
 
-- [ ] **T-167** — Deploy Engineer: Sprint 16 staging re-deployment ← Blocked by T-166
-  - No migrations (schema unchanged — computed read only)
-  - `pm2 restart triplanner-backend`, rebuild frontend `npm run build` in `frontend/`
-  - Smoke tests: health ✅; trip date range populated via API ✅; home page card shows date range ✅; "No dates yet" on empty trip ✅; Sprint 15 features operational ✅
-  - Do NOT modify `backend/.env` or `backend/.env.staging`
-  - Log handoff to Monitor (T-168) in handoff-log.md
+- [ ] **T-237** — User Agent: Sprint 29 quick regression verification ← Blocked by T-236
 
-- [ ] **T-168** — Monitor Agent: Sprint 16 staging health check ← Blocked by T-167
-  - HTTPS ✅, pm2 port 3001 ✅, health 200 ✅
-  - Trip date range: GET /trips includes start_date/end_date ✅; trip with flight → dates populated correctly ✅
-  - Sprint 15 regression (title, favicon, land travel chips) ✅; Sprint 14 regression ✅
-  - Playwright 7/7 ✅
-  - Handoff to User Agent (T-169) in handoff-log.md
+  **Scope:** Confirm no visible application regressions from the Playwright test-code change (which touches no app code). Quick pass only.
+  1. Login with test account → home page shows trips ✅
+  2. Navigate to a trip with a flight → confirm flight card shows airport codes (JFK, SFO) correctly in the flights section ✅
+  3. Confirm TripCalendar renders the flight event as a calendar pill ✅
+  4. Confirm "Set dates" UI still works (PATCH trip with start_date/end_date → correct dates returned) ✅
+  5. Submit structured feedback to `feedback-log.md` under **"Sprint 29 User Agent Feedback"**
 
-- [ ] **T-169** — User Agent: Sprint 16 feature walkthrough ← Blocked by T-168 (P2)
-  - Trip with events (flight + stay + activity) → card shows correct date range
-  - Trip with no events → card shows "No dates yet"
-  - Same-year and cross-year date range format verification
-  - Sprint 15 + 14 + 13 + 11 regression clean
-  - Submit structured feedback to `feedback-log.md` under Sprint 17 header
+---
+
+### Phase 4 — Production Deployment (P1 — project owner gate — parallel with all phases)
+
+> ⚠️ **PROJECT OWNER ACTION REQUIRED (FOURTH ESCALATION):**
+> T-224 has been blocked for four consecutive sprints (Sprints 25, 26, 27, 28). All engineering work is 100% complete. The project owner must take the following human-only actions:
+> 1. **AWS:** Create an RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier) and provide the connection string
+> 2. **Render:** Apply the `render.yaml` Blueprint to provision frontend (static site) and backend (web service), both in Ohio region, free plan
+>
+> Documents ready: `render.yaml`, `docs/production-deploy-guide.md`, `backend/knexfile.js` (SSL + pool), `backend/src/app.js` (SameSite=None cookie for production). No agent can provision external cloud infrastructure.
+
+- [ ] **T-224** — Deploy Engineer: Production deployment to Render + AWS RDS ← Blocked on project owner
+  - Follow `docs/production-deploy-guide.md` step by step
+  - Run migrations against AWS RDS on first deploy
+  - Verify: `GET https://<render-backend>.onrender.com/api/v1/health` → 200
+
+- [ ] **T-225** — Monitor Agent: Post-production health check ← Blocked by T-224
+  - Full health check on production URLs (Render frontend + backend)
+  - Confirm `SameSite=None; Secure` cookie is sent correctly in cross-origin flow
+  - Confirm CORS header set to Render frontend URL
 
 ---
 
 ## Out of Scope
 
-- **Production deployment (B-022)** — Pending project owner hosting decision. T-124 produced `.workflow/hosting-research.md`; project owner must review and select a provider. **16 consecutive sprints with no decision. Project owner action required.**
-- **B-020 (Redis rate limiting)** — Deferred. In-memory acceptable at current scale.
-- **B-021 (esbuild dev dep vulnerability)** — No production impact. Monitor for upstream fix.
-- **B-024 (per-account rate limiting)** — Depends on B-020. Deferred.
-- **B-032 (trip export/print)** — Deferred to Sprint 17 after date range feature ships.
-- **MFA login** — Explicitly out of scope per project brief.
-- **Home page summary calendar** — Explicitly out of scope per project brief.
-- **Auto-generated itinerary suggestions** — Explicitly out of scope per project brief.
+- **New features** — Application is MVP feature-complete; no new feature work until production is deployed and stable.
+- **B-020 (Redis rate limiter)** — Backlog; in-memory store is sufficient for current staging scale. Prioritize after production deployment.
+- **B-024 (per-account rate limiting)** — Backlog.
+- **FB-121 (stay category case normalization)** — Minor UX; external API consumers only. Backlog.
+- **knexfile staging seeds config** — Workaround exists (`NODE_ENV=development`). Not this sprint.
+- **MFA, home page summary calendar, auto-generated itinerary** — Explicitly out of scope per project brief.
 
 ---
 
@@ -140,92 +126,72 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Monitor Agent | Sprint 15 health check **(P0 — run immediately, zero blockers)** | T-159 |
-| User Agent | Comprehensive Sprint 12+13+14+15 walkthrough **(P0 — run immediately, circuit-breaker active)** | T-152 |
-| User Agent | Sprint 15 feature walkthrough (after T-159) | T-160 |
-| Design Agent | Trip date range UI spec | T-161 |
-| Backend Engineer | API contract for trip date range (then implementation) | T-162, T-163 |
-| Frontend Engineer | Display trip date range on home page cards | T-164 |
-| QA Engineer | Security checklist + integration testing for Sprint 16 | T-165, T-166 |
-| Deploy Engineer | Sprint 16 staging re-deployment | T-167 |
-| Monitor Agent | Sprint 16 staging health check | T-168 |
-| User Agent | Sprint 16 feature walkthrough | T-169 |
-| Manager | Triage T-152 + T-160 + T-169 feedback → Sprint 17 plan | Feedback triage |
+| QA Engineer | Fix Playwright E2E locator bug | T-235 |
+| Monitor Agent | Staging health check (after Playwright fix); production health check (if T-224 unblocked) | T-236, T-225 |
+| User Agent | Quick regression verification after Playwright fix | T-237 |
+| Deploy Engineer | Production deployment (if project owner unblocks T-224) | T-224 |
+| Manager | Triage T-237 feedback; Sprint 29 closeout | Reviews |
+| Backend Engineer | No tasks this sprint (application complete) | — |
+| Design Agent | No tasks this sprint (specs accurate) | — |
+| Frontend Engineer | No tasks this sprint (available to assist QA if locator requires component context) | — |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-Track A — Pipeline Carry-overs (start immediately — P0):
-T-159 (Monitor: Sprint 15 health check) ──> T-160 (User Agent: Sprint 15 walkthrough)
-T-152 (User Agent: Sprint 12+13+14+15 comprehensive walkthrough) [parallel with T-159]
-           |
-           └-> Manager: Triage feedback → inform Sprint 17
+Phase 1 (IMMEDIATE — NO BLOCKERS):
+T-235 (QA: Fix Playwright locator in e2e/critical-flows.spec.js lines 201–202)
+    |
+T-236 (Monitor: Staging health check → 4/4 Playwright → Deploy Verified = Yes)
+    |
+T-237 (User Agent: Quick regression verification)
+    |
+Manager: Triage feedback → Sprint 30 plan (or project closeout if production deployed)
 
-Track B — New Feature (start immediately — parallel with Track A):
-T-161 (Design: date range spec) ─┐
-T-162 (Backend: API contract)    ─┤
-                                  ├-> T-163 (Backend: implement date range)
-                                  │         |
-                                  └-> T-164 (Frontend: display date range) [blocked by T-163 + T-161]
-                                              |
-                                          T-165 (QA: security + review)
-                                              |
-                                          T-166 (QA: integration)
-                                              |
-                                          T-167 (Deploy)
-                                              |
-                                          T-168 (Monitor: Sprint 16 health)
-                                              |
-                                          T-169 (User Agent: Sprint 16 walkthrough)
-                                              |
-                                     Manager: Triage feedback → Sprint 17 plan
+Phase 4 (PROJECT OWNER GATE — parallel with all phases):
+[Project owner provides AWS RDS + Render credentials — 4th escalation]
+    |
+T-224 (Deploy: Production deployment)
+    |
+T-225 (Monitor: Post-production health check)
 ```
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #16 is complete?*
+*How do we know Sprint #29 is complete?*
 
-- [ ] T-159: Monitor Agent verifies all Sprint 15 health checks on staging; full report in qa-build-log.md
-- [ ] T-152: User Agent walks through all Sprint 12+13+14+15 features on staging; structured feedback in feedback-log.md; T-136 + T-144 carry-over scope formally closed
-- [ ] T-160: User Agent verifies Sprint 15 bug fixes; structured feedback in feedback-log.md
-- [ ] T-161: Design spec for trip date range published to ui-spec.md as Spec 16; Manager-approved
-- [ ] T-162: API contract for `start_date`/`end_date` published to api-contracts.md; Manager-approved
-- [ ] T-163: Backend computes and returns `start_date`/`end_date` on GET /trips and GET /trips/:id; all tests pass
-- [ ] T-164: Home page trip cards display formatted date range or "No dates yet"; all tests pass
-- [ ] T-165: QA security checklist passed for Sprint 16 changes
-- [ ] T-166: QA integration testing passed; Sprint 15 regression clean
-- [ ] T-167: Frontend rebuilt and deployed to staging; pm2 restarted; smoke tests pass
-- [ ] T-168: Monitor confirms all Sprint 16 health checks pass
-- [ ] T-169: User Agent verifies trip date range feature; structured feedback in feedback-log.md
-- [ ] All feedback from T-152, T-160, T-169 triaged by Manager (Tasked, Won't Fix, or Acknowledged)
-- [ ] Sprint 16 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 17 plan written in `.workflow/active-sprint.md`
+- [ ] T-235: `e2e/critical-flows.spec.js` lines 201–202 updated with scoped locators — no application code changed
+- [ ] T-235: `npx playwright test` → 4/4 PASS (verified by QA Engineer before handoff)
+- [ ] T-236: Monitor Agent confirms Deploy Verified = Yes (4/4 Playwright confirmed independently)
+- [ ] T-237: User Agent confirms no regressions — structured feedback submitted
+- [ ] T-237 feedback triaged by Manager (all entries Acknowledged or Tasked)
+- [ ] T-224: Production deployed to Render + AWS RDS *(conditional on project owner providing access)*
+- [ ] T-225: Post-production health check complete *(conditional on T-224)*
+- [ ] Sprint 29 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 30 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #16)
+## Success Criteria (Sprint #29)
 
-By end of Sprint #16, the following must be verifiable:
+By end of Sprint #29, the following must be verifiable:
 
-- [ ] **T-152 has executed** — User Agent has walked through all Sprint 12–15 features on `https://localhost:3001` and submitted structured feedback. **CIRCUIT-BREAKER: if T-152 does not run in Sprint 16, Manager halts Sprint 17 scoping and escalates to project owner.**
-- [ ] **T-159 is Done** — Monitor has verified Sprint 15 health on staging
-- [ ] **T-163 is Done** — `GET /trips` and `GET /trips/:id` return `start_date`/`end_date` for all trips
-- [ ] **T-164 is Done** — Home page trip cards show date range ("May 1 – 15, 2026" or "No dates yet")
-- [ ] Sprint 16 staging deploy (T-167) completed successfully
-- [ ] No Critical or Major bugs left unaddressed from T-152/T-160/T-169 feedback
-- [ ] Sprint 17 plan written in `active-sprint.md`
+- [ ] **T-235 Done** — `npx playwright test` reaches 4/4 PASS with scoped locators; test fix is test-code only (no app changes)
+- [ ] **T-236 Done** — Staging Deploy Verified = Yes; Monitor Agent confirms full health check passing
+- [ ] **T-237 Done** — User Agent quick regression pass confirms application correct; feedback submitted and triaged
+- [ ] **T-224 Done** *(project owner dependent)* — Application live in production; AWS RDS connected; migrations run
+- [ ] **T-225 Done** *(project owner dependent)* — Monitor confirms production health; SameSite=None cookie verified across origins
 
 ---
 
 ## Blockers
 
-- **B-022 (Production Deployment — 16 consecutive sprints):** Project owner must review `.workflow/hosting-research.md` (T-124 output) and select a hosting provider. All application infrastructure is complete and production-ready. **Project owner action required before production deployment can execute.**
-- **T-152 Circuit-Breaker (8th carry-over):** T-152 must execute in Sprint 16. If it does not, the Manager Agent will halt Sprint 17 scoping and escalate to the project owner. Silent carry-over is no longer acceptable.
+- **T-224/T-225 are blocked on the project owner.** This is the **fourth consecutive sprint** this escalation has been raised. AWS RDS + Render account provisioning is required before production deployment can proceed. All application code, `render.yaml`, and `docs/production-deploy-guide.md` are complete and production-ready. **No agent can resolve this — it requires a human action.**
+- No blockers on the engineering track. T-235 can begin immediately.
 
 ---
 
-*Previous sprint (Sprint #15) archived to `.workflow/sprint-log.md` on 2026-03-07. Sprint #16 plan written by Manager Agent 2026-03-08.*
+*Sprint #28 archived to `.workflow/sprint-log.md` on 2026-03-12. Sprint #29 plan written by Manager Agent 2026-03-12.*

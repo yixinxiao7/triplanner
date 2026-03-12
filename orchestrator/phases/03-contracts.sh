@@ -27,7 +27,7 @@ Your task RIGHT NOW is ONLY to write API contracts — do NOT implement any code
 
 Do NOT write implementation code. Only contracts. Implementation happens in the next phase."
 
-    run_agent_with_retry "backend-engineer" "$task_prompt" 3 25 "${MODEL_LIGHT:-sonnet}"
+    run_agent_with_retry "backend-engineer" "$task_prompt" 3 35 "${MODEL_LIGHT:-sonnet}"
 
     if phase_contracts_complete; then
         log_success "API contracts published"

@@ -35,6 +35,58 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | 009 | 6 | Create `land_travels` table | Create Table | `20260227_009_create_land_travels.js` | ✅ Implemented (2026-02-27, T-086). Awaiting staging deploy by Deploy Engineer (T-092). |
 | 010 | 7 | Add `notes TEXT NULL` to `trips` table | Alter Table | `20260227_010_add_trip_notes.js` | ✅ Implemented (2026-02-27, T-103). **Manager Code Review APPROVED** — Integration Check. Awaiting staging deploy by Deploy Engineer (T-107). |
 | — | 8 | *(No new migrations this sprint)* | — | — | Sprint 8 features (T-113 timezone abbreviations, T-114 activity URL links) are frontend-only. Existing schema (001–010) is sufficient. Migration 010 is the only pending deploy (T-107). Confirmed by Backend Engineer 2026-02-27. |
+| — | 9–24 | *(No new migrations Sprints 9–24)* | — | — | Schema-stable. All 10 migrations applied on staging. |
+| — | 25 | *(No new migrations this sprint)* | — | — | Sprint 25 `GET /api/v1/trips/:id/calendar` (T-212) is a read-only aggregation over existing `flights`, `stays`, `activities` tables. No DDL changes required. Confirmed by Backend Engineer 2026-03-10. **[Auto-approved — no schema change]** |
+| — | 26 | *(No new migrations this sprint)* | — | — | Sprint 26 tasks (T-220 knexfile SSL config, T-221 cookie SameSite fix, T-226 seed script) require no DDL changes. T-226 seeds the existing `users` table — no new columns or tables. Confirmed by Backend Engineer 2026-03-11. **[Auto-approved — no schema change]** |
+
+---
+
+### Sprint 26 — No Schema Changes
+
+**Date:** 2026-03-11
+**Confirmed by:** Backend Engineer
+**Tasks:** T-220, T-221, T-226
+
+**Reason:** All three Sprint 26 backend tasks are configuration, cookie-attribute, and seed-data changes. No DDL is required.
+
+**T-220 — knexfile.js Production SSL Config:**
+- Modifies `backend/knexfile.js` (or `backend/src/config/knexfile.js`) production config block only
+- Adds `ssl: { rejectUnauthorized: false }` for AWS RDS self-signed certificate compatibility
+- Changes pool from `{ min: 2, max: 10 }` to `{ min: 1, max: 5 }` (right-sized for `db.t3.micro`)
+- **No schema change. No migration. No `knex migrate:latest` required.**
+
+**T-221 — Cookie SameSite=None + Secure in Production:**
+- Modifies `backend/src/routes/auth.js` helper functions `setRefreshCookie` and `clearRefreshCookie`
+- Guards `SameSite=None; Secure` behind `NODE_ENV === 'production'`
+- Keeps `SameSite=Strict` for development and staging
+- **No schema change. No migration.**
+
+**T-226 — Monitor Agent Seed Script:**
+- Creates `backend/src/seeds/test_user.js`
+- Inserts a persistent test user: `test@triplanner.local` / `TestPass123!` into the existing `users` table
+- Seed is idempotent (upsert pattern — safe to re-run)
+- No new columns or tables. The `users` table (migration 001) already has all required columns (`id`, `email`, `password_hash`, `name`, `created_at`, `updated_at`)
+- **No schema change. No migration.**
+
+**Manager Approval Note:** No schema changes across all Sprint 26 backend tasks → no Manager handoff required for DDL approval. This note is for the Deploy Engineer's reference: **do not run `knex migrate:latest` for Sprint 26** — the migration log remains at 10 applied migrations (001–010). The seed script (`test_user.js`) may be run against staging via `knex seed:run` as part of T-226 if the Deploy Engineer chooses to seed staging; it is not required for production.
+
+---
+
+### Sprint 25 — No Schema Changes
+
+**Date:** 2026-03-10
+**Confirmed by:** Backend Engineer
+**Task:** T-212
+
+**Reason:** The new `GET /api/v1/trips/:id/calendar` endpoint is a **read-only aggregation** over three existing tables:
+
+- `flights` — uses existing `departure_at`, `departure_tz`, `arrival_at`, `arrival_tz`, `flight_number`, `airline`, `from_location`, `to_location` columns
+- `stays` — uses existing `check_in_at`, `check_in_tz`, `check_out_at`, `check_out_tz`, `name` columns
+- `activities` — uses existing `activity_date`, `start_time`, `end_time`, `name` columns (already formatted as YYYY-MM-DD via `TO_CHAR` in `activityModel.js`)
+
+No new tables, columns, or indexes are required. The endpoint merges and sorts results in the application layer. The migration log remains at **10 applied migrations (001–010)**. No `knex migrate:latest` is needed for Sprint 25.
+
+**Manager Approval Note:** No schema change → no Manager handoff required. This note is for the Deploy Engineer's reference: **do not run `knex migrate:latest` for Sprint 25** unless another agent has added a new migration in the interim.
 
 ---
 
@@ -594,3 +646,61 @@ Sprint 14 is a focused regression-fix sprint with no backend implementation task
 ---
 
 *This document is maintained by the Manager Agent and Backend Engineer. Update it whenever the stack or conventions change.*
+
+---
+
+## Sprint 20 — Schema Analysis + T-188 Notes (2026-03-10)
+
+**Confirmed by:** Backend Engineer
+**Date:** 2026-03-10
+
+### T-188: No New Migration Required
+
+The active-sprint.md for Sprint 20 references "migration 010_add_notes_to_trips.js". However, a thorough review of the migration log confirms that **migration 010 (Add `notes TEXT NULL` to `trips`) was already created and applied in Sprint 7** (T-107, 2026-02-28).
+
+**Evidence from technical-context.md (Sprint 14 entry):**
+> `010 | 7 | Add notes TEXT NULL to trips | ✅ Applied on Staging (T-107, 2026-02-28)`
+
+**Evidence from api-contracts.md (Sprint 19 endpoint inventory):**
+> `PATCH /api/v1/trips/:id — notes updatable (Sprint 7); "" → null (Sprint 9)`
+
+**Conclusion:** The `notes TEXT NULL` column already exists on the `trips` table on staging. No DDL migration is needed for Sprint 20.
+
+### T-188 Actual Scope (Sprint 20)
+
+Sprint 20's T-188 work is **validation and response-shape formalization only**:
+
+1. **POST /api/v1/trips Joi schema:** Add `notes: Joi.string().max(2000).allow(null, '').optional()` — enforces the 2000-char cap at the API layer (previously no max was validated).
+2. **PATCH /api/v1/trips/:id Joi schema:** Add the same `notes` rule (previously no max was validated; `''` → `null` normalization existed since Sprint 9 but max was not enforced).
+3. **GET /trips list and GET /trips/:id model queries:** Confirm `notes` is included in `SELECT` output (it should be, but must be verified in the Knex model code).
+4. **POST /trips model insert:** Confirm `notes` is included in the Knex insert query (may have been omitted when the column was added but the POST contract was not updated).
+
+### Manager Approval (Schema Change)
+
+**Schema change:** None — no new migration.
+**Approval required:** Not applicable (validation-only changes do not require Manager schema approval per workflow rules).
+**Auto-approved:** T-188 may proceed to implementation. No blocking approval needed.
+
+### Current Schema State (Sprint 20 — 2026-03-10)
+
+All 10 migrations applied on staging. Schema is stable and unchanged from Sprint 14.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–20 | *(No new migrations)* | Schema-stable through Sprint 20 |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 20.**
+
+---
+
+*Sprint 20 schema analysis by Backend Engineer 2026-03-10. T-188 is validation-layer-only — no migration. T-186 is validation-layer-only — no migration. Schema remains stable at 10 migrations.*

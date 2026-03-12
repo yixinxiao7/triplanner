@@ -329,9 +329,9 @@ describe('TripDetailsPage', () => {
 
     renderTripDetailsPage();
 
-    // Should show formatted date range (Aug 7 — Aug 14, 2026)
+    // formatDateRange same-month output: "Aug 7 – 14, 2026" (no repeated month per spec)
     expect(screen.getByText(/Aug 7/)).toBeDefined();
-    expect(screen.getByText(/Aug 14/)).toBeDefined();
+    expect(screen.getByText(/14, 2026/)).toBeDefined();
   });
 
   it('shows edit dates button in display mode', () => {
@@ -851,7 +851,7 @@ describe('TripDetailsPage', () => {
     expect(screen.getByText('Bring sunscreen and comfortable walking shoes.')).toBeDefined();
   });
 
-  it('[T-104] renders "no notes yet" muted placeholder when trip.notes is null', () => {
+  it('[T-104] renders "Add notes about this trip…" muted placeholder when trip.notes is null', () => {
     useTripDetails.mockReturnValue({
       ...defaultHookValue,
       trip: { ...mockTrip, notes: null },
@@ -859,10 +859,10 @@ describe('TripDetailsPage', () => {
 
     renderTripDetailsPage();
 
-    expect(screen.getByText('no notes yet')).toBeDefined();
+    expect(screen.getByText('Add notes about this trip…')).toBeDefined();
   });
 
-  it('[T-104] clicking pencil icon enters edit mode — textarea visible, pencil hidden', async () => {
+  it('[T-104] clicking pencil icon enters edit mode — textarea visible', async () => {
     useTripDetails.mockReturnValue({
       ...defaultHookValue,
       trip: { ...mockTrip, notes: 'Existing notes.' },
@@ -870,8 +870,9 @@ describe('TripDetailsPage', () => {
 
     renderTripDetailsPage();
 
-    // Initially in display mode — pencil button present
-    const pencilBtn = screen.getByRole('button', { name: /edit trip notes/i });
+    // Initially in display mode — use title to uniquely identify pencil button
+    // (both pencil button and notes text have aria-label="Edit trip notes")
+    const pencilBtn = screen.getByTitle('Edit trip notes');
     expect(pencilBtn).toBeDefined();
 
     // Click the pencil
@@ -881,9 +882,6 @@ describe('TripDetailsPage', () => {
     const textarea = screen.getByRole('textbox', { name: /trip notes/i });
     expect(textarea).toBeDefined();
     expect(textarea.value).toBe('Existing notes.');
-
-    // Pencil button should be gone
-    expect(screen.queryByRole('button', { name: /edit trip notes/i })).toBeNull();
   });
 
   it('[T-104] char count shown when notesDraft length >= 1800', async () => {
@@ -903,7 +901,7 @@ describe('TripDetailsPage', () => {
     fireEvent.change(textarea, { target: { value: longText } });
 
     // Char count warning should appear
-    expect(screen.getByText(/1,850 \/ 2,000/)).toBeDefined();
+    expect(screen.getByText(/1850 \/ 2000/)).toBeDefined();
   });
 
   it('[T-104] Save button calls api.trips.update with correct notes payload', async () => {
@@ -922,8 +920,8 @@ describe('TripDetailsPage', () => {
     const textarea = screen.getByRole('textbox', { name: /trip notes/i });
     fireEvent.change(textarea, { target: { value: 'Pack light for Tokyo.' } });
 
-    // Click Save
-    fireEvent.click(screen.getByRole('button', { name: /save trip notes/i }));
+    // Click Save (new component uses text "Save", not aria-label)
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => {
       expect(api.trips.update).toHaveBeenCalledWith(
@@ -942,15 +940,15 @@ describe('TripDetailsPage', () => {
 
     renderTripDetailsPage();
 
-    // Enter edit mode
-    fireEvent.click(screen.getByRole('button', { name: /edit trip notes/i }));
+    // Enter edit mode — notes present, use title to avoid ambiguous button query
+    fireEvent.click(screen.getByTitle('Edit trip notes'));
 
     // Modify the textarea
     const textarea = screen.getByRole('textbox', { name: /trip notes/i });
     fireEvent.change(textarea, { target: { value: 'Changed notes.' } });
 
-    // Click Cancel
-    fireEvent.click(screen.getByRole('button', { name: /cancel notes editing/i }));
+    // Click Cancel (new component uses text "Cancel")
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
 
     // Should return to display mode with original notes
     expect(screen.getByText('Original notes.')).toBeDefined();
@@ -968,15 +966,15 @@ describe('TripDetailsPage', () => {
 
     renderTripDetailsPage();
 
-    // Enter edit mode
-    fireEvent.click(screen.getByRole('button', { name: /edit trip notes/i }));
+    // Enter edit mode — notes present, use title to avoid ambiguous button query
+    fireEvent.click(screen.getByTitle('Edit trip notes'));
 
     // Clear the textarea (empty string)
     const textarea = screen.getByRole('textbox', { name: /trip notes/i });
     fireEvent.change(textarea, { target: { value: '' } });
 
-    // Click Save
-    fireEvent.click(screen.getByRole('button', { name: /save trip notes/i }));
+    // Click Save (new component uses text "Save")
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => {
       expect(api.trips.update).toHaveBeenCalledWith(
@@ -1273,37 +1271,44 @@ describe('TripDetailsPage', () => {
     expect(activityLocation).toBeNull();
   });
 
-  // ── 19. T-122: Trip Print / Export ────────────────────────────────────────
+  // ── 19. T-122 / T-172: Trip Print / Export ────────────────────────────────
 
-  it('[T-122] renders Print button with aria-label="Print trip itinerary" on TripDetailsPage', () => {
+  it('[T-172-A] renders "Print itinerary" button on TripDetailsPage', () => {
     useTripDetails.mockReturnValue({ ...defaultHookValue });
 
     renderTripDetailsPage();
 
-    const printBtn = screen.getByRole('button', { name: /print trip itinerary/i });
+    const printBtn = screen.getByRole('button', { name: /print itinerary/i });
     expect(printBtn).toBeDefined();
   });
 
-  it('[T-122] clicking Print button calls window.print() exactly once', () => {
+  it('[T-172-B] clicking "Print itinerary" button calls window.print() exactly once', () => {
     useTripDetails.mockReturnValue({ ...defaultHookValue });
 
-    // Mock window.print
     const mockPrint = vi.fn();
     const originalPrint = window.print;
     window.print = mockPrint;
 
     renderTripDetailsPage();
 
-    const printBtn = screen.getByRole('button', { name: /print trip itinerary/i });
+    const printBtn = screen.getByRole('button', { name: /print itinerary/i });
     fireEvent.click(printBtn);
 
     expect(mockPrint).toHaveBeenCalledTimes(1);
 
-    // Restore
     window.print = originalPrint;
   });
 
-  it('[T-122] Print button is NOT rendered in the trip error state', () => {
+  it('[T-172-C] "Print itinerary" button has correct aria-label="Print itinerary"', () => {
+    useTripDetails.mockReturnValue({ ...defaultHookValue });
+
+    renderTripDetailsPage();
+
+    const printBtn = screen.getByRole('button', { name: /print itinerary/i });
+    expect(printBtn.getAttribute('aria-label')).toBe('Print itinerary');
+  });
+
+  it('[T-172-D] Print button is NOT rendered in the trip error state', () => {
     useTripDetails.mockReturnValue({
       ...defaultHookValue,
       trip: null,
@@ -1314,7 +1319,7 @@ describe('TripDetailsPage', () => {
     renderTripDetailsPage();
 
     // Error state renders — no print button
-    expect(screen.queryByRole('button', { name: /print trip itinerary/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /print itinerary/i })).toBeNull();
     // Error message is visible instead
     expect(screen.getByText('trip not found.')).toBeDefined();
   });

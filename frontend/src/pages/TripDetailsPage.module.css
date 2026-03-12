@@ -31,13 +31,21 @@
   color: var(--text-primary);
 }
 
-/* ── Trip Name Row (T-122: wraps h1 + print button) ── */
+/* ── Trip Name Row (T-122 + T-196: wraps name group + print button) ── */
 .tripNameRow {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: nowrap;
+}
+
+/* Left group: <h1> trip name + TripStatusSelector (T-196, Sprint 22) */
+.tripNameGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap; /* status badge wraps below name on narrow viewports */
 }
 
 .tripName {

@@ -62,7 +62,7 @@ Focus on incremental progress. Each sprint should deliver a visible improvement 
         return 0
     fi
 
-    run_agent_with_retry "manager" "$task_prompt" 3 30 "${MODEL_LIGHT:-sonnet}"
+    run_agent_with_retry "manager" "$task_prompt" 3 40 "${MODEL_LIGHT:-sonnet}"
 
     # Verify planning produced results
     if phase_planning_complete; then

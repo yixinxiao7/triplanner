@@ -120,7 +120,7 @@ check_definition_of_done() {
 
 increment_sprint() {
     local current_sprint
-    current_sprint=$(get_current_sprint)
+    current_sprint=$(state_get "SPRINT_NUMBER" "1")
     local next_sprint=$((current_sprint + 1))
 
     log_info "Incrementing sprint: #${current_sprint} → #${next_sprint}"
