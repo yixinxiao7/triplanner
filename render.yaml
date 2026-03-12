@@ -60,11 +60,12 @@ services:
         value: '10000'
 
 
-# ─────────────────────────────────────────────
-# Frontend — React SPA (Static Site)
-# ─────────────────────────────────────────────
-staticSites:
-  - name: triplanner-frontend
+  # ─────────────────────────────────────────────
+  # Frontend — React SPA (Static Site)
+  # ─────────────────────────────────────────────
+  - type: web
+    name: triplanner-frontend
+    runtime: static
     region: ohio
     plan: free
     buildCommand: cd frontend && npm install && npm run build
