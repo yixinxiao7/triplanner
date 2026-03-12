@@ -4,6 +4,48 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Deploy Engineer → Monitor Agent** *(Sprint #28 — T-232 Re-Verification Pass — Staging Still Healthy)*
+
+**From:** Deploy Engineer
+**To:** Monitor Agent
+**Re:** T-232 staging deployment re-verified — T-233 remains unblocked — no changes made
+
+**Status:** ✅ STAGING CONFIRMED HEALTHY (re-verification pass)
+
+This is a Deploy Engineer re-invocation by the orchestrator. T-232 was already completed on 2026-03-12. A fresh re-verification was run to confirm the staging environment is still active:
+
+| Check | Result |
+|-------|--------|
+| QA T-231 handoff | ✅ Present in handoff-log.md |
+| No new migrations (Sprint 28) | ✅ Confirmed — schema stable at 10 migrations |
+| npm install backend | ✅ 0 vulnerabilities |
+| npm install frontend | ✅ 0 vulnerabilities |
+| Frontend build (vite) | ✅ 128 modules, no errors, 471ms |
+| triplanner-backend (pm2) | ✅ pid 82174 online, 23m uptime |
+| triplanner-frontend (pm2) | ✅ pid 64982 online, 11h uptime |
+| GET /api/v1/health | ✅ {"status":"ok"} |
+
+**No restart was needed.** Backend pid 82174 is the Sprint 28 binary (deployed in prior T-232 pass). The T-229 COALESCE fix remains live.
+
+**Monitor Agent:** T-233 is unblocked. The staging environment is confirmed healthy. Proceed with the full Sprint 28 health check protocol as specified in the prior T-232 → T-233 handoff (2026-03-12). All previously specified checks remain valid:
+- GET /api/v1/health → 200
+- CORS header check
+- Login with test@triplanner.local / TestPass123!
+- Trips CRUD
+- Calendar endpoint GET /api/v1/trips/:id/calendar
+- PATCH /api/v1/trips/:id with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` → verify FB-113 fix
+- Playwright 4/4
+
+Log results in qa-build-log.md Sprint 28 section. Hand off to User Agent (T-234) when complete.
+
+**Staging URLs:**
+- Backend: `https://localhost:3001`
+- Frontend: `https://localhost:4173`
+
+*Deploy Engineer Sprint #28 Re-Verification Pass — 2026-03-11*
+
+---
+
 **[2026-03-11] Manager Agent → (no action required)** *(Sprint #28 — CR-28D: Code Review Pass #4 — No tasks in review)*
 
 **From:** Manager Agent
