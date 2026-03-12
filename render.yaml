@@ -1,0 +1,82 @@
+# render.yaml — Render Blueprint for TripPlanner
+#
+# Defines two services deployed on Render (free tier, Ohio region):
+#   1. triplanner-backend  — Node.js web service
+#   2. triplanner-frontend — React static site
+#
+# Database: AWS RDS PostgreSQL 15 (external — configured via DATABASE_URL env var)
+#
+# Usage:
+#   1. Push this file to the repo root.
+#   2. In Render Dashboard → Blueprints → "New Blueprint Instance" → connect repo.
+#   3. Set all `sync: false` env vars manually in the Render dashboard.
+#      See docs/production-deploy-guide.md for full setup instructions.
+#
+# IMPORTANT — No secrets are hardcoded in this file.
+# All sensitive values (DATABASE_URL, JWT_SECRET) are either:
+#   - generateValue: true  (Render auto-generates a secure random value), or
+#   - sync: false          (must be set manually in Render dashboard)
+
+services:
+  # ─────────────────────────────────────────────
+  # Backend — Express API
+  # ─────────────────────────────────────────────
+  - type: web
+    name: triplanner-backend
+    runtime: node
+    region: ohio
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node src/index.js
+    healthCheckPath: /api/v1/health
+    envVars:
+      # Runtime environment — must be production for SameSite=None cookie fix (T-221)
+      - key: NODE_ENV
+        value: production
+
+      # AWS RDS connection string — set manually in Render dashboard after RDS is provisioned
+      # Format: postgres://USERNAME:PASSWORD@RDS_ENDPOINT:5432/DATABASE_NAME?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+
+      # JWT signing secret — Render generates a cryptographically secure random value
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Token expiry config
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+
+      # CORS allowed origin — set to the Render frontend URL after both services are created
+      # Example: https://triplanner-frontend.onrender.com
+      - key: CORS_ORIGIN
+        sync: false
+
+      # Port — Render injects PORT automatically; this is a fallback
+      - key: PORT
+        value: '10000'
+
+
+# ─────────────────────────────────────────────
+# Frontend — React SPA (Static Site)
+# ─────────────────────────────────────────────
+staticSites:
+  - name: triplanner-frontend
+    region: ohio
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    # React Router SPA — serve index.html for all routes
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # Backend API base URL — set to the Render backend URL after both services are created
+      # Example: https://triplanner-backend.onrender.com/api/v1
+      # Note: VITE_ prefix is required for Vite to expose this to client-side code
+      - key: VITE_API_URL
+        sync: false
