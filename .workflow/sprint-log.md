@@ -2905,4 +2905,84 @@ All tasks remain in Backlog status. None progressed.
 
 ---
 
+### Sprint #28 — 2026-03-11 to 2026-03-12
+
+**Goal:** Fix the Major trip date bug (FB-113/T-229) — `tripModel.js` TRIP_COLUMNS SQL always returned computed sub-resource MIN/MAX dates, silently discarding user-provided `start_date`/`end_date` and making the "Set dates" UI on TripDetailsPage non-functional. Secondary: update `ui-spec.md` to reflect the TripCalendar self-contained fetch pattern (T-230). Ongoing: carry T-224/T-225 (production deployment) forward with project owner escalation.
+
+**Goal Met:** ✅ YES (engineering) — T-229 COALESCE fix implemented, reviewed, QA-passed, deployed, and verified by User Agent. The "Set dates" UI on TripDetailsPage is now fully functional. ⚠️ PARTIAL — Playwright E2E Test 2 still failing due to a test-code locator bug (not an app regression); Deploy Verified = No. T-224/T-225 remain blocked on project owner (3rd escalation unresolved).
+
+---
+
+**Tasks Completed (6/8 primary tasks):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-229 | Backend: Fix `tripModel.js` TRIP_COLUMNS COALESCE for user-provided start_date/end_date | ✅ Done |
+| T-230 | Design Agent: Update `ui-spec.md` TripCalendar section (self-contained fetch pattern) | ✅ Done |
+| T-231 | QA: Integration check + security checklist for T-229 (377/377 backend, 486/486 frontend, 0 vuln) | ✅ Done |
+| T-232 | Deploy: Staging re-deploy — `pm2 restart triplanner-backend`; all smoke tests PASS; FB-113 fix live | ✅ Done |
+| T-233 | Monitor: Staging health check — all API checks PASS; Playwright 3/4 PASS (locator bug); Deploy Verified = No | ✅ Done (with caveat) |
+| T-234 | User Agent: Sprint 28 feature verification — T-229 fix confirmed across all 3 scenarios; regressions clean | ✅ Done |
+
+**Tasks Carried Over to Sprint 29:**
+
+| ID | Description | Reason |
+|----|-------------|--------|
+| T-224 | Deploy: Production deployment to Render + AWS RDS | Project owner gate — 3rd escalation unresolved; no cloud credentials provided |
+| T-225 | Monitor: Post-production health check | Blocked by T-224 |
+| — | Fix Playwright E2E locator (new task T-235) | Playwright Test 2 fails due to Sprint 27 TripCalendar adding duplicate airport code elements; test-code fix needed |
+
+---
+
+**Key Feedback Themes (Sprint 28):**
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| Monitor Alert (Sprint 28) | Monitor Alert | Major | Tasked → T-235 (Playwright locator fix, Sprint 29) |
+| FB-123 (T-229 COALESCE fix working) | Positive | — | Acknowledged |
+| FB-124 (Playwright locator bug — Test 2) | Bug | Major | Tasked → T-235 (Sprint 29) |
+| FB-125 (Calendar endpoint regression-free) | Positive | — | Acknowledged |
+| FB-126 (Validation + security edge cases pass) | Positive | — | Acknowledged |
+| FB-127 (StatusFilterTabs + notes regression-free) | Positive | — | Acknowledged |
+| FB-128 (Rate limiter triggered during testing) | UX Issue | Minor | Acknowledged (B-020 backlog) |
+
+*6 positive findings, 1 Major bug (test-code only), 1 operational note.*
+
+---
+
+**What Went Well:**
+
+- T-229 COALESCE fix was architecturally correct, well-tested (14 new tests: 6 route-level + 8 SQL-structure unit tests), and deployed cleanly with zero regressions across calendar, status filtering, and notes
+- User Agent verified all 3 COALESCE scenarios (no sub-resources, with sub-resources, fallback on null) — full end-to-end validation
+- Sprint scope was tightly focused (one P0 bug fix) — efficient execution
+- Test baseline grew from 363/363 to 377/377 backend (all passing); frontend remained at 486/486
+- Security validation passed cleanly — parameterized Knex queries, no injection surface from the new COALESCE SQL
+
+**What Could Improve:**
+
+- Playwright E2E test locators are brittle — adding new frontend components (TripCalendar in Sprint 27) broke existing locators without the test suite catching it at the time. New components should be reviewed against existing test locators.
+- T-233 produced Deploy Verified = No because of the Playwright failure, which is a test-code bug, not an application regression. The pipeline has no mechanism to distinguish "test-code bug" from "app regression" — this created extra carry-over work.
+- T-224/T-225 (production deployment) have now carried over for 4 sprints. The project owner must take action — all engineering is complete.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory MemoryStore — no Redis persistence; resets on pm2 restart (FB-128 reinforces this)
+- ⚠️ B-024: Auth rate limit is IP-only; per-account limiting not implemented
+- ⚠️ Stay category field requires uppercase enum — minor friction for external API consumers (FB-121, backlog)
+- ⚠️ knexfile.js staging block missing `seeds: { directory: seedsDir }` (workaround: use `NODE_ENV=development`)
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests
+
+*New this sprint:*
+- ⚠️ Playwright E2E locator brittle — `getByText('SFO')` now matches 3 elements due to TripCalendar; needs scoped locator (T-235, Sprint 29)
+
+*Resolved this sprint:*
+- ✅ FB-113 (trip date COALESCE bug) — fully resolved by T-229; PATCH dates now returns user values correctly
+
+---
+
+*Sprint #28 began 2026-03-11, closed 2026-03-12.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

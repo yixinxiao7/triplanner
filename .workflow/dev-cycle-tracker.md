@@ -2194,7 +2194,7 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
 | T-231 | QA Engineer: Integration check and security checklist for T-229 (trip date COALESCE fix). Run `npm test --run` in backend/ — all tests (363+ baseline + new T-229 tests) must pass. Run `npm test --run` in frontend/ — all 486 tests must pass. Run `npm audit` — 0 critical/high. Verify T-229 logic by reading `tripModel.js` TRIP_COLUMNS: confirm COALESCE on both `start_date` and `end_date`. Log results in qa-build-log.md Sprint 28 section. | 28 | QA Engineer | Done | P0 | T-229 | **[Unblocked 2026-03-11]** T-229 approved by Manager → Integration Check. QA handoff received. **[QA Done 2026-03-11]** All gates passed: 377/377 backend, 486/486 frontend, 0 vulnerabilities, COALESCE fix verified, security checklist clean. Handoff to Deploy Engineer logged. |
 | T-232 | Deploy Engineer: Staging re-deploy with Sprint 28 changes. Restart backend with `pm2 restart triplanner-backend`. Rebuild frontend (`npm run build`) and restart frontend process. Verify: GET /api/v1/health → 200; CORS header correct; PATCH /trips/:id with start_date/end_date → values returned in response (manual smoke test). Log results in qa-build-log.md Sprint 28 section. | 28 | Deploy Engineer | Done | P0 | T-231 | ✅ **COMPLETE 2026-03-12.** `pm2 restart triplanner-backend` executed (old pid 70180 → new pid 82174). All 4 smoke tests PASSED: (1) GET /health → 200 ✅; (2) CORS Access-Control-Allow-Origin: https://localhost:4173 ✅; (3) PATCH trip with start_date/end_date on trip with no sub-resources → "2026-09-01"/"2026-09-30" returned ✅ (FB-113 fix confirmed live); (4) GET /trips → correct dates ✅. No frontend rebuild needed (no frontend changes). No migrations run (query-only change). Logged in qa-build-log.md. Handoff to Monitor Agent (T-233) logged in handoff-log.md. **[Re-verification 2026-03-11]** Orchestrator re-invoked Deploy Engineer. Re-verified staging: npm installs clean (0 vuln), frontend build ✅ (128 modules), pm2 triplanner-backend pid 82174 still online, GET /health → {"status":"ok"}. No re-deploy needed. T-233 remains unblocked. |
-| T-233 | Monitor Agent: Staging health check after Sprint 28 deploy. Full health check protocol: GET /health, CORS header, registration, login (with test@triplanner.local), trips CRUD, calendar endpoint, Playwright 4/4. **Additional Sprint 28 check:** PATCH /api/v1/trips/:id with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` → response includes `start_date: "2026-09-01"` and `end_date: "2026-09-30"`. Log results in qa-build-log.md Sprint 28 section. | 28 | Monitor Agent | In Progress | P1 | T-232 | **[Unblocked 2026-03-12]** T-232 COMPLETE — staging re-deploy done. Backend pid 82174 online. Handoff logged by Deploy Engineer. Standard health check gate. Includes FB-113 fix verification. |
+| T-233 | Monitor Agent: Staging health check after Sprint 28 deploy. Full health check protocol: GET /health, CORS header, registration, login (with test@triplanner.local), trips CRUD, calendar endpoint, Playwright 4/4. **Additional Sprint 28 check:** PATCH /api/v1/trips/:id with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` → response includes `start_date: "2026-09-01"` and `end_date: "2026-09-30"`. Log results in qa-build-log.md Sprint 28 section. | 28 | Monitor Agent | Done | P1 | T-232 | **[Done 2026-03-11]** All API checks PASS (health, CORS, login, CRUD, calendar, FB-113 date fix). Playwright 3/4 PASS — Test 2 fails with strict mode violation (`getByText('SFO')` resolves to 3 elements due to TripCalendar). Deploy Verified = No (Playwright below 4/4 threshold). Test-code issue flagged in feedback-log.md (Monitor Alert Sprint #28, FB-124). Handoff to User Agent (T-234) proceeded despite Deploy Verified = No since application itself is correct. |
 
 ---
 
@@ -2323,6 +2323,54 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 **No handoffs required.** Awaiting T-233 (Monitor Agent) completion to unblock T-234 (User Agent).
 
 *Manager Agent Sprint #28 Code Review Pass #4 — 2026-03-11*
+
+---
+
+## Sprint 29 Tasks
+
+**Sprint 29 Kickoff (Manager Agent — 2026-03-12):** Primary objective: fix the Playwright E2E Test 2 locator bug (FB-124/T-235) so that the test suite reaches 4/4 PASS and staging achieves Deploy Verified = Yes. Secondary: re-run Monitor Agent health check after the fix (T-236). Ongoing: carry T-224/T-225 (production deployment — 4th escalation) forward. The MVP application is feature-complete and staging-healthy; this sprint closes the final QA gate before production.
+
+**Test baseline at Sprint 29 kickoff:** 377/377 backend | 486/486 frontend
+
+---
+
+### Phase 1 — Playwright Locator Fix (P0 — NO BLOCKERS — START IMMEDIATELY)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-235 | QA Engineer: Fix `e2e/critical-flows.spec.js` Playwright locator bug (FB-124). **Root cause:** `page.getByText('SFO')` at lines 201–202 now matches 3 elements after Sprint 27 TripCalendar added airport codes to event pills and MobileDayList. **Fix:** Replace the ambiguous `getByText('SFO')` and `getByText('JFK')` locators with scoped locators targeting the flight card airport code element specifically: `page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()` (or use a `data-testid` if available on the airport code elements). **Acceptance criteria:** (1) `npx playwright test` from project root → 4/4 PASS; (2) no changes to application source code — test-code fix only; (3) log fix in qa-build-log.md Sprint 29 section and handoff to Monitor Agent (T-236). **File:** `e2e/critical-flows.spec.js` lines 201–202. | 29 | QA Engineer | Backlog | P0 | None — START IMMEDIATELY | Spawned from FB-124 (User Agent Sprint 28) and Monitor Alert Sprint #28. |
+
+---
+
+### Phase 2 — Monitor Health Check (after T-235)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-236 | Monitor Agent: Full staging health check after Playwright locator fix (T-235). Re-run complete health check protocol: GET /api/v1/health → 200; CORS header → `https://localhost:4173`; login with `test@triplanner.local` → 200; trips CRUD → 200; calendar endpoint → 200; `npx playwright test` → **4/4 PASS** (required); PATCH trip dates → user values returned (T-229 regression check). **Deploy Verified = Yes** is the required outcome. Log results in qa-build-log.md Sprint 29 section. Handoff to User Agent (T-237) if Deploy Verified = Yes. | 29 | Monitor Agent | Backlog | P1 | T-235 | Unblocks final Deploy Verified gate. |
+
+---
+
+### Phase 3 — User Agent Final Verification (after T-236)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-237 | User Agent: Sprint 29 final staging verification. Quick regression pass to confirm nothing broke during Playwright fix. (1) Core user flow: login → view trips → add a flight → navigate to trip details → confirm flight card renders with airport codes (JFK, SFO visible in flight section). (2) Confirm TripCalendar still renders with the flight event. (3) Confirm Playwright fix did not alter any visible application behavior. Submit structured feedback to `feedback-log.md` under "Sprint 29 User Agent Feedback". | 29 | User Agent | Backlog | P2 | T-236 | Quick sanity check — primarily confirming no regression from test-code change. |
+
+---
+
+### Phase 4 — Production Deployment (P1 — project owner gate — parallel with all phases)
+
+> ⚠️ **PROJECT OWNER ACTION REQUIRED (FOURTH ESCALATION):**
+> T-224 has been blocked for four consecutive sprints (Sprint 25, 26, 27, 28). All engineering is complete. The project owner must:
+> 1. Provide **AWS account access** to create an RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier)
+> 2. Provide **Render account access** to apply the `render.yaml` Blueprint (or create services manually)
+>
+> Production deployment is the ONLY remaining MVP milestone. This is a human-only gate.
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS. Follow `docs/production-deploy-guide.md` step by step. All code, `render.yaml`, knexfile SSL config, and SameSite=None cookie configuration are complete and production-ready. | 29 | Deploy Engineer | Blocked | P1 | Project owner must provision AWS RDS + Render account | ⚠️ 4TH ESCALATION. Engineering complete since Sprint 25. |
+| T-225 | Monitor Agent: Post-production health check. Verify all endpoints healthy on production URLs. Confirm SameSite=None cookie behaviour in cross-origin requests. | 29 | Monitor Agent | Backlog | P1 | T-224 | Blocked on T-224. |
 
 ---
 

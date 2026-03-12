@@ -432,8 +432,9 @@ button: "please wait…" [disabled]
 | **Category** | Monitor Alert |
 | **Severity** | Major |
 | **Sprint** | 28 |
-| **Status** | New |
+| **Status** | Tasked |
 | **Related Task** | T-233 |
+| **Tasked As** | T-235 (Sprint 29 — QA Engineer: fix `e2e/critical-flows.spec.js` Playwright locator lines 201–202) |
 
 **Feedback:** Playwright E2E Test 2 FAIL — `getByText('SFO')` strict mode violation caused by Sprint 27 TripCalendar rendering airport code in multiple elements; 3/4 Playwright tests PASS; Deploy Verified = No.
 
@@ -499,7 +500,7 @@ await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' })
 | **Sprint** | 28 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-229 (FB-113 fix) |
 
 **Details:**
@@ -526,8 +527,9 @@ The "Set dates" UI on TripDetailsPage is now fully functional end-to-end. FB-113
 | **Sprint** | 28 |
 | **Category** | Bug |
 | **Severity** | Major |
-| **Status** | New |
-| **Related Task** | T-233 (Monitor Agent flagged), pending QA fix |
+| **Status** | Tasked |
+| **Related Task** | T-233 (Monitor Agent flagged) |
+| **Tasked As** | T-235 (Sprint 29 — QA Engineer: fix `e2e/critical-flows.spec.js` lines 201–202 Playwright locator) |
 
 **Details:**
 
@@ -566,7 +568,7 @@ This was flagged by Monitor Agent in Sprint 28 and has not yet been resolved. Es
 | **Sprint** | 28 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-229 |
 
 **Details:**
@@ -587,7 +589,7 @@ No regressions introduced by the TRIP_COLUMNS COALESCE query change. ✅
 | **Sprint** | 28 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-229 |
 
 **Details:**
@@ -615,7 +617,7 @@ No security regressions. Parameterised queries in knex prevent SQL injection. Au
 | **Sprint** | 28 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-229 |
 
 **Details:**
@@ -634,8 +636,8 @@ No security regressions. Parameterised queries in knex prevent SQL injection. Au
 | **Sprint** | 28 |
 | **Category** | UX Issue |
 | **Severity** | Minor |
-| **Status** | New |
-| **Related Task** | — |
+| **Status** | Acknowledged |
+| **Related Task** | B-020 (Redis-backed rate limiter — backlog) |
 
 **Details:**
 

@@ -4,6 +4,43 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-12] Manager Agent → QA Engineer** *(Sprint #29 Kickoff — T-235 — Playwright Locator Fix)*
+
+**From:** Manager Agent
+**To:** QA Engineer
+**Re:** Sprint #29 kickoff — T-235 is your first and only P0 task — fix Playwright locator, no blockers
+**Status:** Ready — START IMMEDIATELY
+
+**Sprint 29 Summary:**
+Sprint 28 delivered the T-229 trip date COALESCE fix cleanly. The application is MVP feature-complete and staging-healthy. The only remaining QA gate is the Playwright E2E Test 2 locator bug (FB-124) that prevents 4/4 PASS.
+
+**Your task (T-235):**
+Fix `e2e/critical-flows.spec.js` lines 201–202. Replace:
+```js
+await expect(page.getByText('JFK')).toBeVisible();
+await expect(page.getByText('SFO')).toBeVisible();
+```
+With scoped locators that target only the flight card airport code element (not the TripCalendar pill or MobileDayList spans):
+```js
+await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()).toBeVisible();
+await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible();
+```
+(Use `data-testid` if available on the airport code div instead.)
+
+**Acceptance criteria:**
+1. `npx playwright test` → **4/4 PASS**
+2. No application source code changed (test-code only)
+3. Log fix in `qa-build-log.md` Sprint 29 section
+4. Handoff to Monitor Agent (T-236) in handoff-log.md
+
+**Sprint 29 priorities:**
+- T-235 (QA) → T-236 (Monitor: 4/4 health check → Deploy Verified = Yes) → T-237 (User Agent: quick regression)
+- T-224/T-225 (Production deployment — 4th escalation, project owner gate, parallel track)
+
+*Manager Agent Sprint #29 Kickoff — 2026-03-12*
+
+---
+
 **[2026-03-12] User Agent → Manager Agent** *(Sprint #28 — T-234 COMPLETE — Testing Complete)*
 
 **From:** User Agent
