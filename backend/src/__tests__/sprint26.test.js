@@ -276,6 +276,8 @@ describe('T-226 — test_user seed script', () => {
     expect(insertPayload.name).toBe('Test User');
   });
 
+  // Bcrypt with 12 rounds can take 2–10+ seconds depending on CPU.
+  // Allow up to 60s so the test is stable across different machines/loads.
   it('seed() inserts a valid bcrypt hash for TestPass123!', async () => {
     const mockIgnore = vi.fn().mockResolvedValue([]);
     const mockOnConflict = vi.fn().mockReturnValue({ ignore: mockIgnore });
@@ -287,7 +289,7 @@ describe('T-226 — test_user seed script', () => {
     const insertPayload = mockInsert.mock.calls[0][0];
     const hashIsValid = await bcrypt.compare('TestPass123!', insertPayload.password_hash);
     expect(hashIsValid).toBe(true);
-  });
+  }, 60_000);
 
   it('seed() calls onConflict("email") for idempotency', async () => {
     const mockIgnore = vi.fn().mockResolvedValue([]);

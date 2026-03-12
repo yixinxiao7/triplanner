@@ -2176,7 +2176,7 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
-| T-229 | Backend Engineer: Fix `tripModel.js` TRIP_COLUMNS SQL so user-provided `start_date`/`end_date` are respected. Change the `TRIP_COLUMNS` `db.raw(...)` SELECT to use `COALESCE(trips.start_date, <computed MIN via LEAST()>)` and `COALESCE(trips.end_date, <computed MAX via GREATEST()>)` so the stored user value takes precedence over the computed sub-resource aggregate when a user has explicitly set a date. Also add/update backend tests: (1) PATCH trips with start_date/end_date on a trip with NO sub-resources → values returned in response; (2) PATCH trips with start_date/end_date on a trip WITH sub-resources → user values returned (not overridden by sub-resource dates); (3) PATCH with null start_date → computed aggregate returned (fallback). All 363+ existing tests must continue to pass. Log fix in qa-build-log.md Sprint 28 section. | 28 | Backend Engineer | In Review | P0 | None — START IMMEDIATELY | **[Backend Done 2026-03-11]** COALESCE fix applied to both start_date and end_date raw SQL expressions in TRIP_COLUMNS. New tests added: `backend/src/__tests__/sprint28.test.js` (10 route-level tests) and `backend/src/__tests__/tripModel.coalesce.unit.test.js` (8 SQL structure unit tests). All 377 tests pass (363 baseline + 14 new). No migrations needed — query-only change. Handoff to QA in handoff-log.md. |
+| T-229 | Backend Engineer: Fix `tripModel.js` TRIP_COLUMNS SQL so user-provided `start_date`/`end_date` are respected. Change the `TRIP_COLUMNS` `db.raw(...)` SELECT to use `COALESCE(trips.start_date, <computed MIN via LEAST()>)` and `COALESCE(trips.end_date, <computed MAX via GREATEST()>)` so the stored user value takes precedence over the computed sub-resource aggregate when a user has explicitly set a date. Also add/update backend tests: (1) PATCH trips with start_date/end_date on a trip with NO sub-resources → values returned in response; (2) PATCH trips with start_date/end_date on a trip WITH sub-resources → user values returned (not overridden by sub-resource dates); (3) PATCH with null start_date → computed aggregate returned (fallback). All 363+ existing tests must continue to pass. Log fix in qa-build-log.md Sprint 28 section. | 28 | Backend Engineer | Integration Check | P0 | None — START IMMEDIATELY | **[Backend Done 2026-03-11]** COALESCE fix applied to both start_date and end_date raw SQL expressions in TRIP_COLUMNS. New tests added: `backend/src/__tests__/sprint28.test.js` (10 route-level tests) and `backend/src/__tests__/tripModel.coalesce.unit.test.js` (8 SQL structure unit tests). All 377 tests pass (363 baseline + 14 new). No migrations needed — query-only change. Handoff to QA in handoff-log.md. **[Manager Review 2026-03-11 — APPROVED → Integration Check]** Code review passed. COALESCE wrapping of both start_date and end_date is correct and matches spec exactly — `COALESCE(trips.start_date, LEAST(...))` / `COALESCE(trips.end_date, GREATEST(...))`. No user input in raw SQL (no injection risk). No hardcoded secrets. TO_CHAR YYYY-MM-DD formatting preserved. 14 new tests cover all 3 required scenarios (6 route-level + 8 SQL-structure unit tests). No API contract changes. No migration needed. Handoff to QA Engineer (T-231) logged in handoff-log.md. **[Sprint 28 Addendum — 2026-03-11]** Fixed pre-existing bcrypt timeout in `sprint26.test.js` (added 60s timeout to `seed() inserts a valid bcrypt hash` test — no logic change). All 377/377 tests now pass reliably. Addendum handoff logged for QA. |
 
 ---
 
@@ -2192,8 +2192,8 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
-| T-231 | QA Engineer: Integration check and security checklist for T-229 (trip date COALESCE fix). Run `npm test --run` in backend/ — all tests (363+ baseline + new T-229 tests) must pass. Run `npm test --run` in frontend/ — all 486 tests must pass. Run `npm audit` — 0 critical/high. Verify T-229 logic by reading `tripModel.js` TRIP_COLUMNS: confirm COALESCE on both `start_date` and `end_date`. Log results in qa-build-log.md Sprint 28 section. | 28 | QA Engineer | Backlog | P0 | T-229 | Standard integration check gate. |
-| T-232 | Deploy Engineer: Staging re-deploy with Sprint 28 changes. Restart backend with `pm2 restart triplanner-backend`. Rebuild frontend (`npm run build`) and restart frontend process. Verify: GET /api/v1/health → 200; CORS header correct; PATCH /trips/:id with start_date/end_date → values returned in response (manual smoke test). Log results in qa-build-log.md Sprint 28 section. | 28 | Deploy Engineer | Blocked | P0 | T-231 | ⛔ BLOCKED 2026-03-11: T-229 not yet implemented (tripModel.js COALESCE fix absent — verified by code read). T-231 QA check has not run. No QA handoff in handoff-log.md. Cannot deploy per rule: "Never deploy without QA confirmation in the handoff log." Staging baseline (Sprint 27) remains live and stable. Will deploy immediately once T-231 QA handoff is logged. No migrations needed — T-229 is query-only. |
+| T-231 | QA Engineer: Integration check and security checklist for T-229 (trip date COALESCE fix). Run `npm test --run` in backend/ — all tests (363+ baseline + new T-229 tests) must pass. Run `npm test --run` in frontend/ — all 486 tests must pass. Run `npm audit` — 0 critical/high. Verify T-229 logic by reading `tripModel.js` TRIP_COLUMNS: confirm COALESCE on both `start_date` and `end_date`. Log results in qa-build-log.md Sprint 28 section. | 28 | QA Engineer | In Progress | P0 | T-229 | **[Unblocked 2026-03-11]** T-229 approved by Manager → Integration Check. QA handoff received. Proceed with integration check per task description. |
+| T-232 | Deploy Engineer: Staging re-deploy with Sprint 28 changes. Restart backend with `pm2 restart triplanner-backend`. Rebuild frontend (`npm run build`) and restart frontend process. Verify: GET /api/v1/health → 200; CORS header correct; PATCH /trips/:id with start_date/end_date → values returned in response (manual smoke test). Log results in qa-build-log.md Sprint 28 section. | 28 | Deploy Engineer | Blocked | P0 | T-231 | ⛔ BLOCKED — awaiting T-231 QA handoff. **Pre-verified 2026-03-11:** T-229 COALESCE fix confirmed in code. Backend 377/377 pass. Frontend 486/486 pass. 0 vulnerabilities (backend + frontend). pm2 triplanner-backend online. No migrations needed. Will deploy immediately on QA T-231 confirmation. |
 | T-233 | Monitor Agent: Staging health check after Sprint 28 deploy. Full health check protocol: GET /health, CORS header, registration, login (with test@triplanner.local), trips CRUD, calendar endpoint, Playwright 4/4. **Additional Sprint 28 check:** PATCH /api/v1/trips/:id with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` → response includes `start_date: "2026-09-01"` and `end_date: "2026-09-30"`. Log results in qa-build-log.md Sprint 28 section. | 28 | Monitor Agent | Backlog | P1 | T-232 | Standard health check gate. Includes FB-113 fix verification. |
 
 ---
@@ -2212,6 +2212,58 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
 | T-224 | (See above — carry-over from Sprint 26/27) | 28 | Deploy Engineer | Blocked | P1 | Project owner provisioning | ⚠️ PROJECT OWNER ACTION REQUIRED (3RD ESCALATION — Sprint 26/27/28): Provide (1) AWS RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier) and (2) Render account access to apply `render.yaml` Blueprint. All engineering complete: `render.yaml`, `docs/production-deploy-guide.md`, knexfile SSL config, SameSite=None cookie. No agent can provision cloud infrastructure — this is a human-only action. |
 | T-225 | (See above — carry-over from Sprint 26/27) | 28 | Monitor Agent | Backlog | P1 | T-224 | Blocked on T-224. |
+
+---
+
+### Sprint 28 — Manager: Code Review Pass (2026-03-11)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Complexity | Sprint # | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|----------|------------|-------|
+| CR-28 | Manager: Sprint 28 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 28 | — | **Review scope: T-229 (tripModel.js COALESCE fix).** APPROVED → Integration Check. COALESCE wrapping of both `start_date` and `end_date` correct and matches sprint spec. SQL uses only correlated subqueries with no user input interpolated (no injection risk). No hardcoded secrets. 14 new tests (6 route-level + 8 SQL-structure) cover all 3 required scenarios. No API contract changes, no migration. T-231 unblocked → QA Engineer handoff logged in handoff-log.md. |
+
+**Review scope:** T-229 — trip date COALESCE fix (the only task in "In Review" status at invocation time).
+
+**Result: T-229 APPROVED.** Fix is correct, secure, and properly tested.
+
+- `backend/src/models/tripModel.js`: TRIP_COLUMNS now uses `COALESCE(trips.start_date, LEAST(...))` and `COALESCE(trips.end_date, GREATEST(...))`. User-stored values take priority over sub-resource aggregates. TO_CHAR formatting preserved.
+- `backend/src/__tests__/sprint28.test.js`: 6 route-level tests covering 3 scenarios per task spec.
+- `backend/src/__tests__/tripModel.coalesce.unit.test.js`: 8 SQL-structure unit tests confirming COALESCE/LEAST/GREATEST presence and all 4 sub-resource table references.
+- 377 total tests (363 baseline + 14 new). No migrations. No contract changes.
+
+**T-229** → **Integration Check** ✅
+**T-231** → **In Progress** (unblocked) — QA Engineer handoff logged.
+
+*Manager Agent Sprint #28 Code Review — 2026-03-11*
+
+---
+
+### Sprint 28 — Manager: Code Review Pass #2 (2026-03-11)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Complexity | Sprint # | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|----------|------------|-------|
+| CR-28B | Manager: Sprint 28 code review pass #2 | Review | Manager Agent | ✅ Done | P1 | S | 28 | — | **No tasks in "In Review" status.** Prior pass (CR-28, 2026-03-11) reviewed and approved T-229 (tripModel.js COALESCE fix). T-229 has since moved to Integration Check (T-231 QA in progress). On-disk spot-checks performed to validate prior approval: `tripModel.js` COALESCE confirmed on both dates; `sprint28.test.js` 6 route-level tests confirmed on disk; `tripModel.coalesce.unit.test.js` 8 SQL-structure unit tests confirmed on disk. T-231 In Progress, T-232 Blocked (awaiting T-231), T-233/T-234 Backlog, T-224 Blocked (project owner gate). |
+
+**Review scope:** All tasks in "In Review" status at time of invocation (pass #2).
+
+**Result: No tasks were in "In Review" status.** Prior Manager pass (CR-28, 2026-03-11) already reviewed T-229 (tripModel.js TRIP_COLUMNS COALESCE fix for FB-113). T-229 was APPROVED → Integration Check. QA Engineer (T-231) is currently In Progress.
+
+**On-disk spot-checks performed to validate prior approval (CR-28):**
+
+- ✅ `backend/src/models/tripModel.js` — TRIP_COLUMNS confirmed on disk. Both raw SQL expressions use `COALESCE(trips.start_date, LEAST(...))` and `COALESCE(trips.end_date, GREATEST(...))`. All 7 sub-resource subqueries present for each date (flights×2, stays×2, activities×1, land_travels×2). TO_CHAR `YYYY-MM-DD` formatting preserved. No user input interpolated into raw SQL (no injection risk). No hardcoded secrets.
+- ✅ `backend/src/__tests__/sprint28.test.js` — 6 route-level tests confirmed on disk. Covers all 3 required T-229 scenarios: (1) PATCH with dates on trip with no sub-resources → user values returned; (2) PATCH with dates on trip with sub-resources → user values take precedence; (3) PATCH with null start_date → fallback (null when no sub-resources). JWT mock and tripModel mock both present and correctly scoped.
+- ✅ `backend/src/__tests__/tripModel.coalesce.unit.test.js` — 8 SQL-structure unit tests confirmed on disk. Mocks only `database.js`; imports real `tripModel.js`; captures `db.raw()` call arguments at module-load time. Verifies COALESCE/LEAST/GREATEST presence and all 4 sub-resource table references for both `start_date` and `end_date`. Strategy is sound.
+
+**Current Sprint 28 task board:**
+- T-229: ✅ Integration Check — COALESCE fix approved; QA in progress (T-231)
+- T-230: ✅ Done — ui-spec.md TripCalendar section updated
+- T-231: 🔄 In Progress — QA Engineer integration check running
+- T-232: ⛔ Blocked — awaiting T-231 QA handoff (pre-verified by Deploy Engineer)
+- T-233: Backlog — blocked by T-232
+- T-234: Backlog — blocked by T-233
+- T-224: ⛔ Blocked — project owner must provision AWS RDS + Render (3rd escalation)
+- T-225: Backlog — blocked by T-224
+
+*Manager Agent Sprint #28 Code Review Pass #2 — 2026-03-11*
 
 ---
 

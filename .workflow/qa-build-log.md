@@ -63,6 +63,105 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #28 — T-232 Pre-Deploy Verification — 2026-03-11T18:24:00Z
+
+**Task:** T-232 (Deploy Engineer: Staging re-deploy pre-verification pass)
+**Date:** 2026-03-11
+**Engineer:** Deploy Engineer
+**Sprint:** 28
+**Environment:** Staging (deploy pending QA T-231 confirmation)
+
+---
+
+### Pre-Deploy Verification Results
+
+**Status: ⏳ READY TO DEPLOY — Awaiting formal QA handoff (T-231)**
+
+The Deploy Engineer ran all pre-deploy checks independently to confirm technical readiness. All checks pass. The only remaining gate is a formal QA → Deploy Engineer handoff log entry for T-231.
+
+#### T-229 Code Verification ✅
+
+Read `backend/src/models/tripModel.js` TRIP_COLUMNS — **COALESCE fix confirmed present:**
+
+```sql
+TO_CHAR(
+  COALESCE(
+    trips.start_date,
+    LEAST(
+      (SELECT MIN(DATE(departure_at)) FROM flights      WHERE trip_id = trips.id),
+      (SELECT MIN(DATE(arrival_at))   FROM flights      WHERE trip_id = trips.id),
+      (SELECT MIN(DATE(check_in_at))  FROM stays        WHERE trip_id = trips.id),
+      (SELECT MIN(DATE(check_out_at)) FROM stays        WHERE trip_id = trips.id),
+      (SELECT MIN(activity_date)      FROM activities   WHERE trip_id = trips.id),
+      (SELECT MIN(departure_date)     FROM land_travels WHERE trip_id = trips.id),
+      (SELECT MIN(arrival_date)       FROM land_travels WHERE trip_id = trips.id)
+    )
+  ),
+  'YYYY-MM-DD'
+) AS start_date
+```
+
+Same COALESCE(trips.end_date, GREATEST(...)) pattern confirmed for end_date. User-stored values take precedence over computed aggregates. T-229 fix matches sprint spec exactly.
+
+#### Backend Tests ✅
+
+| Metric | Result |
+|--------|--------|
+| Test suites | 21 passed / 21 total |
+| Tests | **377 passed / 377 total** |
+| Baseline | 363 original + 14 new sprint28 tests |
+| sprint28.test.js | 6/6 PASS |
+| tripModel.coalesce.unit.test.js | 8/8 PASS |
+| Duration | 2.72s |
+
+All 3 required T-229 scenarios covered by new tests (user dates returned with no sub-resources, user dates not overridden when sub-resources exist, null fallback to computed aggregate).
+
+#### Frontend Tests ✅
+
+| Metric | Result |
+|--------|--------|
+| Test suites | 25 passed / 25 total |
+| Tests | **486 passed / 486 total** |
+| Duration | 1.91s |
+
+No frontend code changes in Sprint 28. All 486 tests pass — no regressions.
+
+#### Security Audit ✅
+
+| Target | Vulnerabilities |
+|--------|----------------|
+| `backend/` npm audit | 0 critical, 0 high, **0 total** |
+| `frontend/` npm audit | 0 critical, 0 high, **0 total** |
+
+#### pm2 Process Status ✅
+
+| Process | Status | PID | Uptime |
+|---------|--------|-----|--------|
+| triplanner-backend | online | 70180 | 4h |
+| triplanner-frontend | online | 64982 | 8h |
+
+Staging environment is live on Sprint 27 baseline. No restarts needed for frontend (no frontend code changes in Sprint 28).
+
+---
+
+### Deployment Plan (Ready to Execute on QA Confirmation)
+
+Once QA logs T-231 completion in `handoff-log.md`, the deploy is:
+
+1. **`pm2 restart triplanner-backend`** — no migrations (T-229 is query-only)
+2. **Smoke test:** `GET https://localhost:3001/api/v1/health` → 200
+3. **CORS check:** `curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"` → `Access-Control-Allow-Origin: https://localhost:4173`
+4. **PATCH date smoke test:** `PATCH /api/v1/trips/:id` with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` on a trip with no sub-resources → response must include `"start_date":"2026-09-01"`, `"end_date":"2026-09-30"` (not null)
+5. **Handoff to Monitor Agent** (T-233)
+
+No frontend rebuild needed. No database migrations needed.
+
+---
+
+*Deploy Engineer Sprint #28 pre-deploy verification — 2026-03-11*
+
+---
+
 ## Sprint #27 — T-228 Fix A: CORS Staging Fix — 2026-03-11T18:09:00Z
 
 **Task:** T-228 (Deploy Engineer: Fix A — CORS_ORIGIN env var injected via pm2 ecosystem config)

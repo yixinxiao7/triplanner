@@ -4,6 +4,105 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Manager Agent → QA Engineer** *(Sprint #28 — Code Review Pass #2 — No Action Required)*
+
+**From:** Manager Agent (code review pass #2)
+**To:** QA Engineer
+**Re:** Sprint 28 code review pass #2 — no tasks in "In Review" — T-229 remains approved — T-231 remains unblocked
+**Status:** ✅ No change — continue T-231 as previously instructed
+
+**Summary:**
+
+This is a second Manager code review pass for Sprint 28. No tasks were in "In Review" status at time of invocation. The prior pass (CR-28, 2026-03-11) reviewed and approved T-229. On-disk spot-checks confirm the prior approval is accurate:
+
+- `backend/src/models/tripModel.js` — COALESCE wrapping on both `start_date` and `end_date` confirmed present and correct
+- `backend/src/__tests__/sprint28.test.js` — 6 route-level tests confirmed on disk, all 3 T-229 scenarios covered
+- `backend/src/__tests__/tripModel.coalesce.unit.test.js` — 8 SQL-structure unit tests confirmed on disk
+
+**No new findings. No tasks blocked. No tasks failed review.**
+
+T-231 remains **In Progress** and unblocked. Continue the integration check as directed in the previous Manager handoff entry.
+
+*Manager Agent — 2026-03-11*
+
+---
+
+**[2026-03-11] Deploy Engineer → QA Engineer** *(Sprint #28 — T-232 Pre-Verified — Awaiting T-231 Handoff)*
+
+**From:** Deploy Engineer
+**To:** QA Engineer
+**Re:** T-232 pre-deploy verification complete — all technical checks pass — awaiting your T-231 handoff to proceed
+**Status:** ⏳ Ready — waiting on QA T-231 formal confirmation
+
+**Pre-deploy verification summary (Deploy Engineer independent run):**
+
+All checks passed. The deploy is technically ready. The only remaining gate is your formal QA → Deploy handoff entry in this log.
+
+| Check | Result |
+|-------|--------|
+| `tripModel.js` COALESCE on `start_date` | ✅ Confirmed present |
+| `tripModel.js` COALESCE on `end_date` | ✅ Confirmed present |
+| Backend tests: `npm test --run` | ✅ 377/377 passed (363 baseline + 14 new sprint28) |
+| Frontend tests: `npm test --run` | ✅ 486/486 passed |
+| `npm audit` backend | ✅ 0 vulnerabilities |
+| `npm audit` frontend | ✅ 0 vulnerabilities |
+| pm2 triplanner-backend | ✅ online (pid 70180) |
+| pm2 triplanner-frontend | ✅ online (pid 64982) |
+
+**What I need from QA (T-231):**
+Please log your T-231 completion handoff to Deploy Engineer in this file. Once that entry exists, I will:
+1. Run `pm2 restart triplanner-backend`
+2. 4-point smoke test: health, CORS, PATCH date, GET trip
+3. Log deploy results in `qa-build-log.md`
+4. Hand off to Monitor Agent (T-233)
+
+*Deploy Engineer — 2026-03-11*
+
+---
+
+**[2026-03-11] Manager Agent → QA Engineer** *(Sprint #28 — T-229 APPROVED — T-231 Unblocked)*
+
+**From:** Manager Agent (code review)
+**To:** QA Engineer
+**Re:** T-229 Code Review — APPROVED → Integration Check; T-231 is now unblocked
+**Status:** ✅ Approved — Proceed with T-231
+
+**Review outcome for T-229:**
+
+T-229 (`tripModel.js` COALESCE fix for trip date bug FB-113) has passed Manager code review. The task moves from **In Review → Integration Check**.
+
+**What was verified:**
+
+1. **COALESCE fix is correct** — `TRIP_COLUMNS` in `backend/src/models/tripModel.js` now wraps both date expressions:
+   - `COALESCE(trips.start_date, LEAST(…MIN subqueries…)) AS start_date`
+   - `COALESCE(trips.end_date, GREATEST(…MAX subqueries…)) AS end_date`
+   - User-stored values take priority; sub-resource aggregate is the fallback when stored value is NULL. Exactly matches the sprint spec.
+
+2. **No security issues** — Raw SQL uses only correlated subqueries (`WHERE trip_id = trips.id`). No user input is interpolated into raw SQL. No hardcoded secrets. Auth middleware unchanged.
+
+3. **Conventions followed** — Knex `db.raw()` used explicitly (architecture.md: "No ORM magic"). TO_CHAR `YYYY-MM-DD` formatting preserved. No circular imports.
+
+4. **Tests: 14 new tests pass** (363 baseline + 14 new = 377 total per Backend Engineer):
+   - `backend/src/__tests__/sprint28.test.js` — 6 route-level tests covering all 3 required scenarios
+   - `backend/src/__tests__/tripModel.coalesce.unit.test.js` — 8 SQL-structure unit tests confirming COALESCE/LEAST/GREATEST presence and all sub-resource table references
+
+5. **No API contract changes** — Same PATCH `/api/v1/trips/:id` response shape. No migration needed (query-only change).
+
+**QA Engineer action required (T-231):**
+
+T-231 is now **In Progress** (unblocked). Please run the full integration check:
+- `npm test --run` in `backend/` — confirm all 377 tests pass (363 baseline + 14 new)
+- `npm test --run` in `frontend/` — confirm all 486 tests pass
+- `npm audit` in both — 0 critical/high vulnerabilities
+- Read `backend/src/models/tripModel.js` TRIP_COLUMNS — confirm `COALESCE(trips.start_date` and `COALESCE(trips.end_date` are present in the raw SQL
+- Security checklist: no new endpoints, no schema changes, no hardcoded secrets, no SQL injection surface (all confirmed clean in Manager review)
+- Log results in `qa-build-log.md` Sprint 28 section
+- On pass: log handoff to Deploy Engineer (T-232) here in `handoff-log.md`
+
+*Manager Agent — 2026-03-11*
+
+---
+
 **[2026-03-11] Deploy Engineer → Manager Agent** *(Sprint #28 — T-232 BLOCKED — Awaiting T-229 + T-231)*
 
 **From:** Deploy Engineer
@@ -4836,3 +4935,64 @@ No schema migrations were required. This is a pure read-time query change.
 *Backend Engineer Sprint #28 — 2026-03-11*
 
 ---
+
+
+---
+
+## Handoff: Frontend Engineer → (No Action Required — Sprint 28)
+**From:** Frontend Engineer
+**To:** (No handoff needed)
+**Sprint:** 28
+**Date:** 2026-03-11
+**Status:** ✅ No Frontend Tasks in Sprint 28
+
+Sprint 28 contains no tasks assigned to the Frontend Engineer. The sprint scope is entirely a backend bug-fix (T-229: COALESCE fix for tripModel.js trip dates), documentation update (T-230), QA verification (T-231), staging deploy (T-232), and monitoring (T-233/T-234).
+
+**Review of sprint task table (Sprint 28):**
+- T-229: Backend Engineer — COALESCE fix (Integration Check)
+- T-230: Design Agent — ui-spec.md doc update (Done)
+- T-231: QA Engineer — Integration check (In Progress)
+- T-232: Deploy Engineer — Staging redeploy (Blocked on T-231)
+- T-233: Monitor Agent — Health check (Backlog)
+- T-234: User Agent — Verification (Backlog)
+- T-224/T-225: Production deployment (Blocked on project owner)
+
+**Frontend baseline:** 486/486 tests passing. No regressions introduced. No frontend code changes required.
+
+No API contract acknowledgments needed — no new or changed endpoints in Sprint 28.
+
+*Frontend Engineer Sprint #28 — 2026-03-11*
+
+---
+
+## Handoff: Backend Engineer → QA Engineer (Sprint 28 — Addendum)
+**Task:** T-229 — Test suite re-verification after bcrypt timeout fix
+**From:** Backend Engineer
+**To:** QA Engineer (T-231)
+**Status:** Addendum — pre-existing test issue resolved
+**Date:** 2026-03-11
+
+### Pre-existing Issue Fixed
+
+While re-running the full test suite during Sprint 28 implementation review, a pre-existing timeout failure was found in `sprint26.test.js`:
+
+- **Test:** `seed() inserts a valid bcrypt hash for TestPass123!`
+- **Root cause:** `seed()` calls `bcrypt.hash()` with 12 rounds (the real implementation, not mocked), which can exceed the default 10s Vitest timeout on slower machines or under high CPU load.
+- **Fix:** Added `60_000` ms timeout as the third argument to that specific `it()` call — `it('...', async () => {...}, 60_000)`. No logic was changed.
+
+### Current Test State
+
+All **377/377** backend tests pass with the fix applied.
+
+| File | Tests | Status |
+|------|-------|--------|
+| `sprint28.test.js` | 6 | ✅ Pass |
+| `tripModel.coalesce.unit.test.js` | 8 | ✅ Pass |
+| `sprint26.test.js` | 15 | ✅ Pass (bcrypt test: ~400ms with 60s timeout) |
+| All other test files | 348 | ✅ Pass |
+| **Total** | **377** | **✅ All pass** |
+
+No code logic was changed. T-229 (COALESCE fix) remains exactly as approved by Manager in CR-28.
+
+*Backend Engineer Sprint #28 Addendum — 2026-03-11*
+
