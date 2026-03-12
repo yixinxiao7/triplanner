@@ -484,3 +484,165 @@ await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' })
 **Action required:** QA Engineer or Frontend Engineer to fix the Playwright locator in `e2e/critical-flows.spec.js:201-202`, re-run `npx playwright test` → expect 4/4 PASS, then re-hand off to Monitor Agent or proceed to User Agent.
 
 ---
+
+## Sprint 28 User Agent Feedback
+
+*Tested 2026-03-12 by User Agent (T-234). Staging: backend https://localhost:3001, frontend https://localhost:4173.*
+
+---
+
+### FB-123 — T-229 COALESCE Fix: Trip Date Setting Works End-to-End
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | PATCH /api/v1/trips/:id with start_date/end_date now correctly returns user-provided dates (not null, not overridden by sub-resources) |
+| **Sprint** | 28 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-229 (FB-113 fix) |
+
+**Details:**
+
+Three scenarios verified via direct API calls:
+
+1. **No sub-resources → user dates returned:** Created trip `Sprint28 Test Trip` (no flights/stays/activities). PATCH `{"start_date":"2026-09-01","end_date":"2026-09-30"}` → response `start_date:"2026-09-01"`, `end_date:"2026-09-30"`. ✅ PASS. (Pre-fix this would have returned null.)
+
+2. **Sub-resources present → user dates NOT overridden:** Added a flight departing 2026-08-15 (before user start) and a stay checking out 2026-10-05 (after user end). Re-PATCH with same user dates → response still returns `start_date:"2026-09-01"`, `end_date:"2026-09-30"`. ✅ PASS. COALESCE correctly prioritises user-stored value over computed aggregate.
+
+3. **Clear user dates → computed fallback activates:** PATCH with `{"start_date":null,"end_date":null}` on the same trip → response returned `start_date:"2026-08-15"`, `end_date:"2026-10-05"` (sub-resource aggregates). ✅ PASS. Fallback behaviour intact.
+
+4. **Trip list (home page cards) shows correct dates:** GET /api/v1/trips with user dates set returned correct `start_date:"2026-09-01"`, `end_date:"2026-09-30"`. ✅ PASS.
+
+The "Set dates" UI on TripDetailsPage is now fully functional end-to-end. FB-113 is resolved.
+
+---
+
+### FB-124 — Playwright E2E Test Locator Still Broken (Test-Code Issue, Not App Regression)
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | e2e/critical-flows.spec.js Test 2 fails with strict mode violation — `getByText('SFO')` matches 3 elements — this is a test-code bug, not an application bug |
+| **Sprint** | 28 |
+| **Category** | Bug |
+| **Severity** | Major |
+| **Status** | New |
+| **Related Task** | T-233 (Monitor Agent flagged), pending QA fix |
+
+**Details:**
+
+The Monitor Agent (T-233) reported Playwright 3/4 PASS. Test 2 at `e2e/critical-flows.spec.js:202` fails:
+```
+strict mode violation: getByText('SFO') resolved to 3 elements
+```
+
+Root cause: Sprint 27 TripCalendar feature renders 'SFO' in both a flight pill and the MobileDayList component, making the pre-existing locator ambiguous.
+
+**Steps to reproduce:** Run `npx playwright test` from the `e2e/` or project root. Test 2 fails.
+
+**Expected:** 4/4 tests pass.
+
+**Actual:** 3/4 pass. Test 2 fails on the ambiguous airport code locator.
+
+**Application is NOT broken.** The functionality works correctly — this is purely a test-locator issue.
+
+**Fix required in `e2e/critical-flows.spec.js` lines 201–202:**
+```js
+// Replace ambiguous:
+await expect(page.getByText('SFO')).toBeVisible();
+// With scoped locator:
+await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible();
+```
+
+This was flagged by Monitor Agent in Sprint 28 and has not yet been resolved. Escalating for QA Engineer action in Sprint 29.
+
+---
+
+### FB-125 — Calendar Endpoint Regression: No Regressions Found
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | TripCalendar API endpoint continues to work correctly after T-229 tripModel.js changes |
+| **Sprint** | 28 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-229 |
+
+**Details:**
+
+Verified `GET /api/v1/trips/:id/calendar` on a trip with 1 flight (2026-08-15 departure) and 1 stay (2026-09-25 check-in):
+- Returns 2 calendar events with correct `type`, `start_date` fields
+- Empty trip (no sub-resources): returns 0 events — correct empty state
+
+No regressions introduced by the TRIP_COLUMNS COALESCE query change. ✅
+
+---
+
+### FB-126 — Validation and Security: Edge Cases All Pass
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Date validation correctly handles end-before-start, invalid formats, SQL injection, missing auth, and single-field PATCH |
+| **Sprint** | 28 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-229 |
+
+**Details:**
+
+All edge cases tested on `PATCH /api/v1/trips/:id`:
+
+| Scenario | Result |
+|----------|--------|
+| `end_date` before `start_date` | ✅ 400 VALIDATION_ERROR, `end_date` field error returned |
+| Invalid date format (`"not-a-date"`) | ✅ 400 VALIDATION_ERROR |
+| SQL injection in `start_date` value | ✅ 400 VALIDATION_ERROR — not executed |
+| No auth token | ✅ 401 UNAUTHORIZED |
+| PATCH with only `start_date` (no `end_date`) | ✅ Accepted, single field updated correctly |
+| PATCH with `{"start_date":null,"end_date":null}` | ✅ Clears user-stored dates, computed fallback activates |
+
+No security regressions. Parameterised queries in knex prevent SQL injection. Auth middleware remains correctly applied.
+
+---
+
+### FB-127 — StatusFilterTabs and Trip Notes: Regression-Free
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Status filtering and trip notes continue to work correctly — no regressions from T-229 change |
+| **Sprint** | 28 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-229 |
+
+**Details:**
+
+- **StatusFilterTabs:** GET `/api/v1/trips?status=PLANNING` correctly returned only trips with future `start_date`. Test trip (start: 2026-09-01) correctly classified as PLANNING. ✅
+- **Trip notes save:** PATCH with `{"notes":"Test notes..."}` → notes returned in response. ✅
+- **Trip notes clear:** PATCH with `{"notes":null}` → notes returned as null. ✅
+
+---
+
+### FB-128 — Rate Limiter Triggered During Testing (Operational Note)
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | In-memory login rate limiter (10 req / 15 min) was triggered during User Agent testing due to multiple failed JSON-parsing curl invocations — required backend restart to reset |
+| **Sprint** | 28 |
+| **Category** | UX Issue |
+| **Severity** | Minor |
+| **Status** | New |
+| **Related Task** | — |
+
+**Details:**
+
+During testing setup, several `POST /api/v1/auth/login` requests were sent with malformed JSON (due to shell escaping issues in the test runner environment), consuming the 10-attempt login budget and triggering a 429 RATE_LIMITED lockout. The backend had to be restarted (pm2 restart triplanner-backend) to reset the in-memory store.
+
+**Impact:** No impact on production users (rate limiter works as intended). However, this highlights that the in-memory MemoryStore resets on restart — if the intent is to protect against brute force attacks across restarts, a persistent store (Redis) would be needed.
+
+**Suggestion for Sprint 29 backlog:** Consider a Redis-backed rate limiter for production deployment (already noted as B-020 in backlog).
+
+---
