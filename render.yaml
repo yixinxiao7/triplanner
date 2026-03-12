@@ -74,8 +74,7 @@ services:
         source: /*
         destination: /index.html
     envVars:
-      # Backend API base URL — set to the Render backend URL after both services are created
-      # Example: https://triplanner-backend.onrender.com/api/v1
+      # Backend API base URL — baked into the Vite bundle at build time.
       # Note: VITE_ prefix is required for Vite to expose this to client-side code
       - key: VITE_API_URL
-        sync: false
+        value: https://triplanner-backend-sp61.onrender.com/api/v1
