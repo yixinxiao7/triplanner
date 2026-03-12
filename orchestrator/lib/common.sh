@@ -264,10 +264,40 @@ archive_old_sprints() {
 
     log_info "Archiving workflow files older than Sprint #${keep_from}..."
 
-    # Archive feedback-log.md (sections: ## Sprint N Feedback)
-    _archive_by_section "${WORKFLOW_DIR}/feedback-log.md" \
+    # Archive feedback-log.md — preserve any untriaged (New) entries
+    local feedback_file="${WORKFLOW_DIR}/feedback-log.md"
+    local preserved_file="${feedback_file}.new-entries.tmp"
+    rm -f "$preserved_file"
+
+    # Pass 1: Extract FB-XXX blocks that contain '| New |'
+    if [[ -f "$feedback_file" ]] && grep -q '| New |' "$feedback_file" 2>/dev/null; then
+        awk '
+        /^### FB-[0-9]+/ { block = ""; in_block = 1 }
+        in_block { block = block $0 "\n" }
+        /^---$/ && in_block {
+            if (block ~ /\| New \|/) {
+                printf "%s", block
+            }
+            in_block = 0; block = ""
+        }
+        ' "$feedback_file" > "$preserved_file"
+    fi
+
+    # Pass 2: Normal archival (archives old sprint sections)
+    _archive_by_section "$feedback_file" \
         "${archive_dir}/feedback-log-before-sprint-${keep_from}.md" \
         "$keep_from" '## Sprint [0-9]'
+
+    # Pass 3: Re-append preserved New entries
+    if [[ -s "$preserved_file" ]]; then
+        local reappended
+        reappended=$(grep -c '^### FB-' "$preserved_file" 2>/dev/null || true)
+        reappended="${reappended:-0}"
+        echo "" >> "$feedback_file"
+        cat "$preserved_file" >> "$feedback_file"
+        log_warn "Preserved ${reappended} untriaged feedback entries (Status: New) in feedback-log.md"
+    fi
+    rm -f "$preserved_file"
 
     # Archive qa-build-log.md (sections: ## Sprint N ...)
     _archive_by_section "${WORKFLOW_DIR}/qa-build-log.md" \

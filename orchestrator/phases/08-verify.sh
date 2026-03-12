@@ -56,7 +56,7 @@ LOGGING:
 
 Be precise in your reports. Include actual HTTP status codes, response bodies, and error messages."
 
-    run_agent_with_retry "monitor-agent" "$task_prompt" 3 25 "${MODEL_LIGHT:-sonnet}"
+    run_agent_with_retry "monitor-agent" "$task_prompt" 3 35 "${MODEL_LIGHT:-sonnet}"
 
     # Check if health checks passed
     if phase_verify_complete; then
@@ -72,7 +72,7 @@ Be precise in your reports. Include actual HTTP status codes, response bodies, a
             # Re-deploy
             run_phase_deploy
             # Re-verify
-            run_agent_with_retry "monitor-agent" "$task_prompt" 3 25 "${MODEL_LIGHT:-sonnet}"
+            run_agent_with_retry "monitor-agent" "$task_prompt" 3 35 "${MODEL_LIGHT:-sonnet}"
 
             if ! phase_verify_complete; then
                 log_error "Health checks failed after retry. Sprint may need manual intervention."

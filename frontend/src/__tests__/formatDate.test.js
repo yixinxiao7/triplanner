@@ -5,7 +5,6 @@ import {
   formatActivityDate,
   formatTime,
   formatDateRange,
-  formatTripDateRange,
   formatTimezoneAbbr,
 } from '../utils/formatDate';
 
@@ -55,52 +54,39 @@ describe('formatDate', () => {
   });
 });
 
+// ── T-164 / Spec 25: formatDateRange(startDate, endDate) YYYY-MM-DD ──────────
 describe('formatDateRange', () => {
-  it('formats a date range with em dash', () => {
-    const result = formatDateRange(
-      '2026-08-07T10:00:00.000Z',
-      '2026-08-14T10:00:00.000Z'
-    );
-    expect(result).toContain('—');
-    expect(result).toContain('2026');
+  // Test 25.F — unit tests for all 5 output cases
+
+  it('[25.F] returns null when both dates are null', () => {
+    expect(formatDateRange(null, null)).toBeNull();
   });
 
-  it('returns null when both dates are missing', () => {
-    expect(formatDateRange(null, null)).toBeNull();
+  it('[25.F] returns null when both dates are undefined', () => {
     expect(formatDateRange(undefined, undefined)).toBeNull();
   });
-});
 
-describe('formatTripDateRange', () => {
-  it('formats same-year date range: "Aug 7 – Aug 14, 2026"', () => {
-    const result = formatTripDateRange('2026-08-07', '2026-08-14');
-    expect(result).toContain('Aug 7');
-    expect(result).toContain('Aug 14');
-    expect(result).toContain('2026');
+  it('[25.F] start date only → "From May 1, 2026"', () => {
+    expect(formatDateRange('2026-05-01', null)).toBe('From May 1, 2026');
+  });
+
+  it('[25.F] same year same month → "May 1 \u2013 15, 2026" (abbreviated, no repeated month)', () => {
+    expect(formatDateRange('2026-05-01', '2026-05-15')).toBe('May 1 \u2013 15, 2026');
+  });
+
+  it('[25.F] same year different months → "Aug 7 \u2013 Sep 2, 2026"', () => {
+    expect(formatDateRange('2026-08-07', '2026-09-02')).toBe('Aug 7 \u2013 Sep 2, 2026');
+  });
+
+  it('[25.F] different years → "Dec 28, 2025 \u2013 Jan 3, 2026"', () => {
+    expect(formatDateRange('2025-12-28', '2026-01-03')).toBe('Dec 28, 2025 \u2013 Jan 3, 2026');
+  });
+
+  it('[25.F] uses en-dash (U+2013) not hyphen or em-dash as separator', () => {
+    const result = formatDateRange('2026-05-01', '2026-05-15');
     expect(result).toContain('\u2013'); // en-dash
-  });
-
-  it('formats cross-year date range with both years', () => {
-    const result = formatTripDateRange('2025-12-28', '2026-01-04');
-    expect(result).toContain('2025');
-    expect(result).toContain('2026');
-    expect(result).toContain('Dec 28');
-    expect(result).toContain('Jan 4');
-  });
-
-  it('formats start-only date with "From" prefix', () => {
-    const result = formatTripDateRange('2026-08-07', null);
-    expect(result).toContain('From');
-    expect(result).toContain('Aug 7');
-    expect(result).toContain('2026');
-  });
-
-  it('returns null when both dates are null', () => {
-    expect(formatTripDateRange(null, null)).toBeNull();
-  });
-
-  it('returns null when both dates are undefined', () => {
-    expect(formatTripDateRange(undefined, undefined)).toBeNull();
+    expect(result).not.toContain('\u2014'); // em-dash
+    expect(result).not.toContain('-'); // hyphen
   });
 });
 

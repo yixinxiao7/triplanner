@@ -38,6 +38,14 @@ export default defineConfig({
   preview: {
     port: 4173,
     https: httpsConfig,
+    proxy: {
+      '/api': {
+        target: `${backendProtocol}://localhost:${backendPort}`,
+        changeOrigin: true,
+        // Allow self-signed certs when proxying to the local staging backend
+        ...(backendSSL ? { secure: false } : {}),
+      },
+    },
   },
   test: {
     environment: 'jsdom',

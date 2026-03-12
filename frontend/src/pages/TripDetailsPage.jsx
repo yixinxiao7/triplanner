@@ -3,11 +3,13 @@ import { useParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import DestinationChipInput from '../components/DestinationChipInput';
 import { useTripDetails } from '../hooks/useTripDetails';
-import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatTripDateRange, parseLocationWithLinks } from '../utils/formatDate';
+import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatDateRange, parseLocationWithLinks } from '../utils/formatDate';
 import TripCalendar from '../components/TripCalendar';
 import { api } from '../utils/api';
 import styles from './TripDetailsPage.module.css';
 import '../styles/print.css';
+import TripNotesSection from '../components/TripNotesSection';
+import TripStatusSelector from '../components/TripStatusSelector';
 
 // ── Small Calendar Icon ───────────────────────────────────────
 function CalendarIconSmall() {
@@ -396,14 +398,15 @@ export default function TripDetailsPage() {
   const [destError, setDestError] = useState('');
   const [savedDestinations, setSavedDestinations] = useState([]);
 
-  // ── Trip Notes State (T-104) ────────────────────────────────
-  const [notesMode, setNotesMode] = useState('display'); // 'display' | 'edit'
-  const [notesDraft, setNotesDraft] = useState('');
-  const [savedNotes, setSavedNotes] = useState(null);
-  const [notesSaving, setNotesSaving] = useState(false);
-  const [notesError, setNotesError] = useState('');
-  const NOTES_MAX = 2000;
-  const NOTES_WARN_THRESHOLD = 1800;
+  // ── Trip Status Local State (Sprint 22 T-196) ─────────────
+  // Tracks the status shown in TripStatusSelector after user-driven updates.
+  // Initialized from trip.status on first load; updated via onStatusChange callback.
+  const [localTripStatus, setLocalTripStatus] = useState(null);
+
+  function handleStatusChange(newStatus) {
+    setLocalTripStatus(newStatus);
+  }
+
 
   useEffect(() => {
     fetchAll();
@@ -438,12 +441,6 @@ export default function TripDetailsPage() {
     }
   }, [trip, tripLoading]);
 
-  // Initialize notes from trip data (T-104)
-  useEffect(() => {
-    if (!tripLoading && trip) {
-      setSavedNotes(trip.notes ?? null);
-    }
-  }, [trip, tripLoading]);
 
   // ── Date range handlers ───────────────────────────────────
   async function handleSaveDates() {
@@ -530,42 +527,6 @@ export default function TripDetailsPage() {
     }
   }
 
-  // ── Notes handlers (T-104) ────────────────────────────────
-  function handleEditNotes() {
-    setNotesDraft(savedNotes || '');
-    setNotesError('');
-    setNotesMode('edit');
-  }
-
-  function handleCancelNotes() {
-    setNotesMode('display');
-    setNotesError('');
-  }
-
-  async function handleSaveNotes() {
-    setNotesError('');
-    if (notesDraft.length > NOTES_MAX) {
-      setNotesError(`notes must be ${NOTES_MAX} characters or fewer.`);
-      return;
-    }
-    // Send null when empty (to clear notes)
-    const notesPayload = notesDraft.trim() ? notesDraft : null;
-    // Skip API call if nothing changed
-    if (notesPayload === savedNotes) {
-      setNotesMode('display');
-      return;
-    }
-    setNotesSaving(true);
-    try {
-      await api.trips.update(tripId, { notes: notesPayload });
-      setSavedNotes(notesPayload);
-      setNotesMode('display');
-    } catch {
-      setNotesError('could not save notes. please try again.');
-    } finally {
-      setNotesSaving(false);
-    }
-  }
 
   // Group activities by date
   const activitiesByDate = activities.reduce((acc, activity) => {
@@ -626,14 +587,22 @@ export default function TripDetailsPage() {
               </>
             ) : (
               <>
-                {/* ── Trip Name Row (T-122: trip name + print button) ── */}
+                {/* ── Trip Name Row (T-122: trip name + status selector + print button) ── */}
                 <div className={styles.tripNameRow}>
-                  <h1 className={styles.tripName}>{trip?.name}</h1>
+                  {/* Left group: trip name + interactive status selector (T-196) */}
+                  <div className={styles.tripNameGroup}>
+                    <h1 className={styles.tripName}>{trip?.name}</h1>
+                    <TripStatusSelector
+                      tripId={tripId}
+                      initialStatus={localTripStatus || trip?.status || 'PLANNING'}
+                      onStatusChange={handleStatusChange}
+                    />
+                  </div>
 
                   <button
                     className={styles.printBtn}
                     onClick={() => window.print()}
-                    aria-label="Print trip itinerary"
+                    aria-label="Print itinerary"
                   >
                     {/* Printer SVG icon */}
                     <svg
@@ -654,7 +623,7 @@ export default function TripDetailsPage() {
                       {/* Output tray / printed page */}
                       <rect x="3" y="9" width="8" height="4" rx="0.5" />
                     </svg>
-                    Print
+                    Print itinerary
                   </button>
                 </div>
 
@@ -716,72 +685,13 @@ export default function TripDetailsPage() {
             )}
           </div>
 
-          {/* ── Trip Notes Section (T-104) ── */}
-          {!tripLoading && (
-            <div className={styles.notesSection}>
-              {notesMode === 'display' && (
-                <div className={styles.notesDisplay}>
-                  {savedNotes ? (
-                    <p className={styles.notesText}>{savedNotes}</p>
-                  ) : (
-                    <p className={styles.notesPlaceholder}>no notes yet</p>
-                  )}
-                  <button
-                    className={styles.notesPencilBtn}
-                    onClick={handleEditNotes}
-                    aria-label="Edit trip notes"
-                    title="Edit notes"
-                  >
-                    {/* Pencil icon */}
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                      <path d="M9.667 1.667a1.571 1.571 0 012.222 2.222L4.333 11.333 1.333 12l.667-3L9.667 1.667z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-
-              {notesMode === 'edit' && (
-                <div className={styles.notesEditContainer}>
-                  <textarea
-                    className={styles.notesTextarea}
-                    value={notesDraft}
-                    onChange={(e) => { setNotesDraft(e.target.value); setNotesError(''); }}
-                    placeholder="add trip notes…"
-                    maxLength={NOTES_MAX}
-                    disabled={notesSaving}
-                    aria-label="Trip notes"
-                    autoFocus
-                  />
-                  {notesDraft.length >= NOTES_WARN_THRESHOLD && (
-                    <span className={`${styles.notesCharCount} ${notesDraft.length >= NOTES_MAX ? styles.notesCharCountWarn : ''}`}>
-                      {notesDraft.length.toLocaleString()} / {NOTES_MAX.toLocaleString()}
-                    </span>
-                  )}
-                  {notesError && (
-                    <span className={styles.notesError} role="alert">{notesError}</span>
-                  )}
-                  <div className={styles.notesEditActions}>
-                    <button
-                      className={styles.saveDatesBtn}
-                      onClick={handleSaveNotes}
-                      disabled={notesSaving}
-                      aria-label="Save trip notes"
-                    >
-                      {notesSaving ? <span className="spinner" /> : 'Save'}
-                    </button>
-                    <button
-                      className={styles.cancelDatesLink}
-                      onClick={handleCancelNotes}
-                      disabled={notesSaving}
-                      aria-label="Cancel notes editing"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          {/* ── Trip Notes Section (T-189) ── */}
+          <TripNotesSection
+            tripId={tripId}
+            initialNotes={trip?.notes ?? null}
+            onSaveSuccess={fetchAll}
+            isLoading={tripLoading}
+          />
 
           {/* ── Trip Date Range Section ── */}
           {!tripLoading && dateMode !== 'loading' && (
@@ -864,7 +774,7 @@ export default function TripDetailsPage() {
                 <div className={styles.dateRangeDisplay}>
                   <CalendarIconSmall />
                   <span className={styles.dateRangeText}>
-                    {formatTripDateRange(savedStartDate, savedEndDate)}
+                    {formatDateRange(savedStartDate, savedEndDate)}
                   </span>
                   <button
                     className={styles.editDatesLink}
@@ -884,19 +794,12 @@ export default function TripDetailsPage() {
 
           {/* ── Calendar ── */}
           <div className={styles.calendarWrapper}>
-            <TripCalendar
-              trip={trip || {}}
-              flights={flights}
-              stays={stays}
-              activities={activities}
-              landTravels={landTravels}
-              isLoading={flightsLoading || staysLoading || activitiesLoading || landTravelsLoading}
-            />
+            <TripCalendar tripId={tripId} />
           </div>
 
           {/* ── Flights Section ── */}
           {/* T-099: Section order is Flights → Land Travel → Stays → Activities */}
-          <section className={styles.section}>
+          <section id="flights-section" className={styles.section}>
             <SectionHeader title="flights" actionLabel="edit flights" actionHref={`/trips/${tripId}/edit/flights`} />
             {flightsLoading ? (
               <SkeletonBar width="100%" height="80px" />
@@ -917,7 +820,7 @@ export default function TripDetailsPage() {
 
           {/* ── Land Travel Section ── */}
           {/* T-099: Moved to between Flights and Stays for logical travel flow */}
-          <section className={styles.section}>
+          <section id="land-travel-section" className={styles.section}>
             <SectionHeader title="land travel" actionLabel="edit land travel" actionHref={`/trips/${tripId}/land-travel/edit`} />
             {landTravelsLoading ? (
               <div>
@@ -949,7 +852,7 @@ export default function TripDetailsPage() {
           </section>
 
           {/* ── Stays Section ── */}
-          <section className={styles.section}>
+          <section id="stays-section" className={styles.section}>
             <SectionHeader title="stays" actionLabel="edit stays" actionHref={`/trips/${tripId}/edit/stays`} />
             {staysLoading ? (
               <SkeletonBar width="100%" height="80px" />
@@ -970,7 +873,7 @@ export default function TripDetailsPage() {
 
           {/* ── Activities Section ── */}
           {/* T-099: Activities is now last; moved sectionLast class here from Land Travel */}
-          <section className={`${styles.section} ${styles.sectionLast}`}>
+          <section id="activities-section" className={`${styles.section} ${styles.sectionLast}`}>
             <SectionHeader title="activities" actionLabel="edit activities" actionHref={`/trips/${tripId}/edit/activities`} />
             {activitiesLoading ? (
               <div>

@@ -12,14 +12,16 @@ run_phase_closeout() {
 Your task: Triage feedback and write the sprint summary.
 
 FEEDBACK TRIAGE:
-1. Read .workflow/feedback-log.md — only the Sprint #${sprint_num} section — for all entries from this sprint
+1. Read .workflow/feedback-log.md — scan the ENTIRE file for ALL entries with Status 'New', regardless of which sprint section or header they appear under. Do NOT limit your triage to the current sprint section — feedback may be filed under custom headers or carry over from previous sprints.
 2. For each feedback entry with Status 'New':
-   - Critical/Major bugs: set Status to 'Tasked' (these go into the next sprint)
+   - Critical/Major bugs: set Status to 'Tasked' and create a task in the next sprint plan (these go into the next sprint)
    - Minor bugs: set Status to 'Acknowledged' (backlog for a future sprint)
    - UX Issues: set Status to 'Acknowledged' or 'Tasked' based on severity
-   - Feature Gaps: set Status to 'Acknowledged' (backlog unless critical)
+   - Feature Gaps with severity Critical or Major: set Status to 'Tasked' and create a task in the next sprint plan
+   - Feature Gaps with severity Minor or Suggestion: set Status to 'Acknowledged' (backlog)
    - Positive feedback: set Status to 'Acknowledged' (keep for team morale)
    - Suggestions: set Status to 'Acknowledged'
+3. IMPORTANT: After triage, there must be ZERO entries with Status 'New' remaining in feedback-log.md. Every entry must be dispositioned. If you are unsure about an entry, set it to 'Acknowledged' — do NOT leave it as 'New'.
 
 SPRINT SUMMARY:
 3. Write a sprint summary entry in .workflow/sprint-log.md including:
@@ -50,7 +52,7 @@ WRITE THE NEXT SPRINT PLAN:
 
 CRITICAL: Do NOT skip step 6. The next sprint plan MUST be written to active-sprint.md before closeout is complete. The plan phase will verify it exists — if it is missing, the sprint cycle will stall."
 
-    run_agent_with_retry "manager" "$task_prompt" 3 20 "${MODEL_LIGHT:-sonnet}"
+    run_agent_with_retry "manager" "$task_prompt" 3 30 "${MODEL_LIGHT:-sonnet}"
 
     sprint_state_set "phase" "closeout"
     sprint_state_set "closeout_status" "complete"

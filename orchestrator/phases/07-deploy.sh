@@ -42,7 +42,7 @@ If any step fails, log the failure details in qa-build-log.md and handoff-log.md
 
 Note: For this local/staging setup, 'staging' means running the built application locally with a real database. Production deployment will be handled separately when CI/CD is configured."
 
-    run_agent_with_retry "deploy-engineer" "$task_prompt" 3 30 "${MODEL_LIGHT:-sonnet}"
+    run_agent_with_retry "deploy-engineer" "$task_prompt" 3 40 "${MODEL_LIGHT:-sonnet}"
 
     sprint_state_set "phase" "deploy"
     sprint_state_set "deploy_status" "complete"

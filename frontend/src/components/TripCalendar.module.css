@@ -1,107 +1,143 @@
-/* TripCalendar.module.css */
+/* TripCalendar.module.css — Sprint 25 (T-213) */
 
-.calendar {
+/* ── Panel Container ── */
+.calendarPanel {
   background: var(--surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
+  padding: 24px;
   width: 100%;
-  margin-bottom: 48px;
-  overflow: hidden;
+  margin-bottom: var(--space-12); /* 48px */
 }
 
-/* ── Calendar Header ── */
-.calendarHeader {
-  height: 56px;
-  padding: 0 20px;
+/* ── Panel Header ── */
+.panelHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 12px;
 }
 
-.navBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
+.panelLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--text-muted);
-  font-size: 18px;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  transition: color 150ms ease;
   font-family: var(--font-mono);
 }
 
-.navBtn:hover {
+.panelDivider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin-bottom: 20px;
+}
+
+/* ── Legend Strip ── */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendDotFlight {
+  background: var(--event-flight-border);
+}
+
+.legendDotStay {
+  background: var(--event-stay-border);
+}
+
+.legendDotActivity {
+  background: var(--event-activity-border);
+}
+
+.legendText {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ── Month Navigation ── */
+.monthNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.navArrow {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: 4px 10px;
+  transition: all 150ms ease;
+}
+
+.navArrow:hover:not(:disabled) {
+  background: rgba(252, 252, 252, 0.05);
   color: var(--text-primary);
 }
 
-.monthLabel {
+.navArrow:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.navArrow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.monthTitle {
+  font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-align: center;
+  min-width: 160px;
 }
 
-/* ── Today Button (T-147) ── */
-.todayBtn {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px solid rgba(93, 115, 126, 0.4);
-  border-radius: var(--radius-sm);
-  padding: 4px 10px;
-  cursor: pointer;
-  transition: all 150ms ease;
-  margin-left: 8px;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.todayBtn:hover {
-  color: var(--text-primary);
-  border-color: var(--border-accent);
-  background: rgba(93, 115, 126, 0.08);
-}
-
-.todayBtn:focus-visible {
-  outline: 2px solid var(--border-accent);
-  outline-offset: 2px;
-}
-
-@media (max-width: 640px) {
-  .todayBtn {
-    font-size: 10px;
-    padding: 3px 8px;
-    margin-left: 6px;
-  }
-}
-
-/* ── Day of week header ── */
+/* ── Day of Week Header ── */
 .dowHeader {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  height: 36px;
-  background: var(--bg-primary);
-  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 4px;
 }
 
 .dowCell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  text-align: center;
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--text-muted);
+  padding-bottom: 8px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 /* ── Calendar Grid ── */
@@ -110,50 +146,47 @@
   grid-template-columns: repeat(7, 1fr);
 }
 
-/* ── Day Cell ── */
 .dayCell {
   min-height: 80px;
-  border-right: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
-  padding: 6px 8px;
-  box-sizing: border-box;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  padding: 4px;
+  position: relative;
   overflow: hidden;
 }
 
-/* Remove right border on last column */
-.dayCell:nth-child(7n) {
-  border-right: none;
-}
-
-/* Remove bottom border on last row */
-.dayCell:nth-last-child(-n+7) {
-  border-bottom: none;
+.dayCell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  z-index: 1;
 }
 
 .dayCellOutside {
-  opacity: 0.4;
+  background: rgba(2, 17, 27, 0.4);
+  opacity: 0.6;
 }
 
-/* ── Day Number ── */
+.dayCellSkeleton {
+  background: var(--surface-alt);
+  border: 1px solid var(--border-subtle);
+  opacity: 0.5;
+  min-height: 80px;
+}
+
 .dayNumber {
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
-  margin-bottom: 4px;
+  padding: 2px 4px;
   line-height: 1;
 }
 
 .dayNumberToday {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  background: var(--accent);
-  color: #FCFCFC;
-  border-radius: 50%;
-  font-size: 10px;
-  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--accent);
+  display: inline-block;
+  padding-bottom: 2px;
 }
 
 .dayNumberOutside {
@@ -165,239 +198,255 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  margin-top: 4px;
 }
 
-/* ── Event Chips ── */
-.eventChip {
-  padding: 1px 6px 2px;
-  border-radius: 2px;
-  font-size: 10px;
-  font-weight: 500;
-  color: #FCFCFC;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-  box-sizing: border-box;
+/* ── Event Pills ── */
+.eventPill {
   display: flex;
-  flex-direction: column;
-  min-height: 18px;
+  align-items: center;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid transparent;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 150ms ease;
+  padding: 0 4px;
+  position: relative;
 }
 
-.eventName {
+.eventPill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.eventPillFlight {
+  background: var(--event-flight-bg);
+  border-left-color: var(--event-flight-border);
+}
+
+.eventPillFlight:hover {
+  background: rgba(93, 115, 126, 0.35);
+}
+
+.eventPillStay {
+  background: var(--event-stay-bg);
+  border-left-color: var(--event-stay-border);
+}
+
+.eventPillStay:hover {
+  background: rgba(100, 160, 120, 0.3);
+}
+
+.eventPillActivity {
+  background: var(--event-activity-bg);
+  border-left-color: var(--event-activity-border);
+}
+
+.eventPillActivity:hover {
+  background: rgba(180, 140, 80, 0.28);
+}
+
+.eventPillText {
+  font-family: var(--font-mono);
+  font-size: 10px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 16px;
+  line-height: 1;
+  display: block;
+  width: 100%;
 }
 
-/* Compact time shown below event name (T-089) */
-.eventTime {
+.eventPillFlight .eventPillText {
+  color: var(--event-flight-text);
+}
+
+.eventPillStay .eventPillText {
+  color: var(--event-stay-text);
+}
+
+.eventPillActivity .eventPillText {
+  color: var(--event-activity-text);
+}
+
+.overflowLabel {
+  font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 400;
-  opacity: 0.7;
-  line-height: 12px;
+  color: var(--accent);
+  padding: 0 4px;
+}
+
+/* ── Desktop vs Mobile ── */
+.desktopGrid {
   display: block;
 }
 
-.eventChipFlight {
-  background: var(--color-flight, #5D737E);
+.mobileView {
+  display: none;
 }
 
-.eventChipStay {
-  background: var(--color-stay, #3D8F82);
-  border-radius: 0;
-}
-
-.chipFirst {
-  border-radius: 2px 0 0 2px;
-}
-
-.chipLast {
-  border-radius: 0 2px 2px 0;
-}
-
-.eventChipActivity {
-  background: var(--color-activity, #C47A2E);
-}
-
-/* Land travel chip (T-088) */
-.eventChipLandTravel {
-  background: var(--color-land-travel, #7B6B8E);
-}
-
-/* ── Overflow button (T-089 — was div) ── */
-.overflowWrapper {
-  position: relative;
-}
-
-.overflowBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 10px;
-  color: var(--accent);
-  padding: 0 6px;
+/* ── Empty State ── */
+.emptyMsg {
   font-family: var(--font-mono);
-  text-align: left;
-  width: 100%;
-  line-height: 18px;
-  border-radius: 2px;
-  transition: opacity 150ms ease;
-}
-
-.overflowBtn:hover {
-  opacity: 0.8;
-  text-decoration: underline;
-}
-
-/* ── Day Events Popover (T-089, updated T-097) ── */
-/* T-097: position/top/left are now set via inline styles (position:fixed via portal).
-   This element is rendered at document.body level — not inside the calendar grid. */
-.popover {
-  z-index: 1000;
-  width: 240px;
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  outline: none;
-}
-
-.popoverHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px 8px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.popoverDate {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 13px;
+  font-weight: 400;
   color: var(--text-muted);
+  text-align: center;
+  padding: 32px 16px;
+  line-height: 1.8;
 }
 
-.popoverCloseBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 16px;
-  line-height: 1;
-  padding: 0 2px;
-  font-family: var(--font-mono);
-  transition: color 150ms ease;
+/* ── Loading State ── */
+.loadingArea {
+  padding: 0;
 }
 
-.popoverCloseBtn:hover {
-  color: var(--text-primary);
-}
-
-.popoverList {
-  padding: 8px 0;
-  max-height: 280px;
-  overflow-y: auto;
-}
-
-.popoverItem {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 5px 12px;
-}
-
-.popoverItemContent {
+/* ── Error State ── */
+.errorArea {
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: 12px;
+  padding: 32px;
 }
 
-.popoverItemName {
+.errorTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.errorMsg {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.retryBtn {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
   font-size: 12px;
+  padding: 6px 16px;
+  background: transparent;
+  transition: all 150ms ease;
+}
+
+.retryBtn:hover {
+  background: rgba(252, 252, 252, 0.05);
   color: var(--text-primary);
+}
+
+.retryBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Mobile Day List ── */
+.mobileList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobileDayEntry {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.mobileDayLabel {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.mobileDaySep {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin-bottom: 8px;
+}
+
+.mobileEventRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 150ms ease;
+}
+
+.mobileEventRow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.mobileEventIcon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.mobileEventTime {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.mobileEventTitle {
+  font-family: var(--font-mono);
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.popoverItemTime {
-  font-size: 10px;
+.mobileEventFlight {
+  color: var(--event-flight-text);
+}
+
+.mobileEventStay {
+  color: var(--event-stay-text);
+}
+
+.mobileEventActivity {
+  color: var(--event-activity-text);
+}
+
+.mobileNoEvents {
+  font-family: var(--font-mono);
+  font-size: 13px;
   color: var(--text-muted);
-  margin-top: 1px;
-}
-
-/* ── Loading Overlay ── */
-.loadingOverlay {
-  min-height: 320px;
-  position: relative;
-  overflow: hidden;
-}
-
-.loadingSkeleton {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(252,252,252,0.02) 25%, rgba(252,252,252,0.05) 50%, rgba(252,252,252,0.02) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-/* ── Empty Message ── */
-.emptyMessage {
-  font-size: 11px;
-  color: rgba(252, 252, 252, 0.3);
   text-align: center;
-  padding: 12px 0 16px;
+  padding: 24px;
 }
 
-/* ── Responsive: Tablet (640–767px) ── */
-@media (max-width: 767px) and (min-width: 640px) {
+/* ── Responsive ── */
+@media (max-width: 767px) {
   .dayCell {
-    min-height: 70px;
+    min-height: 64px;
   }
 }
 
-/* ── Responsive: Mobile (<640px) — dots only ── */
-@media (max-width: 639px) {
-  .dayCell {
-    min-height: 52px;
-    padding: 4px;
-  }
-
-  .dayNumber {
-    font-size: 11px;
-  }
-
-  /* Hide text chips on mobile — show dots instead */
-  .eventChip {
-    height: 6px;
-    width: 6px;
-    border-radius: 50%;
-    padding: 0;
-    text-indent: -9999px;
-    overflow: hidden;
-    display: inline-block;
-  }
-
-  .eventsArea {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 3px;
-    margin-top: 4px;
-  }
-
-  .overflowBtn {
+@media (max-width: 479px) {
+  .desktopGrid {
     display: none;
   }
-
-  .eventTime {
-    display: none;
+  .mobileView {
+    display: block;
   }
 }

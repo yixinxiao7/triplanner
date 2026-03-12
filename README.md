@@ -165,6 +165,9 @@ Edit `.workflow/project-brief.md` with your product vision. This is the single s
 # Resume from where you left off after an interruption
 ./orchestrator/orchestrate.sh --continue
 
+# Prevent macOS sleep while the sprint runs (sleep resumes when it finishes)
+caffeinate -s ./orchestrator/orchestrate.sh --continue
+
 # Check current sprint status
 ./orchestrator/orchestrate.sh --status
 

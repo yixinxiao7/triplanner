@@ -21,6 +21,7 @@ source "${SCRIPT_DIR}/lib/common.sh"
 source "${SCRIPT_DIR}/lib/run-agent.sh"
 source "${SCRIPT_DIR}/lib/parse-workflow.sh"
 source "${SCRIPT_DIR}/lib/check-sprint.sh"
+source "${SCRIPT_DIR}/lib/notify.sh"
 
 # ── Load Config ──────────────────────────────────────────────────────
 load_config
@@ -165,6 +166,15 @@ run_sprint() {
         log_success "Phase '$phase' complete (elapsed: $(timer_elapsed))"
     done
 
+    # Verify no untriaged feedback remains
+    local untriaged
+    untriaged=$(grep -c '| New |' "${WORKFLOW_DIR}/feedback-log.md" 2>/dev/null || true)
+    untriaged="${untriaged:-0}"
+    if [[ "$untriaged" -gt 0 ]]; then
+        log_warn "⚠ ${untriaged} feedback entries still have Status 'New' after closeout — Manager Agent may have missed them."
+        log_warn "  Review .workflow/feedback-log.md before starting the next sprint."
+    fi
+
     # Sprint complete
     log_phase "Sprint #${sprint_num} Complete! (Total time: $(timer_elapsed))"
     check_definition_of_done || true
@@ -237,6 +247,7 @@ case "$MODE" in
     single|continue)
         run_sprint
         print_final_summary
+        send_sprint_email
         increment_sprint
         ;;
 
@@ -247,6 +258,7 @@ case "$MODE" in
         while true; do
             run_sprint
             print_final_summary
+            send_sprint_email
             ((local_sprint_count++))
 
             # Check max sprints

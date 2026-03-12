@@ -243,8 +243,8 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit, triggerRef 
             <button
               type="submit"
               className={styles.submitBtn}
-              disabled={isLoading}
-              aria-disabled={isLoading}
+              disabled={isLoading || !name.trim() || destinations.length === 0}
+              aria-disabled={isLoading || !name.trim() || destinations.length === 0}
             >
               {isLoading ? (
                 <span className="spinner" aria-label="Creating trip" />

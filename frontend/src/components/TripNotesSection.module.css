@@ -1,0 +1,276 @@
+/* ── TripNotesSection ── */
+
+.wrapper {
+  /* Outer wrapper; separator + header + content */
+}
+
+.separator {
+  height: 1px;
+  background: var(--border-subtle);
+  margin-bottom: 24px;
+  margin-top: 32px;
+}
+
+/* ── Section Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.headerLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color 150ms ease;
+}
+
+.headerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+  border: none;
+  margin: 0;
+}
+
+.pencilBtn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 150ms ease;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.pencilBtn:hover {
+  color: var(--accent);
+}
+
+.pencilBtn:focus-visible {
+  outline: 2px solid var(--border-accent, #5D737E);
+  outline-offset: 2px;
+}
+
+.pencilBtnActive {
+  color: var(--accent);
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pencilBtn {
+    transition: none;
+  }
+  .headerLabel {
+    transition: none;
+  }
+}
+
+/* ── View Mode ── */
+.viewContent {
+  padding-top: 0;
+}
+
+.placeholder {
+  display: block;
+  font-size: 14px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  font-style: italic;
+  cursor: pointer;
+  transition: color 150ms ease;
+  outline: none;
+  border-radius: 2px;
+}
+
+.placeholder:hover {
+  color: rgba(252, 252, 252, 0.65);
+}
+
+.placeholder:focus-visible {
+  outline: 2px solid var(--border-accent, #5D737E);
+  outline-offset: 2px;
+}
+
+.notesText {
+  display: block;
+  font-size: 14px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  cursor: pointer;
+  margin: 0;
+  padding: 4px 6px;
+  border-radius: 2px;
+  transition: background 150ms ease;
+  outline: none;
+}
+
+.notesText:hover {
+  background: rgba(252, 252, 252, 0.03);
+}
+
+.notesText:focus-visible {
+  outline: 2px solid var(--border-accent, #5D737E);
+  outline-offset: 2px;
+}
+
+/* ── Edit Mode ── */
+.editContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 120px;
+  max-height: 400px;
+  background: var(--surface-alt, #3F4045);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 2px);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  resize: vertical;
+  outline: none;
+  transition: border-color 150ms ease;
+  overflow-y: auto;
+}
+
+.textarea:focus {
+  border-color: var(--border-accent, #5D737E);
+}
+
+.textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.textarea::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .textarea {
+    transition: none;
+  }
+}
+
+.charCount {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.buttonRow {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.saveBtn {
+  background: var(--accent, #5D737E);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 20px;
+  border: none;
+  border-radius: var(--radius-sm, 2px);
+  cursor: pointer;
+  min-width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 150ms ease;
+}
+
+.saveBtn:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.saveBtn:focus-visible {
+  outline: 2px solid var(--border-accent, #5D737E);
+  outline-offset: 2px;
+}
+
+.cancelBtn {
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  padding: 8px 20px;
+  border: 1px solid rgba(93, 115, 126, 0.5);
+  border-radius: var(--radius-sm, 2px);
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background: rgba(252, 252, 252, 0.05);
+}
+
+.cancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancelBtn:focus-visible {
+  outline: 2px solid var(--border-accent, #5D737E);
+  outline-offset: 2px;
+}
+
+.errorMsg {
+  font-size: 12px;
+  color: rgba(220, 80, 80, 0.9);
+  margin-top: 8px;
+  display: block;
+}
+
+/* ── Loading Skeleton ── */
+.skeletonContent {
+  padding-top: 4px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .textarea {
+    min-height: 100px;
+  }
+}
+
+@media (max-width: 359px) {
+  .buttonRow {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .saveBtn,
+  .cancelBtn {
+    width: 100%;
+  }
+}

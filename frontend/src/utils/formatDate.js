@@ -5,8 +5,31 @@
  * - Flights and stays: display local time + timezone abbreviation from the stored *_tz IANA string.
  *   We do NOT do timezone conversion — we display the stored local time and label it with the tz.
  * - Activities: activity_date is YYYY-MM-DD, start_time/end_time are HH:MM:SS (24-hour).
- * - Trip cards: derive date range from flight dates.
+ * - Trip cards: derive date range from the earliest and latest dates across all event types (flights, stays, activities, land travels).
  */
+
+/**
+ * Format a destinations array for compact display on trip cards.
+ * Shows up to 3 destinations joined by ", "; overflows with "+N more".
+ *
+ * Per Spec 18.4.1:
+ *   1 dest  → "Paris"
+ *   2 dests → "Paris, Rome"
+ *   3 dests → "Paris, Rome, Athens"
+ *   4 dests → "Paris, Rome, Athens, +1 more"
+ *   N > 3   → "[d1], [d2], [d3], +[N-3] more"
+ *   0 dests → "—"
+ *
+ * @param {string[]} destinations
+ * @returns {string}
+ */
+export function formatDestinations(destinations) {
+  if (!destinations || destinations.length === 0) return '\u2014';
+  if (destinations.length <= 3) return destinations.join(', ');
+  const visible = destinations.slice(0, 3).join(', ');
+  const overflow = destinations.length - 3;
+  return `${visible}, +${overflow} more`;
+}
 
 /**
  * Format an ISO 8601 UTC timestamp for display in a given timezone.
@@ -157,58 +180,56 @@ export function parseLocationWithLinks(text) {
 }
 
 /**
- * Format a trip card date range from departure/arrival ISO strings.
- * Example output: "Aug 7, 2026 — Aug 14, 2026"
+ * Format a trip date range from YYYY-MM-DD start_date and end_date fields.
+ * Returns a formatted string or null if no dates are set.
  *
- * @param {string} startIso
- * @param {string} endIso
- * @returns {string}
- */
-export function formatDateRange(startIso, endIso) {
-  if (!startIso && !endIso) return null;
-  const start = startIso ? formatDate(startIso) : '?';
-  const end = endIso ? formatDate(endIso) : '?';
-  return `${start} — ${end}`;
-}
-
-/**
- * Format a trip date range from start_date / end_date (YYYY-MM-DD) fields.
- * Returns formatted string or null if no dates set.
+ * Parsing rule: Parse each date string by splitting on '-' and using
+ * new Date(year, month - 1, day) — local date, no UTC offset.
  *
- * Examples:
- *   ("2026-08-07", "2026-08-14") → "Aug 7 – Aug 14, 2026"
- *   ("2025-12-28", "2026-01-04") → "Dec 28, 2025 – Jan 4, 2026"
- *   ("2026-08-07", null) → "From Aug 7, 2026"
- *   (null, null) → null
+ * Output rules:
+ *   (null, null)           → null
+ *   ("YYYY-MM-DD", null)   → "From May 1, 2026"
+ *   same year + same month → "May 1 – 15, 2026"      (no repeated month)
+ *   same year, diff month  → "Aug 7 – Sep 2, 2026"
+ *   different years        → "Dec 28, 2025 – Jan 3, 2026"
+ *
+ * Separator: en-dash with spaces (U+2013).
  *
  * @param {string|null} startDate - YYYY-MM-DD
- * @param {string|null} endDate - YYYY-MM-DD
+ * @param {string|null} endDate   - YYYY-MM-DD
  * @returns {string|null}
  */
-export function formatTripDateRange(startDate, endDate) {
+export function formatDateRange(startDate, endDate) {
   if (!startDate && !endDate) return null;
 
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  function parseDate(dateStr) {
+  function parseYMD(dateStr) {
     const [y, m, d] = dateStr.split('-').map(Number);
-    return { year: y, month: m - 1, day: d };
+    return { year: y, month: m - 1, day: d }; // month is 0-indexed
   }
 
   if (startDate && endDate) {
-    const s = parseDate(startDate);
-    const e = parseDate(endDate);
+    const s = parseYMD(startDate);
+    const e = parseYMD(endDate);
     if (s.year === e.year) {
+      if (s.month === e.month) {
+        // Same month: "May 1 – 15, 2026"
+        return `${MONTHS[s.month]} ${s.day} \u2013 ${e.day}, ${s.year}`;
+      }
+      // Same year, different months: "Aug 7 – Sep 2, 2026"
       return `${MONTHS[s.month]} ${s.day} \u2013 ${MONTHS[e.month]} ${e.day}, ${s.year}`;
     }
+    // Different years: "Dec 28, 2025 – Jan 3, 2026"
     return `${MONTHS[s.month]} ${s.day}, ${s.year} \u2013 ${MONTHS[e.month]} ${e.day}, ${e.year}`;
   }
 
   if (startDate && !endDate) {
-    const s = parseDate(startDate);
+    const s = parseYMD(startDate);
     return `From ${MONTHS[s.month]} ${s.day}, ${s.year}`;
   }
 
   return null;
 }
+

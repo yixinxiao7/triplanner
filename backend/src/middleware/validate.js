@@ -10,11 +10,15 @@
  *   maxLength     {number}   - maximum string length
  *   minItems      {number}   - minimum array length
  *   maxItems      {number}   - maximum array length
+ *   itemMinLength {number}   - minimum length for each string item in an array
+ *   itemMaxLength {number}   - maximum length for each string item in an array
  *   enum          {Array}    - allowed string values
  *   nullable      {boolean}  - allows null value (skips other checks when null)
  *   trim          {boolean}  - trim string before checks (default true for strings)
  *   custom        {Function} - (value, body) => string | null  (return error message or null)
  *   messages      {Object}   - override default error messages per rule
+ *                              Supports: required, type, minLength, maxLength, minItems,
+ *                                        maxItems, itemMinLength, itemMaxLength, enum
  */
 export function validate(schema) {
   return (req, res, next) => {
@@ -137,6 +141,26 @@ export function validate(schema) {
         if (rules.maxItems !== undefined && value.length > rules.maxItems) {
           fieldErrors[field] = rules.messages?.maxItems || `${field} must have at most ${rules.maxItems} items`;
           continue;
+        }
+
+        // ---- Per-item string length checks (T-186) ----
+        // Validates every string element in the array against itemMinLength / itemMaxLength.
+        // Reports the first offending item found. Non-string items are skipped.
+        if (rules.itemMinLength !== undefined) {
+          const offender = value.find((item) => typeof item === 'string' && item.length < rules.itemMinLength);
+          if (offender !== undefined) {
+            fieldErrors[field] = rules.messages?.itemMinLength ||
+              `Each ${field} item must be at least ${rules.itemMinLength} character(s)`;
+            continue;
+          }
+        }
+        if (rules.itemMaxLength !== undefined) {
+          const offender = value.find((item) => typeof item === 'string' && item.length > rules.itemMaxLength);
+          if (offender !== undefined) {
+            fieldErrors[field] = rules.messages?.itemMaxLength ||
+              `Each ${field} item must be at most ${rules.itemMaxLength} characters`;
+            continue;
+          }
         }
       }
 

@@ -1380,7 +1380,12 @@ This update applies to the TripCard component on the Home page. The trip object 
 
 ##### 7.2.1 Overview
 
-The Calendar component replaces the `"calendar coming in sprint 2"` placeholder at the top of the Trip Details page. It renders a monthly view calendar grid populated with events from the trip's flights, stays, and activities. It uses data already fetched by the `useTripDetails` hook — no additional API calls.
+The Calendar component replaces the `"calendar coming in sprint 2"` placeholder at the top of the Trip Details page. It renders a monthly view calendar grid populated with events from the trip's flights, stays, and activities.
+
+**Data Fetching (implemented pattern — Sprint 28 spec update, T-230):**
+`TripCalendar.jsx` is a self-contained component that issues its own `GET /api/v1/trips/:id/calendar` request on mount, independent of the `useTripDetails` hook. This dedicated endpoint returns event data pre-shaped for calendar rendering — each event carries `start_date`, `end_date`, `start_time`, and `end_time` fields — avoiding the client-side reshaping that would otherwise be required when working from raw `flights`/`stays`/`activities` arrays returned by `useTripDetails`.
+
+The component receives only a `tripId` prop and manages its own `loading`, `error`, and `events` state. Every time `TripDetailsPage` mounts (or the tripId changes), `TripCalendar` fires one `GET /api/v1/trips/:id/calendar` call. This is the canonical fetch pattern; do **not** attempt to pass pre-fetched event data through props or refactor to consume `useTripDetails` data.
 
 **Calendar colors (new CSS custom properties to add to `:root`):**
 ```css
@@ -7679,3 +7684,2946 @@ The Frontend Engineer should verify via `npm run build` + `npm run preview`:
 ---
 
 *Sprint 15 Specs 23 and 24 marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-07.*
+
+---
+
+### Spec 25: Trip Date Range Display on Home Page Cards (Sprint 16 — T-164)
+
+**Sprint:** #16
+**Related Task:** T-164 (Frontend), T-161 (Design), T-163 (Backend)
+**Status:** Approved
+**Priority:** P1
+
+---
+
+#### 25.1 Overview
+
+This spec defines the UI for displaying a computed trip date range on each trip card on the home page. The date range is derived from the backend-computed `start_date` and `end_date` fields (YYYY-MM-DD format), which represent the MIN and MAX dates across all events in a trip (flights, stays, activities, and land travels). When no events exist, the card displays "No dates yet" in dimmed muted text.
+
+This closes B-006 — the "timeline of the trip" requirement from the project brief that has been deferred since Sprint 1.
+
+**Source fields (from API):**
+- `trip.start_date` — YYYY-MM-DD string or `null` (MIN of all event dates, computed by backend)
+- `trip.end_date` — YYYY-MM-DD string or `null` (MAX of all event dates, computed by backend)
+
+**No timezone conversion.** Dates are calendar-local (YYYY-MM-DD). Parse and render as-is without UTC offset adjustments.
+
+---
+
+#### 25.2 Updated TripCard Layout
+
+The TripCard layout remains as currently implemented. The date range row is the final element inside the normal card content area, below the horizontal divider.
+
+**Vertical stacking order (top → bottom):**
+
+```
+┌─────────────────────────────────────────────────┐
+│  [STATUS BADGE]                    [DELETE ICON] │  ← top row
+│                                                  │
+│  Trip Name                                       │  ← tripName (16px, 500)
+│                                                  │
+│  🗺 Destination, Another City                    │  ← destinations (12px muted)
+│                                                  │
+│  Notes preview (first 100 chars)…                │  ← notesPreview (11px muted, if present)
+│                                                  │
+│  ─────────────────────────────────────────────  │  ← divider (1px subtle border)
+│                                                  │
+│  🗓  May 1 – 15, 2026                            │  ← timeline row (11px muted)
+└─────────────────────────────────────────────────┘
+```
+
+The `timeline` row (calendar icon + date range text) already exists in `TripCard.jsx` and `TripCard.module.css`. **Do not restructure the card.** Only update the text content and the formatting function.
+
+---
+
+#### 25.3 `formatDateRange(startDate, endDate)` — Function Specification
+
+Add or update the `formatDateRange(startDate, endDate)` export in `frontend/src/utils/formatDate.js`.
+
+**Signature:**
+```js
+/**
+ * Format a trip date range from YYYY-MM-DD start_date and end_date fields.
+ * Returns a formatted string or null if no dates are set.
+ *
+ * @param {string|null} startDate - YYYY-MM-DD
+ * @param {string|null} endDate   - YYYY-MM-DD
+ * @returns {string|null}
+ */
+export function formatDateRange(startDate, endDate) { ... }
+```
+
+**Parsing rule:** Parse each date string by splitting on `-` and using `new Date(year, month - 1, day)` (local date, no UTC). Never pass YYYY-MM-DD directly to `new Date(str)` — that triggers UTC interpretation and causes off-by-one-day bugs on users behind UTC.
+
+**Output rules (all cases):**
+
+| Input | Output |
+|-------|--------|
+| `null`, `null` | `null` |
+| `"2026-05-01"`, `null` | `"From May 1, 2026"` |
+| `"2026-05-01"`, `"2026-05-15"` (same month, same year) | `"May 1 – 15, 2026"` |
+| `"2026-08-07"`, `"2026-09-02"` (different months, same year) | `"Aug 7 – Sep 2, 2026"` |
+| `"2025-12-28"`, `"2026-01-03"` (cross-year) | `"Dec 28, 2025 – Jan 3, 2026"` |
+
+**Formatting rules in detail:**
+
+1. **Both null → return `null`** (the TripCard will render "No dates yet")
+
+2. **Start only (endDate is null) → `"From {Mon} {D}, {YYYY}"`**
+   - Example: `"2026-05-01"` → `"From May 1, 2026"`
+
+3. **Same year, same month → `"{Mon} {D_start} – {D_end}, {YYYY}"`**
+   - Month name appears once, at the start. End date shows day number only.
+   - Example: `"2026-05-01"` + `"2026-05-15"` → `"May 1 – 15, 2026"`
+
+4. **Same year, different months → `"{Mon} {D_start} – {Mon} {D_end}, {YYYY}"`**
+   - Year appears once at the end.
+   - Example: `"2026-08-07"` + `"2026-09-02"` → `"Aug 7 – Sep 2, 2026"`
+
+5. **Cross-year → `"{Mon} {D_start}, {YYYY_start} – {Mon} {D_end}, {YYYY_end}"`**
+   - Both year values are shown.
+   - Example: `"2025-12-28"` + `"2026-01-03"` → `"Dec 28, 2025 – Jan 3, 2026"`
+
+**Month abbreviations (3-letter, en-US):**
+`Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec`
+
+**Separator:** En-dash with spaces: ` – ` (Unicode U+2013, not a hyphen, not an em-dash)
+
+**Note:** The existing `formatTripDateRange` function in `formatDate.js` handles cases 1, 2, 4, and 5 but does NOT handle the same-month abbreviation (case 3). The existing `formatDateRange` function operates on ISO datetime strings, not YYYY-MM-DD. The Frontend Engineer should update `formatDateRange` to replace its current ISO-string behavior with the YYYY-MM-DD behavior described in this spec, and update `TripCard.jsx` to call `formatDateRange` (instead of `formatTripDateRange`). If renaming creates import issues in existing tests, both functions can be kept and the old one deprecated.
+
+---
+
+#### 25.4 TripCard Component — Required Changes
+
+**File:** `frontend/src/components/TripCard.jsx`
+
+**Change 1 — Import update:**
+Change the import from `formatTripDateRange` to `formatDateRange`:
+```js
+// Before
+import { formatTripDateRange } from '../utils/formatDate';
+
+// After
+import { formatDateRange } from '../utils/formatDate';
+```
+
+**Change 2 — Date range computation:**
+```js
+// Before
+const dateRange = formatTripDateRange(trip.start_date, trip.end_date);
+
+// After
+const dateRange = formatDateRange(trip.start_date, trip.end_date);
+```
+
+**Change 3 — Empty state text:**
+The empty state label must read **"No dates yet"** (not "dates not set"):
+```jsx
+{/* Before */}
+<span className={styles.datesNotSet}>dates not set</span>
+
+{/* After */}
+<span className={styles.datesNotSet}>No dates yet</span>
+```
+
+All other card markup remains unchanged.
+
+---
+
+#### 25.5 Styling
+
+**Timeline row (existing `.timeline` class — no changes needed):**
+```css
+.timeline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);   /* rgba(252, 252, 252, 0.5) */
+}
+```
+
+**Date set state:** The formatted date string is a plain `<span>` inheriting the `.timeline` color (`var(--text-muted)`). No additional styling.
+
+**Empty state (`.datesNotSet` — existing class):**
+```css
+.datesNotSet {
+  color: var(--text-muted);
+  opacity: 0.5;   /* further dimmed vs the formatted date text */
+}
+```
+The empty state is visually dimmer than actual dates to signal that it is placeholder text, not real data.
+
+**Calendar icon (existing SVG):** 12×12px, `stroke="currentColor"` inherits the `.timeline` muted color. No changes.
+
+**No new CSS classes are required.**
+
+---
+
+#### 25.6 States
+
+**State A — Dates populated (normal):**
+- `trip.start_date` and `trip.end_date` are both non-null YYYY-MM-DD strings
+- `formatDateRange` returns a formatted string (e.g., `"May 1 – 15, 2026"`)
+- The timeline row renders: `[calendar icon]  May 1 – 15, 2026`
+- Text color: `var(--text-muted)` (rgba 252,252,252 at 50% opacity)
+
+**State B — Start date only (end date null):**
+- `trip.start_date` is set; `trip.end_date` is null
+- `formatDateRange` returns `"From May 1, 2026"`
+- The timeline row renders: `[calendar icon]  From May 1, 2026`
+- Text color: `var(--text-muted)`
+
+**State C — No dates (both null — "No dates yet"):**
+- Both `trip.start_date` and `trip.end_date` are null
+- `formatDateRange` returns `null`
+- The timeline row renders: `[calendar icon]  No dates yet`
+- The text `"No dates yet"` uses class `.datesNotSet` (further dimmed: `var(--text-muted)` at opacity 0.5)
+- This occurs when a trip has been created but no events (flights/stays/activities/land travels) have been added yet
+
+**State D — Card loading (skeleton):**
+- The `TripCardSkeleton` component already renders a `.skeletonTimeline` shimmer bar in place of the timeline row
+- No changes required to the skeleton
+
+**State E — Delete confirmation overlay:**
+- When `confirmDelete` is true, the entire card content (including the timeline row) is replaced by the inline delete confirmation UI
+- The date range is not visible during delete confirmation
+- No changes required to delete confirmation flow
+
+---
+
+#### 25.7 User Flow
+
+1. User is logged in and navigates to the home page (`/`)
+2. The app fetches `GET /trips` — response now includes `start_date` and `end_date` per trip object
+3. Each `TripCard` renders with the timeline row showing one of:
+   - A formatted date range string if events exist
+   - "No dates yet" if no events exist
+4. User scans the home page and can immediately see the trip duration at a glance without opening the trip
+5. User adds a new event to a trip (e.g., a flight) via the Trip Details page
+6. User returns to the home page
+7. The trip card now shows the correct date range reflecting the newly added event
+8. If a user deletes all events from a trip, the card reverts to "No dates yet"
+
+---
+
+#### 25.8 Responsive Behavior
+
+| Breakpoint | Behavior |
+|------------|----------|
+| Desktop (≥1024px) | Cards in a multi-column grid. Timeline row spans the full card width. Date range text truncates with ellipsis if the card is narrower than the text (unlikely for typical date ranges). |
+| Tablet (768–1023px) | Same grid, narrower columns. Date range text is short enough (max ~26 chars for cross-year format) to fit comfortably at 11px monospace. |
+| Mobile (<768px) | Single-column cards. Full card width. No wrapping issues expected at 11px. |
+
+**No responsive changes required.** The existing `.timeline` flexbox row handles all breakpoints correctly.
+
+---
+
+#### 25.9 Accessibility
+
+- The timeline row is a `<div>` with `display: flex`. The calendar icon SVG has `aria-hidden="true"` (already present — the icon is decorative).
+- The date range text (or "No dates yet") is a plain `<span>` — readable by screen readers as inline text.
+- The full card has `aria-label="Trip: {trip.name}"` (already present). The date range is read as part of the card's content flow.
+- Color contrast: `var(--text-muted)` (rgba 252,252,252,0.5) on `--surface` (#30292F) gives approximately 5.5:1 contrast ratio — meets WCAG AA for 11px text with `font-weight: 400`. The `.datesNotSet` style at opacity 0.5 on top reduces contrast to approximately 2.7:1 — acceptable for placeholder/decorative secondary text that conveys no critical information.
+- No keyboard interaction changes — the timeline row is not interactive.
+
+---
+
+#### 25.10 Tests Required (T-164)
+
+The Frontend Engineer must add or update tests in the TripCard test file:
+
+**Test 25.A — Same-year, same-month date range:**
+```
+Given: trip.start_date = "2026-05-01", trip.end_date = "2026-05-15"
+When:  TripCard renders
+Then:  The timeline row shows "May 1 – 15, 2026"
+And:   The text is NOT "May 1 – May 15, 2026" (no repeated month)
+```
+
+**Test 25.B — Same-year, cross-month date range:**
+```
+Given: trip.start_date = "2026-08-07", trip.end_date = "2026-09-02"
+When:  TripCard renders
+Then:  The timeline row shows "Aug 7 – Sep 2, 2026"
+```
+
+**Test 25.C — Cross-year date range:**
+```
+Given: trip.start_date = "2025-12-28", trip.end_date = "2026-01-03"
+When:  TripCard renders
+Then:  The timeline row shows "Dec 28, 2025 – Jan 3, 2026"
+```
+
+**Test 25.D — Both dates null (empty state):**
+```
+Given: trip.start_date = null, trip.end_date = null
+When:  TripCard renders
+Then:  The timeline row shows "No dates yet"
+And:   The text does NOT show "dates not set"
+And:   The "No dates yet" span has the datesNotSet CSS class
+```
+
+**Test 25.E — Start date only (no end date):**
+```
+Given: trip.start_date = "2026-05-01", trip.end_date = null
+When:  TripCard renders
+Then:  The timeline row shows "From May 1, 2026"
+```
+
+**Test 25.F — formatDateRange unit tests:**
+In `formatDate.test.js` (or equivalent), add unit tests for `formatDateRange`:
+```
+formatDateRange(null, null)         → null
+formatDateRange("2026-05-01", null) → "From May 1, 2026"
+formatDateRange("2026-05-01", "2026-05-15") → "May 1 – 15, 2026"
+formatDateRange("2026-08-07", "2026-09-02") → "Aug 7 – Sep 2, 2026"
+formatDateRange("2025-12-28", "2026-01-03") → "Dec 28, 2025 – Jan 3, 2026"
+```
+
+**Regression:** All existing TripCard tests must continue to pass.
+
+---
+
+#### 25.11 Files to Modify (T-164)
+
+| File | Change |
+|------|--------|
+| `frontend/src/utils/formatDate.js` | Update `formatDateRange(startDate, endDate)` to accept YYYY-MM-DD strings and implement all 5 output cases from §25.3. Keep `formatTripDateRange` if it is used elsewhere; otherwise it can be removed after confirming no other imports. |
+| `frontend/src/components/TripCard.jsx` | Update import to use `formatDateRange`; call `formatDateRange(trip.start_date, trip.end_date)`; change empty state text from "dates not set" to "No dates yet". |
+| `frontend/src/__tests__/TripCard.test.jsx` | Add Tests 25.A through 25.E. |
+| `frontend/src/__tests__/formatDate.test.js` (or equivalent) | Add Test 25.F unit tests for `formatDateRange`. |
+
+**No backend changes.** No new API endpoints. No schema migration. No CSS changes. No new components.
+
+---
+
+#### 25.12 Design Rationale
+
+- **Placement in timeline row (below divider):** The date range is metadata, not a primary card descriptor. Placing it in the footer of the card (below the divider) keeps the trip name and destinations visually dominant while making the timeline scannable without cluttering the main content area.
+- **Same-month abbreviation ("May 1 – 15, 2026"):** Avoids redundancy. Repeating "May" twice ("May 1 – May 15, 2026") adds no information and increases visual noise in a compact 11px monospace row.
+- **"No dates yet" vs "dates not set":** "No dates yet" is more friendly and accurately implies the state is temporary — dates will appear once events are added. "dates not set" feels like a configuration option that requires manual action.
+- **Muted secondary color:** The date range is supporting information. Using `var(--text-muted)` instead of `--text-primary` maintains the Japandi hierarchy: trip name reads first, destinations second, metadata third.
+- **11px monospace font (IBM Plex Mono):** Consistent with the existing timeline row. The monospace spacing gives date ranges a structured, tabular feel appropriate for a planning app.
+
+---
+
+### Spec 17: Trip Print / Export View
+
+**Sprint:** #17
+**Related Task:** T-171 → T-172
+**Status:** Approved
+
+**Description:**
+A print-optimized layout of the full trip itinerary, triggered by a "Print itinerary" button in the trip details page header. When the user clicks the button, the browser's native print dialog opens. The print output is a clean, black-on-white, single-column document that a planner-type user can read offline, attach to a PDF, or hand to a travel companion. No new page or route is introduced — the feature is implemented entirely via CSS `@media print` rules in `frontend/src/styles/print.css`, imported into `TripDetailsPage.jsx`. The interactive on-screen UI is unchanged; the print stylesheet simply overrides it for print output.
+
+**Target User Context:**
+Detail-oriented planners who like to have every hour of their trip documented. The print view is their paper backup — they want every flight number, every hotel address, every activity name, in chronological order, readable at a glance without a screen.
+
+---
+
+#### 17.1 Print Trigger — "Print itinerary" Button
+
+**Location:** Trip details page header, inline with the trip name row. Positioned to the right of the trip name / destination heading block, at the same vertical level as any existing edit or action controls (rightmost element in the header row).
+
+**Appearance (on-screen, normal view):**
+- Style: secondary button pattern (transparent background, border, IBM Plex Mono text)
+- Label: `Print itinerary`
+- Icon (optional): a small printer icon (16×16px SVG) to the left of the text label; purely decorative (`aria-hidden="true"` if icon is included)
+- Border: `1px solid rgba(93, 115, 126, 0.5)` (`--border-subtle`)
+- Text color: `--text-primary` (`#FCFCFC`)
+- Font: IBM Plex Mono, 12px, font-weight 400
+- Padding: 8px 16px
+- Border-radius: `var(--radius-sm)` (2px)
+- Hover state: background `rgba(252, 252, 252, 0.05)`, border `rgba(93, 115, 126, 0.8)`, transition 150ms ease
+- Cursor: pointer
+- `aria-label="Print itinerary"`
+
+**Behavior:**
+```
+onClick={() => window.print()}
+```
+No loading state. No async logic. The button simply invokes the browser's built-in print dialog. Errors (e.g., user cancels the dialog) require no handling — the browser manages the dialog lifecycle.
+
+**In the print output:** The button is hidden (see §17.4 — Elements Hidden in Print).
+
+---
+
+#### 17.2 Print Layout — Overall Structure
+
+The printed document is a **single-column, linear document** reading top-to-bottom. There is no sidebar, no grid, no calendar. All elements use black text on a white background. The layout mimics a clean, well-formatted travel itinerary document.
+
+**Page setup:**
+```css
+@media print {
+  @page {
+    margin: 1.5cm 2cm;
+    size: A4 portrait;
+  }
+}
+```
+
+**Content width in print:** Full page width (no max-width container constraining content to 1120px — the print layout uses the full printable area).
+
+**Document sections, in order:**
+
+1. **Trip header block** — trip name, destinations, date range
+2. **Flights section** — all flights in chronological order (omitted if no flights)
+3. **Stays section** — all stays in chronological order (omitted if no stays)
+4. **Activities section** — activities grouped by day, sorted by start time within each day (omitted if no activities)
+5. **Land Travel section** — all land travel entries in chronological order (omitted if no land travel)
+
+Each section is separated by a visible horizontal rule (1px solid #ccc) and a section heading.
+
+---
+
+#### 17.3 Print Layout — Document Sections
+
+##### 17.3.1 Trip Header Block
+
+Rendered at the very top of the print output, before any event sections.
+
+```
+[TRIP NAME]                    (24pt, bold, IBM Plex Mono, #000)
+[Destination list]             (13pt, #000, comma-separated)
+[Date range]                   (11pt, #555, "May 1 – 12, 2026" or "No dates yet")
+─────────────────────────────  (1px solid #ccc, full width, margin 16pt 0)
+```
+
+- **Trip name:** `font-size: 24pt; font-weight: 700; color: #000; margin-bottom: 6pt;`
+- **Destinations:** `font-size: 13pt; font-weight: 400; color: #000; margin-bottom: 4pt;`
+- **Date range:** `font-size: 11pt; font-weight: 400; color: #555; margin-bottom: 0;` — formatted the same as the on-screen date range (e.g., "May 1 – 12, 2026"). If both dates are null, shows "No dates yet".
+- The horizontal rule below the header block separates the header from the first event section.
+
+##### 17.3.2 Section Heading Style (shared by all event sections)
+
+Each event section (Flights, Stays, Activities, Land Travel) starts with a heading:
+```
+FLIGHTS                        (10pt, font-weight 700, letter-spacing 0.15em, #000, uppercase)
+─────────────────────────────  (0.5pt solid #ccc, full width, margin 4pt 0 10pt)
+```
+- `font-size: 10pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #000; margin-bottom: 4pt;`
+- Followed by a subtle rule (`border-bottom: 0.5pt solid #ccc; margin-bottom: 10pt;`)
+
+##### 17.3.3 Flights Section
+
+If the trip has **no flights**, this section is **omitted entirely** — no heading, no rule, no empty state message.
+
+If flights exist, list each flight in a card block, sorted by departure datetime ascending.
+
+**Each flight card (print):**
+```
+┌─────────────────────────────────────────────────────────┐
+│  [Airline] — [Flight Number]                             │
+│  [Departure Airport] → [Arrival Airport]                 │
+│  Departs: [date] at [time] [TZ abbreviation]             │
+│  Arrives: [date] at [time] [TZ abbreviation]             │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Card styling (print):**
+- Border: `1pt solid #ccc`
+- Border-radius: 0 (print does not render border-radius reliably; omit)
+- Padding: `10pt 12pt`
+- Margin-bottom: `8pt`
+- Background: `#fff`
+- `page-break-inside: avoid`
+
+**Field layout within a flight card:**
+- **Line 1:** Airline + flight number — `font-size: 12pt; font-weight: 600; color: #000;`
+- **Line 2:** Route — `[from_location] → [to_location]` — `font-size: 11pt; color: #000;`
+- **Line 3:** Departs — `font-size: 10pt; color: #333;` — format: `"Departs: Mon, Aug 7, 2026 at 6:00 AM ET"`
+- **Line 4:** Arrives — `font-size: 10pt; color: #333;` — format: `"Arrives: Mon, Aug 7, 2026 at 11:00 AM PT"`
+
+Use the existing `formatFlightDateTime` utility (or equivalent) to produce the full date + time + timezone string. For print, the timezone abbreviation must be present (not just the time) because the reader has no tooltip.
+
+##### 17.3.4 Stays Section
+
+If the trip has **no stays**, this section is **omitted entirely**.
+
+If stays exist, list each stay card, sorted by check-in datetime ascending.
+
+**Each stay card (print):**
+```
+┌─────────────────────────────────────────────────────────┐
+│  [CATEGORY]  [Stay Name]                                 │
+│  [Address or "Address not provided"]                     │
+│  Check in:  [date] at [time] [TZ abbreviation]           │
+│  Check out: [date] at [time] [TZ abbreviation]           │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Card styling (print):** Same as flight card — `1pt solid #ccc`, padding `10pt 12pt`, margin-bottom `8pt`, `page-break-inside: avoid`, background `#fff`.
+
+**Field layout:**
+- **Line 1:** Category badge text + stay name — Category in uppercase, 9pt, color `#555`, followed by stay name in 12pt, font-weight 600, `#000`. (On-screen colored category badges become plain uppercase text in print — no background colors.)
+- **Line 2:** Address — 10pt, `#333`. If address is blank/null, display: `"Address not provided"` in 10pt, `#999`.
+- **Line 3:** Check in — `"Check in: Mon, Aug 7, 2026 at 4:00 PM"` — 10pt, `#333`.
+- **Line 4:** Check out — `"Check out: Wed, Aug 9, 2026 at 11:00 AM"` — 10pt, `#333`.
+
+Note: Timezone display for stays follows the same rule as flights — show timezone abbreviation if stored.
+
+##### 17.3.5 Activities Section
+
+If the trip has **no activities**, this section is **omitted entirely**.
+
+If activities exist, group by `activity_date`, sorted ascending. Within each day group, sort activities by `start_time` ascending.
+
+**Day group heading:**
+```
+Friday, August 8, 2026         (12pt, font-weight 600, #000, margin-top 10pt, margin-bottom 6pt)
+```
+- Format: `EEEE, MMMM D, YYYY` — use the same `formatActivityDate` utility as on-screen.
+- `page-break-before: avoid` on the day heading to prevent it orphaning at the bottom of a page.
+
+**Each activity card (print):**
+```
+┌─────────────────────────────────────────────────────────┐
+│  9:00 AM – 2:00 PM  ·  Fisherman's Wharf                │
+│  Location: Fisherman's Wharf, San Francisco, CA          │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Card styling:** Lighter border — `1pt solid #ddd`, padding `8pt 12pt`, margin-bottom `4pt`, background `#fff`, `page-break-inside: avoid`.
+
+**Field layout:**
+- **Line 1:** Time range + activity name — `"[start_time] – [end_time]  ·  [activity name]"` — 11pt, font-weight 500, `#000`. Time format: `"9:00 AM"` (12-hour with AM/PM).
+- **Line 2 (conditional):** Location — `"Location: [location]"` — 10pt, `#555`. Omit this line if `location` is null or empty string.
+
+Day groups are separated by `margin-top: 10pt` before each new day heading (after the first).
+
+##### 17.3.6 Land Travel Section
+
+If the trip has **no land travel entries**, this section is **omitted entirely**.
+
+If land travel entries exist, list each in a card, sorted by departure_date + departure_time ascending.
+
+**Each land travel card (print):**
+```
+┌─────────────────────────────────────────────────────────┐
+│  [TYPE]  [from_location] → [to_location]                 │
+│  Departs: [date] at [time]                               │
+│  Arrives: [date] at [time]                               │
+│  [Confirmation / notes if present]                       │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Card styling:** Same as flight card — `1pt solid #ccc`, padding `10pt 12pt`, margin-bottom `8pt`, `page-break-inside: avoid`, background `#fff`.
+
+**Field layout:**
+- **Line 1:** Land travel type (RENTAL CAR, TRAIN, BUS, etc.) in uppercase 9pt `#555`, followed by route `[from_location] → [to_location]` in 12pt, font-weight 600, `#000`.
+- **Line 2:** Departs — `"Departs: Mon, Aug 7, 2026 at 9:00 AM"` — 10pt, `#333`.
+- **Line 3:** Arrives — `"Arrives: Mon, Aug 7, 2026 at 1:00 PM"` — 10pt, `#333`.
+- **Line 4 (conditional):** Confirmation number or notes if present — `"Confirmation: ABC123"` or `"Notes: [notes text]"` — 10pt, `#555`. Omit entirely if blank/null.
+
+---
+
+#### 17.4 Elements Hidden in the Print Output
+
+The `@media print` stylesheet sets `display: none !important` on the following elements. Use stable CSS class selectors or element roles — do not rely on generated class names that may change across builds.
+
+| Element | Selector / Description |
+|---------|------------------------|
+| Navbar | `.navbar` or `nav` — the top navigation bar |
+| Calendar widget | `.tripCalendar`, `.calendarSection`, or the section wrapping `<TripCalendar />` |
+| "Print itinerary" button | `.printButton` or `[aria-label="Print itinerary"]` — the button that triggered the print |
+| All edit / modify buttons | `.editButton`, `.modifyButton`, any `<button>` within event cards that opens an edit flow |
+| All add-event buttons | `.addButton`, `.addFlightButton`, `.addStayButton`, `.addActivityButton`, etc. |
+| Delete buttons | `.deleteButton`, or any button with "delete" / "remove" aria-label |
+| Toast notifications | `.toast`, `.toastContainer` |
+| Modal overlays | `.modalOverlay`, `.modal` |
+| Empty state CTA elements | `.emptyState`, `.emptyCta` — empty state messages and "Add your first…" prompts |
+| Section header action area | The right-side "Add" or "Edit" link/button within section headers |
+| Loading skeletons | `.skeleton` elements |
+
+**Important:** Empty sections should be hidden at the container level. If a section's only content is an empty-state element (which is hidden), the section heading and rule should also not appear. Achieve this with either:
+- A `.has-items` class added by the component to the section container when it has ≥1 event card. In print CSS: `section:not(.has-items) { display: none !important; }`.
+- Or: ensure the section wrapper element receives `display: none` when empty via a print-specific utility class.
+
+---
+
+#### 17.5 Print Typography Rules
+
+All print typography uses IBM Plex Mono. Font sizes use `pt` units for reliable print rendering.
+
+| Element | Font Size | Font Weight | Color |
+|---------|-----------|-------------|-------|
+| Trip name (header) | 24pt | 700 | #000 |
+| Destinations | 13pt | 400 | #000 |
+| Date range | 11pt | 400 | #555 |
+| Section heading | 10pt | 700 | #000 |
+| Day group heading (Activities) | 12pt | 600 | #000 |
+| Event card — primary line | 11–12pt | 600 | #000 |
+| Event card — route / secondary line | 11pt | 400 | #000 |
+| Event card — detail lines (dates, times) | 10pt | 400 | #333 |
+| Event card — tertiary / conditional lines | 10pt | 400 | #555 |
+| Address not provided | 10pt | 400 | #999 |
+
+**General print body rule:**
+```css
+@media print {
+  * {
+    font-family: 'IBM Plex Mono', monospace !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+}
+```
+
+**Note on CSS custom properties in print:** Do NOT use `var(--bg-primary)`, `var(--text-primary)`, etc., in print.css. Custom properties are generally resolved, but some older print renderers (and PDF export tools) may fail to resolve them. Use raw hex values (#000, #fff, #ccc, #333, #555, #999) in all `@media print` declarations.
+
+---
+
+#### 17.6 Page Break Rules
+
+```css
+@media print {
+  /* Prevent individual event cards from splitting across pages */
+  .flightCard,
+  .stayCard,
+  .activityCard,
+  .landTravelCard {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Prevent section headings from orphaning at the bottom of a page */
+  .sectionHeading,
+  .dayGroupHeading {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Allow natural page breaks between sections */
+  .printSection {
+    page-break-before: auto;
+    break-before: auto;
+  }
+
+  /* Avoid a break between the trip header and first section */
+  .tripPrintHeader {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+}
+```
+
+**Do NOT use `page-break-before: always`** on sections — this would waste paper when a trip has only a few events. Allow the browser's natural pagination to decide where to break between sections.
+
+---
+
+#### 17.7 Color Overrides for Print
+
+All on-screen dark theme colors must be overridden to a print-safe black-on-white scheme.
+
+```css
+@media print {
+  /* Page background and text */
+  body,
+  .pageWrapper,
+  .contentWrapper,
+  .tripDetailsPage {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Card surfaces */
+  .flightCard,
+  .stayCard,
+  .activityCard,
+  .landTravelCard,
+  .eventCard {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #ccc !important;
+  }
+
+  /* Status badges — convert to plain text */
+  .categoryBadge,
+  .statusBadge,
+  [class*="badge"] {
+    background: transparent !important;
+    color: #555 !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  /* Links — print as plain text */
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+
+  /* Section headers */
+  .sectionHeader,
+  [class*="sectionHeader"] {
+    color: #000 !important;
+    border-color: #ccc !important;
+  }
+}
+```
+
+---
+
+#### 17.8 Responsive Behavior
+
+This spec is print-only; the "Print itinerary" button on-screen adapts as follows:
+
+**Desktop (≥ 768px):**
+- Button renders in the trip details page header, right-aligned in the header row alongside any existing action controls.
+- Full label visible: `Print itinerary`.
+
+**Mobile (< 768px):**
+- Button renders below the trip name / destination block, as a full-width secondary button OR reduced to an icon-only button (printer icon, 36×36px tap target, `aria-label="Print itinerary"`) — implementation choice is left to the Frontend Engineer.
+- If icon-only on mobile, the label should still be present as a visually hidden screen-reader text (`<span class="visually-hidden">Print itinerary</span>`).
+- `window.print()` behavior on mobile: some mobile browsers open a share sheet instead of a native print dialog; this is acceptable and expected behavior — no workaround required.
+
+**Print media itself:** Always single-column regardless of screen size at time of print invocation.
+
+---
+
+#### 17.9 Accessibility Considerations
+
+| Concern | Requirement |
+|---------|-------------|
+| Button label | `aria-label="Print itinerary"` on the `<button>` element. This is the accessible name for screen readers. |
+| Icon (if used) | Printer icon SVG must have `aria-hidden="true"` — the accessible name comes from `aria-label`, not the icon. |
+| Focus management | No focus management needed — `window.print()` returns control to the button synchronously after the dialog is dismissed. The button retains focus. |
+| Keyboard access | The button must be a native `<button>` element (not a `<div>` or `<span>`) so it is naturally keyboard-accessible (Tab to focus, Enter/Space to activate). |
+| Color contrast (on-screen button) | Secondary button style: `#FCFCFC` text on transparent background over `#30292F` card surface — contrast ratio ~12:1 ✅ WCAG AA. |
+| Screen reader announcement | When the button is activated, no custom ARIA announcement is needed — the browser print dialog takes over immediately. |
+| Reduced motion | `window.print()` has no animation; no `prefers-reduced-motion` considerations needed. |
+| Empty section omission | Sections with no events are hidden in print via CSS. No `aria-hidden` manipulation is needed for this — the `@media print` suppression only affects the printed output, not the screen DOM. |
+
+---
+
+#### 17.10 States
+
+**On-screen button states:**
+
+| State | Appearance |
+|-------|-----------|
+| Default | Secondary button — transparent bg, `rgba(93,115,126,0.5)` border, `#FCFCFC` text |
+| Hover | Background `rgba(252,252,252,0.05)`, border `rgba(93,115,126,0.8)`, 150ms transition |
+| Focus (keyboard) | `outline: 2px solid #5D737E; outline-offset: 2px;` — visible focus ring |
+| Active (pressed) | Background `rgba(252,252,252,0.1)` |
+| Disabled | Not applicable — the button is never disabled. If TripDetailsPage is loading, the button can be omitted (the data needed for print is already on the page once it loads) |
+
+**Print output states:**
+
+| State | Behavior |
+|-------|---------|
+| Trip with all 4 section types populated | All 4 sections print in order: Flights → Stays → Activities → Land Travel |
+| Trip with only some sections populated | Only the populated sections appear; empty sections are omitted entirely |
+| Trip with no events at all | Only the trip header block (name, destinations, "No dates yet") prints; no section headings appear |
+| Trip with many events (multi-page) | Natural browser pagination applies; `page-break-inside: avoid` on cards prevents mid-card page breaks; section headings always stay with their content |
+| Activities spanning multiple days | Each day group renders with its heading, followed by that day's activity cards; new day groups appear after the previous day's last card |
+
+---
+
+#### 17.11 Implementation Notes for Frontend Engineer (T-172)
+
+These notes translate the spec into concrete implementation guidance. They are non-binding design intent — the Frontend Engineer may adapt as needed within the spec's constraints.
+
+**File structure:**
+```
+frontend/src/styles/print.css          ← new file (all @media print rules)
+frontend/src/pages/TripDetailsPage.jsx ← add import + button element
+```
+
+**Import approach:**
+```js
+// In TripDetailsPage.jsx (or main.jsx for global import)
+import '../styles/print.css';
+```
+
+**Button placement in TripDetailsPage.jsx:**
+The button should be placed in the existing header/title row of TripDetailsPage, after the trip name and destination display, as a right-aligned element. If a flex row already wraps the trip name, add the button as the last child with `margin-left: auto` (or via a flex spacer).
+
+**Selector stability:** Class names used in `print.css` selectors must match the actual class names in the component files. If `TripDetailsPage` uses CSS Modules (`.module.css`), the generated class names will be hashed — in that case, add plain non-module CSS classes (e.g., `data-print-hide="true"`) to elements that need to be hidden, and target `[data-print-hide="true"]` in `print.css`.
+
+**Empty section handling — recommended approach:**
+```jsx
+// In the section wrapper of each event type:
+<section className={`printSection ${flights.length > 0 ? 'has-items' : ''}`}>
+  <h2 className="sectionHeading">Flights</h2>
+  {flights.length > 0 ? (
+    flights.map(f => <FlightCard key={f.id} flight={f} />)
+  ) : (
+    <div className="emptyState">...</div>
+  )}
+</section>
+```
+Then in print.css:
+```css
+@media print {
+  .printSection:not(.has-items) { display: none !important; }
+  .emptyState { display: none !important; }
+}
+```
+
+**window.print() call:**
+```jsx
+<button
+  className={styles.printButton}
+  onClick={() => window.print()}
+  aria-label="Print itinerary"
+>
+  Print itinerary
+</button>
+```
+
+---
+
+#### 17.12 Test Plan (T-172)
+
+| Test | Expected Result |
+|------|----------------|
+| **A** — Button renders on TripDetailsPage | "Print itinerary" button is present in the DOM when TripDetailsPage renders with a valid trip |
+| **B** — Button click calls `window.print()` | Mock `window.print = vi.fn()`. Click the button. Assert `window.print` was called once. |
+| **C** — Button has correct aria-label | `getByRole('button', { name: /print itinerary/i })` returns the button element |
+| **D** — Existing TripDetailsPage tests pass | All prior TripDetailsPage.test.jsx tests continue to pass with no changes |
+
+These 4 tests bring the total frontend test count to 418+ (after T-170 reduces it to 415).
+
+---
+
+#### 17.13 Design Rationale
+
+- **`window.print()` over custom PDF library:** Zero dependencies, zero bundle size, works offline, and respects the user's OS print/PDF configuration. The triplanner project brief values minimalism; a dependency on a PDF library (jsPDF, html2canvas, etc.) adds maintenance burden for a rarely-used feature.
+- **`@media print` over a separate print route:** A separate `/trips/:id/print` route would require duplicating data-fetching logic, navigation guards, and state. The `@media print` approach reuses the existing TripDetailsPage data already in memory — no additional API calls.
+- **Omitting empty sections:** Empty-state CTAs (e.g., "No flights yet — add one") are action-prompts tied to the interactive UI. In a printed document, they add noise and imply the reader can take action. Omitting them produces a cleaner printout.
+- **Hardcoded #000/#fff over CSS custom properties:** Print rendering across browsers and OS PDF printers is inconsistent in how it resolves CSS custom properties. Using explicit hex values in `@media print` rules ensures consistent black-on-white output across Chrome, Firefox, Safari, and system PDF printers.
+- **IBM Plex Mono in print:** The design brief specifies IBM Plex Mono for all typography. Monospaced fonts give itineraries a structured, data-table feel — aligned columns, predictable character widths. This is appropriate for a document dense with times, flight numbers, and confirmation codes.
+- **No forced page breaks between sections:** A trip with 2 flights and 1 stay would waste a page if each section forced a new page. The Japandi "every element has a purpose" principle applies to paper too — natural pagination avoids blank space.
+
+---
+
+*Spec 25 marked Approved (auto-approved per automated sprint cycle — Sprint 16). Published by Design Agent 2026-03-08.*
+
+---
+
+### Spec 18: Multi-Destination Chip UI (Sprint 19 — T-179)
+
+**Sprint:** #19
+**Related Task:** T-179 (Design), T-180 (Implementation)
+**Backlog Item:** B-007
+**Status:** Approved
+
+**Description:**
+Upgrades the destination input across three surfaces — the Create Trip Modal, the Trip Card on the home page, and the Trip Details Page header — from a plain text field to a structured chip/tag input model. Each destination is stored and displayed as an individual chip, allowing users to visually manage multiple destinations. The backend already stores destinations as a `TEXT ARRAY`; no schema changes are required. This spec only covers the UI layer.
+
+**Target User:** Detail-oriented travelers planning multi-destination itineraries (e.g., Tokyo → Osaka → Kyoto). They need to see all their destinations at a glance and edit them individually.
+
+---
+
+#### 18.1 Design System Alignment
+
+All components in this spec inherit the existing design system conventions:
+
+| Property | Value |
+|----------|-------|
+| Font family | IBM Plex Mono, monospace |
+| Background (app) | `#02111B` |
+| Surface / card | `#30292F` |
+| Accent / border | `#3F4045` |
+| Secondary accent | `#5D737E` |
+| Text primary | `#FCFCFC` |
+| Text muted | `rgba(252,252,252,0.5)` |
+| Border radius | `4px` (inputs, chips); `6px` (modals, cards) |
+| Focus ring | `outline: 2px solid #5D737E; outline-offset: 2px;` |
+| Transition | `150ms ease` for hover/focus state changes |
+| Font size (body) | `0.875rem` (14px) |
+| Font size (small / chip label) | `0.8125rem` (13px) |
+
+---
+
+#### 18.2 DestinationChipInput Component
+
+This is the reusable core component used in both the Create Trip Modal (18.3) and the Edit Destinations panel (18.5). It renders:
+- A row of existing destination chips (pills)
+- A text input to type and add new destinations
+- A "+" add button
+
+**Component anatomy:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  [Paris ×]  [Rome ×]  [Athens ×]  [_______________ ] [+]       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Container:**
+- `display: flex; flex-wrap: wrap; gap: 6px; align-items: center;`
+- `min-height: 44px;`
+- Background: `#02111B` (matches app background, so it reads as a field)
+- Border: `1px solid #3F4045`
+- Border radius: `4px`
+- Padding: `8px 10px`
+- On focus-within (when the inner text input is focused): border color transitions to `#5D737E` (`150ms ease`)
+
+**Chip element (each destination):**
+- `display: inline-flex; align-items: center; gap: 4px;`
+- Background: `rgba(93,115,126,0.2)` — subtle teal tint
+- Border: `1px solid rgba(93,115,126,0.4)`
+- Border radius: `4px`
+- Padding: `3px 6px 3px 8px`
+- Font: IBM Plex Mono, `0.8125rem`, `#FCFCFC`
+- Max chip width: `180px`; text overflows with `text-overflow: ellipsis; white-space: nowrap; overflow: hidden;`
+
+**Chip × (remove) button:**
+- `display: inline-flex; align-items: center; justify-content: center;`
+- Width / height: `16px × 16px`
+- Background: transparent
+- Color: `rgba(252,252,252,0.6)`; hover: `#FCFCFC`
+- Border: none
+- Cursor: pointer
+- Icon: `×` character (Unicode U+00D7) at `0.75rem`
+- `aria-label`: `"Remove [destination name]"` — e.g., `"Remove Paris"` (required for accessibility)
+- Focus ring: standard `outline: 2px solid #5D737E; outline-offset: 2px;`
+- On click: removes the chip immediately; keyboard focus moves to the next chip's × button, or if no next chip exists, moves to the text input
+
+**Text input (inline):**
+- `flex: 1 1 120px;` — expands to fill remaining width; minimum 120px before wrapping
+- `min-width: 120px;`
+- Background: transparent
+- Border: none; `outline: none;`
+- Color: `#FCFCFC`
+- Font: IBM Plex Mono, `0.875rem`
+- Placeholder: `"add destination…"` — color `rgba(252,252,252,0.35)`
+- On Enter keypress: add current value as chip (trim whitespace), clear input, keep focus in input
+- On comma keypress: same behavior as Enter (comma-delimited paste support)
+- On backspace when input is empty: remove the last chip in the array (visual cue for power users)
+- Max input length: 100 characters (prevents oversized chip labels)
+
+**"+" add button:**
+- `display: inline-flex; align-items: center; justify-content: center;`
+- Width / height: `28px × 28px`
+- Background: transparent
+- Border: `1px solid #3F4045`
+- Border radius: `4px`
+- Color: `rgba(252,252,252,0.7)`; hover: `#FCFCFC`, border color `#5D737E`
+- Icon: `+` character at `1rem`, centered
+- `aria-label`: `"Add destination"`
+- On click: add current text input value as chip (trim whitespace), clear input, return focus to text input
+- Disabled state: if text input is empty — button is visually dimmed (`opacity: 0.35`, `cursor: not-allowed`) and non-interactive
+
+**Empty input state (no chips, no text):**
+- Container shows only the text input and the "+" button
+- Placeholder `"add destination…"` is visible
+- Validation: if form is submitted with zero chips, show inline error (see 18.3.5)
+
+---
+
+#### 18.3 Create Trip Modal — Updated Destination Field
+
+**Surface:** `CreateTripModal.jsx`
+
+**Current behavior (to be replaced):** A single text input labeled `DESTINATIONS` that accepts a free-form string.
+
+**New behavior:** The `DestinationChipInput` component (18.2) replaces the single text input. The modal's overall layout, title ("new trip"), submit button ("create"), cancel button, loading state, and error banner remain unchanged (per existing Spec 2.5).
+
+##### 18.3.1 Modal Layout (Updated Destination Row)
+
+The modal form has two rows: TRIP NAME and DESTINATIONS. The DESTINATIONS row is updated:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  new trip                                                       │
+│                                                                 │
+│  TRIP NAME                                                      │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ California Coast Trip                                   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  DESTINATIONS                                                   │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │ [San Francisco ×] [Big Sur ×] [_____________] [+]      │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                 │
+│                                      [cancel]  [create]        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+- Field label: `DESTINATIONS` — uppercase, `0.75rem`, `rgba(252,252,252,0.5)`, `letter-spacing: 0.08em`, `margin-bottom: 4px`
+- Below the chip container, an inline validation message zone (initially hidden, see 18.3.5)
+
+##### 18.3.2 State: Modal Open — No Destinations Added Yet
+
+- Chip container is empty; only the text input and "+" button are visible
+- Placeholder `"add destination…"` is shown
+- "create" button is **disabled** (see 18.3.4)
+- No validation message visible yet
+
+##### 18.3.3 State: Typing a Destination
+
+1. User clicks inside the chip container (focus moves to text input)
+2. User types `"Paris"`
+3. Container border transitions to `#5D737E`
+4. "+" button becomes active (not dimmed)
+5. On Enter keypress or "+" click:
+   - Chip `[Paris ×]` appears in the container
+   - Input clears
+   - "create" button becomes **enabled** (if TRIP NAME is also filled)
+   - Focus stays on text input
+
+##### 18.3.4 Submit Disabled Logic
+
+The "create" button is **disabled** if:
+- TRIP NAME is empty, OR
+- `destinations.length === 0`
+
+The button uses `disabled` HTML attribute when either condition is true. Styling for disabled: `opacity: 0.4; cursor: not-allowed;` (existing modal button disabled style).
+
+##### 18.3.5 Validation Error — Zero Destinations
+
+If the user somehow triggers submit with zero destinations (e.g., via keyboard shortcut or programmatic submit):
+- An inline error message appears directly below the chip container: `"add at least one destination."`
+- Color: amber — `#F5A623` (existing error text color)
+- Font: IBM Plex Mono, `0.8125rem`, no background
+- `role="alert"` on the error element so screen readers announce it immediately
+- The chip container border turns amber: `1px solid #F5A623`
+- Error clears as soon as the user adds a chip
+
+##### 18.3.6 State: Multiple Destinations Added
+
+```
+│  DESTINATIONS                                                   │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │ [Paris ×] [Rome ×] [Athens ×] [Santorini ×] [___] [+] │    │
+│  └────────────────────────────────────────────────────────┘    │
+```
+
+- Chips wrap to a new line if they exceed the container width (`flex-wrap: wrap`)
+- Modal body does NOT scroll — the modal height expands naturally with up to ~3 rows of chips before becoming too tall. In practice, users rarely add more than 5 destinations in the create flow.
+- Maximum chips: no hard limit, but the "+" button stays accessible.
+
+##### 18.3.7 State: Submit Loading
+
+- "create" button shows `"creating…"` with spinner (existing modal loading pattern)
+- Chip container is non-interactive during loading (pointer-events: none)
+- Chips remain visible
+
+##### 18.3.8 State: Submit Error
+
+- Existing error banner at top of modal fires (e.g., `"something went wrong. please try again."`)
+- Chips remain intact — user does not lose their entered destinations
+
+##### 18.3.9 State: Submit Success
+
+- Modal closes (existing behavior)
+- User is routed to new trip details page
+
+##### 18.3.10 Accessibility — Create Modal
+
+- The chip container has `role="group"` and `aria-label="Destinations"`
+- Each chip × button: `aria-label="Remove [destination]"` (see 18.2)
+- The text input: `aria-label="New destination"` and `aria-describedby` pointing to the validation error element ID (when error is visible)
+- Tab order: TRIP NAME input → first chip × button → second chip × button → … → text input → "+" button → "cancel" → "create"
+- Keyboard shortcut `Enter` on text input adds chip; does NOT submit the form (form submission only via "create" button click or explicit form submit)
+
+---
+
+#### 18.4 Trip Card — Destinations Display (Home Page)
+
+**Surface:** `TripCard.jsx`
+
+**Current behavior:** Destinations displayed as a comma-separated string from the destinations array (or as stored).
+
+**New behavior:** Destinations displayed as a readable human-formatted string with truncation at 3.
+
+##### 18.4.1 Display Rules
+
+| Scenario | Rendered Text |
+|----------|--------------|
+| 1 destination | `"Paris"` |
+| 2 destinations | `"Paris, Rome"` |
+| 3 destinations | `"Paris, Rome, Athens"` |
+| 4 destinations | `"Paris, Rome, Athens, +1 more"` |
+| 5 destinations | `"Paris, Rome, Athens, +2 more"` |
+| N > 3 destinations | `"[dest1], [dest2], [dest3], +[N-3] more"` |
+| 0 destinations (edge case) | `"—"` (em dash; should not normally occur post-validation) |
+
+**Truncation logic (pseudocode):**
+```js
+function formatDestinations(destinations) {
+  if (!destinations || destinations.length === 0) return '—';
+  if (destinations.length <= 3) return destinations.join(', ');
+  const visible = destinations.slice(0, 3).join(', ');
+  const overflow = destinations.length - 3;
+  return `${visible}, +${overflow} more`;
+}
+```
+
+##### 18.4.2 Visual Placement
+
+- The destination string appears below the trip name, in the same position as the current destination text
+- Font: IBM Plex Mono, `0.8125rem`, color: `rgba(252,252,252,0.65)` (muted, secondary)
+- No chips rendered on the card — it is plain formatted text to keep the card compact
+- The `+N more` suffix uses the same color/weight as the rest of the string (no special accent)
+
+##### 18.4.3 Full Destination Tooltip (Accessibility + UX)
+
+When destinations are truncated (`+N more`):
+- The wrapping element has `title="[full comma-separated list]"` — e.g., `title="Paris, Rome, Athens, Santorini"` — so mouse users can hover to see all destinations
+- Screen readers should read the full truncated string as-is; the tooltip is supplementary
+
+##### 18.4.4 Responsive
+
+- On mobile (<768px): the card is already full-width; the destination text wraps naturally. No layout changes.
+- No chip rendering on mobile cards — the text-only format remains.
+
+---
+
+#### 18.5 Trip Details Page — Destinations Header Display
+
+**Surface:** `TripDetailsPage.jsx` — the header section that currently shows the trip name and destination(s).
+
+**Current behavior:** Destinations displayed as plain text (comma-separated string or single string) in the trip header.
+
+**New behavior:** Each destination rendered as a chip in the header, followed by an "Edit destinations" control.
+
+##### 18.5.1 Header Layout
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  California Coast Trip                        [Print itinerary] │
+│                                                                 │
+│  [San Francisco]  [Big Sur]  [Monterey]        ✏ Edit           │
+│                                                                 │
+│  MAR 2025 → APR 2025                                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+- The destination chip row sits immediately below the trip name `<h1>`, above the date range line
+- Chips are displayed in a flex row with `gap: 6px; flex-wrap: wrap; align-items: center;`
+- The "✏ Edit" control appears inline at the end of the chip row (after the last chip or after wrapping)
+
+##### 18.5.2 Destination Chip Style (View Mode)
+
+These are **read-only display chips** (no × button):
+
+| Property | Value |
+|----------|-------|
+| Background | `rgba(93,115,126,0.15)` |
+| Border | `1px solid rgba(93,115,126,0.35)` |
+| Border radius | `4px` |
+| Padding | `3px 10px` |
+| Font | IBM Plex Mono, `0.8125rem`, `#FCFCFC` |
+| Max width | `200px` with `text-overflow: ellipsis` |
+
+Unlike the chip input component, these chips have NO × button and are NOT interactive (just display elements).
+
+##### 18.5.3 "Edit destinations" Control
+
+- **Label:** `"Edit"` with a pencil icon (✏ Unicode U+270F or SVG icon consistent with existing edit icons on the page)
+- **Appearance:** Minimal text button — no border, no background
+- **Color:** `#5D737E` (secondary accent); hover: `#FCFCFC` + underline; `150ms ease`
+- **Font:** IBM Plex Mono, `0.8125rem`
+- **`aria-label`:** `"Edit destinations"`
+- **Position:** After the last chip in the row. If chips wrap to multiple lines, the "Edit" control appears after the last chip on the last line.
+- **On click:** Opens the Edit Destinations panel (18.5.4)
+
+##### 18.5.4 Edit Destinations Panel
+
+On clicking "Edit", the destinations header area transitions inline into an edit panel — no modal, no route change:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  California Coast Trip                        [Print itinerary] │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ [San Francisco ×] [Big Sur ×] [Monterey ×] [______] [+]│   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                      [cancel] [save] │
+│                                                                 │
+│  MAR 2025 → APR 2025                                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+- The read-only chip row and "Edit" button are replaced by the `DestinationChipInput` component (18.2) pre-populated with all current destinations
+- Below the chip input, a row of two action buttons: `[cancel]` and `[save]`
+- The date range line and all other sections of TripDetailsPage remain visible and unchanged beneath the edit panel
+
+**"cancel" button:**
+- Secondary style: transparent background, `rgba(93,115,126,0.5)` border, `#FCFCFC` text
+- On click: discard all changes, return to read-only chip display (18.5.2), restore original destinations array in UI
+- Focus returns to the "Edit destinations" button
+
+**"save" button:**
+- Primary style: `#5D737E` background, `#FCFCFC` text, border: none
+- Loading state: button shows `"saving…"` with spinner, pointer-events: none
+- On click: call `PATCH /api/v1/trips/:id` with `{ destinations: [...currentChipsArray] }`
+- On success: return to read-only chip display with the updated destinations array; show brief success toast (see 18.5.6)
+- On error: show inline error message below the chip input; button returns to active state
+
+**"save" button disabled conditions:**
+- `destinations.length === 0` — disabled with `opacity: 0.4; cursor: not-allowed;`
+- Loading in progress
+
+##### 18.5.5 Edit Panel — States Detail
+
+| State | UI |
+|-------|----|
+| **Initial open** | ChipInput pre-populated with all current destinations. Both chips showing × buttons. Text input is empty and focused. `[cancel]` and `[save]` visible. |
+| **User removes a chip** | Chip disappears immediately. If last chip removed: "save" button dims (disabled). Inline validation: `"add at least one destination."` appears below the chip input. |
+| **User adds a chip** | Chip appears. If was previously at 0: validation error clears, "save" re-enables. |
+| **No changes made, user clicks cancel** | Returns to read-only view. No API call. |
+| **User clicks save (valid)** | Button shows `"saving…"` with spinner. |
+| **Save success** | Read-only chip display updates with new destinations. Toast: `"destinations updated."` (green, 3 seconds, auto-dismiss). Focus returns to the "Edit destinations" button. |
+| **Save error** | Inline error below chip input: `"could not update destinations. please try again."` (amber). Button returns to active `[save]` state. Chips remain as-is. |
+| **Zero destinations on save attempt** | "save" button remains disabled. Inline validation message visible. No API call made. |
+
+##### 18.5.6 Success Toast
+
+Reuses the existing toast pattern from the app (if one exists) or renders:
+- Fixed position, bottom-right of viewport: `bottom: 24px; right: 24px;`
+- Background: `rgba(30,42,35,0.95)` (dark green tint)
+- Border: `1px solid rgba(100,200,120,0.4)`
+- Text: `"destinations updated."`, IBM Plex Mono, `0.875rem`, `#FCFCFC`
+- Border radius: `6px`; padding: `10px 16px`
+- Auto-dismisses after 3 seconds; slide-in animation from right (100ms ease)
+- `role="status"` for screen reader announcement
+
+##### 18.5.7 Responsive — Trip Details Header
+
+**Desktop (≥1024px):**
+- Chips row and "Edit" control on one line (wraps if needed)
+- `[cancel]` and `[save]` right-aligned in a flex row below the chip input
+
+**Tablet (768px–1023px):**
+- Same as desktop; chips may wrap more frequently
+
+**Mobile (<768px):**
+- Chip row wraps freely
+- `[cancel]` and `[save]` stack as two full-width buttons below the chip input:
+  - `[cancel]` on top, `[save]` below; each `width: 100%;`
+
+##### 18.5.8 Accessibility — Trip Details Page
+
+- Read-only destination chips: `role="list"` on the container; each chip is `role="listitem"` (screen readers can count items and announce them)
+- "Edit destinations" button: `aria-label="Edit destinations"` (ensures screen readers announce the full purpose)
+- When edit panel opens: focus moves to the first × button of the first chip (or the text input if no chips)
+- When edit panel closes (cancel or save): focus returns to the "Edit destinations" button
+- Inline validation error: `role="alert"` so it's announced immediately
+- "save" button when disabled: `aria-disabled="true"` in addition to `disabled` HTML attribute (belt-and-suspenders for AT compatibility)
+
+---
+
+#### 18.6 Data Flow and API Integration
+
+No new API endpoints. The existing PATCH endpoint is used for editing destinations:
+
+```
+PATCH /api/v1/trips/:id
+Body: { destinations: string[] }
+```
+
+**Create trip:** POST /api/v1/trips continues to accept `{ destinations: string[] }` — the chip input builds this array in component state before submit.
+
+**Frontend state:**
+- In `CreateTripModal.jsx`: `const [destinations, setDestinations] = useState([])` — replaces the existing single-string state
+- In `TripDetailsPage.jsx`: `const [editDestinations, setEditDestinations] = useState(null)` — null = not editing; array = edit mode with current chips
+
+**No backend changes required.** The destinations array is the existing API contract.
+
+---
+
+#### 18.7 Component Reuse Summary
+
+| Component | Usage |
+|-----------|-------|
+| `DestinationChipInput` | Create Trip Modal (18.3) + Edit Destinations panel (18.5.4) |
+| Read-only destination chip | Trip Details header (18.5.2) — styled separately, no × button |
+| Destination text formatter | `formatDestinations()` — Trip Card (18.4) |
+
+The `DestinationChipInput` component should be extracted to `frontend/src/components/DestinationChipInput.jsx` and imported into both surfaces.
+
+---
+
+#### 18.8 Edge Cases
+
+| Edge Case | Handling |
+|-----------|---------|
+| Destination with only whitespace | Trim on add — reject if empty after trim; chip is NOT added |
+| Duplicate destination | Allow — no deduplication enforced; user may intentionally list variations (e.g., "Paris, France" and "Paris") |
+| Very long destination name | Chip max-width 180px with ellipsis + full name in `title` attribute for tooltip |
+| Paste multiple destinations at once | If pasted string contains commas, split on comma and add each as a separate chip |
+| Single destination (normal) | Fully supported — one chip is valid |
+| Trip created with 0 destinations | Blocked by disabled submit button + validation message; cannot reach this state via UI |
+| Existing trip with 0 destinations (legacy data) | Edit panel opens with empty chip input; user must add at least one before saving |
+| Rapid click on "+" | Debounce not needed — each click adds the current input value (which is cleared after each add) |
+
+---
+
+#### 18.9 Responsive Summary
+
+| Breakpoint | Create Modal | Trip Card | Trip Details Header | Edit Panel |
+|------------|-------------|-----------|---------------------|------------|
+| Desktop ≥1024px | Chips wrap within modal width | Text-only truncated string | Chips inline, "Edit" at end | Save/Cancel right-aligned |
+| Tablet 768–1023px | Same as desktop | Same | Same, may wrap more | Same |
+| Mobile <768px | Chips wrap; modal full-width | Same text format | Chips wrap; Edit below | Save/Cancel full-width, stacked |
+
+---
+
+#### 18.10 Animation and Transitions
+
+| Interaction | Animation |
+|-------------|-----------|
+| Chip added | Chip fades in: `opacity 0 → 1` over `120ms ease` |
+| Chip removed | Chip fades out: `opacity 1 → 0` and collapses width over `120ms ease`; avoid layout jank by using `max-width` transition |
+| Edit panel open | Panel slides down from header area: `max-height 0 → auto` proxy with `transform: translateY(-4px) → translateY(0)` over `150ms ease` |
+| Edit panel close | Reverse of open — `150ms ease` |
+| Success toast | Slides in from right: `transform: translateX(20px) → translateX(0)` over `100ms ease` |
+
+All animations should respect `prefers-reduced-motion: reduce` — if set, skip transitions (instant show/hide).
+
+---
+
+#### 18.11 Test Coverage Guidance (for T-180)
+
+| Test | Surface | Expected |
+|------|---------|---------|
+| Chip added on Enter | DestinationChipInput | Input value becomes chip; input clears |
+| Chip added on "+" click | DestinationChipInput | Same as Enter |
+| Chip added on comma keypress | DestinationChipInput | Text before comma becomes chip |
+| Whitespace-only input rejected | DestinationChipInput | No chip added; input clears |
+| Chip removed on × click | DestinationChipInput | Chip removed from array |
+| Backspace on empty input removes last chip | DestinationChipInput | Last chip removed |
+| Submit blocked with 0 chips | CreateTripModal | Button disabled; validation message present |
+| Submit allowed with ≥1 chip | CreateTripModal | Button enabled; PATCH/POST called |
+| TripCard: 1 destination | TripCard | `"Paris"` rendered |
+| TripCard: 3 destinations | TripCard | `"Paris, Rome, Athens"` rendered |
+| TripCard: 4 destinations | TripCard | `"Paris, Rome, Athens, +1 more"` rendered |
+| TripCard: 0 destinations | TripCard | `"—"` rendered |
+| Edit panel opens on click | TripDetailsPage | DestinationChipInput visible; chips pre-populated |
+| Save calls PATCH with correct array | TripDetailsPage | `api.trips.update(tripId, { destinations: [...] })` called |
+| Cancel discards changes | TripDetailsPage | Original chips restored; no API call |
+| Save disabled with 0 chips | TripDetailsPage | Button disabled; validation message present |
+| `aria-label` on × buttons | DestinationChipInput | Each × has `aria-label="Remove [destination]"` |
+
+---
+
+*Spec 18 (Sprint 19 — Multi-Destination Chip UI) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-09.*
+
+---
+
+### Spec 19: Trip Notes / Description Field (Sprint 20 — T-187)
+
+**Sprint:** #20
+**Related Task:** T-187, T-189
+**Status:** Approved
+
+**Description:**
+The Trip Notes section is a freeform text area on the TripDetailsPage that allows users to store personal observations, reminders, packing lists, research notes, or any contextual information for a given trip. It lives below the Destinations section and above the Calendar. It uses an inline edit-in-place pattern — no separate edit page — so users can quickly jot a note and return to viewing their trip details without a full page navigation. The section is minimal in visual weight: it should feel like a quiet, always-available notepad rather than a prominent form element.
+
+---
+
+#### 19.1 Section Placement on TripDetailsPage
+
+TripDetailsPage vertical order (top → bottom):
+
+1. Calendar (top — existing)
+2. Trip name + metadata header (existing)
+3. Destinations section (existing)
+4. **[NEW] Trip Notes section** ← inserted here
+5. Flights section (existing)
+6. Stays section (existing)
+7. Activities section (existing)
+
+**Separator above section:**
+- A `1px solid var(--border-subtle)` horizontal rule spans the full content width, placed 32px below the destinations section and 24px above the notes section header. This creates visual breathing room between the two sections without heavy decoration.
+
+---
+
+#### 19.2 Section Header
+
+- Follows the standard section header convention: font-size 11px, font-weight 600, letter-spacing 0.12em, uppercase, color `var(--text-muted)`.
+- Label text: `"NOTES"`
+- A thin horizontal line (`flex: 1; height: 1px; background: var(--border-subtle)`) extends to the right of the label via a flex row containing the label span + the line element.
+- The pencil icon button sits at the far right of this header row (right-aligned via `justify-content: space-between` or `margin-left: auto`).
+
+**Pencil button (always visible in both view and edit mode):**
+- Icon: a simple 14×14px pencil/edit SVG icon. No filled background — icon only.
+- Color: `var(--text-muted)` by default; `var(--accent)` on hover and when in edit mode.
+- `aria-label="Edit trip notes"`
+- `title="Edit trip notes"` (tooltip for sighted mouse users)
+- In **edit mode**: clicking the pencil button while already in edit mode has no effect (edit mode is already active).
+- `cursor: pointer`
+- Padding: 4px (increases tap/click target to ~22×22px)
+- Transition: `color 150ms ease`
+
+---
+
+#### 19.3 View Mode
+
+**Default appearance (notes null or empty string):**
+- Below the section header, display a single line of placeholder text: `"Add notes about this trip…"`
+- Style: font-size 14px, IBM Plex Mono, color `var(--text-muted)` (rgba(252,252,252,0.5)), font-style: italic
+- Clicking on the placeholder text activates Edit Mode (same as clicking the pencil button)
+- The placeholder text itself has `cursor: pointer` and subtle hover: `color: rgba(252,252,252,0.65)`
+
+**When notes exist (non-null, non-empty string):**
+- Display the notes text in a `<p>` or `<div>` block element
+- Style: font-size 14px, IBM Plex Mono, color `var(--text-primary)`, line-height 1.7
+- `white-space: pre-wrap` — preserve newlines entered by the user
+- The text is NOT truncated in view mode — full notes content is displayed regardless of length
+- Clicking anywhere in the notes text block also activates Edit Mode (cursor: pointer, subtle hover background: `rgba(252,252,252,0.03)`)
+- Do NOT wrap the text in a visible input or box — it should read like plain paragraph text
+
+**Padding:**
+- Notes content area: padding-top 12px from the section header row
+- No additional background box — the notes text sits directly on the page background
+
+---
+
+#### 19.4 Edit Mode
+
+Edit mode is activated when the user:
+1. Clicks the pencil icon button
+2. Clicks on the placeholder text (empty state)
+3. Clicks on the existing notes text (notes present state)
+
+**Transition into edit mode:** The view-mode content fades out (opacity 0, 100ms) and is replaced by the edit form (opacity 0 → 1, 150ms). The textarea autofocuses immediately on activation.
+
+**Edit form layout (top to bottom):**
+
+```
+[ textarea (full width, min-height 120px) ]
+[ char count right-aligned            "N / 2000" ]
+[ Save button ]  [ Cancel button ]
+```
+
+**Textarea:**
+- `<textarea aria-label="Trip notes" id="trip-notes-textarea" maxLength={2000}>`
+- Pre-filled with `trip.notes` if it exists; empty string if `trip.notes` is null
+- Width: 100% of the section container
+- Min-height: 120px; auto-grows vertically as user types (use CSS `field-sizing: content` or a JS auto-resize approach — whichever is simpler in the existing codebase)
+- Max-height: 400px before scrolling (internal scroll on overflow)
+- Background: `var(--surface-alt)` (`#3F4045`)
+- Border: `1px solid var(--border-subtle)`
+- Focus border: `1px solid var(--border-accent)` (`#5D737E`)
+- Text color: `var(--text-primary)`
+- Font: IBM Plex Mono, 14px, line-height 1.6
+- Padding: 12px 14px
+- Border-radius: `var(--radius-sm)` (2px)
+- Resize: `vertical` only (allow user to drag taller; prevent horizontal)
+- Placeholder attribute (only shows when textarea is empty): `"Add notes about this trip…"` — styled by browser default placeholder styling, which will appear muted. If browser default is too prominent, override with CSS `::placeholder { color: var(--text-muted); font-style: italic; }`
+
+**Character count:**
+- Displayed below the textarea, right-aligned
+- Format: `"N / 2000"` where N is the current character count (updates on every keystroke)
+- `id="trip-notes-char-count"` — so `aria-describedby` on the textarea can reference it
+- `role="status"` — announces count updates to screen readers via live region
+- Font-size: 11px, font-weight: 400, color: `var(--text-muted)`
+- When count is between 1800–1999: color changes to `rgba(240,180,60,0.85)` (warm amber warning — subtle, not alarming)
+- When count is 2000: color changes to `rgba(220,80,80,0.9)` (red — at limit)
+- When count is 0–1799: default muted color
+- The textarea's `aria-describedby="trip-notes-char-count"` ensures screen readers can navigate to the count
+
+**Textarea `aria-describedby`:**
+```jsx
+<textarea
+  id="trip-notes-textarea"
+  aria-label="Trip notes"
+  aria-describedby="trip-notes-char-count"
+  maxLength={2000}
+  ...
+/>
+<div
+  id="trip-notes-char-count"
+  role="status"
+  aria-live="polite"
+  aria-atomic="true"
+>
+  {charCount} / 2000
+</div>
+```
+
+**Save button:**
+- Label: `"Save"`
+- Style: Primary button — background `var(--accent)` (`#5D737E`), text `var(--text-primary)`, font-weight 500, font-size 13px, padding: 8px 20px, border-radius: 2px
+- Hover: `rgba(93,115,126,0.8)`
+- Loading state: button text replaced with 14px inline spinner; button disabled; cancel button also disabled
+- On click → triggers save flow (see 19.5)
+
+**Cancel button:**
+- Label: `"Cancel"`
+- Style: Secondary button — background transparent, border `1px solid rgba(93,115,126,0.5)`, text `var(--text-primary)`, font-size 13px, padding: 8px 20px, border-radius: 2px
+- Hover: `rgba(252,252,252,0.05)`
+- On click → triggers cancel flow (see 19.6)
+
+**Button row:**
+- `display: flex; gap: 12px; margin-top: 12px`
+- Buttons are left-aligned (not full-width, not right-aligned)
+- Save comes first (left), Cancel comes second (right of Save)
+
+---
+
+#### 19.5 Save Flow
+
+1. User clicks "Save" button (or presses `Ctrl+Enter` / `Cmd+Enter` as keyboard shortcut — see 19.7)
+2. The notes value is trimmed: `editNotes.trim()`
+3. If trimmed value is empty string (`""`), send `null` to API (clearing the note)
+4. If trimmed value is non-empty, send the trimmed string
+5. Save button enters loading state (spinner, disabled); Cancel button also disabled
+6. `PATCH /api/v1/trips/:id` with body `{ notes: trimmedValue }` is called
+7. **On success (200):**
+   - Trip data is reloaded (re-fetch `GET /api/v1/trips/:id`)
+   - Edit mode closes; view mode is shown with updated notes (or placeholder if cleared)
+   - A brief success indicator is shown: the notes section header label briefly changes to `"NOTES — SAVED"` for 1500ms then reverts to `"NOTES"`. This is subtle and non-intrusive — no toast needed for a field save.
+8. **On error (any non-200):**
+   - Loading state cleared; buttons re-enabled
+   - An inline error message appears below the button row: `"Failed to save notes. Please try again."` — font-size 12px, color `rgba(220,80,80,0.9)`, `role="alert"`
+   - Edit mode stays open so the user does not lose their content
+
+---
+
+#### 19.6 Cancel Flow
+
+1. User clicks "Cancel" button (or presses `Escape` key while in edit mode)
+2. No API call is made
+3. The textarea value is discarded — internal edit state reverts to the original `trip.notes` value (or empty)
+4. Edit mode closes; view mode is shown unchanged
+5. No loading state, no error, no toast — instant
+
+---
+
+#### 19.7 Keyboard Interactions
+
+| Key | Context | Behavior |
+|-----|---------|---------|
+| `Escape` | Edit mode active | Cancel — discard changes, exit edit mode |
+| `Ctrl+Enter` / `Cmd+Enter` | Textarea focused | Save — same as clicking Save button |
+| `Tab` | Textarea focused | Move focus to "Save" button |
+| `Tab` | Save focused | Move focus to "Cancel" button |
+| `Tab` | Cancel focused | Move focus to next focusable element after section |
+| `Enter` | On placeholder text | Activate edit mode (placeholder has `tabIndex={0}`, handles `onKeyDown Enter`) |
+| `Enter` | On notes text in view mode | Activate edit mode (same pattern) |
+
+The pencil icon button participates in normal tab order. It should receive focus and be activatable via `Enter` and `Space`.
+
+---
+
+#### 19.8 States
+
+| State | What the user sees |
+|-------|--------------------|
+| **Empty / no notes** | Section header `"NOTES"` + pencil icon. Below: italic muted placeholder text `"Add notes about this trip…"`. |
+| **Notes exist (view mode)** | Section header `"NOTES"` + pencil icon. Below: full notes text in primary color, `white-space: pre-wrap`. |
+| **Edit mode (empty start)** | Textarea empty (placeholder text inside), char count `"0 / 2000"`, Save + Cancel buttons. |
+| **Edit mode (typing)** | Textarea fills; char count updates in real-time. Color shift at 1800+ chars. |
+| **Edit mode (at limit)** | Char count shows red `"2000 / 2000"`. Textarea prevents further input (maxLength). |
+| **Saving** | Save button shows spinner; both buttons disabled. Textarea read-only (add `disabled` attribute during save). |
+| **Save success** | View mode restored. Section header flashes `"NOTES — SAVED"` for 1500ms. |
+| **Save error** | Edit mode remains. Error text below buttons. Buttons re-enabled. |
+| **Cancel** | View mode instantly restored. No feedback needed. |
+| **Loading (initial page load)** | Section shows skeleton shimmer (same shimmer style as other TripDetailsPage sections): two lines of `var(--surface-alt)` background, border-radius 2px, shimmer animation. Pencil icon hidden during skeleton. |
+
+---
+
+#### 19.9 Responsive Behavior
+
+| Breakpoint | Layout Notes |
+|------------|-------------|
+| **Desktop ≥1024px** | Section full width (up to 1120px max content width). Textarea min-height 120px. Save/Cancel buttons left-aligned, inline. |
+| **Tablet 768–1023px** | Same as desktop. No layout changes needed at this breakpoint. |
+| **Mobile <768px** | Section full width (minus 16px horizontal padding on each side per page padding). Textarea min-height 100px (slightly shorter). Save and Cancel buttons remain inline (they fit at small sizes — each ~80px wide). If viewport is very narrow (<360px), stack buttons vertically with full width: `flex-direction: column; gap: 8px` with each button `width: 100%`. |
+
+---
+
+#### 19.10 Accessibility Checklist
+
+- [ ] `<textarea>` has `aria-label="Trip notes"` (explicit label; no `<label>` element needed if aria-label is present, but a visually-hidden `<label>` for screen readers is acceptable)
+- [ ] `aria-describedby="trip-notes-char-count"` on textarea references the live char count element
+- [ ] Char count container has `role="status"`, `aria-live="polite"`, `aria-atomic="true"` — screen reader announces count after brief debounce (or on blur at minimum)
+- [ ] Pencil button has `aria-label="Edit trip notes"` and `title="Edit trip notes"`
+- [ ] Placeholder text (empty state, view mode) has `tabIndex={0}`, `role="button"`, `aria-label="Add notes about this trip"`, handles `Enter`/`Space` for keyboard activation
+- [ ] Notes text in view mode (non-empty) has `tabIndex={0}`, `role="button"`, `aria-label="Edit trip notes"`, handles `Enter`/`Space` for keyboard activation
+- [ ] Error message after failed save uses `role="alert"` (immediate announcement)
+- [ ] Save button disabled state: `disabled` attribute AND `aria-disabled="true"` during loading
+- [ ] Cancel button disabled state: `disabled` attribute AND `aria-disabled="true"` during loading
+- [ ] Focus management: when edit mode activates, focus is moved to the textarea. When edit mode closes (save or cancel), focus returns to the pencil icon button.
+- [ ] Color contrast: all text colors meet WCAG AA. `var(--text-muted)` on `var(--bg-primary)` = 4.6:1 (passes AA for 14px regular weight which requires 4.5:1). Amber warning color at 1800 chars meets 3:1 for large text.
+- [ ] `prefers-reduced-motion`: if set, skip fade transition between view/edit mode (instant toggle)
+
+---
+
+#### 19.11 Component Architecture Guidance (for T-189)
+
+**New file:** `frontend/src/components/TripNotesSection.jsx`
+
+**Props:**
+```jsx
+TripNotesSection({
+  tripId,           // string — used in PATCH call
+  initialNotes,     // string | null — the trip.notes value from parent
+  onSaveSuccess,    // () => void — callback to trigger trip data reload in parent
+})
+```
+
+**Internal state:**
+```jsx
+const [isEditing, setIsEditing] = useState(false);
+const [editNotes, setEditNotes] = useState('');
+const [isSaving, setIsSaving] = useState(false);
+const [saveError, setSaveError] = useState(null);
+const [showSavedFeedback, setShowSavedFeedback] = useState(false);
+```
+
+**Integration in `TripDetailsPage.jsx`:**
+- Import `TripNotesSection`
+- Place it after the destinations section and before the calendar (per 19.1 placement)
+- Pass `tripId={trip.id}`, `initialNotes={trip.notes}`, `onSaveSuccess={reloadTrip}` where `reloadTrip` re-fetches the trip data
+
+**Note:** `initialNotes` should be re-passed whenever the parent reloads trip data after a successful save, so the component reflects the latest persisted value.
+
+---
+
+#### 19.12 Visual Mockup (Text-Based)
+
+```
+─────────────────────────────────────────────────────────
+
+NOTES ────────────────────────────────────────────── [✎]
+
+  Add notes about this trip…                         ← italic, muted (empty state)
+
+─────────────────────────────────────────────────────────
+
+NOTES ────────────────────────────────────────────── [✎]
+
+  Booked refundable hotel. Check if visa needed.     ← primary color, pre-wrap
+  Packing list: camera, adapters, rain jacket.
+  Budget: ~$2000 for 5 nights.
+
+─────────────────────────────────────────────────────────
+
+NOTES ────────────────────────────────────────────── [✎]
+
+  ┌──────────────────────────────────────────────┐
+  │ Booked refundable hotel. Check if visa...    │  ← textarea in edit mode
+  │                                              │
+  │                                              │
+  └──────────────────────────────────────────────┘
+                                       142 / 2000    ← right-aligned, muted
+
+  [  Save  ]  [  Cancel  ]
+
+─────────────────────────────────────────────────────────
+```
+
+---
+
+*Spec 19 (Sprint 20 — Trip Notes Field) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-10.*
+
+---
+
+## Sprint 22 Specs
+
+---
+
+### Spec 20: Trip Status Selector (Sprint 22 — T-195)
+
+**Sprint:** #22
+**Related Task:** T-195, T-196
+**Status:** Approved
+
+---
+
+#### 20.1 Description
+
+The Trip Status Selector is an interactive inline badge on the `TripDetailsPage` that lets users change a trip's status (`PLANNING` → `ONGOING` → `COMPLETED`) without leaving the page. In view mode it renders exactly like the read-only status badge on `TripCard` — a small pill with a muted Japandi color — but with a visual affordance (cursor and subtle hover effect) indicating it is clickable. Clicking it opens a compact dropdown overlay with all three status options. Selecting one fires a `PATCH /api/v1/trips/:id` call and updates the badge in place. The Home page `TripCard` will reflect the change on the next navigation (standard re-fetch; no real-time sync required).
+
+---
+
+#### 20.2 Screen Context
+
+**Page:** `TripDetailsPage` (`/trips/:id`)
+
+**Placement within the trip header:**
+```
+┌─────────────────────────────────────────────────────────┐
+│  ← Back                                                 │
+│                                                         │
+│  Tokyo Summer Trip              [PLANNING ▾]  ← HERE   │
+│  Tokyo · Kyoto · Osaka                                  │
+│                                                         │
+│  ─────────────────────────────────────────────────────  │
+│  [Calendar section ...]                                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+The status selector sits **inline with the trip name** on the same row (flex row, aligned to the right side of the trip name line), or immediately below it if the trip name is very long. It is visually prominent but not dominant — smaller than the trip name, above the destinations list.
+
+**Layout:** `display: flex; align-items: center; gap: 12px;` on the trip name row.
+- Left: `<h1>` trip name (font-size 22px, font-weight 500, IBM Plex Mono, `#FCFCFC`)
+- Right: `TripStatusSelector` component (inline)
+
+---
+
+#### 20.3 Component Overview
+
+**Component file:** `frontend/src/components/TripStatusSelector.jsx`
+
+**Props:**
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| `tripId` | string | ✅ | The trip's UUID, used in the PATCH call |
+| `initialStatus` | `"PLANNING" \| "ONGOING" \| "COMPLETED"` | ✅ | The current trip status, loaded by the parent |
+| `onStatusChange` | `(newStatus: string) => void` | ✅ | Callback invoked after a successful API update; parent uses this to sync its local trip state |
+
+**Internal state:**
+| State variable | Type | Description |
+|---------------|------|-------------|
+| `currentStatus` | string | Tracks the displayed status. Initialized from `initialStatus`. Reverted on API error. |
+| `isOpen` | boolean | Whether the dropdown overlay is currently visible |
+| `isLoading` | boolean | True while the PATCH request is in flight |
+| `error` | string \| null | Set to a generic error message on API failure; triggers a toast |
+
+---
+
+#### 20.4 Status Color Reference
+
+Each status maps to a fixed color pair used consistently across the badge (view mode), the dropdown options, and the option indicator dots.
+
+| Status | Badge Background | Badge Text | Indicator Dot |
+|--------|-----------------|------------|---------------|
+| `PLANNING` | `rgba(93, 115, 126, 0.2)` | `#5D737E` | `#5D737E` |
+| `ONGOING` | `rgba(100, 180, 100, 0.15)` | `rgba(100, 200, 100, 0.9)` | `rgba(100, 200, 100, 0.9)` |
+| `COMPLETED` | `rgba(252, 252, 252, 0.1)` | `rgba(252, 252, 252, 0.5)` | `rgba(252, 252, 252, 0.5)` |
+
+These are the same values as the Design System Conventions Status Badges table to ensure visual consistency between `TripCard` (read-only) and `TripDetailsPage` (interactive).
+
+---
+
+#### 20.5 Component States
+
+**State A — View Mode (idle, dropdown closed)**
+
+The badge renders as a clickable pill:
+
+```
+[• PLANNING ▾]
+```
+
+- Pill shape: `padding: 3px 10px`, `border-radius: 2px`
+- Font: IBM Plex Mono, `font-size: 10px`, `font-weight: 600`, `letter-spacing: 0.1em`, `text-transform: uppercase`
+- Background and text color per status (table in §20.4)
+- Left element: a small 6px filled circle (indicator dot) in the status color, `margin-right: 6px`
+- Right element: a small `▾` chevron icon (5px, same text color, `margin-left: 6px`, `opacity: 0.7`)
+- `cursor: pointer`
+- Hover: background becomes 10% more opaque (multiply the alpha by ~1.5). Transition: `150ms ease`.
+- `role="button"`, `aria-haspopup="listbox"`, `aria-expanded="false"`, `aria-label="Trip status: PLANNING"` (dynamic — includes current status name)
+
+---
+
+**State B — Dropdown Open**
+
+Clicking the badge (or pressing Space/Enter when focused) opens a dropdown listbox overlay positioned directly below the badge.
+
+```
+[• PLANNING ▾]
+┌─────────────────┐
+│ ● PLANNING   ✓ │  ← currently selected, checkmark on right
+│ ● ONGOING      │
+│ ● COMPLETED    │
+└─────────────────┘
+```
+
+Dropdown anatomy:
+- Container: `position: absolute`, `z-index: 100`, `top: calc(100% + 4px)`, `left: 0`
+- Background: `#30292F` (surface color)
+- Border: `1px solid rgba(93, 115, 126, 0.3)`
+- Border radius: `4px`
+- Box shadow: none (Japandi — use borders, no shadows)
+- Min-width: `160px`
+- `role="listbox"`, `aria-label="Trip status"`
+
+Each option row:
+- Padding: `10px 14px`
+- Font: IBM Plex Mono, `font-size: 12px`, `font-weight: 500`, `letter-spacing: 0.06em`, `text-transform: uppercase`
+- Text color: status text color (from §20.4 table)
+- Left: 8px indicator dot in the status color
+- Right (selected option only): `✓` checkmark in `#5D737E`
+- `role="option"`, `aria-selected="true/false"`
+- Focus/hover: `background: rgba(93, 115, 126, 0.1)`, no outline (handled by background change)
+- `cursor: pointer` on non-selected options; `cursor: default` on the currently-selected option
+
+The parent `badge` button:
+- `aria-expanded="true"` while open
+- `aria-label="Trip status: PLANNING"` (unchanged — reflects current persisted status, not the focused option)
+
+**Closing the dropdown:**
+- User selects an option → dropdown closes, API call starts
+- User presses Escape → dropdown closes, no change, focus returns to badge button
+- User clicks outside the dropdown or badge → dropdown closes, no change
+- A `mousedown` event listener on `document` (checking if click is outside) handles outside-click dismissal
+
+---
+
+**State C — Loading**
+
+After the user selects a new status, the dropdown closes immediately and the badge enters loading state:
+
+```
+[• ONGOING  ◌]   ← spinner replaces chevron, badge opacity reduced
+```
+
+- Optimistic update: the badge immediately shows the **newly selected** status color and text before the API responds (optimistic UI). This feels more responsive.
+- The `▾` chevron is replaced by a 12px circular CSS spinner (border-style, accent color `#5D737E`, `animation: spin 0.8s linear infinite`)
+- Badge overall `opacity: 0.7`
+- `pointer-events: none` on the badge during loading (prevent double-click)
+- `aria-label` updates to `"Trip status: ONGOING (saving…)"` (screen reader announcement)
+- `aria-busy="true"` on the badge container
+
+---
+
+**State D — Error (API Failure)**
+
+If the PATCH call returns a non-2xx status:
+
+1. The badge reverts to the **previous** status (color + text). The optimistic update is rolled back.
+2. `isLoading` returns to `false`. Badge returns to normal view mode (chevron visible, pointer-events restored).
+3. A **toast notification** appears at the bottom-right of the viewport:
+   - Text: `"Failed to update trip status. Please try again."`
+   - Styling: `background: #30292F`, border: `1px solid rgba(220, 80, 80, 0.5)`, text: `rgba(252, 252, 252, 0.85)`, font-size: 13px, padding: 12px 16px, border-radius: 4px
+   - Auto-dismisses after 4 seconds
+   - `role="alert"` for screen reader announcement
+4. No API error details are surfaced (no status code, no raw message from the server).
+
+---
+
+**State E — Error Pre-load (initial load failure)**
+
+If the parent `TripDetailsPage` fails to load the trip (e.g., network error), the `TripStatusSelector` simply does not render — the parent handles the full-page error state. This component is only mounted when `tripId` and `initialStatus` are available and valid.
+
+---
+
+#### 20.6 User Flow (Step-by-Step)
+
+1. User opens `TripDetailsPage` for a trip with status `PLANNING`.
+2. The trip header renders: trip name on the left, `[• PLANNING ▾]` badge on the right.
+3. User clicks the badge (or tabs to it and presses Space/Enter).
+4. A dropdown appears below the badge showing all three options: `PLANNING` (with ✓), `ONGOING`, `COMPLETED`.
+5. User clicks `ONGOING` (or uses arrow keys to navigate to it and presses Enter).
+6. The dropdown closes. The badge optimistically switches to `[• ONGOING ◌]` (loading, spinner).
+7. `PATCH /api/v1/trips/:id` is called with body `{ "status": "ONGOING" }`.
+8. **On success (200):**
+   - Badge settles to `[• ONGOING ▾]` (loading state cleared, chevron returns).
+   - `onStatusChange("ONGOING")` callback is invoked. Parent updates its local trip state.
+   - No page reload. No toast.
+9. **On error (non-2xx):**
+   - Badge reverts to `[• PLANNING ▾]` (previous status).
+   - Error toast appears: `"Failed to update trip status. Please try again."` (4s auto-dismiss).
+   - User can try again immediately.
+
+**Keyboard flow (no mouse):**
+1. User tabs to the badge button.
+2. Badge receives focus (visible focus ring: `outline: 2px solid #5D737E`, `outline-offset: 2px`).
+3. User presses Space or Enter → dropdown opens. Focus moves to the first option (or the currently selected option).
+4. User presses ArrowDown / ArrowUp to move focus between options.
+5. User presses Enter or Space on the desired option → selection is made, dropdown closes, API call fires.
+6. User presses Escape (at any point while open) → dropdown closes, focus returns to the badge button, no change.
+
+---
+
+#### 20.7 API Integration
+
+| Field | Value |
+|-------|-------|
+| **Method** | `PATCH` |
+| **Endpoint** | `/api/v1/trips/:id` |
+| **Request body** | `{ "status": "ONGOING" }` (or `"PLANNING"` or `"COMPLETED"`) |
+| **Auth** | Bearer token via Axios interceptor (standard, handled by `api.js`) |
+| **Success response** | `200 OK` — full trip object with updated `status` field |
+| **Error response** | Any non-2xx — treat all as generic failure; do not parse error body for UI display |
+| **API helper** | `api.trips.update(tripId, { status: newStatus })` — existing Axios wrapper |
+
+**Important:** The frontend must validate the status value client-side before sending (must be one of `"PLANNING"`, `"ONGOING"`, `"COMPLETED"`). Since the options are hardcoded in the UI, this is inherently guaranteed — no user-typed input is sent to the API. No sanitization beyond enum restriction is required.
+
+---
+
+#### 20.8 Dropdown Positioning
+
+The dropdown is positioned using `position: absolute` relative to a `position: relative` wrapper that contains both the badge button and the dropdown. This ensures the dropdown appears anchored to the badge regardless of scroll position.
+
+```css
+.trip-status-selector {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.trip-status-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: 160px;
+}
+```
+
+The wrapper `div` should have `role="none"` (no semantic role) — only the inner `button` (badge) and `ul` (listbox) carry semantic roles.
+
+---
+
+#### 20.9 Responsive Behavior
+
+| Breakpoint | Behavior |
+|------------|---------|
+| **Desktop (≥ 768px)** | Trip name and status selector on same flex row (`display: flex; align-items: center; gap: 12px; flex-wrap: wrap`). Dropdown opens downward and left-aligned to the badge. |
+| **Mobile (< 768px)** | If trip name + badge don't fit on one line (due to `flex-wrap: wrap`), the badge wraps to its own row below the trip name, still left-aligned with the content. Dropdown still opens downward. Badge touch target minimum: 44×28px (per WCAG 2.5.5). |
+
+No change to the dropdown layout at mobile — the compact list is usable at all widths because it is `min-width: 160px` and anchored to the badge.
+
+---
+
+#### 20.10 Accessibility Checklist
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Badge button labeled | `aria-label="Trip status: PLANNING"` (dynamically includes current status) |
+| Dropdown announced | `aria-haspopup="listbox"` on badge button |
+| Dropdown open state | `aria-expanded="true/false"` on badge button |
+| Loading state announced | `aria-busy="true"` + `aria-label` updates to include `"(saving…)"` |
+| Error announced | Toast has `role="alert"` — screen readers announce it automatically |
+| Options labeled | `role="option"` on each item, `aria-selected="true/false"` |
+| Keyboard: open | Space / Enter on badge button |
+| Keyboard: navigate | ArrowDown / ArrowUp between options (focus trap within dropdown while open) |
+| Keyboard: select | Enter / Space on focused option |
+| Keyboard: close | Escape closes dropdown, focus returns to badge button |
+| Focus ring | `outline: 2px solid #5D737E; outline-offset: 2px` on keyboard focus (`:focus-visible` only — not on mouse click) |
+| Color contrast | PLANNING text `#5D737E` on `#30292F` bg ≈ 3.5:1 (AA for UI components). ONGOING text `rgba(100,200,100,0.9)` on `#30292F` ≈ 4.2:1. COMPLETED text `rgba(252,252,252,0.5)` on `#30292F` ≈ 3.1:1 (acceptable for non-critical UI indicators). |
+| Touch target | Badge minimum 44×28px touch area on mobile |
+| No color-only info | Status is communicated by text label, not color alone |
+
+---
+
+#### 20.11 TripCard Sync
+
+The `TripCard` component on the Home page (`/`) displays the trip's `status` badge (read-only). After the user changes the status on `TripDetailsPage` and navigates back to Home, the `useTrips` hook re-fetches the trips list (`GET /api/v1/trips`), which will return the updated status.
+
+**No real-time sync is required.** The flow is:
+1. User changes status on TripDetailsPage → `onStatusChange(newStatus)` updates parent state locally (TripDetailsPage remains accurate).
+2. User navigates to Home → `HomePage` mounts / `useTrips` fetches → `GET /api/v1/trips` returns updated status → TripCard displays correct status.
+
+The Frontend Engineer does **not** need to implement WebSockets, polling, or any cross-page state sharing (e.g., Zustand/Context) for this feature. React Router navigation + standard re-fetch is sufficient.
+
+---
+
+#### 20.12 Integration into TripDetailsPage
+
+The `TripStatusSelector` is integrated in the trip header section of `TripDetailsPage.jsx`. The parent is responsible for:
+
+1. Passing `tripId` (from route params / trip data)
+2. Passing `initialStatus` (from the trip object returned by `api.trips.get(tripId)`)
+3. Providing an `onStatusChange` callback that updates the parent's local `trip.status` state:
+   ```jsx
+   const [trip, setTrip] = useState(null);
+
+   const handleStatusChange = (newStatus) => {
+     setTrip(prev => ({ ...prev, status: newStatus }));
+   };
+
+   // In JSX:
+   <div className="trip-header">
+     <h1 className="trip-name">{trip.name}</h1>
+     <TripStatusSelector
+       tripId={trip.id}
+       initialStatus={trip.status}
+       onStatusChange={handleStatusChange}
+     />
+   </div>
+   ```
+4. The `TripStatusSelector` should **not** re-fetch the trip on its own. It only manages its own status state and the PATCH call.
+
+---
+
+#### 20.13 Visual Mockup (Text-Based)
+
+**View mode — PLANNING:**
+```
+─────────────────────────────────────────────────────────────
+
+  Tokyo Summer Trip                        [• PLANNING ▾]
+  Tokyo · Kyoto · Osaka
+
+─────────────────────────────────────────────────────────────
+```
+
+**Dropdown open — PLANNING selected:**
+```
+─────────────────────────────────────────────────────────────
+
+  Tokyo Summer Trip                        [• PLANNING ▾]
+                                           ┌──────────────────┐
+                                           │ ● PLANNING    ✓  │
+                                           │ ● ONGOING        │
+                                           │ ● COMPLETED      │
+                                           └──────────────────┘
+  Tokyo · Kyoto · Osaka
+
+─────────────────────────────────────────────────────────────
+```
+
+**Loading state — optimistically showing ONGOING:**
+```
+─────────────────────────────────────────────────────────────
+
+  Tokyo Summer Trip                        [• ONGOING  ◌]
+                                                ↑ spinner, opacity 0.7
+  Tokyo · Kyoto · Osaka
+
+─────────────────────────────────────────────────────────────
+```
+
+**Error state — reverted to PLANNING, toast visible:**
+```
+─────────────────────────────────────────────────────────────
+
+  Tokyo Summer Trip                        [• PLANNING ▾]
+  Tokyo · Kyoto · Osaka
+
+─────────────────────────────────────────────────────────────
+
+
+                       ┌───────────────────────────────────────────────┐
+                       │  Failed to update trip status. Please try     │  ← bottom-right toast
+                       │  again.                               [×]    │
+                       └───────────────────────────────────────────────┘
+```
+
+**Keyboard focus state:**
+```
+  Tokyo Summer Trip        ╔══════════════════╗
+                           ║ [• PLANNING ▾]   ║  ← 2px solid #5D737E focus ring
+                           ╚══════════════════╝
+```
+
+---
+
+#### 20.14 Edge Cases
+
+| Scenario | Behavior |
+|----------|---------|
+| User selects the **same** status that is already set | The dropdown closes. No API call is made. No loading state. No change. |
+| API call is in flight and user tries to click the badge | `pointer-events: none` on badge during loading. Second click is impossible. |
+| Trip data has an unexpected status value (not one of the 3 enum values) | Badge renders the raw string in `COMPLETED` style (muted/faded) as a safe fallback. Dropdown still shows all 3 valid options. |
+| `initialStatus` prop changes (parent re-fetches trip data) | Component re-syncs `currentStatus` via a `useEffect` that watches `initialStatus`. Only applies if not currently in loading state. |
+| Network offline | PATCH fails → generic error toast. Badge reverts. User can retry. |
+
+---
+
+*Spec 20 (Sprint 22 — Trip Status Selector) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-10.*
+
+---
+
+## Sprint 24 Specs
+
+---
+
+### Spec 21 — Home Page Trip Status Filter Tabs
+
+**Task:** T-207
+**Status:** ✅ Approved (auto-approved per automated sprint cycle)
+**Published:** 2026-03-10
+**Assigned to:** Frontend Engineer (T-208)
+
+---
+
+#### 21.1 Overview
+
+**Screen:** `HomePage` (`frontend/src/pages/HomePage.jsx`)
+
+**Description:** A row of four filter pills — "All", "Planning", "Ongoing", and "Completed" — positioned above the trip card list on the Home page. Selecting a pill immediately filters the visible trip cards client-side, with no new API call. The active pill is visually distinct from inactive pills. When the active filter yields zero matching trips, a contextual empty state message replaces the card list, with a "Show all" reset link.
+
+**User goal:** Quickly narrow a potentially long trip list to trips at a specific lifecycle stage.
+
+**Component name:** `StatusFilterTabs` (standalone component, imported into `HomePage.jsx`)
+
+**No backend changes required.** The component operates entirely on the `trips` array already fetched and held in `HomePage` state.
+
+---
+
+#### 21.2 User Flow
+
+1. User arrives at the Home page (authenticated). Trip cards are already displayed.
+2. User sees the `StatusFilterTabs` row above the trip list. The "All" pill is active by default.
+3. User clicks the "Planning" pill.
+   - The "Planning" pill becomes visually active (filled style).
+   - Trip cards instantly re-render to show only trips where `status === "PLANNING"`.
+   - If one or more PLANNING trips exist, the filtered list is shown.
+   - If zero PLANNING trips exist, the empty filtered state is shown: _"No Planning trips yet."_ with a "Show all" reset link.
+4. User clicks the "Show all" link (empty state scenario) or the "All" pill.
+   - Filter resets to "All". All trips are shown again.
+5. User can also use the keyboard (Tab, Space/Enter, Arrow keys) to navigate and activate any pill.
+
+---
+
+#### 21.3 Location on Home Page
+
+The `StatusFilterTabs` row is inserted **between the page heading row (which contains the "New Trip" button) and the trip card list**. It sits flush-left, aligned with the left edge of the trip cards, with 24px of vertical spacing above it (from the heading row) and 24px below it (before the first trip card).
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  MY TRIPS                              [ + New Trip ]        │  ← existing heading row
+├─────────────────────────────────────────────────────────────┤
+│                                                             │  ← 24px gap
+│  [● All]  [ Planning ]  [ Ongoing ]  [ Completed ]          │  ← StatusFilterTabs (NEW)
+│                                                             │  ← 24px gap
+│  ┌──────────────────────┐  ┌──────────────────────┐         │
+│  │  Trip Card           │  │  Trip Card           │         │  ← existing trip cards
+│  └──────────────────────┘  └──────────────────────┘         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+On mobile (≤ 640px), the pills remain on a single row. If horizontal space is insufficient, allow the row to scroll horizontally with `overflow-x: auto`. No pill wrapping to a new line.
+
+---
+
+#### 21.4 Component Structure
+
+```
+<StatusFilterTabs>
+  <div role="group" aria-label="Filter trips by status">
+    <button aria-pressed={true|false}>All</button>
+    <button aria-pressed={true|false}>Planning</button>
+    <button aria-pressed={true|false}>Ongoing</button>
+    <button aria-pressed={true|false}>Completed</button>
+  </div>
+</StatusFilterTabs>
+```
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `activeFilter` | `string` | `"ALL"` | Currently active filter value. One of: `"ALL"`, `"PLANNING"`, `"ONGOING"`, `"COMPLETED"`. |
+| `onFilterChange` | `function` | required | Callback `(filterValue: string) => void`. Called when user clicks a pill or activates via keyboard. |
+
+**Filter value mapping (internal constant):**
+
+| Pill Label | Filter Value | `trip.status` match |
+|-----------|--------------|---------------------|
+| All | `"ALL"` | no filter (show all) |
+| Planning | `"PLANNING"` | `"PLANNING"` |
+| Ongoing | `"ONGOING"` | `"ONGOING"` |
+| Completed | `"COMPLETED"` | `"COMPLETED"` |
+
+**Filter logic in `HomePage.jsx`:**
+
+```js
+const filteredTrips = activeFilter === "ALL"
+  ? trips
+  : trips.filter(t => t.status === activeFilter);
+```
+
+`activeFilter` is local state in `HomePage.jsx`, initialized to `"ALL"`.
+
+---
+
+#### 21.5 Visual Design
+
+##### Pill — Inactive State
+
+- Background: transparent
+- Border: `1px solid rgba(93, 115, 126, 0.3)` (subtle border)
+- Text color: `rgba(252, 252, 252, 0.5)` (muted)
+- Font: IBM Plex Mono, 11px, weight 500, letter-spacing 0.08em, uppercase
+- Padding: 6px 14px
+- Border-radius: 2px (`--radius-sm`)
+- Cursor: pointer
+
+##### Pill — Active State
+
+- Background: `rgba(93, 115, 126, 0.2)` (soft accent fill)
+- Border: `1px solid #5D737E` (accent border, full opacity)
+- Text color: `#FCFCFC` (full brightness)
+- Font: IBM Plex Mono, 11px, weight 600, letter-spacing 0.08em, uppercase
+- Padding: 6px 14px
+- Border-radius: 2px
+
+##### Pill — Hover State (inactive pill only)
+
+- Background: `rgba(252, 252, 252, 0.04)`
+- Border: `1px solid rgba(93, 115, 126, 0.5)`
+- Text color: `rgba(252, 252, 252, 0.75)`
+- Transition: `all 150ms ease`
+
+##### Pill — Focus State (keyboard)
+
+- Outline: `2px solid #5D737E`
+- Outline-offset: `2px`
+- (Do not rely on browser default outline — always render the custom ring)
+
+##### Pill row container
+
+- Display: flex
+- Flex-direction: row
+- Gap: 8px (`--space-2`)
+- Align-items: center
+- Overflow-x: auto (mobile safety valve)
+- No wrap (`flex-wrap: nowrap`)
+
+---
+
+#### 21.6 ASCII Wireframe — Desktop
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  MY TRIPS                                       [ + New Trip ]  │
+│                                                                 │
+│  ╔═══════╗  ┌──────────┐  ┌─────────┐  ┌───────────┐           │
+│  ║  ALL  ║  │ PLANNING │  │ ONGOING │  │ COMPLETED │           │
+│  ╚═══════╝  └──────────┘  └─────────┘  └───────────┘           │
+│    ↑ active (filled bg, accent border, bright text)             │
+│      inactive (transparent bg, subtle border, muted text)       │
+│                                                                 │
+│  ┌──────────────────────┐  ┌──────────────────────┐             │
+│  │  Iceland Adventure   │  │  Tokyo Summer        │             │
+│  │  Jun 2–14, 2026      │  │  Aug 10–20, 2026     │             │
+│  │  PLANNING            │  │  ONGOING             │             │
+│  └──────────────────────┘  └──────────────────────┘             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 21.7 ASCII Wireframe — Active Filter "Planning" (matches exist)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  MY TRIPS                                       [ + New Trip ]  │
+│                                                                 │
+│  ┌─────┐  ╔══════════╗  ┌─────────┐  ┌───────────┐             │
+│  │ ALL │  ║ PLANNING ║  │ ONGOING │  │ COMPLETED │             │
+│  └─────┘  ╚══════════╝  └─────────┘  └───────────┘             │
+│                                                                 │
+│  ┌──────────────────────┐                                       │
+│  │  Iceland Adventure   │   ← only PLANNING trips shown         │
+│  │  Jun 2–14, 2026      │                                       │
+│  │  PLANNING            │                                       │
+│  └──────────────────────┘                                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 21.8 ASCII Wireframe — Active Filter "Completed" (no matches — empty filtered state)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  MY TRIPS                                       [ + New Trip ]  │
+│                                                                 │
+│  ┌─────┐  ┌──────────┐  ┌─────────┐  ╔═══════════╗             │
+│  │ ALL │  │ PLANNING │  │ ONGOING │  ║ COMPLETED ║             │
+│  └─────┘  └──────────┘  └─────────┘  ╚═══════════╝             │
+│                                                                 │
+│                                                                 │
+│              No Completed trips yet.                            │
+│              Show all                                           │
+│              ↑ underlined link, accent color                    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 21.9 States
+
+##### 21.9.1 Default State (All)
+
+- Active filter: `"ALL"`
+- All `filteredTrips` rendered (same as pre-filter behavior)
+- This is the state on first render and after filter reset
+
+##### 21.9.2 Filtered State — Results Exist
+
+- Active filter: `"PLANNING"`, `"ONGOING"`, or `"COMPLETED"`
+- Only matching trip cards are rendered
+- The filtered count may be 1–N trips
+- No additional loading state — filter is purely client-side and instant
+
+##### 21.9.3 Filtered State — Empty (no matching trips)
+
+- Active filter: `"PLANNING"`, `"ONGOING"`, or `"COMPLETED"`
+- `filteredTrips.length === 0` AND `trips.length > 0`
+- Replace the trip card grid with the empty-filter message:
+
+```
+No [Label] trips yet.
+Show all
+```
+
+Where `[Label]` is the title-cased filter label:
+- Filter `"PLANNING"` → "No Planning trips yet."
+- Filter `"ONGOING"` → "No Ongoing trips yet."
+- Filter `"COMPLETED"` → "No Completed trips yet."
+
+**Empty filtered state layout:**
+- Centered horizontally in the trip list area
+- Vertical padding: 48px top and bottom
+- Text: `rgba(252, 252, 252, 0.5)`, IBM Plex Mono 14px, weight 400
+- "Show all" on a new line below the message
+- "Show all" styling: IBM Plex Mono 13px, `#5D737E` (accent), underline, cursor pointer
+- On click: calls `onFilterChange("ALL")`
+- `aria-label="Show all trips"` on the "Show all" link
+
+**Important:** This empty filtered state must NOT be confused with the global empty state shown when `trips.length === 0` (no trips at all). That existing global empty state renders independently and must be left unchanged.
+
+##### 21.9.4 Global Empty State (no trips at all — unchanged)
+
+- `trips.length === 0` — existing behavior, not modified by this spec
+- `StatusFilterTabs` is still rendered, but since there are no trips to filter, all filter options result in the same empty trip list
+- The global empty state (e.g., "Plan your first trip") still displays
+- Do not show the "No [status] trips yet." message when `trips.length === 0`
+
+---
+
+#### 21.10 Responsive Behavior
+
+| Breakpoint | Behavior |
+|------------|---------|
+| **Desktop (> 1024px)** | Pills in a single row, gap 8px. No overflow needed — all 4 pills fit comfortably. |
+| **Tablet (641px – 1024px)** | Same as desktop. Pills scale to available width naturally. |
+| **Mobile (≤ 640px)** | Container gets `overflow-x: auto`. Pills remain in a single row with the same 8px gap. No wrapping. User can scroll the pill row horizontally if needed. No horizontal scrollbar visible by default (use `-webkit-overflow-scrolling: touch`, `scrollbar-width: none`). |
+
+On all breakpoints, pill text does not truncate — each pill label fits fully on one line.
+
+---
+
+#### 21.11 Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Group label | `<div role="group" aria-label="Filter trips by status">` wraps all pills |
+| Pressed state | Each pill is a `<button>` with `aria-pressed="true"` (active) or `aria-pressed="false"` (inactive). Updated on filter change. |
+| Focus order | Pills are naturally in tab order. No custom `tabIndex` required — all are `<button>` elements. |
+| Keyboard activation | Space or Enter activates the focused pill. Arrow keys (left/right) should move focus between pills within the group (roving tabIndex pattern — see below). |
+| Screen reader announcement | When a pill is activated, its `aria-pressed` changes to `true`. Screen readers announce "[Label], pressed, button". |
+| Color contrast | Active pill text (`#FCFCFC` on `rgba(93,115,126,0.2)` + `#02111B` bg): meets WCAG AA. Inactive muted text (`rgba(252,252,252,0.5)` on `#02111B`): minimum 3:1 contrast for UI components. |
+| "Show all" link | `<button>` or `<a>` with `aria-label="Show all trips"`. Receives focus naturally via Tab. |
+
+**Roving tabIndex for arrow key navigation:**
+- Only the active pill has `tabIndex=0`. All other pills have `tabIndex=-1`.
+- ArrowRight: move focus to next pill (wraps from last → first).
+- ArrowLeft: move focus to previous pill (wraps from first → last).
+- Activating a pill via Space/Enter: call `onFilterChange(value)` immediately.
+- Arrow key movement alone moves focus but does NOT change the active filter — user must press Space/Enter to activate.
+
+---
+
+#### 21.12 Interaction Detail
+
+| Interaction | Result |
+|-------------|--------|
+| Click inactive pill | Calls `onFilterChange(value)`. Parent updates `activeFilter` state. Pill becomes active. Trip list re-renders instantly. |
+| Click already-active pill | No-op. `onFilterChange` is still called (parent can guard). No visual change. |
+| Click "Show all" link | Calls `onFilterChange("ALL")`. Filter resets. All trips shown. |
+| Tab key | Moves focus through pills and then to rest of page. |
+| ArrowRight/ArrowLeft | Moves focus within the pill group (roving tabIndex). Does NOT activate. |
+| Space / Enter on focused pill | Activates the pill (calls `onFilterChange`). |
+| Escape key | No special behavior for pills. Page-level Escape handling (e.g., modals) is unaffected. |
+
+---
+
+#### 21.13 Animation / Transitions
+
+- All pill state changes (hover, active, focus): `transition: all 150ms ease`
+- Trip card list re-render: instant (no animation). Do not animate the card grid filtering.
+- The empty filtered state: appears immediately with no fade (consistent with global empty state behavior).
+
+---
+
+#### 21.14 Code Placement
+
+```
+frontend/src/
+  components/
+    StatusFilterTabs.jsx        ← new component file
+    StatusFilterTabs.css        ← (or inline CSS-in-JS / CSS module — match existing convention)
+  pages/
+    HomePage.jsx                ← import StatusFilterTabs; add activeFilter state; pass filteredTrips to trip list
+```
+
+**State ownership:** `activeFilter` lives in `HomePage.jsx` as `useState("ALL")`. `StatusFilterTabs` is a controlled component — it receives `activeFilter` and `onFilterChange` as props.
+
+---
+
+#### 21.15 Edge Cases
+
+| Scenario | Behavior |
+|----------|---------|
+| Trip's `status` field is `null` or `undefined` | Trip does not match any status filter. It appears under "All" but not under any specific filter pill. No crash. |
+| Trip's `status` is an unexpected value (e.g., `"ARCHIVED"`) | Same as above — not matched by any specific filter. Appears only under "All". |
+| All trips happen to share the same status (e.g., all PLANNING) | "Planning" pill shows all trips. "Ongoing" and "Completed" each show the empty filtered state. Correct behavior. |
+| User creates a new trip while a non-"All" filter is active | New trip may or may not appear in the filtered list depending on its status. This is correct behavior. No special handling needed. |
+| `trips` array is loading (initial fetch in progress) | `StatusFilterTabs` is rendered with the same loading skeleton/spinner behavior as the existing home page. Pills can be shown even during load (they have no data dependency of their own). |
+| Only one trip total | Filter works as expected. |
+
+---
+
+#### 21.16 Full Annotated Wireframe (Desktop)
+
+```
+MAX CONTENT WIDTH: 1120px, centered
+─────────────────────────────────────────────────────────────────────────────
+
+  MY TRIPS                                              [ + New Trip ]
+  ─────────────────────────────────────── section header line ──────────────
+
+                        ↕ 24px gap
+
+  ╔═══════╗   ┌──────────┐   ┌─────────┐   ┌───────────┐
+  ║  ALL  ║   │ PLANNING │   │ ONGOING │   │ COMPLETED │
+  ╚═══════╝   └──────────┘   └─────────┘   └───────────┘
+  │       │
+  │ active: bg rgba(93,115,126,0.2), border #5D737E, text #FCFCFC 600 │
+  │ inactive: bg transparent, border rgba(93,115,126,0.3), text rgba(252,252,252,0.5) 500 │
+  │ gap between pills: 8px │
+  │ pill padding: 6px 14px │
+  │ font: IBM Plex Mono 11px uppercase letter-spacing 0.08em │
+  │ border-radius: 2px │
+
+                        ↕ 24px gap
+
+  ┌─────────────────────────────────┐   ┌─────────────────────────────────┐
+  │  Iceland Adventure              │   │  Tokyo Summer                   │
+  │  Jun 2–14, 2026                 │   │  Aug 10–20, 2026                │
+  │  [ PLANNING ]                   │   │  [ ONGOING ]                    │
+  └─────────────────────────────────┘   └─────────────────────────────────┘
+
+─────────────────────────────────────────────────────────────────────────────
+```
+
+---
+
+#### 21.17 Empty Filtered State Wireframe
+
+```
+─────────────────────────────────────────────────────────────────────────────
+
+  MY TRIPS                                              [ + New Trip ]
+  ─────────────────────────────────────── section header line ──────────────
+
+  ┌─────┐   ┌──────────┐   ┌─────────┐   ╔═══════════╗
+  │ ALL │   │ PLANNING │   │ ONGOING │   ║ COMPLETED ║
+  └─────┘   └──────────┘   └─────────┘   ╚═══════════╝
+
+                        ↕ 48px gap
+
+                   No Completed trips yet.
+                        Show all            ← accent #5D737E, underline
+
+                        ↕ 48px gap
+
+─────────────────────────────────────────────────────────────────────────────
+```
+
+---
+
+*Spec 21 (Sprint 24 — Home Page Trip Status Filter Tabs) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-10.*
+
+---
+
+## Sprint 25 Specs
+
+---
+
+### Spec 22: Trip Details Page — Calendar Integration (TripCalendar Component)
+
+**Sprint:** #25
+**Related Task:** T-211
+**Status:** Approved
+
+**Description:**
+Replace the "Calendar coming in Sprint 2" placeholder at the top of TripDetailsPage with a fully functional `TripCalendar` component. The calendar provides a visual, month/week overview of all trip events — flights, stays, and activities — overlaid on a date grid. It is read-only; all editing continues to happen through the section forms below the calendar. Clicking an event scrolls to the relevant section on the page. The calendar is the first thing a user sees when they open a trip, giving them an immediate spatial understanding of their itinerary.
+
+**Target Users:** Detail-oriented travelers who want an at-a-glance visual overview of their trip schedule before diving into section-level detail.
+
+---
+
+#### 22.1 Page Placement
+
+The `TripCalendar` component occupies the top slot of `TripDetailsPage.jsx`, replacing the existing placeholder. Layout order from top to bottom:
+
+```
+[ Navbar ]
+[ Page Header: Trip Name + Destinations + Status Badge + Print Button ]
+[ TripCalendar ]                          ← replaces placeholder
+[ Flights Section ]
+[ Stays Section ]
+[ Activities Section ]
+```
+
+- **Spacing above calendar:** 32px (`var(--space-8)`) below the page header
+- **Spacing below calendar:** 48px (`var(--space-12)`) before the Flights section header
+- **Component width:** Full content width (inherits the 1120px max-width container)
+- **Component background:** `var(--surface)` (`#30292F`), border `1px solid var(--border-subtle)`, border-radius `var(--radius-md)` (4px), padding 24px
+
+---
+
+#### 22.2 Data Source
+
+The component fetches from the calendar aggregation endpoint:
+
+```
+GET /api/v1/trips/:id/calendar
+```
+
+**Response shape:**
+```json
+{
+  "events": [
+    {
+      "id": "flight-uuid",
+      "type": "FLIGHT",
+      "title": "DL12345 — SFO → LAX",
+      "start_date": "2026-08-07",
+      "end_date": "2026-08-07",
+      "start_time": "06:00",
+      "end_time": "08:00",
+      "timezone": "America/New_York",
+      "source_id": "original-flight-uuid"
+    }
+  ]
+}
+```
+
+- Events are ordered by `start_date ASC`, `start_time ASC`
+- STAY events may span multiple days (`start_date ≠ end_date`)
+- FLIGHT events are single-day (`start_date === end_date`) with `start_time` and `end_time`
+- ACTIVITY events are single-day with `start_time` and `end_time`
+- Use the existing `api` axios instance (with interceptors) for the fetch call
+
+---
+
+#### 22.3 Event Color Coding
+
+Each event type uses a distinct CSS custom property — never hardcoded hex.
+
+Add these tokens to the `:root` block in `index.css` (or the component's `.module.css` as component-scoped vars):
+
+```css
+--event-flight-bg:    rgba(93, 115, 126, 0.25);   /* accent-tinted */
+--event-flight-border: #5D737E;
+--event-flight-text:  #FCFCFC;
+
+--event-stay-bg:      rgba(100, 160, 120, 0.2);   /* muted green */
+--event-stay-border:  rgba(100, 180, 120, 0.6);
+--event-stay-text:    rgba(140, 210, 160, 0.9);
+
+--event-activity-bg:  rgba(180, 140, 80, 0.18);   /* muted amber */
+--event-activity-border: rgba(200, 160, 90, 0.5);
+--event-activity-text: rgba(220, 185, 110, 0.9);
+```
+
+**Color Legend Strip** — rendered inside the calendar panel, top-right corner, as a horizontal row of three labeled swatches:
+
+```
+● Flight   ● Stay   ● Activity
+```
+
+Each swatch: 10px × 10px circle (`border-radius: 50%`), background = event type color, followed by label text in IBM Plex Mono 10px uppercase letter-spacing 0.08em, muted color. Gap between swatches: 16px. The entire legend row is `flex`, `align-items: center`, `gap: 16px`. Positioned at the top-right of the calendar panel using `display: flex; justify-content: space-between` on the panel header row (left: "CALENDAR" section header label; right: legend strip).
+
+---
+
+#### 22.4 Calendar View — Month Grid (Default)
+
+**Default view:** Month grid. Shows the calendar month that contains the trip's first event. If no events exist, shows the current month.
+
+**Grid structure:**
+- **Header row:** 7 cells for day-of-week abbreviations — `SUN MON TUE WED THU FRI SAT` — font-size 10px, font-weight 600, letter-spacing 0.1em, uppercase, color `var(--text-muted)`. Each cell: `text-align: center`, padding-bottom 8px.
+- **Day cells:** 7 columns × up to 6 rows. Each cell: minimum height 80px on desktop (auto-expands if many events). Border: `1px solid var(--border-subtle)` on all four sides — creates a grid of cells. Background: `var(--bg-primary)`. Border-radius: 0 (no rounded corners on individual cells — clean grid).
+- **Day number:** top-left corner of each cell, font-size 12px, font-weight 500, color `var(--text-muted)`. Padding: 6px 8px.
+- **Current day:** If today falls within the displayed month, the day number uses color `var(--text-primary)` with a 2px bottom border in `var(--accent)`. No filled circle — Japandi minimal.
+- **Out-of-month days:** Cells from the previous/next month that fill the grid rows. Day number: `rgba(252, 252, 252, 0.15)`. Background: `rgba(2, 17, 27, 0.4)` (slightly darker). No events rendered in out-of-month cells.
+
+**Month Navigation:**
+- Header row above the grid:
+  ```
+  [ ← ]   August 2026   [ → ]
+  ```
+  - Month + year: IBM Plex Mono 14px, font-weight 500, `var(--text-primary)`, centered
+  - Arrows: `←` and `→` as secondary button style (transparent background, border `1px solid var(--border-subtle)`, padding 4px 10px, border-radius 2px). Hover: background `rgba(252,252,252,0.05)`.
+  - `aria-label="Previous month"` and `aria-label="Next month"` on each arrow button
+  - Clicking `←` or `→` switches the displayed month. Does NOT change the data — all events remain loaded.
+
+---
+
+#### 22.5 Event Rendering Inside Grid Cells
+
+**Single-day events (FLIGHT, ACTIVITY):**
+- Rendered as a horizontal pill inside the day cell
+- Pill: width fills the cell (with 4px horizontal margin on each side), height 20px, background `var(--event-[type]-bg)`, border-left `3px solid var(--event-[type]-border)`, border-radius 2px, overflow hidden
+- Text inside pill: `start_time` then truncated `title`. Font: IBM Plex Mono 10px, color `var(--event-[type]-text)`. No wrapping — `text-overflow: ellipsis; white-space: nowrap; overflow: hidden`.
+- Format: `06:00 DL12345 — SFO → LAX` (time first, then title)
+- If multiple events on same day: stack pills vertically with 2px gap. If more than 3 events fit (cell height exceeded), show the first 2 pills + a `+N more` text label (font 10px, muted color) below them. `+N more` is not interactive (no click behavior in MVP).
+
+**Multi-day events (STAY):**
+- Rendered as a horizontal spanning bar across the cells it occupies
+- Implemented as a pill in each individual day cell — not a true CSS span (simpler implementation)
+- On the start day: pill with left border-radius 2px, right border-radius 0, no right border
+- On a middle continuation day: pill with 0 border-radius on both sides, no left or right border (border-left only for visual start indicator on first day)
+- On the end day: pill with left border-radius 0, right border-radius 2px, no left border
+- Pill background: `var(--event-stay-bg)`, border-left `3px solid var(--event-stay-border)` only on the start day
+- Text: shown only in the start day cell. Middle/end day cells show the pill with no text (visual continuation). Font: IBM Plex Mono 10px, `var(--event-stay-text)`.
+- Format in start cell: `name` (e.g., "Hyatt Regency SF"), truncated with ellipsis
+
+---
+
+#### 22.6 Click-to-Scroll Behavior
+
+Each event pill is interactive — clicking it scrolls the page to the corresponding section.
+
+| Event Type | Scrolls To |
+|------------|-----------|
+| FLIGHT | `#flights-section` anchor |
+| STAY | `#stays-section` anchor |
+| ACTIVITY | `#activities-section` anchor |
+
+**Scroll behavior:** `element.scrollIntoView({ behavior: 'smooth', block: 'start' })` with a top offset of 80px to account for the sticky navbar. Implement using a ref or `id` attribute on each section header.
+
+**Cursor:** `cursor: pointer` on all event pills.
+**Focus:** Event pills must be keyboard-focusable (see §22.10 Accessibility).
+
+**No edit modal opens** — the click only scrolls. Editing is done by using the section forms below.
+
+---
+
+#### 22.7 Component States
+
+##### State 1: Loading
+
+While `GET /api/v1/trips/:id/calendar` is in-flight:
+
+- Show the calendar panel chrome (border, heading row with "CALENDAR" label and legend placeholders)
+- Replace the grid area with a skeleton:
+  - 7-column grid skeleton with the same day-of-week header row (real labels, not skeletons)
+  - Day cells: filled with `var(--surface-alt)` background, border `var(--border-subtle)`. No shimmer needed — static muted cells are sufficient.
+  - 3 randomly-placed skeleton event pills per row (fixed positions, not random): gray pill shapes `var(--surface-alt)`, opacity 0.5, no text
+  - Aria: `aria-busy="true"` on the calendar container, `aria-label="Loading calendar…"`
+
+##### State 2: Empty
+
+When `events` array is empty (trip has no flights, stays, or activities yet):
+
+- Show the full calendar grid for the current month (navigable)
+- Inside the grid area, centered vertically and horizontally over the grid, display an overlay message:
+  ```
+  Add flights, stays, or activities
+  to see them here.
+  ```
+  - Font: IBM Plex Mono 13px, font-weight 400, color `var(--text-muted)`, `text-align: center`
+  - The grid is still visible behind the message (grid is rendered but has no event pills)
+  - **Do NOT show** the old placeholder text "Calendar coming in Sprint 2"
+  - The empty message is NOT a full overlay with background — it sits in the space above the grid rows, between the day-of-week header and the first row of cells. Height: 120px, flexbox centered.
+
+##### State 3: Error
+
+When the API call fails (network error, 4xx, 5xx):
+
+- Hide the grid entirely
+- Show an error state inside the calendar panel:
+  ```
+  [ calendar unavailable ]
+
+  Could not load calendar data.
+  [ Try again ]
+  ```
+  - "calendar unavailable": 11px, uppercase, letter-spacing 0.1em, `var(--text-muted)`
+  - Message: 13px, `var(--text-muted)`
+  - "Try again": secondary button style, triggers a re-fetch of the calendar endpoint
+  - Layout: vertically and horizontally centered within the panel. Minimum height: 200px for the error area.
+  - The rest of the TripDetailsPage (flights, stays, activities sections) remains fully functional. The calendar error is isolated to the TripCalendar component.
+
+##### State 4: Success (Data Loaded)
+
+- Full month grid rendered with event pills
+- Month navigation (← →) works
+- Legend strip visible in top-right
+- All event pills are interactive (click-to-scroll)
+
+---
+
+#### 22.8 Month Display Logic
+
+When events are loaded:
+
+1. Parse the `start_date` of the first event (earliest, since events are ordered ASC)
+2. Display the month that contains that `start_date` on initial render
+3. If the trip spans multiple months, user can navigate forward/backward with the arrow buttons
+4. If no events: display the current calendar month (use `new Date()`)
+
+Navigation state is local to the component (`useState` for displayed month/year). Navigation does not re-fetch data — all events are loaded once and the component filters by displayed month on render.
+
+---
+
+#### 22.9 Responsive Behavior
+
+**Desktop (≥ 768px):** Full 7-column month grid as described above.
+
+**Tablet (768px — 480px):** Same 7-column grid. Day cell minimum height reduces to 64px. Font sizes remain the same. Navigation header remains horizontal. Event pills may truncate earlier due to narrower cells.
+
+**Mobile (< 480px):** Switch from month grid to a **day list** layout:
+
+- No 7-column grid. Instead, render a vertically scrolling list of days that have events.
+- Each day entry:
+  ```
+  ┌────────────────────────────────────────────┐
+  │  MON, AUG 7                                │
+  │  ─────────────────────────────────────     │
+  │  [✈ 06:00] DL12345 — SFO → LAX            │
+  │  [🏨] Hyatt Regency SF (check-in)          │
+  └────────────────────────────────────────────┘
+  ```
+  - Day label: 11px, font-weight 600, uppercase, letter-spacing 0.08em, `var(--text-primary)`
+  - Separator: `1px solid var(--border-subtle)`, margin-bottom 8px
+  - Event row: type icon (text emoji or unicode character — ✈ for FLIGHT, ⌂ for STAY, ● for ACTIVITY) + time (if available) + truncated title
+  - Event row: 12px, color `var(--event-[type]-text)`, padding 4px 0
+  - Background: each day entry is `var(--surface)` with `1px solid var(--border-subtle)`, border-radius 2px, padding 12px, margin-bottom 8px
+  - Days with no events are NOT listed (show only days that have ≥ 1 event)
+- Month navigation header (← month → ) remains at the top of the component on mobile. Tapping ← / → replaces the day list with days from the new month.
+- If the selected month has no events: "No events this month." in muted text, centered.
+- The month/week toggle described in desktop spec becomes a single "Month" view label on mobile (no toggle — always day list on mobile).
+- Click-to-scroll behavior works the same on mobile.
+
+**Breakpoint implementation:** Use a CSS custom property or media query inside `TripCalendar.module.css`. The component renders different JSX based on viewport width, detected via a `useWindowWidth` hook (or CSS `display:none` toggling for simpler implementation — CSS approach preferred for performance).
+
+---
+
+#### 22.10 Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Calendar container role | `role="region"` with `aria-label="Trip calendar"` |
+| Grid role | `role="grid"` on the `<table>` or CSS grid container |
+| Row role | `role="row"` on each week row |
+| Cell role | `role="gridcell"` on each day cell. `aria-label="August 7, 2026"` (full date string) |
+| Event pills | `role="button"` (since they're interactive), `tabIndex={0}`, `aria-label="[Type]: [Title], [start_time]–[end_time]"` — e.g., `aria-label="Flight: DL12345 — SFO → LAX, 06:00–08:00"` |
+| Keyboard: Tab | Tab cycles through the month navigation buttons and then through all event pills in document order |
+| Keyboard: ArrowLeft/Right/Up/Down | When focus is inside the grid, arrow keys move focus between day cells |
+| Keyboard: Enter/Space on event pill | Triggers the click-to-scroll behavior |
+| Keyboard: Enter/Space on nav arrows | Navigates to the previous/next month |
+| Loading state | `aria-busy="true"` on calendar container while fetching |
+| Error state | `role="alert"` on the error message container |
+| Empty state | `aria-label="No events. Add flights, stays, or activities to populate the calendar."` on the empty area |
+| Month nav buttons | `aria-label="Previous month"` and `aria-label="Next month"` |
+| Color contrast | All event text colors against event backgrounds must meet WCAG AA (4.5:1). The proposed tokens meet this. Do not change without contrast check. |
+| Focus ring | `outline: 2px solid var(--accent); outline-offset: 2px` on all focusable elements (event pills, nav buttons, day cells when in grid navigation mode) |
+
+---
+
+#### 22.11 Component File Structure
+
+```
+frontend/src/components/
+  TripCalendar.jsx          ← main component
+  TripCalendar.module.css   ← all styles, CSS custom properties for event colors
+
+frontend/src/__tests__/
+  TripCalendar.test.jsx     ← minimum 10 tests (see T-213 acceptance criteria)
+```
+
+**Props:**
+```jsx
+<TripCalendar tripId={tripId} />
+```
+
+- `tripId` (string, required): the trip UUID, used to build the API URL
+- No other props — the component is self-contained and fetches its own data
+
+**Internal state:**
+```
+displayedMonth  — { year: number, month: number } (0-indexed month, JS Date convention)
+events          — array from API response, or []
+loading         — boolean
+error           — null | Error
+```
+
+---
+
+#### 22.12 Integration with TripDetailsPage
+
+**Section anchor IDs** (must be added to `TripDetailsPage.jsx` if not already present):
+
+```jsx
+<section id="flights-section">   {/* Flights section header + content */}
+<section id="stays-section">     {/* Stays section header + content */}
+<section id="activities-section"> {/* Activities section header + content */}
+```
+
+These IDs are the scroll targets for calendar event click-to-scroll. The Frontend Engineer must verify these IDs exist or add them.
+
+**Placeholder removal:** Delete the following placeholder from `TripDetailsPage.jsx`:
+```jsx
+{/* Sprint 2 calendar placeholder — remove when TripCalendar is implemented */}
+<div className={styles.calendarPlaceholder}>
+  Calendar coming in Sprint 2
+</div>
+```
+(Exact text may vary — search for "Calendar coming" or "Sprint 2" in the file and remove that block.)
+
+**Replacement:**
+```jsx
+import TripCalendar from '../components/TripCalendar';
+
+// Inside TripDetailsPage render, at the top of the content area:
+<TripCalendar tripId={tripId} />
+```
+
+---
+
+#### 22.13 Annotated Wireframe — Desktop (Success State)
+
+```
+MAX CONTENT WIDTH: 1120px, centered
+═══════════════════════════════════════════════════════════════════════════════
+
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  CALENDAR                            ● Flight  ● Stay  ● Activity   │  ← panel header row
+  │  ──────────────────────────────────────────────────────────────────  │
+  │                                                                      │
+  │              [ ← ]   August 2026   [ → ]                            │  ← month nav
+  │                                                                      │
+  │  SUN    MON    TUE    WED    THU    FRI    SAT                       │  ← DOW header
+  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐                  │
+  │  │ 26 │ │ 27 │ │ 28 │ │ 29 │ │ 30 │ │ 31 │ │  1 │                  │  ← out-of-month
+  │  └────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘                  │
+  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐                  │
+  │  │  2 │ │  3 │ │  4 │ │  5 │ │  6 │ │  7 │ │  8 │                  │
+  │  │    │ │    │ │    │ │    │ │    │ │╔══╗│ │ ╠══╗│                  │
+  │  │    │ │    │ │    │ │    │ │    │ │║✈ ║│ │ ║  ║│  ← flight pill  │
+  │  │    │ │    │ │    │ │    │ │    │ │╚══╝│ │ ╟──╢│  ← stay start  │
+  │  │    │ │    │ │    │ │    │ │    │ │║🏨 ║│ │ ║  ║│                  │
+  │  └────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘                  │
+  │  ...                                                                 │
+  │                                                                      │
+  └──────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+
+---
+
+#### 22.14 Annotated Wireframe — Desktop (Empty State)
+
+```
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  CALENDAR                                                            │
+  │  ──────────────────────────────────────────────────────────────────  │
+  │                                                                      │
+  │              [ ← ]   March 2026   [ → ]                             │
+  │                                                                      │
+  │  SUN    MON    TUE    WED    THU    FRI    SAT                       │
+  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐                  │
+  │  │    │ │    │ │    │ │    │ │    │ │    │ │    │                   │
+  │  └────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘                  │
+  │                                                                      │
+  │            Add flights, stays, or activities                         │
+  │                  to see them here.                                   │
+  │                                                                      │
+  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐                  │
+  │  │    │ │    │ │    │ │    │ │    │ │    │ │    │                   │
+  │  └────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘                  │
+  └──────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 22.15 Annotated Wireframe — Mobile (< 480px, Day List View)
+
+```
+  ┌─────────────────────────────────────┐
+  │  CALENDAR                           │
+  │  ─────────────────────────────────  │
+  │  [ ← ]     August 2026     [ → ]   │
+  │  ─────────────────────────────────  │
+  │                                     │
+  │  THU, AUG 7                         │
+  │  ─────────────────                  │
+  │  ✈ 06:00  DL12345 — SFO → LAX      │
+  │  ⌂        Hyatt Regency SF          │
+  │                                     │
+  │  FRI, AUG 8                         │
+  │  ─────────────────                  │
+  │  ⌂        Hyatt Regency SF          │
+  │  ●  09:00 Fisherman's Wharf         │
+  │  ●  15:00 Golden Gate Bridge        │
+  │                                     │
+  │  SAT, AUG 9                         │
+  │  ─────────────────                  │
+  │  ●  09:00 Dimsum in Chinatown       │
+  │                                     │
+  └─────────────────────────────────────┘
+```
+
+---
+
+#### 22.16 Edge Cases
+
+| Scenario | Behavior |
+|----------|---------|
+| Trip spans multiple months | Calendar shows the month of the first event. User navigates forward with `→` to see later months. All events loaded at once — no additional fetches on navigation. |
+| Single-day trip (all events on same date) | Calendar shows that month; all events stack in one day cell |
+| Event `start_time` is null/undefined | Pill shows title only, no time prefix. No crash. |
+| Event `title` is very long | Truncated with `text-overflow: ellipsis` in pill. Full title is in `aria-label` of the pill element. |
+| Stay check-out on same day as another event's start | Both appear in the same cell. Stay continuation pill + new event pill, stacked. |
+| Stay with start_date === end_date (same-day stay) | Treated as single-day event (pill with left border-radius and right border-radius). |
+| API returns events from different years | Month navigation works across years. Year is displayed alongside month in the header. |
+| No internet / API timeout (> 5s) | Component catches the error and shows the error state with "Try again" button. Does not block other page sections. |
+| TripCalendar unmounts before fetch completes | Cancel or ignore the response (use AbortController or check mounted flag in useEffect cleanup). No state-update-on-unmounted-component warnings. |
+| `+N more` overflow label | Shown when > 3 event pills would overflow a cell. Label is not clickable. Scrolling to the section (via clicking visible pills) is the intended interaction. |
+
+---
+
+#### 22.17 Styling Conventions Checklist
+
+All styles must adhere to the Design System Conventions table at the top of this document:
+
+- [x] All colors via CSS custom properties — no hardcoded hex in JSX or CSS
+- [x] Font: `var(--font-mono)` (IBM Plex Mono) for all text
+- [x] Spacing: multiples of 8px base unit using `var(--space-*)` tokens
+- [x] Border radius: `var(--radius-sm)` (2px) or `var(--radius-md)` (4px)
+- [x] Borders: `var(--border-subtle)` or `var(--border-accent)` — no other border values
+- [x] Japandi aesthetic: no gradients, no box-shadow. Borders only for depth. Generous whitespace.
+- [x] Transitions: `transition: all 150ms ease` for hover/focus on interactive elements
+
+---
+
+*Spec 22 (Sprint 25 — Trip Details Page Calendar Integration) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-10.*
+
+---
+
+## Sprint #26 Design Agent Review — 2026-03-11
+
+**Design Agent Status:** No new UI specs required this sprint.
+
+**Rationale:** Sprint #26 is a production deployment sprint. All tasks (T-218–T-226) are assigned to Deploy Engineer, Backend Engineer, QA Engineer, User Agent, and Monitor Agent. There are no new frontend features, no new screens, and no component changes in scope.
+
+**Sprint #26 scope confirms:**
+- T-218: Backend restart + Playwright rerun (Deploy Engineer — no UI impact)
+- T-219: User Agent regression walkthrough (validation only — no spec changes required)
+- T-220: `knexfile.js` SSL + pool config (Backend Engineer — no UI impact)
+- T-221: Cookie `SameSite=none` fix (Backend Engineer — no UI impact)
+- T-222: `render.yaml` + production deploy guide (Deploy Engineer — no UI impact)
+- T-223: Pre-production QA review (QA Engineer — no UI impact)
+- T-224: Production deployment to Render + AWS RDS (Deploy Engineer — no UI impact)
+- T-225: Post-production health check (Monitor Agent — no UI impact)
+- T-226: Monitor Agent process fix / test user seed (Backend Engineer — no UI impact)
+
+**Design System Conventions:** Stable. No changes proposed. All conventions from the table above remain in effect for Sprint #27 and beyond.
+
+**Most recent spec:** Spec 22 (TripCalendar — Sprint #25, T-211) — Status: Approved. Already handed off and implemented by Frontend Engineer.
+
+**Next expected design work:** Sprint #27 — pending Manager triage of T-219 User Agent feedback and any post-production UX observations from T-225 Monitor Agent report.
+
+*Sprint #26 design review complete. Published by Design Agent 2026-03-11.*

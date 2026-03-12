@@ -134,11 +134,26 @@ export default function DestinationChipInput({
           onKeyDown={handleKeyDown}
           placeholder={destinations.length === 0 ? placeholder : ''}
           disabled={disabled}
-          aria-label="Add destination"
+          aria-label="New destination"
           aria-describedby={hasError ? 'dest-chip-error' : 'dest-chip-hint'}
           autoFocus={autoFocus}
           autoComplete="off"
+          maxLength={100}
         />
+
+        {/* "+" add button — per Spec 18.2 */}
+        <button
+          type="button"
+          className={`${styles.addBtn} ${!inputValue.trim() || disabled ? styles.addBtnDisabled : ''}`}
+          onClick={() => {
+            addDestination(inputValue);
+            inputRef.current?.focus();
+          }}
+          disabled={!inputValue.trim() || disabled}
+          aria-label="Add destination"
+        >
+          +
+        </button>
       </div>
 
       {/* Hint text — always in DOM for aria-describedby */}

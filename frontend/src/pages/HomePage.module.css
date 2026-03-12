@@ -129,6 +129,50 @@
   background: rgba(252, 252, 252, 0.05);
 }
 
+/* ── Status Filter Tabs row (Spec 21 — Sprint 24) ──────────────────────────── */
+
+/* Wrapper adds the 24px spacing gaps specified in Spec 21.3 */
+.statusFilterTabsRow {
+  margin-bottom: var(--space-6); /* 24px below (before FilterToolbar / trip cards) */
+}
+
+/* Empty filtered state — shown when the active filter yields 0 matches */
+/* (Spec 21.9.3 — must not render when trips.length === 0) */
+.emptyFilteredState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: var(--space-12);  /* 48px */
+  padding-bottom: var(--space-12);
+}
+
+.emptyFilteredText {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.showAllLink {
+  display: inline;
+  margin-top: var(--space-2); /* 8px */
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.showAllLink:hover {
+  color: rgba(93, 115, 126, 0.8);
+}
+
 /* ============================================================
    Responsive
    ============================================================ */

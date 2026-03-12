@@ -1,0 +1,177 @@
+/* ── TripStatusSelector ───────────────────────────────────────
+   Sprint 22 — T-196
+   Spec: ui-spec.md §20 (Spec 20: Trip Status Selector)
+   ──────────────────────────────────────────────────────────── */
+
+/* Wrapper — position:relative anchor for the dropdown overlay */
+.container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── Badge Button (view mode + loading mode) ─────────────────*/
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm, 2px);
+  border: none;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 150ms ease, opacity 150ms ease;
+  /* WCAG 2.5.5 — minimum touch target on mobile */
+  min-height: 28px;
+  white-space: nowrap;
+}
+
+.badge:hover {
+  /* Hover: background becomes ~10% more opaque.
+     Achieved via filter since background is set inline (status-dependent). */
+  filter: brightness(1.15);
+}
+
+.badge:focus-visible {
+  outline: 2px solid #5D737E;
+  outline-offset: 2px;
+}
+
+/* ── Indicator dot — inherits color via currentColor ─────────*/
+.dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ── Chevron ─────────────────────────────────────────────────*/
+.chevron {
+  opacity: 0.7;
+  font-size: 10px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ── Loading spinner (replaces chevron during PATCH) ─────────*/
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Dropdown listbox ────────────────────────────────────────*/
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: 160px;
+  background: #30292F;
+  border: 1px solid rgba(93, 115, 126, 0.3);
+  border-radius: 4px;
+  /* No box-shadow — Japandi aesthetic (borders only) */
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ── Dropdown option row ─────────────────────────────────────*/
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background 150ms ease;
+  /* color is set via inline style (status-dependent) */
+  outline: none; /* hover/focus handled by background change */
+}
+
+.option:hover,
+.option:focus {
+  background: rgba(93, 115, 126, 0.1);
+}
+
+/* Option indicator dot — inherits color via currentColor */
+.optionDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.optionText {
+  flex: 1;
+}
+
+/* Checkmark for the currently-selected option */
+.checkmark {
+  color: #5D737E;
+  font-size: 12px;
+  line-height: 1;
+  margin-left: auto;
+}
+
+/* ── Error toast ─────────────────────────────────────────────*/
+.toastContainer {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+}
+
+.toast {
+  background: #30292F;
+  border: 1px solid rgba(220, 80, 80, 0.5);
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 13px;
+  color: rgba(252, 252, 252, 0.85);
+  max-width: 320px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Responsive ──────────────────────────────────────────────*/
+@media (max-width: 767px) {
+  /* Ensure WCAG 2.5.5 touch target on mobile */
+  .badge {
+    min-height: 44px;
+    padding: 6px 12px;
+  }
+}

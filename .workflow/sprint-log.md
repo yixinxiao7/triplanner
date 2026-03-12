@@ -1979,4 +1979,1010 @@ Sprint 13 must begin with immediate correction of the T-131 staging deployment f
 
 ---
 
+### Sprint #16 — 2026-03-08 to 2026-03-08
+
+**Goal:** Close the long-overdue User Agent pipeline carry-overs (T-152 — 8th attempt, T-159, T-160). Deliver trip date range display on home page trip cards (B-006 — deferred since Sprint 1): compute `start_date`/`end_date` from all event types via SQL MIN/MAX, expose via API, and render formatted date range on TripCard. Complete the full QA → Deploy → Monitor → User Agent cycle.
+
+**Goal Met:** ✅ YES — All 11 implementation, QA, deploy, monitor, and User Agent tasks completed. T-152 finally executed after 8 consecutive carry-overs, closing the circuit-breaker. Sprint 16 feedback was exclusively positive with three minor code-quality items triaged to Sprint 17.
+
+---
+
+**Tasks Completed (11/11):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-159 | Monitor Agent: Sprint 15 staging health check — HTTPS, pm2 port 3001, title/favicon, land travel chips, Playwright 7/7 | ✅ Done |
+| T-152 | User Agent: Comprehensive Sprint 12+13+14+15 feature walkthrough — **circuit-breaker cleared after 8 carry-overs** | ✅ Done |
+| T-160 | User Agent: Sprint 15 feature walkthrough (title, favicon, land travel chip locations) | ✅ Done |
+| T-161 | Design Agent: UI spec for trip date range display on home page cards (Spec 16) | ✅ Done |
+| T-162 | Backend Engineer: API contract for `start_date`/`end_date` on trip endpoints | ✅ Done |
+| T-163 | Backend Engineer: Implement computed trip date range via LEAST/GREATEST SQL subquery across all event types | ✅ Done |
+| T-164 | Frontend Engineer: Display trip date range on home page trip cards (formatDateRange, TripCard.jsx) | ✅ Done |
+| T-165 | QA: Security checklist + code review audit for Sprint 16 (278/278 backend + 420/420 frontend tests pass) | ✅ Done |
+| T-166 | QA: Integration testing for Sprint 16 (all 6 scenarios pass; Sprint 15/14/13 regression clean) | ✅ Done |
+| T-167 | Deploy: Sprint 16 staging re-deployment (frontend rebuilt, pm2 restarted PID 51577) | ✅ Done |
+| T-168 | Monitor: Sprint 16 staging health check (all checks pass; trip date range verified on staging) | ✅ Done |
+| T-169 | User Agent: Sprint 16 feature walkthrough (date range, empty state, cross-year format, regression clean) | ✅ Done |
+
+**Tasks Carried Over:** None. All Sprint 16 tasks completed and verified Done.
+
+---
+
+**Key Decisions (ADRs / Approvals This Sprint):**
+
+- **Trip date range computation (T-163):** `LEAST()` / `GREATEST()` SQL functions used in a correlated subquery across `flights` (departure_at, arrival_at), `stays` (check_in_at, check_out_at), `activities` (activity_date), and `land_travels` (departure_date, arrival_date). The result is cast via `TO_CHAR(…, 'YYYY-MM-DD')`. Null is returned (not thrown) when no events exist. No schema migration required — computed on read.
+- **Frontend date formatting (T-164):** `formatDateRange(startDate, endDate)` utility added to `formatDate.js`. Handles 5 cases: null/null → "No dates yet"; same-month → "May 1 – 12, 2026"; same-year cross-month → "May 1 – Jun 15, 2026"; cross-year → "Dec 28, 2025 – Jan 10, 2026"; start-only → "May 1, 2026 –". CSS token `var(--text-muted)` used (no hardcoded hex).
+- **Dead code identified (FB-107):** `formatTripDateRange` in `formatDate.js` does not conform to the current UI spec (no same-month abbreviation) and is not imported by any production component. 5 tests exist for non-spec behavior. Flagged for removal in Sprint 17 (T-170).
+
+---
+
+**Feedback Summary (Sprint 16):**
+
+*10 feedback entries submitted by User Agent (FB-099 – FB-108). All resolved or triaged.*
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-099 | Positive | — | Acknowledged — empty trip shows "No dates yet" correctly |
+| FB-100 | Positive | — | Acknowledged — mixed-event trip computes correct date range (same month) |
+| FB-101 | Positive | — | Acknowledged — cross-year date range computed and formatted correctly |
+| FB-102 | Positive | — | Acknowledged — GET /trips list includes start_date/end_date on every trip |
+| FB-103 | Positive | — | Acknowledged — 278 backend + 420 frontend tests passing (above thresholds) |
+| FB-104 | Positive | — | Acknowledged — Sprint 15 regression (title, favicon, land travel chips) clean |
+| FB-105 | Positive | — | Acknowledged — auth and validation safeguards working correctly |
+| FB-106 | UX Issue | Minor | **Tasked → T-170** — `.datesNotSet` double-muted opacity (~25% effective); fix: remove `opacity: 0.5` |
+| FB-107 | UX Issue | Minor | **Tasked → T-170** — `formatTripDateRange` is dead code with non-spec behavior; remove + its 5 tests |
+| FB-108 | Suggestion | — | **Acknowledged → T-170** — stale comment on formatDate.js line 8; update to reflect all event types |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- **T-152 circuit-breaker resolved** — After 8 consecutive carry-overs spanning Sprint 6 through Sprint 15, the User Agent comprehensive walkthrough finally executed. All Sprint 12–15 features verified clean. Zero Critical or Major bugs found.
+- **Sprint 16 feedback was exclusively positive** — 7 of 10 feedback entries were Positive findings confirming correct behavior. Only 3 minor code-quality items were raised (all bundled into T-170 for Sprint 17).
+- **Zero rework on implementation tasks (T-163, T-164)** — Backend LEAST/GREATEST subquery and frontend formatDateRange both passed Manager code review and QA on the first attempt. Consistent with the team's zero-rework streak since Sprint 10.
+- **Test counts continue to grow** — Backend at 278 tests (7 above minimum), frontend at 420 tests (4 above minimum). Regression coverage is solid.
+- **Full pipeline closed** — T-159 through T-169 all executed in sequence. The first sprint since Sprint 1 where every planned phase (Monitor → User Agent → Design → Backend → Frontend → QA → Deploy → Monitor → User Agent) completed.
+
+**What Could Improve:**
+- **T-168 status in tracker** — Monitor Agent (T-168) and User Agent (T-169) were recorded as Backlog in the tracker; evidence of execution comes from the feedback-log entries. Tracker should be updated at task completion, not inferred retroactively.
+- **Minor CSS duplication undetected until FB-106** — The double-muted opacity issue in `.datesNotSet` was caught by the User Agent, not QA. The QA code review checklist should include checking for stacked opacity + color token combinations when reviewing CSS for accessibility.
+
+**Technical Debt Resolved This Sprint:**
+- ✅ B-006: Trip date range display on home page cards — deferred since Sprint 1, now Done.
+- ✅ T-152 circuit-breaker: User Agent comprehensive walkthrough executed after 8 carry-overs.
+
+**Ongoing Tech Debt (carried forward):**
+- ⚠️ FB-106 / T-170: `.datesNotSet` double-muted opacity — Sprint 17
+- ⚠️ FB-107 / T-170: `formatTripDateRange` dead code — Sprint 17
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence
+- ⚠️ B-021: esbuild dev dependency vulnerability GHSA-67mh-4wv8-2f99 — dev-only, no production impact
+- ⚠️ B-022: Production deployment — pending project owner hosting provider decision (**16 consecutive sprints; project owner action required**)
+- ⚠️ B-024: Auth rate limit is IP-only
+
+---
+
+**Next Sprint Focus (Sprint 17 Recommendations):**
+
+**P2 — Code Quality (fast wins from Sprint 16 feedback):**
+1. **T-170** — Frontend: Code cleanup bundle (FB-106 opacity fix, FB-107 dead code removal, FB-108 stale comment). No blockers. One small PR.
+
+**P2 — Feature (long-deferred backlog item):**
+2. **T-171** — Design Agent: UI spec for trip print/export view (B-032). No blockers.
+3. **T-172** — Frontend: Implement trip print/export view. Blocked by T-171.
+
+**P1 — Full QA Pipeline:**
+4. T-173 (QA: security + review), T-174 (QA: integration), T-175 (Deploy), T-176 (Monitor), T-177 (User Agent).
+
+**Ongoing — Production Deployment (B-022 — 16 consecutive sprints):**
+- Project owner must review `.workflow/hosting-research.md` and select a hosting provider. All application infrastructure is production-ready.
+
+---
+
+*Sprint #16 began and closed 2026-03-08.*
+
+---
+
+### Sprint #17 — 2026-03-08 to 2026-03-08
+
+**Goal:** Apply three code-quality improvements from Sprint 16 feedback (T-170: fix double-muted opacity on "No dates yet" text, remove dead `formatTripDateRange` function, update stale comment in formatDate.js). Deliver the long-deferred trip print/export feature (B-032): a "Print itinerary" button on the trip details page triggering `window.print()` with a clean CSS `@media print` layout. Complete the full QA → Deploy → Monitor → User Agent pipeline.
+
+**Goal Met:** ⚠️ PARTIAL — Implementation (T-170, T-171, T-172), QA (T-173, T-174), and Deploy (T-175) phases all completed cleanly with no rework. Monitor Agent (T-176) and User Agent (T-177) pipeline stages did not execute before sprint close and carry over to Sprint 18.
+
+---
+
+**Tasks Completed (7/9):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-170 | Frontend: Code cleanup bundle — opacity fix on `.datesNotSet`, remove `formatTripDateRange` dead code + 5 dead tests, update stale comment in formatDate.js | ✅ Done |
+| T-171 | Design Agent: Spec 17 — Trip print/export view (single-column, black-on-white, page-break rules, hidden controls, IBM Plex Mono 12pt) | ✅ Done |
+| T-172 | Frontend: Implement trip print/export — "Print itinerary" button (`window.print()`, `aria-label`), `print.css` @media print rules | ✅ Done |
+| T-173 | QA: Security checklist + code review for Sprint 17 (T-170 + T-172) — 416/416 frontend tests, 278/278 backend tests, npm audit clean | ✅ Done |
+| T-174 | QA: Integration testing — print button visible/accessible, opacity legibility, Sprint 16/15/14/13 regression | ✅ Done |
+| T-175 | Deploy: Sprint 17 frontend rebuild (Vite, 122 modules, 458ms, 0 errors) and staging deployment; smoke tests PASS | ✅ Done |
+| MGR-S17 | Manager: Code review pass (T-170 + T-172 spot-check) — both approved first pass | ✅ Done |
+
+**Tasks Carried Over to Sprint 18:**
+
+| ID | Description | Reason |
+|----|-------------|--------|
+| T-176 | Monitor Agent: Sprint 17 staging health check | Orchestrator cycle ended before Monitor phase executed; T-175 deploy is live and ready for verification |
+| T-177 | User Agent: Sprint 17 feature walkthrough | Blocked by T-176; not reached |
+
+---
+
+**Test Results:**
+- Frontend: 416/416 tests pass (420 original − 5 dead `formatTripDateRange` tests + 4 new T-172 print tests − 3 replaced T-122 tests = 416)
+- Backend: 278/278 tests pass (no backend changes in Sprint 17)
+- npm audit: 5 moderate dev-only findings (esbuild/vitest/vite-node chain, pre-existing from Sprint 15) — no new Critical/High
+
+---
+
+**Key Decisions:**
+- No ADRs created this sprint. Sprint 17 was polish + CSS-only feature (no schema changes, no new API endpoints).
+- Confirmed: `print.css` was partially implemented from T-122 (Sprint 8). T-172 formalized it per Spec 17: updated button text to "Print itinerary", corrected aria-label, replaced 3 stale T-122 tests with 4 proper T-172 tests.
+- `formatTripDateRange` was confirmed dead code (not imported by any production component at time of removal). `formatDateRange` is the sole spec-compliant formatter going forward.
+
+---
+
+**Feedback Summary:**
+- No Sprint 17 User Agent walkthrough feedback (T-177 not reached). No new feedback-log.md entries for Sprint 17.
+- Sprint 16 Minor feedback (FB-106 opacity, FB-107 dead code, FB-108 stale comment) fully resolved: all three items delivered in T-170.
+
+---
+
+**Retrospective Notes:**
+
+- **What went well:** Implementation phase clean — Manager approved T-170 and T-172 on first review pass (no rework). QA (T-173, T-174) and Deploy (T-175) all PASS with zero issues. Codebase hygiene improved: dead `formatTripDateRange` function and its 5 non-spec tests removed; CSS opacity stacking bug fixed; stale comment updated. The print feature delivers on a backlog item (B-032) deferred since Sprint 8.
+
+- **What to improve:** Monitor Agent and User Agent pipeline stages did not execute before sprint closeout — Sprint 18 must run T-176 and T-177 as its first priority before beginning any new feature work. The Deploy Engineer's early pre-deploy gate check (before T-170/T-172 were complete) reflects an orchestration ordering issue; Deploy should not be invoked until QA signals readiness.
+
+- **Action items for next sprint:** (1) Complete T-176 + T-177 first. (2) Implement auth rate limiting (B-020 — 17+ sprints deferred, now P1). (3) Design spec for multi-destination structured UI (B-007).
+
+---
+
+**Technical Debt Noted:**
+- ⚠️ **B-020 (Auth rate limiting) — CRITICAL DEFERRAL:** express-rate-limit installed but not applied to /auth/login or /auth/register. This has been an accepted risk since Sprint 1 (17 sprints). Must be resolved in Sprint 18.
+- ⚠️ **B-021 (esbuild dev dep moderate vulnerabilities):** 5 moderate findings (GHSA-67mh-4wv8-2f99) — dev-only, no production risk, pre-existing from Sprint 15. Awaiting upstream vitest patch.
+- ⚠️ **B-022 (Production deployment) — 17 consecutive sprints:** Project owner must select a hosting provider. Infrastructure is production-ready. Project owner action required.
+- ⚠️ **B-007 (Multi-destination structured UI):** Destinations stored as TEXT ARRAY; UI renders as comma-separated string. No structured add/edit/remove per destination. Design spec needed for Sprint 18.
+
+---
+
+**Next Sprint Focus (Sprint 18 Recommendations):**
+
+**P1 — Pipeline Completion (start immediately):**
+1. **T-176** (carry-over) — Monitor Agent: Sprint 17 staging health check. T-175 deploy is live; verification pending.
+2. **T-177** (carry-over) — User Agent: Sprint 17 feature walkthrough. Blocked by T-176.
+
+**P1 — Security (long-deferred):**
+3. **T-178** — Backend: Auth rate limiting (B-020). Apply express-rate-limit to /auth/login and /auth/register. In-memory store acceptable at current scale.
+
+**P2 — UX Foundation:**
+4. **T-179** — Design Agent: Multi-destination structured UI spec (B-007, Spec 18). Spec first; implementation in Sprint 19.
+
+**P1 — Full QA + Deploy Pipeline:**
+5. T-180 (QA), T-181 (Deploy), T-182 (Monitor), T-183 (User Agent).
+
+**Ongoing:**
+- B-022 (Production deployment — 17 consecutive sprints): Project owner must review `.workflow/hosting-research.md` and select a hosting provider.
+
+---
+
+*Sprint #17 began and closed 2026-03-08.*
+
+---
+
+### Sprint #18 — 2026-03-08 to 2026-03-09
+
+**Goal:** Close Sprint 17 pipeline carry-overs (T-176 Monitor + T-177 User Agent). Ship auth rate limiting (B-020, 17-sprint security deferral). Produce multi-destination structured UI design spec (B-007). Implement multi-destination frontend (T-180). Complete full QA → Deploy → Monitor → User Agent pipeline.
+
+**Goal Met:** ❌ NO — Sprint 18 did not execute. All 10 tasks (T-176 through T-185) remain in Backlog. No code was written, no tests ran, no agents executed. The orchestrator ran the Manager planning phase but no subsequent agent phases were triggered. All Sprint 18 tasks carry forward to Sprint 19 with no changes to scope or priorities.
+
+---
+
+**Tasks Completed (0/10):**
+
+All tasks remain in Backlog status. None progressed.
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-176 | Monitor Agent: Sprint 17 staging health check (carry-over from Sprint 17) | ❌ Backlog — carry to Sprint 19 |
+| T-177 | User Agent: Sprint 17 feature walkthrough (carry-over from Sprint 17) | ❌ Backlog — carry to Sprint 19 |
+| T-178 | Backend Engineer: Auth rate limiting (B-020) | ❌ Backlog — carry to Sprint 19 |
+| T-179 | Design Agent: Multi-destination structured UI spec (B-007, Spec 18) | ❌ Backlog — carry to Sprint 19 |
+| T-180 | Frontend Engineer: Multi-destination structured UI implementation | ❌ Backlog — carry to Sprint 19 |
+| T-181 | QA Engineer: Security checklist + code review (Sprint 18) | ❌ Backlog — carry to Sprint 19 |
+| T-182 | QA Engineer: Integration testing (Sprint 18) | ❌ Backlog — carry to Sprint 19 |
+| T-183 | Deploy Engineer: Sprint 18 staging re-deployment | ❌ Backlog — carry to Sprint 19 |
+| T-184 | Monitor Agent: Sprint 18 staging health check | ❌ Backlog — carry to Sprint 19 |
+| T-185 | User Agent: Sprint 18 feature walkthrough | ❌ Backlog — carry to Sprint 19 |
+
+**Tasks Carried Over (10/10):** All Sprint 18 tasks carry to Sprint 19. Scope, priorities, and task IDs are unchanged.
+
+---
+
+**Key Decisions:** None. No implementation work occurred.
+
+**Feedback Summary:** No feedback received. T-185 (User Agent Sprint 18 walkthrough) was never reached. No new feedback-log.md entries for Sprint 18.
+
+---
+
+**Retrospective Notes:**
+
+- **What went well:** Sprint 18 planning was complete and well-structured — all 10 tasks were correctly specified with proper Blocked By chains, test plans, and agent assignments. The work that carries forward is fully spec'd and ready to execute.
+
+- **What to improve:** The orchestrator must ensure agent execution phases actually run after the Manager planning phase. A planning-only sprint (Manager runs but no agents execute) should never silently close — it should escalate or retry. Sprint 19 must break this pattern by executing all phases sequentially to completion.
+
+- **Action items for Sprint 19:** Execute all 10 carry-over tasks in order. T-176 (Monitor) has no blockers and must start immediately. Auth rate limiting (T-178) has been deferred 18 sprints — it is now a non-negotiable P0. No new scope additions until the carry-over pipeline is fully closed.
+
+---
+
+**Technical Debt (no change from Sprint 17):**
+- ⚠️ B-020 (Auth rate limiting) — **18 consecutive sprints deferred** — MUST ship in Sprint 19
+- ⚠️ B-021 (esbuild dev dep moderate vulnerabilities) — dev-only, no production impact
+- ⚠️ B-022 (Production deployment) — **18 consecutive sprints** — project owner action required
+- ⚠️ B-007 (Multi-destination structured UI) — design spec pending
+
+---
+
+*Sprint #18 began 2026-03-08 and closed 2026-03-09 with zero tasks completed.*
+
+---
+
+### Sprint #19 — 2026-03-09 to 2026-03-10
+
+**Goal:** Execute the full Sprint 18 plan that failed to run — close Sprint 17 pipeline carry-overs (T-176 Monitor + T-177 User Agent), ship auth rate limiting (B-020, 18-sprint security deferral — non-negotiable P0), produce the multi-destination structured UI spec (T-179) and implementation (T-180), and complete the full QA → Deploy → Monitor → User Agent pipeline.
+
+**Goal Met:** ✅ YES — All 10 Sprint 19 tasks completed and verified. Auth rate limiting is live. Multi-destination chip UI is deployed. Full pipeline executed from Monitor (T-176) through User Agent (T-185). Sprint 19 broke the planning-without-execution pattern from Sprints 17–18. Two minor issues found (FB-008, FB-009) — both tasked for Sprint 20.
+
+---
+
+**Tasks Completed (10/10):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-176 | Monitor Agent: Sprint 17 staging health check (carry-over from Sprint 17/18) | ✅ Done |
+| T-177 | User Agent: Sprint 17 feature walkthrough (carry-over from Sprint 17/18) | ✅ Done |
+| T-178 | Backend Engineer: Auth rate limiting — loginLimiter (10/15min), registerLimiter (5/60min), generalAuthLimiter on /refresh+/logout | ✅ Done |
+| T-179 | Design Agent: Multi-destination structured UI spec (Spec 18 — chip input, trip card truncation, trip details edit control) | ✅ Done |
+| T-180 | Frontend Engineer: Multi-destination chip UI — DestinationChipInput component, TripCard truncation, TripDetailsPage edit destinations | ✅ Done |
+| T-181 | QA Engineer: Security checklist + code review (Sprint 19) — 416/416 frontend + 287/287 backend tests PASS | ✅ Done |
+| T-182 | QA Engineer: Integration testing (Sprint 19) — rate limiting, multi-destination, regressions all verified | ✅ Done |
+| T-183 | Deploy Engineer: Sprint 19 staging re-deployment (pm2 reload, 122 modules, 0 build errors) | ✅ Done |
+| T-184 | Monitor Agent: Sprint 19 staging health check (HTTPS, pm2, health endpoint, rate limit headers, destinations API) | ✅ Done |
+| T-185 | User Agent: Sprint 19 feature walkthrough — 13 feedback entries (11 positive, 1 Minor bug, 1 Minor UX) | ✅ Done |
+
+**Tasks Carried Over:** None. All 10 Sprint 19 tasks completed and verified Done.
+
+---
+
+**Key Decisions (ADRs / Approvals This Sprint):**
+- **Auth Rate Limiting Strategy:** In-memory store retained (acceptable at current scale). `generalAuthLimiter` (30/15min) on `/refresh` and `/logout` refactored from pre-existing inline limiters — approved as benign cleanup. Error code standardized to `RATE_LIMITED` (was `RATE_LIMIT_EXCEEDED` in one route).
+- **Multi-Destination UI:** `DestinationChipInput` built as a reusable component. Backend remains TEXT ARRAY — no schema change required. Duplicate detection is case-insensitive (`.toLowerCase()` comparison). Backspace-to-remove-last-chip implemented per Spec 18.2.
+- **Frontend Test Selectors:** QA catch: initial T-180 submission used `getByLabelText(/new destination/i)` in some tests — corrected to use specific aria-labels (`aria-label="New destination"` on input, `aria-label="Add destination"` on "+" button) for semantic precision.
+
+---
+
+**Feedback Summary (from User Agent T-185, 2026-03-09):**
+
+*13 entries: 11 positive findings, 1 minor UX issue, 1 minor bug. Zero Critical or Major issues.*
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-001 | Positive | — | Acknowledged | Login rate limiter (10/15min) works correctly with proper RateLimit-* headers |
+| FB-002 | Positive | — | Acknowledged | Register rate limiter (5/60min) works correctly with proper headers and cookie shape |
+| FB-003 | Positive | — | Acknowledged | Non-auth endpoints correctly exempt from rate limiting |
+| FB-004 | Positive | — | Acknowledged | generalAuthLimiter on /refresh and /logout is a positive security addition |
+| FB-005 | Positive | — | Acknowledged | Multi-destination trip creation works end-to-end (3-destination + 5-destination) |
+| FB-006 | Positive | — | Acknowledged | Destination editing via PATCH works correctly (add/remove/reorder) |
+| FB-007 | Positive | — | Acknowledged | Empty destinations validation enforced on POST and PATCH |
+| FB-008 | UX Issue | Minor | **Tasked → T-186** | PATCH empty destinations returns raw Joi message instead of human-friendly message |
+| FB-009 | Bug | Minor | **Tasked → T-186** | Backend accepts destination strings >100 chars (frontend maxLength=100 not enforced at API layer) |
+| FB-010 | Positive | — | Acknowledged | DestinationChipInput: full accessibility and XSS safety verified |
+| FB-011 | Positive | — | Acknowledged | TripCard destination truncation (formatDestinations) correct per Spec 18.4 |
+| FB-012 | Positive | — | Acknowledged | Sprint 17 regression clean — print button present and accessible |
+| FB-013 | Positive | — | Acknowledged | All 416/416 frontend + 287/287 backend tests passing — no regressions |
+
+---
+
+**What Went Well:**
+- **Sprint 19 broke the carry-over cycle:** After Sprint 18 failed to execute (0/10 tasks done), Sprint 19 delivered 10/10 tasks. The auth rate limiting that was deferred for 18 consecutive sprints is now live.
+- **Auth rate limiting implementation was excellent:** loginLimiter (10/15min), registerLimiter (5/60min), and generalAuthLimiter (30/15min on refresh/logout) all correct. Proper `RateLimit-*` standard headers. Error shape exactly matches the global error contract. Non-auth endpoints unaffected.
+- **Multi-destination chip UI is accessible and safe:** `DestinationChipInput` uses React text nodes only (no XSS), `aria-live="polite"` announcer, `role="group"`, individual chip remove aria-labels. Case-insensitive duplicate prevention. Backspace-to-remove implemented.
+- **Only 2 minor issues in 13 feedback entries:** Both are simple Joi schema tweaks (max length and custom message). No functional regressions. No Critical or Major bugs.
+- **Test suite at historic high:** 416/416 frontend, 287/287 backend — zero regressions across all 19 sprints of feature development.
+
+**What Could Improve:**
+- **Backend Joi schema gaps found by User Agent:** Two validation gaps (max(100) on destination items, custom message on PATCH) should have been caught by the Backend Engineer during T-180/T-178 implementation. These are trivial to fix but represent incomplete implementation of the frontend contract.
+- **Frontend test selector specificity:** Initial T-180 test submission had 10 failing tests due to selector mismatches (aria-label vs test-id). Manager code review catch was effective; tests were corrected before QA sign-off.
+- **T-183 required 3 invocations before clean pass:** Deploy Engineer ran twice before QA was complete — dependency chain enforcement needs tightening. Final deploy was correct.
+
+---
+
+**Technical Debt Noted (Carried Forward to Sprint 20+):**
+
+*From Sprint 1 (still outstanding):*
+- ⚠️ Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 (dev-only, no production impact, B-021)
+
+*From Sprint 2 (still outstanding):*
+- ⚠️ Rate limiting uses in-memory store — will not persist across restarts or scale across processes (B-020, partially mitigated — in-memory acceptable at current scale)
+
+*From Sprint 3 (still outstanding):*
+- ⚠️ Auth rate limit is IP-based only — aggressive on shared-IP environments (B-024)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+
+*New from Sprint 19:*
+- ⚠️ Backend missing Joi `.max(100)` on destination array items — accepts oversized input via direct API (FB-009 → T-186)
+- ⚠️ PATCH destinations route uses raw Joi error message instead of human-friendly message (FB-008 → T-186)
+
+*Resolved this sprint:*
+- ✅ Auth rate limiting (B-020) — 18 consecutive sprints deferred → resolved by T-178
+- ✅ Multi-destination structured UI (B-007) → resolved by T-179, T-180
+- ✅ Sprint 17 + Sprint 18 pipeline carry-overs (T-176, T-177) → resolved
+
+---
+
+**Next Sprint Focus (Sprint 20 Recommendations):**
+
+**P1 — Backend validation fixes (from Sprint 19 feedback):**
+1. **T-186** — Fix Joi destination validation: add `.items(Joi.string().max(100))` to array schema + add custom `.messages()` on PATCH route (FB-008 + FB-009 combined)
+
+**P2 — New visible feature:**
+2. **T-187** — Design Agent: Trip notes/description field spec (Spec 19)
+3. **T-188** — Backend: Trip notes field (migration 010, `notes TEXT NULL` on trips table, API update)
+4. **T-189** — Frontend: Trip notes UI (inline edit, character count, save/cancel)
+
+**Pipeline:**
+5. T-190 (QA), T-191 (QA integration), T-192 (Deploy), T-193 (Monitor), T-194 (User Agent)
+
+---
+
+*Sprint #19 began 2026-03-09 and closed 2026-03-10.*
+
+---
+
+### Sprint #20 — 2026-03-10 to 2026-03-10
+
+**Goal:** Fix two minor backend validation gaps from Sprint 19 (FB-008: inconsistent PATCH error message on empty destinations; FB-009: missing per-item max-length on destination strings). Deliver the trip notes/description feature (B-030): a freeform notes field on the trip details page. Complete the full QA → Deploy → Monitor → User Agent pipeline.
+
+**Goal Met:** ⚠️ PARTIAL — All 8 implementation + infrastructure tasks completed with zero rework (T-186, T-187, T-188, T-189, T-190, T-191, T-192, T-193). T-193 Monitor health check passed and handoff to User Agent was logged. However, **T-194 (User Agent Sprint 20 walkthrough) did not run** — carried forward as Sprint 21 P0.
+
+---
+
+**Tasks Completed (8/9):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-186 | Backend Engineer: Fix Sprint 19 Joi destination validation gaps — `.itemMaxLength(100)` on both POST + PATCH schemas; friendly `.messages()` on PATCH empty-array (FB-008 + FB-009) | ✅ Done |
+| T-187 | Design Agent: Trip notes/description field spec (Spec 19) — textarea, char count, edit/save/cancel, Japandi styling, accessibility | ✅ Done |
+| T-188 | Backend Engineer: Trip notes backend — migration 010 (`notes TEXT`), POST/PATCH/GET support, max(2000) validation, api-contracts.md update | ✅ Done |
+| T-189 | Frontend Engineer: `TripNotesSection.jsx` component — view/edit modes, char count, save/cancel, keyboard shortcuts, focus management, 13 tests | ✅ Done |
+| T-190 | QA Engineer: Security checklist + code review — 304/304 backend + 429/429 frontend tests PASS; no Critical/High audit findings | ✅ Done |
+| T-191 | QA Engineer: Integration testing — all 11 Sprint 20 scenarios PASS; regressions (Sprint 19, 17, 16) clean | ✅ Done |
+| T-192 | Deploy Engineer: Sprint 20 staging re-deployment — migration 010 applied, backend + frontend rebuilt and pm2-reloaded; all 7 smoke tests PASS | ✅ Done |
+| T-193 | Monitor Agent: Sprint 20 staging health check — HTTPS, pm2, health endpoint, notes field, destination validation, regression checks all PASS; handoff to User Agent logged | ✅ Done |
+
+**Tasks Carried Over (1 task → Sprint 21 Backlog):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-194 | User Agent: Sprint 20 feature walkthrough (trip notes + destination validation) | User Agent did not run this sprint. Staging is live and verified healthy. Zero blockers remain. **Must be P0 in Sprint 21.** |
+
+---
+
+**Key Decisions (This Sprint):**
+- **Trip notes pre-implementation (T-103 carry-forward):** The `notes TEXT` column (migration 010) and full API support for notes was already implemented as T-103 in Sprint 7. T-188 only needed to add acceptance test coverage — no new migration or model changes. This pattern of early schema work paying off later is a workflow positive.
+- **Custom `itemMaxLength` validator (T-186):** The codebase uses a custom `validate.js` middleware rather than direct Joi; the Backend Engineer correctly added `itemMaxLength` support there rather than switching to Joi. Semantics are equivalent. Manager approved — implementation is secure (no schema internals exposed in error messages).
+- **`TripNotesSection` focus management (T-189):** Textarea autofocuses on entering edit mode; pencil button is refocused when edit mode closes. This keyboard + screen reader UX pattern should be used consistently in future edit-in-place components.
+
+---
+
+**Feedback Summary (Sprint 20):**
+
+*No new Sprint 20 feedback entries — T-194 (User Agent walkthrough) did not run. The Sprint 20 feedback section in feedback-log.md contains Sprint 19 entries (FB-001 to FB-013), all of which were already triaged in Sprint 20 kickoff.*
+
+| Entry | Category | Severity | Status | Notes |
+|-------|----------|----------|--------|-------|
+| (none) | — | — | — | T-194 User Agent walkthrough did not run. No new Sprint 20 feedback submitted. |
+
+---
+
+**What Went Well:**
+- **Zero rework across all implementation tasks:** T-186 through T-192 all completed on first submission — no Manager send-backs, no QA failures, no Deploy errors. This continues the zero-rework streak started in Sprint 19.
+- **Trip notes feature fully correct on first review:** `TripNotesSection.jsx` met all 13 Spec 19 requirements — XSS-safe text rendering, correct aria attributes, save/cancel/keyboard shortcuts, error handling with generic message, loading skeleton, focus management. 13 tests covering all cases including error, loading, and keyboard paths.
+- **FB-008 + FB-009 both cleanly resolved by T-186:** The `itemMaxLength` validator implementation is secure — field-level error message does not leak schema internals, and the friendly "At least one destination is required" message is now consistent across POST and PATCH.
+- **Test suite at a new high:** 304/304 backend (15 files), 429/429 frontend (23 files). No regressions across all 20 sprints of feature development.
+- **Monitor completed full verification:** T-193 confirmed all Sprint 20 endpoints live — notes field in POST/GET/PATCH, destination validation, Sprint 19/17/16 regression checks, Playwright 7/7 PASS.
+
+**What Could Improve:**
+- **T-194 User Agent carry-over is now recurring:** This is the pattern observed across sprints 14–19 as well. The User Agent consistently fails to run as the final pipeline phase. Sprint 21 must treat T-194 as a P0 with no blockers — it should run on existing staging before any new implementation begins.
+- **Tracker sync gap:** T-193's task row in `dev-cycle-tracker.md` was not updated from "In Progress" to "Done" before closeout — the status update log entry was correct but the table row wasn't patched. Sprint 21 must correct this during kickoff.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-021: Dev dependency esbuild vulnerability GHSA-67mh-4wv8-2f99 — dev-only, no production impact
+- ⚠️ B-022: Production deployment — **20 consecutive sprints pending project owner hosting decision** — project owner action required
+- ⚠️ B-024: Auth rate limit is IP-based only (no per-account limiting)
+- ⚠️ Docker configs not runtime-validated (Docker unavailable on staging machine)
+
+*Resolved this sprint:*
+- ✅ FB-008 (T-186): PATCH empty destinations now returns "At least one destination is required" (matches POST)
+- ✅ FB-009 (T-186): Backend now rejects destination strings >100 chars with 400 VALIDATION_ERROR
+- ✅ B-030 (T-187/T-188/T-189): Trip notes/description field fully implemented and deployed
+
+---
+
+*Sprint #20 began and closed 2026-03-10.*
+
+---
+
+### Sprint #21 — 2026-03-10 to 2026-03-10
+
+**Goal:** Close the Sprint 20 User Agent carry-over (T-194 — P0, no blockers, staging live and verified). Deliver the trip status selector feature: an inline status badge + selector on TripDetailsPage allowing users to change trip status (PLANNING → ONGOING → COMPLETED) without a full page reload. Complete the full pipeline: T-195 (Design spec), T-196 (Frontend), T-197–T-198 (QA), T-199 (Deploy), T-200 (Monitor), T-201 (User Agent Sprint 21 walkthrough).
+
+**Goal Met:** ❌ NO — Sprint 21 was a planning-only sprint. Zero tasks executed. All 8 tasks (T-194 through T-201) remain in Backlog, identical to their state at Sprint 21 kickoff. This is the same failure mode as Sprint 18.
+
+---
+
+**Tasks Completed (0/8):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-194 | User Agent: Sprint 20 feature walkthrough (carry-over) | ❌ Backlog — carry to Sprint 22 |
+| T-195 | Design Agent: Trip status selector spec (Spec 20) | ❌ Backlog — carry to Sprint 22 |
+| T-196 | Frontend Engineer: TripStatusSelector component | ❌ Backlog — carry to Sprint 22 |
+| T-197 | QA Engineer: Security checklist + code review | ❌ Backlog — carry to Sprint 22 |
+| T-198 | QA Engineer: Integration testing | ❌ Backlog — carry to Sprint 22 |
+| T-199 | Deploy Engineer: Sprint 21 staging re-deployment | ❌ Backlog — carry to Sprint 22 |
+| T-200 | Monitor Agent: Sprint 21 staging health check | ❌ Backlog — carry to Sprint 22 |
+| T-201 | User Agent: Sprint 21 feature walkthrough | ❌ Backlog — carry to Sprint 22 |
+
+**Tasks Carried Over (8/8):** All Sprint 21 tasks carry to Sprint 22. Scope, priorities, and task IDs are unchanged.
+
+---
+
+**Key Decisions:** None. No implementation work occurred.
+
+**Feedback Summary:** No feedback received. T-194 (User Agent Sprint 20 walkthrough) and T-201 (User Agent Sprint 21 walkthrough) never ran. No new feedback-log.md entries for Sprint 21.
+
+---
+
+**Retrospective Notes:**
+
+- **What went well:** Sprint 21 planning was complete and well-structured — all 8 tasks were correctly specified with proper Blocked By chains, test plans, and agent assignments. The carry-forward work is fully spec'd and ready to execute immediately.
+
+- **What to improve:** The orchestrator must ensure agent execution phases actually run after the Manager planning phase. A planning-only sprint (Manager plans but no agents execute) should never silently close. Sprint 22 must break this cycle by executing all phases sequentially to completion. T-194 has zero blockers and must be treated as the absolute first action in Sprint 22 — before any new implementation begins.
+
+- **Action items for Sprint 22:** Execute all 8 carry-over tasks in order. T-194 (User Agent) and T-195 (Design) have no blockers and must start immediately in parallel. T-196 is blocked only by T-195 approval + T-194 feedback triage (no new blockers introduced). No new scope additions until the carry-over pipeline is fully closed.
+
+---
+
+**Technical Debt (no change from Sprint 20):**
+- ⚠️ B-021 (esbuild dev dep moderate vulnerabilities) — dev-only, no production impact
+- ⚠️ B-022 (Production deployment) — **21 consecutive sprints** — project owner action required
+- ⚠️ B-024 (Per-account rate limiting) — IP-based only, acceptable at current scale
+
+---
+
+### Sprint #22 — 2026-03-10 to 2026-03-10
+
+**Goal:** Close the Sprint 20 User Agent carry-over (T-194 — P0, 3rd attempt, zero blockers). Deliver the trip status selector feature (TripStatusSelector inline badge on TripDetailsPage, PLANNING → ONGOING → COMPLETED without page reload). Complete the full QA → Deploy → Monitor → User Agent pipeline (T-195 through T-201). No new scope beyond carry-over tasks.
+
+**Goal Met:** ⚠️ PARTIAL — The feature delivery pipeline (T-195 through T-200) executed and passed. TripStatusSelector is live on staging, all QA checks green, Monitor re-verified PASS. However, **T-194 (User Agent Sprint 20 walkthrough) carried over for the 4th consecutive sprint** and **T-201 (User Agent Sprint 22 walkthrough) never ran**. The validation backlog continues to grow.
+
+---
+
+**Tasks Completed (6/8):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-195 | Design Agent: Trip status selector spec (Spec 20) — published to ui-spec.md; inline badge, 3-option dropdown, Japandi palette colors, accessibility spec (aria-label, keyboard nav) | ✅ Done |
+| T-196 | Frontend Engineer: TripStatusSelector component — optimistic update, revert on failure, loading state, 22 new tests; integrated into TripDetailsPage; 451/451 frontend tests pass | ✅ Done |
+| T-197 | QA Engineer: Security checklist + code review — 304/304 backend, 451/451 frontend; no Critical/High audit findings; all 19 security items PASS | ✅ Done |
+| T-198 | QA Engineer: Integration testing — all 8 API contract cases PASS; all regressions (Sprint 20/19/17/16) clean | ✅ Done |
+| T-199 | Deploy Engineer: Sprint 22 staging re-deployment — 126-module build, 0 errors; pm2 online; 12/12 smoke tests PASS | ✅ Done |
+| T-200 | Monitor Agent: Sprint 22 staging health check — initial run found Critical Vite proxy ECONNREFUSED (3/4 Playwright fail); Deploy Engineer fixed `infra/ecosystem.config.cjs` (added BACKEND_PORT + BACKEND_SSL env); re-verification: all checks PASS, proxy confirmed routing to https://localhost:3001 | ✅ Done (re-verified) |
+
+**Tasks Carried Over (2/8):**
+
+| ID | Description | Carry-Over Count | Status at Closeout |
+|----|-------------|-----------------|-------------------|
+| T-194 | User Agent: Sprint 20 feature walkthrough (trip notes + destination validation) | **4th consecutive sprint** | Backlog — UNBLOCKED |
+| T-201 | User Agent: Sprint 22 feature walkthrough (TripStatusSelector + regressions) | 1st carry-over | Backlog — Blocked by T-200 (now Done); UNBLOCKED |
+
+---
+
+**Key Decisions:**
+
+- **Vite proxy env var pattern established:** `infra/ecosystem.config.cjs` now includes explicit `triplanner-frontend` app entry with `env: { BACKEND_PORT: '3001', BACKEND_SSL: 'true' }`. This is the canonical pattern for staging frontend pm2 configuration. Without these env vars, Vite preview defaults to `http://localhost:3000` and all browser-based API calls ECONNREFUSED against the `https://localhost:3001` backend. **All future Deploy tasks must verify this entry is present before logging pm2 online.**
+- **T-196 code review APPROVED first pass:** TripStatusSelector.jsx passed Manager review with zero rework cycles — optimistic update, VALID_STATUSES enum constraint, no dangerouslySetInnerHTML, generic error messages, 22 tests covering all states. Strongest frontend implementation quality since Sprint 14.
+- **451/451 frontend tests (22 new):** Test suite grew from 429 → 451 (+22). Backend tests unchanged at 304/304. Total: 755 (304 backend + 451 frontend).
+
+---
+
+**Feedback Summary:**
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| Monitor Alert (T-200) | Monitor Alert | Critical | **Resolved ✅** | Vite preview proxy ECONNREFUSED — staging backend HTTPS on 3001, proxy defaulted to http://3000. Fixed by Deploy Engineer updating `infra/ecosystem.config.cjs`. Re-verified PASS by Monitor Agent. |
+
+*No User Agent feedback entries — T-194 and T-201 did not run.*
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- **Feature delivery pipeline executed cleanly end-to-end** — T-195 through T-200 all completed within Sprint 22. After two planning-only sprints (Sprints 18 and 21), the implementation pipeline finally ran and closed correctly.
+- **TripStatusSelector delivered with zero rework** — Design spec, frontend implementation, QA, deploy, and Monitor all passed on first attempt (aside from the infra config fix). 22 new tests, keyboard accessibility, Japandi palette colors per Spec 20.
+- **Critical infra bug caught and fixed within the sprint** — The Vite proxy ECONNREFUSED was identified by Monitor Agent, root-caused to `infra/ecosystem.config.cjs`, fixed by Deploy Engineer, and re-verified within the same sprint cycle. No open bugs carried forward.
+- **Test suite at all-time high:** 755 tests total (304 backend + 451 frontend), all passing. Zero regressions across Sprint 16–22 feature scope.
+
+**What Could Improve:**
+- **T-194 is now a 4th consecutive sprint carry-over** — The User Agent has not completed a walkthrough in 4 consecutive sprints (Sprints 19, 20, 21, 22). The Sprint 20 feature set (trip notes + destination validation) has never been end-to-end validated by the User Agent. Sprint 23 must treat T-202 (consolidated User Agent walkthrough) as the absolute highest priority with zero excuses.
+- **T-201 also never ran** — Sprint 22's TripStatusSelector feature has been deployed but not end-to-end tested by the User Agent. Combined with T-194, the User Agent validation backlog now covers two full feature sprints.
+- **infra/ecosystem.config.cjs must be validated at deploy time** — The ecosystem config should be part of every Deploy task's pre-deploy checklist going forward. The ECONNREFUSED failure mode (browser flows break while direct API calls succeed) is subtle and not caught by simple smoke tests.
+
+**Technical Debt:**
+- ⚠️ B-021 (esbuild/vitest moderate vulnerability GHSA-67mh-4wv8-2f99) — dev-only, no production impact. `npm audit fix --force` requires vitest 4.x (breaking change). **Recommended for Sprint 23 if T-202 feedback is clean.**
+- ⚠️ B-022 (Production deployment) — **22 consecutive sprints without project owner hosting decision.** All infrastructure is complete and production-ready. Project owner action required.
+- ⚠️ B-024 (Per-account rate limiting) — IP-based only, acceptable at current scale.
+- ⚠️ `infra/ecosystem.config.cjs` frontend env vars — now fixed and documented; must be included in all future Deploy task checklists.
+
+---
+
+**Next Sprint Focus (Sprint 23 Recommendations):**
+
+1. **T-202 (P0 — IMMEDIATE)** — User Agent: Consolidated Sprint 20 + Sprint 22 comprehensive walkthrough. Zero blockers. Covers: trip notes (edit/save/clear/max-length), destination validation, TripStatusSelector (view/change/keyboard/Home sync), Sprint 19/17/16 regressions.
+2. **T-203 (P2 — if T-202 clean)** — Frontend + Backend: vitest upgrade 1.x → 4.x to resolve B-021 (5 moderate dev-only vulnerabilities). Run all tests post-upgrade, re-deploy to staging.
+3. **B-022** — Escalate production deployment to project owner (23 consecutive sprints without decision).
+
+---
+
+*Sprint #22 archived 2026-03-10. Sprint #23 plan written by Manager Agent 2026-03-10.*
+
+*Sprint #21 began and closed 2026-03-10 with zero tasks completed.*
+
+---
+
+### Sprint #23 — 2026-03-10 to 2026-03-10
+
+**Goal:** Execute T-202 (consolidated User Agent walkthrough covering Sprint 20 trip notes + destination validation AND Sprint 22 TripStatusSelector — P0, zero blockers). If T-202 feedback clean: proceed with Phase 2 (vitest 1.x → 4.x upgrade to resolve B-021, T-203–T-206).
+
+**Goal Met:** ❌ NO — Sprint 23 was a planning-only sprint. All five tasks (T-202 through T-206) remained in Backlog status. No agents executed beyond the Manager Agent planning phase. This is the same failure mode as Sprints 18 and 21.
+
+---
+
+**Tasks Completed (0/5):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-202 | User Agent: Consolidated Sprint 20 + Sprint 22 comprehensive walkthrough | ❌ Backlog — carry to Sprint 24 (2nd carry-over of T-202; 5th overall for this walkthrough scope) |
+| T-203 | Frontend + Backend: vitest 1.x → 4.x upgrade (B-021 resolution) | ❌ Backlog — carry to Sprint 24 |
+| T-204 | QA: Security checklist + test re-verification post-vitest upgrade | ❌ Backlog — carry to Sprint 24 |
+| T-205 | Deploy: Sprint 23 staging re-deployment | ❌ Backlog — carry to Sprint 24 |
+| T-206 | Monitor: Sprint 23 staging health check | ❌ Backlog — carry to Sprint 24 |
+
+**Tasks Carried Over (5/5):** All Sprint 23 tasks carry forward to Sprint 24.
+
+---
+
+**Key Decisions:** None. No implementation work occurred.
+
+**Feedback Triage (Sprint 23):**
+
+| Entry | Category | Severity | Status | Notes |
+|-------|----------|----------|--------|-------|
+| (none) | — | — | — | No User Agent walkthrough ran. No new feedback submitted. Only existing entry in feedback-log.md is the Sprint 22 Monitor Alert (Status: Resolved — no action needed). |
+
+---
+
+**Retrospective Notes:**
+
+- **What went well:** Sprint 23 planning was complete and correctly structured. T-202 was a well-scoped consolidation of T-194 (Sprint 20 scope) + T-201 (Sprint 22 scope). Phase 2 gating logic (T-203 blocked by T-202 clean triage) was correct.
+- **What to improve:** The orchestrator must ensure agent execution phases actually run after the Manager planning phase. Three planning-only sprints (18, 21, 23) have now occurred. Sprint 24 must break this cycle. T-202 has now been in the backlog for 5 consecutive sprints (as T-194 in Sprints 20–22, then as T-202 in Sprint 23). The User Agent validation backlog now covers three full feature sprints (Sprint 20, Sprint 22, and Sprint 23 vitest scope).
+- **Action items for Sprint 24:** T-202 must execute as the absolute first action. No new feature scope until T-202 runs and feedback is triaged.
+
+**Technical Debt (no change from Sprint 22):**
+- ⚠️ B-021 (esbuild/vitest moderate vulnerability GHSA-67mh-4wv8-2f99) — dev-only, no production impact; awaiting T-203 vitest upgrade
+- ⚠️ B-022 (Production deployment) — **23 consecutive sprints without project owner hosting decision** — project owner action required
+- ⚠️ B-024 (Per-account rate limiting) — IP-based only, acceptable at current scale
+
+---
+
+*Sprint #23 began and closed 2026-03-10 with zero tasks completed.*
+
+---
+
+### Sprint #24 — 2026-03-10 to 2026-03-10
+
+**Goal:** Execute T-202 (P0 — consolidated Sprint 20 + Sprint 22 User Agent walkthrough, 5th consecutive carry-over). Gate Phase 2/3 on T-202 feedback being clean. If clean: run vitest 1.x → 4.x upgrade (T-203, B-021 resolution) and home page status filter tabs (T-207 + T-208) in parallel, then close the full QA → Deploy → Monitor → User Agent pipeline (T-204 → T-205 → T-206 → T-209).
+
+**Goal Met:** ⚠️ PARTIAL — Phase 2/3/4 fully completed (T-203, T-207, T-208, T-204, T-205, T-206 ✅). Phase 1 (T-202) and the downstream User Agent walkthrough (T-209) did not execute — the User Agent phase of the orchestration was not reached. Significant feature progress shipped; walkthrough validation remains pending.
+
+---
+
+**Tasks Completed (6/8):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-203 | Frontend + Backend: vitest upgrade 1.x → 4.x (B-021 resolved). 481/481 frontend + 304/304 backend tests pass. 0 vulnerabilities. | ✅ Done |
+| T-207 | Design Agent: Spec 21 — Home page status filter tabs (four filter pills, client-side filtering, accessibility). Published to ui-spec.md. Auto-approved. | ✅ Done |
+| T-208 | Frontend Engineer: StatusFilterTabs component integrated into HomePage.jsx. Filter logic, empty filtered state, 30 new tests (481 total pass). | ✅ Done |
+| T-204 | QA Engineer: Security checklist + full test re-verification (304/304 backend, 481/481 frontend, 0 vulnerabilities, Spec 21 compliance). | ✅ Done |
+| T-205 | Deploy Engineer: Sprint 24 staging re-deployment. 128-module build, pm2 reload. BACKEND_PORT + BACKEND_SSL confirmed. 5/5 smoke tests PASS. | ✅ Done |
+| T-206 | Monitor Agent: Post-deploy health check. All 15 checks PASS. Regressions Sprint 16/19/20/22 clean. StatusFilterTabs confirmed on staging. Handoff to User Agent logged. | ✅ Done |
+
+**Tasks Carried Over:**
+
+| ID | Description | Reason |
+|----|-------------|--------|
+| T-202 | User Agent: Consolidated Sprint 20 + Sprint 22 walkthrough (trip notes, destination validation, TripStatusSelector). | ⚠️ 6th consecutive carry-over — User Agent phase not reached in orchestration. Zero blockers. Staging verified healthy. |
+| T-209 | User Agent: Sprint 24 feature walkthrough (status filter tabs + regression suite). | Blocked by T-202 not running; both consolidated into T-210 for Sprint 25. |
+
+**Key Decisions:**
+- T-202 and T-209 are consolidated into a single T-210 (mega-walkthrough) for Sprint 25 to reduce orchestration fragmentation.
+- Calendar integration identified as next major MVP feature (placeholder since Sprint 1) — scoped for Sprint 25 Phase 2/3.
+- B-022 (production deployment): **24 consecutive sprints** without project owner hosting decision.
+
+**Feedback Summary:**
+- No Sprint #24 User Agent feedback submitted (T-202 and T-209 did not run).
+- No "New" entries in feedback-log.md at sprint close.
+- Sprint 22 Monitor Alert (Vite proxy ECONNREFUSED) remains Status: Resolved — fix verified across Sprint 23/24 deployments.
+
+**Retrospective Notes:**
+
+*What went well:*
+- Phase 2/3/4 pipeline executed cleanly and efficiently (6 tasks completed, all approvals same-day).
+- vitest 4.x upgrade went smoothly — zero test assertion changes required, B-021 fully resolved.
+- StatusFilterTabs shipped with correct accessibility (roving tabIndex, aria-pressed), thorough tests (30 new), and clean design-token-only styling.
+- Monitor Agent confirmed staging is healthy with all regressions clean — staging is in its best verified state to date.
+
+*What could improve:*
+- User Agent tasks (T-202, T-209) remain the single biggest blocker to sprint closure for the 6th consecutive cycle. The orchestration must prioritize and gate on the User Agent phase executing before new feature work begins.
+- Consider: if the User Agent cannot run at sprint start, hold all Phase 2/3 work rather than shipping features that remain unvalidated.
+
+*Action items for Sprint 25:*
+- T-210 (User Agent mega-walkthrough) is P0 — it must run before any other phase begins.
+- Calendar feature (T-211–T-217) scoped as Sprint 25 Phase 2/3 pending T-210 clean.
+- Escalate B-022 (production deployment decision) to project owner again.
+
+**Technical Debt Noted:**
+- Calendar placeholder has been on TripDetailsPage since Sprint 1 (25 sprints). This is the top-priority deferred MVP feature.
+- B-020/B-024 (Redis/per-account rate limiting) — in-memory store still sufficient; acknowledged backlog.
+
+---
+
+*Sprint #24 began and closed 2026-03-10.*
+
+---
+
+### Sprint #25 — 2026-03-10 to 2026-03-10
+
+**Goal:** Execute the T-210 User Agent mega-walkthrough (consolidating 6 sprints of deferred User Agent scope: Sprint 20 trip notes + destination validation, Sprint 22 TripStatusSelector, Sprint 24 StatusFilterTabs). If T-210 was clean, design and implement the Trip Details calendar integration (replacing the placeholder from Sprint 1).
+
+**Goal Met:** ✅ Partially — The calendar integration feature shipped in full (T-211–T-215 Done). T-216 executed with all API/config/regression checks passing but Playwright E2E 1/4 PASS due to a Monitor Agent process issue (rate limiter exhaustion from health-check curl calls before Playwright run — not a code regression). T-217 (User Agent walkthrough) did not run; carried to Sprint 26.
+
+---
+
+**Tasks Completed (7/9):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-210 | User Agent: Consolidated mega-walkthrough (Sprint 20 + 22 + 24 scope) — trip notes, destination validation, TripStatusSelector, StatusFilterTabs. All features verified. Feedback triage: clean — Phase 2 unblocked. | ✅ Done |
+| T-211 | Design Agent: Spec 22 — Trip Details page calendar integration. Published to ui-spec.md under Sprint 25 Specs. Manager-approved. | ✅ Done |
+| T-212 | Backend Engineer: `GET /api/v1/trips/:id/calendar` endpoint. Auth, ownership, 36 new tests (340/340 backend pass). No schema changes. Manager-approved. | ✅ Done |
+| T-213 | Frontend Engineer: `TripCalendar` component (month grid, event pills, click-to-scroll, mobile day-list, keyboard nav, ARIA). 75 new tests. 486/486 frontend tests pass. Manager-approved. | ✅ Done |
+| T-214 | QA Engineer: Full security checklist + test re-verification. 340/340 backend + 486/486 frontend. 0 vulnerabilities. All security items pass. | ✅ Done |
+| T-215 | Deploy Engineer: Sprint 25 staging re-deployment. 0-error build, pm2 reload, BACKEND_PORT/SSL confirmed, no migrations, smoke tests pass. Manager-approved. | ✅ Done |
+| CR-25 | Manager: Sprint 25 code review pass (T-212, T-213, T-215 all APPROVED). | ✅ Done |
+
+**Tasks Carried Over (2 tasks → Sprint 26 Backlog):**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-216 | Monitor Agent: Sprint 25 health check | Executed — all API/config/regression checks PASS. Playwright 1/4 PASS only (Monitor Agent's health-check curl registration call exhausted the in-memory rate limiter before Playwright ran — confirmed NOT a code regression). T-218 (backend restart + Playwright rerun) created in Sprint 26 to resolve the process issue and clear T-217's blocker. |
+| T-217 | User Agent: Sprint 25 feature walkthrough (calendar + full regression suite) | T-216 Playwright gate not met; T-217 never ran. Carried to Sprint 26 as T-219. |
+
+---
+
+**Key Decisions:**
+- **Calendar endpoint (T-212):** `GET /api/v1/trips/:id/calendar` uses `Promise.all()` for parallel DB reads (flights, stays, activities), normalizes to a unified event shape, and sorts by `start_date` ASC / `start_time` ASC (NULLS LAST). No schema changes — fully read-only aggregation.
+- **TripCalendar component (T-213):** Month grid (7-column CSS grid), event pills color-coded by type using CSS custom properties (`--event-flight-*`, `--event-stay-*`, `--event-activity-*`). STAY events span multiple cells. Click-to-scroll uses `window.scrollTo` with 80px navbar offset. `hasNavigated` ref prevents initial-month override if user navigated. Calendar placeholder ("Calendar coming in Sprint 2") removed.
+- **Monitor Agent process fix (T-226):** Monitor Agent should use `POST /api/v1/auth/login` (with a seeded test account) rather than `POST /api/v1/auth/register` to obtain tokens during health checks. This avoids rate limiter exhaustion before Playwright runs.
+- **Production deploy unblocked (FB-112):** The production hosting decision (Render + AWS RDS, from Sprint 17) was recovered and tasked. Tasks T-220–T-225 created for Sprint 26. B-022 is no longer "pending project owner decision" — it is now pending engineering work.
+
+---
+
+**Feedback Summary (Sprint 25):**
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-112 | Feature Gap | Critical | **Tasked → T-220–T-225** | Production hosting decision (Render + AWS RDS) re-submitted; 3 engineering tasks created for Sprint 26 (knexfile SSL config, cookie SameSite fix, render.yaml + deploy guide) + QA + deploy + monitor phases |
+| Monitor Alert (Sprint #25) | Monitor Alert | Major | **Tasked → T-218, T-226** | Playwright 1/4 PASS due to rate limiter exhaustion from Monitor Agent curl health check. T-218 (backend restart) clears immediate blocker; T-226 fixes the Monitor Agent process long-term. |
+
+---
+
+**Retrospective Notes:**
+
+**What Went Well:**
+- Calendar integration (the top remaining MVP feature, placeholder since Sprint 1) was fully designed, implemented, tested, QA'd, and deployed in a single sprint — clean code review pass on first submission for both T-212 and T-213.
+- Test suite expanded significantly: 340/340 backend (36 new calendar endpoint tests), 486/486 frontend (75 new TripCalendar tests). Well above minimum requirements.
+- T-210 mega-walkthrough finally ran after 6 consecutive carry-overs — all deferred User Agent scope (Sprint 20/22/24) verified clean on staging.
+- T-215 deploy confirmed the critical `BACKEND_PORT`/`BACKEND_SSL` regression check — ecosystem.config.cjs remains correctly configured.
+- FB-112 (lost production hosting decision) surfaced and was immediately tasked — 8 sprints of incorrectly blocked B-022 is now actionable.
+
+**What Could Improve:**
+- **Monitor Agent health check process** (T-226): Using `register` instead of `login` for token acquisition during health checks consumes rate limit quota and breaks Playwright. This process bug has now caused two consecutive sprints (Sprint 22 and Sprint 25) where T-216 completed with Playwright < 4/4. The fix (T-226) must be implemented in Sprint 26.
+- **T-216/T-217 carry-over** is now a 2-sprint pattern — if T-217 does not run in Sprint 26, a circuit-breaker should pause the pipeline.
+- **Production deployment** has been deferred 25+ consecutive sprints. Now that engineering blockers are tasked (T-220–T-225), Sprint 26 should prioritize landing production deploy.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence
+- ⚠️ B-024: Auth rate limit is IP-only — aggressive on shared-IP environments
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests in `formatDate.test.js`
+
+*Resolved this sprint:*
+- ✅ B-021: vitest esbuild vulnerability (resolved Sprint 24) — 0 vulnerabilities confirmed in Sprint 25 audit
+- ✅ Calendar placeholder removed — `TripCalendar` component live on staging
+
+---
+
+*Sprint #25 began and closed 2026-03-10.*
+
+---
+
+### Sprint #26 — 2026-03-10 to 2026-03-11
+
+**Goal:** (1) Close Sprint 25 carry-overs — restart backend to clear rate limiter, confirm Playwright 4/4, run User Agent calendar walkthrough. (2) Ship production deployment — implement three engineering pre-requisites (knexfile SSL config, cookie SameSite fix, render.yaml + deploy guide), then deploy to Render + AWS RDS and verify. (3) Fix Monitor Agent health check process to prevent rate limiter exhaustion from recurring.
+
+**Goal Met:** ⚠️ PARTIALLY MET — All engineering pre-requisites for production deployment completed, QA-verified, and staged. The Monitor Agent process fix shipped. However, T-224 (production deployment) is blocked on the project owner providing AWS account and Render account access — no agent tool has permission to provision external cloud infrastructure. T-219 (User Agent walkthrough) did not run, carrying over for the fourth consecutive sprint. T-225 (post-production health check) is blocked on T-224. A new Major staging CORS bug was discovered by the Monitor Agent post-deploy check, blocking browser-based testing on staging.
+
+---
+
+**Tasks Completed (8/11):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-218 | Deploy Engineer: Restart triplanner-backend to clear in-memory rate limiter; Playwright 4/4 PASS | ✅ Done |
+| T-220 | Backend Engineer: knexfile.js production SSL + connection pool config for AWS RDS | ✅ Done |
+| T-221 | Backend Engineer: Cookie SameSite=none + Secure=true in production (cross-origin Render deploy) | ✅ Done |
+| T-222 | Deploy Engineer: render.yaml blueprint + docs/production-deploy-guide.md | ✅ Done |
+| T-223 | QA Engineer: Pre-production security + configuration review (355/355 backend, 486/486 frontend, 0 vulns) | ✅ Done |
+| T-226 | Backend Engineer: Monitor Agent process fix — seeded test user; monitor-agent.md updated to login not register | ✅ Done |
+| T-227 | Deploy Engineer: Sprint 26 staging re-deployment (pm2 restart/reload, smoke tests pass) | ✅ Done |
+| CR-26 | Manager: Code review pass #2 — spot-checked T-220/T-221/T-222/T-226; all prior approvals confirmed correct | ✅ Done |
+
+**Tasks Carried Over (3/11):**
+
+| ID | Description | Reason | Sprint 27 Status |
+|----|-------------|--------|-----------------|
+| T-219 | User Agent: Sprint 25/26 feature walkthrough (TripCalendar + full regression) | Did not run (fourth consecutive carry-over). T-228 CORS fix must complete first. | Carry → Sprint 27 (blocked by T-228) |
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS | Blocked — project owner must provision AWS RDS instance and Render account. All code/config is production-ready; no engineering blockers remain. | Carry → Sprint 27 (blocked on project owner) |
+| T-225 | Monitor Agent: Post-production health check | Blocked on T-224 (production deploy must complete first) | Carry → Sprint 27 (blocked by T-224) |
+
+---
+
+**Key Decisions / Approvals This Sprint:**
+
+- **Production stack finalized (from FB-112, Sprint 17 recovery):** Frontend → Render free tier static site (Ohio). Backend → Render free tier web service (Ohio). Database → AWS RDS PostgreSQL 15, db.t3.micro, us-east-1. render.yaml blueprint and production deploy guide written and reviewed.
+- **ESM dotenv hoisting root cause confirmed:** `backend/src/index.js` statically imports `app.js` before `dotenv.config()` runs, so `process.env.CORS_ORIGIN` is undefined at the time CORS middleware captures it. This causes the staging CORS mismatch. Fix requires adding `CORS_ORIGIN` to pm2 ecosystem env block (fast fix) and refactoring the ESM import order (permanent fix) — both tasked as T-228.
+- **Monitor Agent token acquisition protocol updated:** `test@triplanner.local` seeded in `backend/src/seeds/test_user.js`. Monitor Agent must use `POST /auth/login` with this account to obtain tokens — not `POST /auth/register`. Protocol documented in `.agents/monitor-agent.md`.
+- **knexfile.js production config:** `ssl: { rejectUnauthorized: false }` and `pool: { min: 1, max: 5 }` confirmed correct for AWS RDS free tier. No hardcoded secrets — reads `DATABASE_URL` from env.
+- **Cookie SameSite strategy for cross-origin Render deploy:** `getSameSite()` returns `'none'` in production only; `isSecureCookie()` returns `true` in production. Both `setRefreshCookie` and `clearRefreshCookie` use helpers. Staging/dev unchanged at `'strict'`.
+
+---
+
+**Feedback Summary (Sprint 26):**
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| Monitor Alert Sprint #26 (CORS mismatch) | Monitor Alert | Major | **Tasked → T-228** | Staging backend serves `Access-Control-Allow-Origin: http://localhost:5173` instead of `https://localhost:4173` — ESM import hoisting root cause. All browser-initiated API calls fail on staging. |
+| Monitor Alert Sprint #26 (secondary: knexfile seeds config) | Monitor Alert | Minor | **Acknowledged** | Staging knexfile.js missing `seeds: { directory: seedsDir }` block — `NODE_ENV=staging npm run seed` fails with ENOENT. Workaround: use `NODE_ENV=development`. Backlog. |
+
+---
+
+**What Went Well:**
+- All three production deployment engineering pre-requisites (T-220, T-221, T-222) shipped in a single sprint with zero rework — clean code review and QA pass first time.
+- Monitor Agent process fix (T-226) finally implemented after causing Playwright failures in Sprint 22 and Sprint 25. Seeded test user + login-not-register protocol prevents future rate limiter exhaustion from health checks.
+- T-223 QA pass was comprehensive: 355/355 backend tests, 486/486 frontend tests, 0 npm vulnerabilities, all security checklist items pass, render.yaml verified for secret hygiene.
+- T-218 Playwright 4/4 PASS confirmed on restart — the T-216 carry-over root cause was correctly identified as a process issue (not a regression), and the fix took seconds.
+- render.yaml and production deploy guide are complete and reviewed. As soon as the project owner provisions AWS RDS + Render, production deployment can execute immediately with no further engineering prep.
+
+**What Could Improve:**
+- **T-219 User Agent walkthrough is now a 4-sprint carry-over.** The User Agent has not run since Sprint 24 (T-210 mega-walkthrough). This creates a growing feedback gap. Sprint 27 must treat T-219 as the highest-priority non-infra task; the pipeline should not advance to the next sprint without it completing.
+- **CORS staging bug not caught pre-deploy.** The Monitor Agent post-deploy check found the CORS mismatch only after T-227 staging re-deploy. QA should add an explicit CORS header check (curl with `Origin: https://localhost:4173` header, verify response header) to the pre-deploy gate.
+- **T-224 project owner dependency is now the sole blocker for production launch.** Production has been deferred 26 sprints. An explicit escalation to the project owner (with clear action items: provide AWS + Render access) should be in the Sprint 27 handoff.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence; will not survive pm2 restarts in production
+- ⚠️ B-024: Auth rate limit is IP-only — aggressive on shared-IP environments
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests in `formatDate.test.js`
+
+*New this sprint:*
+- ⚠️ knexfile.js staging block missing `seeds: { directory: seedsDir }` — `NODE_ENV=staging npm run seed` fails; workaround is `NODE_ENV=development npm run seed` (Minor, backlog)
+- ⚠️ ESM dotenv hoisting in `backend/src/index.js` — static import of `app.js` before `dotenv.config()` runs; any env var not in pm2 ecosystem config will silently default (T-228 fixes this)
+
+*Resolved this sprint:*
+- ✅ Monitor Agent health check rate limiter exhaustion (Sprint 22, Sprint 25 pattern) — resolved by T-226 (seeded test user + login protocol)
+- ✅ Production knexfile, cookie SameSite, and render.yaml all production-ready (T-220, T-221, T-222)
+
+---
+
+*Sprint #26 began 2026-03-10, closed 2026-03-11.*
+
+---
+
+### Sprint #27 — 2026-03-11 to 2026-03-11
+
+**Goal:** (1) Fix the Major CORS staging bug (T-228) blocking all browser-initiated API calls. (2) Complete the User Agent feature walkthrough (T-219) — a four-sprint carry-over. (3) Carry T-224/T-225 forward, escalating to project owner for AWS RDS + Render provisioning.
+
+**Goal Met:** ⚠️ PARTIALLY MET — T-228 (CORS fix) fully shipped and verified. T-219 (User Agent walkthrough) was completed by the User Agent who submitted 10 structured feedback entries (FB-113 through FB-122); however the task status was not formally updated to Done mid-sprint. One Major bug (FB-113) was found and tasked for Sprint 28. T-224 (production deployment) and T-225 (health check) continue to carry over — project owner must provision AWS RDS and Render accounts before these can proceed.
+
+---
+
+**Tasks Completed (2/4):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-228 | CORS staging fix — Fix A (ecosystem.config.cjs CORS_ORIGIN) + Fix B (ESM dynamic import refactor); 8 new tests; 363/363 backend + 486/486 frontend | ✅ Done |
+| T-219 | User Agent: Sprint 25/26 feature walkthrough — TripCalendar, StatusFilterTabs, TripStatusSelector, notes, validation, rate limiting, print button; 10 feedback entries submitted (FB-113–FB-122) | ✅ Done |
+
+**Tasks Carried Over (2/4):**
+
+| ID | Description | Reason | Sprint 28 Status |
+|----|-------------|--------|-----------------|
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS | Blocked — project owner must provision AWS RDS + Render. All code/config production-ready; no engineering blockers remain. | Carry → Sprint 28 (blocked on project owner) |
+| T-225 | Monitor Agent: Post-production health check | Blocked on T-224 | Carry → Sprint 28 (blocked by T-224) |
+
+---
+
+**Key Decisions / Approvals This Sprint:**
+
+- **ESM dotenv hoisting fix confirmed:** Fix A (pm2 env block) and Fix B (dynamic import) both implemented and verified. Staging CORS header correctly returns `https://localhost:4173`. 8 new tests added; 363/363 backend tests passing.
+- **trip start_date/end_date bug identified (FB-113):** `tripModel.js` TRIP_COLUMNS SQL always computes dates via `LEAST()/GREATEST()` subqueries over sub-resources, discarding user-provided values stored in DB columns. Fix is a COALESCE on the SELECT: `COALESCE(trips.start_date, <computed MIN>)`. Tasked as T-229 for Sprint 28.
+- **TripCalendar self-contained fetch (FB-122):** Implementation uses its own `GET /api/v1/trips/:id/calendar` call instead of reusing `useTripDetails` hook data (as spec stated). This is architecturally defensible (calendar endpoint returns optimally shaped data); spec will be updated to reflect reality rather than refactoring the component.
+
+---
+
+**Feedback Summary (Sprint 27 — FB-113 through FB-122):**
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-113 | Bug | Major | **Tasked → T-229** | `tripModel.js` TRIP_COLUMNS SQL ignores user-provided start_date/end_date — always returns computed dates from sub-resources. "Set dates" UI is non-functional. |
+| FB-114 | Positive | — | Acknowledged | TripCalendar fully implemented: events, navigation, color-coding, accessibility, click-to-scroll, mobile fallback, empty state, error state. |
+| FB-115 | Positive | — | Acknowledged | T-228 CORS fix verified working — both Fix A and Fix B confirmed live on staging. |
+| FB-116 | Positive | — | Acknowledged | Print button visible on TripDetailsPage with printer icon and print.css imported. |
+| FB-117 | Positive | — | Acknowledged | StatusFilterTabs pill filter works correctly; 0-match filter returns clean empty data array. |
+| FB-118 | Positive | — | Acknowledged | Trip notes save, clear, and unauthorized PATCH all work correctly. |
+| FB-119 | Positive | — | Acknowledged | Destination validation returns structured 400 with field-level errors (no raw stack traces). |
+| FB-120 | Positive | — | Acknowledged | Login rate limiter correctly locks out after 10 attempts. Note: counts all login attempts (not only failures). |
+| FB-121 | UX Issue | Minor | Acknowledged (backlog) | Stay category field requires uppercase enum (`HOTEL`/`AIRBNB`/`VRBO`); lowercase is rejected with 400. Minor friction for API consumers. |
+| FB-122 | UX Issue | Minor | Acknowledged (backlog) | TripCalendar makes its own API call; ui-spec said "no additional API calls." Spec update preferred over refactor. |
+
+---
+
+**What Went Well:**
+
+- T-228 CORS fix was comprehensive — both the immediate pm2 fix (Fix A) and the permanent ESM refactor (Fix B) were implemented in the same sprint, along with 8 new targeted tests.
+- T-219 User Agent walkthrough finally completed after four consecutive carry-overs. The User Agent provided 10 well-structured feedback entries covering all required verification points.
+- Sprint 27 had a very clean quality signal: 9 of 10 feedback entries were positive (all regression checks passed). Only 1 bug found, and it is well-understood with a clear fix path.
+- Staging environment is now in a healthy, verified state: 363/363 backend, 486/486 frontend, 0 vulnerabilities, CORS confirmed correct, 4/4 Playwright E2E passing.
+
+**What Could Improve:**
+
+- T-219 completing without a formal status update in dev-cycle-tracker.md — the User Agent submitted feedback correctly but the task remained in "Backlog" status. Agent workflow should include a status self-update step.
+- T-224 / T-225 have now carried over into Sprint 28. This is a pure human gate (project owner must provision external cloud resources). A direct escalation note to the project owner is warranted — all engineering work is complete and production deployment is the only remaining MVP milestone.
+- FB-113 (trip date bug) existed in the codebase since migration 007 was added in Sprint 16 but was not caught until the Sprint 27 User Agent walkthrough. A regression test on the PATCH trips endpoint that explicitly verifies start_date/end_date round-trip would have caught this earlier.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory store — no Redis persistence; will not survive pm2 restarts
+- ⚠️ B-024: Auth rate limit is IP-only
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests
+- ⚠️ knexfile.js staging block missing `seeds: { directory: seedsDir }` (workaround: use `NODE_ENV=development`)
+- ⚠️ Stay category field requires uppercase enum — minor friction for external API consumers (FB-121)
+- ⚠️ `ui-spec.md` TripCalendar section states "no additional API calls" but implementation makes a dedicated calendar fetch — spec is stale (FB-122)
+
+*New this sprint:*
+- ⚠️ `tripModel.js` TRIP_COLUMNS SQL ignores user-provided start_date/end_date — COALESCE fix needed (T-229, Sprint 28)
+
+*Resolved this sprint:*
+- ✅ CORS staging mismatch (ESM dotenv hoisting) — resolved by T-228 (Fix A + Fix B)
+- ✅ T-219 User Agent walkthrough — completed after 4-sprint carry-over
+
+---
+
+*Sprint #27 began 2026-03-11, closed 2026-03-11.*
+
+---
+
+### Sprint #28 — 2026-03-11 to 2026-03-12
+
+**Goal:** Fix the Major trip date bug (FB-113/T-229) — `tripModel.js` TRIP_COLUMNS SQL always returned computed sub-resource MIN/MAX dates, silently discarding user-provided `start_date`/`end_date` and making the "Set dates" UI on TripDetailsPage non-functional. Secondary: update `ui-spec.md` to reflect the TripCalendar self-contained fetch pattern (T-230). Ongoing: carry T-224/T-225 (production deployment) forward with project owner escalation.
+
+**Goal Met:** ✅ YES (engineering) — T-229 COALESCE fix implemented, reviewed, QA-passed, deployed, and verified by User Agent. The "Set dates" UI on TripDetailsPage is now fully functional. ⚠️ PARTIAL — Playwright E2E Test 2 still failing due to a test-code locator bug (not an app regression); Deploy Verified = No. T-224/T-225 remain blocked on project owner (3rd escalation unresolved).
+
+---
+
+**Tasks Completed (6/8 primary tasks):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-229 | Backend: Fix `tripModel.js` TRIP_COLUMNS COALESCE for user-provided start_date/end_date | ✅ Done |
+| T-230 | Design Agent: Update `ui-spec.md` TripCalendar section (self-contained fetch pattern) | ✅ Done |
+| T-231 | QA: Integration check + security checklist for T-229 (377/377 backend, 486/486 frontend, 0 vuln) | ✅ Done |
+| T-232 | Deploy: Staging re-deploy — `pm2 restart triplanner-backend`; all smoke tests PASS; FB-113 fix live | ✅ Done |
+| T-233 | Monitor: Staging health check — all API checks PASS; Playwright 3/4 PASS (locator bug); Deploy Verified = No | ✅ Done (with caveat) |
+| T-234 | User Agent: Sprint 28 feature verification — T-229 fix confirmed across all 3 scenarios; regressions clean | ✅ Done |
+
+**Tasks Carried Over to Sprint 29:**
+
+| ID | Description | Reason |
+|----|-------------|--------|
+| T-224 | Deploy: Production deployment to Render + AWS RDS | Project owner gate — 3rd escalation unresolved; no cloud credentials provided |
+| T-225 | Monitor: Post-production health check | Blocked by T-224 |
+| — | Fix Playwright E2E locator (new task T-235) | Playwright Test 2 fails due to Sprint 27 TripCalendar adding duplicate airport code elements; test-code fix needed |
+
+---
+
+**Key Feedback Themes (Sprint 28):**
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| Monitor Alert (Sprint 28) | Monitor Alert | Major | Tasked → T-235 (Playwright locator fix, Sprint 29) |
+| FB-123 (T-229 COALESCE fix working) | Positive | — | Acknowledged |
+| FB-124 (Playwright locator bug — Test 2) | Bug | Major | Tasked → T-235 (Sprint 29) |
+| FB-125 (Calendar endpoint regression-free) | Positive | — | Acknowledged |
+| FB-126 (Validation + security edge cases pass) | Positive | — | Acknowledged |
+| FB-127 (StatusFilterTabs + notes regression-free) | Positive | — | Acknowledged |
+| FB-128 (Rate limiter triggered during testing) | UX Issue | Minor | Acknowledged (B-020 backlog) |
+
+*6 positive findings, 1 Major bug (test-code only), 1 operational note.*
+
+---
+
+**What Went Well:**
+
+- T-229 COALESCE fix was architecturally correct, well-tested (14 new tests: 6 route-level + 8 SQL-structure unit tests), and deployed cleanly with zero regressions across calendar, status filtering, and notes
+- User Agent verified all 3 COALESCE scenarios (no sub-resources, with sub-resources, fallback on null) — full end-to-end validation
+- Sprint scope was tightly focused (one P0 bug fix) — efficient execution
+- Test baseline grew from 363/363 to 377/377 backend (all passing); frontend remained at 486/486
+- Security validation passed cleanly — parameterized Knex queries, no injection surface from the new COALESCE SQL
+
+**What Could Improve:**
+
+- Playwright E2E test locators are brittle — adding new frontend components (TripCalendar in Sprint 27) broke existing locators without the test suite catching it at the time. New components should be reviewed against existing test locators.
+- T-233 produced Deploy Verified = No because of the Playwright failure, which is a test-code bug, not an application regression. The pipeline has no mechanism to distinguish "test-code bug" from "app regression" — this created extra carry-over work.
+- T-224/T-225 (production deployment) have now carried over for 4 sprints. The project owner must take action — all engineering is complete.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory MemoryStore — no Redis persistence; resets on pm2 restart (FB-128 reinforces this)
+- ⚠️ B-024: Auth rate limit is IP-only; per-account limiting not implemented
+- ⚠️ Stay category field requires uppercase enum — minor friction for external API consumers (FB-121, backlog)
+- ⚠️ knexfile.js staging block missing `seeds: { directory: seedsDir }` (workaround: use `NODE_ENV=development`)
+- ⚠️ `formatTimezoneAbbr()` has no dedicated unit tests
+
+*New this sprint:*
+- ⚠️ Playwright E2E locator brittle — `getByText('SFO')` now matches 3 elements due to TripCalendar; needs scoped locator (T-235, Sprint 29)
+
+*Resolved this sprint:*
+- ✅ FB-113 (trip date COALESCE bug) — fully resolved by T-229; PATCH dates now returns user values correctly
+
+---
+
+*Sprint #28 began 2026-03-11, closed 2026-03-12.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

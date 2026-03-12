@@ -4564,3 +4564,2211 @@ No new database migrations are introduced in Sprint 15.
 ---
 
 *Sprint 15 contract review complete — 2026-03-07. Backend Engineer: no new endpoints or schema changes this sprint. Sprint 15 is a focused frontend bug-fix sprint — T-154 (browser title + favicon) is a static HTML change, T-155 (land travel chip location) is a frontend-only fix consuming `from_location`/`to_location` fields already present in existing land travel API responses since Sprint 6, and T-153 (formatTimezoneAbbr unit tests) adds tests with zero production code changes. All existing contracts (Sprints 1–14) remain authoritative and unchanged. Backend Engineer on hotfix standby for T-152 and T-160 User Agent walkthroughs only.*
+
+---
+
+## Sprint 16 Contracts
+
+---
+
+### T-162 — Trip Date Range (Computed `start_date` / `end_date`)
+
+**Sprint:** 16
+**Task:** T-162
+**Status:** Agreed (Manager auto-approved per automated sprint cycle — 2026-03-08)
+**Author:** Backend Engineer
+**Date:** 2026-03-08
+
+---
+
+#### Overview
+
+This sprint adds event-derived `start_date` and `end_date` fields to the trip response objects returned by `GET /api/v1/trips` and `GET /api/v1/trips/:id`. These values are computed on read via SQL `MIN()`/`MAX()` subqueries across all event tables (flights, stays, activities, land_travels). They are **not stored in the trips table** — no schema migration is required.
+
+**No new endpoints are introduced. Only the trip response shape changes.**
+
+---
+
+#### Naming Clarification
+
+The trips table already contains `start_date` and `end_date` columns (added in Sprint 2, Migration 007) which represent user-set scheduled dates for the trip. Sprint 16 **replaces** these stored values in the API response with event-derived computed values. The stored trips-table columns (`start_date`, `end_date`) remain in the database for backward-compatible query support (e.g., `sort_by=start_date` continues to use the stored column for ordering), but the **response fields** now reflect event-computed min/max dates.
+
+| Field | Source | Type | Description |
+|-------|--------|------|-------------|
+| `start_date` | Computed — MIN across all event dates | `string \| null` | Earliest event date in YYYY-MM-DD format. `null` if the trip has no events. |
+| `end_date` | Computed — MAX across all event dates | `string \| null` | Latest event date in YYYY-MM-DD format. `null` if the trip has no events. |
+
+**Event tables and date columns included in the MIN/MAX computation:**
+
+| Table | Date Columns Used |
+|-------|------------------|
+| `flights` | `DATE(departure_at)`, `DATE(arrival_at)` |
+| `stays` | `DATE(check_in_at)`, `DATE(check_out_at)` |
+| `activities` | `activity_date` (already YYYY-MM-DD) |
+| `land_travels` | `departure_date`, `arrival_date` (already YYYY-MM-DD) |
+
+All timestamps (`departure_at`, `arrival_at`, `check_in_at`, `check_out_at`) must be cast via `DATE()` to extract the date portion before MIN/MAX comparison.
+
+---
+
+#### Updated: GET /api/v1/trips
+
+| Field | Value |
+|-------|-------|
+| Method | GET |
+| Path | `/api/v1/trips` |
+| Sprint | 16 (extends Sprint 5 T-072, Sprint 7 T-103) |
+| Task | T-162 / T-163 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token in `Authorization: Bearer <token>` header) |
+
+**Change from previous sprint:** The `start_date` and `end_date` fields in each trip object in the `data` array are now event-computed (MIN/MAX across all event tables) rather than the stored trips-table values. All other fields, query parameters, pagination behavior, and error responses remain unchanged.
+
+**Request:**
+- All existing query parameters unchanged: `?page`, `?limit`, `?search`, `?status`, `?sort_by`, `?sort_order`
+- No new query parameters
+
+**Response (Success — 200 OK):**
+
+```json
+{
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Japan 2026",
+      "destinations": ["Tokyo", "Osaka", "Kyoto"],
+      "status": "PLANNING",
+      "start_date": "2026-08-07",
+      "end_date": "2026-08-21",
+      "notes": "We fly into Narita on August 7th...",
+      "created_at": "2026-02-24T12:00:00.000Z",
+      "updated_at": "2026-02-24T12:00:00.000Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Weekend Getaway",
+      "destinations": ["Portland"],
+      "status": "PLANNING",
+      "start_date": null,
+      "end_date": null,
+      "notes": null,
+      "created_at": "2026-02-25T09:00:00.000Z",
+      "updated_at": "2026-02-25T09:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 2
+  }
+}
+```
+
+**`start_date` / `end_date` field contract:**
+
+| Field | Type | Value when events exist | Value when NO events exist |
+|-------|------|------------------------|---------------------------|
+| `start_date` | `string \| null` | YYYY-MM-DD string — MIN date across all event tables | `null` |
+| `end_date` | `string \| null` | YYYY-MM-DD string — MAX date across all event tables | `null` |
+
+- Both fields are always present in every trip object (never omitted from the response)
+- Both are `null` together when a trip has no events; never partially null (if any event exists, both fields have values)
+- Format is always `YYYY-MM-DD` (e.g., `"2026-08-07"`) — never ISO 8601 timestamp
+- The frontend is responsible for formatting this date string for display (e.g., "Aug 7 – 21, 2026")
+
+**Error responses:** Unchanged from Sprint 5 (400 for invalid query params, 401 for missing/invalid token).
+
+---
+
+#### Updated: GET /api/v1/trips/:id
+
+| Field | Value |
+|-------|-------|
+| Method | GET |
+| Path | `/api/v1/trips/:id` |
+| Sprint | 16 (extends Sprint 1 T-005, Sprint 7 T-103) |
+| Task | T-162 / T-163 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token in `Authorization: Bearer <token>` header) |
+
+**Change from previous sprint:** The `start_date` and `end_date` fields in the single-trip response are now event-computed (MIN/MAX across all event tables) rather than the stored trips-table values. All other fields and error responses remain unchanged.
+
+**Path Parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `id` | UUID (v4) | Trip ID |
+
+**Response (Success — 200 OK — trip with events):**
+
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-21",
+    "notes": "We fly into Narita on August 7th and spend 10 days exploring Tokyo, Kyoto, and Osaka.",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-24T13:00:00.000Z"
+  }
+}
+```
+
+**Response (Success — 200 OK — trip with NO events):**
+
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440002",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Weekend Getaway",
+    "destinations": ["Portland"],
+    "status": "PLANNING",
+    "start_date": null,
+    "end_date": null,
+    "notes": null,
+    "created_at": "2026-02-25T09:00:00.000Z",
+    "updated_at": "2026-02-25T09:00:00.000Z"
+  }
+}
+```
+
+**`start_date` / `end_date` field contract:** Same as `GET /api/v1/trips` above — event-computed, YYYY-MM-DD or `null`, always both present, always both null or both non-null.
+
+**Error responses (unchanged from Sprint 1):**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 401 | `UNAUTHORIZED` | Missing or invalid Bearer token |
+| 403 | `FORBIDDEN` | Authenticated user does not own this trip |
+| 404 | `NOT_FOUND` | Trip ID does not exist |
+
+```json
+{ "error": { "message": "Trip not found", "code": "NOT_FOUND" } }
+```
+
+---
+
+#### SQL Implementation Guidance (for T-163)
+
+The following subquery pattern computes the min/max event dates for a single trip. This should be used in both the list and single-trip model functions. **All queries must be parameterized — never concatenate trip IDs.**
+
+```sql
+-- Computed start_date: MIN across all event date columns
+SELECT
+  LEAST(
+    (SELECT MIN(DATE(departure_at)) FROM flights WHERE trip_id = t.id),
+    (SELECT MIN(DATE(arrival_at))   FROM flights WHERE trip_id = t.id),
+    (SELECT MIN(DATE(check_in_at))  FROM stays   WHERE trip_id = t.id),
+    (SELECT MIN(DATE(check_out_at)) FROM stays   WHERE trip_id = t.id),
+    (SELECT MIN(activity_date)      FROM activities WHERE trip_id = t.id),
+    (SELECT MIN(departure_date)     FROM land_travels WHERE trip_id = t.id),
+    (SELECT MIN(arrival_date)       FROM land_travels WHERE trip_id = t.id)
+  ) AS start_date,
+
+-- Computed end_date: MAX across all event date columns
+  GREATEST(
+    (SELECT MAX(DATE(departure_at)) FROM flights WHERE trip_id = t.id),
+    (SELECT MAX(DATE(arrival_at))   FROM flights WHERE trip_id = t.id),
+    (SELECT MAX(DATE(check_in_at))  FROM stays   WHERE trip_id = t.id),
+    (SELECT MAX(DATE(check_out_at)) FROM stays   WHERE trip_id = t.id),
+    (SELECT MAX(activity_date)      FROM activities WHERE trip_id = t.id),
+    (SELECT MAX(departure_date)     FROM land_travels WHERE trip_id = t.id),
+    (SELECT MAX(arrival_date)       FROM land_travels WHERE trip_id = t.id)
+  ) AS end_date
+FROM trips t
+WHERE t.id = ?  -- parameterized
+```
+
+PostgreSQL `LEAST()`/`GREATEST()` ignore `NULL` values by default when mixed with non-null values. If ALL inputs are `NULL` (i.e., no events exist), both functions return `NULL`. This is the correct behavior — `null` in the response signals "no events".
+
+For the list endpoint (`GET /api/v1/trips`), wrap these subqueries as lateral expressions or add them as computed columns in the main `SELECT` for each trip row.
+
+---
+
+#### Schema State — Sprint 16
+
+No schema migrations are introduced in Sprint 16. The computed date range fields are derived at read time. All 10 existing migrations (001–010) remain the complete and authoritative schema.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–15 | *(No new migrations)* | Sprints 8–15 schema-stable |
+| — | **16** | *(No new migrations)* | **Sprint 16: computed read only — zero schema work** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+---
+
+#### Test Cases Required (for T-163 implementation)
+
+| ID | Scenario | Expected `start_date` | Expected `end_date` |
+|----|----------|-----------------------|---------------------|
+| A | Trip with no events | `null` | `null` |
+| B | Trip with flights only (departure 2026-08-07, arrival 2026-08-21) | `"2026-08-07"` | `"2026-08-21"` |
+| C | Trip with mixed events (flight departs 2026-08-07, stay checks out 2026-08-25, activity on 2026-08-10) | `"2026-08-07"` | `"2026-08-25"` |
+| D | GET /trips list endpoint includes both fields on every trip object | Present on all trips | Present on all trips |
+| E | All 266+ existing backend tests still pass | — | — |
+
+---
+
+*Sprint 16 contract published by Backend Engineer 2026-03-08. Manager auto-approved per automated sprint cycle. T-163 implementation may proceed. T-164 (Frontend) may proceed in parallel — frontend reads `start_date` and `end_date` from the trip object exactly as documented above.*
+
+---
+
+## Sprint 17 Contracts
+
+---
+
+### Sprint 17 — No New API Endpoints
+
+**Sprint:** 17
+**Date:** 2026-03-08
+**Author:** Backend Engineer
+**Status:** Confirmed — No new contracts required
+
+---
+
+#### Summary
+
+Sprint 17 is a **frontend-only** sprint. All work (T-170, T-172) is confined to the React/CSS layer. No new backend endpoints are introduced, and no schema changes are required.
+
+| Task | Scope | Backend Impact |
+|------|-------|---------------|
+| T-170 | Frontend code cleanup (opacity fix, dead code removal, stale comment) | None |
+| T-171 | Design Agent: print/export UI spec | None |
+| T-172 | Frontend: implement trip print/export via CSS `@media print` + `window.print()` | None — print view consumes existing trip data already loaded in TripDetailsPage |
+
+The print/export feature (T-172) renders the data already returned by existing endpoints — **no new API calls are needed**. The `TripDetailsPage` already fetches the trip, flights, stays, activities, and land travels at load time; the print stylesheet simply reformats the DOM at print time.
+
+---
+
+#### Existing Contracts Remain Authoritative
+
+All previously agreed contracts from Sprints 1–16 are unchanged and remain the definitive interface. Key contracts the Frontend Engineer should reference for T-172 print rendering:
+
+| Endpoint | Sprint | Purpose |
+|----------|--------|---------|
+| `GET /api/v1/trips/:id` | 1, updated 16 | Trip name, destinations, `start_date`, `end_date` for print header |
+| `GET /api/v1/trips/:id/flights` | 1 | Flight cards for print Flights section |
+| `GET /api/v1/trips/:id/stays` | 1 | Stay cards for print Stays section |
+| `GET /api/v1/trips/:id/activities` | 1 | Activity cards for print Activities section (day-grouped) |
+| `GET /api/v1/trips/:id/land-travels` | 6 | Land travel cards for print Land Travel section |
+
+No fields are added, removed, or renamed. The print view reads the same response shapes defined in Sprints 1 and 6.
+
+---
+
+#### Schema State — Sprint 17
+
+No schema migrations are introduced in Sprint 17. The complete migration history remains:
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–16 | *(No new migrations)* | Sprints 8–16 schema-stable |
+| — | **17** | *(No new migrations)* | **Sprint 17: frontend-only — zero schema work** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+---
+
+#### Hotfix Standby Protocol
+
+No backend changes are planned for Sprint 17. If a hotfix is required mid-sprint (e.g., a regression discovered during QA), the Backend Engineer will:
+1. Open a new contract entry in this file with the affected endpoint and change description
+2. Log a handoff to Manager for approval before implementing
+3. Flag the hotfix in `handoff-log.md` and `dev-cycle-tracker.md` as a new task
+
+No hotfix is anticipated. Backend is at 278/278 tests passing and no regressions have been reported.
+
+---
+
+*Sprint 17 contract review published by Backend Engineer 2026-03-08. No new endpoints. No schema changes. All Sprint 1–16 contracts remain in force. Frontend Engineer may proceed with T-172 using existing data already loaded in TripDetailsPage. QA: backend test suite target remains 278+ (no backend changes expected).*
+
+---
+
+## Sprint 18 Contracts
+
+Sprint 18 was fully planned but never executed. All tasks carried forward to Sprint 19 unchanged. No Sprint 18 contracts were published.
+
+---
+
+## Sprint 19 Contracts
+
+---
+
+### T-178 — Auth Rate Limiting (B-020)
+
+**Sprint:** 19
+**Date:** 2026-03-09
+**Author:** Backend Engineer
+**Status:** Agreed — Auto-approved per automated sprint cycle (P0 security fix, 18 sprints deferred)
+**Scope:** Behavior change on two existing public auth endpoints. No new endpoints. No request/response shape changes. New 429 error case added to both.
+
+---
+
+#### Summary
+
+Sprint 19 adds IP-based rate limiting middleware to the two public auth endpoints. This is a **behavior-only change** — the request and success response shapes are identical to the Sprint 1 contracts. The only addition is a new `429 Too Many Requests` error response that each endpoint can now return when the per-IP threshold is exceeded.
+
+| Endpoint | Middleware | Limit | Window | 429 Response |
+|----------|-----------|-------|--------|-------------|
+| `POST /api/v1/auth/login` | `loginLimiter` | 10 requests per IP | 15 minutes | `RATE_LIMITED` |
+| `POST /api/v1/auth/register` | `registerLimiter` | 5 requests per IP | 60 minutes | `RATE_LIMITED` |
+
+All other auth endpoints (`POST /auth/refresh`, `POST /auth/logout`) and all trip/flight/stay/activity/land-travel endpoints are **not** rate limited by this change.
+
+---
+
+#### Updated: POST /api/v1/auth/login
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 19) |
+| Task | T-004 (updated T-178) |
+| Status | Agreed |
+| Auth Required | No (public) |
+
+**Change from Sprint 1:** A new `429 Too Many Requests` error response is now possible when the per-IP login attempt threshold is exceeded. All other request/response shapes are unchanged.
+
+**Rate Limit Parameters:**
+| Parameter | Value |
+|-----------|-------|
+| Key | Client IP address |
+| Max requests | 10 |
+| Window | 15 minutes |
+| Headers | `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` (standard headers, RFC 6585) |
+| Legacy headers | Disabled (`legacyHeaders: false`) |
+
+**New Error Response (429 Too Many Requests — Rate limit exceeded):**
+```json
+{
+  "error": {
+    "message": "Too many login attempts, please try again later.",
+    "code": "RATE_LIMITED"
+  }
+}
+```
+
+**Response Headers (on 429):**
+```
+RateLimit-Limit: 10
+RateLimit-Remaining: 0
+RateLimit-Reset: <Unix timestamp when window resets>
+```
+
+**All other request/response shapes:** Unchanged from Sprint 1 contract (`POST /api/v1/auth/login` section above). Request body, 200 success, 400 validation, 401 invalid credentials, 500 server error are all identical.
+
+**Frontend Notes:**
+- The frontend does not need to make any API shape changes for rate limiting.
+- On receiving a 429, the frontend should display a non-field error banner: "Too many login attempts, please try again later."
+- The `RATE_LIMITED` code distinguishes this error from `INVALID_CREDENTIALS` (401) — the frontend can use this to display a more specific message.
+
+---
+
+#### Updated: POST /api/v1/auth/register
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 19) |
+| Task | T-004 (updated T-178) |
+| Status | Agreed |
+| Auth Required | No (public) |
+
+**Change from Sprint 1:** A new `429 Too Many Requests` error response is now possible when the per-IP registration attempt threshold is exceeded. All other request/response shapes are unchanged.
+
+**Rate Limit Parameters:**
+| Parameter | Value |
+|-----------|-------|
+| Key | Client IP address |
+| Max requests | 5 |
+| Window | 60 minutes |
+| Headers | `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` (standard headers, RFC 6585) |
+| Legacy headers | Disabled (`legacyHeaders: false`) |
+
+**New Error Response (429 Too Many Requests — Rate limit exceeded):**
+```json
+{
+  "error": {
+    "message": "Too many registration attempts, please try again later.",
+    "code": "RATE_LIMITED"
+  }
+}
+```
+
+**Response Headers (on 429):**
+```
+RateLimit-Limit: 5
+RateLimit-Remaining: 0
+RateLimit-Reset: <Unix timestamp when window resets>
+```
+
+**All other request/response shapes:** Unchanged from Sprint 1 contract (`POST /api/v1/auth/register` section above). Request body, 201 success, 400 validation, 409 email taken, 500 server error are all identical.
+
+**Frontend Notes:**
+- On receiving a 429, the frontend should display a non-field error banner: "Too many registration attempts, please try again later."
+- The `RATE_LIMITED` code distinguishes this from `EMAIL_TAKEN` (409) and `VALIDATION_ERROR` (400).
+
+---
+
+#### T-178 — Implementation Notes
+
+**Middleware location:** `backend/src/middleware/rateLimiter.js`
+
+```
+loginLimiter:
+  windowMs: 15 * 60 * 1000   (15 minutes)
+  max: 10
+  standardHeaders: true
+  legacyHeaders: false
+  message: { error: { message: "Too many login attempts, please try again later.", code: "RATE_LIMITED" } }
+
+registerLimiter:
+  windowMs: 60 * 60 * 1000   (60 minutes)
+  max: 5
+  standardHeaders: true
+  legacyHeaders: false
+  message: { error: { message: "Too many registration attempts, please try again later.", code: "RATE_LIMITED" } }
+```
+
+**Application point:** Both limiters are applied in `backend/src/routes/auth.js`, attached to their respective route handlers **before** the handler function. No other routes are affected.
+
+**Store:** In-memory (default `express-rate-limit` MemoryStore). Sufficient at current single-process staging scale. Redis store deferred to Sprint 20+ per B-024.
+
+**Test cases (T-178):**
+| Case | Description | Expected |
+|------|-------------|---------|
+| A | POST /auth/login — attempts 1–10 in window | 200 (valid creds) or 401 (wrong creds) — not rate limited |
+| B | POST /auth/login — attempt 11 in same window | 429 `RATE_LIMITED` |
+| C | POST /auth/register — attempts 1–5 in window | 201 (new user) or 409 (email taken) — not rate limited |
+| D | POST /auth/register — attempt 6 in same window | 429 `RATE_LIMITED` |
+| E | GET /api/v1/trips (non-auth route) — any number of requests | 200 or 401 — never 429 from rate limiter |
+
+---
+
+### T-180 — Multi-Destination Structured UI
+
+**Sprint:** 19
+**Date:** 2026-03-09
+**Author:** Backend Engineer
+**Status:** Confirmed — No new backend contracts required
+
+---
+
+#### Summary
+
+T-180 is a **frontend-only** implementation task. The backend already supports the destinations array on all relevant trip endpoints. No new API endpoints are introduced, and no schema changes are required.
+
+The frontend chip input component will send `destinations` as a string array — exactly the same shape the backend has accepted since Sprint 1 (POST and PATCH trips endpoints).
+
+| Task | Scope | Backend Impact |
+|------|-------|---------------|
+| T-179 | Design Agent: Multi-destination chip UI spec | None |
+| T-180 | Frontend: Chip input in create modal, trip card display, trip details editor | None — uses existing POST and PATCH trips endpoints |
+
+---
+
+#### Existing Contracts the Frontend Engineer Must Reference for T-180
+
+| Endpoint | Sprint | Relevant Field | Notes |
+|----------|--------|----------------|-------|
+| `POST /api/v1/trips` | 1, updated 4 | `destinations: string[]` | Chip input sends array. Min 1 element. Case-insensitive dedup applied server-side. |
+| `PATCH /api/v1/trips/:id` | 1, updated 2, 4, 7 | `destinations: string[]` | Edit destinations sends updated array. Same dedup rules. |
+| `GET /api/v1/trips` | 1, updated 8 (search/filter) | `destinations: string[]` | Trip card renders this array. |
+| `GET /api/v1/trips/:id` | 1, updated 16 | `destinations: string[]` | Trip details header renders this array. |
+
+The `destinations` field is always returned as a `string[]` (never null — a trip must have at least one destination). The frontend chip editor reads and writes this field unchanged.
+
+**No new validation rules are introduced.** Existing server-side rules apply:
+- Min 1 element required
+- Each element trimmed, empty strings filtered
+- Case-insensitive deduplication (first occurrence casing preserved)
+- Max 50 destinations
+
+---
+
+#### Schema State — Sprint 19
+
+No schema migrations are introduced in Sprint 19. The complete migration history remains:
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–19 | *(No new migrations)* | Sprints 8–19 schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 19.**
+
+---
+
+#### Complete Endpoint Inventory — Sprint 19 (Unchanged from Sprint 17)
+
+All previously agreed contracts from Sprints 1–17 remain in force unchanged.
+
+| Sprint | Endpoint | Status | Notes |
+|--------|----------|--------|-------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | **+Sprint 19: 429 RATE_LIMITED after 5 req/60min per IP** |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | **+Sprint 19: 429 RATE_LIMITED after 10 req/15min per IP** |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | No rate limit applied |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | No rate limit applied |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Not rate limited |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | `destinations` dedup (Sprint 4) |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` updatable (Sprint 7); `""` → `null` (Sprint 9) |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Nullable start/end time (Sprint 3) |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Linked time validation (Sprint 3) |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
+| 6 | `POST /api/v1/trips/:id/land-travels` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travels/:lid` | ✅ Agreed, Applied on Staging | — |
+
+---
+
+*Sprint 19 contracts published by Backend Engineer 2026-03-09. T-178 adds 429 RATE_LIMITED behavior to POST /auth/login (10/15min) and POST /auth/register (5/60min). T-180 is frontend-only — no new endpoints or schema changes. All Sprint 1–17 contracts remain in force. Frontend Engineer may proceed with T-180 using existing PATCH /api/v1/trips/:id contract. QA: backend test suite target is 278+ base + 5 new rate limiter tests = 283+ total.*
+
+---
+
+## Sprint 20 Contracts — 2026-03-10
+
+**Tasks:** T-186 (Joi destination validation tightening), T-188 (Trip notes field validation + response contract)
+**Author:** Backend Engineer
+**Date:** 2026-03-10
+**Status:** Agreed (published for Frontend Engineer and QA reference)
+
+---
+
+### T-186 — Destination Validation Tightening
+
+**Summary:** Two Joi validation gaps from Sprint 19 are closed: (A) destination items now enforce a 100-character maximum, (B) the PATCH empty-destinations error message is standardized to match POST's human-friendly wording.
+
+No new endpoints. No schema changes. Changes are validation-layer only.
+
+---
+
+#### Updated: POST /api/v1/trips — destinations field
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-186) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Change from Sprint 1 / Sprint 19:** `destinations` array items now have a **100-character maximum per item**. Requests containing any destination string longer than 100 characters are rejected with `400 VALIDATION_ERROR`.
+
+**destinations validation rule (updated):**
+```
+destinations:
+  Joi.array()
+    .items(Joi.string().min(1).max(100))   ← NEW: .max(100) added
+    .min(1)
+    .required()
+```
+
+**New error case — 400 Validation Error (destination item too long):**
+```json
+{
+  "error": {
+    "message": "\"destinations[0]\" length must be less than or equal to 100 characters long",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+*Note: Joi's default message format is used. The index `[0]` reflects whichever item failed.*
+
+**All other request/response shapes:** Unchanged from the Sprint 1 contract.
+
+---
+
+#### Updated: PATCH /api/v1/trips/:id — destinations field
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-186) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Changes from Sprint 1 / Sprint 19:**
+1. `destinations` array items now have a **100-character maximum per item** (same as POST above).
+2. When `destinations: []` (empty array) is sent, the error message is now standardized to **"At least one destination is required"** — matching the POST endpoint's human-friendly error.
+
+**destinations validation rule (updated):**
+```
+destinations:
+  Joi.array()
+    .items(Joi.string().min(1).max(100))   ← NEW: .max(100) added
+    .min(1)
+    .messages({ 'array.min': 'At least one destination is required' })   ← NEW: friendly message
+    .optional()
+```
+
+**Error case — 400 Validation Error (destination item too long):**
+```json
+{
+  "error": {
+    "message": "\"destinations[0]\" length must be less than or equal to 100 characters long",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+
+**Error case — 400 Validation Error (empty destinations array) [UPDATED]:**
+```json
+{
+  "error": {
+    "message": "At least one destination is required",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+*Previously: Joi's raw message `"destinations" must contain at least 1 items`. Now standardized to match POST.*
+
+**All other request/response shapes:** Unchanged from the Sprint 1 contract.
+
+---
+
+#### T-186 Test Matrix
+
+| Case | Method | Input | Expected |
+|------|--------|-------|---------|
+| A | POST /api/v1/trips | destinations: ["X".repeat(101)] | 400 VALIDATION_ERROR |
+| B | PATCH /api/v1/trips/:id | destinations: ["X".repeat(101)] | 400 VALIDATION_ERROR |
+| C | PATCH /api/v1/trips/:id | destinations: [] | 400, message = "At least one destination is required" |
+| D | POST /api/v1/trips | destinations: ["X".repeat(100)] | 201 Created (happy path) |
+| E | PATCH /api/v1/trips/:id | destinations: ["X".repeat(100)] | 200 OK (happy path) |
+
+---
+
+### T-188 — Trip Notes Field Contract (Formalized)
+
+**Summary:** The `notes TEXT NULL` column on the `trips` table was added in Sprint 7 (migration 010, applied on staging). Sprint 20 formalizes: (1) explicit max-2000-character Joi validation on POST and PATCH, (2) `notes` is confirmed as part of all trip response shapes (POST 201, GET list, GET detail), (3) empty string normalization to `null`.
+
+**Schema status:** No new migration required. Column `notes TEXT NULL` already exists (migration 010, applied Sprint 7).
+
+---
+
+#### Updated: POST /api/v1/trips — notes field added
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-188) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Request Body (updated — notes field added):**
+
+```json
+{
+  "name": "string, required, min 1, max 200",
+  "destinations": ["string, min 1, max 100 each — see T-186"],
+  "status": "PLANNING | ONGOING | COMPLETED (optional, defaults to PLANNING)",
+  "start_date": "ISO 8601 date string YYYY-MM-DD (optional, nullable)",
+  "end_date": "ISO 8601 date string YYYY-MM-DD (optional, nullable)",
+  "notes": "string | null (optional, max 2000 chars, '' normalized to null)"
+}
+```
+
+**notes validation rule:**
+```
+notes:
+  Joi.string()
+    .max(2000)
+    .allow(null, '')
+    .optional()
+    .default(null)
+```
+*If `notes` is omitted or `null` or `""`, it is stored and returned as `null`.*
+
+**Success Response — 201 Created (updated — notes field now explicitly included):**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "name": "string",
+    "destinations": ["string"],
+    "status": "PLANNING | ONGOING | COMPLETED",
+    "start_date": "YYYY-MM-DD | null",
+    "end_date": "YYYY-MM-DD | null",
+    "notes": "string | null",
+    "created_at": "ISO 8601 timestamp",
+    "updated_at": "ISO 8601 timestamp"
+  }
+}
+```
+
+**New error case — 400 Validation Error (notes too long):**
+```json
+{
+  "error": {
+    "message": "\"notes\" length must be less than or equal to 2000 characters long",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+
+**All other request/response shapes:** Unchanged from Sprint 1 contract.
+
+---
+
+#### Updated: PATCH /api/v1/trips/:id — notes field
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-188) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**notes validation rule (updated — max 2000 now explicitly enforced):**
+```
+notes:
+  Joi.string()
+    .max(2000)
+    .allow(null, '')
+    .optional()
+```
+*Previously: no explicit max. Sprint 20 adds `.max(2000)` to enforce the 2000-char limit at the API layer.*
+*`""` is normalized to `null` before storage (behavior from Sprint 9, unchanged).*
+
+**Request Body (any combination of fields, all optional):**
+```json
+{
+  "name": "string (optional, min 1, max 200)",
+  "destinations": ["string (optional, each item min 1, max 100 — see T-186)"],
+  "status": "PLANNING | ONGOING | COMPLETED (optional)",
+  "start_date": "YYYY-MM-DD | null (optional)",
+  "end_date": "YYYY-MM-DD | null (optional)",
+  "notes": "string | null (optional, max 2000 chars, '' normalized to null)"
+}
+```
+
+**Success Response — 200 OK (updated — notes field explicitly included):**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "name": "string",
+    "destinations": ["string"],
+    "status": "PLANNING | ONGOING | COMPLETED",
+    "start_date": "YYYY-MM-DD | null",
+    "end_date": "YYYY-MM-DD | null",
+    "notes": "string | null",
+    "created_at": "ISO 8601 timestamp",
+    "updated_at": "ISO 8601 timestamp"
+  }
+}
+```
+
+**notes-specific error case — 400 Validation Error (notes too long):**
+```json
+{
+  "error": {
+    "message": "\"notes\" length must be less than or equal to 2000 characters long",
+    "code": "VALIDATION_ERROR"
+  }
+}
+```
+
+**All other request/response shapes and error cases:** Unchanged from Sprint 1 / Sprint 7 / Sprint 9 contracts.
+
+---
+
+#### Updated: GET /api/v1/trips — notes field in list response
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-188) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Change:** `notes: string | null` is now **explicitly documented** as part of each trip object in the list response. The field has existed in the database since Sprint 7; this formalizes its presence in the response contract.
+
+**Success Response — 200 OK:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "string",
+      "destinations": ["string"],
+      "status": "PLANNING | ONGOING | COMPLETED",
+      "start_date": "YYYY-MM-DD | null",
+      "end_date": "YYYY-MM-DD | null",
+      "notes": "string | null",
+      "created_at": "ISO 8601 timestamp",
+      "updated_at": "ISO 8601 timestamp"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 42
+  }
+}
+```
+
+**All other request/response shapes:** Unchanged from Sprint 1 / Sprint 8 (search/filter) contracts.
+
+---
+
+#### Updated: GET /api/v1/trips/:id — notes field in detail response
+
+| Field | Value |
+|-------|-------|
+| Sprint | 1 (updated Sprint 20) |
+| Task | T-001 (updated T-188) |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Change:** `notes: string | null` is now **explicitly documented** as part of the trip detail response.
+
+**Success Response — 200 OK:**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "name": "string",
+    "destinations": ["string"],
+    "status": "PLANNING | ONGOING | COMPLETED",
+    "start_date": "YYYY-MM-DD | null",
+    "end_date": "YYYY-MM-DD | null",
+    "notes": "string | null",
+    "created_at": "ISO 8601 timestamp",
+    "updated_at": "ISO 8601 timestamp"
+  }
+}
+```
+
+**All other request/response shapes:** Unchanged from Sprint 1 contract.
+
+---
+
+#### T-188 Test Matrix
+
+| Case | Method | Input | Expected |
+|------|--------|-------|---------|
+| A | POST /api/v1/trips | notes: "Hello world" | 201, response includes notes: "Hello world" |
+| B | PATCH /api/v1/trips/:id | notes: "Updated note" | 200, response includes notes: "Updated note" |
+| C | PATCH /api/v1/trips/:id | notes: null | 200, response includes notes: null |
+| D | PATCH /api/v1/trips/:id | notes: "" | 200, response includes notes: null (normalized) |
+| E | GET /api/v1/trips/:id | — | 200, response includes notes field (string or null) |
+| F | GET /api/v1/trips | — | 200, each trip object includes notes field |
+| G | POST /api/v1/trips | notes omitted | 201, response includes notes: null |
+| H | POST /api/v1/trips | notes: "x".repeat(2001) | 400 VALIDATION_ERROR |
+| I | PATCH /api/v1/trips/:id | notes: "x".repeat(2001) | 400 VALIDATION_ERROR |
+
+---
+
+### Sprint 20 — Schema State
+
+**No new migration required for Sprint 20.**
+
+The `notes TEXT NULL` column was added in Sprint 7 (migration 010, applied on staging). Sprint 20 adds validation and formalizes the API contract — no DDL changes.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–20 | *(No new migrations through Sprint 20)* | Schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 20.**
+
+---
+
+### Sprint 20 — Updated Endpoint Inventory
+
+All Sprint 1–19 contracts remain in force unchanged, with the following Sprint 20 updates:
+
+| Sprint | Endpoint | Sprint 20 Change |
+|--------|----------|-----------------|
+| 1 (updated 20) | `POST /api/v1/trips` | destinations `.max(100)` per item (T-186); notes `.max(2000)` validation + explicitly in response (T-188) |
+| 1 (updated 20) | `PATCH /api/v1/trips/:id` | destinations `.max(100)` per item + friendly empty-array message (T-186); notes `.max(2000)` validation + explicitly in response (T-188) |
+| 1 (updated 20) | `GET /api/v1/trips` | notes field explicitly documented in response (T-188) |
+| 1 (updated 20) | `GET /api/v1/trips/:id` | notes field explicitly documented in response (T-188) |
+
+All other endpoints unchanged.
+
+---
+
+*Sprint 20 contracts published by Backend Engineer 2026-03-10. T-186: validation-layer-only changes to destinations (max 100 chars per item, friendly PATCH empty-array message). T-188: formalized notes field contract — no new migration (column exists since Sprint 7), adds max-2000 Joi validation and confirms notes inclusion in all trip response shapes. Frontend Engineer may proceed with T-189 (TripNotesSection) using PATCH /api/v1/trips/:id contract above. QA test matrix: 287+ base + T-186 tests (5 cases) + T-188 tests (9 cases) = 301+ total.*
+
+---
+
+## Sprint 21 — API Contracts
+
+**Date:** 2026-03-10
+**Reviewed by:** Backend Engineer
+**Outcome:** Sprint 21 was a planning-only sprint — zero tasks executed. All tasks carry to Sprint 22. No contract review action required.
+
+---
+
+*Sprint 21 was planning-only (0/8 tasks executed). No API contract changes.*
+
+---
+
+## Sprint 22 — API Contracts
+
+**Date:** 2026-03-10
+**Reviewed by:** Backend Engineer
+**Sprint Goal:** Close the Sprint 21 carry-over pipeline. Deliver the trip status selector (T-196): an inline status badge on TripDetailsPage that lets users change PLANNING → ONGOING → COMPLETED without a page reload. Complete the full QA → Deploy → Monitor → User Agent pipeline (T-197 through T-201).
+
+---
+
+### Sprint 22 — No New API Endpoints
+
+Sprint 22 introduces **zero new backend endpoints and zero schema changes**. The sole new frontend feature — the `TripStatusSelector` component (T-196) — operates exclusively against the existing `PATCH /api/v1/trips/:id` endpoint, which has supported the `status` field since Sprint 1.
+
+The `active-sprint.md` Sprint 22 Out-of-Scope note is authoritative: *"Backend changes for status — PATCH /api/v1/trips/:id already supports `status` field per Sprint 1 API contract. No migration or model changes needed."*
+
+| Task | Agent | API Impact |
+|------|-------|------------|
+| T-194 | User Agent | Sprint 20 walkthrough — no API changes. Tests existing endpoints. |
+| T-195 | Design Agent | Spec 20 UI spec — no API changes. Documents frontend component behaviour only. |
+| T-196 | Frontend Engineer | `TripStatusSelector.jsx` — calls existing `PATCH /api/v1/trips/:id` with `{ "status": "..." }`. **No new endpoint; no contract change.** |
+| T-197 | QA Engineer | Security checklist + code review — no API changes. |
+| T-198 | QA Engineer | Integration testing — exercises existing endpoints. |
+| T-199 | Deploy Engineer | Frontend rebuild + pm2 reload — no API changes. |
+| T-200 | Monitor Agent | Staging health check — no API changes. |
+| T-201 | User Agent | Sprint 22 feature walkthrough — no API changes. |
+
+---
+
+### Sprint 22 — Status Field on PATCH /api/v1/trips/:id (Reference for T-196)
+
+This section is a **focused reference** for the Frontend Engineer implementing T-196 (`TripStatusSelector.jsx`). The full contract is documented in the Sprint 1 section and updated through Sprint 20. No changes are made here — this is a convenience excerpt.
+
+#### Endpoint
+
+| Field | Value |
+|-------|-------|
+| Method | `PATCH` |
+| Path | `/api/v1/trips/:id` |
+| Auth Required | Yes — Bearer token (`Authorization: Bearer <access_token>`) |
+| Sprint introduced | 1 (T-005) |
+| Last updated | Sprint 20 (T-186, T-188) |
+| Contract status | ✅ Agreed, Applied on Staging |
+
+#### Request Body (status-only update — the T-196 use case)
+
+Only the `status` field needs to be sent. All PATCH fields are optional; only provided fields are updated.
+
+```json
+{
+  "status": "ONGOING"
+}
+```
+
+**Valid `status` values:**
+
+| Value | Meaning |
+|-------|---------|
+| `"PLANNING"` | Trip is in the planning phase (default for new trips) |
+| `"ONGOING"` | Trip is currently in progress |
+| `"COMPLETED"` | Trip has been completed |
+
+Any other string value (e.g., `"INVALID"`, `""`, `null`, an integer) will return `400 VALIDATION_ERROR`.
+
+#### Success Response — 200 OK
+
+```json
+{
+  "data": {
+    "id": "uuid",
+    "user_id": "uuid",
+    "name": "string",
+    "destinations": ["string"],
+    "status": "ONGOING",
+    "start_date": "YYYY-MM-DD | null",
+    "end_date": "YYYY-MM-DD | null",
+    "notes": "string | null",
+    "created_at": "ISO 8601 timestamp",
+    "updated_at": "ISO 8601 timestamp"
+  }
+}
+```
+
+The `status` field in the response reflects the **computed** status (based on `start_date`/`end_date` vs. current date per T-030 logic). When dates are not set, the stored status value is returned as-is. After a successful PATCH with an explicit `status`, the response will reflect the newly stored value.
+
+#### Error Responses
+
+**400 Bad Request — Invalid status value:**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "status": "Status must be one of: PLANNING, ONGOING, COMPLETED"
+    }
+  }
+}
+```
+
+**400 Bad Request — No updatable fields provided:**
+```json
+{
+  "error": {
+    "message": "No updatable fields provided",
+    "code": "NO_UPDATABLE_FIELDS"
+  }
+}
+```
+*(Not triggered by T-196 since status is always provided, but documented for completeness.)*
+
+**401 Unauthorized — Missing or expired token:**
+```json
+{
+  "error": {
+    "message": "Authentication required",
+    "code": "UNAUTHORIZED"
+  }
+}
+```
+
+**403 Forbidden — Trip belongs to a different user:**
+```json
+{
+  "error": {
+    "message": "You do not have access to this trip",
+    "code": "FORBIDDEN"
+  }
+}
+```
+
+**404 Not Found — Trip ID does not exist:**
+```json
+{
+  "error": {
+    "message": "Trip not found",
+    "code": "NOT_FOUND"
+  }
+}
+```
+
+**500 Internal Server Error:**
+```json
+{
+  "error": {
+    "message": "Internal server error",
+    "code": "INTERNAL_ERROR"
+  }
+}
+```
+
+#### T-196 Integration Notes
+
+- **Client-side validation:** The Frontend MUST validate that `status` is one of `"PLANNING"`, `"ONGOING"`, `"COMPLETED"` before sending the PATCH request. Since the UI presents only those three hardcoded options, this is inherently guaranteed. No user-typed string reaches the API.
+- **Optimistic update:** Per Spec 20, the badge should optimistically update to the new status before the API call resolves. On error (any non-200 response), revert to the previous status and display the generic error toast.
+- **Same-status no-op:** If the user selects the status that is already active, the Frontend should NOT send a PATCH request (close dropdown silently). This is a UI-only optimisation — the API would accept it, but there is no need to make the round-trip.
+- **Auth token:** Use the existing auth token from the app's auth context. If the request returns 401, follow the standard token refresh flow already in place.
+
+#### T-196 — QA Test Matrix (Backend-relevant cases)
+
+| Case | Method | Input | Expected |
+|------|--------|-------|----------|
+| A | PATCH /api/v1/trips/:id | `{ "status": "ONGOING" }` (valid, different from current) | 200, response includes `"status": "ONGOING"` |
+| B | PATCH /api/v1/trips/:id | `{ "status": "COMPLETED" }` | 200, response includes `"status": "COMPLETED"` |
+| C | PATCH /api/v1/trips/:id | `{ "status": "PLANNING" }` | 200, response includes `"status": "PLANNING"` |
+| D | PATCH /api/v1/trips/:id | `{ "status": "INVALID" }` (direct API call) | 400, `VALIDATION_ERROR`, `fields.status` present |
+| E | PATCH /api/v1/trips/:id | `{ "status": "" }` (direct API call) | 400, `VALIDATION_ERROR` |
+| F | PATCH /api/v1/trips/:id | `{ "status": "ONGOING" }` (no auth header) | 401, `UNAUTHORIZED` |
+| G | PATCH /api/v1/trips/:id | `{ "status": "ONGOING" }` (another user's trip) | 403, `FORBIDDEN` |
+| H | PATCH /api/v1/trips/:id | `{ "status": "ONGOING" }` (non-existent trip ID) | 404, `NOT_FOUND` |
+
+*Cases A–C are the normal flow exercised by T-196. Cases D–H are regression/security cases for T-198 integration testing.*
+
+---
+
+### Sprint 22 — No Schema Changes
+
+No new database migrations are introduced in Sprint 22. The `status` column (`VARCHAR(20)`) on the `trips` table has existed since migration 003 (Sprint 1). No DDL changes are required.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table (includes `status VARCHAR(20) DEFAULT 'PLANNING'`) | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–22 | *(No new migrations through Sprint 22)* | Schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 22.**
+
+---
+
+### Sprint 22 — Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–20 remain in force unchanged. The complete authoritative state of all endpoint groups:
+
+| Sprint | Endpoint Group | Contract Status | Key Notes |
+|--------|---------------|----------------|-----------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | Rate limiting added Sprint 19 (T-183). |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
+| 1 (updated 20) | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7. `notes` is always `null \| non-empty string` (Sprint 9 correction). `status` filter by computed status (Sprint 5). |
+| 1 (updated 20) | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | `destinations` item max 100 chars (T-186 Sprint 20). `notes` max 2000 chars (T-188 Sprint 20). |
+| 1 (updated 20) | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field present; returns `null` if unset. |
+| 1 (updated 20) | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | **`status` accepts `PLANNING \| ONGOING \| COMPLETED` (Sprint 1, unchanged).** `notes` updatable (Sprint 7); `""` → `null` (Sprint 9). `destinations` item max 100 chars + friendly empty-array message (Sprint 20). |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | `departure_tz` + `arrival_tz` fields present. |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | `check_in_tz` + `check_out_tz` fields present. |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | `location TEXT NULL` present. `start_time`/`end_time` nullable (Sprint 3). |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | — |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Path corrected from `/land-travels` to `/land-travel` (T-139, Sprint 13). |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | — |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | — |
+
+---
+
+*Sprint 22 contracts published by Backend Engineer 2026-03-10. No new endpoints or schema changes. Sprint 22 is a frontend-feature-only sprint — `TripStatusSelector` (T-196) calls the existing `PATCH /api/v1/trips/:id` endpoint with `{ "status": "..." }`, which has accepted the `status` field since Sprint 1. The focused reference above (§ "Status Field on PATCH /api/v1/trips/:id") gives the Frontend Engineer everything needed for T-196 implementation. Test baseline: 304/304 backend | 429/429 frontend. No new backend tests expected — the status path is already covered by the existing trip PATCH test suite.*
+
+---
+
+## Sprint 24 — API Contracts
+
+**Date:** 2026-03-10
+**Published by:** Backend Engineer
+**Sprint Goal:** Execute T-202 (User Agent consolidated walkthrough), upgrade vitest 1.x → 4.x (T-203), and implement the home page status filter tabs (T-208, frontend-only, client-side).
+
+---
+
+### Sprint 24 — No New API Endpoints
+
+Sprint 24 introduces **zero new backend endpoints and zero schema changes**. The backend's sole engineering task is a **dev-tooling upgrade** (T-203): bumping `vitest` from `^1.x` to `^4.0.0` in `backend/package.json`. This is a test-runner change with no effect on runtime behaviour, API surface, or the database layer.
+
+The new frontend feature — `StatusFilterTabs` (T-208) — filters trips **client-side only**. The Design Agent's Spec 21 explicitly specifies "no new API calls." The existing `GET /api/v1/trips` response already returns the `status` field (`"PLANNING" | "ONGOING" | "COMPLETED"`) on every trip object, giving the frontend everything it needs to filter locally without any backend changes.
+
+| Task | Agent | API Impact |
+|------|-------|------------|
+| T-202 | User Agent | Consolidated walkthrough — no API changes. Exercises existing staging endpoints. |
+| T-203 (backend) | Backend Engineer | `vitest` upgrade 1.x → 4.x in `backend/package.json`. **Dev-tooling only. Zero production or runtime changes.** |
+| T-203 (frontend) | Frontend Engineer | `vitest` upgrade 1.x → 4.x in `frontend/package.json`. Dev-tooling only. |
+| T-207 | Design Agent | Spec 21 — status filter tabs. UI spec only, no API changes. |
+| T-208 | Frontend Engineer | `StatusFilterTabs` component — client-side filtering of existing trip data. **No new API calls.** Reads `status` from existing `GET /api/v1/trips` response. |
+| T-204 | QA Engineer | Security checklist + test re-verification. Exercises existing endpoints. |
+| T-205 | Deploy Engineer | Staging re-deployment. No migration required. |
+| T-206 | Monitor Agent | Staging health check. No API changes. |
+| T-209 | User Agent | Sprint 24 feature walkthrough. No API changes. |
+
+---
+
+### Sprint 24 — Status Field on GET /api/v1/trips (Reference for T-208)
+
+This is a **focused reference** for the Frontend Engineer implementing `StatusFilterTabs` (T-208). No changes are made to this endpoint — this excerpt confirms the existing data shape supports client-side filtering without modification.
+
+#### Endpoint
+
+| Field | Value |
+|-------|-------|
+| Method | `GET` |
+| Path | `/api/v1/trips` |
+| Auth Required | Yes — Bearer token (`Authorization: Bearer <access_token>`) |
+| Sprint introduced | 1 (T-005) |
+| Last updated | Sprint 20 (T-186, T-188) |
+| Contract status | ✅ Agreed, Applied on Staging |
+
+#### Query Parameters (unchanged from prior sprints)
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | integer | `1` | Pagination page number |
+| `limit` | integer | `20` | Results per page (max 100) |
+| `status` | string | — | Optional server-side pre-filter: `PLANNING \| ONGOING \| COMPLETED`. (Not used by T-208 — T-208 fetches all trips then filters client-side.) |
+| `sort` | string | `created_at_desc` | Sort order. See Sprint 5 contract for full sort options. |
+| `search` | string | — | Optional substring match on trip `name`. |
+
+#### Success Response — 200 OK
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "user_id": "uuid",
+      "name": "string",
+      "destinations": ["string"],
+      "status": "PLANNING",
+      "start_date": "YYYY-MM-DD | null",
+      "end_date": "YYYY-MM-DD | null",
+      "notes": "string | null",
+      "created_at": "ISO 8601 timestamp",
+      "updated_at": "ISO 8601 timestamp"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 42
+  }
+}
+```
+
+**Key field for T-208:** The `status` field is always present and is one of `"PLANNING"`, `"ONGOING"`, or `"COMPLETED"`. The `StatusFilterTabs` component filters `trips` locally using:
+
+```js
+filteredTrips = activeFilter === "ALL" ? trips : trips.filter(t => t.status === activeFilter)
+```
+
+**No API call is made when the active filter changes.** All trip data is already in memory from the initial `GET /api/v1/trips` fetch on `HomePage` mount.
+
+#### T-208 Integration Notes
+
+- **No pagination concern for MVP:** The home page fetches the first page (default limit 20). Client-side filtering applies only to the trips in memory. If a user has more than 20 trips, filtered counts may not reflect totals accurately — this is accepted behaviour at current scale and matches prior sprint decisions.
+- **Stale data after status change:** If a user navigates from `TripDetailsPage` (where they changed a trip's status via `PATCH /api/v1/trips/:id`) back to `HomePage`, the existing home page refetch-on-mount behaviour ensures the trip list is fresh. No new synchronisation mechanism is required.
+- **Empty filtered state:** When `filteredTrips.length === 0` AND `trips.length > 0`, show `"No [Label] trips yet."` with a `"Show all"` reset link. Do NOT modify the global empty state (shown when `trips.length === 0`). The global empty state is a backend-independent UI concern.
+
+---
+
+### Sprint 24 — No Schema Changes
+
+No database migrations are introduced in Sprint 24. The migration set remains at 10 applied migrations (001–010), identical to Sprint 22.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001 | 1 | Create `users` table | ✅ Applied on Staging |
+| 002 | 1 | Create `refresh_tokens` table | ✅ Applied on Staging |
+| 003 | 1 | Create `trips` table (includes `status VARCHAR(20) DEFAULT 'PLANNING'`) | ✅ Applied on Staging |
+| 004 | 1 | Create `flights` table | ✅ Applied on Staging |
+| 005 | 1 | Create `stays` table | ✅ Applied on Staging |
+| 006 | 1 | Create `activities` table | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–24 | *(No new migrations through Sprint 24)* | Schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 24. Deploy Engineer: no `knex migrate:latest` run required.**
+
+---
+
+### Sprint 24 — All Existing Contracts Remain Authoritative
+
+All contracts from Sprints 1–22 remain in force unchanged. Full authoritative endpoint table is in the Sprint 22 section above. No endpoint signatures, request shapes, response shapes, auth requirements, or error codes have changed in Sprint 24.
+
+---
+
+*Sprint 24 contracts published by Backend Engineer 2026-03-10. No new endpoints or schema changes. T-203 (backend) is a dev-tooling-only vitest upgrade — zero API surface impact. T-208 is a client-side-only filter using data already returned by the existing `GET /api/v1/trips` endpoint. Test baseline entering Sprint 24: 304/304 backend | 451/451 frontend. After T-203 completes, all 304+ backend tests must pass under vitest 4.x.*
+
+---
+
+## Sprint 25 — API Contracts
+
+**Sprint Goal:** Calendar data aggregation endpoint (T-212) — `GET /api/v1/trips/:id/calendar` returns a unified timeline merging flights, stays, and activities for a trip, normalized to a common event shape for the `TripCalendar` component.
+
+**Published by:** Backend Engineer
+**Date:** 2026-03-10
+**Status:** ✅ Draft — Pending Manager Approval
+
+---
+
+## T-212 — Calendar Data Aggregation Endpoint
+
+### GET /api/v1/trips/:id/calendar
+
+| Field | Value |
+|-------|-------|
+| Sprint | 25 |
+| Task | T-212 |
+| Status | Draft — Pending Manager Approval |
+| Auth Required | Yes — Bearer token (`Authorization: Bearer <access_token>`) |
+
+**Description:** Returns a unified, chronologically ordered timeline of all calendar events for a given trip. Events are aggregated from three source tables — `flights`, `stays`, and `activities` — and normalized to a common event shape. This is a **read-only** endpoint; all editing still happens via the existing resource-specific CRUD endpoints. No query parameters are accepted; all events for the trip are returned in a single response (no pagination — trips are expected to have a manageable number of sub-resources).
+
+---
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID v4 string | The trip ID to fetch calendar events for |
+
+**Request Body:** None (GET request)
+
+**Query Parameters:** None
+
+---
+
+**Event Shape:**
+
+Each element in the `events` array conforms to the following shape:
+
+```json
+{
+  "id": "string",
+  "type": "FLIGHT | STAY | ACTIVITY",
+  "title": "string",
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD",
+  "start_time": "HH:MM | null",
+  "end_time": "HH:MM | null",
+  "timezone": "IANA timezone string | null",
+  "source_id": "UUID v4 string"
+}
+```
+
+**Field definitions:**
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `id` | string | No | Composite ID: `"{type_lowercase}-{source_id}"` (e.g., `"flight-550e8400-..."`, `"stay-550e8400-..."`, `"activity-550e8400-..."`). Stable and unique within the response. |
+| `type` | enum | No | One of: `FLIGHT`, `STAY`, `ACTIVITY` |
+| `title` | string | No | Human-readable label for display on the calendar. See derivation rules per type below. |
+| `start_date` | string | No | Event start date in `YYYY-MM-DD` format, expressed in the event's local timezone. |
+| `end_date` | string | No | Event end date in `YYYY-MM-DD` format, expressed in the event's local timezone. Equal to `start_date` for single-day events (flights, activities). May differ from `start_date` for multi-day stays. |
+| `start_time` | string | Yes | Local start time in `HH:MM` (24-hour) format. `null` for all-day activities (when `start_time` is not set on the activity). |
+| `end_time` | string | Yes | Local end time in `HH:MM` (24-hour) format. `null` for all-day activities (when `end_time` is not set on the activity). |
+| `timezone` | string | Yes | IANA timezone string (e.g., `"America/New_York"`). `null` for activities, which have no timezone column. |
+| `source_id` | string | No | The original UUID of the source record (`flight.id`, `stay.id`, or `activity.id`). Used by the frontend to build deep-link scroll targets. |
+
+---
+
+**Event Derivation Rules by Type:**
+
+#### FLIGHT events (sourced from `flights` table)
+
+| Calendar field | Derived from |
+|----------------|-------------|
+| `id` | `"flight-" + flight.id` |
+| `type` | `"FLIGHT"` |
+| `title` | `"{airline} {flight_number} — {from_location} → {to_location}"` |
+| `start_date` | Local calendar date of `departure_at` in `departure_tz` (YYYY-MM-DD) |
+| `end_date` | Local calendar date of `arrival_at` in `arrival_tz` (YYYY-MM-DD) |
+| `start_time` | Local time of `departure_at` in `departure_tz` (HH:MM, 24-hour) |
+| `end_time` | Local time of `arrival_at` in `arrival_tz` (HH:MM, 24-hour) |
+| `timezone` | `departure_tz` |
+| `source_id` | `flight.id` |
+
+*Note: `start_date` and `end_date` may differ for overnight flights (e.g., departure 23:00 → arrival 06:00 next day).*
+
+#### STAY events (sourced from `stays` table)
+
+| Calendar field | Derived from |
+|----------------|-------------|
+| `id` | `"stay-" + stay.id` |
+| `type` | `"STAY"` |
+| `title` | `stay.name` |
+| `start_date` | Local calendar date of `check_in_at` in `check_in_tz` (YYYY-MM-DD) |
+| `end_date` | Local calendar date of `check_out_at` in `check_out_tz` (YYYY-MM-DD) |
+| `start_time` | Local time of `check_in_at` in `check_in_tz` (HH:MM, 24-hour) |
+| `end_time` | Local time of `check_out_at` in `check_out_tz` (HH:MM, 24-hour) |
+| `timezone` | `check_in_tz` |
+| `source_id` | `stay.id` |
+
+*Note: `end_date` will typically differ from `start_date` for multi-night stays. Frontend renders these as multi-day spans on the calendar grid.*
+
+#### ACTIVITY events (sourced from `activities` table)
+
+| Calendar field | Derived from |
+|----------------|-------------|
+| `id` | `"activity-" + activity.id` |
+| `type` | `"ACTIVITY"` |
+| `title` | `activity.name` |
+| `start_date` | `activity.activity_date` (already stored as YYYY-MM-DD) |
+| `end_date` | `activity.activity_date` (same day — activities are always single-day) |
+| `start_time` | `activity.start_time` — `null` if not set (all-day activity) |
+| `end_time` | `activity.end_time` — `null` if not set (all-day activity) |
+| `timezone` | `null` — activities have no timezone column in the DB |
+| `source_id` | `activity.id` |
+
+---
+
+**Ordering:**
+
+Events in the `events` array are ordered by:
+1. `start_date` ASC (chronological by local start date)
+2. `start_time` ASC NULLS LAST (timed events before all-day events on the same date)
+3. `type` ASC as tiebreaker (`ACTIVITY` < `FLIGHT` < `STAY` — alphabetical, deterministic)
+
+---
+
+**Response (Success — 200 OK):**
+
+```json
+{
+  "data": {
+    "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+    "events": [
+      {
+        "id": "flight-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "type": "FLIGHT",
+        "title": "Delta DL12345 — SFO → LAX",
+        "start_date": "2026-08-07",
+        "end_date": "2026-08-07",
+        "start_time": "06:00",
+        "end_time": "08:30",
+        "timezone": "America/Los_Angeles",
+        "source_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      },
+      {
+        "id": "stay-b2c3d4e5-f6a7-8901-bcde-f12345678901",
+        "type": "STAY",
+        "title": "Grand Hyatt LA",
+        "start_date": "2026-08-07",
+        "end_date": "2026-08-10",
+        "start_time": "15:00",
+        "end_time": "11:00",
+        "timezone": "America/Los_Angeles",
+        "source_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+      },
+      {
+        "id": "activity-c3d4e5f6-a7b8-9012-cdef-123456789012",
+        "type": "ACTIVITY",
+        "title": "Getty Museum Visit",
+        "start_date": "2026-08-08",
+        "end_date": "2026-08-08",
+        "start_time": "10:00",
+        "end_time": "13:00",
+        "timezone": null,
+        "source_id": "c3d4e5f6-a7b8-9012-cdef-123456789012"
+      },
+      {
+        "id": "activity-d4e5f6a7-b8c9-0123-defa-234567890123",
+        "type": "ACTIVITY",
+        "title": "Free afternoon",
+        "start_date": "2026-08-09",
+        "end_date": "2026-08-09",
+        "start_time": null,
+        "end_time": null,
+        "timezone": null,
+        "source_id": "d4e5f6a7-b8c9-0123-defa-234567890123"
+      }
+    ]
+  }
+}
+```
+
+**Empty trip (no sub-resources):**
+
+```json
+{
+  "data": {
+    "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+    "events": []
+  }
+}
+```
+
+---
+
+**Error Responses:**
+
+| HTTP Status | Code | Message | Condition |
+|-------------|------|---------|-----------|
+| `401 Unauthorized` | `UNAUTHORIZED` | `"Authentication required."` | No `Authorization` header, or token is missing, expired, or malformed. |
+| `403 Forbidden` | `FORBIDDEN` | `"You do not have access to this trip."` | Trip exists but belongs to a different user. |
+| `404 Not Found` | `NOT_FOUND` | `"Trip not found."` | No trip with the given `:id` exists in the database. |
+| `400 Bad Request` | `VALIDATION_ERROR` | `"Invalid trip ID format."` | The `:id` path parameter is not a valid UUID v4. |
+| `500 Internal Server Error` | `INTERNAL_ERROR` | `"An unexpected error occurred."` | Unhandled server error (database failure, etc.). Stack trace never exposed. |
+
+**Error response shape (all errors):**
+```json
+{
+  "error": {
+    "message": "<human-readable message>",
+    "code": "<ERROR_CODE>"
+  }
+}
+```
+
+---
+
+**Auth Enforcement Detail:**
+
+1. Middleware `authenticate` runs first — validates the Bearer token. Returns `401` if invalid.
+2. Route handler fetches the trip by `:id`. If not found → `404`.
+3. Ownership check: `trip.user_id !== req.user.id` → `403`.
+4. Only after passing ownership check does the handler query flights, stays, and activities.
+
+This mirrors the auth pattern used by all existing sub-resource endpoints (T-012).
+
+---
+
+**Implementation Notes (for Backend Engineer — not part of the public contract):**
+
+- Query flights, stays, and activities in parallel (`Promise.all`) for performance.
+- Derive `start_date`, `end_date`, `start_time`, `end_time` from UTC timestamps + IANA timezone strings in JavaScript (using `Intl.DateTimeFormat` with `timeZone` option), **not** in SQL. This keeps the DB layer thin and avoids PostgreSQL timezone casting complexity.
+- Activities already return `activity_date` as `YYYY-MM-DD` via `TO_CHAR` in `activityModel.js` — use that directly without further transformation.
+- Sort the merged array in JavaScript after fetching (sort by `start_date` → `start_time` NULLS LAST → `type`).
+- Route file: `backend/src/routes/calendar.js`. Register under trips router as a sub-path: `GET /api/v1/trips/:id/calendar`.
+- Model file: `backend/src/models/calendarModel.js` — contains the aggregation logic, keeping route handler thin.
+- No new schema required — pure read aggregation over existing tables.
+
+---
+
+### Sprint 25 — No Schema Changes Required
+
+**Conclusion:** `GET /api/v1/trips/:id/calendar` is a **read-only aggregation** endpoint over the existing `flights`, `stays`, and `activities` tables. No new columns, tables, or indexes are required.
+
+The migration log remains at **10 applied migrations (001–010)**. No `knex migrate:latest` is needed for Sprint 25. Deploy Engineer: no migration step required.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–010 | 1–7 | (existing migrations — see technical-context.md) | ✅ Applied |
+| — | 8–25 | *(No new migrations through Sprint 25)* | Schema-stable |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 25.**
+
+---
+
+### Sprint 25 — Endpoint Inventory Update
+
+All contracts from Sprints 1–24 remain in force unchanged. Sprint 25 adds one new endpoint:
+
+| Sprint | Endpoint | Status | Notes |
+|--------|----------|--------|-------|
+| 25 (new) | `GET /api/v1/trips/:id/calendar` | Draft — Pending Manager Approval | New calendar aggregation endpoint (T-212). Read-only. Auth + ownership enforced. |
+
+All other endpoints remain unchanged. Full authoritative endpoint table is in the Sprint 22 section above.
+
+---
+
+*Sprint 25 contracts published by Backend Engineer 2026-03-10. One new endpoint: `GET /api/v1/trips/:id/calendar` (T-212). No schema changes — pure read aggregation over existing tables. Test baseline entering Sprint 25: 304/304 backend | 481/481 frontend | 0 vulnerabilities. After T-212 implementation, backend test count must be 304+ (new calendar endpoint tests included).*
+
+---
+
+## Sprint 26 — API Contracts
+
+**Date:** 2026-03-11
+**Published by:** Backend Engineer
+**Sprint Goal:** Production deployment hardening — knexfile SSL config (T-220), auth cookie SameSite fix for cross-origin production (T-221), and Monitor Agent health check process fix via seed script (T-226). No new API endpoints this sprint.
+
+---
+
+### Sprint 26 — No New API Endpoints
+
+Sprint 26 introduces **zero new API endpoints and zero schema changes**. All three backend tasks are production configuration and infrastructure hardening. The only externally observable change is a **cookie attribute amendment** to the existing auth endpoints in the production environment (T-221).
+
+| Task | Type | API Impact |
+|------|------|------------|
+| T-220 | Config change | `backend/knexfile.js` gets a production SSL block + conservative pool settings for AWS RDS. **Zero API surface change.** |
+| T-221 | Behavioral amendment | Auth endpoints' `Set-Cookie` response header changes `SameSite` attribute from `Strict` to `None` (and enforces `Secure=true`) **in production only**. Dev/staging cookie behavior is unchanged. See contract amendment below. |
+| T-226 | Infrastructure | Seed script creates a persistent test user (`test@triplanner.local`). No new endpoints. Uses existing `POST /api/v1/auth/login`. |
+
+---
+
+### T-221 — Cookie SameSite Amendment (Production Only)
+
+**Sprint:** 26
+**Task:** T-221
+**Status:** Agreed
+**Affects:** `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`
+**Auth Required:** As per each endpoint's existing contract (unchanged)
+
+#### Summary
+
+The frontend (`triplanner-frontend.onrender.com`) and backend (`triplanner-backend.onrender.com`) are cross-origin on Render. Browsers block `SameSite=Strict` cookies from being sent in cross-origin requests, which breaks authentication in production. T-221 fixes this by changing the `Set-Cookie` header on all auth endpoints to use `SameSite=None; Secure` when `NODE_ENV === 'production'`.
+
+**This is the only change.** All request/response body shapes, status codes, error codes, and auth logic are unchanged.
+
+---
+
+#### Updated: Set-Cookie Header — Environment-Specific Behavior
+
+The `refresh_token` cookie is set by `POST /auth/register`, `POST /auth/login`, and `POST /auth/refresh`. It is cleared by `POST /auth/logout`. The cookie attributes now vary by environment:
+
+| Attribute | Development | Staging | Production |
+|-----------|-------------|---------|------------|
+| `HttpOnly` | `true` | `true` | `true` |
+| `Secure` | `false` (or `true` if `COOKIE_SECURE=true`) | `false` (or `true` if `COOKIE_SECURE=true`) | `true` (always) |
+| `SameSite` | `Strict` | `Strict` | `None` |
+| `Path` | `/api/v1/auth` | `/api/v1/auth` | `/api/v1/auth` |
+| `Max-Age` | `604800` (7 days) | `604800` (7 days) | `604800` (7 days) |
+
+**Production `Set-Cookie` header (after T-221):**
+```
+Set-Cookie: refresh_token=<OPAQUE_TOKEN>; HttpOnly; Secure; SameSite=None; Path=/api/v1/auth; Max-Age=604800
+```
+
+**Development/Staging `Set-Cookie` header (unchanged):**
+```
+Set-Cookie: refresh_token=<OPAQUE_TOKEN>; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800
+```
+
+**Logout clear-cookie header — Production:**
+```
+Set-Cookie: refresh_token=; HttpOnly; Secure; SameSite=None; Path=/api/v1/auth; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT
+```
+
+#### Implementation Rule
+
+The production cookie config is gated **solely on `NODE_ENV === 'production'`**:
+
+```js
+function getRefreshCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    secure: isProduction || process.env.COOKIE_SECURE === 'true',
+    sameSite: isProduction ? 'none' : 'strict',
+    path: '/api/v1/auth',
+    maxAge: REFRESH_TOKEN_SECONDS * 1000,
+  };
+}
+```
+
+**Security note:** `SameSite=None` requires `Secure=true` (HTTPS-only). The browser will silently ignore or reject a `SameSite=None` cookie without `Secure`. Render enforces HTTPS on all services, so this is safe in production.
+
+#### Affected Endpoints (Response Shape Unchanged)
+
+All four auth endpoints are affected only in their `Set-Cookie` response header. No body, status code, or error shape changes:
+
+| Endpoint | Cookie Action | Body Shape |
+|----------|--------------|------------|
+| `POST /api/v1/auth/register` | Sets `refresh_token` cookie | Unchanged from Sprint 1 |
+| `POST /api/v1/auth/login` | Sets `refresh_token` cookie | Unchanged from Sprint 1 |
+| `POST /api/v1/auth/refresh` | Rotates `refresh_token` cookie | Unchanged from Sprint 1 |
+| `POST /api/v1/auth/logout` | Clears `refresh_token` cookie (Max-Age=0) | 204 No Content (unchanged) |
+
+#### Test Plan — T-221
+
+**Happy paths:**
+- With `NODE_ENV=production`: `POST /auth/login` response `Set-Cookie` header includes `SameSite=None` and `Secure`
+- With `NODE_ENV=production`: `POST /auth/register` response `Set-Cookie` header includes `SameSite=None` and `Secure`
+- With `NODE_ENV=production`: `POST /auth/refresh` response `Set-Cookie` header includes `SameSite=None` and `Secure`
+- With `NODE_ENV=production`: `POST /auth/logout` clear-cookie header includes `SameSite=None` and `Secure` with `Max-Age=0`
+- With `NODE_ENV=development` (default): all four endpoints return `SameSite=Strict` (no `SameSite=None`, no bare `Secure`)
+- With `NODE_ENV=staging` (or unset): same as development — `SameSite=Strict`
+
+**Error paths:**
+- Cookie attribute change does not affect any error response — 400, 401, 403, 404, 429 responses are unchanged
+
+---
+
+### T-220 — knexfile.js Production Config (Backend-Internal — No API Change)
+
+**Sprint:** 26
+**Task:** T-220
+**Status:** Confirmed — No API contract change
+
+This is a backend-internal configuration change. The production block in `backend/knexfile.js` gains:
+- `ssl: { rejectUnauthorized: false }` — required for AWS RDS self-signed certificates
+- `pool: { min: 1, max: 5 }` — conservative pool for a `db.t3.micro` free-tier instance (was `{ min: 2, max: 10 }`)
+
+No endpoint signatures, request/response shapes, status codes, or error codes change. This change is invisible to all API consumers (Frontend Engineer, QA, Monitor Agent). It affects only the backend's database connection layer.
+
+**No schema changes. No migrations. No Deploy Engineer migration action required.**
+
+---
+
+### T-226 — Monitor Agent Seed Script (Backend-Internal — No API Change)
+
+**Sprint:** 26
+**Task:** T-226
+**Status:** Confirmed — No API contract change
+
+A Knex seed script (`backend/src/seeds/test_user.js`) inserts a persistent staging test user:
+
+| Field | Value |
+|-------|-------|
+| `email` | `test@triplanner.local` |
+| `password` (plaintext) | `TestPass123!` |
+| `name` | `Test User` |
+
+The seed is idempotent — it uses an upsert (insert-or-ignore) so re-running it is safe. After seeding, the Monitor Agent and QA Engineer may use this account to obtain tokens via the **existing** `POST /api/v1/auth/login` endpoint — no new endpoint is introduced.
+
+**Relevant existing endpoint for Monitor Agent reference:**
+
+```
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "test@triplanner.local", "password": "TestPass123!" }
+```
+
+Expected response: `200 OK` with `access_token` in body and `refresh_token` in `Set-Cookie` header. Full contract is in the Sprint 1 section above.
+
+**No schema changes. No migrations. The `users` table (migration 001) already has all required columns.**
+
+---
+
+### Sprint 26 — Schema State (Unchanged)
+
+No new database migrations are introduced in Sprint 26.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–010 | 1–7 | Core tables, date ranges, nullable times, land travels, notes | ✅ Applied on Staging |
+| — | 8–26 | *(No new migrations through Sprint 26)* | Schema-stable |
+
+**Total migrations: 10 (001–010). All applied. No `knex migrate:latest` required for Sprint 26.**
+
+---
+
+### Sprint 26 — Complete Endpoint Inventory
+
+All contracts from Sprints 1–25 remain in force unchanged. Sprint 26 adds no new endpoints. The one behavioral amendment (T-221 cookie `SameSite`) is documented above.
+
+| Sprint | Endpoint | Status | Sprint 26 Notes |
+|--------|----------|--------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | **T-221: `Set-Cookie` uses `SameSite=None; Secure` in production** |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | **T-221: `Set-Cookie` uses `SameSite=None; Secure` in production**. Rate limiting unchanged (10 req/15min). |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | **T-221: `Set-Cookie` uses `SameSite=None; Secure` in production** |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | **T-221: Clear-cookie uses `SameSite=None; Secure` in production** |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Agreed, Applied on Staging | Unchanged |
+
+---
+
+*Sprint 26 contracts published by Backend Engineer 2026-03-11. No new endpoints. One behavioral amendment: T-221 changes the `Set-Cookie` cookie attributes on all four auth endpoints in the production environment only (`SameSite=None; Secure` instead of `SameSite=Strict`). This is required for cross-origin auth to work between `triplanner-frontend.onrender.com` and `triplanner-backend.onrender.com`. Dev/staging cookie behavior is unchanged. Test baseline entering Sprint 26: 340/340 backend | 486/486 frontend | 0 vulnerabilities.*
+
+---
+
+## Sprint 27 — API Contracts
+
+**Date:** 2026-03-11
+**Published by:** Backend Engineer
+**Sprint Goal:** Fix the CORS staging bug caused by ESM dotenv hoisting in `backend/src/index.js` (T-228 Fix B). No new features, no new API endpoints, no schema changes.
+
+---
+
+### Sprint 27 — No New API Endpoints
+
+Sprint 27 introduces **zero new API endpoints and zero schema changes**. The sole Backend Engineer task (T-228 Fix B) is a pure code refactor internal to `backend/src/index.js`. The existing API surface is entirely unchanged.
+
+| Task | Type | API Impact |
+|------|------|------------|
+| T-228 Fix B | Code refactor (ESM dotenv hoisting) | **Zero API surface change.** `backend/src/index.js` is refactored so that `dotenv.config()` loads before `app.js` is evaluated, ensuring `process.env.CORS_ORIGIN` is populated when the CORS middleware initialises. All endpoint signatures, request/response shapes, status codes, error codes, and auth logic remain unchanged. |
+
+---
+
+### T-228 — CORS Staging Fix: Technical Detail (Backend-Internal — No API Change)
+
+**Sprint:** 27
+**Task:** T-228 (Fix B — permanent code fix)
+**Status:** Confirmed — No API contract change
+**Auth Required:** N/A (internal refactor)
+
+#### Root Cause
+
+In `backend/src/index.js`, the top-level static ESM `import app from './app.js'` is hoisted by the JavaScript engine before any statement in the module body executes — including `dotenv.config()`. As a result, when `app.js` runs `cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' })`, `CORS_ORIGIN` is still `undefined`, and the fallback `'http://localhost:5173'` is permanently captured as the allowed origin.
+
+In the staging environment the correct value is `'https://localhost:4173'`, so every browser-initiated API call from the staging frontend is rejected with a CORS error.
+
+#### Fix B — Refactor Strategy
+
+Two acceptable approaches (implementer chooses one):
+
+**Option A — Dynamic import (preferred for ESM purity):**
+Convert the static `import app from './app.js'` to a dynamic `import()` inside an `async` IIFE that runs *after* `dotenv.config()`:
+
+```js
+import dotenv from 'dotenv';
+import { existsSync } from 'fs';
+
+// Load env FIRST — before any module that reads process.env is imported
+const nodeEnv = process.env.NODE_ENV;
+const envFile = nodeEnv ? `.env.${nodeEnv}` : null;
+if (envFile && existsSync(envFile)) {
+  dotenv.config({ path: envFile });
+} else {
+  dotenv.config();
+}
+
+// Now safe to import app (CORS_ORIGIN is populated)
+const { default: app } = await import('./app.js');
+
+// ... rest of server startup
+```
+
+**Option B — Move dotenv into app.js (simpler, no dynamic import):**
+Make `backend/src/app.js` the single source of truth for env loading. Add `dotenv.config()` as the very first statement in `app.js`, before any middleware or route imports. Remove the env loading block from `index.js`.
+
+#### Observable Behavior Change (Staging Only)
+
+After Fix B is applied and staging is restarted, requests from `https://localhost:4173` will receive:
+
+```
+Access-Control-Allow-Origin: https://localhost:4173
+Access-Control-Allow-Credentials: true
+```
+
+instead of the current incorrect:
+
+```
+Access-Control-Allow-Origin: http://localhost:5173
+```
+
+This is a **bug fix restoring correct behavior**, not a contract change. All endpoints behave identically; only the CORS response header is corrected to match the already-documented `CORS_ORIGIN` environment variable.
+
+#### New Test: CORS Origin from Environment Variable
+
+A new backend test (added as part of T-228) must assert that:
+
+- When `process.env.CORS_ORIGIN` is set, the CORS middleware reflects it in the `Access-Control-Allow-Origin` header
+- When `process.env.CORS_ORIGIN` is unset, the fallback `'http://localhost:5173'` is used
+
+This test covers the regression surface introduced by the hoisting bug.
+
+**Test locations:**
+- `backend/src/__tests__/cors.test.js` (new) — or added to an existing integration test suite
+
+**No schema changes. No migrations. No Deploy Engineer migration action required.**
+
+---
+
+### Sprint 27 — Schema State (Unchanged)
+
+No new database migrations are introduced in Sprint 27.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–010 | 1–7 | Core tables, date ranges, nullable times, land travels, notes | ✅ Applied on Staging |
+| — | 8–27 | *(No new migrations through Sprint 27)* | Schema-stable |
+
+**Total migrations: 10 (001–010). All applied. No `knex migrate:latest` required for Sprint 27.**
+
+---
+
+### Sprint 27 — Complete Endpoint Inventory
+
+All contracts from Sprints 1–26 remain in force unchanged. Sprint 27 adds no new endpoints.
+
+| Sprint | Endpoint | Status | Sprint 27 Notes |
+|--------|----------|--------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | Unchanged. T-228 fix: CORS header will now correctly reflect `CORS_ORIGIN` env var |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | Unchanged. Rate limiting (10 req/15min) unchanged. |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/health` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Agreed, Applied on Staging | Unchanged |
+
+---
+
+*Sprint 27 contracts published by Backend Engineer 2026-03-11. No new endpoints. No schema changes. T-228 Fix B is a pure internal code refactor to resolve ESM dotenv hoisting — the CORS middleware will correctly read `process.env.CORS_ORIGIN` once the fix is applied. All endpoint contracts remain in force from prior sprints. Test baseline entering Sprint 27: 355/355 backend | 486/486 frontend.*
+
+---
+
+## Sprint 28 Contracts
+
+---
+
+### T-229 — Trip Date COALESCE Fix (Behavior Correction for `start_date` / `end_date`)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 28 |
+| Task | T-229 |
+| Type | Bug Fix |
+| Status | **Agreed** *(automated sprint — self-approved per sprint rules)* |
+| Feedback Source | FB-113 |
+| Schema Changes | **None** — query-only fix; no new migration required |
+| New Endpoints | **None** |
+
+---
+
+#### Background — What Was Broken
+
+The `TRIP_COLUMNS` SQL constant in `backend/src/models/tripModel.js` defined `start_date` and `end_date` as **pure computed aggregates** — always using `LEAST()` / `GREATEST()` subqueries over flights, stays, activities, and land_travels. Migration `20260225_007_add_trip_date_range.js` (Sprint 16 / T-163) added `start_date DATE NULL` and `end_date DATE NULL` stored columns to the `trips` table, and `PATCH /api/v1/trips/:id` correctly writes user-provided values into those columns — but **TRIP_COLUMNS never read them back**. The aggregate subquery always overrode the stored values.
+
+**Symptom (FB-113):** A user calls `PATCH /api/v1/trips/:id` with `{"start_date": "2026-09-01", "end_date": "2026-09-30"}` on a trip with no sub-resources. The database `UPDATE` writes the dates correctly. But the response (and all subsequent GETs) returns `"start_date": null, "end_date": null` because LEAST/GREATEST over empty subqueries returns `NULL`. The "Set dates" UI on TripDetailsPage appears to silently discard the input.
+
+---
+
+#### The Fix
+
+The TRIP_COLUMNS SQL is updated to use `COALESCE`:
+
+```sql
+-- start_date (COALESCE — user-stored value takes precedence)
+TO_CHAR(
+  COALESCE(
+    trips.start_date,
+    LEAST(
+      (SELECT MIN(DATE(departure_at)) FROM flights      WHERE trip_id = trips.id),
+      (SELECT MIN(DATE(arrival_at))   FROM flights      WHERE trip_id = trips.id),
+      (SELECT MIN(DATE(check_in_at))  FROM stays        WHERE trip_id = trips.id),
+      (SELECT MIN(DATE(check_out_at)) FROM stays        WHERE trip_id = trips.id),
+      (SELECT MIN(activity_date)      FROM activities   WHERE trip_id = trips.id),
+      (SELECT MIN(departure_date)     FROM land_travels WHERE trip_id = trips.id),
+      (SELECT MIN(arrival_date)       FROM land_travels WHERE trip_id = trips.id)
+    )
+  ),
+  'YYYY-MM-DD'
+) AS start_date
+
+-- end_date (COALESCE — user-stored value takes precedence)
+TO_CHAR(
+  COALESCE(
+    trips.end_date,
+    GREATEST(
+      (SELECT MAX(DATE(departure_at)) FROM flights      WHERE trip_id = trips.id),
+      (SELECT MAX(DATE(arrival_at))   FROM flights      WHERE trip_id = trips.id),
+      (SELECT MAX(DATE(check_in_at))  FROM stays        WHERE trip_id = trips.id),
+      (SELECT MAX(DATE(check_out_at)) FROM stays        WHERE trip_id = trips.id),
+      (SELECT MAX(activity_date)      FROM activities   WHERE trip_id = trips.id),
+      (SELECT MAX(departure_date)     FROM land_travels WHERE trip_id = trips.id),
+      (SELECT MAX(arrival_date)       FROM land_travels WHERE trip_id = trips.id)
+    )
+  ),
+  'YYYY-MM-DD'
+) AS end_date
+```
+
+**Precedence rule (new canonical behavior):**
+1. If `trips.start_date` (stored) is non-null → return it as `start_date`
+2. Else → return the computed LEAST aggregate across sub-resources (or `null` if no sub-resources)
+
+Same rule applies to `end_date` via GREATEST.
+
+---
+
+#### Affected Endpoints — Behavior Change
+
+All four trip-returning endpoints share the `TRIP_COLUMNS` constant and are affected by this fix. **No signature changes** — method, path, query parameters, auth requirements, and response shape are identical to prior sprint contracts. Only the **semantic value** of `start_date` and `end_date` in responses changes.
+
+| Endpoint | Affected | Behavior Before Fix | Behavior After Fix |
+|----------|----------|--------------------|--------------------|
+| `GET /api/v1/trips` | ✅ | `start_date`/`end_date` always computed from sub-resources; user-stored values silently ignored | User-stored values take precedence; sub-resource aggregate used as fallback |
+| `POST /api/v1/trips` | ✅ | If `start_date`/`end_date` provided at creation but no sub-resources exist → response returns `null` | Response correctly returns user-provided values |
+| `GET /api/v1/trips/:id` | ✅ | Same as GET list | Same as GET list |
+| `PATCH /api/v1/trips/:id` | ✅ | User-provided `start_date`/`end_date` written to DB but overridden at read time → response returns `null` | Response correctly returns user-provided values |
+
+---
+
+#### Updated Date Semantics — All Trip Responses
+
+All trip objects returned by the four affected endpoints now follow this logic for `start_date` and `end_date`:
+
+| Scenario | `start_date` returned | `end_date` returned |
+|----------|----------------------|---------------------|
+| User set dates via PATCH, no sub-resources exist | User-stored value (e.g. `"2026-09-01"`) | User-stored value (e.g. `"2026-09-30"`) |
+| User set dates via PATCH, sub-resources exist with different dates | User-stored value (takes precedence) | User-stored value (takes precedence) |
+| User never set dates (`trips.start_date` is NULL), sub-resources exist | Computed LEAST across sub-resources | Computed GREATEST across sub-resources |
+| User never set dates, no sub-resources exist | `null` | `null` |
+| User explicitly cleared dates (`PATCH` with `start_date: null`) | `null` (sub-resource fallback applies if events exist) | `null` (sub-resource fallback applies if events exist) |
+
+**Key distinction:** Setting `start_date: null` via PATCH is the only way to re-enable sub-resource fallback. While `trips.start_date` is non-null, it always wins.
+
+---
+
+#### PATCH /api/v1/trips/:id — Reference Contract (Sprint 28 Behavior)
+
+This is a summary re-statement of the PATCH contract with the corrected behavior. The full contract is documented in Sprint 2 and Sprint 4 above; only the `start_date`/`end_date` return semantics change.
+
+**Method:** `PATCH`
+**Path:** `/api/v1/trips/:id`
+**Auth:** Bearer token (required)
+
+**Request Body (unchanged from prior sprints):**
+```json
+{
+  "name": "string (optional)",
+  "destinations": ["string array (optional)"],
+  "status": "PLANNING | ONGOING | COMPLETED (optional)",
+  "start_date": "YYYY-MM-DD | null (optional)",
+  "end_date": "YYYY-MM-DD | null (optional)"
+}
+```
+
+**Success Response — 200 OK (corrected behavior after T-229):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka"],
+    "status": "PLANNING",
+    "notes": null,
+    "start_date": "2026-09-01",
+    "end_date": "2026-09-30",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-03-11T10:00:00.000Z"
+  }
+}
+```
+
+> **Sprint 28 guarantee:** If the request body includes `"start_date": "2026-09-01"`, the response will return `"start_date": "2026-09-01"` — even if the trip has zero sub-resources. This was not guaranteed before T-229.
+
+**Error Responses (unchanged from Sprint 2/4 contracts):**
+
+| Status | Code | Condition |
+|--------|------|-----------|
+| 400 | `VALIDATION_ERROR` | `end_date` before `start_date`, invalid date format, no updatable fields provided |
+| 401 | `UNAUTHORIZED` | Missing or invalid Bearer token |
+| 403 | `FORBIDDEN` | Trip belongs to another user |
+| 404 | `NOT_FOUND` | Trip ID does not exist |
+
+---
+
+#### Test Requirements (new tests for T-229)
+
+The following tests must be written in `backend/src/__tests__/trips.test.js`:
+
+1. **Happy path — no sub-resources:**
+   - PATCH `/api/v1/trips/:id` with `{"start_date": "2026-09-01", "end_date": "2026-09-30"}` on a trip with no flights/stays/activities/land_travels
+   - Assert response `data.start_date === "2026-09-01"` and `data.end_date === "2026-09-30"` (not null)
+
+2. **Happy path — sub-resources present with different computed dates:**
+   - Create a trip; add a flight with `departure_at` in November 2026
+   - PATCH the trip with `{"start_date": "2026-09-01", "end_date": "2026-09-30"}`
+   - Assert response returns `"2026-09-01"` / `"2026-09-30"` (user values win over computed November dates)
+
+3. **Fallback to computed aggregate:**
+   - Create a trip where `trips.start_date` is NULL (never set); add a flight with `departure_at = "2026-08-15"`
+   - GET `/api/v1/trips/:id`
+   - Assert response `data.start_date === "2026-08-15"` (computed fallback)
+
+4. **All 363+ existing tests must continue to pass.** T-229 is a read-time behavior change only — no writes are affected. Existing tests should not break.
+
+---
+
+#### No Schema Changes (T-229)
+
+T-229 requires **no database migration**. The `trips.start_date` and `trips.end_date` columns already exist (added in migration `20260225_007_add_trip_date_range.js`). The COALESCE fix only changes the SELECT query in TRIP_COLUMNS — no DDL changes. No handoff to Deploy Engineer for a migration is required.
+
+---
+
+### Sprint 28 — All-Endpoints Reference
+
+All contracts from Sprints 1–27 remain in force unchanged. Sprint 28 adds no new endpoints and no schema changes.
+
+| Sprint | Endpoint | Status | Sprint 28 Notes |
+|--------|----------|--------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/auth/login` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/health` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | **T-229:** `start_date`/`end_date` now use COALESCE (user-stored → computed fallback). Response shape unchanged. |
+| 1 | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | **T-229:** If `start_date`/`end_date` provided at creation, response now correctly reflects them. |
+| 1 | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | **T-229:** `start_date`/`end_date` now use COALESCE (user-stored → computed fallback). Response shape unchanged. |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | **T-229 PRIMARY FIX:** User-provided `start_date`/`end_date` are now correctly returned in response. See corrected semantics above. |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Agreed, Applied on Staging | Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Agreed, Applied on Staging | Unchanged |
+
+---
+
+*Sprint 28 contracts published by Backend Engineer 2026-03-11. No new endpoints. No schema changes. T-229 is a pure SQL query correction (COALESCE on TRIP_COLUMNS) — the only API-observable change is that `start_date`/`end_date` in trip responses now correctly reflect user-stored values when present, rather than always returning computed sub-resource aggregates. Test baseline entering Sprint 28: 363/363 backend | 486/486 frontend.*

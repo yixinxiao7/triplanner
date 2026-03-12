@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from './StatusBadge';
-import { formatTripDateRange } from '../utils/formatDate';
+import { formatDateRange, formatDestinations } from '../utils/formatDate';
 import styles from './TripCard.module.css';
 
 /**
@@ -14,13 +14,22 @@ export default function TripCard({ trip, onDelete }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFading, setIsFading] = useState(false);
 
-  // Format destinations for display
-  const destinationsDisplay = Array.isArray(trip.destinations)
-    ? trip.destinations.join(', ')
-    : trip.destinations || '';
+  // Format destinations for display — truncates at 3 with "+N more" (Spec 18.4.1)
+  const rawDestinations = Array.isArray(trip.destinations)
+    ? trip.destinations
+    : trip.destinations
+      ? trip.destinations.split(',').map((d) => d.trim()).filter(Boolean)
+      : [];
+  const destinationsDisplay = formatDestinations(rawDestinations);
+  // Full list for tooltip when truncated (Spec 18.4.3)
+  const destinationsTitle = rawDestinations.length > 3
+    ? rawDestinations.join(', ')
+    : undefined;
 
-  // Format date range from trip.start_date / trip.end_date (Sprint 2 T-029)
-  const dateRange = formatTripDateRange(trip.start_date, trip.end_date);
+  // Format date range from trip.start_date / trip.end_date (Sprint 16 T-164)
+  // start_date and end_date are YYYY-MM-DD strings or null, computed by the backend
+  // from the earliest and latest dates across flights, stays, activities, and land travels.
+  const dateRange = formatDateRange(trip.start_date, trip.end_date);
 
   function handleCardClick(e) {
     if (confirmDelete) return; // Don't navigate if in confirmation state
@@ -117,9 +126,12 @@ export default function TripCard({ trip, onDelete }) {
           {/* Trip name */}
           <h2 className={styles.tripName}>{trip.name}</h2>
 
-          {/* Destinations */}
+          {/* Destinations — formatted with truncation (Spec 18.4) */}
           {destinationsDisplay && (
-            <p className={styles.destinations}>
+            <p
+              className={styles.destinations}
+              title={destinationsTitle}
+            >
               <span aria-hidden="true">🗺 </span>
               {destinationsDisplay}
             </p>
@@ -165,7 +177,7 @@ export default function TripCard({ trip, onDelete }) {
             {dateRange ? (
               <span>{dateRange}</span>
             ) : (
-              <span className={styles.datesNotSet}>dates not set</span>
+              <span className={styles.datesNotSet}>No dates yet</span>
             )}
           </div>
         </>
