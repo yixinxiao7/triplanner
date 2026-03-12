@@ -4,6 +4,99 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #28 — T-232 Staging Re-Deploy — 2026-03-12T01:14:00Z
+
+**Task:** T-232 (Deploy Engineer: Staging re-deploy with Sprint 28 changes — T-229 COALESCE fix)
+**Date:** 2026-03-12
+**Engineer:** Deploy Engineer
+**Sprint:** 28
+**Status:** ✅ DEPLOY COMPLETE
+
+---
+
+### Pre-Deploy Gate
+
+| Gate | Status |
+|------|--------|
+| QA T-231 handoff present in handoff-log.md | ✅ Confirmed |
+| `tripModel.js` COALESCE on `start_date` | ✅ Confirmed |
+| `tripModel.js` COALESCE on `end_date` | ✅ Confirmed |
+| No migrations required (query-only change) | ✅ Confirmed |
+
+---
+
+### Deploy Action
+
+```
+pm2 restart triplanner-backend
+```
+
+| Process | PID (before) | PID (after) | Status |
+|---------|-------------|------------|--------|
+| triplanner-backend | 70180 | 82174 | ✅ online |
+| triplanner-frontend | 64982 | 64982 | ✅ online (no restart needed) |
+
+Restart completed immediately. Backend process transitioned online without error.
+
+---
+
+### Smoke Tests — 4/4 PASS
+
+**1. GET /api/v1/health → 200 ✅**
+```
+curl -sk https://localhost:3001/api/v1/health
+→ {"status":"ok"}
+```
+
+**2. CORS header check ✅**
+```
+curl -sk -I https://localhost:3001/api/v1/health -H "Origin: https://localhost:4173"
+→ Access-Control-Allow-Origin: https://localhost:4173
+→ Access-Control-Allow-Credentials: true
+```
+
+**3. PATCH /api/v1/trips/:id with start_date/end_date (T-229 FB-113 fix) ✅**
+```
+POST /api/v1/auth/login → 200 + access_token (test@triplanner.local / TestPass123!)
+POST /api/v1/trips → 201 (Smoke Test Trip S28, no sub-resources)
+PATCH /api/v1/trips/:id {"start_date":"2026-09-01","end_date":"2026-09-30"}
+→ 200 OK
+→ "start_date": "2026-09-01"  ✅  (user-provided value returned — not null)
+→ "end_date":   "2026-09-30"  ✅  (user-provided value returned — not null)
+```
+**T-229 fix confirmed working on staging.**
+
+**4. GET /api/v1/trips (trip list) ✅**
+```
+GET /api/v1/trips
+→ 200 OK
+→ Smoke Test Trip S28: start_date="2026-09-01", end_date="2026-09-30" ✅
+```
+
+Smoke test trip deleted after verification (cleanup complete).
+
+---
+
+### Summary
+
+| Check | Result |
+|-------|--------|
+| pm2 restart triplanner-backend | ✅ Online (pid 82174) |
+| GET /api/v1/health | ✅ 200 {"status":"ok"} |
+| CORS header | ✅ https://localhost:4173 |
+| PATCH trip with dates (no sub-resources) | ✅ User dates returned |
+| GET /api/v1/trips (dates correct) | ✅ Verified |
+| Frontend (no restart needed) | ✅ Online (pid 64982) |
+
+**T-232: COMPLETE — Staging re-deployed successfully.**
+**FB-113 (trip date bug) fix is now live on staging.**
+
+→ Handoff to Monitor Agent (T-233) — see handoff-log.md.
+
+*Deploy Engineer Sprint #28 T-232 — 2026-03-12*
+
+---
+
 ## Sprint #28 — T-232 Deploy Status — 2026-03-11T00:00:00Z
 
 **Task:** T-232 (Deploy Engineer: Staging re-deploy with Sprint 28 changes)
@@ -159,6 +252,236 @@ No frontend rebuild needed. No database migrations needed.
 ---
 
 *Deploy Engineer Sprint #28 pre-deploy verification — 2026-03-11*
+
+---
+
+## Sprint #28 — T-231 QA Integration Check — 2026-03-11
+
+**Task:** T-231 (QA Engineer: Integration check + security checklist for T-229 COALESCE fix)
+**Date:** 2026-03-11
+**QA Engineer:** Sprint #28
+
+---
+
+### Test Type: Unit Test — Backend
+
+**Command:** `cd backend && npm test -- --run`
+**Result:** ✅ PASS — 377/377 tests, 21 test files
+
+| Test File | Tests | Result |
+|-----------|-------|--------|
+| `sprint28.test.js` | 6 | ✅ PASS |
+| `tripModel.coalesce.unit.test.js` | 8 | ✅ PASS |
+| `sprint26.test.js` | 15 | ✅ PASS (bcrypt timeout fix applied, ~386ms) |
+| `sprint25.test.js` | 15 | ✅ PASS |
+| `sprint20.test.js` | 17 | ✅ PASS |
+| `sprint19.test.js` | 9 | ✅ PASS |
+| `sprint16.test.js` | 12 | ✅ PASS |
+| `sprint7.test.js` | 19 | ✅ PASS |
+| `sprint6.test.js` | 51 | ✅ PASS |
+| `sprint5.test.js` | 28 | ✅ PASS |
+| `sprint4.test.js` | 19 | ✅ PASS |
+| `sprint3.test.js` | 33 | ✅ PASS |
+| `sprint2.test.js` | 37 | ✅ PASS |
+| `trips.test.js` | 16 | ✅ PASS |
+| `auth.test.js` | 14 | ✅ PASS |
+| `flights.test.js` | 10 | ✅ PASS |
+| `stays.test.js` | 8 | ✅ PASS |
+| `activities.test.js` | 12 | ✅ PASS |
+| `tripStatus.test.js` | 19 | ✅ PASS |
+| `calendarModel.unit.test.js` | 21 | ✅ PASS |
+| `cors.test.js` | 8 | ✅ PASS |
+| **TOTAL** | **377** | **✅ ALL PASS** |
+
+**Coverage Assessment:**
+- T-229 scenario (1): PATCH with dates, no sub-resources → user values returned — ✅ happy-path covered
+- T-229 scenario (2): PATCH with dates, with sub-resources → user values take precedence — ✅ happy-path covered
+- T-229 scenario (3): PATCH with null start_date → aggregate fallback returned — ✅ error/edge-path covered
+- SQL structure: COALESCE/LEAST/GREATEST presence for both `start_date` and `end_date` — ✅ verified
+
+---
+
+### Test Type: Unit Test — Frontend
+
+**Command:** `cd frontend && npm test -- --run`
+**Result:** ✅ PASS — 486/486 tests, 25 test files
+
+No frontend code changes in Sprint 28. All 486 baseline tests pass — zero regressions.
+
+---
+
+### Test Type: Integration Test — T-229 COALESCE Fix
+
+**Scope:** PATCH /api/v1/trips/:id behavior with user-provided start_date/end_date
+
+**Code Review — tripModel.js TRIP_COLUMNS:**
+
+- ✅ `COALESCE(trips.start_date, LEAST(<7 sub-resource MIN subqueries>))` confirmed on lines 61–74
+- ✅ `COALESCE(trips.end_date, GREATEST(<7 sub-resource MAX subqueries>))` confirmed on lines 76–92
+- ✅ Sub-resource tables referenced: `flights` (departure_at, arrival_at), `stays` (check_in_at, check_out_at), `activities` (activity_date), `land_travels` (departure_date, arrival_date) — all 4 tables, all correct columns
+- ✅ TO_CHAR `YYYY-MM-DD` formatting preserved around COALESCE result
+- ✅ No user input interpolated into `db.raw()` expressions (correlated subqueries use `trips.id` — internal DB value only)
+
+**API Contract Compliance (api-contracts.md Sprint 28 section):**
+- ✅ PATCH /api/v1/trips/:id with `start_date`/`end_date` → 200 OK with user values in response
+- ✅ Response shape unchanged from prior sprints
+- ✅ No new endpoints; no schema migration required
+- ✅ All prior endpoint contracts remain in force (verified by 363 baseline tests)
+
+**Auth Enforcement:**
+- ✅ `router.use(authenticate)` applied at router level — all /trips routes require JWT auth
+- ✅ Unauthorized requests correctly produce 401 (verified by existing auth tests)
+
+**Input Validation:**
+- ✅ Existing validation tests pass (400 for invalid date format, validation errors)
+- ✅ No injection vectors introduced — raw SQL uses only DB-internal correlated subqueries
+
+**UI States (Frontend):**
+- ✅ No frontend code changes in Sprint 28; all 486 existing tests pass — no regressions
+- ✅ TripCalendar self-contained fetch pattern documented in ui-spec.md (T-230 Done)
+
+**Result: ✅ INTEGRATION PASS**
+
+---
+
+### Config Consistency Check
+
+**Files checked:** `backend/.env`, `frontend/vite.config.js`, `infra/docker-compose.yml`
+
+| Check | backend/.env | vite.config.js | docker-compose.yml | Result |
+|-------|-------------|----------------|---------------------|--------|
+| Backend PORT | `PORT=3000` | default `BACKEND_PORT=3000` | `PORT: 3000` | ✅ Match |
+| SSL enabled | No (commented out) | default `http://` (BACKEND_SSL not set) | No TLS in Docker | ✅ Match |
+| CORS_ORIGIN (local dev) | `http://localhost:5173` | Vite dev server `port: 5173` | N/A (Docker uses nginx) | ✅ Match |
+| CORS_ORIGIN (Docker) | N/A | N/A | default `http://localhost` (nginx port 80) | ✅ Correct for Docker |
+
+**No config consistency issues found.**
+
+---
+
+### Test Type: Security Scan
+
+**npm audit (backend):** `cd backend && npm audit` → **0 vulnerabilities** ✅
+**npm audit (frontend):** `cd frontend && npm audit` → **0 vulnerabilities** ✅
+
+**Security Checklist — Sprint 28 Applicable Items:**
+
+| Item | Status | Notes |
+|------|--------|-------|
+| All API endpoints require appropriate authentication | ✅ | `router.use(authenticate)` on all /trips routes |
+| Auth tokens have appropriate expiration/refresh | ✅ | JWT_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d in .env |
+| Password hashing uses bcrypt | ✅ | bcrypt with 12 rounds (confirmed by sprint26.test.js) |
+| SQL queries use parameterized statements/query builder | ✅ | Knex query builder; `db.raw()` expressions use only internal DB values — no user input interpolated |
+| No SQL injection vectors in T-229 change | ✅ | COALESCE/LEAST/GREATEST subqueries reference `trips.id` only — not user-supplied input |
+| HTML output sanitized (XSS) | ✅ | No new HTML output paths introduced; API returns JSON |
+| CORS configured to allow only expected origins | ✅ | CORS_ORIGIN=http://localhost:5173 (dev); Docker: http://localhost |
+| API responses do not leak internal error details | ✅ | errorHandler middleware suppresses stack traces (existing) |
+| Database credentials stored in environment variables | ✅ | DATABASE_URL, JWT_SECRET in .env (not in code) |
+| No hardcoded secrets in new test files | ✅ | sprint28.test.js and tripModel.coalesce.unit.test.js use mock tokens only |
+| HTTPS enforced on staging | ✅ | SSL certs configured (pm2 staging — Sprint 27 verified) |
+| Dependencies checked for known vulnerabilities | ✅ | 0 vulnerabilities (backend + frontend npm audit) |
+
+**No security failures found.**
+
+---
+
+### QA Summary — Sprint 28 T-231
+
+| Gate | Result |
+|------|--------|
+| Backend unit tests (377/377) | ✅ PASS |
+| Frontend unit tests (486/486) | ✅ PASS |
+| COALESCE fix code review | ✅ VERIFIED |
+| Integration test — API contract compliance | ✅ PASS |
+| Integration test — auth enforcement | ✅ PASS |
+| Config consistency check | ✅ PASS |
+| Security checklist | ✅ PASS |
+| npm audit (0 critical/high) | ✅ PASS |
+
+**Overall: ✅ QA PASS — T-229 cleared for deployment.**
+
+T-231 → Done. T-232 (Deploy Engineer) → UNBLOCKED.
+
+*QA Engineer Sprint #28 T-231 — 2026-03-11*
+
+---
+
+## Sprint #28 — T-231 QA Re-Verification Pass — 2026-03-11
+
+**Task:** T-231 (QA Engineer: Re-verification pass — Sprint #28 orchestrator re-invocation)
+**Date:** 2026-03-11
+**QA Engineer:** Sprint #28 (Re-verification)
+**Scope:** Confirmed all Sprint 28 QA gates with live test runs after T-232 deploy.
+
+### Test Type: Unit Test — Backend (Re-run)
+
+**Command:** `cd backend && npm test -- --run`
+**Result:** ✅ PASS — 377/377 tests, 21 test files
+
+| Highlight | Tests | Result |
+|-----------|-------|--------|
+| `sprint28.test.js` | 6 | ✅ PASS (T-229 route-level scenarios 1–3) |
+| `tripModel.coalesce.unit.test.js` | 8 | ✅ PASS (SQL COALESCE structure verified) |
+| `sprint26.test.js` | 15 | ✅ PASS (bcrypt timeout fix active, ~2460ms total) |
+| All other test files | 348 | ✅ PASS |
+| **TOTAL** | **377** | **✅ ALL PASS** |
+
+---
+
+### Test Type: Unit Test — Frontend (Re-run)
+
+**Command:** `cd frontend && npm test -- --run`
+**Result:** ✅ PASS — 486/486 tests, 25 test files
+
+No frontend code changes in Sprint 28. Zero regressions confirmed.
+
+---
+
+### Test Type: Integration Test — T-229 COALESCE Fix (Re-verification)
+
+**Code verification — tripModel.js TRIP_COLUMNS (lines 59–95):**
+- ✅ `COALESCE(trips.start_date, LEAST(<7 MIN subqueries>))` confirmed at lines 61–74
+- ✅ `COALESCE(trips.end_date, GREATEST(<7 MAX subqueries>))` confirmed at lines 76–92
+- ✅ All 4 sub-resource tables referenced correctly (flights, stays, activities, land_travels)
+- ✅ No user input interpolated into raw SQL — no injection vectors
+- ✅ TO_CHAR `YYYY-MM-DD` formatting preserved
+
+**Auth enforcement:** `router.use(authenticate)` confirmed on trips, stays, flights, activities, calendar, landTravel routes.
+
+**Config consistency (re-check):**
+| Check | backend/.env | vite.config.js | docker-compose.yml | Result |
+|-------|-------------|----------------|---------------------|--------|
+| Backend PORT | `PORT=3000` | default `BACKEND_PORT=3000` | `PORT: 3000` | ✅ Match |
+| SSL | Commented out | `http://` default | No TLS | ✅ Match |
+| CORS_ORIGIN | `http://localhost:5173` | Vite dev port 5173 | nginx (port 80) | ✅ Correct |
+
+**Result: ✅ INTEGRATION PASS (re-verified)**
+
+---
+
+### Test Type: Security Scan (Re-run)
+
+**npm audit (backend):** `cd backend && npm audit` → **0 vulnerabilities** ✅
+**npm audit (frontend):** `cd frontend && npm audit` → **0 vulnerabilities** ✅
+**Hardcoded secrets check:** `grep -rn "password\s*=\|secret\s*="` in backend/src/ → **no hits** ✅
+**Auth middleware:** All protected routes apply `authenticate` via `router.use(authenticate)` ✅
+
+---
+
+### Re-Verification Summary — Sprint #28
+
+| Gate | Result |
+|------|--------|
+| Backend unit tests (377/377) | ✅ PASS |
+| Frontend unit tests (486/486) | ✅ PASS |
+| COALESCE fix code review | ✅ VERIFIED |
+| Config consistency | ✅ PASS |
+| Security checklist | ✅ PASS |
+| npm audit (0 vulnerabilities) | ✅ PASS |
+
+**Overall: ✅ QA RE-VERIFICATION PASS.** All prior QA gates (T-231, 2026-03-11) are confirmed still valid. No regressions. T-229 fix is confirmed live and correct. Sprint 28 pipeline status: T-229/T-230/T-231/T-232 Done; T-233 In Progress (Monitor Agent); T-234 Backlog.
+
+*QA Engineer Sprint #28 Re-Verification — 2026-03-11*
 
 ---
 

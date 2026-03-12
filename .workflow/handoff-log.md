@@ -4,6 +4,125 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-11] Manager Agent → (no action required)** *(Sprint #28 — CR-28D: Code Review Pass #4 — No tasks in review)*
+
+**From:** Manager Agent
+**To:** N/A
+**Re:** Sprint 28 code review pass #4 — no tasks in "In Review" status
+**Status:** ✅ COMPLETE — No handoffs needed
+
+**Findings:** Full grep scan of dev-cycle-tracker.md confirmed zero tasks in "In Review" status. This is pass #4. All Sprint 28 implementation work was reviewed and approved at CR-28 (2026-03-11). Pipeline is in downstream verification: T-233 (Monitor Agent) In Progress → T-234 (User Agent) blocked on T-233 → T-224/T-225 blocked on project owner provisioning.
+
+*Manager Agent Sprint #28 CR-28D — 2026-03-11*
+
+---
+
+**[2026-03-11] Frontend Engineer → (no action required)** *(Sprint #28 — No frontend tasks assigned)*
+
+**From:** Frontend Engineer
+**To:** N/A
+**Re:** Sprint 28 frontend task scan — no Frontend Engineer tasks exist in this sprint
+**Status:** ✅ NO-OP — No frontend work required
+
+**Findings:** Full review of `dev-cycle-tracker.md`, `active-sprint.md`, `ui-spec.md`, and `api-contracts.md` confirms Sprint 28 contains zero tasks assigned to the Frontend Engineer. All Sprint 28 work is:
+
+- **T-229** (Backend Engineer — Done): `tripModel.js` COALESCE fix — backend-only query change, no frontend code changes
+- **T-230** (Design Agent — Done): `ui-spec.md` documentation update — no frontend code changes
+- **T-231–T-234** (QA/Deploy/Monitor/User): Downstream verification phases — no frontend code changes
+
+The Deploy Engineer confirmed `pm2 restart triplanner-backend` ran with **no frontend rebuild needed** for Sprint 28. The frontend baseline (486/486 tests passing) remains unchanged from Sprint 27.
+
+**No API contracts were added or modified in Sprint 28.** No handoffs to QA are required from the Frontend Engineer for this sprint.
+
+*Frontend Engineer Sprint #28 — 2026-03-11*
+
+---
+
+**[2026-03-11] Deploy Engineer → (status pass — no new actions)** *(Sprint #28 — Deploy Engineer Status Check)*
+
+**From:** Deploy Engineer
+**To:** N/A
+**Re:** Deploy Engineer Sprint #28 status pass — all assigned tasks already complete or blocked
+**Status:** ✅ No new actions required
+
+**Deploy Engineer task board — Sprint #28:**
+
+| Task | Status | Notes |
+|------|--------|-------|
+| T-232 — Staging re-deploy | ✅ Done (2026-03-12) | `pm2 restart triplanner-backend` completed; all 4 smoke tests passed; FB-113 fix live on staging; Monitor Agent (T-233) unblocked |
+| T-224 — Production deployment | ⛔ Blocked | **PROJECT OWNER ACTION REQUIRED (3rd escalation):** Requires (1) AWS RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier) and (2) Render account access to apply `render.yaml` Blueprint. All engineering is complete and production-ready. No agent can provision cloud infrastructure — this is a human-only gate. |
+| T-225 — Post-production health check | Backlog | Assigned to Monitor Agent; blocked by T-224 |
+
+**Current pipeline state:**
+- T-233 (Monitor Agent: Staging health check) is **In Progress** — unblocked by T-232
+- T-234 (User Agent: Sprint 28 verification) is **Backlog** — blocked by T-233
+- T-224/T-225 remain blocked pending project owner action
+
+**No new Deploy Engineer work to perform this invocation.** Pipeline is proceeding normally through Monitor Agent → User Agent phases. Awaiting project owner to unblock T-224 for production deployment.
+
+*Deploy Engineer Sprint #28 Status Pass — 2026-03-11*
+
+---
+
+**[2026-03-11] Manager Agent → (no action required)** *(Sprint #28 — CR-28C: Code Review Pass #3 — No tasks in review)*
+
+**From:** Manager Agent
+**To:** N/A
+**Re:** Sprint 28 code review pass #3 — no tasks in "In Review" status
+**Status:** ✅ COMPLETE — No handoffs needed
+
+**Findings:** Full scan of dev-cycle-tracker.md confirms zero tasks in "In Review" status. Prior passes CR-28 and CR-28B covered all Sprint 28 implementation work (T-229). Pipeline is progressing normally through Monitor Agent (T-233 In Progress) → User Agent (T-234 Backlog).
+
+*Manager Agent Sprint #28 CR-28C — 2026-03-11*
+
+---
+
+**[2026-03-12] Deploy Engineer → Monitor Agent** *(Sprint #28 — T-232 COMPLETE: Staging Re-Deployed → T-233 Unblocked)*
+
+**From:** Deploy Engineer
+**To:** Monitor Agent
+**Re:** T-232 Staging re-deploy complete — T-229 COALESCE fix is live on staging — T-233 is now unblocked
+**Status:** ✅ DEPLOY COMPLETE — Proceed with T-233
+
+**What was deployed:**
+- `pm2 restart triplanner-backend` — Backend restarted with T-229 COALESCE fix for trip dates (FB-113)
+- No frontend rebuild needed — zero frontend code changes in Sprint 28
+- No database migrations required — T-229 is a pure query-time change, no schema changes
+
+**All smoke tests passed (Deploy Engineer pre-verified):**
+
+| Smoke Test | Result |
+|------------|--------|
+| GET /api/v1/health → 200 | ✅ `{"status":"ok"}` |
+| CORS: `Access-Control-Allow-Origin: https://localhost:4173` | ✅ Confirmed |
+| PATCH /api/v1/trips/:id `{"start_date":"2026-09-01","end_date":"2026-09-30"}` (no sub-resources) | ✅ Response: `start_date: "2026-09-01"`, `end_date: "2026-09-30"` |
+| GET /api/v1/trips — trip shows correct user dates | ✅ Confirmed |
+
+**T-229 (FB-113) fix confirmed live:** User-provided trip dates are now returned correctly by the backend. The "Set dates" UI on TripDetailsPage should be functional end-to-end.
+
+**Monitor Agent actions required (T-233):**
+
+Run the full Sprint 28 health check protocol:
+
+1. `GET /api/v1/health` → 200 ✅
+2. CORS header → `https://localhost:4173` ✅
+3. Login with `test@triplanner.local` / `TestPass123!` → 200 + access_token ✅
+4. `GET /api/v1/trips` → 200 ✅
+5. `GET /api/v1/trips/:id/calendar` → 200 ✅
+6. Playwright: `npx playwright test` → 4/4 PASS ✅
+7. **Sprint 28 specific:** `PATCH /api/v1/trips/:id` with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` on a trip with no sub-resources → response `start_date: "2026-09-01"`, `end_date: "2026-09-30"` ✅
+
+Log results in `qa-build-log.md` Sprint 28 section and hand off to User Agent (T-234) when complete.
+
+**Staging environment state:**
+- Backend: `https://localhost:3001` — pm2 online (pid 82174), Sprint 28 code active ✅
+- Frontend: `https://localhost:4173` — pm2 online (pid 64982), unchanged from Sprint 27 baseline ✅
+- Database: All 10 migrations applied, no pending migrations ✅
+
+*Deploy Engineer Sprint #28 T-232 → T-233 Handoff — 2026-03-12*
+
+---
+
 **[2026-03-11] Manager Agent → QA Engineer** *(Sprint #28 — Code Review Pass #2 — No Action Required)*
 
 **From:** Manager Agent (code review pass #2)
@@ -4995,4 +5114,90 @@ All **377/377** backend tests pass with the fix applied.
 No code logic was changed. T-229 (COALESCE fix) remains exactly as approved by Manager in CR-28.
 
 *Backend Engineer Sprint #28 Addendum — 2026-03-11*
+
+---
+
+## Handoff: QA Engineer → Deploy Engineer
+**Task:** T-231 Complete → T-232 Unblocked (Sprint 28)
+**From:** QA Engineer
+**To:** Deploy Engineer (T-232)
+**Status:** ✅ QA PASS — Ready for Deploy
+**Date:** 2026-03-11
+
+### QA Pass Summary
+
+All Sprint 28 gates have cleared. T-229 (tripModel.js COALESCE fix for FB-113) is fully verified and approved for deployment.
+
+| Gate | Result |
+|------|--------|
+| Backend tests: 377/377 | ✅ PASS |
+| Frontend tests: 486/486 | ✅ PASS |
+| COALESCE fix code verification | ✅ CONFIRMED |
+| Integration test — API contract | ✅ PASS |
+| Integration test — auth enforcement | ✅ PASS |
+| Config consistency (PORT, SSL, CORS) | ✅ PASS |
+| Security checklist | ✅ PASS |
+| npm audit — 0 vulnerabilities (backend + frontend) | ✅ PASS |
+
+### What Was Verified
+
+- `backend/src/models/tripModel.js` TRIP_COLUMNS: `COALESCE(trips.start_date, LEAST(...))` and `COALESCE(trips.end_date, GREATEST(...))` confirmed on disk.
+- All 3 T-229 test scenarios pass: (1) user dates returned with no sub-resources, (2) user dates take precedence over sub-resource aggregates, (3) null start_date falls back to aggregate.
+- `sprint28.test.js` (6 tests) and `tripModel.coalesce.unit.test.js` (8 tests) all pass.
+- No new endpoints, no schema migrations required.
+- No hardcoded secrets. No SQL injection vectors. Auth middleware confirmed on all /trips routes.
+- Config consistency: PORT=3000 consistent across backend/.env, vite.config.js, docker-compose.yml. CORS_ORIGIN=http://localhost:5173 for local dev is correct.
+
+### Deploy Engineer Actions (T-232)
+
+1. `pm2 restart triplanner-backend` — restart backend to load T-229 COALESCE fix
+2. `npm run build` in frontend/ — rebuild (no frontend code changes; bundle will be identical)
+3. Restart frontend process
+4. Smoke test: `GET /api/v1/health → 200`; `PATCH /api/v1/trips/:id` with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` → response must show those exact dates
+5. Log results in `qa-build-log.md` Sprint 28 section
+6. Unblock T-233 (Monitor Agent) once staging is live
+
+### No Blockers
+
+T-232 is fully unblocked. No migration needed. Pre-deploy verification was already completed by the Deploy Engineer (2026-03-11) — pm2 is online and HTTPS staging is healthy.
+
+*QA Engineer Sprint #28 T-231 → T-232 Handoff — 2026-03-11*
+
+---
+
+## Handoff: QA Engineer → (No Action Required — Sprint 28 Re-Verification)
+**From:** QA Engineer
+**To:** Pipeline Coordinator / Deploy Engineer (informational)
+**Sprint:** 28
+**Date:** 2026-03-11
+**Status:** ✅ QA RE-VERIFICATION COMPLETE — No Regressions
+
+### Re-Verification Context
+
+QA Engineer was re-invoked by the orchestrator for Sprint #28. T-231 was already Done (prior QA pass on 2026-03-11). This pass re-ran all tests live to confirm no regressions since T-232 (staging re-deploy).
+
+### Live Test Results (Re-run)
+
+| Gate | Result |
+|------|--------|
+| Backend unit tests (377/377) | ✅ PASS |
+| Frontend unit tests (486/486) | ✅ PASS |
+| COALESCE fix code verification | ✅ CONFIRMED |
+| Config consistency (PORT, SSL, CORS) | ✅ PASS |
+| Security checklist | ✅ PASS |
+| npm audit — 0 vulnerabilities (backend + frontend) | ✅ PASS |
+
+### Current Sprint 28 Task Board
+
+- T-229: ✅ Done — COALESCE fix live, QA-verified
+- T-230: ✅ Done — ui-spec.md TripCalendar updated
+- T-231: ✅ Done — QA integration check complete (re-verified 2026-03-11)
+- T-232: ✅ Done — Staging re-deployed, FB-113 fix live
+- T-233: 🔄 In Progress — Monitor Agent health check
+- T-234: Backlog — blocked on T-233
+- T-224: ⛔ Blocked — project owner must provision AWS RDS + Render (3rd escalation)
+
+**No action required.** Pipeline is proceeding normally. Deploy Engineer (T-232) is Done. Monitor Agent (T-233) is In Progress.
+
+*QA Engineer Sprint #28 Re-Verification — 2026-03-11*
 
