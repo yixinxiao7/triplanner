@@ -14,6 +14,11 @@ import calendarRoutes from './routes/calendar.js';
 
 const app = express();
 
+// Render (and most cloud platforms) sit behind a load-balancer that sets
+// X-Forwarded-For.  Without this, express-rate-limit throws
+// ERR_ERL_UNEXPECTED_X_FORWARDED_FOR and cannot resolve the real client IP.
+app.set('trust proxy', 1);
+
 // ---- Security middleware ----
 app.use(helmet());
 app.use(
