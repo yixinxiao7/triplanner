@@ -15,6 +15,39 @@ Triplanner is a travel planning hub where users can organize all the details of 
 
 **Tech stack:** React 18 + Vite (frontend), Express + Node.js (backend), PostgreSQL + Knex.js (database), JWT authentication
 
+## System Architecture
+
+```mermaid
+graph TB
+    User(["🌐 User\n(Browser)"])
+
+    subgraph Render ["☁️ Render — Ohio Region"]
+        FE["📦 Frontend\nReact 18 + Vite\nStatic Site"]
+        BE["⚙️ Backend\nNode.js + Express\nWeb Service"]
+    end
+
+    subgraph AWS ["☁️ AWS"]
+        DB[("🗄️ PostgreSQL 15\nAWS RDS")]
+    end
+
+    UR["👁️ UptimeRobot\nHTTP Monitor\n(every 5 min)"]
+
+    User -->|"HTTPS"| FE
+    FE -->|"REST API /api/v1\nJWT auth"| BE
+    BE -->|"Knex.js · SSL"| DB
+    UR -->|"GET /api/v1/health"| BE
+    UR -->|"⚠️ Email alert on down"| User
+```
+
+| Component | Technology | Hosting |
+|-----------|-----------|---------|
+| Frontend | React 18 + Vite (SPA) | Render — Static Site |
+| Backend | Node.js + Express REST API | Render — Web Service |
+| Database | PostgreSQL 15 | AWS RDS |
+| Monitoring | UptimeRobot HTTP monitor | Cloud (uptimerobot.com) |
+
+**Request flow:** The browser loads the React SPA from Render's static CDN. All API calls go from the frontend to the Express backend (also on Render) via HTTPS, authenticated with short-lived JWT access tokens (15 min) and rotating refresh tokens (7 days). The backend connects to AWS RDS over an SSL-encrypted connection using Knex.js. UptimeRobot pings `/api/v1/health` every 5 minutes and sends an email alert if the backend goes down.
+
 ## How the Multi-Agent Framework Works
 
 This project uses a **multi-agent orchestration system** where eight AI agents — each with a specialized role — collaborate to build the application. The agents don't talk to each other directly. Instead, they communicate through structured markdown files in the `.workflow/` directory: task trackers, handoff logs, API contracts, UI specs, and feedback logs.
