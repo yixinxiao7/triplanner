@@ -18,25 +18,24 @@ Triplanner is a travel planning hub where users can organize all the details of 
 ## System Architecture
 
 ```mermaid
-graph TB
-    User(["🌐 User\n(Browser)"])
+graph LR
+    User(["🌐 User<br/>(Browser)"])
+    UR["👁️ UptimeRobot<br/>HTTP Monitor<br/>(every 5 min)"]
 
-    subgraph Render ["☁️ Render — Ohio Region"]
-        FE["📦 Frontend\nReact 18 + Vite\nStatic Site"]
-        BE["⚙️ Backend\nNode.js + Express\nWeb Service"]
+    subgraph Render ["☁️ Render"]
+        FE["📦 Frontend<br/>React 18 + Vite<br/>Static Site"]
+        BE["⚙️ Backend<br/>Node.js + Express<br/>Web Service"]
     end
 
     subgraph AWS ["☁️ AWS"]
-        DB[("🗄️ PostgreSQL 15\nAWS RDS")]
+        DB[("🗄️ PostgreSQL 15<br/>AWS RDS")]
     end
 
-    UR["👁️ UptimeRobot\nHTTP Monitor\n(every 5 min)"]
-
     User -->|"HTTPS"| FE
-    FE -->|"REST API /api/v1\nJWT auth"| BE
+    FE -->|"REST API /api/v1<br/>JWT auth"| BE
     BE -->|"Knex.js · SSL"| DB
     UR -->|"GET /api/v1/health"| BE
-    UR -->|"⚠️ Email alert on down"| User
+    UR -.->|"⚠️ email alert on down"| User
 ```
 
 | Component | Technology | Hosting |
