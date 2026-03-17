@@ -99,6 +99,11 @@
   --event-flight-hover: rgba(93, 115, 126, 0.35);
   --event-stay-hover: rgba(100, 160, 120, 0.3);
   --event-activity-hover: rgba(180, 140, 80, 0.28);
+  /* Sprint 30 — T-243: LAND_TRAVEL calendar event tokens */
+  --event-land-travel-bg:     rgba(123, 107, 142, 0.2);
+  --event-land-travel-border: #7B6B8E;
+  --event-land-travel-text:   #7B6B8E;
+  --event-land-travel-hover:  rgba(123, 107, 142, 0.3);
 }
 
 /* ============================================================

@@ -9,13 +9,96 @@ import styles from './FlightsEditPage.module.css';
 // ── Helpers ─────────────────────────────────────────────────
 
 /**
- * Format an ISO UTC datetime string for a datetime-local input: "YYYY-MM-DDTHH:MM"
- * We use the stored UTC time directly (it represents local wall-clock time at the location).
+ * T-241: Convert a UTC ISO string to a datetime-local input value (YYYY-MM-DDTHH:MM)
+ * in the given IANA timezone, so the edit form shows the correct LOCAL wall-clock time.
+ *
+ * e.g., ("2026-08-07T10:50:00.000Z", "America/New_York") → "2026-08-07T06:50"
+ *
+ * If no timezone is provided (fallback for old data), strips the Z and returns the UTC
+ * time directly (legacy behaviour — avoids showing an empty input).
  */
-function toDatetimeLocal(isoString) {
+function toDatetimeLocal(isoString, ianaTimezone) {
   if (!isoString) return '';
-  // Strip timezone info and seconds: "2026-08-07T10:00:00.000Z" → "2026-08-07T10:00"
-  return isoString.replace('Z', '').replace(/\.\d{3}$/, '').slice(0, 16);
+  if (!ianaTimezone) {
+    // Legacy fallback: strip Z/milliseconds and return UTC time
+    return isoString.replace('Z', '').replace(/\.\d{3}$/, '').slice(0, 16);
+  }
+  try {
+    const date = new Date(isoString);
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: ianaTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(date);
+    const get = (type) => parts.find((p) => p.type === type)?.value ?? '00';
+    const year  = get('year');
+    const month = get('month');
+    const day   = get('day');
+    let   hour  = get('hour');
+    const min   = get('minute');
+    // Intl may return '24' for midnight on some platforms
+    if (hour === '24') hour = '00';
+    return `${year}-${month}-${day}T${hour}:${min}`;
+  } catch {
+    return isoString.replace('Z', '').replace(/\.\d{3}$/, '').slice(0, 16);
+  }
+}
+
+/**
+ * T-241: Build an ISO 8601 datetime string with the correct UTC offset for the given
+ * IANA timezone. This ensures PostgreSQL stores the value in UTC rather than treating
+ * the naive local time as UTC (the root cause of the 4-hour shift in FB-131).
+ *
+ * e.g., ("2026-08-07T06:50", "America/New_York") → "2026-08-07T06:50:00-04:00"
+ *
+ * Algorithm: format the entered datetime as UTC first, then compute what local time
+ * that UTC instant produces in the target timezone. The difference gives the UTC offset.
+ * This approach is correct for the vast majority of cases; the edge case at a DST
+ * boundary (where the same wall-clock time occurs twice) is acceptable for trip planning.
+ */
+function toISOWithOffset(localDatetimeStr, ianaTimezone) {
+  if (!localDatetimeStr) return '';
+  if (!ianaTimezone) return localDatetimeStr + ':00Z'; // safe fallback
+  try {
+    const [datePart, timePart] = localDatetimeStr.split('T');
+    const [year, month, day]   = datePart.split('-').map(Number);
+    const [hour, minute]       = timePart.split(':').map(Number);
+
+    // Treat the entered datetime as a UTC reference instant
+    const utcRef = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+
+    // Format that UTC instant in the target timezone to find the local components
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: ianaTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).formatToParts(utcRef);
+    const get = (type) => parseInt(parts.find((p) => p.type === type)?.value ?? '0', 10);
+    let localH = get('hour');
+    if (localH === 24) localH = 0;
+
+    const localAsUTC = Date.UTC(get('year'), get('month') - 1, get('day'), localH, get('minute'), 0);
+
+    // offset (minutes) = local_time_as_utc_ms - utc_ref_ms
+    const offsetMin = Math.round((localAsUTC - utcRef.getTime()) / 60000);
+    const sign      = offsetMin >= 0 ? '+' : '-';
+    const absMin    = Math.abs(offsetMin);
+    const offH      = String(Math.floor(absMin / 60)).padStart(2, '0');
+    const offM      = String(absMin % 60).padStart(2, '0');
+
+    return `${localDatetimeStr}:00${sign}${offH}:${offM}`;
+  } catch {
+    return localDatetimeStr + ':00Z';
+  }
 }
 
 // ── Toast Component ─────────────────────────────────────────
@@ -192,9 +275,10 @@ function FlightForm({ tripId, editFlight, onSaved, onCancelEdit }) {
         airline: editFlight.airline || '',
         from_location: editFlight.from_location || '',
         to_location: editFlight.to_location || '',
-        departure_at: toDatetimeLocal(editFlight.departure_at),
+        // T-241: pass the IANA timezone so toDatetimeLocal converts UTC → local
+        departure_at: toDatetimeLocal(editFlight.departure_at, editFlight.departure_tz),
         departure_tz: editFlight.departure_tz || '',
-        arrival_at: toDatetimeLocal(editFlight.arrival_at),
+        arrival_at: toDatetimeLocal(editFlight.arrival_at, editFlight.arrival_tz),
         arrival_tz: editFlight.arrival_tz || '',
       });
       setErrors({});
@@ -249,15 +333,18 @@ function FlightForm({ tripId, editFlight, onSaved, onCancelEdit }) {
 
     setSaving(true);
     try {
-      // Send datetime-local value with :00 seconds appended + Z suffix to indicate UTC/wall-clock
+      // T-241: build ISO 8601 strings with the correct UTC offset for the selected
+      // IANA timezone. This prevents PostgreSQL from treating the local wall-clock
+      // time as UTC, which caused the ~4-hour shift in FB-131.
+      // e.g., "2026-08-07T06:50" + "America/New_York" → "2026-08-07T06:50:00-04:00"
       const payload = {
         flight_number: form.flight_number.trim(),
         airline: form.airline.trim(),
         from_location: form.from_location.trim(),
         to_location: form.to_location.trim(),
-        departure_at: form.departure_at + ':00.000Z',
+        departure_at: toISOWithOffset(form.departure_at, form.departure_tz),
         departure_tz: form.departure_tz,
-        arrival_at: form.arrival_at + ':00.000Z',
+        arrival_at: toISOWithOffset(form.arrival_at, form.arrival_tz),
         arrival_tz: form.arrival_tz,
       };
 

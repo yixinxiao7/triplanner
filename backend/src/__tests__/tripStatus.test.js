@@ -1,21 +1,18 @@
 /**
- * Unit tests for computeTripStatus (T-030)
+ * Unit tests for computeTripStatus (T-030, updated T-238 Sprint 30)
  *
- * Tests the pure status auto-calculation logic directly, without route or DB involvement.
- * computeTripStatus is exported from tripModel.js and called by findTripById / listTripsByUser.
+ * T-238 change: computeTripStatus() is now a pass-through that always returns the
+ * trip unchanged. The date-based auto-compute (PLANNING / ONGOING / COMPLETED
+ * derived from start_date / end_date) was removed because it silently overrode
+ * user-set status values on every read (FB-130 root cause).
  *
- * Auto-calculation rules:
- *   - Both start_date AND end_date must be non-null; otherwise stored status is returned
- *   - end_date < today              → COMPLETED
- *   - start_date <= today <= end_date → ONGOING
- *   - start_date > today            → PLANNING
+ * Status is now always the stored DB value, controlled exclusively by the user
+ * via PATCH /trips/:id.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock the database module so importing tripModel.js doesn't attempt a DB connection.
-// TRIP_COLUMNS in tripModel.js calls db.raw() at module load time, so the mock must
-// expose a `raw` method (or any method that won't throw on import).
 vi.mock('../config/database.js', () => ({
   default: {
     raw: vi.fn((sql) => ({ toSQL: () => sql, __raw: sql })),
@@ -23,20 +20,6 @@ vi.mock('../config/database.js', () => ({
 }));
 
 import { computeTripStatus } from '../models/tripModel.js';
-
-// ---- Fixed "today" for deterministic tests ----
-// We pin today to 2026-02-25 (the current sprint date) so tests are stable.
-const FIXED_TODAY = '2026-02-25';
-
-let dateSpy;
-beforeEach(() => {
-  // Override Date.prototype to return a fixed "now" for toISOString()
-  dateSpy = vi.spyOn(Date.prototype, 'toISOString').mockReturnValue(`${FIXED_TODAY}T00:00:00.000Z`);
-});
-
-afterEach(() => {
-  dateSpy.mockRestore();
-});
 
 // ---- Helper ----
 function makeTrip(overrides = {}) {
@@ -55,7 +38,7 @@ function makeTrip(overrides = {}) {
 }
 
 // =============================================================================
-// Guard clauses
+// Guard clauses — undefined / null input
 // =============================================================================
 
 describe('computeTripStatus — null/undefined guard', () => {
@@ -69,11 +52,11 @@ describe('computeTripStatus — null/undefined guard', () => {
 });
 
 // =============================================================================
-// No dates — fall back to stored status
+// Stored status always returned — no dates
 // =============================================================================
 
 describe('computeTripStatus — null dates → stored status unchanged', () => {
-  it('returns stored status when both start_date and end_date are null', () => {
+  it('returns stored PLANNING when both dates are null', () => {
     const trip = makeTrip({ status: 'PLANNING', start_date: null, end_date: null });
     expect(computeTripStatus(trip).status).toBe('PLANNING');
   });
@@ -94,128 +77,79 @@ describe('computeTripStatus — null dates → stored status unchanged', () => {
   });
 
   it('returns stored status when only end_date is set (start_date null)', () => {
-    // Even if end_date is in the past, auto-calc requires BOTH dates
     const trip = makeTrip({ status: 'ONGOING', start_date: null, end_date: '2025-01-01' });
     expect(computeTripStatus(trip).status).toBe('ONGOING');
   });
 });
 
 // =============================================================================
-// Both dates set — COMPLETED (end_date < today)
+// T-238 — Stored status always returned even when both dates are present
 // =============================================================================
 
-describe('computeTripStatus — COMPLETED (trip already ended)', () => {
-  it('returns COMPLETED when end_date is before today', () => {
-    const trip = makeTrip({
-      status: 'PLANNING',
-      start_date: '2025-11-01',
-      end_date: '2025-11-07',   // 2025-11-07 < 2026-02-25 → COMPLETED
-    });
-    expect(computeTripStatus(trip).status).toBe('COMPLETED');
-  });
-
-  it('returns COMPLETED even when stored status was PLANNING', () => {
-    const trip = makeTrip({
-      status: 'PLANNING',
-      start_date: '2020-01-01',
-      end_date: '2020-01-10',
-    });
-    expect(computeTripStatus(trip).status).toBe('COMPLETED');
-  });
-
-  it('returns COMPLETED for end_date === yesterday', () => {
-    const trip = makeTrip({
-      status: 'ONGOING',
-      start_date: '2026-02-20',
-      end_date: '2026-02-24',   // yesterday → COMPLETED
-    });
-    expect(computeTripStatus(trip).status).toBe('COMPLETED');
-  });
-
-  it('does NOT mutate the original trip object', () => {
+describe('computeTripStatus — both dates present → stored status STILL returned (T-238)', () => {
+  it('returns stored PLANNING even when dates are in the past (would have been COMPLETED before fix)', () => {
+    // Before T-238 fix this would have returned COMPLETED. Now stored status wins.
     const trip = makeTrip({
       status: 'PLANNING',
       start_date: '2025-01-01',
       end_date: '2025-01-07',
     });
-    const result = computeTripStatus(trip);
-    expect(result.status).toBe('COMPLETED');
-    expect(trip.status).toBe('PLANNING');   // original unchanged
-  });
-});
-
-// =============================================================================
-// Both dates set — ONGOING (today is within the range)
-// =============================================================================
-
-describe('computeTripStatus — ONGOING (trip in progress)', () => {
-  it('returns ONGOING when today is within [start_date, end_date]', () => {
-    const trip = makeTrip({
-      status: 'PLANNING',
-      start_date: '2026-02-20',   // before today (2026-02-25)
-      end_date: '2026-02-28',     // after today
-    });
-    expect(computeTripStatus(trip).status).toBe('ONGOING');
+    expect(computeTripStatus(trip).status).toBe('PLANNING');
   });
 
-  it('returns ONGOING when start_date === today', () => {
+  it('returns stored COMPLETED even when start_date is in the future (would have been PLANNING before fix)', () => {
     const trip = makeTrip({
-      status: 'PLANNING',
-      start_date: '2026-02-25',   // = today
-      end_date: '2026-03-05',
-    });
-    expect(computeTripStatus(trip).status).toBe('ONGOING');
-  });
-
-  it('returns ONGOING when end_date === today', () => {
-    const trip = makeTrip({
-      status: 'PLANNING',
-      start_date: '2026-02-20',
-      end_date: '2026-02-25',     // = today
-    });
-    expect(computeTripStatus(trip).status).toBe('ONGOING');
-  });
-
-  it('returns ONGOING when start_date === end_date === today (single-day trip)', () => {
-    const trip = makeTrip({
-      status: 'PLANNING',
-      start_date: '2026-02-25',
-      end_date: '2026-02-25',
-    });
-    expect(computeTripStatus(trip).status).toBe('ONGOING');
-  });
-});
-
-// =============================================================================
-// Both dates set — PLANNING (trip is in the future)
-// =============================================================================
-
-describe('computeTripStatus — PLANNING (trip not yet started)', () => {
-  it('returns PLANNING when start_date is after today', () => {
-    const trip = makeTrip({
-      status: 'ONGOING',          // stored status doesn't matter when dates present
+      status: 'COMPLETED',
       start_date: '2027-06-01',
       end_date: '2027-06-14',
     });
+    expect(computeTripStatus(trip).status).toBe('COMPLETED');
+  });
+
+  it('returns stored ONGOING even when dates are entirely in the past', () => {
+    const trip = makeTrip({
+      status: 'ONGOING',
+      start_date: '2020-01-01',
+      end_date: '2020-01-10',
+    });
+    expect(computeTripStatus(trip).status).toBe('ONGOING');
+  });
+
+  it('returns stored PLANNING even when dates span today (would have been ONGOING before fix)', () => {
+    const trip = makeTrip({
+      status: 'PLANNING',
+      start_date: '2026-01-01',
+      end_date: '2030-12-31',
+    });
     expect(computeTripStatus(trip).status).toBe('PLANNING');
   });
 
-  it('returns PLANNING for start_date = tomorrow', () => {
+  it('returns stored COMPLETED even when trip is currently active', () => {
     const trip = makeTrip({
       status: 'COMPLETED',
-      start_date: '2026-02-26',   // tomorrow
-      end_date: '2026-03-01',
+      start_date: '2026-01-01',
+      end_date: '2030-12-31',
     });
-    expect(computeTripStatus(trip).status).toBe('PLANNING');
+    expect(computeTripStatus(trip).status).toBe('COMPLETED');
   });
 });
 
 // =============================================================================
-// Return object shape — other fields preserved
+// Return object shape — same reference returned, all fields preserved
 // =============================================================================
 
-describe('computeTripStatus — returned object preserves all other fields', () => {
-  it('preserves id, name, destinations, user_id, dates, timestamps', () => {
+describe('computeTripStatus — returns same object reference unchanged', () => {
+  it('returns the same object reference for a trip with dates', () => {
+    const trip = makeTrip({ start_date: '2025-01-01', end_date: '2025-01-07' });
+    expect(computeTripStatus(trip)).toBe(trip);
+  });
+
+  it('returns the same object reference for a trip without dates', () => {
+    const trip = makeTrip({ start_date: null, end_date: null });
+    expect(computeTripStatus(trip)).toBe(trip);
+  });
+
+  it('preserves all fields: id, name, destinations, user_id, dates, timestamps', () => {
     const trip = makeTrip({
       status: 'PLANNING',
       start_date: '2025-01-01',
@@ -232,10 +166,11 @@ describe('computeTripStatus — returned object preserves all other fields', () 
     expect(result.updated_at).toBe(trip.updated_at);
   });
 
-  it('when no dates — returns same object reference (no copy made)', () => {
-    const trip = makeTrip({ start_date: null, end_date: null });
+  it('does NOT mutate the original trip object', () => {
+    const trip = makeTrip({ status: 'PLANNING', start_date: '2025-01-01', end_date: '2025-01-07' });
     const result = computeTripStatus(trip);
-    // Without dates, function returns the original object reference unchanged
+    // Same reference — no copy is made. Status is not changed.
     expect(result).toBe(trip);
+    expect(result.status).toBe('PLANNING');
   });
 });

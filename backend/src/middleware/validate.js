@@ -98,6 +98,25 @@ export function validate(schema) {
         }
       }
 
+      // isoDateWithOffset — like isoDate but requires an explicit UTC offset or Z suffix.
+      // Naive strings without a timezone (e.g. "2026-08-07T06:50:00") are rejected with a
+      // descriptive error. This is enforced on flight departure_at / arrival_at to prevent
+      // the UTC double-conversion bug (FB-131 / T-240).
+      if (rules.type === 'isoDateWithOffset') {
+        const hasOffset = typeof value === 'string' && /(Z|[+-]\d{2}:\d{2})$/.test(value);
+        const isValidDate = typeof value === 'string' && !isNaN(Date.parse(value));
+        if (!isValidDate) {
+          fieldErrors[field] = rules.messages?.type ||
+            `${field} must be a valid ISO 8601 datetime string with timezone offset (e.g., 2026-08-07T06:50:00-04:00)`;
+          continue;
+        }
+        if (!hasOffset) {
+          fieldErrors[field] = rules.messages?.offset ||
+            `${field} must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-07T06:50:00-04:00)`;
+          continue;
+        }
+      }
+
       if (rules.type === 'dateString') {
         if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || isNaN(Date.parse(value))) {
           fieldErrors[field] = rules.messages?.type || `${field} must be a valid date in YYYY-MM-DD format`;

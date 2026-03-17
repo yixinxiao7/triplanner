@@ -4,6 +4,46 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-17] Deploy Engineer → QA Engineer** *(Sprint #30 — Build Phase — T-246 Blocked on QA — Staging Environment Pre-Checked)*
+
+**From:** Deploy Engineer
+**To:** QA Engineer
+**Re:** Sprint 30 build phase infrastructure check — T-246 blocked on T-244/T-245 — staging healthy and ready
+**Status:** ⚠️ BLOCKED — T-246 cannot proceed until QA confirms T-244 and T-245 complete
+
+**Summary:**
+
+Deploy Engineer has been invoked in the Sprint 30 build phase. Both infrastructure tasks for Sprint 30 remain blocked:
+
+| Task | Status | Blocker |
+|------|--------|---------|
+| T-246 (Sprint 30 staging re-deploy) | Backlog — Blocked | T-245 (QA Integration Testing) not yet complete; T-244 (QA Security Checklist) not yet complete; T-239/T-241/T-243 (frontend implementation) not yet complete |
+| T-224 (Production deployment to Render + AWS RDS) | Blocked | Project owner has not provisioned AWS RDS PostgreSQL instance or Render account — **5th consecutive sprint escalation** |
+
+**Pre-deploy verification performed:**
+
+| Check | Result |
+|-------|--------|
+| QA confirmation in handoff-log.md (T-244/T-245) | ❌ NOT YET — QA has not run Sprint 30 checks |
+| Pending migrations (technical-context.md) | ✅ NONE — Sprint 30 is schema-stable; all 10 migrations (001–010) applied |
+| Current staging backend health (GET /api/v1/health) | ✅ 200 `{"status":"ok"}` — Sprint 29 build still online |
+| pm2 process: triplanner-backend | ✅ online (uptime 11h) |
+| pm2 process: triplanner-frontend | ✅ online (uptime 11h) |
+
+**No deploy action taken.** Per rules: "Never deploy without QA confirmation in the handoff log."
+
+**Action required from QA Engineer:**
+After T-239, T-241, T-243 (frontend implementation) and T-238, T-240, T-242 (backend implementation) are all marked Done, proceed with:
+1. **T-244** — Run security checklist + code review for all Sprint 30 tasks; run full backend + frontend test suites; log in qa-build-log.md
+2. **T-245** — Run integration testing (7+ scenarios: status PATCH round-trip, flight timezone, LAND_TRAVEL calendar, T-229 COALESCE regression, Playwright 4/4); log in qa-build-log.md
+3. After both pass: log handoff to Deploy Engineer in handoff-log.md so T-246 can proceed
+
+**When QA confirms:** Deploy Engineer will rebuild frontend (`npm run build`) and reload pm2 services for Sprint 30.
+
+*Deploy Engineer Sprint #30 — Build Phase — 2026-03-17*
+
+---
+
 **[2026-03-17] Backend Engineer → Frontend Engineer** *(Sprint #30 — API Contracts Ready — T-238, T-240, T-242)*
 
 **From:** Backend Engineer
@@ -6042,4 +6082,128 @@ QA Engineer was re-invoked by the orchestrator for Sprint #28. T-231 was already
 **No action required.** Pipeline is proceeding normally. Deploy Engineer (T-232) is Done. Monitor Agent (T-233) is In Progress.
 
 *QA Engineer Sprint #28 Re-Verification — 2026-03-11*
+
+---
+
+## Handoff: Backend Engineer → QA Engineer
+**Date:** 2026-03-17
+**Sprint:** 30
+**Status:** Ready for Review
+**From:** Backend Engineer
+**To:** QA Engineer
+
+### Tasks Completed
+
+| Task | Description | Files Changed |
+|------|-------------|---------------|
+| T-238 | Fix trip status persistence — `computeTripStatus()` date-override removed | `backend/src/models/tripModel.js`, `backend/src/__tests__/tripStatus.test.js` |
+| T-240 | Fix flight timezone — naive datetime strings rejected with 400 | `backend/src/middleware/validate.js`, `backend/src/routes/flights.js` |
+| T-242 | Add LAND_TRAVEL events to calendar endpoint | `backend/src/models/calendarModel.js`, `backend/src/__tests__/calendarModel.unit.test.js` |
+| Tests | Sprint 30 integration test suite | `backend/src/__tests__/sprint30.test.js` |
+
+### Test Baseline
+**402/402 backend tests passing** (was 363 entering Sprint 30 — 39 new tests added)
+
+### What to Test — T-238 (Trip Status Persistence)
+
+1. `PATCH /trips/:id {"status":"ONGOING"}` on trip with future `start_date`/`end_date` → 200, `data.status === "ONGOING"` (previously returned "PLANNING")
+2. All three transitions: PLANNING→ONGOING, ONGOING→COMPLETED, COMPLETED→PLANNING round-trip correctly
+3. Invalid status → 400 VALIDATION_ERROR
+4. Regression: existing trip CRUD tests pass
+
+### What to Test — T-240 (Flight Timezone)
+
+1. `POST /trips/:id/flights` with naive `departure_at` (no offset, e.g. `"2026-08-07T06:50:00"`) → 400, `fields.departure_at` contains "timezone offset"
+2. Same for naive `arrival_at` → 400
+3. Offset string (e.g. `"2026-08-07T06:50:00-04:00"`) → 201 accepted
+4. Z suffix (e.g. `"2026-08-07T10:50:00Z"`) → 201 accepted
+5. `PATCH /trips/:id/flights/:id` with naive datetime → 400
+6. Staging round-trip: POST with offset → GET returns UTC ISO string, frontend converts correctly
+
+### What to Test — T-242 (LAND_TRAVEL Calendar Events)
+
+1. `GET /trips/:id/calendar` with land travel → response includes `{type:"LAND_TRAVEL"}` events
+2. Event shape: `id` starts with `"land-travel-"`, `title` = `"{mode} — {from} → {to}"`, `timezone` = null
+3. `arrival_date` null → `end_date` falls back to `start_date`
+4. Null times → `start_time`/`end_time` null
+5. Mixed types (FLIGHT + LAND_TRAVEL + STAY + ACTIVITY) sorted correctly
+6. No land travels → no LAND_TRAVEL events, other types unaffected
+
+### Security Self-Check (completed)
+- ✅ No SQL concatenation — all Knex parameterized queries
+- ✅ `isoDateWithOffset` regex only used for format validation, no injection surface
+- ✅ No new env vars or secrets
+- ✅ No new endpoints — changes to existing routes/models only
+
+*Backend Engineer Sprint #30 — 2026-03-17*
+
+---
+
+## Handoff: Backend Engineer → Frontend Engineer
+**Date:** 2026-03-17
+**Sprint:** 30
+**Status:** API Ready — T-239, T-241, T-243 unblocked
+**From:** Backend Engineer
+**To:** Frontend Engineer
+
+### T-239 — TripStatusSelector (unblocked)
+
+Backend T-238 is complete. `PATCH /trips/:id {"status":"ONGOING"}` now reliably returns `data.status === "ONGOING"` regardless of whether `start_date`/`end_date` are present. Confirm frontend sends `status` in PATCH body and updates local state from the API response.
+
+### T-241 — Flight timezone display (unblocked)
+
+Backend T-240 is complete. **Action required in FlightForm:**
+- `departure_at`/`arrival_at` sent to POST/PATCH **must** include a UTC offset (e.g. `"2026-08-07T06:50:00-04:00"`) or `Z`. Naive strings → 400.
+- GET responses return UTC ISO strings (e.g. `"2026-08-07T10:50:00.000Z"`).
+- Display: use `Intl.DateTimeFormat` with `departure_tz`/`arrival_tz` — one conversion only, no additional offset shift.
+
+### T-243 — LAND_TRAVEL in TripCalendar (unblocked)
+
+Backend T-242 is complete. `GET /trips/:id/calendar` now includes `LAND_TRAVEL` events. Shape:
+```json
+{
+  "id": "land-travel-{uuid}",
+  "type": "LAND_TRAVEL",
+  "title": "TRAIN — Tokyo → Osaka",
+  "start_date": "2026-08-12",
+  "end_date": "2026-08-12",
+  "start_time": "10:00",
+  "end_time": "12:30",
+  "timezone": null,
+  "source_id": "{uuid}"
+}
+```
+Add a `LAND_TRAVEL` branch to TripCalendar event rendering per Spec 26 in ui-spec.md.
+
+*Backend Engineer Sprint #30 — 2026-03-17*
+
+
+---
+
+## Handoff: Design Agent → Frontend Engineer (Sprint 30)
+**From:** Design Agent
+**To:** Frontend Engineer
+**Sprint:** 30
+**Date:** 2026-03-17
+**Status:** ✅ Specs Ready
+
+Spec 26 (TripCalendar LAND_TRAVEL integration) approved for T-243. T-239 and T-241 are behavioral bug fixes — no new visual specs required.
+
+---
+
+## API Contract Acknowledgment: Frontend Engineer — Sprint 30
+**From:** Frontend Engineer
+**Sprint:** 30
+**Date:** 2026-03-17
+**Status:** ✅ Acknowledged
+
+### Contracts Reviewed
+
+| Task | Endpoint | Contract Change | Acknowledged |
+|------|----------|-----------------|--------------|
+| T-238/T-239 | `PATCH /api/v1/trips/:id` | Status field MUST reflect patched value; `computeTripStatus()` date-override removed. Frontend PATCH already sends `{ status }`. Frontend now reads API response status back to confirm. | ✅ |
+| T-240/T-241 | `POST/PATCH /api/v1/trips/:id/flights` | `departure_at`/`arrival_at` MUST include UTC offset (e.g., `-04:00`). Naive strings rejected with 400. Frontend now builds ISO with offset using IANA tz. GET returns UTC ISO; frontend converts with `Intl.DateTimeFormat`. | ✅ |
+| T-242/T-243 | `GET /api/v1/trips/:id/calendar` | `LAND_TRAVEL` added as new event type. Shape: `{ type, title, start_date, end_date, start_time, end_time, timezone: null, source_id }`. Frontend renders LAND_TRAVEL pill with mode+time label, click-to-scroll to #land-travels-section. | ✅ |
+
+All three contracts reviewed and implementation proceeding per spec.
 

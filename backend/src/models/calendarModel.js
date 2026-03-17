@@ -106,6 +106,32 @@ function stayToEvent(stay) {
 }
 
 /**
+ * Transform a raw land_travel DB row into a calendar event object.
+ *
+ * Land travels have DATE / TIME columns (not TIMESTAMPTZ) so no UTC conversion
+ * is required — the values are used directly after normalization.
+ *
+ * T-242 (Sprint 30)
+ *
+ * @param {Object} landTravel
+ * @returns {Object}
+ */
+function landTravelToEvent(landTravel) {
+  return {
+    id: `land-travel-${landTravel.id}`,
+    type: 'LAND_TRAVEL',
+    title: `${landTravel.mode} — ${landTravel.from_location} → ${landTravel.to_location}`,
+    start_date: landTravel.departure_date,
+    // If arrival_date is null (same-day or unknown), fall back to departure_date
+    end_date: landTravel.arrival_date ?? landTravel.departure_date,
+    start_time: normalizeTime(landTravel.departure_time),
+    end_time: normalizeTime(landTravel.arrival_time),
+    timezone: null,
+    source_id: landTravel.id,
+  };
+}
+
+/**
  * Transform a raw activity DB row into a calendar event object.
  * Activities are always single-day and have no timezone.
  *
@@ -169,16 +195,18 @@ function compareEvents(a, b) {
 
 /**
  * Fetch and aggregate all calendar events for a trip, merging flights, stays,
- * and activities into a unified, chronologically ordered list.
+ * activities, and land travels into a unified, chronologically ordered list.
  *
- * Queries all three sub-resource tables in parallel for performance. Transformation
+ * Queries all four sub-resource tables in parallel for performance. Transformation
  * and sorting happen in JavaScript to keep the DB layer thin.
+ *
+ * T-242 (Sprint 30) — added land_travels to the query set.
  *
  * @param {string} tripId - UUID of the trip
  * @returns {Promise<Array>} Sorted array of calendar event objects
  */
 export async function getCalendarEvents(tripId) {
-  const [flights, stays, activities] = await Promise.all([
+  const [flights, stays, activities, landTravels] = await Promise.all([
     db('flights')
       .where({ trip_id: tripId })
       .select('id', 'airline', 'flight_number', 'from_location', 'to_location',
@@ -197,12 +225,28 @@ export async function getCalendarEvents(tripId) {
         'start_time',
         'end_time',
       ),
+
+    // T-242 — land_travels use DATE/TIME columns; TO_CHAR ensures YYYY-MM-DD strings
+    // instead of JS Date objects (same pattern as activityModel uses for activity_date).
+    db('land_travels')
+      .where({ trip_id: tripId })
+      .select(
+        'id',
+        'mode',
+        'from_location',
+        'to_location',
+        db.raw("TO_CHAR(departure_date, 'YYYY-MM-DD') AS departure_date"),
+        'departure_time',
+        db.raw("TO_CHAR(arrival_date, 'YYYY-MM-DD') AS arrival_date"),
+        'arrival_time',
+      ),
   ]);
 
   const events = [
     ...flights.map(flightToEvent),
     ...stays.map(stayToEvent),
     ...activities.map(activityToEvent),
+    ...landTravels.map(landTravelToEvent),
   ];
 
   events.sort(compareEvents);

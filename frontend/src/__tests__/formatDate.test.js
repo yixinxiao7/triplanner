@@ -54,6 +54,33 @@ describe('formatDate', () => {
   });
 });
 
+// ── T-241: formatDateTime UTC→local (FB-131 flight timezone fix) ──────────────
+describe('formatDateTime — T-241 timezone round-trip', () => {
+  // Acceptance test from the T-240/T-241 API contract:
+  //   Frontend sends "2026-08-07T06:50:00-04:00" (America/New_York, EDT = UTC-4)
+  //   PostgreSQL stores as UTC: "2026-08-07T10:50:00Z"
+  //   GET returns "2026-08-07T10:50:00.000Z"
+  //   Frontend displays: 6:50 AM (in America/New_York timezone)
+
+  it('[T-241] formats stored UTC time to correct local time (no double-conversion)', () => {
+    const utcIso = '2026-08-07T10:50:00.000Z';
+    const result = formatDateTime(utcIso, 'America/New_York');
+    // Should show 6:50 AM in Eastern Time (UTC-4 in August = EDT)
+    expect(result).toContain('6:50 AM');
+    expect(result).toContain('Aug 7, 2026');
+  });
+
+  it('[T-241] single Intl conversion — does not double-shift by applying tz twice', () => {
+    // If double-conversion were present, "2026-08-07T10:50:00.000Z" + "America/New_York"
+    // would first produce "2026-08-07T06:50" then apply ET again → "2026-08-07T02:50 AM"
+    const utcIso = '2026-08-07T10:50:00.000Z';
+    const result = formatDateTime(utcIso, 'America/New_York');
+    // Must NOT show the doubly-converted wrong time
+    expect(result).not.toContain('2:50 AM');
+    expect(result).not.toContain('2:50');
+  });
+});
+
 // ── T-164 / Spec 25: formatDateRange(startDate, endDate) YYYY-MM-DD ──────────
 describe('formatDateRange', () => {
   // Test 25.F — unit tests for all 5 output cases

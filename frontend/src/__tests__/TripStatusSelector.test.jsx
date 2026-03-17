@@ -273,6 +273,46 @@ describe('TripStatusSelector', () => {
     expect(badge).toBeDefined();
   });
 
+  // ── T-239: API response status used (not just sent value) ────
+
+  it('[T-239] badge reflects status returned by API response (not just sent value)', async () => {
+    // Simulate the API returning the confirmed status (matches sent value after T-238 fix)
+    api.trips.update.mockResolvedValueOnce({
+      data: { data: { id: TRIP_ID, status: 'ONGOING' } },
+    });
+    renderSelector('PLANNING');
+
+    fireEvent.click(screen.getByRole('button', { name: /Trip status/i }));
+    const options = screen.getAllByRole('option');
+    const ongoingOption = options.find((o) => o.textContent.includes('ONGOING'));
+    fireEvent.click(ongoingOption);
+
+    await waitFor(() => {
+      // Badge must show the status from the API response
+      expect(screen.getByText('ONGOING')).toBeDefined();
+    });
+  });
+
+  it('[T-239] PATCH request body includes { status } field', async () => {
+    api.trips.update.mockResolvedValueOnce({
+      data: { data: { id: TRIP_ID, status: 'COMPLETED' } },
+    });
+    renderSelector('PLANNING');
+
+    fireEvent.click(screen.getByRole('button', { name: /Trip status/i }));
+    const options = screen.getAllByRole('option');
+    const completedOption = options.find((o) => o.textContent.includes('COMPLETED'));
+    fireEvent.click(completedOption);
+
+    await waitFor(() => {
+      // Verify the PATCH call body has the status field
+      expect(api.trips.update).toHaveBeenCalledWith(
+        TRIP_ID,
+        expect.objectContaining({ status: 'COMPLETED' })
+      );
+    });
+  });
+
   // ── initialStatus sync ────────────────────────────────────
 
   it('syncs currentStatus when initialStatus prop changes (not loading)', () => {

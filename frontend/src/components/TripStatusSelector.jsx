@@ -123,8 +123,14 @@ export default function TripStatusSelector({ tripId, initialStatus, onStatusChan
     setIsLoading(true);
 
     try {
-      await api.trips.update(tripId, { status: newStatus });
-      onStatusChange(newStatus);
+      // T-239: read the API response and use the confirmed status value.
+      // After the T-238 backend fix, the response status always matches what
+      // was sent — but reading it explicitly ensures the UI reflects the
+      // backend's authoritative value.
+      const res = await api.trips.update(tripId, { status: newStatus });
+      const confirmedStatus = res?.data?.data?.status ?? newStatus;
+      setCurrentStatus(confirmedStatus);
+      onStatusChange(confirmedStatus);
     } catch {
       // Revert on failure and show error toast
       setCurrentStatus(previousStatus);

@@ -65,6 +65,10 @@
   background: var(--event-activity-border);
 }
 
+.legendDotLandTravel {
+  background: var(--event-land-travel-border);
+}
+
 .legendText {
   font-size: 10px;
   font-weight: 600;
@@ -271,6 +275,25 @@
 
 .eventPillActivity .eventPillText {
   color: var(--event-activity-text);
+}
+
+/* Sprint 30 — T-243: LAND_TRAVEL pill */
+.eventPillLandTravel {
+  background: var(--event-land-travel-bg);
+  border-left-color: var(--event-land-travel-border);
+}
+
+.eventPillLandTravel:hover {
+  background: var(--event-land-travel-hover);
+}
+
+.eventPillLandTravel:focus-visible {
+  outline: 2px solid var(--event-land-travel-border);
+  outline-offset: 1px;
+}
+
+.eventPillLandTravel .eventPillText {
+  color: var(--event-land-travel-text);
 }
 
 .overflowLabel {

@@ -53,7 +53,8 @@ function getInitialMonth(events) {
 function buildEventsMap(events) {
   const map = {};
   for (const event of events) {
-    if (event.type === 'FLIGHT' || event.type === 'ACTIVITY') {
+    // T-243: LAND_TRAVEL events are single-day (backend emits one event per day)
+    if (event.type === 'FLIGHT' || event.type === 'ACTIVITY' || event.type === 'LAND_TRAVEL') {
       const d = event.start_date;
       if (!map[d]) map[d] = [];
       map[d].push({ ...event, _dayType: 'single' });
@@ -97,7 +98,38 @@ function getSectionId(type) {
   if (type === 'FLIGHT') return 'flights-section';
   if (type === 'STAY') return 'stays-section';
   if (type === 'ACTIVITY') return 'activities-section';
+  if (type === 'LAND_TRAVEL') return 'land-travels-section';
   return null;
+}
+
+/**
+ * T-243: Convert a raw LAND_TRAVEL mode enum to a display label.
+ * "RENTAL_CAR" → "Rental Car", "BUS" → "Bus", "TRAIN" → "Train"
+ */
+function formatLandTravelMode(rawMode) {
+  if (!rawMode) return '';
+  return rawMode
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/**
+ * T-243: Build the pill label text for a LAND_TRAVEL event.
+ *   - title format: "{MODE} — {from} → {to}"
+ *   - pill format:  "{Mode} {dep_time}–{arr_time}" or "{Mode} {dep_time}" or "{Mode}"
+ */
+function buildLandTravelPillText(event) {
+  // Extract raw mode from title (first segment before " — ")
+  const rawMode = event.title ? event.title.split(' \u2014 ')[0] : '';
+  const mode = formatLandTravelMode(rawMode) || 'Land Travel';
+
+  const depTime = formatTime(event.start_time);
+  const arrTime = formatTime(event.end_time);
+
+  if (!depTime) return mode;
+  if (!arrTime || event.start_time === event.end_time) return `${mode} ${depTime}`;
+  return `${mode} ${depTime}\u2013${arrTime}`;
 }
 
 // ── Mobile Day List ───────────────────────────────────────────
@@ -108,7 +140,8 @@ function MobileDayList({ events, displayedMonth }) {
   const daysWithEvents = useMemo(() => {
     const dayMap = {};
     for (const event of events) {
-      if (event.type === 'FLIGHT' || event.type === 'ACTIVITY') {
+      // T-243: LAND_TRAVEL is single-day (backend emits one event per day)
+      if (event.type === 'FLIGHT' || event.type === 'ACTIVITY' || event.type === 'LAND_TRAVEL') {
         const [ey, em] = event.start_date.split('-').map(Number);
         if (ey === year && em - 1 === month) {
           if (!dayMap[event.start_date]) dayMap[event.start_date] = [];
@@ -151,23 +184,33 @@ function MobileDayList({ events, displayedMonth }) {
             <div className={styles.mobileDayLabel}>{dayLabel}</div>
             <hr className={styles.mobileDaySep} aria-hidden="true" />
             {dayEvents.map((ev, i) => {
-              const icon = ev.type === 'FLIGHT' ? '✈' : ev.type === 'STAY' ? '⌂' : '●';
+              const icon = ev.type === 'FLIGHT' ? '✈'
+                : ev.type === 'STAY' ? '⌂'
+                : ev.type === 'LAND_TRAVEL' ? '→'
+                : '●';
               const timeStr = formatTime(ev.start_time);
               const sectionId = getSectionId(ev.type);
               const typeClass = ev.type === 'FLIGHT' ? styles.mobileEventFlight
                 : ev.type === 'STAY' ? styles.mobileEventStay
+                : ev.type === 'LAND_TRAVEL' ? styles.mobileEventLandTravel
                 : styles.mobileEventActivity;
+              // T-243: land travel uses the compact pill label in mobile too
+              const displayTitle = ev.type === 'LAND_TRAVEL'
+                ? buildLandTravelPillText(ev)
+                : ev.title;
               return (
                 <button
                   key={i}
                   type="button"
                   className={`${styles.mobileEventRow} ${typeClass}`}
-                  aria-label={`${ev.type.charAt(0) + ev.type.slice(1).toLowerCase()}: ${ev.title}`}
+                  aria-label={ev.type === 'LAND_TRAVEL'
+                    ? `Land travel: ${ev.title} — scroll to land travel section`
+                    : `${ev.type.charAt(0) + ev.type.slice(1).toLowerCase()}: ${ev.title}`}
                   onClick={() => sectionId && scrollToSection(sectionId)}
                 >
                   <span className={styles.mobileEventIcon}>{icon}</span>
                   {timeStr && <span className={styles.mobileEventTime}>{timeStr}</span>}
-                  <span className={styles.mobileEventTitle}>{ev.title}</span>
+                  <span className={styles.mobileEventTitle}>{displayTitle}</span>
                 </button>
               );
             })}
@@ -309,6 +352,7 @@ export default function TripCalendar({ tripId }) {
     if (event.type === 'FLIGHT') pillClass += ` ${styles.eventPillFlight}`;
     else if (event.type === 'STAY') pillClass += ` ${styles.eventPillStay}`;
     else if (event.type === 'ACTIVITY') pillClass += ` ${styles.eventPillActivity}`;
+    else if (event.type === 'LAND_TRAVEL') pillClass += ` ${styles.eventPillLandTravel}`;
 
     // Stay pill border-radius based on position
     let pillStyle = {};
@@ -320,6 +364,31 @@ export default function TripCalendar({ tripId }) {
       } else if (event._dayType === 'middle') {
         pillStyle = { borderRadius: 0, borderLeft: 'none' };
       }
+    }
+
+    // T-243: LAND_TRAVEL pills use a dedicated label builder and scroll to land-travels-section
+    if (event.type === 'LAND_TRAVEL') {
+      const pillText = buildLandTravelPillText(event);
+      const ariaLabel = `Land travel: ${event.title} — scroll to land travel section`;
+      return (
+        <button
+          key={idx}
+          type="button"
+          className={pillClass}
+          aria-label={ariaLabel}
+          role="button"
+          tabIndex={0}
+          onClick={() => document.getElementById('land-travels-section')?.scrollIntoView({ behavior: 'smooth' })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              document.getElementById('land-travels-section')?.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+        >
+          <span className={styles.eventPillText}>{pillText}</span>
+        </button>
+      );
     }
 
     const ariaLabel = `${event.type.charAt(0) + event.type.slice(1).toLowerCase()}: ${event.title}${timeStr ? `, ${timeStr}${endTimeStr ? `–${endTimeStr}` : ''}` : ''}`;
@@ -365,6 +434,10 @@ export default function TripCalendar({ tripId }) {
           <span className={styles.legendItem}>
             <span className={`${styles.legendDot} ${styles.legendDotActivity}`} aria-hidden="true" />
             <span className={styles.legendText}>Activity</span>
+          </span>
+          <span className={styles.legendItem}>
+            <span className={`${styles.legendDot} ${styles.legendDotLandTravel}`} aria-hidden="true" />
+            <span className={styles.legendText}>Land Travel</span>
           </span>
         </div>
       </div>
