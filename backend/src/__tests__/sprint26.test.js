@@ -31,10 +31,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // ============================================================================
 
 describe('T-220 — knexfile.js production config', () => {
-  it('production block has ssl.rejectUnauthorized === false', async () => {
-    const { default: knexConfig } = await import('../config/knexfile.js');
-    expect(knexConfig.production.connection.ssl).toBeDefined();
-    expect(knexConfig.production.connection.ssl.rejectUnauthorized).toBe(false);
+  it('production block has ssl.rejectUnauthorized === false (remote URL)', async () => {
+    // buildConnectionConfig decomposes remote URLs into host/port/ssl fields.
+    // We test this directly because the local DATABASE_URL in .env returns a
+    // plain string (local dev path) — a remote URL exercises the SSL branch.
+    const { buildConnectionConfig } = await import('../config/knexfile.js');
+    const remoteUrl = 'postgres://appuser:secret@rds.example.com:5432/triplanner';
+    const config = buildConnectionConfig(remoteUrl);
+    expect(config.ssl).toBeDefined();
+    expect(config.ssl.rejectUnauthorized).toBe(false);
   });
 
   it('production block has pool.max === 5', async () => {
@@ -47,10 +52,16 @@ describe('T-220 — knexfile.js production config', () => {
     expect(knexConfig.production.pool.min).toBe(1);
   });
 
-  it('production connection uses connectionString (not a bare string)', async () => {
-    const { default: knexConfig } = await import('../config/knexfile.js');
-    expect(typeof knexConfig.production.connection).toBe('object');
-    expect(knexConfig.production.connection).toHaveProperty('connectionString');
+  it('remote DATABASE_URL produces a decomposed object (not a bare string)', async () => {
+    // After the hotfix (decompose-URL strategy), remote URLs are broken into
+    // host/port/user/password/database/ssl fields — NOT passed as connectionString —
+    // because pg-connection-string overrides rejectUnauthorized when sslmode=require.
+    const { buildConnectionConfig } = await import('../config/knexfile.js');
+    const remoteUrl = 'postgres://appuser:secret@rds.example.com:5432/triplanner';
+    const config = buildConnectionConfig(remoteUrl);
+    expect(typeof config).toBe('object');
+    expect(config).toHaveProperty('host', 'rds.example.com');
+    expect(config).toHaveProperty('database', 'triplanner');
   });
 
   it('development and staging configs are unchanged (no ssl block)', async () => {

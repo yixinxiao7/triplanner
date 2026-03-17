@@ -4,6 +4,93 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-16] Backend Engineer → QA Engineer** *(Sprint #29 — Test Regression Fix: 377/377 Backend Tests Restored)*
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Re:** Sprint 29 backend regression fix — 2 failing tests restored to green
+**Status:** ✅ COMPLETE — 377/377 backend tests passing
+
+**Summary:**
+
+While verifying the Sprint 29 test baseline (expected 377/377), the backend test suite showed 2 failing tests in `backend/src/__tests__/sprint26.test.js` (T-220 section). These tests regressed due to the `hotfix(db): decompose DATABASE_URL to fix SSL cert verification on RDS` commit (574dd5b), which changed `knexfile.js` from a `connectionString`-based connection config to a decomposed-URL approach for remote hosts. The Sprint 26 tests were written for the old implementation and expected a `connectionString` property.
+
+**Root cause:** `buildConnectionConfig()` in `knexfile.js` returns a plain string for local URLs (e.g., `localhost` in `.env`). Sprint 26 tests imported `knexfile.js` expecting an object with a `connectionString` property (old implementation). After the hotfix, remote URLs produce `{ host, port, user, password, database, ssl }` — not `{ connectionString }`.
+
+**Files changed:**
+- `backend/src/config/knexfile.js` — exported `buildConnectionConfig` as a named export so tests can invoke it directly with a remote URL
+- `backend/src/__tests__/sprint26.test.js` — updated 2 failing tests (T-220 section):
+  1. "production block has ssl.rejectUnauthorized === false" → now calls `buildConnectionConfig` directly with a remote URL, verifies `ssl.rejectUnauthorized === false`
+  2. "production connection uses connectionString (not a bare string)" → renamed to "remote DATABASE_URL produces a decomposed object (not a bare string)", verifies decomposed `host`/`database` properties
+
+**Test result:** 377/377 backend tests ✅ PASS (baseline restored)
+
+**Security checklist:** No new routes, no new data-handling logic, no schema changes. This is a test-correctness fix only. The underlying `buildConnectionConfig` logic (which is correct and production-safe) is unchanged.
+
+**Action required from QA:** None blocking — this fix is included in the Sprint 29 implementation pass. QA should confirm 377/377 backend tests continue to pass as part of the T-236 Monitor health check protocol.
+
+*Backend Engineer Sprint #29 — 2026-03-16*
+
+---
+
+**[2026-03-16] Deploy Engineer → Manager Agent** *(Sprint #29 — T-224 Blocker Status — 4th Escalation)*
+
+**From:** Deploy Engineer
+**To:** Manager Agent
+**Re:** T-224 remains Blocked — project owner has not provisioned AWS RDS + Render — 4th consecutive sprint escalation
+**Status:** ⛔ BLOCKED — Human gate required
+
+**Summary:**
+
+Sprint #29 Deploy Engineer review complete. My sole assigned task this sprint is T-224 (Production deployment to Render + AWS RDS), which remains in **Blocked** status for the fourth consecutive sprint (Sprints 25, 26, 27, 28, and now 29).
+
+**Blocker details:**
+
+| Item | Status |
+|------|--------|
+| Application code production-ready | ✅ Complete — all feature work done |
+| `render.yaml` Blueprint | ✅ Ready — in repo root |
+| `docs/production-deploy-guide.md` | ✅ Ready — step-by-step instructions |
+| `backend/knexfile.js` — SSL + pool config | ✅ Ready for RDS connection |
+| `backend/src/app.js` — SameSite=None cookie | ✅ Ready for cross-origin production flow |
+| Database migrations | ✅ Ready — `knex migrate:latest` will apply on first deploy |
+| AWS RDS PostgreSQL 15 instance | ❌ **Project owner must create** (db.t3.micro, us-east-1, free tier) |
+| Render account / Blueprint applied | ❌ **Project owner must provision** (static site + web service, Ohio, free plan) |
+
+**What the project owner must do:**
+1. Create an AWS RDS PostgreSQL 15 instance — `db.t3.micro`, `us-east-1`, free tier — and provide the connection string (`DATABASE_URL`)
+2. Log into Render and apply the `render.yaml` Blueprint to provision both the frontend (static site) and backend (web service), or create the services manually and set the env vars per `docs/production-deploy-guide.md`
+
+**Deploy Engineer readiness:** I am ready to execute T-224 immediately upon receiving credentials. No further engineering work is required — this is a pure infrastructure provisioning gate.
+
+**No infrastructure tasks in Backlog or In Progress** were assigned to Deploy Engineer this sprint beyond T-224. Staging remains healthy (last verified by Monitor Agent, Sprint 28).
+
+*Deploy Engineer Sprint #29 — 2026-03-16*
+
+---
+
+**[2026-03-16] Frontend Engineer → (Sprint #29 acknowledgment — no tasks assigned)**
+
+**From:** Frontend Engineer
+**To:** QA Engineer (informational)
+**Re:** Sprint #29 — Frontend Engineer task review complete — no frontend tasks this sprint
+**Status:** ✅ ACKNOWLEDGED — No frontend work required
+
+**Summary:**
+
+Reviewed Sprint 29 task board and all handoff log entries directed at Frontend Engineer:
+
+- **dev-cycle-tracker.md:** No tasks assigned to Frontend Engineer in Sprint 29.
+- **Backend Engineer handoff:** No new API contracts, no endpoint changes. All 30 existing endpoints remain in force. No integration code changes required.
+- **Design Agent handoff:** No new UI specs this sprint.
+- **Optional note:** If QA Engineer (T-235) determines a `data-testid` attribute is needed on the airport code element (`.airportCode` CSS module class) as a fallback Playwright locator, Frontend Engineer is available to add it immediately. No request has been received as of 2026-03-16.
+
+**Current frontend state:** MVP feature-complete. 486/486 tests passing (Sprint 29 baseline). No source code changes made this sprint.
+
+*Frontend Engineer Sprint #29 — 2026-03-16*
+
+---
+
 **[2026-03-16] Backend Engineer → Frontend Engineer** *(Sprint #29 — API Contract Review — No Changes)*
 
 **From:** Backend Engineer
