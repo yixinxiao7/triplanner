@@ -648,3 +648,91 @@ During testing setup, several `POST /api/v1/auth/login` requests were sent with 
 **Suggestion for Sprint 29 backlog:** Consider a Redis-backed rate limiter for production deployment (already noted as B-020 in backlog).
 
 ---
+
+### FB-129 — Display land travel info on TripCalendar with departure/arrival times
+
+| Field | Value |
+|-------|-------|
+| Feedback | TripCalendar should display land travel events with brief departure and arrival time info visible on the calendar view |
+| Sprint | 29 |
+| Category | Feature Gap |
+| Severity | Major |
+| Status | New |
+| Related Task | — |
+
+**Description:** The TripCalendar component currently renders events for flights, stays, and activities, but does not display land travel entries (e.g., trains, buses, car rides). Land travel data should appear as calendar events on the TripCalendar view, similar to how flights are displayed. Each land travel calendar event must show a brief summary of departure time and arrival time directly on the calendar pill/cell so users can quickly see travel timing without clicking into the detail view. This requires: (1) the calendar API endpoint (`GET /api/v1/trips/:id/calendar`) to include land travel entries in the returned events array with type `LAND_TRAVEL`, and (2) the `TripCalendar.jsx` component to render land travel events with departure/arrival time info visible on the pill, and (3) click-to-scroll behavior linking calendar land travel pills to the corresponding `land-travels-section` on TripDetailsPage.
+
+---
+
+### FB-130 — Trip status change does not save
+
+| Field | Value |
+|-------|-------|
+| Feedback | Changing a trip's status via the UI does not persist — the status reverts after selection |
+| Sprint | 29 |
+| Category | Bug |
+| Severity | Critical |
+| Status | New |
+| Related Task | — |
+
+**Description:** When a user changes the status of a trip (e.g., from PLANNING to ONGOING or COMPLETED) using the TripStatusSelector component on the TripDetailsPage, the change does not save. The status appears to update momentarily in the UI but reverts, or the PATCH request to update the status fails silently. This means users cannot progress their trips through the lifecycle (PLANNING → ONGOING → COMPLETED). The bug may be in the frontend (TripStatusSelector not calling the API correctly, or not sending the `status` field in the PATCH body), in the backend (tripModel or trip routes not accepting/persisting the `status` field on update), or both. The Frontend and Backend Engineers should investigate the full request chain: TripStatusSelector onChange handler → API call → backend PATCH /api/v1/trips/:id route → tripModel update → database write → response → frontend state update.
+
+---
+
+### FB-131 — Flight times display incorrectly (timezone offset bug)
+
+| Field | Value |
+|-------|-------|
+| Feedback | Flight departure/arrival times are shifted by ~4 hours in the detail view — e.g., 6:50 AM ET entered displays as 2:50 AM ET |
+| Sprint | 29 |
+| Category | Bug |
+| Severity | Critical |
+| Status | New |
+| Related Task | — |
+
+**Description:** When a user enters a flight departure or arrival time (e.g., 6:50 AM ET), the TripDetailsPage flight card displays the wrong time (e.g., 2:50 AM ET) — shifted by approximately 4 hours, which corresponds to the UTC offset for US Eastern Time (ET = UTC-4 in summer / UTC-5 in winter). This strongly suggests a timezone double-conversion bug: the time is being stored or transmitted as a UTC timestamp, and then the frontend (or backend) is incorrectly applying the timezone offset a second time when formatting for display. The bug could be in: (1) the frontend flight form converting the user-entered local time to UTC before sending to the API, (2) the backend storing the time with an unintended timezone conversion, (3) the frontend detail view applying a UTC-to-local conversion on a value that is already in local time, or (4) a mismatch between how the time+timezone fields are stored vs. read back. Engineers should trace the full lifecycle: form input → API request body → database row → API response → display formatting, paying close attention to how `departure_time`/`arrival_time` and their associated timezone fields (`departure_tz`/`arrival_tz`) are handled at each step.
+
+---
+
+### FB-129 — Display land travel info on TripCalendar with departure/arrival times
+
+| Field | Value |
+|-------|-------|
+| Feedback | TripCalendar should display land travel events with brief departure and arrival time info visible on the calendar view |
+| Sprint | 29 |
+| Category | Feature Gap |
+| Severity | Major |
+| Status | New |
+| Related Task | — |
+
+**Description:** The TripCalendar component currently renders events for flights, stays, and activities, but does not display land travel entries (e.g., trains, buses, car rides). Land travel data should appear as calendar events on the TripCalendar view, similar to how flights are displayed. Each land travel calendar event must show a brief summary of departure time and arrival time directly on the calendar pill/cell so users can quickly see travel timing without clicking into the detail view. This requires: (1) the calendar API endpoint (`GET /api/v1/trips/:id/calendar`) to include land travel entries in the returned events array with type `LAND_TRAVEL`, and (2) the `TripCalendar.jsx` component to render land travel events with departure/arrival time info visible on the pill, and (3) click-to-scroll behavior linking calendar land travel pills to the corresponding `land-travels-section` on TripDetailsPage.
+
+---
+### FB-130 — Trip status change does not save
+
+| Field | Value |
+|-------|-------|
+| Feedback | Changing a trip's status via the UI does not persist — the status reverts after selection |
+| Sprint | 29 |
+| Category | Bug |
+| Severity | Critical |
+| Status | New |
+| Related Task | — |
+
+**Description:** When a user changes the status of a trip (e.g., from PLANNING to ONGOING or COMPLETED) using the TripStatusSelector component on the TripDetailsPage, the change does not save. The status appears to update momentarily in the UI but reverts, or the PATCH request to update the status fails silently. This means users cannot progress their trips through the lifecycle (PLANNING → ONGOING → COMPLETED). The bug may be in the frontend (TripStatusSelector not calling the API correctly, or not sending the `status` field in the PATCH body), in the backend (tripModel or trip routes not accepting/persisting the `status` field on update), or both. The Frontend and Backend Engineers should investigate the full request chain: TripStatusSelector onChange handler → API call → backend PATCH /api/v1/trips/:id route → tripModel update → database write → response → frontend state update.
+
+---
+### FB-131 — Flight times display incorrectly (timezone offset bug)
+
+| Field | Value |
+|-------|-------|
+| Feedback | Flight departure/arrival times are shifted by ~4 hours in the detail view — e.g., 6:50 AM ET entered displays as 2:50 AM ET |
+| Sprint | 29 |
+| Category | Bug |
+| Severity | Critical |
+| Status | New |
+| Related Task | — |
+
+**Description:** When a user enters a flight departure or arrival time (e.g., 6:50 AM ET), the TripDetailsPage flight card displays the wrong time (e.g., 2:50 AM ET) — shifted by approximately 4 hours, which corresponds to the UTC offset for US Eastern Time (ET = UTC-4 in summer / UTC-5 in winter). This strongly suggests a timezone double-conversion bug: the time is being stored or transmitted as a UTC timestamp, and then the frontend (or backend) is incorrectly applying the timezone offset a second time when formatting for display. The bug could be in: (1) the frontend flight form converting the user-entered local time to UTC before sending to the API, (2) the backend storing the time with an unintended timezone conversion, (3) the frontend detail view applying a UTC-to-local conversion on a value that is already in local time, or (4) a mismatch between how the time+timezone fields are stored vs. read back. Engineers should trace the full lifecycle: form input → API request body → database row → API response → display formatting, paying close attention to how `departure_time`/`arrival_time` and their associated timezone fields (`departure_tz`/`arrival_tz`) are handled at each step.
+
+---
