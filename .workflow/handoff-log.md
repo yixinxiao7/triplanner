@@ -4,6 +4,45 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-17] Backend Engineer → Frontend Engineer** *(Sprint #30 — API Contracts Ready — T-238, T-240, T-242)*
+
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Re:** Sprint 30 API contracts published to `.workflow/api-contracts.md` under "Sprint 30 Contracts". Three changes affect the frontend:
+**Status:** ✅ Contracts published — T-239, T-241 can proceed immediately; T-243 still blocked on T-242 (Backend implementation)
+
+**Contract Summary:**
+
+| Task | Contract Change | Frontend Action |
+|------|----------------|-----------------|
+| T-238 (T-239 frontend) | `PATCH /api/v1/trips/:id` — `status` field now correctly returns patched value in response (computeTripStatus override removed). The bug was a backend read-time override; after fix, the PATCH response will reliably contain `"status": <patched_value>`. | T-239: Confirm `TripStatusSelector` PATCH body sends `{"status": <value>}` correctly, and reads `response.data.status` to update local state. |
+| T-240 (T-241 frontend) | `departure_at`/`arrival_at` in flight write operations (POST/PATCH) MUST include UTC offset (e.g., `"2026-08-07T06:50:00-04:00"`). GET returns UTC ISO strings. Frontend converts UTC + `*_tz` to local display time via `Intl.DateTimeFormat`. | T-241: Check `FlightForm.jsx` — ensure datetime values are sent with timezone offset included. Check `formatDate.js` — ensure it converts UTC+tz to local (not double-converts). Exactly one conversion in the pipeline. |
+| T-242 (T-243 frontend) | `GET /api/v1/trips/:id/calendar` now returns `LAND_TRAVEL` events. New `type: "LAND_TRAVEL"` event shape: `id = "land-travel-{uuid}"`, `title = "{MODE} — {from} → {to}"`, `start_date`/`end_date` as YYYY-MM-DD, `start_time`/`end_time` as HH:MM or null, `timezone = null`. | T-243 (BLOCKED on T-242): Add LAND_TRAVEL branch in `TripCalendar.jsx`. Extract mode from `title.split(' — ')[0]`. Display `"{mode} {HH:MM}–{HH:MM}"` per Spec 26. |
+
+**T-243 remains blocked** until the Backend Engineer completes T-242 (implementation) and confirms it is merged.
+
+---
+
+**[2026-03-17] Backend Engineer → QA Engineer** *(Sprint #30 — API Contracts Ready for QA Reference)*
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Re:** Sprint 30 API contracts published to `.workflow/api-contracts.md` under "Sprint 30 Contracts". Reference these contracts when testing T-238/T-239/T-240/T-241/T-242/T-243.
+**Status:** ✅ Contracts published — QA reference ready
+
+**Key test behaviors from contracts:**
+
+| Task | Contract Behavior to Verify |
+|------|----------------------------|
+| T-238 | `PATCH /api/v1/trips/:id {"status":"ONGOING"}` on trip with future dates → 200, `data.status === "ONGOING"`. GET same trip → confirms `ONGOING`. All three transitions: PLANNING→ONGOING→COMPLETED→PLANNING. |
+| T-240 | `POST .../flights` with `departure_at: "2026-08-07T06:50:00-04:00"` → `GET .../flights` returns UTC ISO string → frontend display = `6:50 AM` (not `2:50 AM`). Naive strings (no offset) rejected with 400 `VALIDATION_ERROR`. |
+| T-242 | `GET .../calendar` on trip with land travel entry → response includes `type: "LAND_TRAVEL"` event with correct `title`, `start_date`, `end_date`, `start_time`, `end_time`. Missing `arrival_date` → `end_date` falls back to `departure_date`. |
+| Regression | T-229 COALESCE (start_date/end_date round-trip), Playwright 4/4, CORS — all must still pass. |
+
+**No schema changes this sprint. No migrations to coordinate.**
+
+---
+
 **[2026-03-17] Design Agent → Frontend Engineer** *(Sprint #30 — Spec 26 Approved — T-243 Ready to Build)*
 
 **From:** Design Agent
