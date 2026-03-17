@@ -2086,3 +2086,124 @@ The following infrastructure is 100% engineering-complete and requires NO furthe
 *Deploy Engineer Sprint #29 — 2026-03-17T03:03:04Z*
 
 ---
+
+## Sprint #29 — Post-Deploy Health Check
+**Task:** T-236 (Monitor Agent)
+**Date:** 2026-03-17
+**Timestamp:** 2026-03-17T03:10:00Z
+**Environment:** Staging (https://localhost:3001 backend, https://localhost:4173 frontend)
+**Test Type:** Post-Deploy Health Check + Config Consistency
+**Token:** Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT /auth/register)
+
+---
+
+### Config Consistency Check
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Port match (backend .env PORT vs Vite proxy target) | PASS | `backend/.env`: `PORT=3000` (dev default). Staging runtime overrides via pm2 ecosystem.config.cjs: `PORT=3001`. `vite.config.js` reads `process.env.BACKEND_PORT \|\| '3000'` — pm2 sets `BACKEND_PORT=3001` for staging process. Ports consistent at runtime on all environments. |
+| Protocol match (SSL keys present → proxy must use https://) | PASS | `SSL_KEY_PATH` and `SSL_CERT_PATH` are **commented out** in `backend/.env` (dev uses HTTP). Staging TLS is configured via pm2 ecosystem.config.cjs env block. `vite.config.js` reads `BACKEND_SSL === 'true'` to switch proxy to `https://` — pm2 sets `BACKEND_SSL=true` for staging. Live HTTPS connection verified: TLSv1.3, cert CN=localhost, valid 2026-03-07 → 2027-03-07. Protocol consistent across all environments. |
+| CORS match (CORS_ORIGIN includes frontend dev server origin) | PASS | `backend/.env`: `CORS_ORIGIN=http://localhost:5173` (matches Vite dev server port 5173). Staging pm2 override: `CORS_ORIGIN=https://localhost:4173`. Live CORS header on `GET https://localhost:3001/api/v1/health` with `Origin: https://localhost:4173` → `Access-Control-Allow-Origin: https://localhost:4173`, `Access-Control-Allow-Credentials: true`. All environments consistent. |
+| Docker port match (docker-compose backend PORT vs .env PORT) | N/A — INFO | `infra/docker-compose.yml`: backend container `PORT: 3000` (hardcoded). `backend/.env`: `PORT=3000`. Consistent. Docker is not installed on this machine — pm2 is the staging runtime (unchanged from prior sprints). No docker conflict. |
+
+**Config Consistency: PASS** — All active config is consistent. Docker config is present but not in use; dev and staging runtime configs are coherent with the vite.config.js env-var-driven design.
+
+---
+
+### Health Checks
+
+#### 1. Backend Health — GET /api/v1/health
+- **URL:** `https://localhost:3001/api/v1/health`
+- **HTTP Status:** 200
+- **Response:** `{"status":"ok"}`
+- **Result:** ✅ PASS
+
+#### 2. CORS Header Verification
+- **Request:** `GET https://localhost:3001/api/v1/health` with `Origin: https://localhost:4173`
+- **Response Headers:**
+  - `Access-Control-Allow-Origin: https://localhost:4173`
+  - `Access-Control-Allow-Credentials: true`
+- **Result:** ✅ PASS
+
+#### 3. Auth — POST /api/v1/auth/login
+- **Credentials:** `test@triplanner.local` / `TestPass123!`
+- **HTTP Status:** 200
+- **Response shape:** `{ "data": { "user": { "id": "60567cb2-...", "email": "test@triplanner.local", ... }, "access_token": "eyJ..." } }`
+- **Result:** ✅ PASS
+
+#### 4. Auth — POST /api/v1/auth/logout
+- **HTTP Status:** 204 (no body)
+- **Result:** ✅ PASS
+
+#### 5. Trips CRUD
+
+| Endpoint | HTTP Status | Response Summary | Result |
+|----------|-------------|-----------------|--------|
+| `GET /api/v1/trips` | 200 | `{"data":[],"pagination":{"page":1,"limit":20,"total":0}}` | ✅ PASS |
+| `POST /api/v1/trips` | 201 | Trip object with `id`, `user_id`, `name`, `destinations`, `status: "PLANNING"`, `notes: null`, dates, timestamps | ✅ PASS |
+| `GET /api/v1/trips/:id` | 200 | Full trip object, correct shape | ✅ PASS |
+| `PATCH /api/v1/trips/:id` (name update) | 200 | Updated `name` reflected in response | ✅ PASS |
+| `PATCH /api/v1/trips/:id` (dates — T-229 regression) | 200 | `start_date: "2026-05-01"`, `end_date: "2026-05-10"` — user-provided values returned correctly. Regression **PASS**. | ✅ PASS |
+| `GET /api/v1/trips?search=Health&status=PLANNING&sort_by=name&sort_order=asc` | 200 | 1 result returned, pagination present | ✅ PASS |
+| `DELETE /api/v1/trips/:id` | 204 | No body | ✅ PASS |
+
+#### 6. Trip Sub-Resources (GET list — empty)
+
+| Endpoint | HTTP Status | Response | Result |
+|----------|-------------|----------|--------|
+| `GET /api/v1/trips/:tripId/flights` | 200 | `{"data":[]}` | ✅ PASS |
+| `GET /api/v1/trips/:tripId/stays` | 200 | `{"data":[]}` | ✅ PASS |
+| `GET /api/v1/trips/:tripId/activities` | 200 | `{"data":[]}` | ✅ PASS |
+| `GET /api/v1/trips/:tripId/land-travel` | 200 | `{"data":[]}` | ✅ PASS |
+
+#### 7. Error Handling
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| `GET /api/v1/trips` without auth | 401 `UNAUTHORIZED` | 401 `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS |
+| `GET /api/v1/trips/not-a-valid-uuid` | 400 `VALIDATION_ERROR` | 400 `{"error":{"message":"Invalid ID format","code":"VALIDATION_ERROR"}}` | ✅ PASS |
+
+#### 8. Database Connectivity
+- Confirmed via successful CRUD operations (POST → GET → PATCH → DELETE all returned expected data from the database)
+- **Result:** ✅ PASS
+
+#### 9. Frontend Accessibility
+- **URL:** `https://localhost:4173`
+- **HTTP Status:** 200
+- **Result:** ✅ PASS
+
+#### 10. Playwright E2E Tests — 4/4 (T-235 fix verification)
+
+| Test | Result |
+|------|--------|
+| Test 1: Core user flow (register, create trip, view details, delete, logout) | ✅ PASS (1.3s) |
+| Test 2: Sub-resource CRUD (create trip, add flight, add stay, verify on details page) | ✅ PASS (1.3s) — FB-124 locator fix confirmed working |
+| Test 3: Search, filter, sort (create trips, search, filter by status, sort by name, clear filters) | ✅ PASS (3.8s) |
+| Test 4: Rate limit lockout (rapid wrong-password login → 429 banner, disabled submit) | ✅ PASS (1.9s) |
+
+**Playwright: 4/4 PASS** (9.4s total) — FB-124 regression resolved by T-235 locator fix. No 5xx errors.
+
+---
+
+### Summary
+
+| Category | Result |
+|----------|--------|
+| Config Consistency | ✅ PASS |
+| Backend Health | ✅ PASS |
+| CORS | ✅ PASS |
+| Auth (login / logout) | ✅ PASS |
+| Trips CRUD | ✅ PASS |
+| T-229 Date Regression | ✅ PASS |
+| Sub-resources (all 4) | ✅ PASS |
+| Error handling (401, 400) | ✅ PASS |
+| Database | ✅ PASS |
+| Frontend accessible | ✅ PASS |
+| Playwright E2E | ✅ 4/4 PASS |
+| No 5xx errors detected | ✅ PASS |
+
+**Deploy Verified: Yes**
+
+*Monitor Agent Sprint #29 — T-236 — 2026-03-17T03:10:00Z*
+
+---

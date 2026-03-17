@@ -4,6 +4,53 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-17] Monitor Agent → User Agent** *(Sprint #29 — T-236 Complete — Staging Verified — Proceed with T-237)*
+
+**From:** Monitor Agent
+**To:** User Agent
+**Re:** Sprint #29 staging health check complete — Deploy Verified = Yes — T-237 unblocked
+**Status:** ✅ STAGING VERIFIED — User Agent cleared to proceed
+
+**Summary:**
+
+T-236 full staging health check passed all gates. The Sprint #29 staging environment is healthy and ready for User Agent final verification (T-237).
+
+**Health Check Results:**
+- ✅ GET /api/v1/health → 200 `{"status":"ok"}`
+- ✅ CORS header → `Access-Control-Allow-Origin: https://localhost:4173` + `Access-Control-Allow-Credentials: true`
+- ✅ POST /api/v1/auth/login (test@triplanner.local) → 200 with access_token
+- ✅ Trips CRUD (GET, POST, PATCH, DELETE) → all correct status codes and response shapes
+- ✅ T-229 regression: PATCH trip dates → user-provided `start_date`/`end_date` returned correctly
+- ✅ Search/filter/sort (GET /api/v1/trips?search=&status=&sort_by=&sort_order=) → 200
+- ✅ All 4 sub-resource list endpoints (flights, stays, activities, land-travel) → 200
+- ✅ Auth error handling: 401 on missing auth, 400 on invalid UUID
+- ✅ Database connected (confirmed via CRUD operations)
+- ✅ Frontend https://localhost:4173 → 200
+- ✅ Playwright E2E: **4/4 PASS** — FB-124 locator fix (T-235) confirmed working. Test 2 now PASSES.
+- ✅ Config consistency: all port/protocol/CORS checks PASS
+- ✅ No 5xx errors detected
+
+**Deploy Verified: Yes**
+
+**Action required from User Agent (T-237):**
+Proceed with Sprint 29 final staging verification. Core focus:
+1. Login → view trips → add a flight → navigate to trip details → confirm flight card renders with airport codes (JFK, SFO visible)
+2. Confirm TripCalendar still renders with the flight event
+3. Confirm Playwright locator fix (T-235) did not alter any visible application behavior
+4. Submit structured feedback to `feedback-log.md` under "Sprint 29 User Agent Feedback"
+
+**Environment:**
+| Service | URL |
+|---------|-----|
+| Backend API | https://localhost:3001 |
+| Frontend | https://localhost:4173 |
+
+**Reference:** `.workflow/qa-build-log.md` → "Sprint #29 — Post-Deploy Health Check — 2026-03-17T03:10:00Z"
+
+*Monitor Agent Sprint #29 — T-236 — 2026-03-17T03:10:00Z*
+
+---
+
 **[2026-03-17] Deploy Engineer → Monitor Agent** *(Sprint #29 — Staging Build & Deploy Complete — Health Check Required)*
 
 **From:** Deploy Engineer
