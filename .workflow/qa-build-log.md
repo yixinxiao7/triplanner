@@ -1659,3 +1659,179 @@ All health checks passed. All config consistency checks passed. T-228 CORS fix c
 *Monitor Agent Sprint #27 Pass #3 — 2026-03-11T18:42:00Z*
 
 ---
+
+---
+
+## Sprint #29 — QA Engineer Full Test Run — 2026-03-16T22:50:00Z
+
+**Sprint:** 29
+**Date:** 2026-03-16T22:50:00Z
+**Engineer:** QA Engineer
+**Tasks in scope:** T-235 (Playwright locator fix — P0)
+
+---
+
+### Test Type: Unit Test — Backend
+
+**Command:** `cd backend && npm test`
+**Result:** ✅ PASS
+
+| Metric | Value |
+|--------|-------|
+| Test Files | 21 passed (21) |
+| Tests | **377 passed (377)** |
+| Duration | 2.70s |
+| Failures | 0 |
+
+**Coverage notes:**
+- `sprint26.test.js` — Backend Engineer regression fix verified: `buildConnectionConfig` named export exercised with remote URL; `ssl.rejectUnauthorized === false` confirmed; decomposed object (not bare string) confirmed. ✅
+- All existing test suites (auth, trips, flights, stays, activities, calendar, land-travel, CORS, rate-limit) green.
+- Happy-path and error-path coverage confirmed present across all route test files.
+
+**Test Type: Unit Test — Backend: ✅ PASS (377/377)**
+
+---
+
+### Test Type: Unit Test — Frontend
+
+**Command:** `cd frontend && npm test` (vitest run)
+**Result:** ✅ PASS
+
+| Metric | Value |
+|--------|-------|
+| Test Files | 25 passed (25) |
+| Tests | **486 passed (486)** |
+| Duration | 1.90s |
+| Failures | 0 |
+
+**Coverage notes:**
+- TripCalendar (75 tests), TripDetailsPage (70 tests), HomePage (25 tests) — full state coverage (empty, loading, error, success) confirmed.
+- FlightsEditPage, StaysEditPage, ActivitiesEditPage, LandTravelEditPage — form validation and CRUD tested.
+- axiosInterceptor, rateLimitUtils — auth enforcement and rate-limit handling tested.
+
+**Test Type: Unit Test — Frontend: ✅ PASS (486/486)**
+
+---
+
+### Test Type: E2E — Playwright (T-235 Locator Fix Applied)
+
+**Task:** T-235 (P0) — Fix ambiguous `getByText('SFO')` / `getByText('JFK')` locators in `e2e/critical-flows.spec.js`
+
+**Root cause:** After Sprint 27 added airport code rendering to TripCalendar event pills and MobileDayList, `page.getByText('JFK')` and `page.getByText('SFO')` matched 3+ DOM elements, causing Playwright strict-mode violations.
+
+**Fix applied (test-code only — no application source changes):**
+- Line 201: `await expect(page.getByText('JFK')).toBeVisible()` →
+  `await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()).toBeVisible()`
+- Line 202: `await expect(page.getByText('SFO')).toBeVisible()` →
+  `await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible()`
+
+**File:** `e2e/critical-flows.spec.js` — test-code only. Zero changes to `frontend/`, `backend/`, or `shared/`.
+
+**Pre-requisite:** Started staging via `pm2 start infra/ecosystem.config.cjs`. Backend: `https://localhost:3001` ✅. Frontend: `https://localhost:4173` ✅.
+
+**Command:** `npx playwright test` (from project root)
+**Result:** ✅ PASS
+
+| Test | Result |
+|------|--------|
+| Test 1: Core user flow — register, create trip, view details, delete, logout | ✅ PASS (1.2s) |
+| Test 2: Sub-resource CRUD — create trip, add flight, add stay, verify on details page | ✅ PASS (1.4s) |
+| Test 3: Search, filter, sort — create trips, search, filter by status, sort by name, clear filters | ✅ PASS (3.9s) |
+| Test 4: Rate limit lockout — rapid wrong-password login triggers 429 banner and disables submit | ✅ PASS (3.9s) |
+| **TOTAL** | **4/4 PASS (11.2s)** |
+
+**Acceptance criteria check:**
+1. ✅ `npx playwright test` → **4/4 PASS**
+2. ✅ No changes to application source files (`frontend/`, `backend/`, `shared/`)
+3. ✅ Logged in qa-build-log.md Sprint 29 section
+4. ✅ Handoff to Monitor Agent (T-236) in handoff-log.md
+5. ✅ T-235 status updated to Done in dev-cycle-tracker.md
+
+**Test Type: E2E Playwright: ✅ PASS (4/4)**
+
+---
+
+### Test Type: Config Consistency Check
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Port match (backend/.env PORT vs vite proxy default) | 3000 = 3000 | `PORT=3000` in backend/.env; vite proxy defaults to `http://localhost:3000` | ✅ PASS |
+| Protocol match (SSL not set → HTTP proxy) | No SSL → HTTP | SSL_KEY_PATH/SSL_CERT_PATH not set in .env; vite uses `http://` | ✅ PASS |
+| CORS match (CORS_ORIGIN includes frontend dev origin) | `http://localhost:5173` | `CORS_ORIGIN=http://localhost:5173` | ✅ PASS |
+| Docker backend PORT env | 3000 | `PORT: 3000` in docker-compose.yml | ✅ PASS |
+| Docker CORS_ORIGIN default | `http://localhost` | `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}` (nginx port 80) | ✅ PASS |
+| Staging overrides (ecosystem.config.cjs) | PORT=3001, CORS_ORIGIN=https://localhost:4173, BACKEND_SSL=true | Confirmed active in ecosystem.config.cjs | ✅ PASS |
+
+**Config Consistency: ✅ PASS — All 6 checks pass. No mismatches.**
+
+---
+
+### Test Type: Integration Test
+
+**Scope:** No new API contracts or UI specs in Sprint 29 (confirmed by Backend Engineer and Frontend Engineer handoffs). Integration check is a no-change regression verification.
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| Auth enforcement (unauthenticated → 401) | ✅ PASS | Verified by Playwright Test 1 (login/logout) and prior Monitor health checks |
+| Flight CRUD: POST → GET → flight card renders with airport codes | ✅ PASS | Playwright Test 2 confirms full round-trip |
+| Airport code rendering (JFK, SFO in `[class*="_airportCode_"]`) | ✅ PASS | T-235 fix now uses scoped locator — confirmed visible |
+| TripCalendar renders flight events | ✅ PASS | TripCalendar.test.jsx (75 tests) + Playwright Test 2 |
+| PATCH /api/v1/trips/:id returns user-provided dates | ✅ PASS | Covered by sprint28.test.js + prior T-229 verification |
+| Search, filter, sort — full round-trip | ✅ PASS | Playwright Test 3 |
+| Rate limiting (429 → UI banner + disabled submit) | ✅ PASS | Playwright Test 4 |
+| No 5xx errors across all test runs | ✅ PASS | All Playwright tests clean, staging healthy |
+
+**Integration Test: ✅ PASS**
+
+---
+
+### Test Type: Security Scan
+
+**Command:** `cd backend && npm audit`
+**Result:** `found 0 vulnerabilities` ✅
+
+**Manual checks against security-checklist.md:**
+
+| Category | Check | Result | Notes |
+|----------|-------|--------|-------|
+| Auth | All API routes require authentication | ✅ PASS | `router.use(authenticate)` present in trips, flights, stays, activities, calendar, land-travel routes |
+| Auth | Password hashing not plain text | ✅ PASS | bcrypt used (confirmed in sprint26.test.js seed verification) |
+| Auth | Rate limiting on login | ✅ PASS | `generalAuthLimiter`, `loginLimiter` imported and applied in auth.js |
+| Auth | JWT_SECRET from env var | ✅ PASS | `process.env.JWT_SECRET` in auth.js and auth middleware |
+| Input | No SQL string concatenation | ✅ PASS | Knex query builder used throughout — no raw string concat found |
+| Input | XSS — no dangerouslySetInnerHTML | ✅ PASS | No `innerHTML` or `dangerouslySetInnerHTML` in frontend source |
+| Input | Client + server-side validation | ✅ PASS | Form validation in LoginPage/RegisterPage; server-side validation in route handlers |
+| API | CORS restricted to expected origins | ✅ PASS | `CORS_ORIGIN` from env var; `https://localhost:4173` on staging |
+| API | Error responses — no stack traces | ✅ PASS | errorHandler.js logs stack server-side, never sends in response |
+| API | Security headers (Helmet) | ✅ PASS | `helmet()` applied in app.js |
+| API | Rate limiting on public endpoints | ✅ PASS | Auth routes rate-limited; Playwright Test 4 confirmed 429 behavior |
+| Data | No hardcoded secrets in source | ✅ PASS | DATABASE_URL, JWT_SECRET, session secrets all from process.env |
+| Data | Secrets not in URL query params | ✅ PASS | Auth token in Authorization header (Bearer), not query string |
+| Infra | HTTPS on staging | ✅ PASS | ecosystem.config.cjs sets SSL_KEY_PATH/CERT_PATH; vite uses BACKEND_SSL=true |
+| Infra | No default/sample credentials | ✅ PASS | No default creds in source; test seed user only in test context |
+| Infra | npm audit | ✅ PASS | 0 vulnerabilities |
+
+**Sprint 29 scope note:** No new routes, middleware, or data-handling code introduced this sprint. Security posture unchanged from Sprint 28. All applicable checklist items pass.
+
+**Security Scan: ✅ PASS — 0 vulnerabilities, all manual checks pass**
+
+---
+
+### Summary
+
+| Test Type | Result |
+|-----------|--------|
+| Unit Test — Backend | ✅ PASS (377/377) |
+| Unit Test — Frontend | ✅ PASS (486/486) |
+| E2E Playwright | ✅ PASS (4/4) |
+| Config Consistency | ✅ PASS (6/6) |
+| Integration Test | ✅ PASS |
+| Security Scan | ✅ PASS (0 vulns) |
+
+**T-235: ✅ DONE** — Playwright locator fix applied, 4/4 E2E tests pass, zero application source changes.
+
+**Overall Sprint 29 QA result: ✅ ALL PASS — Ready to hand off to Monitor Agent (T-236)**
+
+*QA Engineer Sprint #29 — 2026-03-16T22:50:00Z*
+
+---

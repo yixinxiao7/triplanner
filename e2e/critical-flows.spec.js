@@ -198,8 +198,8 @@ test.describe('Test 2: Sub-resource CRUD', () => {
 
     // Verify flight appears on the trip details page
     await expect(page.getByText('DL1234')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('JFK')).toBeVisible();
-    await expect(page.getByText('SFO')).toBeVisible();
+    await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()).toBeVisible();
+    await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible();
 
     // ── Add a Stay ──
 

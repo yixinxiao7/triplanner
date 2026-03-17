@@ -4,6 +4,83 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-16] QA Engineer → Monitor Agent** *(Sprint #29 — T-235 Complete — T-236 Unblocked)*
+
+**From:** QA Engineer
+**To:** Monitor Agent
+**Re:** T-235 Playwright locator fix complete — 4/4 E2E tests pass — staging running — T-236 unblocked
+**Status:** ✅ T-235 DONE — T-236 ready to execute
+
+**Summary:**
+
+T-235 (Playwright locator fix, P0) is complete. All acceptance criteria met.
+
+**What was done:**
+- Fixed ambiguous locators in `e2e/critical-flows.spec.js` lines 201–202:
+  - `page.getByText('JFK')` → `page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()`
+  - `page.getByText('SFO')` → `page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()`
+- **Zero application source changes** — test-code only
+- Started staging via `pm2 start infra/ecosystem.config.cjs`
+- `npx playwright test` → **4/4 PASS** (11.2s)
+
+**Full test results (Sprint 29 baseline confirmed):**
+- Backend: 377/377 ✅
+- Frontend: 486/486 ✅
+- Playwright E2E: 4/4 ✅
+- npm audit: 0 vulnerabilities ✅
+- Config consistency: 6/6 ✅
+- Security scan: all manual checks pass ✅
+
+**Staging environment status:**
+- pm2 processes: both `triplanner-backend` and `triplanner-frontend` online
+- Backend: `https://localhost:3001` — `GET /api/v1/health` → `{"status":"ok"}`
+- Frontend: `https://localhost:4173` — HTTP 200
+
+**T-236 action required (Monitor Agent):**
+Run your full staging health check protocol now:
+1. `GET https://localhost:3001/api/v1/health` → 200
+2. CORS header check: `Origin: https://localhost:4173` → `Access-Control-Allow-Origin: https://localhost:4173`
+3. `POST /api/v1/auth/login` with `test@triplanner.local` → 200 + access_token
+4. Trips CRUD (GET/POST/PATCH/DELETE) → correct responses
+5. `GET /api/v1/trips/:id/calendar` → 200
+6. `PATCH /api/v1/trips/:id` with `{ "start_date": "2026-09-01", "end_date": "2026-09-30" }` → returns those exact dates (T-229 regression)
+7. `npx playwright test` → 4/4 PASS (already confirmed by QA)
+8. **Deploy Verified = Yes** is the required outcome
+
+*QA Engineer Sprint #29 — 2026-03-16T22:50:00Z*
+
+---
+
+**[2026-03-16] QA Engineer → Deploy Engineer** *(Sprint #29 — QA Status — Confirming Readiness for T-236 Gate)*
+
+**From:** QA Engineer
+**To:** Deploy Engineer
+**Re:** Sprint 29 QA complete — T-235 done — awaiting T-236 Monitor health check before Deploy Verified gate
+**Status:** ✅ QA PASSED — pending Monitor Agent T-236
+
+**Summary:**
+
+All Sprint 29 QA tasks are complete:
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests (377/377) | ✅ PASS |
+| Frontend unit tests (486/486) | ✅ PASS |
+| Playwright E2E (4/4) | ✅ PASS |
+| Config consistency (6/6) | ✅ PASS |
+| Integration tests | ✅ PASS |
+| Security scan (npm audit 0 vulns + manual checklist) | ✅ PASS |
+
+**T-235** (Playwright locator fix) is ✅ Done.
+
+**Blocking Deploy Verified gate:** T-236 (Monitor Agent health check) is now unblocked and In Progress. Once T-236 returns Deploy Verified = Yes and T-237 (User Agent final verification) completes, the sprint is clear for production deployment (pending T-224 human gate).
+
+**T-224 note:** Production deployment remains blocked on project owner provisioning AWS RDS + Render (4th escalation). No engineering action required from Deploy Engineer until credentials are provided.
+
+*QA Engineer Sprint #29 — 2026-03-16T22:50:00Z*
+
+---
+
 **[2026-03-16] Manager Agent → QA Engineer** *(Sprint #29 — Code Review Pass — T-235 Still Pending)*
 
 **From:** Manager Agent
