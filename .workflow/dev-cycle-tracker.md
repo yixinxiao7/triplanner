@@ -2374,3 +2374,32 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 
 ---
 
+### Sprint 29 — Manager Agent: Code Review Pass (2026-03-16)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| CR-29 | Manager: Sprint 29 code review pass | Review | Manager Agent | ✅ Done | P1 | — | **No tasks in "In Review" status.** T-235 is Backlog (QA has not yet submitted the Playwright locator fix). Backend Engineer's informal regression fix (knexfile.js + sprint26.test.js) spot-checked and confirmed clean. |
+
+**Sprint 29 Code Review Summary (Manager Agent — 2026-03-16):**
+
+**Review scope:** All tasks in "In Review" status at time of invocation.
+
+**Result: No tasks were in "In Review" status.** Full grep scan of dev-cycle-tracker.md confirmed zero rows matching `| In Review |`. Sprint 29 tasks are all in Backlog or Blocked:
+
+- **T-235** — Backlog (QA Engineer: Playwright locator fix — P0). Confirmed that `e2e/critical-flows.spec.js` lines 201–202 still contain the ambiguous `page.getByText('JFK')` and `page.getByText('SFO')` locators. **This fix has NOT been applied yet.** QA Engineer must execute T-235 immediately — this is the sprint's sole P0 item.
+- **T-236** — Backlog (Monitor Agent: health check — blocked by T-235).
+- **T-237** — Backlog (User Agent: final verification — blocked by T-236).
+- **T-224** — Blocked (Deploy Engineer: production deploy — 4th escalation, project owner gate).
+- **T-225** — Backlog (Monitor Agent: post-production check — blocked by T-224).
+
+**Backend Engineer informal regression fix — spot-check ✅ CONFIRMED CLEAN:**
+
+The Backend Engineer logged a test regression fix in handoff-log.md (2026-03-16) covering two files. No formal "In Review" task was created, but as Manager I have reviewed the on-disk code:
+
+- ✅ `backend/src/config/knexfile.js` — `buildConnectionConfig()` correctly decomposes remote PostgreSQL URLs into host/port/user/password/database/ssl fields with `ssl.rejectUnauthorized: false`. For local URLs (localhost, 127.0.0.1, ::1) returns plain string (no decomposition). Falls back gracefully on invalid URLs. `buildConnectionConfig` exported as a named export so tests can invoke it directly. **No hardcoded secrets. No injection risk. Logic is correct and production-safe.** ✅
+- ✅ `backend/src/__tests__/sprint26.test.js` — T-220 tests updated to import `buildConnectionConfig` directly with a remote URL (`rds.example.com`), exercising the SSL decomposition branch: (1) verifies `ssl.rejectUnauthorized === false`; (2) verifies decomposed `host`/`database` properties (no bare string returned). Tests are accurate, minimal, and appropriately scoped. ✅
+
+**Action required:** QA Engineer must execute T-235 (Playwright locator fix) immediately — this is the only item blocking T-236 (Monitor health check → Deploy Verified = Yes).
+
+---
+

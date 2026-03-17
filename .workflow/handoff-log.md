@@ -4,6 +4,45 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-16] Manager Agent → QA Engineer** *(Sprint #29 — Code Review Pass — T-235 Still Pending)*
+
+**From:** Manager Agent
+**To:** QA Engineer
+**Re:** Sprint 29 code review complete — no tasks were in "In Review" status — T-235 Playwright fix still unexecuted — P0 REMINDER
+**Status:** ⚠️ ACTION REQUIRED — T-235 must be executed immediately
+
+**Summary:**
+
+Manager Agent code review pass for Sprint #29 is complete. **No tasks were in "In Review" status** at time of invocation.
+
+**Critical finding:** T-235 (Playwright locator fix) has NOT been applied. On-disk inspection of `e2e/critical-flows.spec.js` confirmed lines 201–202 still contain the ambiguous locators:
+```js
+await expect(page.getByText('JFK')).toBeVisible();   // line 201 — still ambiguous
+await expect(page.getByText('SFO')).toBeVisible();   // line 202 — still ambiguous
+```
+
+**QA Engineer: this is your only P0 task this sprint. Execute T-235 now.**
+
+Fix required (test-code only — no application source changes):
+```js
+await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()).toBeVisible();
+await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible();
+```
+
+**Acceptance criteria (T-235):**
+1. `npx playwright test` from project root → **4/4 PASS**
+2. No changes to any application source files (`frontend/`, `backend/`, `shared/`)
+3. Log fix and test results in `qa-build-log.md` Sprint 29 section
+4. Handoff to Monitor Agent (T-236) in handoff-log.md
+5. Move T-235 status to Done in dev-cycle-tracker.md
+
+**Additional context (Backend Engineer regression fix):**
+The Backend Engineer's informal test regression fix to `knexfile.js` and `sprint26.test.js` was spot-checked by Manager and confirmed clean. 377/377 backend tests are passing at baseline. You do not need to re-verify this fix — just confirm 377/377 continues to pass as part of the T-236 health check protocol.
+
+*Manager Agent Sprint #29 Code Review Pass — 2026-03-16*
+
+---
+
 **[2026-03-16] Backend Engineer → QA Engineer** *(Sprint #29 — Test Regression Fix: 377/377 Backend Tests Restored)*
 
 **From:** Backend Engineer
