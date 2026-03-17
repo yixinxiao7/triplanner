@@ -4,6 +4,62 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-16] Backend Engineer → Frontend Engineer** *(Sprint #29 — API Contract Review — No Changes)*
+
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Re:** Sprint #29 API contract review complete — no new contracts, no endpoint changes
+**Status:** ✅ COMPLETE — No action required from Frontend Engineer
+
+**Summary:**
+
+Sprint #29 has no Backend Engineer implementation tasks. A contract review was performed for completeness per standing procedure.
+
+- **No new endpoints** introduced this sprint
+- **No existing endpoint signatures changed** — all 30 endpoints from Sprints 1–25 remain in force exactly as documented
+- **No schema migrations** required
+- The Sprint 29 contracts section has been appended to `.workflow/api-contracts.md` (lines ~6773+) for audit trail purposes
+
+**What this means for Frontend:**
+- Your existing API integration code requires no changes
+- The only sprint work touching the frontend/backend boundary is the T-235 Playwright test-code fix, which modifies only `e2e/critical-flows.spec.js` — no application source files are changed
+- If you need the airport code `_airportCode_` CSS module class to provide a `data-testid` for T-235, the QA Engineer may reach out — that is an optional fallback locator approach
+
+**Contract reference:** `.workflow/api-contracts.md` — Sprint 29 section
+
+*Backend Engineer Sprint #29 Contract Review — 2026-03-16*
+
+---
+
+**[2026-03-16] Backend Engineer → QA Engineer** *(Sprint #29 — API Contract Review — No Changes)*
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Re:** Sprint #29 API contracts confirmed — no new endpoints — QA reference notes for T-235/T-236 included
+**Status:** ✅ COMPLETE — Reference notes added for your T-235/T-236 work
+
+**Summary:**
+
+No new API contracts this sprint. All 30 endpoints from Sprints 1–25 remain in force, unchanged, applied on staging. The Sprint 29 contracts section in `.workflow/api-contracts.md` includes a dedicated **"QA Reference: Key Endpoint Behaviors Under Test"** block for your T-235/T-236 work.
+
+**Key notes for T-235 (Playwright locator fix):**
+- `GET /api/v1/trips/:id/calendar` returns flight events with `departure_airport` and `arrival_airport` string fields (e.g., `"JFK"`, `"SFO"`)
+- These values are rendered in multiple DOM locations by the frontend (TripCalendar pill, MobileDayList span, and flight card `[class*="_airportCode_"]` div) — this is the root cause of the strict-mode violation
+- The API itself is correct; the fix is test-code only
+
+**Key notes for T-236 (Monitor health check — PATCH regression):**
+- `PATCH /api/v1/trips/:id` with `{ "start_date": "2026-09-01", "end_date": "2026-09-30" }` must return those exact user-provided dates in the response (T-229 COALESCE fix, verified by User Agent in Sprint 28)
+- Auth: Bearer token required
+- Expected response shape: `{ "data": { ..., "start_date": "2026-09-01", "end_date": "2026-09-30", ... } }`
+
+**Security checklist status:** No new routes, middleware, or data-handling logic this sprint — security checklist not applicable for Sprint 29 backend pass.
+
+**Contract reference:** `.workflow/api-contracts.md` — Sprint 29 section (QA Reference block)
+
+*Backend Engineer Sprint #29 Contract Review — 2026-03-16*
+
+---
+
 **[2026-03-16] Design Agent → (No Handoff Required)** *(Sprint #29 — Design Review — No Tasks)*
 
 **From:** Design Agent

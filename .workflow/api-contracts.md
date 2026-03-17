@@ -6772,3 +6772,77 @@ All contracts from Sprints 1–27 remain in force unchanged. Sprint 28 adds no n
 ---
 
 *Sprint 28 contracts published by Backend Engineer 2026-03-11. No new endpoints. No schema changes. T-229 is a pure SQL query correction (COALESCE on TRIP_COLUMNS) — the only API-observable change is that `start_date`/`end_date` in trip responses now correctly reflect user-stored values when present, rather than always returning computed sub-resource aggregates. Test baseline entering Sprint 28: 363/363 backend | 486/486 frontend.*
+
+---
+
+## Sprint 29 Contracts
+
+**Sprint #29 — 2026-03-16**
+
+**Backend Engineer API Contract Review: NO NEW CONTRACTS REQUIRED**
+
+Sprint 29 is a single-task sprint scoped exclusively to a Playwright E2E test locator bug (T-235 — test-code fix only). The active sprint explicitly assigns the Backend Engineer no tasks: *"No tasks this sprint (application complete)."*
+
+**Contract Status:** All contracts from Sprints 1–28 remain in force, unchanged, and applied on staging.
+
+**New Endpoints:** None
+
+**Changed Endpoints:** None
+
+**Schema Changes:** None. No migrations required.
+
+### Sprint 29 — Full Contract Registry (Status Check)
+
+All endpoints listed below are `✅ Agreed, Applied on Staging`. No changes from Sprint 28.
+
+| Sprint | Endpoint | Sprint 29 Status |
+|--------|----------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/login` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Unchanged |
+| 1 | `GET /api/v1/health` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Unchanged (T-229 COALESCE semantics from Sprint 28 in effect) |
+| 1 | `POST /api/v1/trips` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id` | ✅ Unchanged (T-229 COALESCE semantics from Sprint 28 in effect) |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Unchanged (T-229 user-date fix from Sprint 28 in effect) |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Unchanged |
+
+### Sprint 29 — QA Reference: Key Endpoint Behaviors Under Test
+
+The following endpoint behaviors are relevant to T-235 (Playwright locator fix) and T-236 (Monitor health check) for QA reference:
+
+**`GET /api/v1/trips/:id/calendar`** — Sprint 25 contract, unchanged
+- Returns a unified timeline of all trip sub-resources (flights, stays, activities, land-travel) sorted by `start_datetime` ascending
+- Flight events include `departure_airport` and `arrival_airport` (e.g., `"JFK"`, `"SFO"`) in the event payload
+- These airport codes are rendered in multiple DOM locations by the frontend (TripCalendar pill, MobileDayList, and flight card `_airportCode_` div) — this is the root cause of the T-235 Playwright strict-mode violation; the API shape is correct and unchanged
+
+**`PATCH /api/v1/trips/:id`** — T-229 regression check (T-236 Monitor protocol)
+- Request: `{ "start_date": "2026-09-01", "end_date": "2026-09-30" }` (Bearer auth required)
+- Expected response: `{ "data": { ..., "start_date": "2026-09-01", "end_date": "2026-09-30", ... } }`
+- User-provided dates must be returned exactly as supplied (COALESCE fix from Sprint 28 confirmed by User Agent FB-123/FB-125)
+
+---
+
+*Sprint 29 contracts reviewed by Backend Engineer 2026-03-16. No new endpoints. No schema changes. No migrations. Application is MVP feature-complete — all 30 endpoints from Sprints 1–25 remain in force and applied on staging. Test baseline entering Sprint 29: 363/363 backend | 486/486 frontend (from Sprint 28 closeout).*
