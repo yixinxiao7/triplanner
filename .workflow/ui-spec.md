@@ -10627,3 +10627,236 @@ All styles must adhere to the Design System Conventions table at the top of this
 **Next expected design work:** Sprint #27 — pending Manager triage of T-219 User Agent feedback and any post-production UX observations from T-225 Monitor Agent report.
 
 *Sprint #26 design review complete. Published by Design Agent 2026-03-11.*
+
+---
+
+## Sprint #30 Design Agent Review — 2026-03-17
+
+**Design Agent Status:** No new screens required. One targeted spec addendum added for T-243 (LAND_TRAVEL calendar pill integration via API event type).
+
+**Sprint #30 scope review:**
+
+| Task | Type | Design Impact |
+|------|------|---------------|
+| T-238 | Backend bug fix (status persistence) | None — no UI change |
+| T-239 | Frontend bug fix (TripStatusSelector PATCH) | None — existing selector component behavior; no visual change |
+| T-240 | Backend bug fix (flight timezone storage) | None — no UI change |
+| T-241 | Frontend bug fix (flight card time display) | None — existing FlightCard and formatDate; visual output corrects itself after fix |
+| T-242 | Backend: add LAND_TRAVEL to calendar API | None — data shape change only |
+| T-243 | Frontend: render LAND_TRAVEL in TripCalendar | **See Spec 26 addendum below** — clarifies pill format for the new `type: "LAND_TRAVEL"` event from the calendar API |
+
+**Design System Conventions:** Stable. No changes proposed.
+
+**Relevant prior specs for T-239/T-241:**
+- `TripStatusSelector` appearance: Spec 7 (Status Badges convention in Design System table) — badge styling unchanged; the fix is in the PATCH request body, not the visual.
+- `FlightCard` time display: Spec 7 (FlightCard spec) — time format unchanged; the fix corrects UTC conversion so the already-specified format (`6:50 AM ET`) renders correctly.
+
+---
+
+### Spec 26: TripCalendar — LAND_TRAVEL Event Type Integration (Sprint 30 — T-243)
+
+**Sprint:** #30
+**Related Tasks:** T-242 (Backend: API change), T-243 (Frontend: render LAND_TRAVEL pills)
+**Status:** Approved
+**Priority:** P1
+
+---
+
+#### 26.1 Overview
+
+This addendum is a **targeted extension** to the existing TripCalendar chip rendering pipeline. It adds handling for the new `type: "LAND_TRAVEL"` event objects returned by `GET /api/v1/trips/:id/calendar` (after T-242 is merged). All existing chip types (FLIGHT, STAY, ACTIVITY) are unaffected. All previously specified land travel chip styles (color, time display, location logic, rental car prefixes) remain authoritative — this spec only bridges the new API event shape to those existing conventions.
+
+**Context:** Prior to Sprint 30, land travel was not included in the calendar API response — `TripCalendar.jsx` had no `type === "LAND_TRAVEL"` events to render even though the visual spec existed. T-242 adds LAND_TRAVEL events to the calendar endpoint. T-243 adds the corresponding rendering branch in TripCalendar.
+
+---
+
+#### 26.2 Incoming API Event Shape (from T-242)
+
+The `GET /api/v1/trips/:id/calendar` response will include LAND_TRAVEL events with this shape (per T-242 backend implementation):
+
+```json
+{
+  "type": "LAND_TRAVEL",
+  "title": "Train — London → Paris",
+  "start": "2026-08-07T10:00:00",
+  "end": "2026-08-07T14:30:00",
+  "date": "2026-08-07"
+}
+```
+
+**Field semantics:**
+| Field | Description |
+|-------|-------------|
+| `type` | Always `"LAND_TRAVEL"` for these events |
+| `title` | `"{mode} — {from_location} → {to_location}"` — formatted by the backend. Mode is the display label (e.g., "Train", "Bus", "Rental Car", "Rideshare", "Ferry", "Other") |
+| `start` | ISO datetime string of departure (no timezone suffix — local wall-clock time, same behavior as activity times) |
+| `end` | ISO datetime string of arrival, or equal to `start` if no arrival time stored |
+| `date` | YYYY-MM-DD date of the event (departure date) |
+
+**Note on arrival day:** If a land travel entry has an `arrival_date` different from `departure_date`, the backend emits **two** separate events: one for the departure day (with `date = departure_date`) and one for the arrival day (with `date = arrival_date`). The Frontend Engineer should not attempt to split or re-derive multi-day events from a single entry — trust the API to emit the correct events per day.
+
+---
+
+#### 26.3 Pill Visual Design
+
+The LAND_TRAVEL pill uses the existing `--color-land-travel` token established in Sprint 6 (muted purple `#7B6B8E`). Do not introduce a new color.
+
+**Pill appearance:**
+- Background: `rgba(123, 107, 142, 0.2)` (`--color-land-travel` at 20% opacity) — matches existing land travel chip spec
+- Border-left: `2px solid var(--color-land-travel)` — left accent bar (same as other calendar chips)
+- Text color: `var(--color-land-travel)` (`#7B6B8E`)
+- Font-size: 10px, font-weight: 500
+- Height: 18px, padding: 0 6px, border-radius: 2px
+- Truncate with `text-overflow: ellipsis` if content overflows chip width
+
+**Pill label format:**
+
+The pill text is derived from the `title` and `start`/`end` fields:
+
+```
+"{mode} {departure_time}–{arrival_time}"
+```
+
+Where:
+- `{mode}` is the first segment of `title` before ` — ` (e.g., `"Train"`, `"Bus"`, `"Rental Car"`)
+- `{departure_time}` is extracted from the `start` field using `formatTime()` (same utility used for other event types — renders `HH:MM` 24h or `h:MM AM/PM` depending on the app's locale convention; match the format used for flights and activities)
+- `{arrival_time}` is extracted from the `end` field using `formatTime()`
+- If `start === end` (no arrival time), omit the `–{arrival_time}` segment: show `"{mode} {departure_time}"`
+- If `start` time portion is `00:00` and `end` time portion is `00:00` (no times stored), show just the mode label without any time: `"{mode}"`
+
+**Examples:**
+| Scenario | Pill text |
+|----------|-----------|
+| Train, 10:00 departure, 14:30 arrival | `"Train 10:00–14:30"` |
+| Bus, 08:00 departure, no arrival | `"Bus 08:00"` |
+| Rental Car, no departure/arrival times | `"Rental Car"` |
+| Ferry, 22:00 departure, 06:00 arrival (next day, arrival pill) | `"Ferry 06:00"` ← arrival-day pill shows arrival time only |
+
+**Arrival-day pill:** For the backend-emitted arrival-day event, the pill shows only the arrival time (from `start` field of that event) preceded by the mode. The from/to location is not shown on calendar pills — it is in the `title` field but omitted from the pill text to keep chips compact.
+
+---
+
+#### 26.4 Click-to-Scroll Behavior
+
+Clicking a LAND_TRAVEL pill on the calendar scrolls smoothly to the `#land-travels-section` anchor on `TripDetailsPage`. This matches the established pattern for other event types (flights → `#flights-section`, stays → `#stays-section`, activities → `#activities-section`).
+
+**Implementation pattern:**
+```jsx
+onClick={() => {
+  document.getElementById('land-travels-section')?.scrollIntoView({ behavior: 'smooth' });
+}}
+```
+
+The cursor on the pill should be `pointer`. The pill should have a subtle hover state: background increases to `rgba(123, 107, 142, 0.3)` (slightly more opaque) on hover — consistent with the hover behavior of other clickable event chips.
+
+---
+
+#### 26.5 Placement and Ordering in the Day Cell
+
+Event ordering within a day cell (top to bottom):
+1. FLIGHT events
+2. STAY events (continuation bars)
+3. ACTIVITY events
+4. **LAND_TRAVEL events** ← new, always last
+
+When a cell has more than 3 total events, the `+N more` overflow indicator applies as usual. LAND_TRAVEL events are lowest priority for the visible slots (they may be hidden behind `+N more` if the cell is full with flights, stays, and activities).
+
+---
+
+#### 26.6 Day Popover Integration
+
+When the user opens the day popover (clicking a day cell that has `+N more`), LAND_TRAVEL events appear in the popover list after flights, stays, and activities. The popover chip for a LAND_TRAVEL event uses the same visual style as the inline pill (same background, border-left, text color) and the same label format.
+
+The popover item shows the full `title` string (e.g., `"Train — London → Paris"`) as a secondary line below the time for context, if space permits. This is optional — if the popover layout is fixed-height or compact, showing just the pill label is acceptable.
+
+---
+
+#### 26.7 States
+
+| State | Behavior |
+|-------|----------|
+| No land travel entries in trip | No LAND_TRAVEL pills appear — calendar unchanged |
+| Land travel with departure + arrival on same day | One pill on that day: `"{mode} {dep_time}–{arr_time}"` |
+| Land travel with departure + arrival on different days | Two pills: departure-day shows `"{mode} {dep_time}"`, arrival-day shows `"{mode} {arr_time}"` |
+| Land travel with no times stored | One pill on departure day: `"{mode}"` (mode label only) |
+| `title` field is very long (long location names) | Truncate with ellipsis; full title is in `aria-label` |
+| LAND_TRAVEL events alongside many other event types | LAND_TRAVEL goes last in cell ordering; may fall into `+N more` overflow |
+| `#land-travels-section` element not found in DOM | `scrollIntoView` call is a no-op (optional chaining `?.` handles gracefully) |
+
+---
+
+#### 26.8 Accessibility
+
+- Each LAND_TRAVEL pill: `role="button"`, `tabIndex={0}`, `aria-label="Land travel: {title} on {formatted date} — scroll to land travel section"`
+- `onKeyDown` handler: activate scroll on `Enter` or `Space` key
+- Focus ring: `outline: 2px solid var(--color-land-travel)` on focus (matching accent focus ring convention but using the land travel color)
+
+---
+
+#### 26.9 Test Plan (T-243)
+
+The Frontend Engineer must add the following tests to `TripCalendar.test.jsx`:
+
+**Test 26.A — LAND_TRAVEL pill renders with departure and arrival time**
+```
+Given: GET /calendar returns a LAND_TRAVEL event with title "Train — London → Paris", start "2026-08-07T10:00:00", end "2026-08-07T14:30:00", date "2026-08-07"
+When:  TripCalendar renders August 2026
+Then:  A pill reading "Train 10:00–14:30" appears on August 7
+And:   The pill has the land travel color styling (var(--color-land-travel))
+```
+
+**Test 26.B — LAND_TRAVEL pill renders with departure time only (no arrival)**
+```
+Given: A LAND_TRAVEL event with start "2026-08-07T08:00:00", end "2026-08-07T08:00:00" (start === end)
+When:  TripCalendar renders August 2026
+Then:  The pill reads "Bus 08:00" (no arrival time appended)
+```
+
+**Test 26.C — LAND_TRAVEL pill click scrolls to land-travels-section**
+```
+Given: A LAND_TRAVEL event pill is rendered
+When:  User clicks the pill
+Then:  document.getElementById('land-travels-section').scrollIntoView is called with { behavior: 'smooth' }
+```
+
+**Test 26.D — No LAND_TRAVEL pills when no events of that type**
+```
+Given: GET /calendar returns only FLIGHT and STAY events (no LAND_TRAVEL)
+When:  TripCalendar renders
+Then:  No land travel color pills appear in any day cell
+And:   All existing FLIGHT and STAY pills render correctly (no regression)
+```
+
+**Test 26.E — LAND_TRAVEL appears after FLIGHT/STAY/ACTIVITY in cell ordering**
+```
+Given: A day cell that has one FLIGHT, one STAY, and one LAND_TRAVEL event
+When:  TripCalendar renders that day
+Then:  The FLIGHT pill appears first, STAY second, LAND_TRAVEL third
+```
+
+---
+
+#### 26.10 Files to Modify (T-243)
+
+| File | Change |
+|------|--------|
+| `frontend/src/components/TripCalendar.jsx` | Add `type === "LAND_TRAVEL"` branch in the event rendering logic. Extract mode from `title`. Format departure/arrival from `start`/`end`. Add click-to-scroll handler. |
+| `frontend/src/__tests__/TripCalendar.test.jsx` | Add Tests 26.A through 26.E (5 new tests) |
+
+**No API changes.** No schema changes. No new components. No style file changes (all required CSS tokens already exist).
+
+---
+
+*Spec 26 (Sprint 30 — LAND_TRAVEL TripCalendar integration, T-243) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-17.*
+
+---
+
+## Sprint #30 Design Agent Review — 2026-03-17
+
+**Design Agent Status:** Spec 26 added for T-243. No other specs required. T-239 and T-241 are behavioral bug fixes with no visual design changes — existing specs remain authoritative.
+
+**Design System Conventions:** Stable. No additions or modifications proposed. All tokens, spacing, and typography conventions from the table at the top of this document remain in effect.
+
+**Most recent spec:** Spec 26 (Sprint #30, T-243 — TripCalendar LAND_TRAVEL integration) — Status: Approved.
+
+*Sprint #30 design review complete. Published by Design Agent 2026-03-17.*

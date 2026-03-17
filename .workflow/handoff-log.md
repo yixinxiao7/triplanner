@@ -4,6 +4,43 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-17] Design Agent → Frontend Engineer** *(Sprint #30 — Spec 26 Approved — T-243 Ready to Build)*
+
+**From:** Design Agent
+**To:** Frontend Engineer
+**Re:** Sprint #30 design review complete. Spec 26 published for T-243 (LAND_TRAVEL pills in TripCalendar). T-239 and T-241 require no spec changes.
+**Status:** ✅ Spec 26 Approved — T-243 unblocked pending T-242 (Backend). T-239 and T-241 can begin immediately with existing specs.
+
+**Spec Coverage Summary — Sprint #30 Frontend Tasks:**
+
+| Task | Spec Reference | Status | Notes |
+|------|---------------|--------|-------|
+| T-239 — TripStatusSelector fix | Existing Spec 7 (Status Badges) + Design System Conventions | ✅ Existing spec accurate | Bug fix only — no visual change. The selector style and badge appearance are already spec'd. Fix is in the PATCH request body construction and state update. |
+| T-241 — Flight timezone display fix | Existing Spec 7 (FlightCard / formatDate) | ✅ Existing spec accurate | Bug fix only — no visual change. The display format (`6:50 AM ET`) is already spec'd. Fix is in removing the double timezone conversion in `formatDate.js`. |
+| T-243 — LAND_TRAVEL in TripCalendar | **Spec 26 (NEW — Sprint #30)** | ✅ Approved | New spec added. See `.workflow/ui-spec.md` → "Spec 26: TripCalendar — LAND_TRAVEL Event Type Integration". |
+
+**Key Design Decisions for T-243 (Spec 26):**
+
+1. **Pill color:** Use existing `--color-land-travel: #7B6B8E` (muted purple, Sprint 6). No new color token needed.
+
+2. **Pill label format:** `"{mode} {HH:MM}–{HH:MM}"` — mode extracted from the `title` field (first segment before ` — `), times from `start`/`end` fields via existing `formatTime()`. If start === end (no arrival stored), show `"{mode} {HH:MM}"`. If no times at all, show just `"{mode}"`.
+
+3. **Mode extraction:** The backend sends `title` as `"{Mode} — {from} → {to}"`. Extract mode with `title.split(' — ')[0]`. Do not hardcode modes — trust the backend string.
+
+4. **Click behavior:** `onClick` → `document.getElementById('land-travels-section')?.scrollIntoView({ behavior: 'smooth' })`. Cursor: `pointer`.
+
+5. **Cell ordering:** LAND_TRAVEL pills render last in each day cell (after FLIGHT, STAY, ACTIVITY). Lowest overflow priority.
+
+6. **Multi-day trips:** Backend emits two separate events (one departure-day, one arrival-day) — do not attempt to split from a single event. Trust the API event array.
+
+7. **No new components.** Add a branch inside the existing event rendering logic in `TripCalendar.jsx`.
+
+**Tests required for T-243:** Tests 26.A through 26.E (5 tests) — see Spec 26.9 in `ui-spec.md` for exact test cases.
+
+**T-243 is blocked on T-242.** Do not start T-243 until the Backend Engineer confirms T-242 is merged and the calendar API returns LAND_TRAVEL events.
+
+---
+
 **[2026-03-16] Manager Agent → All Agents** *(Sprint #30 Kickoff — Sprint #29 Closed)*
 
 **From:** Manager Agent

@@ -2458,6 +2458,17 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 ## Sprint 30 Tasks
 
+### Design Agent Review — Sprint 30
+
+**Status:** ✅ Complete — 2026-03-17
+
+- **Spec 26** published to `.workflow/ui-spec.md` — TripCalendar LAND_TRAVEL event type integration (T-243). Status: Approved.
+- **T-239** (TripStatusSelector fix): Existing specs accurate. No new spec required — bug fix only, no visual change.
+- **T-241** (flight timezone display fix): Existing specs accurate. No new spec required — bug fix only, display format already spec'd.
+- Handoff logged to Frontend Engineer in `.workflow/handoff-log.md`.
+
+---
+
 ### Phase 1 — Critical Bug Fixes: Trip Status + Flight Timezone (no dependencies — start immediately, all in parallel)
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
