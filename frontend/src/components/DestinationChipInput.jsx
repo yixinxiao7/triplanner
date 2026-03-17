@@ -20,6 +20,7 @@ export default function DestinationChipInput({
   error = null,
   placeholder = 'Add a destination...',
   autoFocus = false,
+  ariaLabelledBy = null,
 }) {
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef(null);
@@ -99,7 +100,8 @@ export default function DestinationChipInput({
         className={`${styles.container} ${hasError ? styles.containerError : ''} ${disabled ? styles.containerDisabled : ''}`}
         onClick={handleContainerClick}
         role="group"
-        aria-label="Destinations"
+        aria-label={ariaLabelledBy ? undefined : "Destinations"}
+        aria-labelledby={ariaLabelledBy || undefined}
       >
         {/* Chips */}
         {destinations.map((dest, index) => (

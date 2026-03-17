@@ -183,8 +183,8 @@ describe('TripCalendar — Sprint 25 (T-213)', () => {
     scrollToSpy.mockRestore();
   });
 
-  // Test 11: Keyboard Enter on event pill triggers scroll
-  it('pressing Enter on event pill triggers scroll', async () => {
+  // Test 11: Click on activity event pill triggers scroll to section
+  it('clicking activity event pill scrolls to activities section', async () => {
     mockSuccess([mockEvents[2]]);
     const section = document.createElement('section');
     section.id = 'activities-section';
@@ -195,7 +195,7 @@ describe('TripCalendar — Sprint 25 (T-213)', () => {
     await waitFor(() => {
       const pills = screen.getAllByRole('button', { name: /activity: getty museum visit/i });
       expect(pills.length).toBeGreaterThan(0);
-      fireEvent.keyDown(pills[0], { key: 'Enter' });
+      fireEvent.click(pills[0]);
     });
 
     expect(scrollToSpy).toHaveBeenCalled();
@@ -526,19 +526,20 @@ describe('TripCalendar — Sprint 25 (T-213)', () => {
     expect(gridCells.length).toBeGreaterThan(0);
   });
 
-  // Test 39: Event pill is keyboard focusable (tabIndex=0)
-  it('event pills have tabIndex=0 (keyboard focusable)', async () => {
+  // Test 39: Event pills are keyboard focusable (native buttons)
+  it('event pills are keyboard focusable', async () => {
     mockSuccess([mockEvents[0]]);
     render(<TripCalendar tripId="trip-001" />);
     await waitFor(() => {
-      const pills = document.querySelectorAll('[class*="eventPill"]');
-      const focusable = Array.from(pills).some((p) => p.getAttribute('tabindex') === '0');
-      expect(focusable).toBe(true);
+      const pills = screen.getAllByRole('button', { name: /flight:/i });
+      expect(pills.length).toBeGreaterThan(0);
+      // Native <button> elements are focusable by default
+      expect(pills[0].tagName).toBe('BUTTON');
     });
   });
 
-  // Test 40: Space key on event pill triggers scroll
-  it('pressing Space on event pill triggers scroll', async () => {
+  // Test 40: Click on event pill triggers scroll (native button handles Enter/Space)
+  it('clicking event pill triggers scroll', async () => {
     mockSuccess([mockEvents[0]]);
     const section = document.createElement('section');
     section.id = 'flights-section';
@@ -548,7 +549,7 @@ describe('TripCalendar — Sprint 25 (T-213)', () => {
     render(<TripCalendar tripId="trip-001" />);
     await waitFor(() => {
       const pills = screen.getAllByRole('button', { name: /flight: delta dl12345/i });
-      fireEvent.keyDown(pills[0], { key: ' ' });
+      fireEvent.click(pills[0]);
     });
 
     expect(scrollToSpy).toHaveBeenCalled();
@@ -556,17 +557,15 @@ describe('TripCalendar — Sprint 25 (T-213)', () => {
     scrollToSpy.mockRestore();
   });
 
-  // Test 41: Mobile day list event rows have role="button"
-  it('mobile event rows have role="button"', async () => {
+  // Test 41: Mobile day list event rows are native buttons
+  it('mobile event rows are native button elements', async () => {
     mockSuccess([mockEvents[0]]);
     render(<TripCalendar tripId="trip-001" />);
     await waitFor(() => {
-      // Mobile event rows also have role="button"
       const mobileRows = document.querySelectorAll('[class*="mobileEventRow"]');
-      const hasButton = Array.from(mobileRows).some(
-        (el) => el.getAttribute('role') === 'button'
-      );
-      expect(hasButton).toBe(true);
+      expect(mobileRows.length).toBeGreaterThan(0);
+      // Native <button> elements — no need for role="button"
+      expect(mobileRows[0].tagName).toBe('BUTTON');
     });
   });
 

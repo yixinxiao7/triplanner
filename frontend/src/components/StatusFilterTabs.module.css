@@ -64,16 +64,16 @@
 }
 
 .pillInactive:hover {
-  background: rgba(252, 252, 252, 0.04);
-  border-color: rgba(93, 115, 126, 0.5);
-  color: rgba(252, 252, 252, 0.75);
+  background: var(--hover-overlay);
+  border-color: var(--accent-muted);
+  color: var(--text-secondary);
 }
 
 /* ── Active pill ───────────────────────────────────────────────────────────── */
 
 .pillActive {
-  background: rgba(93, 115, 126, 0.2);
-  border: 1px solid var(--border-accent); /* #5D737E */
+  background: var(--accent-faint);
+  border: 1px solid var(--border-accent);
   color: var(--text-primary);             /* #FCFCFC */
   font-weight: 600;
   cursor: default;
@@ -81,5 +81,5 @@
 
 /* Active pill hover — no change (already selected, cursor:default) */
 .pillActive:hover {
-  background: rgba(93, 115, 126, 0.2);
+  background: var(--accent-faint);
 }

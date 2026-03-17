@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from './StatusBadge';
 import { formatDateRange, formatDestinations } from '../utils/formatDate';
@@ -7,8 +7,9 @@ import styles from './TripCard.module.css';
 /**
  * TripCard — displays a single trip as a clickable card.
  * Includes inline delete confirmation flow.
+ * Memoized to prevent re-renders when sibling trips change.
  */
-export default function TripCard({ trip, onDelete }) {
+const TripCard = memo(function TripCard({ trip, onDelete }) {
   const navigate = useNavigate();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -184,7 +185,9 @@ export default function TripCard({ trip, onDelete }) {
       )}
     </div>
   );
-}
+});
+
+export default TripCard;
 
 /**
  * TripCard skeleton for loading state.

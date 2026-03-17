@@ -60,9 +60,10 @@ export default function HomePage() {
    * When activeFilter === "ALL" every trip is shown; otherwise only matching.
    * This is purely client-side and instant — no API call on filter change.
    */
-  const filteredTrips = activeFilter === 'ALL'
-    ? trips
-    : trips.filter((t) => t.status === activeFilter);
+  const filteredTrips = useMemo(
+    () => activeFilter === 'ALL' ? trips : trips.filter((t) => t.status === activeFilter),
+    [trips, activeFilter]
+  );
 
   /**
    * Label used in the empty-filtered-state message ("No Planning trips yet.").

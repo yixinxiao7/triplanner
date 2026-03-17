@@ -42,7 +42,7 @@
 }
 
 .newTripBtn:hover {
-  background: rgba(93, 115, 126, 0.8);
+  background: var(--accent-hover);
 }
 
 /* Result Count — "showing X trips" */
@@ -117,7 +117,7 @@
   font-weight: 500;
   color: var(--text-primary);
   background: transparent;
-  border: 1px solid rgba(93, 115, 126, 0.5);
+  border: 1px solid var(--accent-muted);
   border-radius: var(--radius-sm);
   padding: 10px 24px;
   cursor: pointer;
@@ -126,7 +126,7 @@
 }
 
 .retryBtn:hover {
-  background: rgba(252, 252, 252, 0.05);
+  background: var(--hover-overlay);
 }
 
 /* ── Status Filter Tabs row (Spec 21 — Sprint 24) ──────────────────────────── */
@@ -170,7 +170,7 @@
 }
 
 .showAllLink:hover {
-  color: rgba(93, 115, 126, 0.8);
+  color: var(--accent-hover);
 }
 
 /* ============================================================
@@ -193,5 +193,15 @@
 
   .main {
     padding-top: 32px;
+  }
+
+  /* WCAG 2.5.5 touch targets on mobile */
+  .newTripBtn {
+    min-height: 44px;
+    padding: 12px 24px;
+  }
+
+  .retryBtn {
+    min-height: 44px;
   }
 }

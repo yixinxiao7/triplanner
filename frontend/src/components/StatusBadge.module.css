@@ -10,16 +10,16 @@
 }
 
 .planning {
-  background: rgba(93, 115, 126, 0.2);
-  color: #5D737E;
+  background: var(--status-planning-bg);
+  color: var(--status-planning-text);
 }
 
 .ongoing {
-  background: rgba(100, 180, 100, 0.15);
-  color: rgba(100, 200, 100, 0.9);
+  background: var(--status-ongoing-bg);
+  color: var(--status-ongoing-text);
 }
 
 .completed {
-  background: rgba(252, 252, 252, 0.1);
-  color: rgba(252, 252, 252, 0.5);
+  background: var(--status-completed-bg);
+  color: var(--status-completed-text);
 }

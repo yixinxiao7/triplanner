@@ -13,14 +13,14 @@ function nextTempId() {
 // ── Column Headers ───────────────────────────────────────────
 function ColumnHeaders() {
   return (
-    <div className={styles.columnHeaders} aria-hidden="true">
-      <div className={styles.colDate}>DATE</div>
-      <div className={styles.colName}>ACTIVITY NAME</div>
-      <div className={styles.colLocation}>LOCATION</div>
-      <div className={styles.colAllDay}>ALL DAY</div>
-      <div className={styles.colStart}>START</div>
-      <div className={styles.colEnd}>END</div>
-      <div className={styles.colDelete} />
+    <div className={styles.columnHeaders} role="row" aria-label="Activity columns">
+      <div className={styles.colDate} role="columnheader">DATE</div>
+      <div className={styles.colName} role="columnheader">ACTIVITY NAME</div>
+      <div className={styles.colLocation} role="columnheader">LOCATION</div>
+      <div className={styles.colAllDay} role="columnheader">ALL DAY</div>
+      <div className={styles.colStart} role="columnheader">START</div>
+      <div className={styles.colEnd} role="columnheader">END</div>
+      <div className={styles.colDelete} role="columnheader" aria-label="Delete" />
     </div>
   );
 }
@@ -197,7 +197,6 @@ function ActivityRow({ row, onChange, onDelete, rowIndex, showErrors }) {
 export default function ActivitiesEditPage() {
   const { id: tripId } = useParams();
   const navigate = useNavigate();
-
   // rows: array of { id?, _tempId, activity_date, name, location, start_time, end_time }
   const [rows, setRows] = useState([]);
   // IDs of existing activities that were removed (to DELETE on save)

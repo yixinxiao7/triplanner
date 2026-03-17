@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { useAuth } from './context/AuthContext';
 import { configureApiAuth, apiClient } from './utils/api';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -7,11 +7,13 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
 import TripDetailsPage from './pages/TripDetailsPage';
-import FlightsEditPage from './pages/FlightsEditPage';
-import StaysEditPage from './pages/StaysEditPage';
-import ActivitiesEditPage from './pages/ActivitiesEditPage';
-import LandTravelEditPage from './pages/LandTravelEditPage';
 import { useNavigate } from 'react-router-dom';
+
+// Lazy-loaded edit pages — only fetched when the user navigates to them
+const FlightsEditPage = lazy(() => import('./pages/FlightsEditPage'));
+const StaysEditPage = lazy(() => import('./pages/StaysEditPage'));
+const ActivitiesEditPage = lazy(() => import('./pages/ActivitiesEditPage'));
+const LandTravelEditPage = lazy(() => import('./pages/LandTravelEditPage'));
 
 /**
  * AppRoutes — separated from App so it can use React Router hooks (useNavigate).
@@ -62,7 +64,9 @@ function AppRoutes() {
         path="/trips/:id/edit/flights"
         element={
           <ProtectedRoute>
-            <FlightsEditPage />
+            <Suspense fallback={null}>
+              <FlightsEditPage />
+            </Suspense>
           </ProtectedRoute>
         }
       />
@@ -70,7 +74,9 @@ function AppRoutes() {
         path="/trips/:id/edit/stays"
         element={
           <ProtectedRoute>
-            <StaysEditPage />
+            <Suspense fallback={null}>
+              <StaysEditPage />
+            </Suspense>
           </ProtectedRoute>
         }
       />
@@ -78,7 +84,9 @@ function AppRoutes() {
         path="/trips/:id/edit/activities"
         element={
           <ProtectedRoute>
-            <ActivitiesEditPage />
+            <Suspense fallback={null}>
+              <ActivitiesEditPage />
+            </Suspense>
           </ProtectedRoute>
         }
       />
@@ -87,7 +95,9 @@ function AppRoutes() {
         path="/trips/:id/land-travel/edit"
         element={
           <ProtectedRoute>
-            <LandTravelEditPage />
+            <Suspense fallback={null}>
+              <LandTravelEditPage />
+            </Suspense>
           </ProtectedRoute>
         }
       />

@@ -55,8 +55,8 @@
 
 /* ── Save Banner ── */
 .saveBanner {
-  background: rgba(220, 80, 80, 0.1);
-  border: 1px solid rgba(220, 80, 80, 0.3);
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
   border-radius: var(--radius-sm);
   padding: 12px 16px;
   font-size: 13px;
@@ -82,11 +82,11 @@
 }
 
 .entryCardNew {
-  border-left: 3px solid rgba(93, 115, 126, 0.4);
+  border-left: 3px solid var(--accent-muted);
 }
 
 .entryCardError {
-  border-left: 3px solid rgba(220, 80, 80, 0.6);
+  border-left: 3px solid var(--color-danger-border-strong);
 }
 
 /* ── Card Header ── */
@@ -121,7 +121,7 @@
 }
 
 .deleteCardBtn:hover {
-  color: rgba(220, 80, 80, 0.8);
+  color: var(--color-danger-hover);
 }
 
 /* ── Card Grid (2-column) ── */
@@ -172,6 +172,12 @@
   box-sizing: border-box;
 }
 
+.fieldInput[type="time"],
+.fieldInput[type="date"],
+.fieldInput[type="datetime-local"] {
+  color-scheme: dark;
+}
+
 .fieldInput:focus {
   border-bottom-color: var(--accent);
 }
@@ -215,12 +221,12 @@
 }
 
 .fieldInputError {
-  border-bottom-color: rgba(220, 80, 80, 0.6);
+  border-bottom-color: var(--color-danger-border-strong);
 }
 
 .fieldError {
   font-size: 11px;
-  color: rgba(220, 80, 80, 0.9);
+  color: var(--color-danger);
   margin-top: 2px;
 }
 
@@ -228,7 +234,7 @@
 .addEntryBtn {
   display: block;
   width: 100%;
-  border: 1px dashed rgba(93, 115, 126, 0.5);
+  border: 1px dashed var(--accent-muted);
   padding: 10px 16px;
   border-radius: var(--radius-sm);
   text-align: left;
@@ -256,7 +262,7 @@
 
 /* ── Empty State ── */
 .emptyState {
-  border: 1px dashed rgba(93, 115, 126, 0.3);
+  border: 1px dashed var(--accent-subtle);
   padding: 24px;
   border-radius: var(--radius-md);
   text-align: center;
@@ -271,7 +277,7 @@
 
 .emptySubtext {
   font-size: 11px;
-  color: rgba(252, 252, 252, 0.3);
+  color: var(--text-faint);
   margin: 0;
 }
 
@@ -349,14 +355,14 @@
   font-size: 12px;
   font-weight: 400;
   padding: 10px 24px;
-  border: 1px solid rgba(93, 115, 126, 0.5);
+  border: 1px solid var(--accent-muted);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 150ms ease;
 }
 
 .secondaryBtn:hover:not(:disabled) {
-  background: rgba(252, 252, 252, 0.05);
+  background: var(--hover-overlay);
 }
 
 .secondaryBtn:disabled {

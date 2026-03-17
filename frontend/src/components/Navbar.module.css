@@ -107,11 +107,21 @@
    Responsive — Mobile
    ============================================================ */
 @media (max-width: 767px) {
+  .inner {
+    padding: 0 16px;
+  }
+
   .navLinks {
     display: none; /* hide nav links on mobile (only one link in sprint 1) */
   }
 
   .username {
     display: none; /* hide username on mobile */
+  }
+
+  /* Ensure WCAG 2.5.5 touch target on mobile */
+  .logoutBtn {
+    min-height: 44px;
+    padding: 10px 14px;
   }
 }

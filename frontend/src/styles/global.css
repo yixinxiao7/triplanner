@@ -52,6 +52,53 @@
   --event-activity-border: rgba(200, 160, 90, 0.5);
   --event-activity-text: rgba(220, 185, 110, 0.9);
   --color-land-travel: #7B6B8E;
+  --color-land-travel-bg: rgba(123, 107, 142, 0.15);
+  --color-land-travel-text: #a895c0;
+  --color-land-travel-border: rgba(123, 107, 142, 0.3);
+
+  /* Semantic — danger (destructive actions, errors) */
+  --color-danger: rgba(220, 80, 80, 0.9);
+  --color-danger-bg: rgba(220, 80, 80, 0.1);
+  --color-danger-border: rgba(220, 80, 80, 0.3);
+  --color-danger-border-strong: rgba(220, 80, 80, 0.7);
+  --color-danger-hover: rgba(220, 80, 80, 0.8);
+  --color-danger-hover-bg: rgba(220, 50, 50, 0.15);
+  --color-danger-hover-border: rgba(220, 50, 50, 0.5);
+
+  /* Semantic — warning (rate limits, cautions) */
+  --color-warning: rgba(196, 122, 46, 0.8);
+  --color-warning-bg: rgba(196, 122, 46, 0.1);
+  --color-warning-border: rgba(196, 122, 46, 0.3);
+
+  /* Semantic — success */
+  --color-success: rgba(100, 200, 100, 0.9);
+  --color-success-bg: rgba(100, 180, 100, 0.15);
+
+  /* Status badges */
+  --status-planning-bg: rgba(93, 115, 126, 0.2);
+  --status-planning-text: #5D737E;
+  --status-ongoing-bg: rgba(100, 180, 100, 0.15);
+  --status-ongoing-text: rgba(100, 200, 100, 0.9);
+  --status-completed-bg: rgba(252, 252, 252, 0.1);
+  --status-completed-text: rgba(252, 252, 252, 0.5);
+
+  /* Accent variants */
+  --accent-muted: rgba(93, 115, 126, 0.5);
+  --accent-hover: rgba(93, 115, 126, 0.8);
+  --accent-subtle: rgba(93, 115, 126, 0.3);
+  --accent-faint: rgba(93, 115, 126, 0.2);
+
+  /* Text variants */
+  --text-secondary: rgba(252, 252, 252, 0.7);
+  --text-faint: rgba(252, 252, 252, 0.3);
+
+  /* Interaction */
+  --hover-overlay: rgba(252, 252, 252, 0.05);
+
+  /* Calendar event hover */
+  --event-flight-hover: rgba(93, 115, 126, 0.35);
+  --event-stay-hover: rgba(100, 160, 120, 0.3);
+  --event-activity-hover: rgba(180, 140, 80, 0.28);
 }
 
 /* ============================================================
