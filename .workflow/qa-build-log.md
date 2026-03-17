@@ -2007,3 +2007,82 @@ The following infrastructure is 100% engineering-complete and requires NO furthe
 *QA Engineer Sprint #29 Re-Verification — 2026-03-16T23:15:00Z*
 
 ---
+
+## Sprint #29 — Deploy Engineer — Staging Build & Deploy — 2026-03-17T03:03:04Z
+
+### Pre-Deploy Checks
+
+| Check | Result |
+|-------|--------|
+| QA confirmation in handoff-log.md | ✅ CONFIRMED — QA Engineer Sprint #29 (2026-03-16T22:50:00Z): 377/377 backend, 486/486 frontend, 4/4 Playwright, 0 vulns |
+| Pending migrations (technical-context.md) | ✅ NONE — Sprint 29 has no new migrations. All 10 migrations (001–010) confirmed applied on staging database |
+| Sprint tasks all Done / accounted for | ✅ T-235 Done, T-236 In Progress (Monitor), T-237/T-224/T-225 Backlog/Blocked — pipeline on track |
+| Docker available | ⚠️ NOT AVAILABLE — `docker` command not found on local machine. Using local pm2 process management (staging = local processes) |
+
+### Dependency Install
+
+| Package | Result |
+|---------|--------|
+| `backend` npm install | ✅ Success — 0 vulnerabilities |
+| `frontend` npm install | ✅ Success — 0 vulnerabilities |
+
+### Frontend Build
+
+| Step | Result |
+|------|--------|
+| `cd frontend && npm run build` | ✅ Success — 491ms |
+| Modules transformed | 129 modules |
+| Output: `dist/index.html` | ✅ 0.46 kB |
+| Output: `dist/assets/index.js` | ✅ 293.20 kB (93.95 kB gzip) |
+| Output: `dist/assets/index.css` | ✅ 58.23 kB (10.14 kB gzip) |
+| Build errors | None |
+
+### Database Migrations
+
+| Step | Result |
+|------|--------|
+| Migration status check | ✅ 10/10 migrations applied — all current |
+| Pending migrations to run | None — Sprint 29 is schema-stable |
+| `npm run migrate` | Not required — no new migrations |
+
+**Confirmed applied migrations (001–010):**
+- 20260224_001_create_users.js ✅
+- 20260224_002_create_refresh_tokens.js ✅
+- 20260224_003_create_trips.js ✅
+- 20260224_004_create_flights.js ✅
+- 20260224_005_create_stays.js ✅
+- 20260224_006_create_activities.js ✅
+- 20260225_007_add_trip_date_range.js ✅
+- 20260225_008_make_activity_times_optional.js ✅
+- 20260227_009_create_land_travels.js ✅
+- 20260227_010_add_trip_notes.js ✅
+
+### Staging Deployment
+
+| Step | Result |
+|------|--------|
+| `pm2 reload triplanner-frontend` | ✅ Success — process reloaded with fresh dist/ build |
+| `pm2 reload triplanner-backend` | ✅ Success — process reloaded |
+| Backend health check: `GET https://localhost:3001/api/v1/health` | ✅ `{"status":"ok"}` |
+| Frontend health check: `GET https://localhost:4173` | ✅ `<title>triplanner</title>` |
+| pm2 status: triplanner-backend | ✅ online — NODE_ENV=staging, PORT=3001 |
+| pm2 status: triplanner-frontend | ✅ online — NODE_ENV=staging, BACKEND_PORT=3001 |
+
+### Staging Environment Summary
+
+| Component | URL | Status |
+|-----------|-----|--------|
+| Backend API | https://localhost:3001 | ✅ Online |
+| Frontend (Vite preview) | https://localhost:4173 | ✅ Online |
+| Database | postgres://localhost:5432/triplanner | ✅ Connected (10/10 migrations applied) |
+| Docker | N/A | ⚠️ Not available — pm2 used instead |
+
+**Environment:** Staging (local)
+**Build Status:** ✅ Success
+**Deploy Status:** ✅ Deployed to Staging
+
+**Note on Docker:** Docker is not installed on this machine. Per task instructions, local pm2 process management is used as the staging environment. Backend runs on https://localhost:3001 (HTTPS, self-signed certs, NODE_ENV=staging), frontend serves built assets via `vite preview` on https://localhost:4173. This is consistent with prior sprint deployments.
+
+*Deploy Engineer Sprint #29 — 2026-03-17T03:03:04Z*
+
+---

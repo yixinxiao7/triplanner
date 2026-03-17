@@ -4,6 +4,54 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-17] Deploy Engineer → Monitor Agent** *(Sprint #29 — Staging Build & Deploy Complete — Health Check Required)*
+
+**From:** Deploy Engineer
+**To:** Monitor Agent
+**Re:** Sprint 29 staging deploy complete — fresh build deployed — T-236 health check ready to proceed
+**Status:** ✅ STAGING DEPLOYED — awaiting Monitor Agent health check
+
+**Summary:**
+
+Sprint #29 staging build and deployment is complete. All pre-deploy checks passed. The staging environment has been reloaded with a fresh production build.
+
+**Pre-deploy verification:**
+- ✅ QA confirmation received (handoff-log.md — QA Engineer 2026-03-16T22:50:00Z): 377/377 backend, 486/486 frontend, 4/4 Playwright E2E, 0 vulnerabilities
+- ✅ No pending migrations — Sprint 29 is schema-stable (all 10 migrations 001–010 applied)
+- ✅ T-235 (Playwright locator fix) Done — confirmed by QA and Manager code review pass #2
+
+**Build results:**
+- ✅ `npm install` (backend + frontend) — 0 vulnerabilities each
+- ✅ `cd frontend && npm run build` — 129 modules, 491ms, no errors
+- ✅ Fresh `dist/` assets served via `vite preview`
+
+**Staging environment (post-deploy):**
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend API | https://localhost:3001 | ✅ `{"status":"ok"}` — pm2 online, NODE_ENV=staging |
+| Frontend | https://localhost:4173 | ✅ HTML serving — pm2 online, NODE_ENV=staging |
+| Database | postgres://localhost:5432/triplanner | ✅ Connected — 10/10 migrations applied |
+
+**Infrastructure note:** Docker is not installed on this machine. Local pm2 process management is used as the staging runtime (consistent with all prior sprints). Both services use HTTPS with self-signed certs from `infra/certs/`.
+
+**Action required from Monitor Agent:**
+Please proceed with T-236 full staging health check per your protocol:
+1. `GET https://localhost:3001/api/v1/health` → 200 `{"status":"ok"}`
+2. CORS header verification → `https://localhost:4173`
+3. Login with `test@triplanner.local` / `TestPass123!` → 200
+4. Trips CRUD endpoints → 200
+5. Calendar endpoint → 200
+6. `npx playwright test` from project root → **4/4 PASS** (required)
+7. PATCH trip dates regression check (T-229)
+8. Target: **Deploy Verified = Yes**
+
+**Build log:** `.workflow/qa-build-log.md` → "Sprint #29 — Deploy Engineer — Staging Build & Deploy — 2026-03-17T03:03:04Z"
+
+*Deploy Engineer Sprint #29 — 2026-03-17T03:03:04Z*
+
+---
+
 **[2026-03-16] QA Engineer → Monitor Agent** *(Sprint #29 — Re-Verification Pass — T-236 Still Active — All Gates Green)*
 
 **From:** QA Engineer

@@ -2436,3 +2436,23 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 ---
 
+### Sprint 29 — Deploy Engineer: Staging Build & Deploy (2026-03-17)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| DE-29 | Deploy Engineer: Sprint 29 staging build and deploy | 29 | Deploy Engineer | ✅ Done | P1 | — | ✅ COMPLETED 2026-03-17T03:03:04Z. QA gates confirmed. Dependencies installed (0 vulns). Frontend build: 129 modules, 491ms, no errors. No new migrations (Sprint 29 schema-stable, 10/10 applied). pm2 reload: backend https://localhost:3001 ✅, frontend https://localhost:4173 ✅. Health check: `{"status":"ok"}`. Handoff to Monitor Agent logged. See qa-build-log.md Sprint #29. |
+
+**Deploy Engineer Sprint 29 summary (2026-03-17):**
+
+- ✅ QA confirmation verified in handoff-log.md (377/377 + 486/486 + 4/4 E2E + 0 vulns)
+- ✅ No pending migrations — all 10 migrations applied on staging DB
+- ✅ `npm install` backend + frontend — 0 vulnerabilities
+- ✅ `cd frontend && npm run build` — success (129 modules, 491ms, no errors)
+- ⚠️ Docker not available — pm2 used as staging process manager (consistent with prior sprints)
+- ✅ `pm2 reload triplanner-frontend` + `pm2 reload triplanner-backend` — both online
+- ✅ Backend: `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+- ✅ Frontend: `GET https://localhost:4173` → HTML serving
+- ✅ Handoff to Monitor Agent logged in handoff-log.md for T-236 health check
+
+---
+
