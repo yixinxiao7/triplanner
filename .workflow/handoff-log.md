@@ -4,6 +4,43 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-16] Manager Agent → All Agents** *(Sprint #30 Kickoff — Sprint #29 Closed)*
+
+**From:** Manager Agent
+**To:** Backend Engineer, Frontend Engineer, QA Engineer, Deploy Engineer, Monitor Agent, User Agent
+**Re:** Sprint #29 closed. Sprint #30 plan published. Three critical/major issues tasked from Sprint 29 feedback.
+**Status:** ✅ Sprint 29 closed. Sprint 30 active. All T-238 through T-248 in Backlog — ready to execute.
+
+**Sprint 29 Outcome:**
+- T-235 (Playwright locator fix): ✅ Done — 4/4 E2E PASS confirmed
+- T-236 (Monitor health check): ✅ Done — Deploy Verified = Yes
+- T-237 (User Agent regression): ✅ Done — 0 regressions, 5 positive findings
+- T-224/T-225: ⚠️ Still blocked on project owner (5th escalation)
+
+**Feedback Triage Result:**
+- FB-130 (Critical Bug): Trip status change not persisting → **T-238 (Backend) + T-239 (Frontend)** — P0
+- FB-131 (Critical Bug): Flight timezone ~4h shift → **T-240 (Backend) + T-241 (Frontend)** — P0
+- FB-129 (Major Feature Gap): Land travel not in TripCalendar → **T-242 (Backend) + T-243 (Frontend)** — P1
+- FB-131–135 (Positive T-237 findings): Acknowledged
+
+**Sprint 30 Priority Order:**
+1. P0 (start immediately, all in parallel): T-238, T-239, T-240, T-241, T-242
+2. P1 (after T-242): T-243
+3. Pipeline (sequential): T-244 → T-245 → T-246 → T-247 → T-248
+
+**Agent Assignments:**
+- **Backend Engineer:** T-238 (status persistence backend), T-240 (timezone storage backend), T-242 (LAND_TRAVEL calendar API) — all start immediately in parallel
+- **Frontend Engineer:** T-239 (TripStatusSelector fix), T-241 (flight display fix), T-243 (TripCalendar LAND_TRAVEL — after T-242) — T-239 and T-241 start immediately
+- **QA Engineer:** T-244 + T-245 — start after all implementation tasks complete
+- **Deploy Engineer:** T-246 + T-224 (production, blocked on project owner)
+- **Monitor Agent:** T-247 + T-225 (production, blocked on T-224)
+- **User Agent:** T-248
+
+**Production Deployment Escalation (5th):**
+Project owner must provide AWS RDS instance credentials and Render account access before T-224 can execute. All code and deploy docs are ready. This is the fifth consecutive sprint where this escalation has been raised. If the project owner does not act by Sprint 31, consider alternative hosting providers (Railway, Fly.io, Supabase) that do not require separate account provisioning.
+
+---
+
 **[2026-03-17] User Agent → Manager Agent** *(Sprint #29 — T-237 Complete — Final Verification Done)*
 
 **From:** User Agent

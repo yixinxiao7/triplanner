@@ -2985,4 +2985,87 @@ All tasks remain in Backlog status. None progressed.
 
 ---
 
+### Sprint #29 — 2026-03-12 to 2026-03-16
+
+**Goal:** Fix the Playwright E2E Test 2 locator bug (T-235) — the sole remaining QA gate blocking staging Deploy Verified = Yes. Once fixed and confirmed by Monitor Agent (T-236), User Agent (T-237) would perform a quick regression pass. Production deployment (T-224/T-225) remained blocked on project owner (4th escalation).
+
+**Goal Met:** ✅ YES (engineering track) — T-235, T-236, T-237 all completed successfully. Deploy Verified = Yes achieved. The Playwright locator fix was test-code only with zero application regressions. ⚠️ T-224/T-225 remain blocked on project owner (5th escalation needed in Sprint 30). Note: Three Critical/Major bugs and one Major Feature Gap were reported in the feedback log during Sprint 29 (FB-129, FB-130, FB-131) — these were not surfaced by T-237 but appear in the log as a separate session; they are tasked for Sprint 30.
+
+---
+
+**Tasks Completed (4/6):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-235 | QA Engineer: Fix `e2e/critical-flows.spec.js` lines 201–202 — scoped `[class*="_airportCode_"]` locators replacing ambiguous `getByText('SFO'/'JFK')` — 4/4 Playwright PASS | ✅ Done |
+| T-236 | Monitor Agent: Sprint 29 staging health check — all API checks pass, CORS correct, Playwright 4/4 confirmed, Deploy Verified = Yes | ✅ Done |
+| T-237 | User Agent: Quick regression verification — 12 test scenarios, 0 regressions, FB-131–FB-135 (all Positive) submitted | ✅ Done |
+| DE-29 | Deploy Engineer: Sprint 29 staging build + pm2 reload — 129 modules, 0 vulns, both services online | ✅ Done |
+
+**Tasks Carried Over to Sprint 30 (2 tasks):**
+
+| ID | Description | Reason |
+|----|-------------|--------|
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS | Project owner gate — 4th escalation unresolved. All engineering complete. |
+| T-225 | Monitor Agent: Post-production health check | Blocked by T-224 |
+
+---
+
+**Key Decisions:**
+- **Playwright strict mode fix confirmed:** `[class*="_airportCode_"]` CSS module class selector with `.filter({ hasText: ... }).first()` is the correct pattern for scoped locators when a component renders the same text in multiple DOM elements (TripCalendar pills + flight card). This pattern should be used in all future E2E tests for airport codes.
+- **Test-code vs. app regression distinction:** Sprint 29 was the first sprint where the sole P0 item was a test-code bug (not an app regression). The pipeline should develop a mechanism to flag test-code failures separately from application failures.
+
+---
+
+**Feedback Summary (Sprint 29):**
+
+| Entry | Category | Severity | Disposition | Description |
+|-------|----------|----------|-------------|-------------|
+| FB-129 | Feature Gap | Major | **Tasked → T-242 + T-243** | Land travel events not displayed on TripCalendar — calendar API and TripCalendar.jsx need LAND_TRAVEL event support |
+| FB-130 | Bug | Critical | **Tasked → T-238 + T-239** | Trip status change (PLANNING→ONGOING→COMPLETED) does not persist — full-stack bug in TripStatusSelector + PATCH endpoint |
+| FB-131 (bug) | Bug | Critical | **Tasked → T-240 + T-241** | Flight times shifted ~4 hours — timezone double-conversion bug in flight form/backend/display pipeline |
+| FB-131 (T-237 positive) | Positive | — | Acknowledged | Playwright fix confirmed in code: 4/4 E2E PASS |
+| FB-132 | Positive | — | Acknowledged | Core login → flight → calendar flow: all API responses correct |
+| FB-133 | Positive | — | Acknowledged | T-229 COALESCE date fix still intact — no regression |
+| FB-134 | Positive | — | Acknowledged | All validation + auth edge cases passing |
+| FB-135 | Positive | — | Acknowledged | Frontend dist build present and serving at https://localhost:4173 |
+
+*Note: FB-129, FB-130, FB-131 (bug) each appeared twice in the feedback log (duplicate submissions). Both instances triaged identically.*
+
+---
+
+**What Went Well:**
+- Sprint scope discipline: T-235 was a single-file, 2-line fix that delivered exactly the promised outcome — 4/4 Playwright PASS with no application changes. No scope creep.
+- T-237 User Agent ran immediately after T-236 confirmed Deploy Verified = Yes — the pipeline executed without gaps for the first time in several sprints.
+- Test suite remains stable: 377/377 backend, 486/486 frontend, 4/4 Playwright — all passing at sprint close.
+- The DB re-deploy by Deploy Engineer (DE-29) was clean with 0 vulnerabilities and no migration needed (schema-stable sprint).
+
+**What Could Improve:**
+- FB-129, FB-130, FB-131 (bugs and feature gap) were submitted to the feedback log but appear to have come from a separate testing session — not from the T-237 quick regression pass. The source is ambiguous and they appear as duplicates. Future feedback submissions should include agent identity, timestamp, and task ID reference to avoid duplicate entries.
+- T-224 (production deployment) has now missed 5 sprints due to the project owner gate. An explicit deadline or alternative hosting approach should be escalated.
+- Two Critical bugs (FB-130 trip status, FB-131 flight timezone) existed in the application but were not caught by the current E2E test suite. Sprint 30 should add regression tests covering status persistence and flight time display.
+
+---
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory MemoryStore — no Redis persistence (deferred multiple sprints)
+- ⚠️ B-024: Auth rate limit is IP-only — aggressive on shared-IP environments
+- ⚠️ Stay category field requires uppercase enum — minor friction for external API consumers (FB-121, backlog)
+- ⚠️ knexfile.js staging block missing `seeds: { directory: seedsDir }` (workaround: `NODE_ENV=development`)
+
+*New this sprint (identified by bug reports):*
+- ⚠️ FB-130 → T-238/T-239: Trip status change not persisting — PATCH endpoint or TripStatusSelector bug
+- ⚠️ FB-131 → T-240/T-241: Flight timezone double-conversion — time shifted ~4 hours in display
+
+*Resolved this sprint:*
+- ✅ T-235: Playwright strict-mode locator violation — `getByText('SFO')` ambiguity resolved with scoped CSS module selector
+
+---
+
+*Sprint #29 began 2026-03-12, closed 2026-03-16.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

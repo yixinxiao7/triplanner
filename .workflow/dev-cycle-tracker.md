@@ -2456,3 +2456,48 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 ---
 
+## Sprint 30 Tasks
+
+### Phase 1 — Critical Bug Fixes: Trip Status + Flight Timezone (no dependencies — start immediately, all in parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-238 | Backend Engineer: Fix trip status persistence (FB-130 backend side) — audit `tripModel.js` `updateTrip()` and `routes/trips.js` PATCH handler to ensure `status` field is included in allowed update columns and Joi schema; fix if missing; add 2-3 new tests for status PATCH round-trip | Bug Fix | Backend Engineer | Backlog | P0 | S | 30 | — | PATCH /trips/:id with {"status":"ONGOING"} → 200; GET /trips/:id returns "status":"ONGOING"; all three transitions (PLANNING→ONGOING, ONGOING→COMPLETED, COMPLETED→PLANNING) verified; existing tests pass; new tests added |
+| T-239 | Frontend Engineer: Fix TripStatusSelector status change (FB-130 frontend side) — audit TripStatusSelector.jsx onChange handler to confirm PATCH request sends `status` field in body; confirm useTripDetails.js or equivalent updates state from API response; fix as needed; add/update unit tests | Bug Fix | Frontend Engineer | Backlog | P0 | S | 30 | — | Selecting new status in UI → PATCH sent with status in body; UI reflects new value without reverting; page reload shows persisted status; unit tests cover PATCH call + state update |
+| T-240 | Backend Engineer: Fix flight timezone storage/response (FB-131 backend side) — audit `flightModel.js` createFlight and listFlights; check how PostgreSQL handles TIMESTAMPTZ on insert; ensure departure_at/arrival_at round-trip without UTC double-conversion; add test for time value preservation | Bug Fix | Backend Engineer | Backlog | P0 | M | 30 | — | POST flight with departure_at "2026-08-07T06:50:00-04:00"; GET flights returns value that formats to "6:50 AM ET" on frontend; time not shifted 4h; existing tests pass; new round-trip test added |
+| T-241 | Frontend Engineer: Fix flight timezone display (FB-131 frontend side) — audit formatDate.js functions used in FlightCard.jsx; ensure exactly one timezone conversion applied (UTC departure_at + departure_tz → local time); fix double-conversion if present; add formatDate unit test for the specific input/output pair | Bug Fix | Frontend Engineer | Backlog | P0 | M | 30 | — | Flight card displays "6:50 AM ET" for a flight entered as 6:50 AM ET; no ~4h UTC offset shift; existing formatDate tests pass; new test added |
+
+---
+
+### Phase 2 — Major Feature Gap: Land Travel in TripCalendar (P1 — no blockers on backend; frontend blocked by backend)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-242 | Backend Engineer: Add LAND_TRAVEL events to GET /api/v1/trips/:id/calendar (FB-129) — update calendarModel.js getCalendarEvents() to JOIN land_travels table; return type:"LAND_TRAVEL" events with title, start, end, date; update api-contracts.md; add 3+ new backend tests | Feature | Backend Engineer | Backlog | P1 | M | 30 | — | GET /trips/:id/calendar with land travel entry → events array includes {type:"LAND_TRAVEL", title:"...", start, end, date}; no land travel → no LAND_TRAVEL events; existing calendar tests pass; api-contracts.md updated |
+| T-243 | Frontend Engineer: Render land travel events in TripCalendar.jsx (FB-129) — add LAND_TRAVEL branch to TripCalendar event rendering; show departure/arrival times on pill; add click-to-scroll to #land-travels-section; add unit tests | Feature | Frontend Engineer | Backlog | P1 | M | 30 | T-242 | TripCalendar renders LAND_TRAVEL pill with departure/arrival times visible; clicking pill scrolls to land-travels-section; no regressions on FLIGHT/STAY/ACTIVITY pills; unit tests added |
+
+---
+
+### Phase 3 — QA, Deploy, Monitor, User Agent (sequential after all implementation tasks)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-244 | QA Engineer: Security checklist + code review — all Sprint 30 implementation tasks (T-238, T-239, T-240, T-241, T-242, T-243); verify all backend + frontend tests pass; no Critical/High audit findings | Code Review | QA Engineer | Backlog | P0 | M | 30 | T-239, T-241, T-243 | Security checklist all items PASS; all backend + frontend tests pass; specific regression checks: status PATCH round-trip, flight time correct, LAND_TRAVEL calendar event present; results in qa-build-log.md |
+| T-245 | QA Engineer: Integration testing — 7+ scenarios covering status persistence, timezone display, land travel calendar, T-229 COALESCE regression, Playwright 4/4 | Feature | QA Engineer | Backlog | P0 | M | 30 | T-244 | All 7+ scenarios PASS; Playwright 4/4 confirmed; results in qa-build-log.md |
+| T-246 | Deploy Engineer: Sprint 30 staging re-deployment — npm run build, pm2 reload, health check | Infrastructure | Deploy Engineer | Backlog | P1 | S | 30 | T-245 | Frontend rebuild succeeds; pm2 both services online; GET /health → 200; logged in qa-build-log.md |
+| T-247 | Monitor Agent: Sprint 30 staging health check — full protocol including status PATCH, flight timezone, LAND_TRAVEL calendar, Playwright 4/4; mark Deploy Verified = Yes if all pass | Infrastructure | Monitor Agent | Backlog | P1 | S | 30 | T-246 | All health checks PASS including new Sprint 30 checks; Playwright 4/4; Deploy Verified = Yes; handoff to User Agent |
+| T-248 | User Agent: Sprint 30 feature walkthrough — verify status change, flight timezone, land travel calendar end-to-end; confirm regressions clean; submit structured feedback to feedback-log.md | Documentation | User Agent | Backlog | P1 | M | 30 | T-247 | All three Sprint 30 fixes verified working from user perspective; regressions clean; structured feedback submitted; handoff to Manager |
+
+---
+
+### Phase 4 — Production Deployment (P1 — project owner gate — parallel with all phases — 5th escalation)
+
+> ⚠️ **PROJECT OWNER ACTION REQUIRED (FIFTH ESCALATION):** T-224 has been blocked for five consecutive sprints. All engineering is complete. The project owner must provision AWS RDS PostgreSQL 15 instance (db.t3.micro, us-east-1) and Render account for Blueprint deployment.
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS | Infrastructure | Deploy Engineer | Blocked | P1 | L | 30 | Project owner must provision AWS RDS + Render account | ⚠️ 5TH ESCALATION. Engineering complete since Sprint 25. Follow docs/production-deploy-guide.md. |
+| T-225 | Monitor Agent: Post-production health check | Infrastructure | Monitor Agent | Backlog | P1 | S | 30 | T-224 | Full health check on production URLs; SameSite=None cookie verified; all endpoints healthy. |
+
+---
+

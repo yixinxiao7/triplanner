@@ -657,8 +657,9 @@ During testing setup, several `POST /api/v1/auth/login` requests were sent with 
 | Sprint | 29 |
 | Category | Feature Gap |
 | Severity | Major |
-| Status | New |
+| Status | Tasked |
 | Related Task | — |
+| **Tasked As** | T-242 + T-243 (Sprint 30 — backend: add LAND_TRAVEL events to calendar API; frontend: render land travel pills in TripCalendar) |
 
 **Description:** The TripCalendar component currently renders events for flights, stays, and activities, but does not display land travel entries (e.g., trains, buses, car rides). Land travel data should appear as calendar events on the TripCalendar view, similar to how flights are displayed. Each land travel calendar event must show a brief summary of departure time and arrival time directly on the calendar pill/cell so users can quickly see travel timing without clicking into the detail view. This requires: (1) the calendar API endpoint (`GET /api/v1/trips/:id/calendar`) to include land travel entries in the returned events array with type `LAND_TRAVEL`, and (2) the `TripCalendar.jsx` component to render land travel events with departure/arrival time info visible on the pill, and (3) click-to-scroll behavior linking calendar land travel pills to the corresponding `land-travels-section` on TripDetailsPage.
 
@@ -672,8 +673,9 @@ During testing setup, several `POST /api/v1/auth/login` requests were sent with 
 | Sprint | 29 |
 | Category | Bug |
 | Severity | Critical |
-| Status | New |
+| Status | Tasked |
 | Related Task | — |
+| **Tasked As** | T-238 + T-239 (Sprint 30 — backend: audit tripModel.js update to include status field; frontend: fix TripStatusSelector PATCH request body) |
 
 **Description:** When a user changes the status of a trip (e.g., from PLANNING to ONGOING or COMPLETED) using the TripStatusSelector component on the TripDetailsPage, the change does not save. The status appears to update momentarily in the UI but reverts, or the PATCH request to update the status fails silently. This means users cannot progress their trips through the lifecycle (PLANNING → ONGOING → COMPLETED). The bug may be in the frontend (TripStatusSelector not calling the API correctly, or not sending the `status` field in the PATCH body), in the backend (tripModel or trip routes not accepting/persisting the `status` field on update), or both. The Frontend and Backend Engineers should investigate the full request chain: TripStatusSelector onChange handler → API call → backend PATCH /api/v1/trips/:id route → tripModel update → database write → response → frontend state update.
 
@@ -687,8 +689,9 @@ During testing setup, several `POST /api/v1/auth/login` requests were sent with 
 | Sprint | 29 |
 | Category | Bug |
 | Severity | Critical |
-| Status | New |
+| Status | Tasked |
 | Related Task | — |
+| **Tasked As** | T-240 + T-241 (Sprint 30 — backend: audit flight model departure_at/arrival_at storage/retrieval; frontend: fix formatDate double-conversion in flight card display) |
 
 **Description:** When a user enters a flight departure or arrival time (e.g., 6:50 AM ET), the TripDetailsPage flight card displays the wrong time (e.g., 2:50 AM ET) — shifted by approximately 4 hours, which corresponds to the UTC offset for US Eastern Time (ET = UTC-4 in summer / UTC-5 in winter). This strongly suggests a timezone double-conversion bug: the time is being stored or transmitted as a UTC timestamp, and then the frontend (or backend) is incorrectly applying the timezone offset a second time when formatting for display. The bug could be in: (1) the frontend flight form converting the user-entered local time to UTC before sending to the API, (2) the backend storing the time with an unintended timezone conversion, (3) the frontend detail view applying a UTC-to-local conversion on a value that is already in local time, or (4) a mismatch between how the time+timezone fields are stored vs. read back. Engineers should trace the full lifecycle: form input → API request body → database row → API response → display formatting, paying close attention to how `departure_time`/`arrival_time` and their associated timezone fields (`departure_tz`/`arrival_tz`) are handled at each step.
 
@@ -702,8 +705,9 @@ During testing setup, several `POST /api/v1/auth/login` requests were sent with 
 | Sprint | 29 |
 | Category | Feature Gap |
 | Severity | Major |
-| Status | New |
+| Status | Tasked |
 | Related Task | — |
+| **Tasked As** | T-242 + T-243 (Sprint 30 — duplicate entry; see first FB-129 above) |
 
 **Description:** The TripCalendar component currently renders events for flights, stays, and activities, but does not display land travel entries (e.g., trains, buses, car rides). Land travel data should appear as calendar events on the TripCalendar view, similar to how flights are displayed. Each land travel calendar event must show a brief summary of departure time and arrival time directly on the calendar pill/cell so users can quickly see travel timing without clicking into the detail view. This requires: (1) the calendar API endpoint (`GET /api/v1/trips/:id/calendar`) to include land travel entries in the returned events array with type `LAND_TRAVEL`, and (2) the `TripCalendar.jsx` component to render land travel events with departure/arrival time info visible on the pill, and (3) click-to-scroll behavior linking calendar land travel pills to the corresponding `land-travels-section` on TripDetailsPage.
 
@@ -716,8 +720,9 @@ During testing setup, several `POST /api/v1/auth/login` requests were sent with 
 | Sprint | 29 |
 | Category | Bug |
 | Severity | Critical |
-| Status | New |
+| Status | Tasked |
 | Related Task | — |
+| **Tasked As** | T-238 + T-239 (Sprint 30 — duplicate entry; see first FB-130 above) |
 
 **Description:** When a user changes the status of a trip (e.g., from PLANNING to ONGOING or COMPLETED) using the TripStatusSelector component on the TripDetailsPage, the change does not save. The status appears to update momentarily in the UI but reverts, or the PATCH request to update the status fails silently. This means users cannot progress their trips through the lifecycle (PLANNING → ONGOING → COMPLETED). The bug may be in the frontend (TripStatusSelector not calling the API correctly, or not sending the `status` field in the PATCH body), in the backend (tripModel or trip routes not accepting/persisting the `status` field on update), or both. The Frontend and Backend Engineers should investigate the full request chain: TripStatusSelector onChange handler → API call → backend PATCH /api/v1/trips/:id route → tripModel update → database write → response → frontend state update.
 
@@ -730,8 +735,9 @@ During testing setup, several `POST /api/v1/auth/login` requests were sent with 
 | Sprint | 29 |
 | Category | Bug |
 | Severity | Critical |
-| Status | New |
+| Status | Tasked |
 | Related Task | — |
+| **Tasked As** | T-240 + T-241 (Sprint 30 — duplicate entry; see first FB-131 above) |
 
 **Description:** When a user enters a flight departure or arrival time (e.g., 6:50 AM ET), the TripDetailsPage flight card displays the wrong time (e.g., 2:50 AM ET) — shifted by approximately 4 hours, which corresponds to the UTC offset for US Eastern Time (ET = UTC-4 in summer / UTC-5 in winter). This strongly suggests a timezone double-conversion bug: the time is being stored or transmitted as a UTC timestamp, and then the frontend (or backend) is incorrectly applying the timezone offset a second time when formatting for display. The bug could be in: (1) the frontend flight form converting the user-entered local time to UTC before sending to the API, (2) the backend storing the time with an unintended timezone conversion, (3) the frontend detail view applying a UTC-to-local conversion on a value that is already in local time, or (4) a mismatch between how the time+timezone fields are stored vs. read back. Engineers should trace the full lifecycle: form input → API request body → database row → API response → display formatting, paying close attention to how `departure_time`/`arrival_time` and their associated timezone fields (`departure_tz`/`arrival_tz`) are handled at each step.
 
@@ -753,7 +759,7 @@ During testing setup, several `POST /api/v1/auth/login` requests were sent with 
 | Sprint | 29 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-235 |
 
 **Description:** Confirmed via code inspection (`sed -n '195,210p' e2e/critical-flows.spec.js`) and Monitor Agent qa-build-log that the Playwright fix is correctly in place. Lines 201–202 now read:
@@ -773,7 +779,7 @@ No application source files were modified. Monitor Agent independently confirmed
 | Sprint | 29 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-237 |
 
 **Description:** Tested the complete user flow end-to-end via direct API calls:
@@ -797,7 +803,7 @@ All response shapes match api-contracts.md. No regressions detected from the Spr
 | Sprint | 29 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-237 |
 
 **Description:** Confirmed T-229 "Set dates" fix is still intact. Steps: PATCH trip with `start_date: "2026-09-01"` and `end_date: "2026-09-30"` → response body returned `start_date: "2026-09-01"` and `end_date: "2026-09-30"` exactly as provided. No COALESCE or null-overwrite regression. This has now held across Sprint 28 and Sprint 29.
@@ -812,7 +818,7 @@ All response shapes match api-contracts.md. No regressions detected from the Spr
 | Sprint | 29 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-237 |
 
 **Description:** Edge cases tested and passing:
@@ -834,7 +840,7 @@ All response shapes match api-contracts.md. No regressions detected from the Spr
 | Sprint | 29 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-237 |
 
 **Description:** Confirmed `frontend/dist/` contains `index.html`, `favicon.png`, and `assets/` directory. Serving correctly at `https://localhost:4173` (HTTP 200). Frontend build is intact and unaffected by the T-235 test-code-only change, as expected.
