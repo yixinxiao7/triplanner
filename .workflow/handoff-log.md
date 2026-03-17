@@ -4,6 +4,60 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-17] Monitor Agent → User Agent** *(Sprint #30 — T-247 Complete — Staging Verified — Proceed with T-248)*
+
+**From:** Monitor Agent
+**To:** User Agent
+**Re:** Sprint #30 staging health check complete — Deploy Verified = Yes — T-248 unblocked
+**Status:** ✅ T-247 COMPLETE — Staging is ready for User Agent walkthrough
+
+**Summary:**
+
+T-247 full staging health check passed all gates. The Sprint #30 staging environment is healthy and all Sprint 30 features are live and verified.
+
+**Health Check Results:**
+
+| Category | Result |
+|----------|--------|
+| Config consistency (PORT/SSL/CORS/Docker) | ✅ PASS |
+| GET https://localhost:3001/api/v1/health | ✅ 200 `{"status":"ok"}` |
+| Frontend https://localhost:4173 | ✅ 200 (HTML served) |
+| Auth — POST /api/v1/auth/login (test@triplanner.local) | ✅ 200, access_token returned |
+| Auth enforcement (all protected routes → 401 without token) | ✅ PASS |
+| T-238 — PATCH /trips/:id status=ONGOING → response status="ONGOING" | ✅ PASS |
+| T-238 — GET /trips/:id confirms status persisted | ✅ PASS |
+| T-238 — Invalid status rejected → 400 VALIDATION_ERROR | ✅ PASS |
+| T-240 — POST /flights with UTC offset (-04:00) → 201, stored as UTC | ✅ PASS |
+| T-240 — POST /flights naive datetime → 400 "timezone offset required" | ✅ PASS |
+| T-242 — GET /trips/:id/calendar → 200 with LAND_TRAVEL event shape correct | ✅ PASS |
+| T-242 — LAND_TRAVEL: id="land-travel-{uuid}", type="LAND_TRAVEL", timezone=null | ✅ PASS |
+| T-242 — FLIGHT + LAND_TRAVEL sorted (FLIGHT before LAND_TRAVEL) | ✅ PASS |
+| All other CRUD endpoints (stays, activities, land-travel, DELETE) | ✅ PASS |
+| No 5xx errors | ✅ PASS |
+| Playwright E2E 4/4 | ✅ PASS (1.3s / 1.4s / 3.8s / 3.2s) |
+
+**Deploy Verified: ✅ YES**
+
+**Sprint #30 features live on staging:**
+- T-238/T-239: Trip status persistence — PATCH status persists correctly; TripStatusSelector reads API response
+- T-240/T-241: Flight timezone validation — naive datetimes rejected; UTC offsets stored and converted correctly
+- T-242/T-243: TripCalendar LAND_TRAVEL — calendar endpoint returns LAND_TRAVEL events; frontend renders pill with mode + times
+
+**Known non-blocking item (logged for Sprint 31):**
+- `.mobileEventLandTravel` CSS class absent from TripCalendar.module.css — mobile LAND_TRAVEL rows functional but unstyled. Acknowledged by Manager as non-blocking.
+
+**Action required from User Agent (T-248):**
+Proceed with full Sprint 30 walkthrough. Focus areas:
+1. Trip status change flow — verify TripStatusSelector shows updated status after PATCH
+2. Flight form — verify datetime fields include timezone offset (no ~4h shift)
+3. TripCalendar — verify LAND_TRAVEL pills appear with mode + times, click scrolls to land-travels section
+
+**Reference:** `.workflow/qa-build-log.md` → "Sprint #30 — Post-Deploy Health Check (T-247) — 2026-03-17T15:00:00Z"
+
+*Monitor Agent Sprint #30 — T-247 — 2026-03-17T15:00:00Z*
+
+---
+
 **[2026-03-17] Manager Agent → QA Engineer** *(Sprint #30 — Code Review PASS — T-243 → Integration Check)*
 
 **From:** Manager Agent
