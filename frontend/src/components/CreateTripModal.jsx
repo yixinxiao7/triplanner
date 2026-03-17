@@ -215,7 +215,7 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit, triggerRef 
 
           {/* Destinations — Chip Input */}
           <div className={styles.fieldGroup}>
-            <label className={styles.label}>
+            <label id="modal-dest-label" className={styles.label}>
               DESTINATIONS
             </label>
             <DestinationChipInput
@@ -224,6 +224,7 @@ export default function CreateTripModal({ isOpen, onClose, onSubmit, triggerRef 
               disabled={isLoading}
               error={errors.destinations || null}
               placeholder="Type a destination and press Enter"
+              ariaLabelledBy="modal-dest-label"
             />
             <span id="modal-dest-hint" className={styles.fieldHint}>
               press enter or comma to add

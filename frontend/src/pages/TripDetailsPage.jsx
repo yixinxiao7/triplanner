@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import DestinationChipInput from '../components/DestinationChipInput';
@@ -528,14 +528,16 @@ export default function TripDetailsPage() {
   }
 
 
-  // Group activities by date
-  const activitiesByDate = activities.reduce((acc, activity) => {
-    const date = activity.activity_date;
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(activity);
-    return acc;
-  }, {});
-  const sortedDates = Object.keys(activitiesByDate).sort();
+  // Group activities by date (memoized to avoid expensive reduce on every render)
+  const { activitiesByDate, sortedDates } = useMemo(() => {
+    const byDate = activities.reduce((acc, activity) => {
+      const date = activity.activity_date;
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(activity);
+      return acc;
+    }, {});
+    return { activitiesByDate: byDate, sortedDates: Object.keys(byDate).sort() };
+  }, [activities]);
 
   // ── Trip Load Error ──────────────────────────────────────
   if (!tripLoading && tripError) {

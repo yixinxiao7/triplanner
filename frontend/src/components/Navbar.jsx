@@ -45,7 +45,7 @@ export default function Navbar() {
         {/* Right — User + Logout */}
         <div className={styles.rightSection}>
           {user?.name && (
-            <span className={styles.username} title={user.name}>
+            <span className={styles.username} title={user.name} aria-label={user.name}>
               {user.name.length > 20
                 ? `${user.name.slice(0, 20)}…`
                 : user.name}

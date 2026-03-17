@@ -96,7 +96,7 @@
 }
 
 .navArrow:hover:not(:disabled) {
-  background: rgba(252, 252, 252, 0.05);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
@@ -162,7 +162,7 @@
 }
 
 .dayCellOutside {
-  background: rgba(2, 17, 27, 0.4);
+  background: color-mix(in srgb, var(--bg-primary) 60%, transparent);
   opacity: 0.6;
 }
 
@@ -190,7 +190,7 @@
 }
 
 .dayNumberOutside {
-  color: rgba(252, 252, 252, 0.15);
+  color: var(--text-faint);
 }
 
 /* ── Events Area ── */
@@ -205,14 +205,17 @@
 .eventPill {
   display: flex;
   align-items: center;
+  width: 100%;
   height: 20px;
   border-radius: var(--radius-sm);
+  border: none;
   border-left: 3px solid transparent;
   overflow: hidden;
   cursor: pointer;
   transition: all 150ms ease;
   padding: 0 4px;
   position: relative;
+  font-family: var(--font-mono);
 }
 
 .eventPill:focus-visible {
@@ -226,7 +229,7 @@
 }
 
 .eventPillFlight:hover {
-  background: rgba(93, 115, 126, 0.35);
+  background: var(--event-flight-hover);
 }
 
 .eventPillStay {
@@ -235,7 +238,7 @@
 }
 
 .eventPillStay:hover {
-  background: rgba(100, 160, 120, 0.3);
+  background: var(--event-stay-hover);
 }
 
 .eventPillActivity {
@@ -244,7 +247,7 @@
 }
 
 .eventPillActivity:hover {
-  background: rgba(180, 140, 80, 0.28);
+  background: var(--event-activity-hover);
 }
 
 .eventPillText {
@@ -342,7 +345,7 @@
 }
 
 .retryBtn:hover {
-  background: rgba(252, 252, 252, 0.05);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
@@ -384,11 +387,16 @@
 .mobileEventRow {
   display: flex;
   align-items: center;
+  width: 100%;
   gap: 8px;
   padding: 4px 0;
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: all 150ms ease;
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  text-align: left;
 }
 
 .mobileEventRow:focus-visible {
@@ -439,6 +447,19 @@
 @media (max-width: 767px) {
   .dayCell {
     min-height: 64px;
+  }
+
+  .navArrow {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .retryBtn {
+    min-height: 44px;
+    padding: 10px 20px;
   }
 }
 

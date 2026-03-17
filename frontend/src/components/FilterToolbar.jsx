@@ -110,7 +110,7 @@ export default function FilterToolbar({
   }, []);
 
   return (
-    <div role="search" aria-label="Filter trips" className={styles.toolbar}>
+    <form role="search" aria-label="Filter trips" className={styles.toolbar} onSubmit={(e) => e.preventDefault()}>
       {/* Search Input */}
       <div className={styles.searchContainer}>
         {/* Magnifying glass icon */}
@@ -195,6 +195,6 @@ export default function FilterToolbar({
           clear filters
         </button>
       )}
-    </div>
+    </form>
   );
 }

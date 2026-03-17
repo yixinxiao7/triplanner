@@ -118,18 +118,10 @@ export default function TripNotesSection({ tripId, initialNotes, onSaveSuccess, 
     }
   }
 
-  // Keyboard handler for placeholder/notes text (view mode clickable elements)
-  function handleViewTextKeyDown(e) {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      enterEdit();
-    }
-  }
-
   // Char count color
   function charCountColor(len) {
-    if (len >= NOTES_MAX) return 'rgba(220,80,80,0.9)';
-    if (len >= NOTES_WARN) return 'rgba(240,180,60,0.85)';
+    if (len >= NOTES_MAX) return 'var(--color-danger)';
+    if (len >= NOTES_WARN) return 'var(--color-warning)';
     return undefined; // use CSS default
   }
 
@@ -179,27 +171,23 @@ export default function TripNotesSection({ tripId, initialNotes, onSaveSuccess, 
       {!isEditing && (
         <div className={styles.viewContent}>
           {initialNotes ? (
-            <p
+            <button
+              type="button"
               className={styles.notesText}
               onClick={enterEdit}
-              onKeyDown={handleViewTextKeyDown}
-              tabIndex={0}
-              role="button"
               aria-label="Edit trip notes"
             >
               {initialNotes}
-            </p>
+            </button>
           ) : (
-            <span
+            <button
+              type="button"
               className={styles.placeholder}
               onClick={enterEdit}
-              onKeyDown={handleViewTextKeyDown}
-              tabIndex={0}
-              role="button"
               aria-label="Add notes about this trip"
             >
               Add notes about this trip…
-            </span>
+            </button>
           )}
         </div>
       )}

@@ -158,24 +158,17 @@ function MobileDayList({ events, displayedMonth }) {
                 : ev.type === 'STAY' ? styles.mobileEventStay
                 : styles.mobileEventActivity;
               return (
-                <div
+                <button
                   key={i}
+                  type="button"
                   className={`${styles.mobileEventRow} ${typeClass}`}
-                  role="button"
-                  tabIndex={0}
                   aria-label={`${ev.type.charAt(0) + ev.type.slice(1).toLowerCase()}: ${ev.title}`}
                   onClick={() => sectionId && scrollToSection(sectionId)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      sectionId && scrollToSection(sectionId);
-                    }
-                  }}
                 >
                   <span className={styles.mobileEventIcon}>{icon}</span>
                   {timeStr && <span className={styles.mobileEventTime}>{timeStr}</span>}
                   <span className={styles.mobileEventTitle}>{ev.title}</span>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -335,25 +328,18 @@ export default function TripCalendar({ tripId }) {
     const displayText = showText ? (timeStr ? `${timeStr} ${event.title}` : event.title) : null;
 
     return (
-      <div
+      <button
         key={idx}
+        type="button"
         className={pillClass}
         style={pillStyle}
-        role="button"
-        tabIndex={0}
         aria-label={ariaLabel}
         onClick={() => sectionId && scrollToSection(sectionId)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            sectionId && scrollToSection(sectionId);
-          }
-        }}
       >
         {displayText && (
           <span className={styles.eventPillText}>{displayText}</span>
         )}
-      </div>
+      </button>
     );
   }
 
@@ -367,17 +353,17 @@ export default function TripCalendar({ tripId }) {
       {/* Panel header: "CALENDAR" label + legend */}
       <div className={styles.panelHeader}>
         <span className={styles.panelLabel}>CALENDAR</span>
-        <div className={styles.legend} aria-hidden="true">
+        <div className={styles.legend} role="group" aria-label="Calendar legend">
           <span className={styles.legendItem}>
-            <span className={`${styles.legendDot} ${styles.legendDotFlight}`} />
+            <span className={`${styles.legendDot} ${styles.legendDotFlight}`} aria-hidden="true" />
             <span className={styles.legendText}>Flight</span>
           </span>
           <span className={styles.legendItem}>
-            <span className={`${styles.legendDot} ${styles.legendDotStay}`} />
+            <span className={`${styles.legendDot} ${styles.legendDotStay}`} aria-hidden="true" />
             <span className={styles.legendText}>Stay</span>
           </span>
           <span className={styles.legendItem}>
-            <span className={`${styles.legendDot} ${styles.legendDotActivity}`} />
+            <span className={`${styles.legendDot} ${styles.legendDotActivity}`} aria-hidden="true" />
             <span className={styles.legendText}>Activity</span>
           </span>
         </div>

@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import { api } from '../utils/api';
 import styles from './LandTravelEditPage.module.css';
 
-// ── Temp ID counter (for new rows with no API id) ─────────────
+// ── Temp ID generator ──
 let _tempIdCounter = 0;
 function nextTempId() {
   return `__new__${++_tempIdCounter}`;
@@ -210,7 +210,7 @@ function EntryCard({ row, index, onChange, onDelete, showErrors, originalIds }) 
             value={row.departure_date}
             onChange={handleChange('departure_date')}
             aria-describedby={errors.departure_date ? `dep-date-err-${key}` : undefined}
-            style={{ colorScheme: 'dark' }}
+
           />
           {errors.departure_date && (
             <span id={`dep-date-err-${key}`} className={styles.fieldError} role="alert">{errors.departure_date}</span>
@@ -226,7 +226,7 @@ function EntryCard({ row, index, onChange, onDelete, showErrors, originalIds }) 
             className={styles.fieldInput}
             value={row.departure_time}
             onChange={handleChange('departure_time')}
-            style={{ colorScheme: 'dark' }}
+
           />
         </div>
 
@@ -240,7 +240,7 @@ function EntryCard({ row, index, onChange, onDelete, showErrors, originalIds }) 
             value={row.arrival_date}
             onChange={handleChange('arrival_date')}
             aria-describedby={errors.arrival_date ? `arr-date-err-${key}` : undefined}
-            style={{ colorScheme: 'dark' }}
+
           />
           {errors.arrival_date && (
             <span id={`arr-date-err-${key}`} className={styles.fieldError} role="alert">{errors.arrival_date}</span>
@@ -257,7 +257,7 @@ function EntryCard({ row, index, onChange, onDelete, showErrors, originalIds }) 
             value={row.arrival_time}
             onChange={handleChange('arrival_time')}
             aria-describedby={errors.arrival_time ? `arr-time-err-${key}` : undefined}
-            style={{ colorScheme: 'dark' }}
+
           />
           {errors.arrival_time && (
             <span id={`arr-time-err-${key}`} className={styles.fieldError} role="alert">{errors.arrival_time}</span>
@@ -298,7 +298,6 @@ function EntryCard({ row, index, onChange, onDelete, showErrors, originalIds }) 
 export default function LandTravelEditPage() {
   const { id: tripId } = useParams();
   const navigate = useNavigate();
-
   const [rows, setRows] = useState([]);
   const [originalRows, setOriginalRows] = useState([]);
   const [removedIds, setRemovedIds] = useState([]); // IDs of existing entries that were deleted

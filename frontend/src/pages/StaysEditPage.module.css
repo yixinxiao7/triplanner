@@ -102,7 +102,7 @@
 }
 
 .stayCardConfirm {
-  border-color: rgba(220, 80, 80, 0.3);
+  border-color: var(--color-danger-border);
 }
 
 .stayInfo {
@@ -125,8 +125,8 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: rgba(93, 115, 126, 0.2);
-  color: #5D737E;
+  background: var(--accent-faint);
+  color: var(--accent);
   white-space: nowrap;
 }
 
@@ -142,7 +142,7 @@
 }
 
 .addressNotProvided {
-  color: rgba(252, 252, 252, 0.3);
+  color: var(--text-faint);
 }
 
 .stayDates {
@@ -199,7 +199,7 @@
 }
 
 .iconBtnDelete:hover {
-  color: rgba(220, 80, 80, 0.8);
+  color: var(--color-danger-hover);
 }
 
 /* ── Delete Confirm ── */
@@ -224,9 +224,9 @@
 .deleteDangerBtn {
   font-size: 11px;
   font-weight: 500;
-  color: rgba(252, 252, 252, 0.7);
+  color: var(--text-secondary);
   background: transparent;
-  border: 1px solid rgba(252, 252, 252, 0.2);
+  border: 1px solid var(--accent-subtle);
   border-radius: var(--radius-sm);
   padding: 5px 12px;
   cursor: pointer;
@@ -238,9 +238,9 @@
 }
 
 .deleteDangerBtn:hover:not(:disabled) {
-  background: rgba(220, 50, 50, 0.15);
-  color: #FCFCFC;
-  border-color: rgba(220, 50, 50, 0.5);
+  background: var(--color-danger-hover-bg);
+  color: var(--text-primary);
+  border-color: var(--color-danger-hover-border);
 }
 
 .deleteDangerBtn:disabled {
@@ -253,7 +253,7 @@
   font-weight: 400;
   color: var(--text-primary);
   background: transparent;
-  border: 1px solid rgba(93, 115, 126, 0.5);
+  border: 1px solid var(--accent-muted);
   border-radius: var(--radius-sm);
   padding: 5px 12px;
   cursor: pointer;
@@ -262,7 +262,7 @@
 }
 
 .deleteCancelBtn:hover:not(:disabled) {
-  background: rgba(252, 252, 252, 0.05);
+  background: var(--hover-overlay);
 }
 
 .deleteCancelBtn:disabled {
@@ -272,7 +272,7 @@
 
 /* ── Empty / Error States ── */
 .emptyState {
-  border: 1px dashed rgba(93, 115, 126, 0.3);
+  border: 1px dashed var(--accent-subtle);
   padding: 24px;
   border-radius: var(--radius-md);
   text-align: center;
@@ -286,7 +286,7 @@
 
 .emptySubtext {
   font-size: 11px;
-  color: rgba(252, 252, 252, 0.3);
+  color: var(--text-faint);
   margin-top: 4px;
 }
 
@@ -415,7 +415,7 @@
 }
 
 .inputError {
-  border-color: rgba(220, 80, 80, 0.7);
+  border-color: var(--color-danger-border-strong);
 }
 
 .select {
@@ -429,7 +429,7 @@
 
 .fieldError {
   font-size: 12px;
-  color: rgba(220, 80, 80, 0.9);
+  color: var(--color-danger);
   display: block;
 }
 
@@ -442,8 +442,8 @@
 }
 
 .apiError {
-  background: rgba(220, 80, 80, 0.1);
-  border: 1px solid rgba(220, 80, 80, 0.3);
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
   border-radius: var(--radius-sm);
   padding: 12px 16px;
   font-size: 13px;

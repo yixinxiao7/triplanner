@@ -126,3 +126,26 @@ See `orchestrator/config.sh` for settings:
 - `AGENT_MAX_TURNS` — How many API calls per agent (higher = more complex work)
 - `AUTO_CONTINUE` — Whether to auto-start the next sprint or wait for human input
 - `MAX_SPRINTS` — Cap on total sprints (0 = unlimited)
+
+## Design Context
+
+### Users
+Detail-oriented travelers who plan trips extensively — they want every day and hour mapped out with restaurants, activities, flights, and hotels in one place. When using Triplanner, they should feel **calm and focused** — no clutter, no stress, just clarity. The interface should reduce the cognitive load of planning, not add to it.
+
+### Brand Personality
+**Minimal, precise, calm.** Japanese zen meets Swiss design — restrained and intentional. Every element earns its place. The brand speaks through restraint: what you leave out matters as much as what you include.
+
+### Aesthetic Direction
+- **Style:** Japandi — Japanese minimalism + Scandinavian simplicity
+- **Theme:** Dark mode only. Palette: `#02111B` (bg), `#30292F` (surface), `#3F4045` (surface-alt), `#5D737E` (accent), `#FCFCFC` (text)
+- **Typography:** IBM Plex Mono throughout — monospace conveys precision and structure
+- **References:** Linear and Notion (clean productivity tools, great information density), Muji and Aesop (warm minimalism, intentional materiality)
+- **Anti-references:** Busy travel sites with banner ads, bright gradients, or playful illustrations. Nothing that feels like a consumer marketing page.
+- **Decoration:** No gradients, no shadows — borders only. Generous negative space. Muted tones.
+
+### Design Principles
+1. **Intentional emptiness** — Whitespace is a design element, not wasted space. Let content breathe.
+2. **Quiet confidence** — The interface should feel assured, not loud. Muted accent colors, subtle transitions (150ms ease), understated hover states.
+3. **Structure over decoration** — Use alignment, spacing (4px base grid), and typography hierarchy to create order. Never add ornament.
+4. **Information density done right** — Show what matters without overwhelming. Progressive disclosure over everything-at-once.
+5. **Consistency is kindness** — Same patterns everywhere. Same 2px radius on inputs, same 4px on cards. Same 11px uppercase labels. Predictability reduces cognitive load.

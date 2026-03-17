@@ -49,8 +49,8 @@
 
 /* Error Banner */
 .errorBanner {
-  background: rgba(220, 80, 80, 0.1);
-  border: 1px solid rgba(220, 80, 80, 0.3);
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
   border-radius: var(--radius-sm);
   padding: 12px 16px;
   font-size: 13px;
@@ -107,12 +107,12 @@
 }
 
 .inputError {
-  border-color: rgba(220, 80, 80, 0.7) !important;
+  border-color: var(--color-danger-border-strong) !important;
 }
 
 .fieldError {
   font-size: 12px;
-  color: rgba(220, 80, 80, 0.9);
+  color: var(--color-danger);
   display: block;
 }
 
@@ -129,7 +129,7 @@
   font-weight: 500;
   color: var(--text-primary);
   background: transparent;
-  border: 1px solid rgba(93, 115, 126, 0.5);
+  border: 1px solid var(--accent-muted);
   border-radius: var(--radius-sm);
   padding: 10px 24px;
   cursor: pointer;
@@ -138,7 +138,7 @@
 }
 
 .cancelBtn:hover:not(:disabled) {
-  background: rgba(252, 252, 252, 0.05);
+  background: var(--hover-overlay);
 }
 
 .cancelBtn:disabled {
@@ -164,10 +164,46 @@
 }
 
 .submitBtn:hover:not(:disabled) {
-  background: rgba(93, 115, 126, 0.8);
+  background: var(--accent-hover);
 }
 
 .submitBtn:disabled {
-  background: rgba(93, 115, 126, 0.4);
+  background: var(--accent-muted);
   cursor: not-allowed;
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .modal {
+    padding: 24px;
+  }
+
+  .input {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+    min-height: 44px;
+  }
+
+  .cancelBtn,
+  .submitBtn {
+    min-height: 44px;
+    padding: 12px 24px;
+  }
+
+  .closeBtn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .actions {
+    flex-direction: column-reverse;
+  }
+
+  .cancelBtn,
+  .submitBtn {
+    width: 100%;
+    justify-content: center;
+  }
 }

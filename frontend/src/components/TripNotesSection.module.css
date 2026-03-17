@@ -56,7 +56,7 @@
 }
 
 .pencilBtn:focus-visible {
-  outline: 2px solid var(--border-accent, #5D737E);
+  outline: 2px solid var(--border-accent);
   outline-offset: 2px;
 }
 
@@ -81,6 +81,7 @@
 
 .placeholder {
   display: block;
+  width: 100%;
   font-size: 14px;
   font-family: var(--font-mono);
   color: var(--text-muted);
@@ -89,19 +90,24 @@
   transition: color 150ms ease;
   outline: none;
   border-radius: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
 }
 
 .placeholder:hover {
-  color: rgba(252, 252, 252, 0.65);
+  color: var(--text-secondary);
 }
 
 .placeholder:focus-visible {
-  outline: 2px solid var(--border-accent, #5D737E);
+  outline: 2px solid var(--border-accent);
   outline-offset: 2px;
 }
 
 .notesText {
   display: block;
+  width: 100%;
   font-size: 14px;
   font-family: var(--font-mono);
   color: var(--text-primary);
@@ -113,14 +119,17 @@
   border-radius: 2px;
   transition: background 150ms ease;
   outline: none;
+  background: none;
+  border: none;
+  text-align: left;
 }
 
 .notesText:hover {
-  background: rgba(252, 252, 252, 0.03);
+  background: var(--hover-overlay);
 }
 
 .notesText:focus-visible {
-  outline: 2px solid var(--border-accent, #5D737E);
+  outline: 2px solid var(--border-accent);
   outline-offset: 2px;
 }
 
@@ -135,9 +144,9 @@
   width: 100%;
   min-height: 120px;
   max-height: 400px;
-  background: var(--surface-alt, #3F4045);
+  background: var(--surface-alt);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm, 2px);
+  border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 14px;
@@ -151,7 +160,7 @@
 }
 
 .textarea:focus {
-  border-color: var(--border-accent, #5D737E);
+  border-color: var(--border-accent);
 }
 
 .textarea:disabled {
@@ -187,14 +196,14 @@
 }
 
 .saveBtn {
-  background: var(--accent, #5D737E);
+  background: var(--accent);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 500;
   padding: 8px 20px;
   border: none;
-  border-radius: var(--radius-sm, 2px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   min-width: 60px;
   display: flex;
@@ -213,7 +222,7 @@
 }
 
 .saveBtn:focus-visible {
-  outline: 2px solid var(--border-accent, #5D737E);
+  outline: 2px solid var(--border-accent);
   outline-offset: 2px;
 }
 
@@ -224,14 +233,14 @@
   font-size: 13px;
   font-weight: 400;
   padding: 8px 20px;
-  border: 1px solid rgba(93, 115, 126, 0.5);
-  border-radius: var(--radius-sm, 2px);
+  border: 1px solid var(--accent-muted);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 150ms ease;
 }
 
 .cancelBtn:hover:not(:disabled) {
-  background: rgba(252, 252, 252, 0.05);
+  background: var(--hover-overlay);
 }
 
 .cancelBtn:disabled {
@@ -240,13 +249,13 @@
 }
 
 .cancelBtn:focus-visible {
-  outline: 2px solid var(--border-accent, #5D737E);
+  outline: 2px solid var(--border-accent);
   outline-offset: 2px;
 }
 
 .errorMsg {
   font-size: 12px;
-  color: rgba(220, 80, 80, 0.9);
+  color: var(--color-danger);
   margin-top: 8px;
   display: block;
 }
