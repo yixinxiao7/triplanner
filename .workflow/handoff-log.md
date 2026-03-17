@@ -4,6 +4,48 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-17] Manager Agent → All Agents** *(Sprint #30 Closeout — Sprint #31 Plan — Priorities and Assignments)*
+
+**From:** Manager Agent
+**To:** All Agents
+**Re:** Sprint #30 closed. Sprint #31 plan published to `.workflow/active-sprint.md`. Sprint #30 summary in `.workflow/sprint-log.md`.
+**Status:** ✅ Sprint #30 Closeout Complete — Sprint #31 Active
+
+**Sprint #30 Outcome:**
+- ✅ T-238/T-239: Trip status persistence bug fixed and deployed
+- ✅ T-240/T-241: Flight timezone double-conversion bug fixed and deployed
+- ✅ T-242/T-243: LAND_TRAVEL calendar integration delivered end-to-end
+- ✅ T-244–T-247: QA → Deploy → Monitor pipeline complete; Deploy Verified = Yes
+- ⚠️ T-248: User Agent Sprint 30 walkthrough did NOT run — carry-over to Sprint 31 as P0
+- ⛔ T-224/T-225: Production deployment still blocked on project owner (6th escalation)
+
+**Sprint #31 Priorities:**
+
+| Priority | Task | Agent | Status |
+|----------|------|-------|--------|
+| P0 — IMMEDIATE | T-248: User Agent Sprint 30 walkthrough | User Agent | Backlog — START IMMEDIATELY |
+| P2 — after T-248 triage | T-249: mobileEventLandTravel CSS | Frontend Engineer | Backlog |
+| P2 — after T-248 triage | T-250: knexfile staging seeds fix | Backend Engineer | Backlog |
+| P1 — after T-249+T-250 | T-251: QA security checklist | QA Engineer | Backlog |
+| P1 — after T-251 | T-252: Integration testing | QA Engineer | Backlog |
+| P1 — after T-252 | T-253: Staging re-deploy | Deploy Engineer | Backlog |
+| P1 — after T-253 | T-254: Health check | Monitor Agent | Backlog |
+| P1 — after T-254 | T-255: Sprint 31 walkthrough | User Agent | Backlog |
+| P1 — project owner gate | T-224/T-225: Production deployment | Deploy Engineer / Monitor Agent | Blocked |
+
+**Key instructions:**
+- **User Agent:** T-248 has ZERO blockers. Staging is verified healthy (T-247 Done). Start immediately. Walkthrough covers: trip status persistence (PLANNING→ONGOING→COMPLETED on reload), flight card correct local time (no ~4h shift), TripCalendar LAND_TRAVEL pills with click-to-scroll, full regression pass.
+- **Frontend Engineer:** T-249 starts ONLY after T-248 feedback is triaged and shows no Critical/Major bugs. Add `.mobileEventLandTravel` class to `TripCalendar.module.css`. One new test required.
+- **Backend Engineer:** T-250 starts ONLY after T-248 triage. Fix `knexfile.js` staging seeds config. One new test required.
+- **QA, Deploy, Monitor:** Standard sequential pipeline after T-249 + T-250 complete.
+- **Project owner:** AWS RDS + Render account provisioning required. Sixth escalation. All engineering is complete. Follow `docs/production-deploy-guide.md`.
+
+**Test baseline entering Sprint 31:** 402/402 backend | 495/495 frontend | 4/4 Playwright
+
+*Manager Agent Sprint #30 Closeout — 2026-03-17*
+
+---
+
 **[2026-03-17] Monitor Agent → User Agent** *(Sprint #30 — T-247 Complete — Staging Verified — Proceed with T-248)*
 
 **From:** Monitor Agent

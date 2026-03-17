@@ -2507,8 +2507,54 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS | Infrastructure | Deploy Engineer | Blocked | P1 | L | 30 | Project owner must provision AWS RDS + Render account | ⚠️ 5TH ESCALATION. Engineering complete since Sprint 25. Follow docs/production-deploy-guide.md. |
-| T-225 | Monitor Agent: Post-production health check | Infrastructure | Monitor Agent | Backlog | P1 | S | 30 | T-224 | Full health check on production URLs; SameSite=None cookie verified; all endpoints healthy. |
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS | Infrastructure | Deploy Engineer | Blocked | P1 | L | 31 | Project owner must provision AWS RDS + Render account | ⚠️ 6TH ESCALATION. Engineering complete since Sprint 25. Follow docs/production-deploy-guide.md. |
+| T-225 | Monitor Agent: Post-production health check | Infrastructure | Monitor Agent | Backlog | P1 | S | 31 | T-224 | Full health check on production URLs; SameSite=None cookie verified; all endpoints healthy. |
+
+---
+
+## Sprint 31 Tasks
+
+**Sprint 31 Kickoff (Manager Agent — 2026-03-17):** T-248 (User Agent Sprint 30 walkthrough) is the sole carry-over from Sprint 30 and has ZERO blockers — staging is verified healthy (T-247 Deploy Verified = Yes). T-248 MUST start immediately. Two minor backlog items are promoted to Sprint 31 (T-249, T-250) — both may begin after T-248 feedback is triaged and shows no Critical/Major bugs. Full QA → Deploy → Monitor → User Agent pipeline follows. T-224/T-225 carry forward (6th escalation).
+
+**Test baseline at Sprint 31 kickoff:** 402/402 backend | 495/495 frontend | 4/4 Playwright
+
+---
+
+### Phase 0 — User Agent Sprint 30 Walkthrough (P0 — NO BLOCKERS — START IMMEDIATELY)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-248 | (CARRY-OVER from Sprint 30) User Agent: Sprint 30 feature walkthrough — verify trip status PLANNING→ONGOING→COMPLETED persists on reload; flight card shows correct local time (no ~4h UTC shift); TripCalendar shows LAND_TRAVEL pills with departure/arrival times and click-to-scroll; regression checks (T-229 COALESCE, CORS, Playwright 4/4, trip notes, destinations). Submit structured feedback to feedback-log.md under "Sprint 31 User Agent Feedback — T-248 Sprint 30 Verification". | Documentation | User Agent | Backlog | P0 | M | 31 | None — START IMMEDIATELY | All 3 Sprint 30 fixes verified end-to-end from user perspective. No Critical/Major regressions. Structured feedback submitted. Handoff to Manager logged in handoff-log.md. |
+
+---
+
+### Phase 1 — Minor Backlog Fixes (P2 — after T-248 triage confirms no Critical/Major bugs)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-249 | Frontend Engineer: Add `.mobileEventLandTravel` CSS styling to TripCalendar.module.css. Add the missing CSS class with a muted, Japandi-appropriate color treatment matching the desktop `.eventPillLandTravel` pill. Confirm the class is applied in MobileDayList LAND_TRAVEL branch in TripCalendar.jsx. Add 1 unit test: LAND_TRAVEL event in MobileDayList renders with `.mobileEventLandTravel` class. All 495+ existing tests must pass. Log in handoff-log.md; set In Review. | Bug Fix | Frontend Engineer | Backlog | P2 | S | 31 | T-248 triage (clean) | Mobile LAND_TRAVEL row has color accent; no regressions on FLIGHT/STAY/ACTIVITY mobile rows; 1+ new test; 495+ existing tests pass. |
+| T-250 | Backend Engineer: Fix knexfile.js staging seeds configuration — add `seeds: { directory: seedsDir }` to the `staging` environment block in `backend/src/config/knexfile.js`, matching the `development` block pattern. Add 1 unit test: `staging` config object includes `seeds.directory` equal to `seedsDir`. All 402+ existing backend tests must pass. Log in handoff-log.md; set In Review. | Bug Fix | Backend Engineer | Backlog | P2 | S | 31 | T-248 triage (clean) | `knexfile.staging.seeds.directory === seedsDir`; 1+ new test; 402+ existing tests pass; no changes to production or development blocks. |
+
+---
+
+### Phase 2 — QA, Deploy, Monitor, User Agent (sequential after Phase 1 complete)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-251 | QA Engineer: Security checklist + code review for Sprint 31 (T-249, T-250). Security checks: (1) T-249 CSS class — no XSS vectors, no dangerouslySetInnerHTML, no hardcoded secrets; (2) T-250 knexfile seeds path — no SQL injection, no secrets in config. Run `npm test --run` in backend/ (402+ base + T-250 new tests) and frontend/ (495+ base + T-249 new tests). Run `npm audit` — confirm 0 Critical/High. Full report in qa-build-log.md Sprint 31 section. | Code Review | QA Engineer | Backlog | P1 | S | 31 | T-249, T-250 | Security checklist PASS; all tests pass; 0 Critical/High audit findings; report in qa-build-log.md. |
+| T-252 | QA Engineer: Integration testing for Sprint 31. Verify: (1) `knexfile.staging.seeds.directory` present and correct; (2) TripCalendar mobile LAND_TRAVEL row has `.mobileEventLandTravel` class; (3) Desktop LAND_TRAVEL pill no regression; (4) Sprint 30 regression: PATCH /trips/:id status → persisted; (5) Sprint 30 regression: GET /calendar returns LAND_TRAVEL events; (6) Playwright 4/4 after build with new CSS. Full report in qa-build-log.md Sprint 31 section. Handoff to Deploy Engineer (T-253). | Testing | QA Engineer | Backlog | P1 | S | 31 | T-251 | All 6 integration scenarios PASS; Playwright 4/4; report in qa-build-log.md; Deploy unblocked. |
+| T-253 | Deploy Engineer: Sprint 31 staging re-deployment. Pre-deploy gate: T-252 Done. `npm run build` in frontend/ (picks up T-249 CSS) → 0 errors. `pm2 reload triplanner-frontend`. `pm2 restart triplanner-backend`. Smoke tests: GET /health → 200; LAND_TRAVEL mobile row visible; Sprint 30 status + calendar regressions pass; `npx playwright test` → 4/4. Log handoff to Monitor Agent (T-254) in handoff-log.md. Full report in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 31 | T-252 | Frontend rebuilt; pm2 online; smoke tests pass including mobile LAND_TRAVEL visual check; Playwright 4/4; report in qa-build-log.md. |
+| T-254 | Monitor Agent: Sprint 31 staging health check. Verify: (1) HTTPS, pm2 online, health 200; (2) CORS → `https://localhost:4173`; (3) Auth login `test@triplanner.local` → 200; (4) Sprint 31: knexfile staging seeds path correct (via config inspection); (5) Sprint 30 regression: PATCH /trips/:id status → persisted; (6) Sprint 30 regression: GET /trips/:id/calendar → LAND_TRAVEL event present; (7) `npx playwright test` → 4/4 PASS. Full report in qa-build-log.md Sprint 31 section. Handoff to User Agent (T-255). | Infrastructure | Monitor Agent | Backlog | P1 | S | 31 | T-253 | All health checks PASS; Playwright 4/4; Deploy Verified = Yes; handoff to User Agent logged. |
+| T-255 | User Agent: Sprint 31 feature walkthrough. Test: (1) Mobile LAND_TRAVEL styling (T-249) — on a mobile-width viewport, add land travel to a trip, open TripCalendar, confirm LAND_TRAVEL row in MobileDayList has color accent distinct from unstyled appearance; (2) Sprint 30 regressions — status persistence, desktop LAND_TRAVEL pills, flight timezone display all still correct; (3) Confirm no regressions on trip notes, destination chips, print button, Sprint 19 rate limiting. Submit structured feedback to feedback-log.md under "Sprint 31 User Agent Feedback — T-255". | Documentation | User Agent | Backlog | P1 | M | 31 | T-254 | Mobile LAND_TRAVEL row verified styled; Sprint 30 regressions clean; structured feedback submitted. |
+
+---
+
+### Phase 3 — Production Deployment (P1 — project owner gate — 6th escalation)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS (carry-over) | Infrastructure | Deploy Engineer | Blocked | P1 | L | 31 | Project owner must provision AWS RDS + Render account | ⚠️ 6TH ESCALATION. See docs/production-deploy-guide.md. |
+| T-225 | Monitor Agent: Post-production health check (carry-over) | Infrastructure | Monitor Agent | Backlog | P1 | S | 31 | T-224 | Full health check on production URLs; SameSite=None cookie; all endpoints healthy. |
 
 ---
 

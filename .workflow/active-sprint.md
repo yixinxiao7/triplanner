@@ -4,211 +4,151 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #30 — 2026-03-16
+## Sprint #31 — 2026-03-17
 
-**Sprint Goal:** Fix two Critical bugs from Sprint 29 feedback — trip status change not persisting (FB-130) and flight timezone double-conversion display error (FB-131) — and add Land Travel support in TripCalendar (FB-129, Major Feature Gap). These are the highest-priority items blocking a correct, complete user experience. Production deployment (T-224/T-225) carries over — project owner action remains required for the 5th consecutive sprint.
+**Sprint Goal:** Close the Sprint 30 User Agent verification cycle (T-248), then ship two targeted backlog improvements: fix the missing `.mobileEventLandTravel` mobile styling in TripCalendar and fix the `knexfile.js` staging seeds configuration gap. Full QA → Deploy → Monitor → User Agent pipeline to follow. Production deployment carries over (sixth escalation — project owner action required).
 
-**Context:** Sprint 29 achieved Deploy Verified = Yes (4/4 Playwright, all health checks pass). The application is staging-verified and MVP feature-complete at the code level. However, three issues in the feedback log (FB-129, FB-130, FB-131) reveal real correctness bugs and a missing calendar integration that prevent the app from being fully functional. Sprint 30 fixes these before any further production push.
+**Context:** Sprint 30 delivered all three Sprint 30 commitments (trip status persistence, flight timezone fix, LAND_TRAVEL calendar). Staging is verified healthy (Deploy Verified = Yes, 402/402 backend, 495/495 frontend, 4/4 Playwright). The sole carry-over is T-248 (User Agent Sprint 30 walkthrough) which has zero blockers and must run immediately. No Critical or Major bugs are known entering Sprint 31. The two backlog items being promoted (mobile LAND_TRAVEL styling, knexfile seeds) are both Minor and do not block the T-248 cycle.
 
-**Feedback Triage (Sprint 29 → Sprint 30):**
+**Feedback Triage (Sprint 30 → Sprint 31):**
 
 | Entry | Category | Severity | Disposition | Description |
 |-------|----------|----------|-------------|-------------|
-| FB-130 (trip status not saving) | Bug | Critical | **Tasked → T-238 + T-239** | Full-stack investigation and fix for trip status persistence |
-| FB-131 (flight timezone shift ~4h) | Bug | Critical | **Tasked → T-240 + T-241** | Trace and fix timezone double-conversion in flight add/display pipeline |
-| FB-129 (land travel not in calendar) | Feature Gap | Major | **Tasked → T-242 + T-243** | Backend: add LAND_TRAVEL events to calendar API; Frontend: render in TripCalendar |
-| FB-131–FB-135 (T-237 positives) | Positive | — | Acknowledged | Playwright fix, core flow, COALESCE regression, validation — all clean |
+| (No new 'New' entries in feedback-log.md) | — | — | — | All prior entries triaged. T-248 Sprint 30 User Agent feedback will surface in Sprint 31. |
+| Monitor note: `.mobileEventLandTravel` CSS missing | Minor | Minor | **Tasked → T-249** | Mobile LAND_TRAVEL rows functional but unstyled in TripCalendar |
+| Monitor note: knexfile.js staging seeds | Minor | Minor | **Tasked → T-250** | `seeds: { directory: seedsDir }` missing from staging block; workaround works |
 
 ---
 
 ## In Scope
 
-### Phase 1 — Critical Bug: Trip Status Persistence (P0 — NO BLOCKERS — START IMMEDIATELY)
+### Phase 0 — User Agent Sprint 30 Walkthrough (P0 — NO BLOCKERS — START IMMEDIATELY)
 
-- [ ] **T-238** — Backend Engineer: Investigate and fix trip status persistence (FB-130 — backend side)
+- [ ] **T-248** — User Agent: Sprint 30 feature walkthrough ← **CARRY-OVER FROM SPRINT 30 — ZERO BLOCKERS**
 
-  **Root Cause Investigation:** Audit `backend/src/models/tripModel.js` `updateTrip()` function to confirm whether the `status` field is included in the allowed update columns. Also audit `backend/src/routes/trips.js` PATCH handler and Joi validation schema — confirm `status` is in the allowed PATCH fields and that the value is passed through to the model. If the backend is already correct, note that clearly so the frontend engineer can focus on T-239.
+  **Scope:** Verify all three Sprint 30 fixes end-to-end from a user perspective:
+  1. **Trip status flow:** Change trip status PLANNING → ONGOING → COMPLETED using TripStatusSelector on TripDetailsPage. After each change, reload the page and confirm the new status is displayed (not reverting). Navigate to Home — confirm TripCard reflects updated status.
+  2. **Flight timezone:** Add a flight with a departure time (e.g., `6:50 AM ET`). Navigate to trip details. Confirm flight card displays the correct local time (not shifted ~4 hours). Add a second flight and confirm both times display correctly.
+  3. **Land travel in calendar:** Add a land travel entry to a trip. Open TripCalendar — confirm a LAND_TRAVEL pill appears on the correct day with departure and arrival times visible. Click the pill — confirm page scrolls to the land travels section.
+  4. **Regressions:** Confirm T-229 COALESCE date fix (PATCH dates → correct dates returned), CORS health check, Playwright 4/4 still passing, trip notes, destination chips all still functional.
+  5. Submit structured feedback to `feedback-log.md` under "Sprint 31 User Agent Feedback — T-248 Sprint 30 Verification".
 
   **Acceptance criteria:**
-  1. `PATCH /api/v1/trips/:id` with `{"status": "ONGOING"}` → 200, response body contains `"status": "ONGOING"`
-  2. `GET /api/v1/trips/:id` after status PATCH → confirms persisted value
-  3. All three transitions verified: PLANNING→ONGOING, ONGOING→COMPLETED, COMPLETED→PLANNING
-  4. Existing backend tests pass; add 2-3 new tests specifically covering status PATCH round-trip
-  5. Log fix in handoff-log.md; set status In Review
+  - All 3 Sprint 30 features verified working from user perspective
+  - No Critical or Major regressions found
+  - Structured feedback submitted to feedback-log.md
+  - Handoff to Manager logged in handoff-log.md
 
-  **Files to audit:** `backend/src/models/tripModel.js`, `backend/src/routes/trips.js`, `backend/src/middleware/validate.js` (trip schema)
+  **Files:** feedback-log.md, handoff-log.md
 
 ---
 
-- [ ] **T-239** — Frontend Engineer: Investigate and fix TripStatusSelector status change (FB-130 — frontend side) ← **Can start in parallel with T-238**
+### Phase 1 — Minor Backlog Fixes (P2 — parallel with Phase 0 or after T-248 triage confirms no Critical/Major bugs)
 
-  **Root Cause Investigation:** Audit `TripStatusSelector.jsx` (or equivalent component) — confirm the `onChange` handler constructs a PATCH request body with `{"status": <new_value>}` and that the API call is made correctly. Check that the response updates local React state so the UI reflects the persisted value. Also check `useTripDetails.js` or equivalent hook — confirm the status field is read from the API response and surfaced to the component.
+- [ ] **T-249** — Frontend Engineer: Add `.mobileEventLandTravel` CSS styling to TripCalendar.module.css (Sprint 30 Monitor note)
 
-  **Acceptance criteria:**
-  1. Selecting a new status in the UI sends `PATCH /api/v1/trips/:id` with `{"status": <value>}` in the request body
-  2. After save, the status selector reflects the new value (not reverting)
-  3. On page reload, the updated status is shown (confirming it was persisted by backend)
-  4. Add/update frontend unit tests for TripStatusSelector covering the PATCH call + state update
-  5. Log fix in handoff-log.md
-
-  **Files to audit:** `frontend/src/components/TripStatusSelector.jsx` (or similar), `frontend/src/hooks/useTripDetails.js`, `frontend/src/api.js`
-
----
-
-### Phase 2 — Critical Bug: Flight Timezone Display (P0 — NO BLOCKERS — START IMMEDIATELY)
-
-- [ ] **T-240** — Backend Engineer: Investigate and fix flight timezone storage/response (FB-131 — backend side) ← **Can start in parallel with T-238/T-239**
-
-  **Root Cause Investigation:** The symptom is flight times shifted by ~4 hours (UTC-4/UTC-5 offset). Audit the full backend flight lifecycle:
-  1. `POST /api/v1/trips/:id/flights` — what does the route/model do with `departure_at`/`arrival_at`? Is it stored as-is (ISO string) or converted?
-  2. `backend/src/models/flightModel.js` `createFlight()` — does Knex/PostgreSQL apply any timezone conversion when inserting a TIMESTAMPTZ value? If the input is already a local ISO string (e.g., `2026-08-07T06:50:00`), PostgreSQL may interpret it as UTC.
-  3. `GET /api/v1/trips/:id/flights` — does the model or route apply any conversion before returning? Is `departure_at` returned as UTC ISO or with offset?
-
-  **Fix:** If PostgreSQL is converting the user's local time to UTC on storage (stripping the timezone), ensure the input includes the timezone offset (`2026-08-07T06:50:00-04:00`) OR switch to storing as plain TEXT to preserve user-entered values. Update API contract comment if the storage behavior changes.
-
-  **Acceptance criteria:**
-  1. `POST /api/v1/trips/:id/flights` with `departure_at: "2026-08-07T06:50:00-04:00"` → `GET /flights` returns the value such that formatting on the frontend produces `6:50 AM ET` (not `2:50 AM ET`)
-  2. Existing flight backend tests pass; add a test verifying departure_at round-trip preserves the time value
-  3. Log fix in handoff-log.md
-
-  **Files to audit:** `backend/src/models/flightModel.js`, `backend/src/routes/flights.js`, `backend/src/db/migrations/*_flights*`
-
----
-
-- [ ] **T-241** — Frontend Engineer: Investigate and fix flight timezone display in flight card (FB-131 — frontend side) ← **Can start in parallel; coordinate with T-240**
-
-  **Root Cause Investigation:** Audit `frontend/src/utils/formatDate.js` — specifically the function(s) used to display flight departure/arrival times on the TripDetailsPage flight card. Check:
-  1. Is the function converting the `departure_at` ISO string from UTC to local using `Intl.DateTimeFormat` with the `departure_tz` timezone? If so, that's correct.
-  2. Is the frontend also calling `new Date(departure_at)` which will auto-apply the local machine timezone offset, causing double-conversion if `departure_at` was already adjusted?
-  3. In the flight form (`FlightForm.jsx` or equivalent), is the user-entered local time being converted to UTC before being sent to the API? If so, the backend receives UTC and must return UTC — the frontend then correctly converts back. Or is the user-entered value sent as-is?
-
-  **Fix:** Ensure exactly one timezone conversion happens in the full pipeline (either backend handles it or frontend handles it, not both). The simplest correct pattern: user enters local time → sent to backend as local ISO string with timezone offset → stored as TIMESTAMPTZ (PostgreSQL stores UTC internally) → returned as UTC ISO string → frontend converts UTC+departure_tz → displays local time.
-
-  **Acceptance criteria:**
-  1. Entering `6:50 AM ET` in the flight form → flight card on TripDetailsPage displays `6:50 AM ET` (or timezone-appropriate equivalent)
-  2. Existing formatDate unit tests pass; add a test for the specific input/output pair (UTC input + ET timezone → correct local time display)
-  3. Log fix in handoff-log.md
-
-  **Files to audit:** `frontend/src/utils/formatDate.js`, `frontend/src/components/FlightCard.jsx` (or similar), `frontend/src/components/FlightForm.jsx` (or similar)
-
----
-
-### Phase 3 — Major Feature Gap: Land Travel in TripCalendar (P1 — after Phase 1/2 fixes or in parallel)
-
-- [ ] **T-242** — Backend Engineer: Add LAND_TRAVEL events to GET /api/v1/trips/:id/calendar (FB-129) ← **NO BLOCKERS — can start immediately**
-
-  **Context:** The calendar endpoint (`calendarModel.js`) currently returns events for FLIGHT, STAY, and ACTIVITY types. Land travel entries (trains, buses, rental car trips) exist in the `land_travels` table but are not included in the calendar response. This task adds LAND_TRAVEL to the calendar event array.
+  **Context:** The Manager approved T-243 with a noted minor gap — `.mobileEventLandTravel` is referenced in the TripCalendar component but the CSS class does not exist in `TripCalendar.module.css`. On desktop, LAND_TRAVEL pills render with the correct `.eventPillLandTravel` class. On mobile (MobileDayList), LAND_TRAVEL rows render functionally but without a color accent, appearing unstyled compared to FLIGHT, STAY, and ACTIVITY rows.
 
   **Implementation:**
-  1. In `calendarModel.js` `getCalendarEvents()`, add a query joining `land_travels` and formatting results into the events array with:
-     - `type: "LAND_TRAVEL"`
-     - `title`: e.g., `"{mode} — {from_location} → {to_location}"` (use actual field names from land_travels schema)
-     - `start`: departure datetime
-     - `end`: arrival datetime (or departure if no arrival stored)
-     - `date`: date of departure
-  2. Update `api-contracts.md` `GET /api/v1/trips/:id/calendar` section to document the LAND_TRAVEL event shape
-  3. Add backend tests for the new event type (empty land travels → no events, 1 land travel → 1 LAND_TRAVEL event)
+  1. In `frontend/src/components/TripCalendar.module.css`, add a `.mobileEventLandTravel` class with the same muted, Japandi-appropriate color treatment used for the desktop LAND_TRAVEL pill (`.eventPillLandTravel`). Reference the existing mobile event classes (`.mobileEventFlight`, `.mobileEventStay`, etc.) for layout consistency.
+  2. Confirm the class is applied in `TripCalendar.jsx` `MobileDayList` at the LAND_TRAVEL branch.
+  3. Add 1 unit test: LAND_TRAVEL event in `MobileDayList` renders with `mobileEventLandTravel` class.
 
   **Acceptance criteria:**
-  1. `GET /api/v1/trips/:id/calendar` with a land travel entry → returns events array including a `type: "LAND_TRAVEL"` entry with title, start, end, date
-  2. All existing calendar tests still pass; 3+ new tests added for LAND_TRAVEL event type
-  3. `api-contracts.md` updated with LAND_TRAVEL event shape
-  4. Log fix in handoff-log.md; set In Review
+  1. On mobile (375px viewport), LAND_TRAVEL rows in MobileDayList display with a distinct muted color consistent with Japandi palette and other mobile event type rows
+  2. No regressions on FLIGHT, STAY, ACTIVITY mobile rows
+  3. 1+ new test confirming the CSS class is applied; 495+ existing tests still pass
+  4. Log in handoff-log.md; set In Review
 
-  **Files:** `backend/src/models/calendarModel.js`, `backend/src/__tests__/calendar*`, `.workflow/api-contracts.md`
+  **Files:** `frontend/src/components/TripCalendar.module.css`, `frontend/src/components/TripCalendar.jsx`, `frontend/src/__tests__/TripCalendar.test.jsx`
 
 ---
 
-- [ ] **T-243** — Frontend Engineer: Render land travel events in TripCalendar (FB-129) ← Blocked by T-242
+- [ ] **T-250** — Backend Engineer: Fix knexfile.js staging seeds configuration gap (Sprint 26 Monitor note)
 
-  **Context:** `TripCalendar.jsx` renders event pills per day. It currently handles FLIGHT, STAY, ACTIVITY types. This task adds LAND_TRAVEL rendering with departure/arrival time visible on the pill.
+  **Context:** The Monitor Agent (Sprint 26) noted that `backend/src/config/knexfile.js` staging environment block is missing `seeds: { directory: seedsDir }`. Running `NODE_ENV=staging npm run seed` fails with ENOENT because the staging block has no seeds directory configured. The development block has `seeds: { directory: seedsDir }` and works correctly via the current workaround (`NODE_ENV=development npm run seed`).
 
   **Implementation:**
-  1. In `TripCalendar.jsx`, add a branch for `type === "LAND_TRAVEL"` events — render a pill with:
-     - A distinct color/style consistent with Japandi aesthetic (muted, differentiated from flights)
-     - Show departure time and arrival time directly on the pill (e.g., `"Train 10:00–14:30"`)
-  2. Add click-to-scroll behavior: clicking a land travel pill scrolls to `#land-travels-section` on TripDetailsPage (matching the existing pattern for other event types)
-  3. Add unit tests: LAND_TRAVEL event renders with correct text, click triggers scroll to land-travels-section
+  1. In `backend/src/config/knexfile.js`, add `seeds: { directory: seedsDir }` to the `staging` environment block, matching the pattern used in the `development` block.
+  2. Confirm `seedsDir` is already computed at the top of the file (it is — shared across environments).
+  3. Add 1 unit test: staging knex config object includes `seeds.directory` equal to `seedsDir`.
+  4. Verify `NODE_ENV=staging npm run seed` would resolve correctly (no ENOENT on seeds directory).
 
   **Acceptance criteria:**
-  1. A trip with land travel entries shows LAND_TRAVEL pills on TripCalendar with departure/arrival times visible
-  2. Clicking a LAND_TRAVEL pill scrolls to the land travels section
-  3. No regressions on FLIGHT, STAY, ACTIVITY pill rendering
-  4. Tests added for the new LAND_TRAVEL rendering path
-  5. Log fix in handoff-log.md; set In Review
+  1. `knexfile.staging.seeds.directory === seedsDir` in the exported config object
+  2. 1+ new test covering the staging seeds config path
+  3. All 402+ existing backend tests still pass
+  4. Log in handoff-log.md; set In Review
 
-  **Files:** `frontend/src/components/TripCalendar.jsx`, `frontend/src/__tests__/TripCalendar.test.jsx`
+  **Files:** `backend/src/config/knexfile.js`, backend test file
 
 ---
 
-### Phase 4 — QA, Deploy, Monitor, User Agent (sequential after all fixes)
+### Phase 2 — QA, Deploy, Monitor, User Agent (sequential after Phase 1 complete and T-248 feedback triaged)
 
-- [ ] **T-244** — QA Engineer: Security checklist + code review (Sprint 30) ← Blocked by T-239, T-241, T-243 (all implementation tasks)
+- [ ] **T-251** — QA Engineer: Security checklist + code review (Sprint 31) ← Blocked by T-249, T-250
 
   **Scope:**
   - Security checklist (all items from `.workflow/security-checklist.md`)
-  - Code review: T-238 (backend status fix), T-239 (frontend status fix), T-240 (backend timezone fix), T-241 (frontend timezone fix), T-242 (calendar LAND_TRAVEL backend), T-243 (TripCalendar LAND_TRAVEL frontend)
-  - Verify all backend + frontend tests pass
-  - Specific regression checks: status PATCH round-trip, flight time display, land travel calendar events
-  - Log results in `qa-build-log.md` Sprint 30 section
+  - Code review: T-249 (mobileEventLandTravel CSS) and T-250 (knexfile seeds fix)
+  - Verify all backend + frontend tests pass (402+ backend, 495+ frontend)
+  - Regression check: TripCalendar LAND_TRAVEL desktop pills unaffected by CSS addition; staging seeds config does not affect production or development blocks
+  - Log results in `qa-build-log.md` Sprint 31 section
 
 ---
 
-- [ ] **T-245** — QA Engineer: Integration testing (Sprint 30) ← Blocked by T-244
+- [ ] **T-252** — QA Engineer: Integration testing (Sprint 31) ← Blocked by T-251
 
   **Test scenarios (minimum):**
-  1. Trip status PLANNING → ONGOING: PATCH → GET confirms ONGOING
-  2. Trip status ONGOING → COMPLETED: PATCH → GET confirms COMPLETED
-  3. Flight add with local time → detail view shows correct time (no ~4h shift)
-  4. Land travel add → GET /calendar includes LAND_TRAVEL event with correct title
-  5. TripCalendar renders LAND_TRAVEL pill with departure/arrival times
-  6. Regression: T-229 COALESCE (PATCH dates → correct dates returned)
-  7. Regression: T-235 Playwright 4/4 still pass after new changes
+  1. `knexfile.js` staging block has `seeds.directory` = correct path
+  2. `TripCalendar` mobile LAND_TRAVEL row renders with `.mobileEventLandTravel` class
+  3. Desktop LAND_TRAVEL pill still renders correctly (no regression from CSS change)
+  4. Regression: T-238 status PATCH round-trip still PASS
+  5. Regression: T-242 GET /calendar returns LAND_TRAVEL events
+  6. Regression: Playwright 4/4 still pass after build with new CSS
 
 ---
 
-- [ ] **T-246** — Deploy Engineer: Sprint 30 staging re-deployment ← Blocked by T-245
+- [ ] **T-253** — Deploy Engineer: Sprint 31 staging re-deployment ← Blocked by T-252
 
-  - Rebuild frontend (npm run build)
+  - Rebuild frontend (`npm run build`) — picks up T-249 CSS change
   - pm2 reload both services
   - Verify `GET /api/v1/health` → 200
+  - Smoke test: mobile viewport shows LAND_TRAVEL row with color accent (visual check)
   - Log in `qa-build-log.md`
 
 ---
 
-- [ ] **T-247** — Monitor Agent: Sprint 30 staging health check ← Blocked by T-246
+- [ ] **T-254** — Monitor Agent: Sprint 31 staging health check ← Blocked by T-253
 
   Full health check protocol:
   - GET `/api/v1/health` → 200 ✅
   - CORS header → `Access-Control-Allow-Origin: https://localhost:4173` ✅
-  - Login with `test@triplanner.local` → 200 + access token ✅
+  - Auth login with `test@triplanner.local` → 200 ✅
   - GET `/api/v1/trips` → 200 ✅
-  - `PATCH /api/v1/trips/:id` with `{"status":"ONGOING"}` → 200, status persisted ✅
-  - `POST /api/v1/trips/:id/flights` with local time, `GET /flights` → time consistent ✅
-  - GET `/api/v1/trips/:id/calendar` with land travel → LAND_TRAVEL event present ✅
+  - Sprint 30 regression: PATCH trip status → persisted ✅
+  - Sprint 30 regression: GET /calendar → LAND_TRAVEL event present ✅
   - `npx playwright test` → 4/4 PASS ✅
-  - Log results in `qa-build-log.md` Sprint 30 section
-  - If all pass: mark **Deploy Verified = Yes**, handoff to User Agent (T-248)
+  - Log results in `qa-build-log.md` Sprint 31 section
+  - If all pass: mark **Deploy Verified = Yes**, handoff to User Agent (T-255)
 
 ---
 
-- [ ] **T-248** — User Agent: Sprint 30 feature walkthrough ← Blocked by T-247
+- [ ] **T-255** — User Agent: Sprint 31 feature walkthrough ← Blocked by T-254
 
-  **Scope:** Verify all three Sprint 30 fixes end-to-end from a user perspective:
-  1. **Trip status flow:** Change trip status PLANNING→ONGOING→COMPLETED, reload page — confirm each status persists
-  2. **Flight timezone:** Add a flight with `6:50 AM ET` departure, navigate to trip details — confirm flight card displays `6:50 AM` (not `2:50 AM`)
-  3. **Land travel in calendar:** Add a land travel entry, view TripCalendar — confirm land travel pill appears with departure/arrival times, clicking scrolls to land travels section
-  4. **Regressions:** Confirm COALESCE date fix (T-229), CORS, existing Playwright 4/4 all still passing
-  5. Submit structured feedback to `feedback-log.md` under "Sprint 30 User Agent Feedback"
+  **Scope:**
+  1. **Mobile LAND_TRAVEL styling (T-249):** On a mobile-width viewport, add a land travel entry to a trip, open TripCalendar — confirm LAND_TRAVEL row in MobileDayList has a visible color accent distinct from the unstyled state.
+  2. **Regressions:** Confirm Sprint 30 features (status persistence, flight timezone, desktop LAND_TRAVEL pills) all still working.
+  3. Submit structured feedback to `feedback-log.md` under "Sprint 31 User Agent Feedback — T-255".
 
 ---
 
-### Phase 5 — Production Deployment (P1 — project owner gate — parallel with all phases)
+### Phase 3 — Production Deployment (P1 — project owner gate — parallel with all phases)
 
-> ⚠️ **PROJECT OWNER ACTION REQUIRED (FIFTH ESCALATION):**
-> T-224 has been blocked for five consecutive sprints (Sprints 25, 26, 27, 28, 29). All engineering work is 100% complete. The project owner must take the following human-only actions:
+> ⚠️ **PROJECT OWNER ACTION REQUIRED (SIXTH ESCALATION):**
+> T-224 has been blocked for six consecutive sprints (Sprints 25, 26, 27, 28, 29, 30). All engineering work is 100% complete. The project owner must take the following human-only actions:
 > 1. **AWS:** Create an RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier) and provide the connection string
-> 2. **Render:** Apply the `render.yaml` Blueprint to provision frontend (static site) and backend (web service), both in Ohio region, free plan
+> 2. **Render:** Apply the `render.yaml` Blueprint to provision frontend (static site) and backend (web service), both Ohio region, free plan
 >
 > Documents ready: `render.yaml`, `docs/production-deploy-guide.md`, `backend/knexfile.js` (SSL + pool), `backend/src/app.js` (SameSite=None cookie for production). No agent can provision external cloud infrastructure.
 
@@ -219,7 +159,7 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ## Out of Scope
 
-- **New features beyond Sprint 30 scope** — Focus is on correctness (status bug + timezone bug) and the land travel calendar gap. No additional features until Sprint 30 is complete and staged.
+- **New features** — Focus is on closing T-248 and shipping two minor backlog improvements. No new features until Sprint 31 pipeline completes and T-248 feedback is triaged.
 - **B-020 (Redis rate limiter)** — Backlog; in-memory store sufficient for current scale.
 - **B-024 (per-account rate limiting)** — Backlog.
 - **FB-121 (stay category case normalization)** — Minor UX; backlog.
@@ -231,40 +171,42 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Backend Engineer | Fix trip status persistence; fix flight timezone storage; add LAND_TRAVEL to calendar API | T-238, T-240, T-242 |
-| Frontend Engineer | Fix TripStatusSelector status change; fix flight timezone display; render LAND_TRAVEL in TripCalendar | T-239, T-241, T-243 |
-| QA Engineer | Security checklist + code review; integration testing | T-244, T-245 |
-| Deploy Engineer | Sprint 30 staging re-deployment; production deployment (if T-224 unblocked) | T-246, T-224 |
-| Monitor Agent | Sprint 30 staging health check; post-production check (if T-224 done) | T-247, T-225 |
-| User Agent | Sprint 30 feature walkthrough — status, timezone, land travel calendar | T-248 |
-| Design Agent | No tasks this sprint (existing specs accurate) | — |
-| Manager | Code review + triage T-248 feedback → Sprint 31 plan | Reviews |
+| User Agent | Sprint 30 walkthrough (T-248, P0 carry-over) | T-248, T-255 |
+| Frontend Engineer | Add `.mobileEventLandTravel` mobile styling | T-249 |
+| Backend Engineer | Fix knexfile.js staging seeds config | T-250 |
+| QA Engineer | Security checklist + integration testing | T-251, T-252 |
+| Deploy Engineer | Sprint 31 staging re-deployment; production (if T-224 unblocked) | T-253, T-224 |
+| Monitor Agent | Sprint 31 staging health check; post-production (if T-224 done) | T-254, T-225 |
+| Design Agent | No tasks this sprint (all fixes are minor non-visual) | — |
+| Manager | Triage T-248 feedback → approve T-249/T-250; code review; Sprint 32 plan | Reviews |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-Phase 1 + 2 (IMMEDIATE — NO BLOCKERS — can run in parallel):
-T-238 (Backend: trip status fix)   T-239 (Frontend: TripStatusSelector fix)
-T-240 (Backend: timezone fix)      T-241 (Frontend: flight display fix)
-T-242 (Backend: LAND_TRAVEL calendar)
-    |
-T-243 (Frontend: LAND_TRAVEL TripCalendar) ← requires T-242
-    |
-T-244 (QA: Security checklist + code review — all implementation done)
-    |
-T-245 (QA: Integration testing)
-    |
-T-246 (Deploy: Staging re-deployment)
-    |
-T-247 (Monitor: Health check → Deploy Verified = Yes)
-    |
+Phase 0 (IMMEDIATE — NO BLOCKERS):
 T-248 (User Agent: Sprint 30 walkthrough)
     |
-Manager: Triage feedback → Sprint 31 plan
+Manager: Triage T-248 feedback (if Critical/Major → hotfix takes priority)
 
-Phase 5 (PROJECT OWNER GATE — parallel with all phases — 5th escalation):
+Phase 1 (parallel with T-248 or immediately after clean triage):
+T-249 (Frontend: mobileEventLandTravel CSS)
+T-250 (Backend: knexfile seeds fix)
+    |
+T-251 (QA: Security checklist + code review — all T-249/T-250 done)
+    |
+T-252 (QA: Integration testing)
+    |
+T-253 (Deploy: Staging re-deployment)
+    |
+T-254 (Monitor: Health check → Deploy Verified = Yes)
+    |
+T-255 (User Agent: Sprint 31 walkthrough)
+    |
+Manager: Triage feedback → Sprint 32 plan
+
+Phase 3 (PROJECT OWNER GATE — parallel with all phases — 6th escalation):
 [Project owner provides AWS RDS + Render credentials]
     |
 T-224 (Deploy: Production deployment)
@@ -276,42 +218,41 @@ T-225 (Monitor: Post-production health check)
 
 ## Definition of Done
 
-*How do we know Sprint #30 is complete?*
+*How do we know Sprint #31 is complete?*
 
-- [ ] T-238: Backend status PATCH verified — `{"status":"ONGOING"}` persists and returns correctly
-- [ ] T-239: TripStatusSelector fix verified — UI sends PATCH, reflects persisted value on reload
-- [ ] T-240: Flight departure_at/arrival_at storage audit complete — root cause identified and fixed
-- [ ] T-241: Flight card display shows correct local time (no ~4h UTC shift)
-- [ ] T-242: `GET /api/v1/trips/:id/calendar` includes LAND_TRAVEL events; api-contracts.md updated
-- [ ] T-243: TripCalendar renders LAND_TRAVEL pills with departure/arrival times + click-to-scroll
-- [ ] T-244: QA security checklist PASS; all backend + frontend tests passing
-- [ ] T-245: All 7+ integration test scenarios PASS including status + timezone + land travel
-- [ ] T-246: Staging re-deployed; both services online
-- [ ] T-247: Monitor confirms Deploy Verified = Yes; Playwright 4/4 still passing
-- [ ] T-248: User Agent confirms status, timezone, and land travel calendar all working end-to-end
+- [ ] T-248: User Agent Sprint 30 walkthrough complete — all 3 Sprint 30 fixes verified end-to-end from user perspective
 - [ ] T-248 feedback triaged by Manager (all entries Acknowledged or Tasked)
-- [ ] Sprint 30 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 31 plan written in `.workflow/active-sprint.md`
+- [ ] T-249: `.mobileEventLandTravel` CSS added; mobile LAND_TRAVEL row styled; 1+ new test; no regressions
+- [ ] T-250: `knexfile.js` staging seeds config fixed; 1+ new test; no regressions
+- [ ] T-251: QA security checklist PASS; all backend + frontend tests passing
+- [ ] T-252: All integration scenarios PASS
+- [ ] T-253: Staging re-deployed; both services online
+- [ ] T-254: Monitor confirms Deploy Verified = Yes; Playwright 4/4 still passing
+- [ ] T-255: User Agent confirms mobile LAND_TRAVEL styling and Sprint 30 regressions clean
+- [ ] T-255 feedback triaged by Manager
+- [ ] Sprint 31 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 32 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #30)
+## Success Criteria (Sprint #31)
 
-By end of Sprint #30, the following must be verifiable:
+By end of Sprint #31, the following must be verifiable:
 
-- [ ] **Status bug resolved** — Trip status transitions persist correctly through the full PATCH → GET lifecycle
-- [ ] **Timezone bug resolved** — Flight times display the user-entered local time without UTC offset shift
-- [ ] **Land travel in calendar** — Land travel events appear as TripCalendar pills with time info and correct scroll-link
-- [ ] **Regression-free** — T-229 COALESCE, CORS, Playwright 4/4 all still PASS
-- [ ] **User Agent sign-off** — T-248 confirms all three fixes working end-to-end from user perspective
+- [ ] **T-248 sign-off** — User Agent confirms all Sprint 30 fixes working from user perspective — no Critical or Major regressions
+- [ ] **Mobile LAND_TRAVEL styling live** — LAND_TRAVEL rows in MobileDayList have consistent color accent on mobile viewports
+- [ ] **Knexfile seeds config fixed** — `NODE_ENV=staging npm run seed` resolves without ENOENT (seeds directory present)
+- [ ] **Regression-free** — Sprint 30 features (status, timezone, LAND_TRAVEL desktop) all still passing
+- [ ] **Deploy Verified = Yes** — T-254 confirms all health checks passing after Sprint 31 deploy
 
 ---
 
 ## Blockers
 
-- **T-224/T-225 are blocked on the project owner.** This is the **fifth consecutive sprint** this escalation has been raised. AWS RDS + Render account provisioning is required before production deployment can proceed. All application code, `render.yaml`, and `docs/production-deploy-guide.md` are complete and production-ready. **No agent can resolve this — it requires a human action.**
-- No blockers on the engineering track. T-238, T-239, T-240, T-241, T-242 can all begin immediately in parallel.
+- **T-224/T-225 are blocked on the project owner.** This is the **sixth consecutive sprint** this escalation has been raised. AWS RDS + Render account provisioning is required before production deployment can proceed. All application code, `render.yaml`, and `docs/production-deploy-guide.md` are complete and production-ready. **No agent can resolve this — it requires a human action.**
+- **T-249 and T-250 should not start until T-248 feedback is triaged.** If T-248 reveals a Critical or Major bug, hotfix tasks (H-XXX) take P0 priority over all other Sprint 31 work.
+- No blockers on T-248 itself. Staging is verified healthy. User Agent must start immediately.
 
 ---
 
-*Sprint #29 archived to `.workflow/sprint-log.md` on 2026-03-16. Sprint #30 plan written by Manager Agent 2026-03-16.*
+*Sprint #30 archived to `.workflow/sprint-log.md` on 2026-03-17. Sprint #31 plan written by Manager Agent 2026-03-17.*
