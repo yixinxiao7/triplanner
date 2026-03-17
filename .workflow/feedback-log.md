@@ -736,3 +736,107 @@ During testing setup, several `POST /api/v1/auth/login` requests were sent with 
 **Description:** When a user enters a flight departure or arrival time (e.g., 6:50 AM ET), the TripDetailsPage flight card displays the wrong time (e.g., 2:50 AM ET) — shifted by approximately 4 hours, which corresponds to the UTC offset for US Eastern Time (ET = UTC-4 in summer / UTC-5 in winter). This strongly suggests a timezone double-conversion bug: the time is being stored or transmitted as a UTC timestamp, and then the frontend (or backend) is incorrectly applying the timezone offset a second time when formatting for display. The bug could be in: (1) the frontend flight form converting the user-entered local time to UTC before sending to the API, (2) the backend storing the time with an unintended timezone conversion, (3) the frontend detail view applying a UTC-to-local conversion on a value that is already in local time, or (4) a mismatch between how the time+timezone fields are stored vs. read back. Engineers should trace the full lifecycle: form input → API request body → database row → API response → display formatting, paying close attention to how `departure_time`/`arrival_time` and their associated timezone fields (`departure_tz`/`arrival_tz`) are handled at each step.
 
 ---
+
+---
+
+## Sprint 29 User Agent Feedback — T-237 Quick Regression Verification
+
+*User Agent — Sprint #29 — 2026-03-17 — T-237*
+
+---
+
+### FB-131 — Playwright E2E locator fix (T-235) confirmed working — 4/4 pass
+
+| Field | Value |
+|-------|-------|
+| Feedback | T-235 Playwright locator fix verified: `e2e/critical-flows.spec.js` lines 201–202 now use scoped `[class*="_airportCode_"]` locators — no application code changed |
+| Sprint | 29 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-235 |
+
+**Description:** Confirmed via code inspection (`sed -n '195,210p' e2e/critical-flows.spec.js`) and Monitor Agent qa-build-log that the Playwright fix is correctly in place. Lines 201–202 now read:
+```
+await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()).toBeVisible();
+await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible();
+```
+No application source files were modified. Monitor Agent independently confirmed 4/4 Playwright PASS (8.3s total). The ambiguous `getByText('SFO')` strict-mode violation is fully resolved. Well executed — test-code only, no side effects.
+
+---
+
+### FB-132 — Login → flights → calendar core flow: all endpoints working correctly
+
+| Field | Value |
+|-------|-------|
+| Feedback | Full T-237 regression flow: login → create trip → add flight (JFK→SFO) → GET flights → GET calendar → all return correct shapes and data |
+| Sprint | 29 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-237 |
+
+**Description:** Tested the complete user flow end-to-end via direct API calls:
+1. `POST /api/v1/auth/login` (test@triplanner.local) → 200, access_token returned ✅
+2. `GET /api/v1/trips` → 200, empty array for fresh account ✅
+3. `POST /api/v1/trips` (name, destinations, start_date, end_date) → 201, trip object correct ✅
+4. `POST /api/v1/trips/:id/flights` (JFK→SFO, UA1234, with departure_tz/arrival_tz) → 201, `from_location: "JFK"`, `to_location: "SFO"` present in response ✅
+5. `GET /api/v1/trips/:id/flights` → 200, flight card data with correct airport codes ✅
+6. `GET /api/v1/trips/:id/calendar` → 200, flight event returned with title "United Airlines UA1234 — JFK → SFO", type: FLIGHT, correct start/end dates ✅
+7. `DELETE /api/v1/trips/:id` → 204 cleanup ✅
+
+All response shapes match api-contracts.md. No regressions detected from the Sprint 29 test-code change.
+
+---
+
+### FB-133 — T-229 COALESCE date fix: still passing — no regression
+
+| Field | Value |
+|-------|-------|
+| Feedback | `PATCH /api/v1/trips/:id` with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` returns the user-supplied dates correctly — T-229 regression is clean |
+| Sprint | 29 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-237 |
+
+**Description:** Confirmed T-229 "Set dates" fix is still intact. Steps: PATCH trip with `start_date: "2026-09-01"` and `end_date: "2026-09-30"` → response body returned `start_date: "2026-09-01"` and `end_date: "2026-09-30"` exactly as provided. No COALESCE or null-overwrite regression. This has now held across Sprint 28 and Sprint 29.
+
+---
+
+### FB-134 — Validation and security edge cases: all passing
+
+| Field | Value |
+|-------|-------|
+| Feedback | Input validation and auth enforcement all correct across multiple edge cases tested |
+| Sprint | 29 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-237 |
+
+**Description:** Edge cases tested and passing:
+- `PATCH trip` with `start_date > end_date` → 400 `"End date must be on or after start date"` ✅
+- `POST flight` without auth → 401 `"Authentication required"` ✅
+- `POST flight` with `arrival_at` before `departure_at` → 400 `"Arrival time must be after departure time"` ✅
+- `POST flight` with `flight_number` > 20 chars → 400 `"flight_number must be at most 20 characters"` ✅
+- SQL injection attempt in trip name (e.g., `Trip"; DROP TABLE trips; --`) → stored as plain text, 201 returned, DB intact (parameterized queries working correctly) ✅
+- `GET /api/v1/trips` with invalid Bearer token → 401 `"Invalid or expired token"` ✅
+- `GET /api/v1/trips/:id/calendar` for a trip with no events → 200 `{"data":{"events":[]}}` ✅
+
+---
+
+### FB-135 — Frontend build present and accessible
+
+| Field | Value |
+|-------|-------|
+| Feedback | `frontend/dist/` exists with `index.html` and `assets/`. `https://localhost:4173` returns HTTP 200. |
+| Sprint | 29 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-237 |
+
+**Description:** Confirmed `frontend/dist/` contains `index.html`, `favicon.png`, and `assets/` directory. Serving correctly at `https://localhost:4173` (HTTP 200). Frontend build is intact and unaffected by the T-235 test-code-only change, as expected.
+
+---
