@@ -1884,3 +1884,97 @@ The following infrastructure is 100% engineering-complete and requires NO furthe
 *QA Engineer Sprint #30 — Re-Verification — 2026-03-17*
 
 ---
+
+---
+
+## Sprint #30 — Build & Staging Deployment (T-246)
+
+**Date:** 2026-03-17
+**Task:** T-246
+**Deploy Engineer**
+
+---
+
+### Pre-Deploy Checklist
+
+| Check | Result |
+|-------|--------|
+| QA confirmation in handoff-log.md (T-244 + T-245) | ✅ CONFIRMED — "Sprint #30 — ✅ DEPLOY UNBLOCKED" (QA Engineer, 2026-03-17) |
+| All 6 Sprint 30 implementation tasks Done (T-238–T-243) | ✅ CONFIRMED — QA final summary: all Done |
+| Pending database migrations | ✅ NONE — Sprint 30 is schema-stable; 10/10 migrations applied (001–010) |
+
+---
+
+### Dependency Installation
+
+| Step | Result |
+|------|--------|
+| `cd backend && npm install` | ✅ SUCCESS — 0 vulnerabilities |
+| `cd frontend && npm install` | ✅ SUCCESS — 0 vulnerabilities |
+
+---
+
+### Frontend Build
+
+**Command:** `cd frontend && npm run build`
+**Status:** ✅ SUCCESS
+**Date:** 2026-03-17
+
+| Output | Value |
+|--------|-------|
+| Vite version | 6.4.1 |
+| Modules transformed | 129 |
+| Build time | 503ms |
+| dist/index.html | 0.46 kB (gzip: 0.29 kB) |
+| dist/assets/index-BE-R18Qo.js | 294.82 kB (gzip: 94.37 kB) |
+| dist/assets/index-CmQqLwAJ.css | 58.88 kB (gzip: 10.24 kB) |
+| Errors | 0 |
+| Warnings | 0 |
+
+**Build Result: ✅ SUCCESS — No errors, no warnings**
+
+---
+
+### Staging Deployment
+
+**Environment:** Staging (local — pm2)
+**Method:** pm2 reload (graceful reload, zero-downtime)
+
+| Step | Result |
+|------|--------|
+| `pm2 reload triplanner-backend` | ✅ SUCCESS — PID 36469, status: online |
+| `pm2 reload triplanner-frontend` | ✅ SUCCESS — PID 36508, status: online |
+
+---
+
+### Post-Deploy Health Verification
+
+| Check | Result |
+|-------|--------|
+| pm2 triplanner-backend status | ✅ online (uptime: stable, mem: 83.7MB) |
+| pm2 triplanner-frontend status | ✅ online (uptime: stable, mem: 67.2MB) |
+| `GET https://localhost:3001/api/v1/health` | ✅ 200 `{"status":"ok"}` |
+| `GET https://localhost:4173` | ✅ 200 (HTML served) |
+| Pending migrations | ✅ NONE — Sprint 30 no schema changes |
+
+---
+
+### Sprint #30 Staging Deployment Summary
+
+| Item | Value |
+|------|-------|
+| Environment | Staging |
+| Build Status | ✅ Success |
+| Deploy Status | ✅ Success |
+| Backend URL | https://localhost:3001 |
+| Frontend URL | https://localhost:4173 |
+| Health endpoint | https://localhost:3001/api/v1/health |
+| Migrations run | None (schema stable) |
+| New features deployed | T-238 (trip status persistence), T-239 (TripStatusSelector fix), T-240 (flight timezone validation), T-241 (flight timezone display), T-242 (LAND_TRAVEL calendar API), T-243 (TripCalendar LAND_TRAVEL rendering) |
+| Known non-blocking issue | `.mobileEventLandTravel` CSS class absent from TripCalendar.module.css — mobile LAND_TRAVEL rows functional but unstyled. Logged for Sprint 31. |
+
+**Staging Deploy Result: ✅ SUCCESS**
+
+*Deploy Engineer Sprint #30 — T-246 Complete — 2026-03-17*
+
+---

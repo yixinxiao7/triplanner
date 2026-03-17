@@ -6486,3 +6486,68 @@ Steps for Deploy Engineer:
 *QA Engineer Sprint #30 — Re-Verification — 2026-03-17*
 
 ---
+
+---
+
+## Handoff: Deploy Engineer → Monitor Agent (Sprint #30 — T-246 Complete — Staging Deployed)
+**Date:** 2026-03-17
+**Sprint:** 30
+**Status:** ✅ Staging Deployment Complete — T-247 Unblocked
+**From:** Deploy Engineer
+**To:** Monitor Agent
+
+### Deployment Summary
+
+Sprint #30 staging deployment (T-246) is complete. All 6 Sprint 30 implementation tasks are deployed.
+
+| Item | Value |
+|------|-------|
+| Task completed | T-246 (Deploy Engineer: Sprint 30 staging re-deployment) |
+| Build | ✅ SUCCESS — `npm run build` (Vite 6.4.1, 129 modules, 503ms, 0 errors) |
+| Backend reload | ✅ `pm2 reload triplanner-backend` — online, PID 36469 |
+| Frontend reload | ✅ `pm2 reload triplanner-frontend` — online, PID 36508 |
+| Backend health | ✅ `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}` |
+| Frontend health | ✅ `GET https://localhost:4173` → 200 |
+| Migrations | ✅ NONE — Sprint 30 schema-stable (10/10 applied, 001–010) |
+
+### Services Running
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend API | https://localhost:3001 | ✅ online |
+| Health endpoint | https://localhost:3001/api/v1/health | ✅ 200 `{"status":"ok"}` |
+| Frontend | https://localhost:4173 | ✅ 200 |
+
+### What's Deployed (Sprint #30 changes)
+
+| Task | Change |
+|------|--------|
+| T-238 | Trip status persistence fix — `computeTripStatus()` date-override removed; PATCH now reliably returns patched status value |
+| T-239 | TripStatusSelector fix — frontend sends `{status}` in PATCH body and reads API response to update state |
+| T-240 | Flight timezone validation — naive datetime strings rejected with 400; UTC offset required |
+| T-241 | Flight timezone display fix — single `Intl.DateTimeFormat` conversion (no double-shift) |
+| T-242 | LAND_TRAVEL calendar API — `GET /api/v1/trips/:id/calendar` now returns `LAND_TRAVEL` event type |
+| T-243 | TripCalendar LAND_TRAVEL rendering — muted purple pills with mode+time label, click-to-scroll |
+
+### Action Required from Monitor Agent (T-247)
+
+Please run the full Sprint #30 health check protocol including:
+1. `GET https://localhost:3001/api/v1/health` → confirm `{"status":"ok"}`
+2. Auth: `POST /api/v1/auth/login` with `test@triplanner.local` → confirm 200 + access_token
+3. Sprint #30 smoke tests:
+   - **Trip status:** `PATCH /api/v1/trips/:id {"status":"ONGOING"}` on trip with future dates → confirm `data.status === "ONGOING"` (not auto-overridden back to PLANNING)
+   - **Flight timezone:** `POST /api/v1/trips/:id/flights` with naive datetime (no offset) → confirm 400; with `-04:00` offset → confirm 201
+   - **LAND_TRAVEL calendar:** `GET /api/v1/trips/:id/calendar` on trip with land travel → confirm `{type:"LAND_TRAVEL"}` events in response
+4. T-229 regression: PATCH trip dates → confirm `start_date`/`end_date` returned correctly
+5. Playwright E2E: confirm 4/4 PASS (locator fix from T-235 still in place)
+6. CORS header check: `Access-Control-Allow-Origin: https://localhost:4173`
+
+If all checks pass: mark **Deploy Verified = Yes**, mark T-247 Done, and log handoff to User Agent for T-248.
+
+### Known Non-Blocking Issue
+
+`.mobileEventLandTravel` CSS class is referenced in `TripCalendar.jsx` (line 195) but is absent from `TripCalendar.module.css`. Mobile LAND_TRAVEL rows render functionally but without color accent. Non-blocking — acknowledged by Manager Agent. Logged for Sprint 31 backlog.
+
+*Deploy Engineer Sprint #30 — T-246 Complete — 2026-03-17*
+
+---
