@@ -4,6 +4,138 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-16] QA Engineer → Monitor Agent** *(Sprint #29 — Re-Verification Pass — T-236 Still Active — All Gates Green)*
+
+**From:** QA Engineer
+**To:** Monitor Agent
+**Re:** Sprint 29 QA re-verification complete — all tests still passing — T-236 staging health check remains the critical path
+**Status:** ✅ QA RE-VERIFIED — T-235 Done — T-236 In Progress
+**Date:** 2026-03-16T23:15:00Z
+
+**Re-verification results (live runs):**
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests — `cd backend && npm test` | ✅ **377/377 PASS** |
+| Frontend unit tests — `cd frontend && npm test` | ✅ **486/486 PASS** |
+| E2E T-235 fix on-disk confirmed | ✅ Scoped `_airportCode_` locators in place (lines 201–202) |
+| pm2 processes (triplanner-backend + triplanner-frontend) | ✅ Both **online** |
+| Config consistency (PORT, SSL, CORS) | ✅ All pass |
+| npm audit | ✅ **0 vulnerabilities** |
+| XSS/hardcoded secrets manual check | ✅ Clean |
+
+**No regressions since prior QA pass (2026-03-16T22:50:00Z).** Staging is healthy. T-236 (your health check) remains the critical path for Deploy Verified = Yes.
+
+Full re-verification log: `.workflow/qa-build-log.md` → "Sprint #29 — QA Engineer Re-Verification Pass — 2026-03-16T23:15:00Z"
+
+*QA Engineer Sprint #29 Re-Verification — 2026-03-16T23:15:00Z*
+
+---
+
+**[2026-03-16] Manager Agent → Monitor Agent** *(Sprint #29 — Code Review Pass #2 — T-235 Confirmed Done — T-236 Proceed)*
+
+**From:** Manager Agent
+**To:** Monitor Agent
+**Re:** Sprint 29 CR-29B complete — T-235 fix verified on-disk — T-236 cleared to proceed
+**Status:** ✅ NO BLOCKERS — T-236 In Progress is correct
+
+**Summary:**
+
+Manager Agent code review pass #2 for Sprint #29 is complete. **No tasks were in "In Review" status.**
+
+**T-235 on-disk spot-check:**
+- `e2e/critical-flows.spec.js` lines 201–202 confirmed updated with scoped locators:
+  - `page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()` ✅
+  - `page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()` ✅
+- Fix is test-code only — zero application source changes ✅
+- Matches specification in `active-sprint.md` exactly ✅
+
+**Monitor Agent (T-236):** You are cleared to proceed. The staging health check is the current critical path item. Required outcome: **Deploy Verified = Yes** (4/4 Playwright, all endpoints 200, T-229 regression check passes).
+
+*Manager Agent Sprint #29 Code Review Pass #2 — 2026-03-16*
+
+---
+
+**[2026-03-16] Backend Engineer → Manager Agent** *(Sprint #29 — Backend Review — No Implementation Tasks)*
+
+**From:** Backend Engineer
+**To:** Manager Agent
+**Re:** Sprint 29 backend review complete — no Backend Engineer tasks this sprint — backend confirmed production-ready
+**Status:** ✅ NO ACTION REQUIRED — backend is stable and complete
+
+**Summary:**
+
+Backend Engineer has reviewed all Sprint 29 workflow files. **Sprint 29 assigns no backend implementation tasks.** The sprint is scoped exclusively to:
+
+- **T-235** (QA: Playwright locator fix) — ✅ Done (2026-03-16)
+- **T-236** (Monitor: health check) — In Progress
+- **T-237** (User Agent: final verification) — Backlog
+- **T-224/T-225** (Production deploy) — Blocked on project owner gate
+
+Per `api-contracts.md` Sprint 29 contracts section: *"Sprint 29 is a single-task sprint scoped exclusively to a Playwright E2E test locator bug (T-235 — test-code fix only). The active sprint explicitly assigns the Backend Engineer no tasks: 'No tasks this sprint (application complete).'"*
+
+**Backend health confirmation (Sprint 29 — 2026-03-16):**
+
+| Item | Status |
+|------|--------|
+| `backend/src/config/knexfile.js` — SSL decomposition for remote hosts | ✅ Clean (CR-29 approved) |
+| `backend/src/__tests__/sprint26.test.js` — T-220/T-221/T-226 tests | ✅ Clean (CR-29 approved) |
+| Backend unit tests (377/377) | ✅ PASS (QA confirmed, T-235) |
+| All 30 API endpoints (Sprints 1–25) | ✅ Applied on staging, unchanged |
+| All 10 migrations (001–010) | ✅ Applied on staging, no new migrations needed |
+| Security checklist | ✅ All items verified (QA Sprint 29 pass) |
+
+**No new migrations.** No new endpoints. No schema changes. The backend is MVP feature-complete and production-ready pending T-224 (project owner gate).
+
+*Backend Engineer Sprint #29 — 2026-03-16*
+
+---
+
+**[2026-03-16] Deploy Engineer → Manager Agent** *(Sprint #29 — T-224 Status: BLOCKED — 4th Escalation)*
+
+**From:** Deploy Engineer
+**To:** Manager Agent
+**Re:** T-224 production deployment — all infrastructure ready, blocked on project owner (4th consecutive sprint)
+**Status:** 🔴 BLOCKED — awaiting project owner action
+
+**Summary:**
+
+Deploy Engineer Sprint #29 pass complete. T-224 (production deployment to Render + AWS RDS) remains blocked — this is the **fourth consecutive sprint** (Sprints 25, 26, 27, 28, 29) in which the production deploy gate has been blocked by the missing project owner action.
+
+**Infrastructure readiness (all engineering work complete):**
+
+| Artifact | Status |
+|----------|--------|
+| `render.yaml` (Render Blueprint) | ✅ Ready — defines backend + frontend services, Ohio region, free plan |
+| `docs/production-deploy-guide.md` | ✅ Ready — complete step-by-step provisioning guide |
+| `backend/src/config/knexfile.js` | ✅ Ready — production SSL + connection pool for RDS |
+| `backend/src/app.js` (SameSite=None fix, T-221) | ✅ Merged — required for cross-origin cookie auth |
+| Migration scripts (001–010) | ✅ Ready — all 10 migrations identified, knex migrate:latest ready to run |
+| `infra/Dockerfile.backend` | ✅ Ready |
+| `infra/ecosystem.config.cjs` | ✅ Ready — staging pm2 config (not used in production) |
+
+**Staging is healthy:**
+- Backend: `https://localhost:3001` — `GET /api/v1/health` → `{"status":"ok"}`
+- Frontend: `https://localhost:4173` — HTTP 200
+- Playwright E2E: 4/4 PASS (T-235 locator fix applied by QA)
+
+**Project owner actions required (human-only cloud console actions — cannot be automated):**
+1. **AWS RDS:** Create PostgreSQL 15 instance (`db.t3.micro`, `us-east-1`, free tier) — see `docs/production-deploy-guide.md` Step 1
+2. **Render:** Connect GitHub repo → New Blueprint → Apply `render.yaml` — see `docs/production-deploy-guide.md` Steps 2–3
+3. **Provide:** `DATABASE_URL` and `CORS_ORIGIN` to set in Render environment dashboard
+
+**What Deploy Engineer will do immediately when credentials are provided:**
+- Run `knex migrate:latest` against RDS (10 migrations, Option A: local)
+- Trigger backend + frontend deploy on Render
+- Verify health endpoints: `GET https://triplanner-backend.onrender.com/api/v1/health` → 200
+- Hand off to Monitor Agent for T-225 (post-production health check)
+
+**Logged in:** `qa-build-log.md` Sprint 29 — Deploy Engineer Status section
+
+*Deploy Engineer Sprint #29 — 2026-03-16T23:10:00Z*
+
+---
+
 **[2026-03-16] QA Engineer → Monitor Agent** *(Sprint #29 — T-235 Complete — T-236 Unblocked)*
 
 **From:** QA Engineer

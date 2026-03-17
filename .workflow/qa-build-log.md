@@ -1835,3 +1835,175 @@ All health checks passed. All config consistency checks passed. T-228 CORS fix c
 *QA Engineer Sprint #29 — 2026-03-16T22:50:00Z*
 
 ---
+
+## Sprint 29 — Deploy Engineer Status
+**Task:** T-224 (Deploy Engineer)
+**Date:** 2026-03-16
+**Environment:** Production (Render + AWS RDS) — NOT YET PROVISIONED
+**Build Status:** N/A — Blocked on project owner action (4th escalation)
+
+---
+
+### Pre-Deploy Checklist
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| QA confirmation in handoff-log.md | ✅ CONFIRMED | QA Engineer T-235 done, all tests pass (377 backend, 486 frontend, 4/4 Playwright) |
+| render.yaml present and current | ✅ READY | `/render.yaml` — Backend web service + frontend static site defined for Render free tier |
+| Production deploy guide current | ✅ READY | `docs/production-deploy-guide.md` — 7-step guide covering RDS, Render, env vars, migrations |
+| Migrations identified | ✅ READY | 10 migrations (001–010); knexfile.js has SSL + connection pool config for production |
+| SameSite=None cookie fix (T-221) | ✅ MERGED | `backend/src/app.js` sends `SameSite=None; Secure` when `NODE_ENV=production` |
+| knexfile SSL config (T-220) | ✅ MERGED | `backend/src/config/knexfile.js` uses `DATABASE_URL` with SSL for production |
+| Staging health verified | ✅ VERIFIED | QA confirmed staging running via pm2 — backend https://localhost:3001, frontend https://localhost:4173 |
+| AWS RDS credentials available | ❌ BLOCKED | Project owner must create RDS PostgreSQL 15 instance (db.t3.micro, us-east-1) and provide DATABASE_URL |
+| Render account connected | ❌ BLOCKED | Project owner must connect GitHub to Render and apply `render.yaml` Blueprint |
+
+### Staging Deployment Status
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Staging backend | ✅ RUNNING | pm2 `triplanner-backend`, PORT=3001, HTTPS via TLS certs |
+| Staging frontend | ✅ RUNNING | pm2 `triplanner-frontend`, PORT=4173, `npm run preview` |
+| Staging health | ✅ HEALTHY | GET /api/v1/health → {"status":"ok"} |
+| Staging Playwright | ✅ 4/4 PASS | T-235 locator fix applied; 4/4 E2E tests passing |
+
+### Production Deployment Status
+
+**Status: 🔴 BLOCKED — Awaiting project owner action (4th consecutive sprint)**
+
+The following infrastructure is 100% engineering-complete and requires NO further engineering work:
+
+| Artifact | File | Status |
+|----------|------|--------|
+| Render Blueprint | `render.yaml` | ✅ Ready — defines `triplanner-backend` (Node.js web service) + `triplanner-frontend` (static site) in Ohio region |
+| Deploy Guide | `docs/production-deploy-guide.md` | ✅ Ready — Step-by-step guide for RDS + Render provisioning, env var setup, migrations, and verification |
+| Backend Dockerfile | `infra/Dockerfile.backend` | ✅ Ready |
+| knexfile (production) | `backend/src/config/knexfile.js` | ✅ Ready — SSL + connection pool configured for RDS |
+| Cookie fix | `backend/src/app.js` | ✅ Merged — SameSite=None; Secure on production |
+| Migration scripts | `backend/src/database/migrations/` | ✅ Ready — 10 migrations (001–010) |
+
+**Project owner action required (both are human-only cloud console actions):**
+1. **AWS Console:** Create RDS PostgreSQL 15 instance (`db.t3.micro`, `us-east-1`, free tier) → provide `DATABASE_URL` connection string
+2. **Render Dashboard:** Connect GitHub repo → New Blueprint → Apply `render.yaml` → set `DATABASE_URL` and `CORS_ORIGIN` env vars manually
+
+**When credentials are provided, Deploy Engineer will:**
+1. Run `knex migrate:latest` against RDS (Option A: local migration per deploy guide Step 4)
+2. Trigger backend + frontend deploy on Render
+3. Verify: `GET https://triplanner-backend.onrender.com/api/v1/health` → 200
+4. Verify: `https://triplanner-frontend.onrender.com` → 200
+5. Hand off to Monitor Agent for T-225 post-production health check
+
+*Deploy Engineer Sprint #29 — 2026-03-16T23:10:00Z*
+
+---
+
+## Sprint #29 — QA Engineer Re-Verification Pass — 2026-03-16T23:15:00Z
+
+**Sprint:** 29
+**Date:** 2026-03-16T23:15:00Z
+**Engineer:** QA Engineer (re-invocation — orchestrator pass #2)
+**Context:** Re-verification pass confirming all Sprint 29 QA gates remain green. T-235 was completed in the prior QA pass (2026-03-16T22:50:00Z). This pass re-runs live tests to confirm no regressions since then.
+
+---
+
+### Test Type: Unit Test — Backend (Live Re-Run)
+
+**Command:** `cd backend && npm test -- --run`
+**Result:** ✅ PASS
+
+| Metric | Value |
+|--------|-------|
+| Test Files | 21 passed (21) |
+| Tests | **377 passed (377)** |
+| Duration | 2.71s |
+| Failures | 0 |
+
+**Spot-checks confirmed:**
+- `sprint28.test.js` (6 tests) — COALESCE date tests green ✅
+- `tripModel.coalesce.unit.test.js` (8 tests) — SQL structure verified ✅
+- `sprint26.test.js` (15 tests) — `buildConnectionConfig` SSL decomposition verified ✅
+- All auth, trips, flights, stays, activities, calendar, land-travel, CORS, rate-limit test suites green ✅
+
+**Test Type: Unit Test — Backend: ✅ PASS (377/377)**
+
+---
+
+### Test Type: Unit Test — Frontend (Live Re-Run)
+
+**Command:** `cd frontend && npm test -- --run`
+**Result:** ✅ PASS
+
+| Metric | Value |
+|--------|-------|
+| Test Files | 25 passed (25) |
+| Tests | **486 passed (486)** |
+| Duration | 1.94s |
+| Failures | 0 |
+
+**Test Type: Unit Test — Frontend: ✅ PASS (486/486)**
+
+---
+
+### Test Type: E2E — Playwright Locator Fix Verification
+
+**T-235 fix on-disk check (e2e/critical-flows.spec.js):**
+- Line 201: `page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()` ✅ (scoped locator in place)
+- Line 202: `page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()` ✅ (scoped locator in place)
+
+**Staging environment:** pm2 processes both `triplanner-backend` (PID 26419, online) and `triplanner-frontend` (PID 26420, online) confirmed running.
+
+**Note:** Playwright live E2E run was executed in prior QA pass (2026-03-16T22:50:00Z) → 4/4 PASS. Staging processes confirmed still online; no application source changes between passes. Re-run via Monitor Agent (T-236 In Progress).
+
+**Test Type: E2E Playwright: ✅ CONFIRMED (4/4 in prior pass — staging still running)**
+
+---
+
+### Test Type: Config Consistency Check (Re-Verification)
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| PORT match: backend/.env vs vite proxy default | 3000 = 3000 | `PORT=3000`; vite `backendPort` defaults to `'3000'` | ✅ PASS |
+| SSL protocol: no SSL in .env → HTTP proxy | No SSL → HTTP | SSL lines commented out in .env; vite uses `http://` | ✅ PASS |
+| CORS_ORIGIN includes dev server | `http://localhost:5173` | `CORS_ORIGIN=http://localhost:5173` confirmed | ✅ PASS |
+| docker-compose.yml PORT | 3000 | `PORT: 3000` in docker-compose.yml backend env | ✅ PASS |
+| Staging overrides (ecosystem.config.cjs) | PORT=3001, HTTPS, CORS_ORIGIN=https://localhost:4173 | Confirmed active; pm2 processes online | ✅ PASS |
+
+**Config Consistency: ✅ PASS — All checks pass. No mismatches.**
+
+---
+
+### Test Type: Security Scan (Re-Verification)
+
+**Command:** `cd backend && npm audit`
+**Result:** `found 0 vulnerabilities` ✅
+
+**XSS check:** grep for `dangerouslySetInnerHTML`/`innerHTML` in `frontend/src/` → only a JSDoc comment found, no actual usage ✅
+
+**Hardcoded secrets check:** grep for `JWT_SECRET=` literals in `backend/src/` → none found ✅ (all from `process.env`)
+
+**Security Scan: ✅ PASS — 0 vulnerabilities, no regressions**
+
+---
+
+### Summary
+
+| Test Type | Prior Pass | Re-Verification | Result |
+|-----------|------------|-----------------|--------|
+| Unit Test — Backend | 377/377 ✅ | **377/377 ✅** | NO CHANGE |
+| Unit Test — Frontend | 486/486 ✅ | **486/486 ✅** | NO CHANGE |
+| E2E Playwright | 4/4 ✅ | Staging running ✅ | NO CHANGE |
+| Config Consistency | 6/6 ✅ | 5/5 ✅ | NO CHANGE |
+| Security Scan | 0 vulns ✅ | **0 vulns ✅** | NO CHANGE |
+
+**Overall Sprint 29 QA re-verification: ✅ ALL PASS — No regressions since prior QA pass.**
+
+**Current pipeline state:**
+- T-235: ✅ Done — Playwright locator fix applied, 4/4 E2E pass
+- T-236: 🔄 In Progress — Monitor Agent staging health check (unblocked)
+- T-237: Backlog — User Agent final verification (blocked by T-236)
+- T-224: ⛔ Blocked — production deploy (project owner must provision RDS + Render — 4th escalation)
+- T-225: Backlog — Monitor post-production check (blocked by T-224)
+
+*QA Engineer Sprint #29 Re-Verification — 2026-03-16T23:15:00Z*
+
+---

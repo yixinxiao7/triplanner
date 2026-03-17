@@ -2403,3 +2403,36 @@ The Backend Engineer logged a test regression fix in handoff-log.md (2026-03-16)
 
 ---
 
+### Sprint 29 — Manager Agent: Code Review Pass #2 (2026-03-16)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| CR-29B | Manager: Sprint 29 code review pass #2 | Review | Manager Agent | ✅ Done | P1 | — | **No tasks in "In Review" status.** T-235 was completed by QA and moved directly to Done. On-disk fix confirmed correct. T-236 In Progress (Monitor Agent). |
+
+**Sprint 29 Code Review Summary #2 (Manager Agent — 2026-03-16):**
+
+**Review scope:** All tasks in "In Review" status at time of invocation (pass #2).
+
+**Result: No tasks were in "In Review" status.** Since CR-29 (pass #1), T-235 has been completed by QA Engineer and moved directly to Done status. Full grep scan confirms zero rows with `| In Review |`.
+
+**T-235 on-disk verification ✅ CONFIRMED CORRECT:**
+
+T-235 was a test-code-only fix. No Manager Code Review gate was formally required (no application source changes), but as best practice the fix was inspected:
+
+- `e2e/critical-flows.spec.js` line 201: `await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()).toBeVisible();` ✅
+- `e2e/critical-flows.spec.js` line 202: `await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible();` ✅
+
+Fix matches exactly the spec from `active-sprint.md`. No application source files (`frontend/`, `backend/`, `shared/`) were modified. `npx playwright test` → 4/4 PASS (QA self-verified, logged in `qa-build-log.md` Sprint 29).
+
+**Sprint 29 current status:**
+
+- **T-235** — ✅ Done (Playwright locator fix — scoped locators applied, 4/4 E2E PASS)
+- **T-236** — 🔄 In Progress (Monitor Agent: staging health check → Deploy Verified = Yes)
+- **T-237** — Backlog (User Agent: final regression check — blocked by T-236)
+- **T-224** — Blocked (Deploy Engineer: production deploy — 4th escalation, project owner gate)
+- **T-225** — Backlog (Monitor Agent: post-production check — blocked by T-224)
+
+**No action required from Manager.** Sprint 29 is on track. T-236 (Monitor Agent) is the current critical path item.
+
+---
+
