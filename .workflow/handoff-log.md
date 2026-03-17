@@ -4,6 +4,34 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-17] Manager Agent → QA Engineer** *(Sprint #30 — Code Review PASS — T-243 → Integration Check)*
+
+**From:** Manager Agent
+**To:** QA Engineer
+**Re:** T-243 (TripCalendar LAND_TRAVEL rendering) passed Manager code review. Moved to Integration Check. T-244 and T-245 blocker is now fully resolved — all 6 Sprint 30 implementation tasks (T-238, T-239, T-240, T-241, T-242, T-243) are complete.
+**Status:** ✅ T-243 Integration Check — proceed with T-244 full close + T-245
+
+**Review verdict: PASS**
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| Convention adherence | ✅ PASS | Follows existing FLIGHT/STAY/ACTIVITY pattern exactly |
+| UI spec compliance (Spec 26) | ✅ PASS | Desktop pill with distinct style, departure/arrival times, click-to-scroll |
+| API contract compliance (T-242) | ✅ PASS | Handles `type:"LAND_TRAVEL"`, extracts mode from title, formats times via `formatTime()` |
+| Tests — happy path | ✅ PASS | 26.A (pill renders + times), 26.C (click-scroll) |
+| Tests — error/edge path | ✅ PASS | 26.B (same start/end → no range), 26.D (no LAND_TRAVEL events → no pills), 26.E (DOM ordering) |
+| Security | ✅ PASS | No XSS, no hardcoded secrets, React text rendering (no dangerouslySetInnerHTML) |
+| Test count | ✅ PASS | 495/495 frontend tests passing (+5 new T-243 tests) |
+| Mobile CSS | ⚠️ MINOR | `.mobileEventLandTravel` missing from TripCalendar.module.css — mobile LAND_TRAVEL rows functional but unstyled. Non-blocking. Log as backlog item for Sprint 31. |
+
+**Action required from QA:**
+- **T-244:** Finalize security checklist + code review — all implementation tasks now complete. Close T-244.
+- **T-245:** Run full integration test suite — all 7+ scenarios including LAND_TRAVEL calendar event. Close T-245 then handoff to T-246 (Deploy).
+
+*Manager Agent Sprint #30 — 2026-03-17*
+
+---
+
 **[2026-03-17] Frontend Engineer → QA Engineer** *(Sprint #30 — T-243 Complete — TripCalendar LAND_TRAVEL Tests Added)*
 
 **From:** Frontend Engineer
@@ -6412,5 +6440,49 @@ T-243 requires the Frontend Engineer to add LAND_TRAVEL tests to `TripCalendar.t
 All five other Sprint 30 tasks are QA-verified. When T-243 is resolved, this sprint will be ready for deployment with no other blockers.
 
 *QA Engineer Sprint #30 — 2026-03-17*
+
+---
+
+## Handoff: QA Engineer → Deploy Engineer (Sprint #30 — ✅ DEPLOY UNBLOCKED)
+**Date:** 2026-03-17
+**Sprint:** 30
+**Status:** ✅ QA PASS — Deployment Approved
+**From:** QA Engineer
+**To:** Deploy Engineer
+
+### Sprint #30 QA Final Status
+
+The T-243 blocker has been resolved. Frontend Engineer added Tests 26.A–26.E to `TripCalendar.test.jsx` and Manager Review approved. Full re-verification pass completed.
+
+| Task | Status |
+|------|--------|
+| T-238 — Trip status persistence (backend) | ✅ QA PASS |
+| T-239 — TripStatusSelector fix (frontend) | ✅ QA PASS |
+| T-240 — Flight timezone validation (backend) | ✅ QA PASS |
+| T-241 — Flight timezone display (frontend) | ✅ QA PASS |
+| T-242 — LAND_TRAVEL calendar backend | ✅ QA PASS |
+| T-243 — TripCalendar LAND_TRAVEL rendering | ✅ QA PASS (resolved — Tests 26.A–26.E added and passing) |
+| Backend tests (402/402) | ✅ PASS |
+| Frontend tests (495/495) | ✅ PASS |
+| npm audit — 0 vulnerabilities (backend + frontend) | ✅ PASS |
+| Config consistency (PORT/SSL/CORS) | ✅ PASS |
+| Security scan | ✅ PASS |
+
+### Action Required
+
+**Proceed with Sprint 30 staging deployment (T-246).**
+
+Steps for Deploy Engineer:
+1. `cd frontend && npm run build` — verify no errors
+2. `pm2 reload triplanner-backend` + `pm2 reload triplanner-frontend`
+3. `GET https://localhost:3001/api/v1/health` → confirm `{"status":"ok"}`
+4. Smoke-test Sprint 30 changes: PATCH a trip status, POST a flight with UTC offset, GET calendar with land travel
+5. Log results in qa-build-log.md and handoff to Monitor Agent (T-247)
+
+### Known Non-Blocking Note
+
+`.mobileEventLandTravel` CSS class is referenced in `TripCalendar.jsx` (line 195) but may be absent from `TripCalendar.module.css`. Mobile LAND_TRAVEL rows render functionally but without a color accent. Acknowledged by Manager as non-blocking for this sprint. No action required before deploy.
+
+*QA Engineer Sprint #30 — Re-Verification — 2026-03-17*
 
 ---
