@@ -4,6 +4,275 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #31 — QA Engineer — Re-Verification Pass — 2026-03-20
+
+**Task:** T-251 + T-252 re-verification (QA Engineer Sprint 31 — automated orchestrator re-invocation)
+**Date:** 2026-03-20
+**Test Type:** Unit Test + Integration Test + Security Scan
+**Status:** ✅ ALL CHECKS PASS — No regressions — Deploy remains confirmed
+
+### Context
+
+QA Engineer was re-invoked by the automated orchestrator. T-251 (security checklist) and T-252 (integration testing) were already marked Done from the prior pass on 2026-03-20. This pass re-runs all tests live to confirm no regressions since T-253 (staging re-deploy completed 2026-03-20 by Deploy Engineer, backend restarted today at 12:20).
+
+### Unit Tests
+
+| Suite | Command | Result | Count |
+|-------|---------|--------|-------|
+| Backend | `cd backend && npm test -- --run` | ✅ PASS | **406/406** (23 test files) |
+| Frontend | `cd frontend && npm test -- --run` | ✅ PASS | **496/496** (25 test files) |
+
+**Sprint 31 specific tests verified:**
+- `backend/src/__tests__/sprint31.test.js` — 4/4 PASS (T-250 knexfile staging seeds)
+- `frontend/src/__tests__/TripCalendar.test.jsx` Test 81 (`31.T249`) — PASS (mobileEventLandTravel class)
+
+### Security Scan
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| XSS / dangerouslySetInnerHTML | ✅ PASS | Zero occurrences in frontend/src/ production code |
+| Hardcoded secrets in Sprint 31 files | ✅ PASS | knexfile.js uses process.env; CSS has color values only |
+| SQL injection vectors | ✅ PASS | knexfile.js is pure config; no raw SQL |
+| npm audit — backend | ✅ 0 vulnerabilities | `found 0 vulnerabilities` |
+| npm audit — frontend | ✅ 0 vulnerabilities | `found 0 vulnerabilities` |
+
+### Integration Verification
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| `knexfile.staging.seeds.directory` = `seedsDir` | ✅ PASS | Lines 59-61 confirmed |
+| `knexfile.production.seeds` = undefined | ✅ PASS | Production block has no seeds key |
+| `staging.seeds.directory === development.seeds.directory` | ✅ PASS | Both = `join(__dirname, '../seeds')` |
+| `.mobileEventLandTravel` in TripCalendar.module.css | ✅ PASS | Lines 461-464 confirmed |
+| `.mobileEventLandTravel` applied in JSX (line 195) | ✅ PASS | LAND_TRAVEL branch in MobileDayList ternary |
+| `--event-land-travel-text: #7B6B8E` in global.css | ✅ PASS | Line 105 confirmed |
+
+### Config Consistency
+
+| Item | backend/.env | vite.config.js | docker-compose.yml | Result |
+|------|-------------|---------------|-------------------|--------|
+| PORT | `PORT=3000` | `BACKEND_PORT \|\| '3000'` | `PORT: 3000` | ✅ CONSISTENT |
+| SSL | Commented out (disabled) | `BACKEND_SSL=false` default (`http://`) | HTTP internal | ✅ CONSISTENT |
+| CORS | `CORS_ORIGIN=http://localhost:5173` | N/A | `${CORS_ORIGIN:-http://localhost}` | ✅ CONSISTENT |
+
+### Playwright E2E
+
+| Test | Result | Time |
+|------|--------|------|
+| Test 1: Core user flow (register/create/delete/logout) | ✅ PASS | 1.3s |
+| Test 2: Sub-resource CRUD (flight + stay) | ✅ PASS | 1.4s |
+| Test 3: Search, filter, sort | ✅ PASS | 3.9s |
+| Test 4: Rate limit lockout | ✅ PASS | 4.0s |
+| **Total** | **✅ 4/4 PASS** | **11.5s** |
+
+**Note:** During this QA session, manual curl registration attempts exhausted the in-memory rate limit for 127.0.0.1 (registerLimiter: 5 per 60-min window). Backend was restarted (`pm2 restart triplanner-backend`) to reset rate limiter before Playwright run. Health confirmed `{"status":"ok"}` post-restart. This is expected behavior — the rate limiter is functioning correctly (Test 4 validates it).
+
+### Sprint 31 Pipeline Status
+
+| Task | Status |
+|------|--------|
+| T-249 — mobileEventLandTravel CSS (Frontend) | ✅ Done |
+| T-250 — knexfile staging seeds fix (Backend) | ✅ Done |
+| T-251 — Security checklist (QA) | ✅ Done |
+| T-252 — Integration testing (QA) | ✅ Done |
+| T-253 — Staging re-deployment (Deploy) | ✅ Done |
+| T-254 — Staging health check (Monitor Agent) | 🔄 Backlog — next up |
+| T-255 — Sprint 31 walkthrough (User Agent) | 🔄 Backlog — blocked on T-254 |
+
+### Conclusion
+
+Re-verification PASS. No regressions since prior QA pass. All 406 backend + 496 frontend + 4/4 Playwright tests pass. 0 security vulnerabilities. Config consistency clean. **T-254 (Monitor Agent health check) is the current critical path item — unblocked.**
+
+*QA Engineer Sprint #31 — Re-Verification Pass — 2026-03-20*
+
+---
+
+## Sprint #31 — Deploy Engineer — Staging Deployment (T-253) — 2026-03-20
+
+**Task:** T-253 (Deploy Engineer — Sprint 31 staging re-deployment)
+**Date:** 2026-03-20
+**Environment:** Staging (localhost)
+**Build Status:** ✅ SUCCESS
+**Deploy Status:** ✅ SUCCESS
+**Playwright:** ✅ 4/4 PASS
+
+### Pre-Deploy Gate Verification
+
+| Gate | Status |
+|------|--------|
+| QA handoff present in handoff-log.md | ✅ QA Engineer 2026-03-20 — T-251 + T-252 both DONE |
+| T-249 (mobileEventLandTravel CSS) | ✅ DONE — 496/496 frontend tests confirmed by QA |
+| T-250 (knexfile.js staging seeds fix) | ✅ DONE — 406/406 backend tests confirmed by QA |
+| T-251 (Security checklist) | ✅ PASS — all checks clean |
+| T-252 (Integration testing) | ✅ PASS — 6/6 scenarios + Playwright 4/4 |
+| Pending migrations | ✅ None — 10/10 already applied (schema stable) |
+
+### Build Details
+
+| Step | Result | Details |
+|------|--------|---------|
+| `cd frontend && npm install` | ✅ SUCCESS | 0 vulnerabilities |
+| `npm run build` | ✅ SUCCESS | 578ms — 129 modules transformed |
+| Build artifact: `dist/index.html` | ✅ 0.46 kB (gzip 0.29 kB) | |
+| Build artifact: `dist/assets/index-DQWNTC9k.css` | ✅ 58.95 kB (gzip 10.25 kB) | Contains `mobileEventLandTravel` class |
+| CSS class verification: `mobileEventLandTravel` | ✅ Present | `_mobileEventLandTravel_z292r_462{color:var(--event-land-travel-text)}` |
+
+### pm2 Reload
+
+| Service | Before | After | Status |
+|---------|--------|-------|--------|
+| triplanner-backend (id: 0) | online pid 50879 | online pid 61772 | ✅ Reloaded |
+| triplanner-frontend (id: 1) | online pid 36508 | online pid 61811 | ✅ Reloaded |
+
+### Smoke Tests
+
+| Check | Result | Details |
+|-------|--------|---------|
+| `GET https://localhost:3001/api/v1/health` | ✅ 200 `{"status":"ok"}` | Backend healthy post-reload |
+| CORS header | ✅ `Access-Control-Allow-Origin: https://localhost:4173` | Correct origin |
+| Frontend HTML | ✅ 200 — `<!doctype html>` | https://localhost:4173 responsive |
+| `.mobileEventLandTravel` in built CSS | ✅ Confirmed | `index-DQWNTC9k.css` — T-249 pick-up verified |
+| Playwright E2E | ✅ **4/4 PASS (11.3s)** | Tests 1-4 all passing |
+
+### Playwright Results
+
+```
+✓ Test 1: Core user flow — register, create trip, view details, delete, logout (1.3s)
+✓ Test 2: Sub-resource CRUD — create trip, add flight, add stay, verify on details page (1.3s)
+✓ Test 3: Search, filter, sort — create trips, search, filter by status, sort by name (3.8s)
+✓ Test 4: Rate limit lockout — rapid wrong-password login triggers 429 banner (3.9s)
+4 passed (11.3s)
+```
+
+### Conclusion
+
+T-253 staging deployment is **COMPLETE**. Both services reloaded successfully. All smoke tests pass. Playwright E2E 4/4 confirmed. T-249 CSS change (`mobileEventLandTravel`) is confirmed present in the production build artifact. **T-254 (Monitor Agent health check) is now unblocked.**
+
+*Deploy Engineer Sprint #31 — T-253 Staging Deployment — 2026-03-20*
+
+---
+
+## Sprint #31 — QA Engineer — Integration Testing (T-252) — 2026-03-20
+
+**Task:** T-252 (QA Engineer — Sprint 31 integration testing)
+**Date:** 2026-03-20
+**Test Type:** Integration Test
+**Status:** ✅ ALL SCENARIOS PASS — Deploy unblocked (T-253)
+
+### Integration Scenarios
+
+| # | Scenario | Result | Evidence |
+|---|----------|--------|----------|
+| 1 | `knexfile.staging.seeds.directory` present and equals `seedsDir` | ✅ PASS | `backend/src/config/knexfile.js` lines 59-61 confirm `seeds: { directory: seedsDir }` in staging block; seedsDir = `join(__dirname, '../seeds')`. sprint31.test.js Test 1+2 verify value and parity with development block. |
+| 2 | `knexfile.production.seeds` is undefined (no regression) | ✅ PASS | `backend/src/config/knexfile.js` lines 63-70 — production block has only `client`, `connection`, `pool`, `migrations`. No seeds key. sprint31.test.js Test 4 confirms. |
+| 3 | TripCalendar mobile LAND_TRAVEL row has `.mobileEventLandTravel` class | ✅ PASS | `TripCalendar.module.css` lines 461-464: class defined. `TripCalendar.jsx` line 195: `styles.mobileEventLandTravel` applied in MobileDayList LAND_TRAVEL branch. Test 81 (`31.T249`) passes: `[class*="mobileEventLandTravel"]` > 0 elements. |
+| 4 | Desktop LAND_TRAVEL pill no regression (Tests 26.A–26.E) | ✅ PASS | 496/496 frontend tests pass. Tests 26.A–26.E cover desktop pill render, times display, click-to-scroll, no-regressions, DOM ordering. All confirmed in TripCalendar.test.jsx. |
+| 5 | Sprint 30 regression: PATCH /trips/:id `{status}` → persisted | ✅ PASS | sprint30.test.js T-238 tests (5 tests) all pass within 406/406 backend suite. `computeTripStatus()` pass-through confirmed. |
+| 6 | Sprint 30 regression: GET /trips/:id/calendar → LAND_TRAVEL events present | ✅ PASS | sprint30.test.js T-242 tests (4 route tests) + calendarModel.unit.test.js (32 tests) all pass within 406/406 backend suite. |
+| 7 | Playwright E2E 4/4 | ✅ PASS | `npx playwright test` → 4 passed (11.5s). Test 1: register/create/delete/logout. Test 2: sub-resource CRUD. Test 3: search/filter/sort. Test 4: rate-limit lockout. |
+
+### API Contract Verification (Sprint 31)
+
+No new or changed API contracts in Sprint 31 (confirmed by Backend Engineer and Manager handoffs). T-249 is frontend-only (CSS). T-250 is backend config-only. All existing contracts from Sprint 30 remain in force and verified via regression tests above.
+
+### UI State Coverage (T-249)
+
+| UI State | Result |
+|----------|--------|
+| LAND_TRAVEL mobile row — styled (`.mobileEventLandTravel`) | ✅ Present — `color: var(--event-land-travel-text)` = `#7B6B8E` |
+| FLIGHT/STAY/ACTIVITY mobile rows — no regression | ✅ Pass — Test 81 renders alongside other types; Tests 26.A–26.E cover desktop |
+| MobileDayList empty state | ✅ Covered by existing TripCalendar.test.jsx tests |
+
+### Conclusion
+
+All 6 integration scenarios + Playwright 4/4 PASS. T-249 and T-250 are verified correct end-to-end. No regressions detected. **T-253 (Deploy Engineer staging re-deployment) is unblocked.**
+
+*QA Engineer Sprint #31 — T-252 Integration Testing — 2026-03-20*
+
+---
+
+## Sprint #31 — QA Engineer — Security Checklist (T-251) — 2026-03-20
+
+**Task:** T-251 (QA Engineer — Sprint 31 security checklist + code review)
+**Date:** 2026-03-20
+**Test Type:** Security Scan
+**Status:** ✅ ALL CHECKS PASS
+
+### Unit Test Results
+
+| Suite | Command | Result | Count |
+|-------|---------|--------|-------|
+| Backend | `cd backend && npm test -- --run` | ✅ PASS | 406/406 (23 test files; includes 4 new sprint31.test.js) |
+| Frontend | `cd frontend && npm test -- --run` | ✅ PASS | 496/496 (25 test files; includes Test 81 for T-249) |
+
+**New tests introduced this sprint:**
+- `backend/src/__tests__/sprint31.test.js` — 4 tests (T-250): staging seeds path value, staging=development parity, migrations dir unchanged, production no seeds block
+- `frontend/src/__tests__/TripCalendar.test.jsx` Test 81 — `31.T249`: LAND_TRAVEL event in MobileDayList renders with `mobileEventLandTravel` class
+
+**Coverage assessment:**
+- T-249 (CSS): Test 81 = 1 happy-path test (render with CSS class); no error-path required (pure CSS, no conditional logic that can fail)
+- T-250 (config): 4 tests = 1 happy-path (seeds dir value correct) + 1 cross-env parity (staging=dev) + 2 regression guards (no change to migrations; production no seeds)
+- Coverage: **SUFFICIENT** ✅
+
+### npm Audit Results
+
+| Package | Command | Critical | High | Medium | Low |
+|---------|---------|---------|------|--------|-----|
+| backend | `cd backend && npm audit` | 0 | 0 | 0 | 0 |
+| frontend | `cd frontend && npm audit` | 0 | 0 | 0 | 0 |
+
+**Result:** ✅ 0 Critical / 0 High — no blocking vulnerabilities
+
+### Security Checklist — T-249 (Frontend CSS)
+
+| Item | Applicable | Result | Notes |
+|------|-----------|--------|-------|
+| No XSS vectors / dangerouslySetInnerHTML | ✅ Yes | ✅ PASS | Pure CSS class addition — no HTML output, no user-controlled content. Full scan of `frontend/src/` found no `dangerouslySetInnerHTML` or `innerHTML` usage in production components. |
+| No hardcoded secrets | ✅ Yes | ✅ PASS | CSS file contains only color rule. No credentials, tokens, or API keys. |
+| Input validation | N/A | — | No user input involved. |
+| HTML sanitization / XSS | ✅ Yes | ✅ PASS | CSS variable `--event-land-travel-text: #7B6B8E` defined in global.css. No eval, no template injection. |
+| No dangerouslySetInnerHTML in TripCalendar.jsx | ✅ Yes | ✅ PASS | Confirmed via grep — zero occurrences in component file. |
+
+### Security Checklist — T-250 (Backend Config)
+
+| Item | Applicable | Result | Notes |
+|------|-----------|--------|-------|
+| No SQL injection vectors | ✅ Yes | ✅ PASS | `knexfile.js` is a pure configuration file. No SQL queries, no raw string concatenation. Uses Knex query builder throughout the rest of the codebase. |
+| No hardcoded secrets / credentials | ✅ Yes | ✅ PASS | `knexfile.js` reads `DATABASE_URL` from `process.env` via `dotenv.config()`. No credentials embedded in code. |
+| Environment variables not in code | ✅ Yes | ✅ PASS | `backend/.env` is the credential store (not committed to git). `.env.example` contains placeholder values only (`change-me-to-a-random-string`) — expected behavior. |
+| SQL parameterized queries | N/A | — | No new queries introduced in this sprint. Existing query builder patterns unchanged. |
+| No new env vars added | ✅ Yes | ✅ PASS | T-250 adds no new environment variables. `DATABASE_URL` was already required. |
+
+### General Security Checklist (Sprint 31 scope)
+
+| Category | Item | Result | Notes |
+|----------|------|--------|-------|
+| Auth | API endpoints require auth | ✅ PASS | No new endpoints introduced this sprint. |
+| CORS | Configured for expected origins only | ✅ PASS | `CORS_ORIGIN=http://localhost:5173` in `.env` matches frontend dev server. Docker: `${CORS_ORIGIN:-http://localhost}` for staging/prod. |
+| Dependencies | Known vulnerabilities | ✅ PASS | 0 Critical/High in both backend and frontend `npm audit`. |
+| Infrastructure | HTTPS enforced on staging | ✅ PASS | Backend runs on port 3001 with TLS for staging; frontend proxies via `BACKEND_SSL=true` flag. |
+| Secrets in code | No hardcoded credentials | ✅ PASS | Grepped `knexfile.js`, `TripCalendar.module.css`, `TripCalendar.jsx` — no secrets. |
+| Error leakage | API errors don't leak stack traces | ✅ PASS | No new error handlers introduced this sprint. Existing patterns verified in prior sprints. |
+
+### Config Consistency Check (Sprint 31)
+
+| Config Item | backend/.env | vite.config.js | docker-compose.yml | Result |
+|------------|-------------|---------------|-------------------|--------|
+| Backend PORT | `PORT=3000` | `BACKEND_PORT \|\| '3000'` (default matches) | `PORT: 3000` | ✅ CONSISTENT |
+| SSL enabled | Commented out (disabled) | `BACKEND_SSL=false` (default `http://`) | HTTP only (internal) | ✅ CONSISTENT |
+| CORS origin | `CORS_ORIGIN=http://localhost:5173` | N/A (server-side) | `${CORS_ORIGIN:-http://localhost}` | ✅ CONSISTENT (docker default is for nginx port 80 in prod) |
+| Vite proxy target | N/A | `http://localhost:3000` (default) | N/A | ✅ MATCHES backend PORT |
+
+**Config Consistency: ✅ NO MISMATCHES**
+
+### Security Verdict
+
+All applicable security checklist items PASS. No P1 issues. No handoffs to engineers required. ✅
+
+*QA Engineer Sprint #31 — T-251 Security Checklist — 2026-03-20*
+
+---
+
 ## Sprint #31 — Deploy Engineer — Pre-Deploy Environment Check — 2026-03-20
 
 **Task:** T-253 (Deploy Engineer — Sprint 31 staging re-deployment)

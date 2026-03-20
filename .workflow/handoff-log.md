@@ -4,6 +4,224 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Handoff: Manager Agent → Monitor Agent (Sprint #31 — CR-31B — T-254 and T-225 Ready)
+
+**Date:** 2026-03-20
+**Sprint:** 31
+**Status:** ✅ Code Review Pass #2 Complete — T-254 and T-225 are both UNBLOCKED
+**From:** Manager Agent
+**To:** Monitor Agent
+
+### Context
+
+Manager Agent code review pass #2 (CR-31B) confirms no tasks are in "In Review" status. The Sprint 31 pipeline is in the following state:
+
+| Task | Status | Notes |
+|------|--------|-------|
+| T-249 (Frontend: mobileEventLandTravel CSS) | ✅ Done | Reviewed, QA'd, deployed |
+| T-250 (Backend: knexfile staging seeds) | ✅ Done | Reviewed, QA'd, deployed |
+| T-251 (QA: Security checklist) | ✅ Done | 406/406 backend + 496/496 frontend; 0 audit vulns |
+| T-252 (QA: Integration testing) | ✅ Done | All 6 scenarios + Playwright 4/4 PASS |
+| T-253 (Deploy: Staging re-deploy) | ✅ Done | Both services online; CSS confirmed in dist artifact |
+| **T-254 (Monitor: Staging health check)** | **Backlog → UNBLOCKED** | T-253 complete — execute now |
+| **T-225 (Monitor: Production health check)** | **Backlog → UNBLOCKED** | T-224 done (deployed by project owner 2026-03-20) — execute now |
+
+---
+
+### T-254 — Sprint 31 Staging Health Check (PRIORITY: HIGH)
+
+**Pre-condition:** T-253 is Done. Deploy Engineer confirmed both services online with smoke tests passing.
+
+**Execute the full T-254 protocol:**
+
+1. `GET https://localhost:3001/api/v1/health` → expect `{"status":"ok"}` 200 ✅
+2. CORS header → expect `Access-Control-Allow-Origin: https://localhost:4173` ✅
+3. Auth login with `test@triplanner.local` → expect 200 ✅
+4. `GET https://localhost:3001/api/v1/trips` → expect 200 ✅
+5. Sprint 31 config check: read `backend/src/config/knexfile.js` → confirm `staging.seeds.directory` is present
+6. Sprint 30 regression: PATCH `/api/v1/trips/:id` status → verify persisted on re-GET ✅
+7. Sprint 30 regression: `GET /api/v1/trips/:id/calendar` → confirm LAND_TRAVEL event present ✅
+8. `npx playwright test` → expect 4/4 PASS ✅
+9. Log full results in `qa-build-log.md` Sprint #31 section
+10. If all pass: set **Deploy Verified = Yes** in `qa-build-log.md`, update T-254 status → Done in `dev-cycle-tracker.md`, and log handoff to User Agent (T-255) in this file
+
+---
+
+### T-225 — Post-Production Health Check (PRIORITY: MEDIUM)
+
+**Pre-condition:** T-224 is Done. Production is live at:
+- Frontend: `https://triplanner.yixinx.com`
+- Backend: `https://triplanner-backend-sp61.onrender.com`
+
+**Execute the full T-225 protocol against PRODUCTION URLs:**
+
+1. `GET https://triplanner-backend-sp61.onrender.com/api/v1/health` → expect 200
+2. CORS header check on production backend
+3. Auth login with production test account → expect 200
+4. `GET https://triplanner-backend-sp61.onrender.com/api/v1/trips` → expect 200
+5. SameSite=None cookie verification (production requires this for cross-origin auth)
+6. Regression: PATCH trip status → persisted
+7. Regression: GET /calendar → LAND_TRAVEL events present
+8. Log results in `qa-build-log.md` Sprint #31 — Production Health Check section
+9. Update T-225 status → Done in `dev-cycle-tracker.md`
+
+---
+
+### After Monitor Agent Completes
+
+- **If T-254 passes:** T-255 (User Agent Sprint 31 walkthrough) is unblocked — log handoff to User Agent in this file
+- **If T-254 fails:** Log blocker in handoff-log.md with Status: Blocked and detail which check failed; Manager Agent will triage
+- **T-225 completion:** No downstream dependency — log result and mark Done
+
+*Manager Agent Sprint #31 — CR-31B — 2026-03-20*
+
+---
+
+## Handoff: Deploy Engineer → Monitor Agent (Sprint #31 — T-253 Complete — Health Check Unblocked)
+
+**Date:** 2026-03-20
+**Sprint:** 31
+**Status:** ✅ STAGING DEPLOYED — T-254 UNBLOCKED
+**From:** Deploy Engineer
+**To:** Monitor Agent
+
+### Deploy Summary
+
+T-253 (Sprint 31 staging re-deployment) is **COMPLETE**. Both services are running and all smoke tests pass. Please execute the full T-254 health check protocol immediately.
+
+---
+
+### What Was Deployed
+
+| Change | Task | Verification |
+|--------|------|-------------|
+| `.mobileEventLandTravel` CSS class added to TripCalendar | T-249 | CSS class confirmed in `dist/assets/index-DQWNTC9k.css`: `color:var(--event-land-travel-text)` |
+| `knexfile.js` staging seeds config fix | T-250 | Confirmed by QA integration test (scenario 1) and sprint31.test.js |
+
+---
+
+### Post-Reload Service Status
+
+| Service | PID | Status | Port |
+|---------|-----|--------|------|
+| triplanner-backend | 61772 | ✅ online | https://localhost:3001 |
+| triplanner-frontend | 61811 | ✅ online | https://localhost:4173 |
+
+---
+
+### Smoke Test Results (Pre-Handoff)
+
+| Check | Result |
+|-------|--------|
+| `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}` | ✅ 200 OK |
+| CORS: `Access-Control-Allow-Origin: https://localhost:4173` | ✅ Correct |
+| Frontend HTML response at https://localhost:4173 | ✅ 200 OK |
+| `.mobileEventLandTravel` in built CSS artifact | ✅ Confirmed |
+| `npx playwright test` → 4/4 PASS (11.3s) | ✅ PASS |
+
+---
+
+### Your T-254 Health Check Protocol
+
+Please execute the full Monitor Agent health check protocol:
+
+1. `GET https://localhost:3001/api/v1/health` → expect `{"status":"ok"}` 200
+2. CORS header → expect `Access-Control-Allow-Origin: https://localhost:4173`
+3. Auth login with `test@triplanner.local` → expect 200
+4. `GET https://localhost:3001/api/v1/trips` → expect 200
+5. Sprint 30 regression: PATCH trip status → persisted ✅
+6. Sprint 30 regression: GET /calendar → LAND_TRAVEL event present ✅
+7. `npx playwright test` → expect 4/4 PASS
+8. Log full results in `qa-build-log.md` Sprint #31 section
+9. If all pass: set **Deploy Verified = Yes** and post handoff to User Agent (T-255) in this file
+
+**Full deploy log:** `.workflow/qa-build-log.md` → "Sprint #31 — Deploy Engineer — Staging Deployment (T-253)"
+
+*Deploy Engineer Sprint #31 — T-253 Complete — 2026-03-20*
+
+---
+
+## Handoff: QA Engineer → Deploy Engineer (Sprint #31 — T-252 Complete — Deploy Unblocked)
+
+**Date:** 2026-03-20
+**Sprint:** 31
+**Status:** ✅ QA PASS — T-253 UNBLOCKED
+**From:** QA Engineer
+**To:** Deploy Engineer
+
+### QA Sign-Off Summary
+
+All Sprint #31 QA gates are complete. T-251 (security checklist) and T-252 (integration testing) are both **Done**. **T-253 (staging re-deployment) is unblocked and ready to execute immediately.**
+
+---
+
+### T-251 — Security Checklist ✅ PASS
+
+| Check | Result |
+|-------|--------|
+| T-249 CSS: no XSS / no dangerouslySetInnerHTML | ✅ PASS — pure CSS class, no user input, no HTML injection |
+| T-249 CSS: no hardcoded secrets | ✅ PASS — uses CSS variable `--event-land-travel-text` only |
+| T-250 knexfile: no SQL injection vectors | ✅ PASS — pure config file, no queries |
+| T-250 knexfile: no secrets in code | ✅ PASS — uses `process.env.DATABASE_URL` via dotenv |
+| Backend unit tests (`npm test --run`) | ✅ **406/406 PASS** (23 test files; includes 4 new sprint31.test.js) |
+| Frontend unit tests (`npm test --run`) | ✅ **496/496 PASS** (25 test files; includes Test 81 for T-249) |
+| Backend `npm audit` | ✅ **0 vulnerabilities** |
+| Frontend `npm audit` | ✅ **0 vulnerabilities** |
+| Config consistency (PORT / SSL / CORS) | ✅ PASS — backend PORT=3000 matches vite default; SSL disabled; CORS_ORIGIN=http://localhost:5173 |
+
+---
+
+### T-252 — Integration Testing ✅ ALL 6 SCENARIOS + PLAYWRIGHT 4/4 PASS
+
+| # | Scenario | Result |
+|---|----------|--------|
+| 1 | `knexfile.staging.seeds.directory` present and equals `seedsDir` | ✅ PASS |
+| 2 | `knexfile.production.seeds` is undefined (regression guard) | ✅ PASS |
+| 3 | TripCalendar mobile LAND_TRAVEL row has `.mobileEventLandTravel` class | ✅ PASS |
+| 4 | Desktop LAND_TRAVEL pill no regression (Tests 26.A–26.E) | ✅ PASS |
+| 5 | Sprint 30 regression: PATCH /trips/:id status → persisted | ✅ PASS |
+| 6 | Sprint 30 regression: GET /trips/:id/calendar → LAND_TRAVEL events | ✅ PASS |
+| 7 | Playwright E2E | ✅ **4/4 PASS** (11.5s) |
+
+---
+
+### Pre-Deploy Confirmation Checklist
+
+| Gate | Status |
+|------|--------|
+| All unit tests pass | ✅ 406/406 backend + 496/496 frontend |
+| Integration tests pass | ✅ 6/6 scenarios PASS |
+| Playwright E2E | ✅ 4/4 PASS |
+| Security checklist verified | ✅ All items PASS |
+| npm audit 0 Critical/High | ✅ Both packages clean |
+| All Sprint 31 tasks in scope are Done | ✅ T-249 ✅ T-250 ✅ T-251 ✅ T-252 ✅ |
+| Config consistency verified | ✅ No mismatches |
+
+---
+
+### Deploy Instructions
+
+Please proceed with T-253 immediately:
+
+1. `cd /Users/yixinxiao/PROJECTS/triplanner/frontend && npm install && npm run build` — picks up T-249 mobileEventLandTravel CSS
+2. `pm2 reload triplanner-backend && pm2 reload triplanner-frontend`
+3. `GET https://localhost:3001/api/v1/health` → confirm `{"status":"ok"}`
+4. Smoke tests:
+   - LAND_TRAVEL mobile row visible with color accent
+   - Sprint 30 status PATCH still persists
+   - Sprint 30 GET /calendar still returns LAND_TRAVEL events
+   - `npx playwright test` → 4/4
+5. Log full deploy entry in `qa-build-log.md`
+6. Handoff to Monitor Agent (T-254) in this file
+
+**Full QA reports:** `.workflow/qa-build-log.md` → Sprint #31 QA Engineer sections (Security Scan + Integration Test)
+
+*QA Engineer Sprint #31 — T-251 + T-252 Complete — 2026-03-20*
+
+---
+
+---
+
 **[2026-03-20] Deploy Engineer → QA Engineer** *(Sprint #31 — T-253 Blocked — Pre-Deploy Gate Not Met — QA Sign-Off Required)*
 
 **From:** Deploy Engineer
@@ -6962,6 +7180,57 @@ Both Sprint 31 implementation tasks have been reviewed and approved. T-249 and T
 3. Upon T-252 completion, log handoff to Deploy Engineer (T-253) in handoff-log.md to unblock staging re-deployment.
 
 *Manager Agent Sprint #31 — CR-31 Code Review Complete — 2026-03-20*
+
+---
+
+## Handoff: QA Engineer → Monitor Agent (Sprint #31 — Re-Verification Complete — T-254 Unblocked)
+
+**Date:** 2026-03-20
+**Sprint:** 31
+**Status:** ✅ QA Re-Verification PASS — No regressions — T-254 confirmed unblocked
+**From:** QA Engineer
+**To:** Monitor Agent (T-254)
+
+### Re-Verification Summary
+
+QA Engineer was re-invoked by the automated orchestrator. All Sprint #31 QA gates were previously completed (T-251 + T-252 Done, 2026-03-20). This pass re-ran all tests live to confirm no regressions after T-253 staging deployment.
+
+| Gate | Status |
+|------|--------|
+| Backend unit tests | ✅ 406/406 PASS |
+| Frontend unit tests | ✅ 496/496 PASS |
+| Playwright E2E | ✅ 4/4 PASS (11.5s) |
+| npm audit backend | ✅ 0 vulnerabilities |
+| npm audit frontend | ✅ 0 vulnerabilities |
+| Security scan (XSS, injection, secrets) | ✅ PASS |
+| Config consistency (PORT/SSL/CORS) | ✅ PASS |
+| T-249 integration (mobileEventLandTravel CSS) | ✅ PASS |
+| T-250 integration (staging seeds.directory) | ✅ PASS |
+
+### Services Currently Running
+
+| Service | Status | Notes |
+|---------|--------|-------|
+| triplanner-backend | ✅ online | PID 62877 (restarted during QA session to reset rate limiter) |
+| triplanner-frontend | ✅ online | PID 61811 |
+| `GET https://localhost:3001/api/v1/health` | ✅ 200 `{"status":"ok"}` | Confirmed post-restart |
+
+### Action Required from Monitor Agent (T-254)
+
+Execute the full Sprint 31 staging health check protocol:
+1. HTTPS + pm2 online + `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+2. CORS header → `Access-Control-Allow-Origin: https://localhost:4173`
+3. Auth: `POST /api/v1/auth/login` with `test@triplanner.local` → 200 + access_token
+4. Sprint 31 config: confirm `knexfile.staging.seeds.directory` is present
+5. Sprint 30 regression: `PATCH /trips/:id {status:"ONGOING"}` → persisted
+6. Sprint 30 regression: `GET /trips/:id/calendar` → LAND_TRAVEL events present
+7. `npx playwright test` → 4/4 PASS
+
+If all pass: mark T-254 Done, log handoff to User Agent (T-255).
+
+**Full QA re-verification report:** `.workflow/qa-build-log.md` → "Sprint #31 — QA Engineer — Re-Verification Pass — 2026-03-20"
+
+*QA Engineer Sprint #31 — Re-Verification Complete — 2026-03-20*
 
 ---
 
