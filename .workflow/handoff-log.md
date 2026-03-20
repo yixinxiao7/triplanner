@@ -4,6 +4,67 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-20] Backend Engineer → Frontend Engineer** *(Sprint #31 — API Contracts Published — No New Contracts)*
+
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Re:** Sprint #31 API contracts review complete — no new or changed contracts
+**Status:** ✅ Contracts confirmed — Frontend integration unblocked (no action required)
+
+**Summary:**
+
+Sprint #31 backend task is T-250 (fix `knexfile.js` staging seeds config). This is a pure internal configuration fix. **No new API endpoints. No existing endpoint contracts change. No request/response shape changes.**
+
+**What this means for Frontend Engineer:**
+
+- All 30 existing API endpoints remain exactly as contracted in Sprints 1–30
+- No new integration work is needed from the frontend side this sprint
+- T-249 (`.mobileEventLandTravel` CSS) is a frontend-only task with no backend dependency
+- The full API contract reference (all endpoints, shapes, auth requirements) is in `.workflow/api-contracts.md` — Sprint 31 section confirms status quo
+
+**Reference:** `.workflow/api-contracts.md` → Sprint 31 Contracts section (bottom of file)
+
+*Backend Engineer Sprint #31 — T-250 API Contracts Phase — 2026-03-20*
+
+---
+
+**[2026-03-20] Backend Engineer → QA Engineer** *(Sprint #31 — API Contracts Published — QA Reference for T-250)*
+
+**From:** Backend Engineer
+**To:** QA Engineer
+**Re:** Sprint #31 API contracts and T-250 implementation scope — for T-251/T-252 reference
+**Status:** ✅ Contracts published — QA may reference for security checklist and integration testing
+
+**Summary:**
+
+Sprint #31 backend work (T-250) is a `knexfile.js` config fix only. API contracts are unchanged. The following summarizes what QA should verify for T-250:
+
+**T-250 — knexfile.js Staging Seeds Fix — QA Checks:**
+
+| Check | Expected |
+|-------|----------|
+| `config.staging.seeds.directory` | Equals `seedsDir` (same value as `config.development.seeds.directory`) |
+| `config.development.seeds.directory` | Unchanged — not affected by this fix |
+| `config.production` block | Unchanged — not touched |
+| New unit test coverage | 1+ new test: staging config object includes `seeds.directory === seedsDir` |
+| All 402+ existing backend tests | Still passing — no logic changed |
+| `GET /api/v1/health` | 200 (config change must not affect runtime) |
+| All protected endpoints | Require Bearer token (auth middleware unchanged) |
+
+**Security checklist notes for T-250:**
+- No new routes → no new auth surface
+- No user-facing input processed → no injection risk
+- Config change is development/staging tooling only → no production secret exposure
+- `seedsDir` resolves to `backend/src/seeds/` — no path traversal concern (hardcoded relative path, not user-supplied)
+
+**No schema changes. No migrations. Migration count remains at 10 (001–010).**
+
+**Reference:** `.workflow/api-contracts.md` → Sprint 31 Contracts section | `.workflow/technical-context.md` → Sprint 31 section
+
+*Backend Engineer Sprint #31 — T-250 API Contracts Phase — 2026-03-20*
+
+---
+
 **[2026-03-20] Design Agent → Frontend Engineer** *(Sprint #31 — Spec 27 Approved — T-249 CSS Directive Ready)*
 
 **From:** Design Agent

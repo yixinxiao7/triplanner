@@ -7267,3 +7267,112 @@ No database migrations are introduced in Sprint 30. All three Sprint 30 backend 
 ---
 
 *Sprint 30 contracts published by Backend Engineer 2026-03-17. Three changes: (1) T-238 — PATCH /trips/:id status behavior fix (computeTripStatus override removed, stored value always returned); (2) T-240 — Flight datetime fields clarified to require UTC offset in writes, return UTC ISO strings in reads; (3) T-242 — Calendar endpoint extended with LAND_TRAVEL event type from land_travels table. No schema changes. No migrations. Auto-approved per automated sprint cycle. Test baseline entering Sprint 30: 363/363 backend | 486/486 frontend.*
+
+---
+
+## Sprint 31 Contracts
+
+**Sprint #31 — 2026-03-20**
+**Published by:** Backend Engineer
+**Date:** 2026-03-20
+**Status:** Confirmed — No new or changed API contracts this sprint
+
+---
+
+### Overview
+
+Sprint #31 backend task is **T-250: Fix `knexfile.js` staging seeds configuration gap**. This is a pure server-side configuration fix. No new API endpoints are introduced, no existing endpoint contracts change, and no DDL schema migrations are required.
+
+| Task | Type | Contract Impact |
+|------|------|----------------|
+| T-250 | Config fix (`knexfile.js` staging seeds block) | ✅ None — internal config only, no API surface change |
+
+---
+
+### T-250 — knexfile.js Staging Seeds Config Fix
+
+**Sprint:** 31
+**Task:** T-250
+**Date:** 2026-03-20
+**Author:** Backend Engineer
+**Status:** Confirmed — No API contract changes
+
+#### Summary
+
+The `staging` environment block in `backend/src/config/knexfile.js` is missing `seeds: { directory: seedsDir }`. This causes `NODE_ENV=staging npm run seed` to fail with `ENOENT` because Knex cannot locate the seeds directory. The `development` block has the correct `seeds` config and serves as the workaround today.
+
+**Fix:** Add `seeds: { directory: seedsDir }` to the `staging` environment block in `knexfile.js`, matching the pattern already used in the `development` block. `seedsDir` is already defined at the top of the file and shared across environments.
+
+#### API Impact
+
+**None.** This fix affects only the Knex configuration used by CLI seed commands (`knex seed:run` / `npm run seed`). It has zero effect on:
+
+- Any REST API endpoint (no routes added, changed, or removed)
+- Request or response shapes
+- Authentication behavior
+- Database schema (no DDL — no new tables, columns, or indexes)
+- The existing `development` or `production` knexfile blocks (those are not touched)
+
+#### What Changes
+
+| File | Change |
+|------|--------|
+| `backend/src/config/knexfile.js` | Add `seeds: { directory: seedsDir }` to the `staging` environment block |
+| Backend test file | Add 1 unit test: staging config object includes `seeds.directory === seedsDir` |
+
+#### Verification (QA reference)
+
+| Check | Expected result |
+|-------|----------------|
+| `config.staging.seeds.directory` | Equals `seedsDir` (the path already computed at top of knexfile) |
+| `config.development.seeds.directory` | Unchanged — still equals `seedsDir` |
+| `config.production.seeds` | Unchanged — not modified by this fix |
+| `NODE_ENV=staging npm run seed` | Resolves seeds directory without `ENOENT` |
+| All 402+ existing backend tests | Still pass — no logic changed |
+
+#### Schema Changes
+
+None. Migration log remains at **10 applied migrations (001–010)**. No `knex migrate:latest` is required for Sprint 31.
+
+---
+
+### All Existing Contracts — Sprint 31 Status
+
+All 30 endpoints defined across Sprints 1–30 remain in force and unchanged.
+
+| Sprint | Endpoint | Sprint 31 Status |
+|--------|----------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/login` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Unchanged (T-238 fix applied in Sprint 30 — no further changes) |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Unchanged (T-240 clarification applied in Sprint 30) |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Unchanged (T-242 LAND_TRAVEL integration complete in Sprint 30) |
+
+---
+
+*Sprint 31 contracts published by Backend Engineer 2026-03-20. No new endpoints. No contract changes. No schema migrations. T-250 is a pure knexfile.js config fix (staging seeds directory) with zero API surface impact. All 30 endpoints from Sprints 1–30 remain in force. Test baseline entering Sprint 31: 402/402 backend | 495/495 frontend | 4/4 Playwright.*
