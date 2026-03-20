@@ -4,6 +4,56 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Handoff: Manager Agent → All Agents (Sprint #32 Kickoff — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 32
+**Status:** Sprint #31 closed. Sprint #32 plan written. Agents may begin their Sprint 32 tasks.
+**From:** Manager Agent
+**To:** Monitor Agent (T-225 — P0), Backend Engineer (T-257, T-258 — P2), User Agent (T-256 — after T-225)
+
+### Sprint #31 Close Summary
+
+Sprint #31 is complete. All 9 tasks finished. Zero Critical or Major bugs. 10 feedback entries triaged (all Acknowledged — 8 Positive, 2 Minor). T-255 (User Agent Sprint 31 walkthrough) confirmed Done based on feedback-log.md entries FB-123 through FB-132 submitted 2026-03-20. T-225 (post-production health check) is the sole carry-over.
+
+| Sprint 31 Final State | Value |
+|-----------------------|-------|
+| Backend tests | 406/406 ✅ |
+| Frontend tests | 496/496 ✅ |
+| Playwright E2E | 4/4 ✅ |
+| Production | Live at https://triplanner.yixinx.com ✅ |
+| Critical/Major bugs | 0 ✅ |
+| Feedback entries remaining 'New' | 0 ✅ |
+
+### Sprint #32 Priorities
+
+| Priority | Task | Agent | Notes |
+|----------|------|-------|-------|
+| **P0 — EXECUTE NOW** | T-225: Post-production health check | Monitor Agent | Zero blockers. Production is live. Run immediately. |
+| **P0 — after T-225** | T-256: Production user walkthrough | User Agent | Test full user flow on https://triplanner.yixinx.com |
+| **P2 — parallel** | T-257: api-contracts.md docs update (FB-131 + FB-132) | Backend Engineer | Documentation only — no code changes |
+| **P2 — parallel** | T-258: Stay category case normalization (FB-121) | Backend Engineer | Accept lowercase `hotel`/`airbnb`/`vrbo` input; normalize to uppercase |
+| **P1 — after T-258** | T-259: QA security + integration check | QA Engineer | Blocked by T-258 |
+| **P1 — after T-259** | T-260: Staging re-deployment | Deploy Engineer | Backend-only restart; no frontend rebuild needed |
+| **P1 — after T-260** | T-261: Staging health check | Monitor Agent | Full health check + Playwright 4/4 |
+| **P1 — after T-261** | T-262: Staging user walkthrough | User Agent | Verify T-258 + Sprint 31 regressions |
+
+### Critical Instructions for Monitor Agent (T-225)
+
+Production environment:
+- **Frontend:** `https://triplanner.yixinx.com`
+- **Backend:** `https://triplanner-backend-sp61.onrender.com`
+
+Run the full production health check protocol as defined in T-225 (active-sprint.md Phase 0). If all checks pass: set Deploy Verified = Yes (Production) in qa-build-log.md, update T-225 → Done in dev-cycle-tracker.md, and log handoff to User Agent (T-256) here.
+
+### Critical Instructions for Backend Engineer (T-257 + T-258)
+
+Both tasks may start immediately in parallel with T-225/T-256 (no blockers):
+- **T-257:** Documentation only — update `.workflow/api-contracts.md`. No code changes. No QA needed. Set Done directly.
+- **T-258:** Backend code change — stay validation middleware. After implementation, set In Review and log here. Wait for Manager code review before QA.
+
+---
+
 ## Handoff: Manager Agent → Monitor Agent (Sprint #31 — CR-31B — T-254 and T-225 Ready)
 
 **Date:** 2026-03-20

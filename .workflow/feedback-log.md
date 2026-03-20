@@ -239,7 +239,7 @@ button: "please wait…" [disabled]
 | **Sprint** | 31 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-238, T-239, T-248 |
 
 **Details:**
@@ -262,7 +262,7 @@ All three valid status values persist correctly after round-trip. PATCH also ret
 | **Sprint** | 31 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-240, T-241, T-248 |
 
 **Details:**
@@ -288,7 +288,7 @@ Both flights display at the correct local time from the stored UTC. T-240 fix co
 | **Sprint** | 31 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-242, T-243, T-248 |
 
 **Details:**
@@ -322,7 +322,7 @@ Code review confirms: click handler in MobileDayList calls `scrollToSection('lan
 | **Sprint** | 31 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-249, T-255 |
 
 **Details:**
@@ -352,7 +352,7 @@ Code review confirms: click handler in MobileDayList calls `scrollToSection('lan
 | **Sprint** | 31 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-250, T-255 |
 
 **Details:**
@@ -381,7 +381,7 @@ staging: {
 | **Sprint** | 31 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-229, T-248 |
 
 **Details:**
@@ -400,7 +400,7 @@ staging: {
 | **Sprint** | 31 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-248, T-255 |
 
 **Details:**
@@ -431,7 +431,7 @@ staging: {
 | **Sprint** | 31 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | — |
 
 **Details:**
@@ -454,8 +454,8 @@ Status 429 ✅. The `loginLimiter` (10 req/15 min/IP) and `registerLimiter` (5 r
 | **Sprint** | 31 |
 | **Category** | Bug |
 | **Severity** | Minor |
-| **Status** | New |
-| **Related Task** | — |
+| **Status** | Acknowledged |
+| **Related Task** | T-257 |
 
 **Details:**
 
@@ -490,8 +490,8 @@ curl -sk -X POST https://localhost:3001/api/v1/auth/login \
 | **Sprint** | 31 |
 | **Category** | UX Issue |
 | **Severity** | Minor |
-| **Status** | New |
-| **Related Task** | T-248 |
+| **Status** | Acknowledged |
+| **Related Task** | T-257 |
 
 **Details:**
 

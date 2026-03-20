@@ -3151,4 +3151,97 @@ No new 'New' status entries in feedback-log.md entering this sprint. All prior e
 
 ---
 
+### Sprint #31 — 2026-03-17 to 2026-03-20
+
+**Goal:** Close the Sprint 30 User Agent verification cycle (T-248), ship two targeted backlog improvements (missing `.mobileEventLandTravel` mobile styling in TripCalendar, `knexfile.js` staging seeds config fix), and run the full QA → Deploy → Monitor → User Agent pipeline. Production deployment (T-224) was also resolved by the project owner this sprint.
+
+**Goal Met:** ✅ YES — All Sprint 31 tasks completed. Both backlog improvements delivered and deployed. T-248 (Sprint 30 walkthrough) completed with all 3 prior sprint features verified. T-255 (Sprint 31 walkthrough) completed with clean sign-off. **Production is now live at `https://triplanner.yixinx.com`** — deployed by the project owner on 2026-03-20. T-225 (post-production health check) carries to Sprint 32 as the only unfinished item.
+
+---
+
+**Tasks Completed (9/10):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-248 | User Agent: Sprint 30 feature walkthrough — all 3 Sprint 30 fixes verified (status persistence, flight timezone, LAND_TRAVEL calendar). Regressions clean. Structured feedback submitted (FB-123–FB-130). | ✅ Done |
+| T-249 | Frontend Engineer: `.mobileEventLandTravel` CSS class added to `TripCalendar.module.css`; `--event-land-travel-text: #7B6B8E` token in global.css; JSX wiring confirmed; Test 81 added; 496/496 frontend tests pass | ✅ Done |
+| T-250 | Backend Engineer: `seeds: { directory: seedsDir }` added to `knexfile.js` staging block; 4-test suite covering happy path + regression guards; 406/406 backend tests pass | ✅ Done |
+| T-251 | QA Engineer: Security checklist PASS; 406/406 backend + 496/496 frontend; 0 npm audit Critical/High; no XSS, no injection, no secrets | ✅ Done |
+| T-252 | QA Engineer: Integration testing — all 6 scenarios PASS; Playwright 4/4 PASS after Sprint 31 build | ✅ Done |
+| T-253 | Deploy Engineer: Staging re-deployment — 129 modules, 0 errors; `mobileEventLandTravel` confirmed in dist artifact; pm2 both services online | ✅ Done |
+| T-254 | Monitor Agent: Staging health check — all 13 checks PASS; Deploy Verified = Yes; Playwright 4/4; CORS correct | ✅ Done |
+| T-255 | User Agent: Sprint 31 walkthrough — mobile LAND_TRAVEL styling verified; Sprint 30 regressions clean; auth/validation security confirmed; 496/496 frontend + 406/406 backend tests pass | ✅ Done |
+| T-224 | Deploy Engineer: Production deployment — completed by project owner on 2026-03-20. Frontend at `https://triplanner.yixinx.com`, Backend at `https://triplanner-backend-sp61.onrender.com` | ✅ Done |
+
+**Tasks Carried Over to Sprint 32:**
+
+| ID | Description | Carry-Over Reason |
+|----|-------------|-------------------|
+| T-225 | Monitor Agent: Post-production health check | T-224 completed but T-225 did not run in Sprint 31. Unblocked — execute immediately in Sprint 32. |
+
+---
+
+**Key Decisions:**
+
+- **Production is live (T-224 resolved):** After six consecutive sprint escalations, the project owner deployed to Render (frontend + backend) and AWS RDS (PostgreSQL) on 2026-03-20. The app is accessible at `https://triplanner.yixinx.com`. T-225 (post-production health check) must execute in Sprint 32.
+- **Mobile LAND_TRAVEL color token:** `--event-land-travel-text: #7B6B8E` (muted dusty purple) added to global.css, consistent with the Japandi palette and other event type tokens.
+- **knexfile staging seeds fix:** Closes the Sprint 26 Monitor Alert (secondary issue). `NODE_ENV=staging npm run seed` will now resolve without ENOENT. Production block correctly continues to omit seeds (intentional regression guard).
+- **FB-132 (calendar response shape):** Minor docs inconsistency — `GET /calendar` returns `{ data: { trip_id, events: [] } }` rather than `{ data: [] }`. No code change needed; api-contracts.md note tasked as T-257 in Sprint 32.
+
+---
+
+**Feedback Summary (Sprint 31 → Sprint 32 triage):**
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-123 | Positive | — | Acknowledged — trip status persistence confirmed working |
+| FB-124 | Positive | — | Acknowledged — flight timezone fix confirmed working |
+| FB-125 | Positive | — | Acknowledged — LAND_TRAVEL calendar events confirmed working |
+| FB-126 | Positive | — | Acknowledged — mobileEventLandTravel CSS confirmed in source + dist + JSX |
+| FB-127 | Positive | — | Acknowledged — knexfile staging seeds confirmed working |
+| FB-128 | Positive | — | Acknowledged — COALESCE date regression confirmed clean |
+| FB-129 | Positive | — | Acknowledged — all input validation + auth security edge cases pass |
+| FB-130 | Positive | — | Acknowledged — rate limiter operational |
+| FB-131 | Bug | Minor | Acknowledged — `curl -d` INVALID_JSON workaround (`--http1.1`) to be documented (T-257 Sprint 32) |
+| FB-132 | UX Issue | Minor | Acknowledged — api-contracts.md calendar note to be added (T-257 Sprint 32) |
+
+**Zero 'New' entries remaining. All 10 feedback entries triaged.**
+
+---
+
+**What Went Well:**
+
+- **Sprint 31 closed the full pipeline end-to-end:** T-248, T-249, T-250, T-251, T-252, T-253, T-254, T-255 all completed — every phase of the pipeline ran and closed within the sprint. This is the cleanest pipeline closure in several sprints.
+- **T-248 (long-overdue User Agent walkthrough) finally completed:** The Sprint 30 feature verification ran without issues. All three Sprint 30 fixes confirmed working from a user perspective.
+- **Zero regressions across all 31 sprints of development:** 496/496 frontend, 406/406 backend, 4/4 Playwright — test suite at its strongest state.
+- **Production is now live:** After six consecutive sprint escalations, the project reached production deployment. The app is accessible to real users at `https://triplanner.yixinx.com`.
+- **Only two minor feedback items (no Critical or Major):** The most successful User Agent + Monitor cycle of recent memory — clean on all substantive checks, only developer DX and docs notes raised.
+
+**What Could Improve:**
+
+- **T-225 (post-production health check) not run in Sprint 31:** Despite T-224 completing on 2026-03-20 (within Sprint 31), T-225 was not executed before closeout. This is now the top P0 for Sprint 32.
+- **Escalation process for project-owner-gated tasks:** T-224 was escalated for six consecutive sprints before resolution. Future project-owner gates should have a clearer escalation path with a defined decision deadline.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory MemoryStore — no Redis persistence
+- ⚠️ B-024: Auth rate limit is IP-only — no per-account limiting
+- ⚠️ FB-121: Stay category enum requires uppercase input — minor friction for API consumers (backlog)
+
+*New from Sprint 31 (minor):*
+- ⚠️ FB-131: `curl -d` flag returns INVALID_JSON on HTTPS POST endpoints — possible HTTP/2 body framing interaction; workaround: `--http1.1` flag. Docs-only fix tasked as T-257.
+- ⚠️ FB-132: `GET /calendar` returns `{ data: { trip_id, events: [] } }` — inconsistent with other list endpoints that return `{ data: [] }`. No code change needed; api-contracts.md note tasked as T-257.
+
+*Resolved this sprint:*
+- ✅ Sprint 26 Monitor Alert (secondary): knexfile.js staging seeds directory missing → fixed by T-250
+- ✅ `.mobileEventLandTravel` CSS missing (Sprint 30 Monitor note) → fixed by T-249
+- ✅ Production deployment (B-022, T-224) → completed by project owner
+
+---
+
+*Sprint #31 began 2026-03-17, closed 2026-03-20.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*
