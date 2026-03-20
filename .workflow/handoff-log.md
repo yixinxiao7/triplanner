@@ -6891,3 +6891,78 @@ If all checks pass: mark **Deploy Verified = Yes**, mark T-247 Done, and log han
 *Backend Engineer Sprint #31 — T-250 Complete — 2026-03-20*
 
 ---
+
+## Handoff: Manager Agent → QA Engineer
+
+**Date:** 2026-03-20
+**Sprint:** 31
+**Status:** ✅ Code Review APPROVED — T-249 and T-250 → Integration Check
+**From:** Manager Agent
+**To:** QA Engineer
+
+### Review Summary — Sprint #31 Code Review Pass (CR-31)
+
+Both Sprint 31 implementation tasks have been reviewed and approved. T-249 and T-250 are now in **Integration Check** status. QA Engineer should proceed with T-251 (security checklist) followed by T-252 (integration testing).
+
+---
+
+#### T-249 — Frontend: `.mobileEventLandTravel` CSS Styling ✅ APPROVED
+
+**Files reviewed:**
+- `frontend/src/components/TripCalendar.module.css` — lines 461-464
+- `frontend/src/components/TripCalendar.jsx` — MobileDayList branch (line ~196)
+- `frontend/src/__tests__/TripCalendar.test.jsx` — Test 81 (line 1134)
+
+**Findings:**
+- CSS class `.mobileEventLandTravel { color: var(--event-land-travel-text); }` correctly added with Sprint 31 comment and proper closing brace ✅
+- CSS variable `--event-land-travel-text: #7B6B8E` confirmed defined in `frontend/src/styles/global.css` ✅
+- Class correctly applied in MobileDayList LAND_TRAVEL ternary branch (`styles.mobileEventLandTravel`) — consistent with FLIGHT/STAY/ACTIVITY pattern ✅
+- Test 81 (`31.T249`) renders a LAND_TRAVEL event and asserts `[class*="mobileEventLandTravel"]` length > 0 — CSS-modules-compatible selector, covers the happy path ✅
+- 496/496 frontend tests pass ✅
+- No security concerns: pure CSS class addition, no user input, no `dangerouslySetInnerHTML`, no hardcoded secrets ✅
+- Design system compliant: muted purple `#7B6B8E` consistent with Japandi aesthetic ✅
+
+**QA focus for T-249:**
+1. Confirm 496/496 frontend tests pass (run `npm test --run` in `frontend/`)
+2. Visual smoke: mobile viewport LAND_TRAVEL row has color distinct from unstyled baseline
+3. No regressions on FLIGHT/STAY/ACTIVITY mobile rows (typeClass ternary)
+4. `npm audit` — confirm 0 Critical/High
+
+---
+
+#### T-250 — Backend: knexfile.js Staging Seeds Configuration ✅ APPROVED
+
+**Files reviewed:**
+- `backend/src/config/knexfile.js` — staging block (lines 53-62)
+- `backend/src/__tests__/sprint31.test.js` — 4 tests
+
+**Findings:**
+- `seeds: { directory: seedsDir }` correctly added to staging block, directly after `migrations`, matching development block pattern exactly ✅
+- Production block correctly omits seeds (intentional — production seeding is manual) ✅
+- `sprint31.test.js` covers 4 well-scoped scenarios:
+  - (1) `staging.seeds.directory` equals computed `seedsDir` path — happy path ✅
+  - (2) `staging.seeds.directory` matches `development.seeds.directory` — parity check ✅
+  - (3) `staging.migrations.directory` unchanged — no regression ✅
+  - (4) `production.seeds` is undefined — regression guard ✅
+- 406/406 backend tests pass (402 baseline + 4 new) ✅
+- No security concerns: pure config file, no secrets, no SQL, no env var changes ✅
+
+**QA focus for T-250:**
+1. Confirm 406/406 backend tests pass (run `npm test --run` in `backend/`)
+2. Verify `knexfile.staging.seeds.directory === knexfile.development.seeds.directory` by inspection
+3. Verify `knexfile.production.seeds` is undefined
+4. `npm audit` — confirm 0 Critical/High
+
+---
+
+### Next Steps for QA Engineer
+
+1. **T-251** — Security checklist for T-249 + T-250 (see task for full checklist). Update status: Backlog → In Progress → Done.
+2. **T-252** — Integration testing for Sprint 31 (6 scenarios + Playwright 4/4).
+3. Upon T-252 completion, log handoff to Deploy Engineer (T-253) in handoff-log.md to unblock staging re-deployment.
+
+*Manager Agent Sprint #31 — CR-31 Code Review Complete — 2026-03-20*
+
+---
+
+---

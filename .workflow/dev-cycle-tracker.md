@@ -2532,8 +2532,8 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-249 | Frontend Engineer: Add `.mobileEventLandTravel` CSS styling to TripCalendar.module.css. Add the missing CSS class with a muted, Japandi-appropriate color treatment matching the desktop `.eventPillLandTravel` pill. Confirm the class is applied in MobileDayList LAND_TRAVEL branch in TripCalendar.jsx. Add 1 unit test: LAND_TRAVEL event in MobileDayList renders with `.mobileEventLandTravel` class. All 495+ existing tests must pass. Log in handoff-log.md; set In Review. | Bug Fix | Frontend Engineer | In Review | P2 | S | 31 | T-248 triage (clean) | Mobile LAND_TRAVEL row has color accent; no regressions on FLIGHT/STAY/ACTIVITY mobile rows; 1+ new test; 495+ existing tests pass. **[Frontend Done 2026-03-20]** `.mobileEventLandTravel { color: var(--event-land-travel-text); }` added to TripCalendar.module.css. Test 81 added to TripCalendar.test.jsx. 496/496 frontend tests pass. Handoff to QA in handoff-log.md. |
-| T-250 | Backend Engineer: Fix knexfile.js staging seeds configuration — add `seeds: { directory: seedsDir }` to the `staging` environment block in `backend/src/config/knexfile.js`, matching the `development` block pattern. Add 1 unit test: `staging` config object includes `seeds.directory` equal to `seedsDir`. All 402+ existing backend tests must pass. Log in handoff-log.md; set In Review. | Bug Fix | Backend Engineer | In Review | P2 | S | 31 | T-248 triage (clean) | `knexfile.staging.seeds.directory === seedsDir`; 1+ new test; 402+ existing tests pass; no changes to production or development blocks. **[Backend Done 2026-03-20]** `seeds: { directory: seedsDir }` added to staging block. `sprint31.test.js` added (4 tests). All 406/406 backend tests pass. Handoff to QA in handoff-log.md. |
+| T-249 | Frontend Engineer: Add `.mobileEventLandTravel` CSS styling to TripCalendar.module.css. Add the missing CSS class with a muted, Japandi-appropriate color treatment matching the desktop `.eventPillLandTravel` pill. Confirm the class is applied in MobileDayList LAND_TRAVEL branch in TripCalendar.jsx. Add 1 unit test: LAND_TRAVEL event in MobileDayList renders with `.mobileEventLandTravel` class. All 495+ existing tests must pass. Log in handoff-log.md; set In Review. | Bug Fix | Frontend Engineer | Integration Check | P2 | S | 31 | T-248 triage (clean) | Mobile LAND_TRAVEL row has color accent; no regressions on FLIGHT/STAY/ACTIVITY mobile rows; 1+ new test; 495+ existing tests pass. **[Frontend Done 2026-03-20]** `.mobileEventLandTravel { color: var(--event-land-travel-text); }` added to TripCalendar.module.css. Test 81 added to TripCalendar.test.jsx. 496/496 frontend tests pass. Handoff to QA in handoff-log.md. **[Manager Review APPROVED 2026-03-20]** CSS class correctly defined; `--event-land-travel-text` confirmed in global.css (`#7B6B8E`); class applied in MobileDayList LAND_TRAVEL branch (TripCalendar.jsx); Test 81 covers happy-path render with CSS-modules-compatible `[class*="mobileEventLandTravel"]` selector; 496/496 frontend tests pass. No security concerns — pure CSS, no user input or XSS vectors. → Integration Check. |
+| T-250 | Backend Engineer: Fix knexfile.js staging seeds configuration — add `seeds: { directory: seedsDir }` to the `staging` environment block in `backend/src/config/knexfile.js`, matching the `development` block pattern. Add 1 unit test: `staging` config object includes `seeds.directory` equal to `seedsDir`. All 402+ existing backend tests must pass. Log in handoff-log.md; set In Review. | Bug Fix | Backend Engineer | Integration Check | P2 | S | 31 | T-248 triage (clean) | `knexfile.staging.seeds.directory === seedsDir`; 1+ new test; 402+ existing tests pass; no changes to production or development blocks. **[Backend Done 2026-03-20]** `seeds: { directory: seedsDir }` added to staging block. `sprint31.test.js` added (4 tests). All 406/406 backend tests pass. Handoff to QA in handoff-log.md. **[Manager Review APPROVED 2026-03-20]** staging seeds block correctly added matching development pattern; production block correctly omits seeds (intentional — no regression); 4 tests: seeds.directory value, staging=development parity, migrations.directory unchanged, production regression guard; 406/406 backend tests pass. No security concerns — pure config, no secrets, no SQL. → Integration Check. |
 
 ---
 
@@ -2569,6 +2569,23 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 - **T-250 (Backend):** No design input required — pure config fix.
 
 *Design Agent Sprint #31 review complete — 2026-03-20*
+
+---
+
+### Manager Code Review — Sprint 31 (CR-31)
+
+**Status:** ✅ Complete — 2026-03-20
+**Tasks Reviewed:** T-249, T-250
+**Outcome:** Both tasks APPROVED → Integration Check
+
+| Task | Result | Key Notes |
+|------|--------|-----------|
+| T-249 | ✅ APPROVED | CSS class correct; `--event-land-travel-text` confirmed in global.css; applied in MobileDayList LAND_TRAVEL branch; Test 81 covers happy path; 496/496 frontend tests pass; no security issues |
+| T-250 | ✅ APPROVED | staging seeds block matches development pattern; production block correctly omits seeds; 4-test suite covers happy path + 3 regression guards; 406/406 backend tests pass; no security issues |
+
+**QA Handoff logged in handoff-log.md** — T-251 (security checklist) and T-252 (integration testing) are unblocked and ready to start.
+
+*Manager Agent Sprint #31 — CR-31 — 2026-03-20*
 
 ---
 
