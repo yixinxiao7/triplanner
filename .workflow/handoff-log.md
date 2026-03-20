@@ -7339,3 +7339,77 @@ Sprint #31 features to verify during walkthrough:
 *Monitor Agent Sprint #31 — T-254 Complete — 2026-03-20*
 
 ---
+
+## Handoff: User Agent → Manager Agent (Sprint #31 — T-248 + T-255 Complete)
+
+**Date:** 2026-03-20
+**Sprint:** 31
+**Status:** ✅ T-248 + T-255 COMPLETE — Feedback Submitted
+**From:** User Agent
+**To:** Manager Agent
+
+### Testing Summary
+
+Both User Agent tasks for Sprint 31 are complete:
+- **T-248** (Sprint 30 carry-over walkthrough): All 3 Sprint 30 features verified end-to-end
+- **T-255** (Sprint 31 walkthrough): Sprint 31 features (mobile LAND_TRAVEL styling, knexfile seeds) verified
+
+### Sprint 30 Features — T-248 Results
+
+| Feature | Result |
+|---------|--------|
+| Trip status persistence (PLANNING → ONGOING → COMPLETED) | ✅ PASS — all three states persist after re-GET |
+| Flight timezone fix (T-240) | ✅ PASS — `6:50 AM ET` → stored as `10:50 UTC`, no double-conversion |
+| LAND_TRAVEL calendar events (T-242/T-243) | ✅ PASS — events appear with type, title, start_time, end_time; click-to-scroll wired |
+| COALESCE date regression (T-229) | ✅ PASS — PATCH dates return correct patched values |
+| CORS header | ✅ PASS — `Access-Control-Allow-Origin: https://localhost:4173` |
+
+### Sprint 31 Features — T-255 Results
+
+| Feature | Result |
+|---------|--------|
+| mobileEventLandTravel CSS (T-249) | ✅ PASS — class in source, dist artifact, JSX wiring; token #7B6B8E |
+| knexfile staging seeds config (T-250) | ✅ PASS — `staging.seeds.directory === seedsDir` confirmed |
+| 496/496 frontend tests | ✅ PASS |
+| 406/406 backend tests | ✅ PASS |
+
+### Issues Found
+
+| ID | Category | Severity | Description |
+|----|----------|----------|-------------|
+| FB-131 | Bug | Minor | `curl -d '...'` returns INVALID_JSON on HTTPS POST endpoints; stdin pipe and Node.js work correctly |
+| FB-132 | UX Issue | Minor | Calendar endpoint response shape `{ data: { trip_id, events } }` differs from all other list endpoints `{ data: [...] }` |
+
+**No Critical or Major issues found.** All Sprint 30 features confirmed working. Sprint 31 fixes confirmed.
+
+### Positive Findings (8)
+
+- FB-123: Trip status persistence working correctly across all 3 states
+- FB-124: Flight timezone fix working (no double-conversion)
+- FB-125: LAND_TRAVEL calendar events fully functional
+- FB-126: mobileEventLandTravel CSS correctly implemented and shipped in Sprint 31 build
+- FB-127: knexfile staging seeds config fixed and unit-tested
+- FB-128: COALESCE date regression clean
+- FB-129: Comprehensive input validation and auth security — all edge cases pass
+- FB-130: Rate limiter active and correctly enforced
+
+### Production
+
+Production backend health check: `GET https://triplanner-backend-sp61.onrender.com/api/v1/health` → 200 `{"status":"ok"}` ✅
+
+### Overall Impression
+
+Sprint 31 is clean. The two targeted backlog fixes (T-249 mobile CSS, T-250 knexfile seeds) are correctly implemented, tested, and shipped. The Sprint 30 carry-over work (T-248) confirms all three Sprint 30 features are stable. The two minor issues (FB-131 curl bug, FB-132 calendar shape inconsistency) are low-priority and have no user-facing impact.
+
+**Recommendation:** Both issues can be addressed next sprint or added to backlog. FB-131 may only require updating API documentation to add `--http1.1` to curl examples. FB-132 requires only a `api-contracts.md` documentation note.
+
+### Manager Actions Required
+
+1. Triage FB-131 and FB-132 (both Minor — recommend backlog or next sprint)
+2. Mark T-248 and T-255 Done in `dev-cycle-tracker.md`
+3. Write Sprint 31 summary in `sprint-log.md`
+4. Plan Sprint 32
+
+*User Agent Sprint #31 — T-248 + T-255 Complete — 2026-03-20*
+
+---
