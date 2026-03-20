@@ -1130,6 +1130,28 @@ describe('TripCalendar — Sprint 25 (T-213)', () => {
     });
   });
 
+  // Test 81 (31.T249): MobileDayList LAND_TRAVEL event row has mobileEventLandTravel class
+  it('31.T249 — LAND_TRAVEL event in MobileDayList renders with mobileEventLandTravel class', async () => {
+    const event = {
+      id: 'land-travel-mobile-001',
+      type: 'LAND_TRAVEL',
+      title: 'Train \u2014 London \u2192 Paris',
+      start_date: '2026-08-07',
+      end_date: '2026-08-07',
+      start_time: '10:00',
+      end_time: '14:30',
+      timezone: null,
+      source_id: 'train-mobile-001',
+    };
+    mockSuccess([event]);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      // mobileEventRow elements with mobileEventLandTravel class should exist
+      const landTravelRows = document.querySelectorAll('[class*="mobileEventLandTravel"]');
+      expect(landTravelRows.length).toBeGreaterThan(0);
+    });
+  });
+
   // Test 80 (26.E): LAND_TRAVEL appears after FLIGHT and STAY in the same day cell
   it('26.E — LAND_TRAVEL pill appears after FLIGHT and STAY pills in the same day cell', async () => {
     const events = [

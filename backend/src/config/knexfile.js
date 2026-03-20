@@ -56,6 +56,9 @@ export default {
     migrations: {
       directory: migrationsDir,
     },
+    seeds: {
+      directory: seedsDir,
+    },
   },
   production: {
     client: 'pg',

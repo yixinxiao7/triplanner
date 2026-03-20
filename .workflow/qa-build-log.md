@@ -4,6 +4,57 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #31 — Deploy Engineer — Pre-Deploy Environment Check — 2026-03-20
+
+**Task:** T-253 (Deploy Engineer — Sprint 31 staging re-deployment)
+**Date:** 2026-03-20
+**Status:** ⚠️ BLOCKED — Pre-deploy gate not met (T-252 QA integration testing not complete)
+
+### Pre-Deploy Gate Check
+
+| Gate | Status | Notes |
+|------|--------|-------|
+| QA confirmation in handoff-log.md (T-252 → T-253) | ❌ NOT YET | T-251 (QA security checklist) and T-252 (QA integration testing) are both Backlog — QA has not run |
+| T-249 (mobileEventLandTravel CSS) implemented | ✅ DONE | `.mobileEventLandTravel { color: var(--event-land-travel-text) }` added after `.mobileEventActivity`; 496/496 frontend tests pass (+1 new test 31.T249) |
+| T-250 (knexfile.js staging seeds) implemented | ✅ DONE | staging block has `seeds: { directory: seedsDir }`; sprint31.test.js has 4 tests; 406/406 backend tests pass |
+| Pending DB migrations | ✅ NONE | Sprint 31 is schema-stable; no DDL changes; migration count remains at 10 (001–010) |
+
+### Environment State (Pre-Check)
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| GET https://localhost:3001/api/v1/health | ✅ 200 `{"status":"ok"}` | Sprint 30 build still running |
+| Frontend https://localhost:4173 | ✅ 200 | Sprint 30 dist/ served (built 2026-03-17) |
+| pm2 triplanner-backend | ✅ online | PID 50879, uptime 2h, 3 restarts, 0 unstable restarts |
+| pm2 triplanner-frontend | ✅ online | PID 36508, uptime 3D, 2 restarts |
+| backend/logs/backend-error.log | ✅ Clean | Last entries from 2026-03-17 (malformed JSON — handled by error handler, expected behavior) |
+| Sprint 30 dist/ artifacts | ✅ Present | frontend/dist/ built 2026-03-17 10:53 |
+
+### Sprint 31 Task Code State
+
+| Task | Code State | Test State |
+|------|-----------|-----------|
+| T-249: mobileEventLandTravel CSS | ✅ Done — `.mobileEventLandTravel { color: var(--event-land-travel-text) }` in TripCalendar.module.css | 496/496 frontend (+1 new test) |
+| T-250: knexfile.js staging seeds | ✅ Done — staging block has seeds.directory matching development | 406/406 backend (+4 new sprint31.test.js tests) |
+
+### Conclusion
+
+Both Sprint 31 implementation tasks (T-249, T-250) are **complete and verified**. The staging environment from Sprint 30 is healthy and ready. **T-253 deploy is blocked on a single gate:**
+
+1. **T-251 not done** — QA must run security checklist and confirm tests pass (406+ backend, 496+ frontend).
+2. **T-252 not done** — QA must run integration testing and post a QA → Deploy handoff in handoff-log.md.
+
+Deploy steps queued (will execute immediately upon QA clearance):
+1. `cd /Users/yixinxiao/PROJECTS/triplanner/frontend && npm install && npm run build`
+2. `pm2 reload triplanner-backend && pm2 reload triplanner-frontend`
+3. Verify `GET https://localhost:3001/api/v1/health` → 200
+4. Log full deploy entry in this file
+5. Hand off to Monitor Agent (T-254) for Sprint 31 health check protocol
+
+*Deploy Engineer Sprint #31 — T-253 Pre-Deploy Check — 2026-03-20*
+
+---
+
 ## Sprint #30 — Deploy Engineer — Environment Re-Check #2 — 2026-03-17
 
 **Task:** T-246 (Deploy Engineer — Sprint 30 staging re-deployment)

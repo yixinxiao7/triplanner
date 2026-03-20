@@ -4,6 +4,106 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-20] Deploy Engineer → QA Engineer** *(Sprint #31 — T-253 Blocked — Pre-Deploy Gate Not Met — QA Sign-Off Required)*
+
+**From:** Deploy Engineer
+**To:** QA Engineer
+**Re:** T-253 (Sprint 31 staging re-deployment) is blocked. Both implementation tasks are done. T-253 is waiting on T-251 (security checklist) and T-252 (integration testing).
+**Status:** ⚠️ BLOCKED — T-253 cannot proceed without QA confirmation in handoff-log.md
+
+**Pre-Deploy Gate Status:**
+
+| Gate | Status |
+|------|--------|
+| T-249 (mobileEventLandTravel CSS) | ✅ DONE — 496/496 frontend tests pass |
+| T-250 (knexfile.js staging seeds fix) | ✅ DONE — 406/406 backend tests pass |
+| T-251 (QA security checklist) | ❌ NOT DONE — must complete before T-252 |
+| T-252 (QA integration testing + QA → Deploy handoff) | ❌ NOT DONE — required to unblock T-253 |
+
+**Environment Ready:**
+
+| Check | Status |
+|-------|--------|
+| Staging backend (GET /api/v1/health) | ✅ 200 `{"status":"ok"}` |
+| Staging frontend (https://localhost:4173) | ✅ 200 |
+| pm2 triplanner-backend | ✅ online |
+| pm2 triplanner-frontend | ✅ online |
+| Pending migrations | ✅ None (10/10 applied, schema stable) |
+| Build artifacts in dist/ | ✅ Present (Sprint 30 build — will be rebuilt on deploy) |
+
+**What QA must do to unblock T-253:**
+
+1. **T-251 — Security checklist:**
+   - T-249 (CSS class): no XSS vectors, no dangerouslySetInnerHTML, no hardcoded secrets
+   - T-250 (knexfile path): no SQL injection, no secrets in config
+   - Run `npm test --run` in `backend/` — expect 406+ tests PASS
+   - Run `npm test --run` in `frontend/` — expect 496+ tests PASS
+   - Run `npm audit` in both dirs — expect 0 Critical/High
+   - Log report in `qa-build-log.md` Sprint 31 section
+
+2. **T-252 — Integration testing:**
+   - Verify `knexfile.staging.seeds.directory` present and correct
+   - Verify TripCalendar mobile LAND_TRAVEL row has `.mobileEventLandTravel` class
+   - Desktop LAND_TRAVEL pill no regression
+   - Sprint 30 regression: PATCH status → persisted
+   - Sprint 30 regression: GET /calendar → LAND_TRAVEL events present
+   - Playwright 4/4 after frontend build
+   - Log results in `qa-build-log.md` Sprint 31 section
+   - **Post QA → Deploy handoff in this file** — T-253 executes immediately on receipt
+
+**Deploy steps queued (will execute immediately upon QA → Deploy handoff):**
+1. `cd frontend && npm install && npm run build`
+2. `pm2 reload triplanner-backend && pm2 reload triplanner-frontend`
+3. Verify `GET https://localhost:3001/api/v1/health` → 200
+4. Smoke tests: LAND_TRAVEL mobile row visible; Sprint 30 status + calendar regressions pass; Playwright 4/4
+5. Log full deploy entry in `qa-build-log.md`
+6. Post handoff to Monitor Agent (T-254) in this file
+
+**Reference:** `.workflow/qa-build-log.md` → "Sprint #31 — Deploy Engineer — Pre-Deploy Environment Check — 2026-03-20"
+
+*Deploy Engineer Sprint #31 — T-253 Pre-Deploy Check — 2026-03-20*
+
+---
+
+**[2026-03-20] Frontend Engineer → QA Engineer** *(Sprint #31 — T-249 Complete — mobileEventLandTravel CSS)*
+
+**From:** Frontend Engineer
+**To:** QA Engineer
+**Re:** T-249 — `.mobileEventLandTravel` CSS added to TripCalendar — ready for QA
+**Status:** ✅ In Review — ready for T-251 security checklist and T-252 integration testing
+
+**API Contract Acknowledged:**
+- Read `.workflow/api-contracts.md` Sprint 31 section (no new contracts — T-249 is a frontend-only CSS fix with no backend dependency)
+- Read Backend Engineer handoff (2026-03-20): confirmed no API changes this sprint
+- No new API calls; all existing integrations unchanged
+
+**What was implemented:**
+
+**`frontend/src/components/TripCalendar.module.css`**
+- Added `.mobileEventLandTravel` class immediately after `.mobileEventActivity` (Sprint 31 — T-249)
+- Uses `color: var(--event-land-travel-text)` — token `#7B6B8E`, muted dusty purple, consistent with Japandi palette and desktop LAND_TRAVEL pill color
+- Pattern exactly mirrors `.mobileEventFlight`, `.mobileEventStay`, `.mobileEventActivity`
+
+**`frontend/src/__tests__/TripCalendar.test.jsx`**
+- Added Test 81 (31.T249): verifies LAND_TRAVEL event in MobileDayList renders with `mobileEventLandTravel` CSS module class
+- Total tests: **496 passing** (was 495)
+
+**No code changes to `TripCalendar.jsx`** — the `styles.mobileEventLandTravel` class was already correctly applied at the LAND_TRAVEL branch in MobileDayList (line 195). The CSS class was simply missing; now defined.
+
+**QA — What to test:**
+1. On mobile viewport (375px), add a land travel entry to a trip → open TripCalendar → LAND_TRAVEL row in MobileDayList should show icon + time + title in muted purple (`#7B6B8E`)
+2. No regressions: FLIGHT (blue), STAY (green), ACTIVITY (orange) mobile rows unaffected
+3. Desktop LAND_TRAVEL pills (`.eventPillLandTravel`) unchanged — no regression
+4. Run `npm test -- --run` in `frontend/` — 496 tests should pass
+
+**Known limitations:** None. CSS-only change. Class already correctly wired in JSX.
+
+**Test baseline:** 496/496 passing
+
+*Frontend Engineer Sprint #31 — T-249 Complete — 2026-03-20*
+
+---
+
 **[2026-03-20] Backend Engineer → Frontend Engineer** *(Sprint #31 — API Contracts Published — No New Contracts)*
 
 **From:** Backend Engineer
@@ -6745,5 +6845,49 @@ If all checks pass: mark **Deploy Verified = Yes**, mark T-247 Done, and log han
 `.mobileEventLandTravel` CSS class is referenced in `TripCalendar.jsx` (line 195) but is absent from `TripCalendar.module.css`. Mobile LAND_TRAVEL rows render functionally but without color accent. Non-blocking — acknowledged by Manager Agent. Logged for Sprint 31 backlog.
 
 *Deploy Engineer Sprint #30 — T-246 Complete — 2026-03-17*
+
+---
+
+---
+
+## Handoff: Backend Engineer → QA Engineer
+
+**Date:** 2026-03-20
+**Sprint:** 31
+**Status:** ✅ Ready for Review — T-250 In Review
+**From:** Backend Engineer
+**To:** QA Engineer
+
+### T-250 — knexfile.js Staging Seeds Configuration Fix
+
+**Bug fixed:** The `staging` environment block in `backend/src/config/knexfile.js` was missing `seeds: { directory: seedsDir }`. This meant `knex seed:run --env staging` fell back to Knex's default `./seeds` path instead of `backend/src/seeds/`, causing staging seed operations to silently fail or look in the wrong directory.
+
+**Fix applied:**
+- **File modified:** `backend/src/config/knexfile.js`
+- **Change:** Added `seeds: { directory: seedsDir }` to the `staging` block, directly after `migrations`, matching the `development` block pattern exactly.
+- **Production block:** Intentionally left without a `seeds` block (production seeding is manual).
+
+**Test file added:** `backend/src/__tests__/sprint31.test.js`
+- 4 unit tests covering:
+  1. `staging.seeds.directory` equals `seedsDir` (the computed absolute path)
+  2. `staging.seeds.directory` matches `development.seeds.directory` (parity check)
+  3. `staging.migrations.directory` is unchanged (no regression)
+  4. `production` block does NOT gain a seeds block (no regression)
+
+**Test results:**
+- All 406 backend tests pass (402 baseline + 4 new) ✅
+- No changes to production or development blocks ✅
+- No schema changes, no migrations ✅
+- No API changes ✅
+
+### What QA Should Verify (T-251)
+
+1. **Config correctness:** Read `backend/src/config/knexfile.js` → confirm `staging.seeds.directory` is present and equals `seedsDir` (same value as `development.seeds.directory`)
+2. **No production regression:** Confirm `production` block has no `seeds` key
+3. **Test suite:** Run `npm test --run` in `backend/` → confirm 406/406 pass (402 baseline + 4 sprint31 tests)
+4. **Security:** No SQL injection vectors (pure config file), no hardcoded secrets, no env vars added
+5. **Audit:** `npm audit` → confirm 0 Critical/High findings
+
+*Backend Engineer Sprint #31 — T-250 Complete — 2026-03-20*
 
 ---

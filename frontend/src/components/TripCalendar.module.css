@@ -458,6 +458,11 @@
   color: var(--event-activity-text);
 }
 
+/* Sprint 31 — T-249: LAND_TRAVEL mobile row color accent */
+.mobileEventLandTravel {
+  color: var(--event-land-travel-text);
+}
+
 .mobileNoEvents {
   font-family: var(--font-mono);
   font-size: 13px;
