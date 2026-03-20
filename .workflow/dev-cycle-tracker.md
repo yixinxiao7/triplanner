@@ -2642,7 +2642,7 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
 | T-257 | Backend Engineer: Update `api-contracts.md` with two Sprint 31 documentation gaps. (1) Calendar endpoint note: `GET /trips/:id/calendar` returns `{ data: { trip_id, events: [] } }` — wrapped object, not flat array; access events via `response.data.events`. (2) curl note: add `--http1.1` flag to all HTTPS curl examples to avoid HTTP/2 body framing issues (`curl -d` INVALID_JSON bug). Documentation-only change — no code changes. Log in handoff-log.md; set Done directly (no QA needed for docs). | Documentation | Backend Engineer | Done | P2 | S | 32 | — | api-contracts.md has calendar endpoint note; api-contracts.md has curl --http1.1 workaround note; no code changes. |
-| T-258 | Backend Engineer: Stay category case normalization (FB-121). In stays validation middleware (or route handler), normalize `category` to uppercase before enum validation: `body.category = body.category.toUpperCase()`. Add 2 unit tests: (a) POST /stays with `category: "hotel"` → 201, stored as "HOTEL"; (b) POST /stays with `category: "airbnb"` → 201, stored as "AIRBNB". All 406+ existing backend tests must pass. Log in handoff-log.md; set In Review. | Bug Fix | Backend Engineer | In Review | P2 | S | 32 | — | POST /stays with lowercase category → 201 (no 400); stored value uppercase; 2+ new tests; 406+ existing tests pass. **Feedback Source:** FB-121 |
+| T-258 | Backend Engineer: Stay category case normalization (FB-121). In stays validation middleware (or route handler), normalize `category` to uppercase before enum validation: `body.category = body.category.toUpperCase()`. Add 2 unit tests: (a) POST /stays with `category: "hotel"` → 201, stored as "HOTEL"; (b) POST /stays with `category: "airbnb"` → 201, stored as "AIRBNB". All 406+ existing backend tests must pass. Log in handoff-log.md; set In Review. | Bug Fix | Backend Engineer | Integration Check | P2 | S | 32 | — | POST /stays with lowercase category → 201 (no 400); stored value uppercase; 2+ new tests; 406+ existing tests pass. **Feedback Source:** FB-121 |
 
 ---
 
@@ -2659,7 +2659,20 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 ### Manager Review — Sprint 32
 
-*Code review to be logged here after T-258 reaches In Review.*
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-32 | Manager: Sprint 32 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 32 | — | **T-258 APPROVED → Integration Check.** See details below. |
+
+**Status:** ✅ Complete — 1 task reviewed, 1 approved
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-20).
+
+**T-258 — Stay category case normalization (Backend Engineer):** APPROVED ✅
+
+- **Implementation:** `normalizeCategory()` middleware in `backend/src/routes/stays.js` (lines 98-104) converts `req.body.category` to uppercase via `.toUpperCase()` before validation. Applied to POST route as middleware (line 120, correct order: normalize → validate → persist). PATCH route (lines 175-178) normalizes inline before enum validation on line 180. Both paths handle the `typeof === 'string'` guard to prevent crashes on non-string input.
+- **Security:** No issues. Auth required (`authenticate` middleware), trip ownership enforced (`requireTripOwnership`), UUID params validated (`uuidParamHandler`), no SQL injection (Knex parameterized queries via model layer), error responses safe (structured JSON, no stack traces).
+- **Convention adherence:** Response format `{ data }` / `{ error: { message, code } }` matches architecture.md. RESTful endpoints. Knex via model layer (no ORM magic).
+- **Tests (4 new T-258-specific):** (a) POST lowercase "hotel" → 201, model called with "HOTEL" ✅; (b) POST lowercase "airbnb" → 201, model called with "AIRBNB" ✅; (c) PATCH lowercase "airbnb" → 200, model called with "AIRBNB" ✅; (d) PATCH invalid "motel" → 400 error path ✅. Tests verify both HTTP response and that the model received the normalized value.
+- **Verdict:** Clean fix, well-tested, no security concerns. Moved to Integration Check → QA Engineer (T-259).
 
 ---
 

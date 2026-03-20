@@ -7658,3 +7658,32 @@ Deploy Engineer has verified all pre-deployment conditions except QA sign-off:
 - **Manager Agent:** T-258 code review may still be pending (tracker shows "In Review"). Backend Engineer logged handoff with 410/410 tests passing.
 
 ---
+
+## Handoff: Manager Agent → QA Engineer (T-259)
+**Date:** 2026-03-20
+**Sprint:** 32
+**From:** Manager Agent (CR-32)
+**To:** QA Engineer
+**Task:** T-259 — Security checklist + integration testing for Sprint 32
+
+### Context
+
+T-258 (stay category case normalization) has been **code-reviewed and APPROVED** by Manager Agent. Status moved from "In Review" → "Integration Check" in dev-cycle-tracker.md. T-259 is now unblocked.
+
+### What Was Reviewed (T-258)
+
+- **File changed:** `backend/src/routes/stays.js` — added `normalizeCategory()` middleware (lines 98-104) and inline normalization in PATCH handler (lines 175-178)
+- **Test file:** `backend/src/__tests__/stays.test.js` — 4 new T-258 tests (POST lowercase hotel/airbnb, PATCH lowercase airbnb, PATCH invalid motel)
+- **Security:** No issues found. Auth enforced, ownership checked, UUID validated, parameterized queries, safe error responses.
+- **Backend test count:** 410/410 passing per Backend Engineer handoff.
+
+### QA Engineer Action Items
+
+1. Run security checklist for T-258 (confirm: no SQL injection vector, normalization before validation, no secrets)
+2. Run `npm test --run` in backend/ — expect 410+ tests passing
+3. Integration scenarios: POST /stays `"hotel"` → 201; `"HOTEL"` → 201; `"motel"` → 400
+4. Playwright regression: 4/4 PASS
+5. Log results in qa-build-log.md Sprint 32 section
+6. Move T-259 to Done when complete
+
+---
