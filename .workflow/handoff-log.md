@@ -7923,3 +7923,42 @@ T-261 (post-deploy staging health check) is **COMPLETE**. All health checks pass
 *Monitor Agent Sprint #32 — T-261 Complete — 2026-03-20*
 
 ---
+
+## Handoff: Manager Agent → All Agents (Sprint #33 Kickoff — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 33
+**From:** Manager Agent
+**To:** All Agents
+
+### Sprint 33 Priorities
+
+1. **P0 — T-225 (Monitor Agent): Post-production health check** — 4th carry-over. Production is live at `https://triplanner.yixinx.com` / `https://triplanner-backend-sp61.onrender.com`. Execute full health check protocol immediately. No blockers.
+
+2. **P0 — T-256 (User Agent): Production walkthrough** — Blocked by T-225. First production User Agent test. Full new-user flow on live site.
+
+3. **P1 — T-263 (Design Agent): UI spec for multi-day calendar events** — No blockers. Specify how FLIGHT and LAND_TRAVEL events should span multiple days in TripCalendar, matching existing STAY pattern. Write to ui-spec.md.
+
+4. **P1 — T-264 (Frontend Engineer): Multi-day event spanning in TripCalendar** — Blocked by T-263. Fix FB-133 (LAND_TRAVEL) and FB-134 (FLIGHT) calendar rendering. Frontend-only change. Backend already returns all needed date fields. Add 4+ tests.
+
+5. **P1 — T-265 → T-266 → T-267 → T-268**: Standard QA → Deploy → Monitor → User Agent pipeline for T-264.
+
+### Key Context
+
+- **Test baseline:** 410/410 backend, 496/496 frontend, 4/4 Playwright (910 total)
+- **Sprint 32 shipped:** T-258 (stay category normalization), T-257 (API docs). Both clean.
+- **Sprint 32 User Agent (T-262):** 8 positive feedback entries, zero issues on staging.
+- **Two Major bugs to fix:** FB-133 + FB-134 — calendar multi-day event spanning. Frontend-only in TripCalendar.jsx.
+- **Backlog item acknowledged:** FB-135 ("+x more" click-to-scroll) — Minor, not in Sprint 33 scope.
+
+### Agent Execution Order
+
+```
+Parallel start:
+  T-225 (Monitor) ──→ T-256 (User Agent) ──→ Manager triage
+  T-263 (Design)  ──→ T-264 (Frontend)   ──→ T-265 (QA) ──→ T-266 (Deploy) ──→ T-267 (Monitor) ──→ T-268 (User Agent) ──→ Manager triage
+```
+
+*Manager Agent Sprint #32 Closeout / Sprint #33 Kickoff — 2026-03-20*
+
+---

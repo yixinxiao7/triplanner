@@ -2687,3 +2687,49 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 ---
 
+### Sprint 32 Closeout (Manager Agent — 2026-03-20)
+
+**Sprint 32 completed tasks:** T-257, T-258, T-259, T-260, T-261, T-262 (6/8 tasks done).
+**Carried over to Sprint 33:** T-225 (post-production health check, 4th carry-over), T-256 (production walkthrough, 3rd carry-over).
+**Feedback triaged:** FB-133 + FB-134 (Major bugs → Tasked T-264), FB-135 (Minor → Acknowledged/backlog), FB-136–FB-143 (Positive → Acknowledged). Zero 'New' entries remaining.
+
+---
+
+
+## Sprint 33 Tasks
+
+**Sprint 33 Kickoff (Manager Agent — 2026-03-20):** Two Major calendar rendering bugs (FB-133/FB-134) are the primary engineering work — FLIGHT and LAND_TRAVEL events must span multiple days on the calendar like STAY events do. T-225 (post-production health check) is the P0 carry-over from Sprint 30/31/32 and must execute immediately. T-256 (production walkthrough) follows T-225. Full Design → Frontend → QA → Deploy → Monitor → User Agent pipeline for the calendar fix.
+
+**Test baseline at Sprint 33 kickoff:** 410/410 backend | 496/496 frontend | 4/4 Playwright | 910 total
+
+---
+
+### Phase 0 — Post-Production Verification (P0 — IMMEDIATE — 4th carry-over)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-225 | Monitor Agent: Post-production health check on `https://triplanner-backend-sp61.onrender.com`. Full health check protocol (see active-sprint.md). Log results in qa-build-log.md Sprint 33 section. If all pass: Deploy Verified = Yes (Production), handoff to T-256. | Infrastructure | Monitor Agent | Backlog | P0 | S | 33 | — | All production API endpoints return expected status codes; auth flow works; CORS correct; Deploy Verified = Yes (Production). |
+| T-256 | User Agent: Production walkthrough on `https://triplanner.yixinx.com`. Full new-user flow test. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P0 | M | 33 | T-225 | Full new-user flow works on production; all event types in calendar; no Critical or Major issues; feedback submitted. |
+
+---
+
+### Phase 1 — Design + Implementation (parallel with Phase 0)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-263 | Design Agent: UI spec for multi-day FLIGHT and LAND_TRAVEL event rendering in TripCalendar. Specify: multi-day spanning visual treatment, arrival time display format, mobile view, consistency with existing STAY rendering pattern. Write to ui-spec.md. | Design | Design Agent | Backlog | P1 | S | 33 | — | UI spec section covers desktop + mobile multi-day rendering; arrival time format specified; consistent with Japandi aesthetic. |
+| T-264 | Frontend Engineer: Multi-day event spanning for FLIGHT and LAND_TRAVEL in TripCalendar (FB-133, FB-134). FLIGHT events span departure_at date → arrival_at date. LAND_TRAVEL events span departure_date → arrival_date. Show arrival time on arrival day. 4+ new tests; 496+ existing tests pass. | Feature | Frontend Engineer | Backlog | P1 | M | 33 | T-263 | Multi-day events span correct date range; arrival time displayed; single-day events unaffected; 4+ new tests; 496+ existing pass. **Feedback Source:** FB-133, FB-134 |
+
+---
+
+### Phase 2 — QA, Deploy, Monitor, User Agent (sequential after Phase 1)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-265 | QA Engineer: Security checklist + integration testing for T-264. Review multi-day rendering for XSS. Verify all tests pass. Integration: multi-day flight spans correct days; multi-day land travel spans correct days; single-day events unaffected. Log in qa-build-log.md. | Code Review | QA Engineer | Backlog | P1 | S | 33 | T-264 | Security checklist PASS; all tests pass (410 backend + 496+ frontend + 4 Playwright); integration scenarios verified. |
+| T-266 | Deploy Engineer: Sprint 33 staging deployment. Rebuild frontend (npm run build). Restart frontend service. Smoke test: multi-day flight calendar rendering. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 33 | T-265 | Frontend rebuilt and serving; smoke test pass; both services online. |
+| T-267 | Monitor Agent: Sprint 33 staging health check. Full protocol + Sprint 33 smoke (multi-day flight in calendar) + Sprint 32 regressions (lowercase stay category, status persistence). Playwright 4/4. If all pass: Deploy Verified = Yes (Staging), handoff to T-268. | Infrastructure | Monitor Agent | Backlog | P1 | S | 33 | T-266 | All health checks PASS; Deploy Verified = Yes (Staging); Playwright 4/4. |
+| T-268 | User Agent: Sprint 33 staging walkthrough. Test multi-day FLIGHT rendering, multi-day LAND_TRAVEL rendering, single-day event regression, Sprint 32 regressions. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 33 | T-267 | Multi-day events render correctly; no regressions; feedback submitted. |
+
+---
+

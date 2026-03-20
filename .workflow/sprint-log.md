@@ -3244,4 +3244,82 @@ No new 'New' status entries in feedback-log.md entering this sprint. All prior e
 
 ---
 
+### Sprint #32 — 2026-03-20 to 2026-03-20
+
+**Goal:** Verify the live production deployment with a full health check and user walkthrough, then ship two small improvements: API documentation updates (calendar endpoint shape note + curl workaround) and stay category case normalization so the API accepts lowercase input.
+
+**Goal Met:** ⚠️ PARTIAL — Staging pipeline (T-257, T-258, T-259, T-260, T-261, T-262) completed cleanly with zero issues. Production verification (T-225 post-production health check, T-256 production walkthrough) did not execute — carried over to Sprint 33.
+
+---
+
+**Tasks Completed (6/8):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-257 | Backend Engineer: Update api-contracts.md with calendar endpoint note and curl --http1.1 workaround | ✅ Done |
+| T-258 | Backend Engineer: Stay category case normalization (FB-121) — lowercase input accepted, stored uppercase | ✅ Done |
+| T-259 | QA Engineer: Security checklist + integration testing — 410/410 backend, 496/496 frontend, config consistency PASS | ✅ Done |
+| T-260 | Deploy Engineer: Sprint 32 staging re-deployment — backend restarted, smoke tests pass | ✅ Done |
+| T-261 | Monitor Agent: Staging health check — Deploy Verified = Yes (Staging) | ✅ Done |
+| T-262 | User Agent: Sprint 32 staging walkthrough — 8 feedback entries (FB-136–FB-143), all Positive, zero issues | ✅ Done |
+
+**Tasks Carried Over (2/8):**
+
+| ID | Description | Reason |
+|----|-------------|--------|
+| T-225 | Monitor Agent: Post-production health check | Not executed during Sprint 32 — carry-over to Sprint 33 (P0) |
+| T-256 | User Agent: Production walkthrough on triplanner.yixinx.com | Blocked by T-225 — carry-over to Sprint 33 |
+
+**Key Decisions:**
+
+- No architecture decisions this sprint. Documentation-only and minor normalization fix.
+
+**Feedback Summary (Sprint 32 → Sprint 33 Triage):**
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-133 | Bug | Major | **Tasked → T-264** (multi-day LAND_TRAVEL calendar spanning) |
+| FB-134 | Bug | Major | **Tasked → T-264** (multi-day FLIGHT calendar spanning — same fix as FB-133) |
+| FB-135 | Feature Gap | Minor | **Acknowledged** — "+x more" click-to-scroll; backlog |
+| FB-136 through FB-143 | Positive | — | **Acknowledged** — all positive confirmations of T-258 normalization, T-257 docs, regression checks, test suites, CORS, trip CRUD |
+
+**Zero 'New' entries remaining. All 11 feedback entries (including duplicates) triaged.**
+
+---
+
+**What Went Well:**
+
+- **Staging pipeline ran cleanly end-to-end:** T-257 → T-258 → T-259 → T-260 → T-261 → T-262 all completed without rework cycles. This is the second consecutive sprint with a clean pipeline closure.
+- **T-258 (stay category normalization) shipped with thorough testing:** 4 new unit tests, 410/410 backend tests passing, security checklist clean. Manager code review approved on first pass.
+- **User Agent staging walkthrough (T-262) found zero issues:** 8 positive feedback entries (FB-136–FB-143), no Critical, Major, or Minor bugs on staging. The cleanest User Agent walkthrough in the project's history.
+- **Test baseline grew to 910 tests:** 410 backend + 496 frontend + 4 Playwright — all passing.
+- **FB-121 (stay category case sensitivity) resolved after 13 sprints in backlog:** Long-standing DX friction item finally shipped.
+
+**What Could Improve:**
+
+- **T-225 and T-256 (production verification) not executed again:** These tasks have been carried over since Sprint 30. The Monitor Agent and User Agent need to execute against production URLs. This is now the third consecutive sprint carrying T-225 — it must be the top P0 for Sprint 33.
+- **Duplicate feedback entries (FB-133/134/135 each appeared twice):** The feedback log contained duplicate entries for the same issues. Future User Agent runs should check for existing entries before submitting.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory MemoryStore — no Redis persistence
+- ⚠️ B-024: Auth rate limit is IP-only — no per-account limiting
+
+*New from Sprint 32:*
+- ⚠️ FB-133: LAND_TRAVEL calendar events render on single day instead of spanning departure→arrival dates (Major — tasked T-264)
+- ⚠️ FB-134: FLIGHT calendar events render on single day instead of spanning departure→arrival dates (Major — tasked T-264)
+- ⚠️ FB-135: "+x more" calendar overflow indicator not clickable (Minor — backlog)
+
+*Resolved this sprint:*
+- ✅ FB-121: Stay category enum requires uppercase input → fixed by T-258 (case normalization)
+- ✅ FB-131: curl -d INVALID_JSON workaround → documented in api-contracts.md by T-257
+- ✅ FB-132: Calendar response shape inconsistency → documented in api-contracts.md by T-257
+
+---
+
+*Sprint #32 began 2026-03-20, closed 2026-03-20.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*
