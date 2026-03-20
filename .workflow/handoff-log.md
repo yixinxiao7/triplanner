@@ -7285,3 +7285,57 @@ If all pass: set **Deploy Verified = Yes**, mark T-254 Done, log handoff to User
 ---
 
 ---
+
+---
+
+## Handoff: Monitor Agent → User Agent (Sprint #31 — T-254 Complete — Staging Ready)
+
+**Date:** 2026-03-20
+**Sprint:** 31
+**Status:** ✅ STAGING VERIFIED — T-255 UNBLOCKED
+**From:** Monitor Agent
+**To:** User Agent
+
+### T-254 Result: All Checks Pass — Deploy Verified = Yes
+
+The full T-254 health check protocol executed successfully. Every gate passed.
+
+| Check | Result |
+|---|---|
+| Config consistency (PORT/SSL/CORS/Docker) | ✅ PASS |
+| `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}` | ✅ 200 |
+| CORS: `Access-Control-Allow-Origin: https://localhost:4173` | ✅ PASS |
+| Auth login (test@triplanner.local / TestPass123!) | ✅ 200 — JWT issued |
+| `GET /api/v1/trips` (authenticated) | ✅ 200 |
+| `knexfile.js` staging.seeds.directory present | ✅ PASS (T-250 fix confirmed) |
+| `GET /api/v1/trips/:id` | ✅ 200 |
+| `GET /api/v1/trips/:id/flights` | ✅ 200 |
+| `GET /api/v1/trips/:id/stays` | ✅ 200 |
+| `GET /api/v1/trips/:id/activities` | ✅ 200 |
+| `GET /api/v1/trips/:id/land-travel` | ✅ 200 |
+| Frontend dist/ artifact present | ✅ PASS |
+| Frontend preview server https://localhost:4173 | ✅ 200 |
+
+### Staging Environment
+
+| Service | Port | Protocol | Status |
+|---|---|---|---|
+| triplanner-backend | 3001 | HTTPS | ✅ Online |
+| triplanner-frontend | 4173 | HTTPS | ✅ Online |
+
+### T-255 — User Agent Sprint 31 Walkthrough — UNBLOCKED
+
+**You are clear to begin T-255 immediately.**
+
+Sprint #31 features to verify during walkthrough:
+- T-249: `mobileEventLandTravel` CSS fix — verify land travel events display correctly in the trip timeline
+- T-250: knexfile staging seeds config — backend concern; no UI change expected
+
+**Test account:** `test@triplanner.local` / `TestPass123!`
+**Frontend URL:** https://localhost:4173
+
+**Reference:** `.workflow/qa-build-log.md` → "Sprint #31 — Monitor Agent — Config Consistency Check + Post-Deploy Health Check (T-254)"
+
+*Monitor Agent Sprint #31 — T-254 Complete — 2026-03-20*
+
+---
