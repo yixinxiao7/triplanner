@@ -4,6 +4,43 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #31 — Deploy Engineer — Staging Re-Verification Pass (T-253) — 2026-03-20
+
+**Task:** T-253 (Deploy Engineer — orchestrator re-invocation re-verification)
+**Date:** 2026-03-20
+**Environment:** Staging (localhost)
+**Build Status:** ✅ Already built — artifact intact
+**Deploy Status:** ✅ Services online — no re-deploy required
+**Trigger:** Automated orchestrator re-invoked Deploy Engineer after QA re-verification pass
+
+### Pre-Deploy Gate Review
+
+| Gate | Status | Notes |
+|------|--------|-------|
+| QA handoff in handoff-log.md (T-252 → T-253) | ✅ CONFIRMED | QA Engineer 2026-03-20 — T-251 + T-252 both DONE |
+| QA re-verification handoff (T-254 unblocked) | ✅ CONFIRMED | QA re-ran all tests post-T-253 — 406/406 + 496/496 + Playwright 4/4 |
+| Pending DB migrations | ✅ NONE | Sprint 31 schema-stable; 10/10 migrations applied |
+| T-249 (mobileEventLandTravel CSS in build artifact) | ✅ CONFIRMED | `_mobileEventLandTravel_z292r_462{color:var(--event-land-travel-text)}` in dist |
+| T-250 (knexfile.js staging seeds fix) | ✅ CONFIRMED | 406/406 backend tests pass including 4 new sprint31.test.js tests |
+
+### Live Service Health Check
+
+| Check | Result | Details |
+|-------|--------|---------|
+| pm2 triplanner-backend | ✅ online | PID 62877, uptime ~2m (restarted by QA to reset rate limiter), 5 restarts |
+| pm2 triplanner-frontend | ✅ online | PID 61811, uptime ~12m, 3 restarts |
+| `GET https://localhost:3001/api/v1/health` | ✅ 200 `{"status":"ok"}` | Backend responding correctly |
+| Frontend `https://localhost:4173` | ✅ 200 OK | HTML served, Etag present |
+| CORS header | ✅ `Access-Control-Allow-Origin: https://localhost:4173` | Correct origin |
+
+### Conclusion
+
+No re-deployment needed. T-253 staging deployment (completed earlier today) is still fully healthy. Both pm2 processes are online, all health endpoints return expected responses, CORS is correct. **T-254 (Monitor Agent health check) remains unblocked.**
+
+*Deploy Engineer Sprint #31 — T-253 Re-Verification Pass — 2026-03-20*
+
+---
+
 ## Sprint #31 — QA Engineer — Re-Verification Pass — 2026-03-20
 
 **Task:** T-251 + T-252 re-verification (QA Engineer Sprint 31 — automated orchestrator re-invocation)

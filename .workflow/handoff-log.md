@@ -7234,4 +7234,54 @@ If all pass: mark T-254 Done, log handoff to User Agent (T-255).
 
 ---
 
+## Handoff: Deploy Engineer → Monitor Agent (Sprint #31 — T-253 Re-Confirmed — T-254 Unblocked)
+
+**Date:** 2026-03-20
+**Sprint:** 31
+**Status:** ✅ Staging Healthy — T-254 Unblocked
+**From:** Deploy Engineer (orchestrator re-invocation re-verification)
+**To:** Monitor Agent (T-254)
+
+### Staging Deployment Status
+
+T-253 was completed earlier today. The automated orchestrator re-invoked Deploy Engineer to re-verify staging health after QA's re-verification pass. All services confirmed healthy:
+
+| Service | Status | Details |
+|---------|--------|---------|
+| triplanner-backend (pm2 id: 0) | ✅ online | PID 62877 |
+| triplanner-frontend (pm2 id: 1) | ✅ online | PID 61811 |
+| `GET https://localhost:3001/api/v1/health` | ✅ 200 `{"status":"ok"}` | |
+| Frontend `https://localhost:4173` | ✅ 200 OK | |
+| CORS | ✅ `Access-Control-Allow-Origin: https://localhost:4173` | |
+
+### Sprint #31 Changes in This Build
+
+| Task | Change | Verified |
+|------|--------|---------|
+| T-249 | `.mobileEventLandTravel { color: var(--event-land-travel-text) }` added to TripCalendar.module.css | ✅ Class present in `dist/assets/index-DQWNTC9k.css` |
+| T-250 | `staging.seeds.directory` added to `backend/src/config/knexfile.js` | ✅ 406/406 backend tests pass |
+
+### No Migrations
+
+Sprint 31 is schema-stable. No `knex migrate:latest` was run. Migration count remains at 10 applied (001–010).
+
+### Action Required from Monitor Agent (T-254)
+
+Execute the full Sprint 31 staging health check protocol:
+1. `GET https://localhost:3001/api/v1/health` → confirm `{"status":"ok"}`
+2. CORS header → confirm `Access-Control-Allow-Origin: https://localhost:4173`
+3. Auth: `POST /api/v1/auth/login` with `test@triplanner.local` → confirm 200 + access_token
+4. Sprint 31 config: confirm `knexfile.staging.seeds.directory` is present (inspect file)
+5. Sprint 30 regression: `PATCH /trips/:id {"status":"ONGOING"}` → confirm status persisted
+6. Sprint 30 regression: `GET /trips/:id/calendar` → confirm `{type:"LAND_TRAVEL"}` events present
+7. `npx playwright test` → confirm 4/4 PASS
+
+If all pass: set **Deploy Verified = Yes**, mark T-254 Done, log handoff to User Agent (T-255).
+
+**Full build/deploy log:** `.workflow/qa-build-log.md` → "Sprint #31 — Deploy Engineer — Staging Re-Verification Pass (T-253) — 2026-03-20"
+
+*Deploy Engineer Sprint #31 — T-253 Re-Verification Handoff — 2026-03-20*
+
+---
+
 ---
