@@ -7471,3 +7471,64 @@ Sprint 31 is clean. The two targeted backlog fixes (T-249 mobile CSS, T-250 knex
 *User Agent Sprint #31 — T-248 + T-255 Complete — 2026-03-20*
 
 ---
+
+## Handoff: Backend Engineer → Frontend Engineer (Sprint #32 — T-257 + T-258 API Contracts Ready — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 32
+**Status:** Contracts published
+**From:** Backend Engineer
+**To:** Frontend Engineer
+
+### Summary
+
+Sprint 32 API contracts have been published in `api-contracts.md` (Sprint 32 section). No frontend changes are needed this sprint — this handoff is for informational awareness only.
+
+**T-257 (Documentation only):**
+- Added a note to the `GET /api/v1/trips/:id/calendar` endpoint clarifying the wrapped response shape (`{ data: { trip_id, events: [] } }` vs. the flat `{ data: [] }` used by other list endpoints).
+- Added a curl + HTTPS usage note (`--http1.1` flag) to avoid HTTP/2 body framing issues.
+- No API behavior changes. No frontend impact.
+
+**T-258 (Behavioral change — stays category):**
+- `POST /api/v1/trips/:tripId/stays` and `PATCH /api/v1/trips/:tripId/stays/:id` now accept case-insensitive `category` input (e.g., `"hotel"` → normalized to `"HOTEL"` before validation).
+- The frontend already sends uppercase values, so **no frontend changes are required**.
+- Response shapes are unchanged.
+
+**No action required from Frontend Engineer this sprint.**
+
+---
+
+## Handoff: Backend Engineer → QA Engineer (Sprint #32 — T-257 + T-258 Contracts for Testing Reference — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 32
+**Status:** Contracts published — implementation pending
+**From:** Backend Engineer
+**To:** QA Engineer
+
+### Summary
+
+Sprint 32 API contracts are published in `api-contracts.md`. QA reference for T-259:
+
+**T-257 (Documentation only — no code to test):**
+- Verify the calendar endpoint note and curl workaround note are present and accurate in `api-contracts.md`.
+
+**T-258 (Stay category case normalization — test plan):**
+| Test | Input | Expected |
+|------|-------|----------|
+| POST with lowercase `"hotel"` | `{ "category": "hotel", ... }` | 201; stored `HOTEL` |
+| POST with lowercase `"airbnb"` | `{ "category": "airbnb", ... }` | 201; stored `AIRBNB` |
+| POST with mixed case `"Vrbo"` | `{ "category": "Vrbo", ... }` | 201; stored `VRBO` |
+| POST with uppercase `"HOTEL"` (regression) | `{ "category": "HOTEL", ... }` | 201; stored `HOTEL` |
+| POST with invalid `"motel"` | `{ "category": "motel", ... }` | 400 `VALIDATION_ERROR` |
+| PATCH with lowercase `"airbnb"` | `{ "category": "airbnb" }` | 200; stored `AIRBNB` |
+
+**Security checklist items for T-258:**
+- No SQL injection vector introduced (normalization is `.toUpperCase()` on a string, not concatenated into queries)
+- Input normalization happens before validation (correct order)
+- No secrets in code
+- All 406+ existing backend tests must still pass after T-258
+
+**T-258 implementation will be logged here when it reaches In Review.**
+
+---

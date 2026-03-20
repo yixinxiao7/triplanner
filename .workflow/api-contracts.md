@@ -7376,3 +7376,154 @@ All 30 endpoints defined across Sprints 1–30 remain in force and unchanged.
 ---
 
 *Sprint 31 contracts published by Backend Engineer 2026-03-20. No new endpoints. No contract changes. No schema migrations. T-250 is a pure knexfile.js config fix (staging seeds directory) with zero API surface impact. All 30 endpoints from Sprints 1–30 remain in force. Test baseline entering Sprint 31: 402/402 backend | 495/495 frontend | 4/4 Playwright.*
+
+---
+
+## Sprint 32 — API Contracts
+
+**Sprint Goal:** Post-production verification, API documentation updates (T-257), and stay category case normalization (T-258).
+
+**Published by:** Backend Engineer
+**Date:** 2026-03-20
+**Status:** Published
+
+---
+
+### T-257 — Documentation Updates (No Code Changes)
+
+#### Update 1: Calendar Endpoint Response Shape Note (FB-132)
+
+**Applies to:** `GET /api/v1/trips/:id/calendar` (Sprint 25 / T-212)
+
+> **Note:** This endpoint returns a wrapped object `{ data: { trip_id, events: [] } }` rather than a flat array. Access events via `response.data.events`. This differs from other sub-resource list endpoints (e.g., `GET /api/v1/trips/:id/flights`) which return `{ data: [...] }` directly. The `trip_id` field provides context when the response is consumed outside the original request scope (e.g., cached or passed between components). This is intentional and will not change.
+
+#### Update 2: curl HTTPS Usage Note (FB-131)
+
+**Applies to:** All HTTPS endpoints
+
+> **API Usage Note — curl + HTTPS:** When using `curl` to send POST/PATCH/PUT requests with JSON bodies against HTTPS endpoints, add `--http1.1` to avoid HTTP/2 body framing issues that can cause `INVALID_JSON` errors. Example:
+>
+> ```bash
+> curl --http1.1 -sk -X POST \
+>   -H "Content-Type: application/json" \
+>   -H "Authorization: Bearer <token>" \
+>   -d '{"name":"My Trip"}' \
+>   https://triplanner-backend-sp61.onrender.com/api/v1/trips
+> ```
+>
+> This is a developer tooling note only — the application itself (frontend ↔ backend) is not affected. The issue occurs because `curl` defaults to HTTP/2 on HTTPS connections, and some HTTP/2 implementations have body framing inconsistencies with `-d` payloads.
+
+---
+
+### T-258 — Stay Category Case Normalization (Behavioral Change)
+
+**Applies to:** `POST /api/v1/trips/:tripId/stays` (Sprint 1 / T-006) and `PATCH /api/v1/trips/:tripId/stays/:id` (Sprint 1 / T-006)
+
+**Change type:** Behavioral — no new endpoints, no schema changes, no new response shapes.
+
+**Summary:** The `category` field on stays endpoints now accepts case-insensitive input. The server normalizes the value to uppercase before validation and storage. This is a backwards-compatible change — existing clients sending uppercase values are unaffected.
+
+#### Updated Validation Behavior
+
+**Before (Sprint 1–31):**
+| Input | Result |
+|-------|--------|
+| `"HOTEL"` | ✅ 201 Created |
+| `"hotel"` | ❌ 400 `VALIDATION_ERROR` — "Category must be one of: HOTEL, AIRBNB, VRBO" |
+| `"Hotel"` | ❌ 400 `VALIDATION_ERROR` |
+
+**After (Sprint 32 — T-258):**
+| Input | Result | Stored Value |
+|-------|--------|-------------|
+| `"HOTEL"` | ✅ 201 Created | `HOTEL` |
+| `"hotel"` | ✅ 201 Created | `HOTEL` |
+| `"Hotel"` | ✅ 201 Created | `HOTEL` |
+| `"airbnb"` | ✅ 201 Created | `AIRBNB` |
+| `"Vrbo"` | ✅ 201 Created | `VRBO` |
+| `"motel"` | ❌ 400 `VALIDATION_ERROR` | — |
+| `""` | ❌ 400 `VALIDATION_ERROR` | — |
+
+**Normalization rule:** `category = category.toUpperCase()` applied before enum validation. The enum check still requires the value to be one of `HOTEL`, `AIRBNB`, `VRBO` — only the casing requirement is relaxed.
+
+**Affected endpoints:**
+
+1. **POST /api/v1/trips/:tripId/stays** — `category` field in request body is normalized to uppercase before validation.
+2. **PATCH /api/v1/trips/:tripId/stays/:id** — `category` field (if provided) in request body is normalized to uppercase before validation.
+
+**Response shapes:** Unchanged. The `category` field in response bodies has always been uppercase and remains so.
+
+**Error response (unchanged for invalid categories):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "category": "Category must be one of: HOTEL, AIRBNB, VRBO"
+    }
+  }
+}
+```
+
+**Schema changes:** None. The PostgreSQL CHECK constraint on the `stays.category` column still requires uppercase values. Normalization happens in the application layer before the value reaches the database.
+
+**Test plan (for QA reference):**
+| Test | Input | Expected |
+|------|-------|----------|
+| POST with lowercase `"hotel"` | `{ "category": "hotel", ... }` | 201; stored `HOTEL` |
+| POST with lowercase `"airbnb"` | `{ "category": "airbnb", ... }` | 201; stored `AIRBNB` |
+| POST with mixed case `"Vrbo"` | `{ "category": "Vrbo", ... }` | 201; stored `VRBO` |
+| POST with uppercase `"HOTEL"` (regression) | `{ "category": "HOTEL", ... }` | 201; stored `HOTEL` |
+| POST with invalid `"motel"` | `{ "category": "motel", ... }` | 400 `VALIDATION_ERROR` |
+| PATCH with lowercase `"airbnb"` | `{ "category": "airbnb" }` | 200; stored `AIRBNB` |
+
+---
+
+### Sprint 32 — No Schema Changes
+
+No database migrations are introduced in Sprint 32. The migration set remains at 10 applied migrations (001–010), identical to Sprint 31.
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 32. Deploy Engineer: no `knex migrate:latest` run required.**
+
+---
+
+### All Existing Contracts — Sprint 32 Status
+
+All 30 endpoints defined across Sprints 1–30 remain in force. T-258 introduces a behavioral change (case normalization) to the stays POST and PATCH endpoints but does not alter their method, path, request shape, response shape, or error codes.
+
+| Sprint | Endpoint | Sprint 32 Status |
+|--------|----------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/login` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ **T-258: category now case-insensitive** (normalized to uppercase before validation) |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ **T-258: category now case-insensitive** (normalized to uppercase before validation) |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Unchanged (T-257 adds documentation note only — response shape is unchanged) |
+
+---
+
+*Sprint 32 contracts published by Backend Engineer 2026-03-20. No new endpoints. T-257 is documentation-only (calendar response shape note + curl --http1.1 workaround). T-258 is a behavioral change to stays POST/PATCH (case-insensitive category input, normalized to uppercase). No schema migrations. All 30 endpoints from Sprints 1–30 remain in force. Test baseline entering Sprint 32: 406/406 backend | 496/496 frontend | 4/4 Playwright.*
