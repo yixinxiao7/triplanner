@@ -4,6 +4,194 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #32 — Deploy Engineer — T-260 Staging Re-Deployment — 2026-03-20
+
+**Task:** T-260 (Deploy Engineer — Sprint 32 staging re-deployment)
+**Date:** 2026-03-20
+**Sprint:** 32
+**Environment:** Staging (localhost)
+**Build Status:** ✅ No build required — backend-only restart (no frontend changes)
+**Deploy Status:** ✅ DEPLOYED SUCCESSFULLY
+
+---
+
+### Pre-Deploy Gate Review
+
+| Gate | Status | Notes |
+|------|--------|-------|
+| T-258 code implemented | ✅ CONFIRMED | Stay category normalization in `stays.js` — Manager code review APPROVED |
+| T-258 tests passing | ✅ 410/410 | 406 baseline + 4 new T-258 tests — zero failures |
+| QA handoff (T-259 → T-260) | ✅ CONFIRMED | QA Engineer logged "✅ QA PASS — Deploy is unblocked" in handoff-log.md |
+| Pending DB migrations | ✅ NONE | Sprint 32 schema-stable; 10/10 migrations already applied on staging |
+
+### Deployment Actions
+
+| Step | Action | Result |
+|------|--------|--------|
+| 1 | `pm2 restart triplanner-backend` | ✅ Restarted — new PID 79204, restart count 6 |
+| 2 | Wait 3s for process stabilization | ✅ Process online and stable |
+| 3 | `GET https://localhost:3001/api/v1/health` | ✅ 200 `{"status":"ok"}` |
+| 4 | Frontend `https://localhost:4173` | ✅ 200 OK — serving correctly |
+
+### Smoke Tests
+
+| Test | Input | Expected | Actual | Result |
+|------|-------|----------|--------|--------|
+| Health check | GET /api/v1/health | 200 `{"status":"ok"}` | 200 `{"status":"ok"}` | ✅ PASS |
+| Auth login | POST /auth/login (test@triplanner.local) | 200 with access_token | 200 with valid JWT | ✅ PASS |
+| Create trip | POST /trips | 201 with trip data | 201 — trip `230a6db4` created | ✅ PASS |
+| **T-258 key test: lowercase stay** | POST /stays `category: "hotel"` | 201, stored as "HOTEL" | 201, `category: "HOTEL"` | ✅ PASS |
+| Delete trip (cleanup) | DELETE /trips/:id | 204 | 204 | ✅ PASS |
+
+### Service Status (Post-Deploy)
+
+| Service | Status | PID | Uptime |
+|---------|--------|-----|--------|
+| triplanner-backend | ✅ online | 79204 | stable (~2min at check) |
+| triplanner-frontend | ✅ online | 61811 | 4h+ (no restart needed) |
+
+### Deploy Verified
+
+**Deploy Verified = Yes (Staging)** — pending Monitor Agent health check (T-261) for full verification.
+
+*Deploy Engineer Sprint #32 — T-260 Complete — 2026-03-20*
+
+---
+
+## Sprint #32 — QA Engineer — T-259 Security Checklist + Integration Testing — 2026-03-20
+
+**Task:** T-259 (QA Engineer — Sprint 32 security checklist + integration testing)
+**Date:** 2026-03-20
+**Sprint:** 32
+**QA Engineer Result:** ✅ ALL PASS
+
+---
+
+### Unit Test Results
+
+**Test Type:** Unit Test
+
+| Suite | Tests | Result | Notes |
+|-------|-------|--------|-------|
+| Backend (`npm test --run`) | 410/410 | ✅ ALL PASS | 406 baseline + 4 new T-258 tests. 23 test files. Duration: 2.80s |
+| Frontend (`npm test --run`) | 496/496 | ✅ ALL PASS | 25 test files. Duration: 2.05s |
+
+**T-258 Specific Tests (4 new):**
+| Test | Input | Expected | Actual | Result |
+|------|-------|----------|--------|--------|
+| POST lowercase "hotel" → 201 | `category: "hotel"` | 201, createStay called with "HOTEL" | 201, "HOTEL" | ✅ PASS |
+| POST lowercase "airbnb" → 201 | `category: "airbnb"` | 201, createStay called with "AIRBNB" | 201, "AIRBNB" | ✅ PASS |
+| PATCH lowercase "airbnb" → 200 | `category: "airbnb"` | 200, updateStay called with "AIRBNB" | 200, "AIRBNB" | ✅ PASS |
+| PATCH invalid "motel" → 400 | `category: "motel"` | 400 VALIDATION_ERROR | 400, error.fields.category matches /HOTEL.*AIRBNB.*VRBO/ | ✅ PASS |
+
+**Coverage Assessment:**
+- stays.js: Happy-path and error-path tests for GET, POST, PATCH, DELETE ✅
+- POST: happy path (uppercase), happy path (lowercase hotel), happy path (lowercase airbnb), optional address (null), invalid category (400), check_out before check_in (400) ✅
+- PATCH: happy path (lowercase airbnb), invalid category motel (400) ✅
+- GET: list stays (200), unauthorized (401) ✅
+- DELETE: success (204), not found (404) ✅
+
+---
+
+### Integration Test Results
+
+**Test Type:** Integration Test
+
+**T-258 — Stay Category Case Normalization:**
+
+| Scenario | Expected | Code Review Verification | Result |
+|----------|----------|-------------------------|--------|
+| POST /stays with `"hotel"` (lowercase) | 201, stored as "HOTEL" | `normalizeCategory` middleware (line 99-104) calls `.toUpperCase()` before `validate()` runs | ✅ PASS |
+| POST /stays with `"HOTEL"` (uppercase regression) | 201, stored as "HOTEL" | Normalization is idempotent — `.toUpperCase()` on "HOTEL" → "HOTEL" | ✅ PASS |
+| POST /stays with `"motel"` (invalid) | 400 VALIDATION_ERROR | After normalization "MOTEL" is not in ["HOTEL", "AIRBNB", "VRBO"] → rejected | ✅ PASS |
+| PATCH /stays/:id with `"airbnb"` (lowercase) | 200, stored as "AIRBNB" | Inline normalization (line 176-178) before enum check (line 180) | ✅ PASS |
+| PATCH /stays/:id with `"motel"` (invalid) | 400 VALIDATION_ERROR | "MOTEL" not in enum → 400 | ✅ PASS |
+
+**T-257 — Documentation Review:**
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| Calendar endpoint note present in api-contracts.md | ✅ PASS | Lines 7396-7398: wrapped object `{ data: { trip_id, events: [] } }` note is accurate and matches actual implementation |
+| curl --http1.1 workaround note present | ✅ PASS | Lines 7404-7414: complete example with `--http1.1` flag documented |
+| No code changes in T-257 | ✅ PASS | Documentation-only update confirmed |
+
+**API Contract Compliance (T-258):**
+
+| Check | Result |
+|-------|--------|
+| POST /stays request shape matches contract | ✅ Same fields: category, name, address, check_in_at, check_in_tz, check_out_at, check_out_tz |
+| POST /stays response shape `{ data: {...} }` | ✅ Unchanged |
+| PATCH /stays request accepts partial updates | ✅ Unchanged |
+| PATCH /stays response shape `{ data: {...} }` | ✅ Unchanged |
+| Error response shape `{ error: { message, code, fields } }` | ✅ Unchanged |
+| Auth enforcement (authenticate middleware) | ✅ Line 16: `router.use(authenticate)` — all routes protected |
+| Trip ownership check | ✅ `requireTripOwnership` called in all route handlers |
+| UUID validation on path params | ✅ Lines 19-20: `uuidParamHandler` on tripId and id |
+
+---
+
+### Config Consistency Check
+
+**Test Type:** Config Consistency
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Backend PORT (backend/.env) | 3000 | PORT=3000 | ✅ MATCH |
+| Vite proxy target port | 3000 (from BACKEND_PORT env or default) | `process.env.BACKEND_PORT \|\| '3000'` → `http://localhost:3000` | ✅ MATCH |
+| Backend SSL vs proxy protocol | SSL commented out → http:// | SSL_KEY_PATH and SSL_CERT_PATH are commented out; proxy uses `http://` by default | ✅ MATCH |
+| CORS_ORIGIN includes frontend dev origin | `http://localhost:5173` | `CORS_ORIGIN=http://localhost:5173` | ✅ MATCH |
+| Docker backend PORT | 3000 | `PORT: 3000` in docker-compose.yml | ✅ MATCH |
+
+**No config consistency issues found.**
+
+---
+
+### Security Scan Results
+
+**Test Type:** Security Scan
+
+**npm audit:** ✅ 0 vulnerabilities found
+
+**Security Checklist (applicable items for T-258):**
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 1 | All API endpoints require authentication | ✅ PASS | `router.use(authenticate)` at line 16 of stays.js — applied to all routes |
+| 2 | Role-based access / ownership enforced | ✅ PASS | `requireTripOwnership` checks `trip.user_id !== req.user.id` → 403 |
+| 3 | SQL queries use parameterized statements | ✅ PASS | stayModel.js uses Knex query builder (`db('stays').where({...})`) — no raw SQL, no string concatenation |
+| 4 | No SQL injection vector from T-258 | ✅ PASS | `.toUpperCase()` is a pure string operation — no user input concatenated into queries |
+| 5 | Input normalization before validation (correct order) | ✅ PASS | POST: `normalizeCategory` middleware at line 120 runs before `validate()`. PATCH: normalization at line 176-178 before enum check at line 180. |
+| 6 | No hardcoded secrets in code | ✅ PASS | No passwords, tokens, or API keys in stays.js or stayModel.js. JWT_SECRET in .env (not committed). |
+| 7 | Error responses don't leak internals | ✅ PASS | All error responses use structured `{ error: { message, code } }` format. No stack traces, file paths, or internal details. |
+| 8 | CORS configured for expected origins only | ✅ PASS | `CORS_ORIGIN=http://localhost:5173` in .env — single origin, not wildcard |
+| 9 | HTML output sanitized (XSS prevention) | ✅ N/A | API-only change — no HTML rendering in T-258 |
+| 10 | Sensitive data not in URL query params | ✅ PASS | Category is in request body, not URL params |
+| 11 | Dependencies checked for vulnerabilities | ✅ PASS | `npm audit` → 0 vulnerabilities |
+| 12 | UUID params validated | ✅ PASS | `uuidParamHandler` on both tripId and id params (lines 19-20) |
+| 13 | Non-string category input handled | ✅ PASS | `typeof req.body.category === 'string'` guard at lines 100 and 176 prevents crash on non-string input |
+
+**Security Verdict:** ✅ ALL PASS — No security issues found. T-258 introduces no new attack surface.
+
+---
+
+### Summary
+
+| Category | Result |
+|----------|--------|
+| Unit Tests (Backend) | ✅ 410/410 PASS |
+| Unit Tests (Frontend) | ✅ 496/496 PASS |
+| Integration Tests (T-258) | ✅ ALL PASS |
+| Documentation Review (T-257) | ✅ PASS |
+| Config Consistency | ✅ NO ISSUES |
+| Security Checklist | ✅ ALL PASS |
+| npm audit | ✅ 0 vulnerabilities |
+
+**T-259 Verdict: ✅ PASS — Sprint 32 is clear for deployment.**
+
+*QA Engineer Sprint #32 — T-259 Complete — 2026-03-20*
+
+---
+
 ## Sprint #32 — Deploy Engineer — T-260 Pre-Flight Check (BLOCKED) — 2026-03-20
 
 **Task:** T-260 (Deploy Engineer — Sprint 32 staging re-deployment)

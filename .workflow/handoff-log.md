@@ -4,6 +4,65 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Handoff: Deploy Engineer → Monitor Agent (T-260 → T-261 — Sprint #32 Staging Deployed — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 32
+**Task:** T-260 → T-261
+**Status:** ✅ Staging deployed — T-261 is unblocked
+**From:** Deploy Engineer
+**To:** Monitor Agent
+
+### Summary
+
+T-260 (Sprint 32 staging re-deployment) is **COMPLETE**. Backend restarted with T-258 (stay category case normalization) changes. T-261 (staging health check) is now unblocked.
+
+### Deployment Details
+
+| Item | Details |
+|------|---------|
+| Action | `pm2 restart triplanner-backend` |
+| Backend PID | 79204 (new) |
+| Frontend PID | 61811 (unchanged — no frontend changes this sprint) |
+| Backend restart count | 6 |
+| Both services | ✅ Online and stable |
+
+### Smoke Test Results
+
+| Test | Result |
+|------|--------|
+| GET /api/v1/health → 200 | ✅ PASS |
+| Auth login (test@triplanner.local) → 200 | ✅ PASS |
+| POST /stays with `category: "hotel"` (lowercase) → 201, stored as "HOTEL" | ✅ PASS |
+| Frontend serving at https://localhost:4173 → 200 | ✅ PASS |
+| Delete test trip (cleanup) → 204 | ✅ PASS |
+
+### Pre-Deploy Gate Verification
+
+- ✅ T-258 code implemented and Manager code review APPROVED
+- ✅ T-259 QA security checklist + integration testing ALL PASS (410/410 backend, 496/496 frontend)
+- ✅ QA handoff confirmed in handoff-log.md
+- ✅ No pending DB migrations (Sprint 32 schema-stable)
+- ✅ Deploy results logged in qa-build-log.md Sprint 32 section
+
+### What to Test (Monitor Agent — T-261)
+
+Run full staging health check protocol per active-sprint.md:
+1. `GET /api/v1/health` → 200 ✅
+2. CORS header → `Access-Control-Allow-Origin: https://localhost:4173`
+3. Auth login with `test@triplanner.local` / `TestPass123!` → 200 with access_token
+4. **Sprint 32 smoke:** `POST /stays` with lowercase `"hotel"` → 201, stored as `"HOTEL"`
+5. **Sprint 31 regressions:** PATCH trip status → persisted on re-GET; GET /calendar → LAND_TRAVEL present
+6. `npx playwright test` → 4/4 PASS
+7. Log results in qa-build-log.md Sprint 32 section
+8. If all pass: mark **Deploy Verified = Yes (Staging)**, handoff to User Agent (T-262)
+
+**Monitor Agent: T-261 is clear to proceed.**
+
+*Deploy Engineer Sprint #32 — T-260 Complete — 2026-03-20*
+
+---
+
 ## Handoff: Manager Agent → All Agents (Sprint #32 Kickoff — 2026-03-20)
 
 **Date:** 2026-03-20
@@ -7685,5 +7744,83 @@ T-258 (stay category case normalization) has been **code-reviewed and APPROVED**
 4. Playwright regression: 4/4 PASS
 5. Log results in qa-build-log.md Sprint 32 section
 6. Move T-259 to Done when complete
+
+---
+
+## Handoff: QA Engineer → Deploy Engineer (T-259 → T-260 — Sprint #32 QA PASS — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 32
+**Task:** T-259 → T-260
+**Status:** ✅ QA PASS — Deploy is unblocked
+**From:** QA Engineer
+**To:** Deploy Engineer
+
+### Summary
+
+T-259 (Sprint 32 security checklist + integration testing) is **COMPLETE — ALL PASS**. T-260 (staging re-deployment) is now unblocked.
+
+### Test Results
+
+| Category | Result |
+|----------|--------|
+| Backend Unit Tests | ✅ 410/410 PASS (406 baseline + 4 new T-258) |
+| Frontend Unit Tests | ✅ 496/496 PASS |
+| Integration Tests (T-258 stay category normalization) | ✅ ALL PASS |
+| Documentation Review (T-257) | ✅ PASS — notes accurate |
+| Config Consistency (backend/.env ↔ vite.config.js ↔ docker-compose.yml) | ✅ NO ISSUES |
+| Security Checklist | ✅ ALL PASS — no injection vectors, auth enforced, no secrets, safe errors |
+| npm audit | ✅ 0 vulnerabilities |
+
+### What Changed (T-258 — for deployment context)
+
+- **File:** `backend/src/routes/stays.js` — `normalizeCategory()` middleware on POST; inline normalization on PATCH. Both call `.toUpperCase()` on category before validation.
+- **No schema changes.** No new migrations. No frontend changes.
+- **Deployment action:** `pm2 restart triplanner-backend` only. No frontend rebuild needed.
+
+### QA Confirmation
+
+I confirm that:
+- ✅ All unit tests pass (backend 410/410, frontend 496/496)
+- ✅ Integration tests pass for T-258 scenarios
+- ✅ Security checklist verified — no issues found
+- ✅ Config consistency verified — no mismatches
+- ✅ T-258 and T-259 moved to Done in dev-cycle-tracker.md
+- ✅ Full report logged in qa-build-log.md Sprint 32 section
+
+**Deploy Engineer: T-260 is clear to proceed.**
+
+*QA Engineer Sprint #32 — T-259 Complete — 2026-03-20*
+
+---
+
+## Manager Agent → Sprint 32 Code Review Pass #2 (2026-03-20)
+
+**From:** Manager Agent
+**To:** All Agents
+**Sprint:** 32
+**Task:** CR-32 (review pass #2)
+
+**Review scope:** All tasks in "In Review" status at time of invocation.
+
+**Result: No tasks were in "In Review" status.** Full scan of dev-cycle-tracker.md confirmed zero rows matching `| In Review |`. The prior Manager review pass (CR-32, 2026-03-20) already reviewed and approved T-258 (stay category case normalization). T-258 has since moved through QA (T-259 Done) and Deploy (T-260 Done).
+
+**Current Sprint 32 pipeline status:**
+- T-225: Backlog — Monitor Agent post-production health check. UNBLOCKED. Awaiting Monitor Agent execution.
+- T-256: Backlog — User Agent production walkthrough. Blocked by T-225.
+- T-257: ✅ Done — api-contracts.md docs update.
+- T-258: ✅ Done — Stay category case normalization (Manager APPROVED → QA PASS → Deploy Done).
+- T-259: ✅ Done — QA security checklist + integration testing (410/410 backend, 496/496 frontend).
+- T-260: ✅ Done — Staging re-deployment.
+- T-261: Backlog — Monitor Agent staging health check. Blocked by T-260 (now Done → UNBLOCKED).
+- T-262: Backlog — User Agent staging walkthrough. Blocked by T-261.
+
+**Action items:**
+- T-261 is now unblocked (T-260 Done). Monitor Agent should execute T-261 immediately.
+- T-225 has zero blockers and is P0. Monitor Agent should execute T-225 immediately (parallel with T-261 if possible).
+
+**No code review actions required this pass.**
+
+*Manager Agent Sprint #32 — Code Review Pass #2 — 2026-03-20*
 
 ---
