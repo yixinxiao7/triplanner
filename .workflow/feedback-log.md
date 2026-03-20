@@ -535,3 +535,131 @@ The nested wrapper is intentional (includes `trip_id` for context) and the front
 
 ---
 
+### FB-133 — Land transportation calendar view shows only one day instead of full duration
+
+| Field | Value |
+|-------|-------|
+| Feedback | LAND_TRAVEL calendar events do not span the full travel duration and arrival day does not show exact arrival/drop-off time |
+| Sprint | 32 |
+| Category | Bug |
+| Severity | Major |
+| Status | New |
+| Related Task | — |
+
+**Description:** On the TripCalendar view, land transportation entries (trains, rental cars, etc.) are not rendered across their full duration the way hotel/stay events are. A multi-day rental car or train journey should span from the departure date to the arrival/drop-off date, similar to how stays display as multi-day bars on the calendar. Currently, the land travel event appears to render on a single day only.
+
+Additionally, the calendar view for the arrival day (or drop-off day for rental cars) should display the exact arrival/drop-off time, so the user knows when they arrive at their destination or when a rental car is due back. This is important for trip planning precision — users need to know what time they're free on the arrival day.
+
+**Expected behavior:**
+1. Land travel events should span from `departure_date` to `arrival_date` on the calendar, matching the multi-day rendering used by STAY events.
+2. On the arrival/drop-off day, the calendar should show the exact arrival time (e.g., "Arrives 10:30 AM" or "Drop-off 2:00 PM").
+
+**Fix scope:** Frontend — `TripCalendar.jsx` (or related calendar rendering logic). The backend already returns `departure_date`, `arrival_date`, `departure_time`, and `arrival_time` for land travel events. This is a rendering/display issue only.
+
+---
+
+### FB-134 — Flight calendar view shows only one day instead of full duration
+
+| Field | Value |
+|-------|-------|
+| Feedback | FLIGHT calendar events do not span the full travel duration and arrival day does not show exact arrival time |
+| Sprint | 32 |
+| Category | Bug |
+| Severity | Major |
+| Status | New |
+| Related Task | — |
+
+**Description:** Same issue as FB-133 but for flights. On the TripCalendar view, flight events are not rendered across their full duration the way hotel/stay events are. A multi-day flight (e.g., overnight or long-haul with date change) should span from the departure date to the arrival date, matching the multi-day rendering used by STAY events. Currently, the flight event appears to render on a single day only.
+
+Additionally, the calendar view for the arrival day should display the exact arrival time, so the user knows when they land and what time they're free on the arrival day. This is critical for trip planning — users need to know their arrival time to plan ground transportation, hotel check-in, etc.
+
+**Expected behavior:**
+1. Flight events should span from departure date to arrival date on the calendar, matching the multi-day rendering used by STAY events.
+2. On the arrival day, the calendar should show the exact arrival time (e.g., "Arrives 3:45 PM").
+
+**Fix scope:** Frontend — `TripCalendar.jsx` (or related calendar rendering logic). The backend already returns `departure_at` and `arrival_at` (with full timestamps) for flight events. This is a rendering/display issue only. Should be implemented alongside FB-133 as the same pattern applies.
+
+---
+
+### FB-135 — Clicking "+x more" on calendar should scroll to activities section
+
+| Field | Value |
+|-------|-------|
+| Feedback | Clicking the "+x more" overflow indicator on a calendar day does not scroll the page to the activities section below |
+| Sprint | 32 |
+| Category | Feature Gap |
+| Severity | Minor |
+| Status | New |
+| Related Task | — |
+
+**Description:** On the TripCalendar view, when a day has more events than can be displayed, a "+x more" indicator is shown. Clicking this indicator currently does nothing (or has no visible effect). The expected behavior is that clicking "+x more" should smooth-scroll the page down to the activities/details section of the trip page so the user can see all events for that day in full detail.
+
+This follows the same click-to-scroll pattern already implemented for individual calendar event pills (e.g., LAND_TRAVEL click handler scrolls to `land-travels-section`). The "+x more" indicator should scroll to the relevant day's section or to the general activities section where all events are listed.
+
+**Fix scope:** Frontend — `TripCalendar.jsx` (or related calendar component). Add an `onClick` handler to the "+x more" element that calls `scrollToSection()` targeting the appropriate section (e.g., the activities section or the first hidden event's section for that day).
+
+---
+
+
+### FB-133 — Land transportation calendar view shows only one day instead of full duration
+
+| Field | Value |
+|-------|-------|
+| Feedback | LAND_TRAVEL calendar events do not span the full travel duration and arrival day does not show exact arrival/drop-off time |
+| Sprint | 32 |
+| Category | Bug |
+| Severity | Major |
+| Status | New |
+| Related Task | — |
+
+**Description:** On the TripCalendar view, land transportation entries (trains, rental cars, etc.) are not rendered across their full duration the way hotel/stay events are. A multi-day rental car or train journey should span from the departure date to the arrival/drop-off date, similar to how stays display as multi-day bars on the calendar. Currently, the land travel event appears to render on a single day only.
+
+Additionally, the calendar view for the arrival day (or drop-off day for rental cars) should display the exact arrival/drop-off time, so the user knows when they arrive at their destination or when a rental car is due back. This is important for trip planning precision — users need to know what time they're free on the arrival day.
+
+**Expected behavior:**
+1. Land travel events should span from `departure_date` to `arrival_date` on the calendar, matching the multi-day rendering used by STAY events.
+2. On the arrival/drop-off day, the calendar should show the exact arrival time (e.g., "Arrives 10:30 AM" or "Drop-off 2:00 PM").
+
+**Fix scope:** Frontend — `TripCalendar.jsx` (or related calendar rendering logic). The backend already returns `departure_date`, `arrival_date`, `departure_time`, and `arrival_time` for land travel events. This is a rendering/display issue only.
+
+---
+### FB-134 — Flight calendar view shows only one day instead of full duration
+
+| Field | Value |
+|-------|-------|
+| Feedback | FLIGHT calendar events do not span the full travel duration and arrival day does not show exact arrival time |
+| Sprint | 32 |
+| Category | Bug |
+| Severity | Major |
+| Status | New |
+| Related Task | — |
+
+**Description:** Same issue as FB-133 but for flights. On the TripCalendar view, flight events are not rendered across their full duration the way hotel/stay events are. A multi-day flight (e.g., overnight or long-haul with date change) should span from the departure date to the arrival date, matching the multi-day rendering used by STAY events. Currently, the flight event appears to render on a single day only.
+
+Additionally, the calendar view for the arrival day should display the exact arrival time, so the user knows when they land and what time they're free on the arrival day. This is critical for trip planning — users need to know their arrival time to plan ground transportation, hotel check-in, etc.
+
+**Expected behavior:**
+1. Flight events should span from departure date to arrival date on the calendar, matching the multi-day rendering used by STAY events.
+2. On the arrival day, the calendar should show the exact arrival time (e.g., "Arrives 3:45 PM").
+
+**Fix scope:** Frontend — `TripCalendar.jsx` (or related calendar rendering logic). The backend already returns `departure_at` and `arrival_at` (with full timestamps) for flight events. This is a rendering/display issue only. Should be implemented alongside FB-133 as the same pattern applies.
+
+---
+### FB-135 — Clicking "+x more" on calendar should scroll to activities section
+
+| Field | Value |
+|-------|-------|
+| Feedback | Clicking the "+x more" overflow indicator on a calendar day does not scroll the page to the activities section below |
+| Sprint | 32 |
+| Category | Feature Gap |
+| Severity | Minor |
+| Status | New |
+| Related Task | — |
+
+**Description:** On the TripCalendar view, when a day has more events than can be displayed, a "+x more" indicator is shown. Clicking this indicator currently does nothing (or has no visible effect). The expected behavior is that clicking "+x more" should smooth-scroll the page down to the activities/details section of the trip page so the user can see all events for that day in full detail.
+
+This follows the same click-to-scroll pattern already implemented for individual calendar event pills (e.g., LAND_TRAVEL click handler scrolls to `land-travels-section`). The "+x more" indicator should scroll to the relevant day's section or to the general activities section where all events are listed.
+
+**Fix scope:** Frontend — `TripCalendar.jsx` (or related calendar component). Add an `onClick` handler to the "+x more" element that calls `scrollToSection()` targeting the appropriate section (e.g., the activities section or the first hidden event's section for that day).
+
+---

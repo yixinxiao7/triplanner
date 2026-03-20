@@ -7404,16 +7404,6 @@ Both User Agent tasks for Sprint 31 are complete:
 - **T-248** (Sprint 30 carry-over walkthrough): All 3 Sprint 30 features verified end-to-end
 - **T-255** (Sprint 31 walkthrough): Sprint 31 features (mobile LAND_TRAVEL styling, knexfile seeds) verified
 
-### Sprint 30 Features — T-248 Results
-
-| Feature | Result |
-|---------|--------|
-| Trip status persistence (PLANNING → ONGOING → COMPLETED) | ✅ PASS — all three states persist after re-GET |
-| Flight timezone fix (T-240) | ✅ PASS — `6:50 AM ET` → stored as `10:50 UTC`, no double-conversion |
-| LAND_TRAVEL calendar events (T-242/T-243) | ✅ PASS — events appear with type, title, start_time, end_time; click-to-scroll wired |
-| COALESCE date regression (T-229) | ✅ PASS — PATCH dates return correct patched values |
-| CORS header | ✅ PASS — `Access-Control-Allow-Origin: https://localhost:4173` |
-
 ### Sprint 31 Features — T-255 Results
 
 | Feature | Result |
