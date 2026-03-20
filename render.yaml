@@ -50,8 +50,8 @@ services:
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
 
-      # CORS allowed origin — set to the Render frontend URL after both services are created
-      # Example: https://triplanner-frontend.onrender.com
+      # CORS allowed origin — set to the production frontend URL
+      # Production: https://triplanner.yixinx.com
       - key: CORS_ORIGIN
         sync: false
 

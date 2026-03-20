@@ -2553,8 +2553,8 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS (carry-over) | Infrastructure | Deploy Engineer | Blocked | P1 | L | 31 | Project owner must provision AWS RDS + Render account | ⚠️ 6TH ESCALATION. See docs/production-deploy-guide.md. |
-| T-225 | Monitor Agent: Post-production health check (carry-over) | Infrastructure | Monitor Agent | Backlog | P1 | S | 31 | T-224 | Full health check on production URLs; SameSite=None cookie; all endpoints healthy. |
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS (carry-over) | Infrastructure | Deploy Engineer | Done | P1 | L | 31 | — | ✅ Deployed by project owner 2026-03-20. Frontend: https://triplanner.yixinx.com. Backend: https://triplanner-backend-sp61.onrender.com. |
+| T-225 | Monitor Agent: Post-production health check (carry-over) | Infrastructure | Monitor Agent | Backlog | P1 | S | 31 | — | Full health check on production URLs; SameSite=None cookie; all endpoints healthy. Ready to run. |
 
 ---
 

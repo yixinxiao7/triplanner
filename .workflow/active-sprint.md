@@ -143,17 +143,14 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-### Phase 3 — Production Deployment (P1 — project owner gate — parallel with all phases)
+### Phase 3 — Production Deployment ✅ COMPLETE
 
-> ⚠️ **PROJECT OWNER ACTION REQUIRED (SIXTH ESCALATION):**
-> T-224 has been blocked for six consecutive sprints (Sprints 25, 26, 27, 28, 29, 30). All engineering work is 100% complete. The project owner must take the following human-only actions:
-> 1. **AWS:** Create an RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier) and provide the connection string
-> 2. **Render:** Apply the `render.yaml` Blueprint to provision frontend (static site) and backend (web service), both Ohio region, free plan
->
-> Documents ready: `render.yaml`, `docs/production-deploy-guide.md`, `backend/knexfile.js` (SSL + pool), `backend/src/app.js` (SameSite=None cookie for production). No agent can provision external cloud infrastructure.
+> **Production is live at `https://triplanner.yixinx.com`** (deployed 2026-03-20 by project owner).
+> - Frontend: `https://triplanner.yixinx.com` (Render static site, custom domain)
+> - Backend: `https://triplanner-backend-sp61.onrender.com` (Render web service)
 
-- [ ] **T-224** — Deploy Engineer: Production deployment to Render + AWS RDS ← Blocked on project owner
-- [ ] **T-225** — Monitor Agent: Post-production health check ← Blocked by T-224
+- [x] **T-224** — Deploy Engineer: Production deployment to Render + AWS RDS ✅ Deployed by project owner
+- [ ] **T-225** — Monitor Agent: Post-production health check ← Ready to run
 
 ---
 
@@ -249,7 +246,7 @@ By end of Sprint #31, the following must be verifiable:
 
 ## Blockers
 
-- **T-224/T-225 are blocked on the project owner.** This is the **sixth consecutive sprint** this escalation has been raised. AWS RDS + Render account provisioning is required before production deployment can proceed. All application code, `render.yaml`, and `docs/production-deploy-guide.md` are complete and production-ready. **No agent can resolve this — it requires a human action.**
+- **T-224 is DONE** — Production deployed by project owner at `https://triplanner.yixinx.com` (2026-03-20). T-225 (post-production health check) is now unblocked and ready to run.
 - **T-249 and T-250 should not start until T-248 feedback is triaged.** If T-248 reveals a Critical or Major bug, hotfix tasks (H-XXX) take P0 priority over all other Sprint 31 work.
 - No blockers on T-248 itself. Staging is verified healthy. User Agent must start immediately.
 
