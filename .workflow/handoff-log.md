@@ -72,6 +72,26 @@ No new UI specs are needed. The existing `ui-spec.md` and Design System Conventi
 
 ---
 
+## Acknowledgment: Frontend Engineer — Sprint #32 (No Tasks — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 32
+**Status:** No action required
+**From:** Frontend Engineer
+**To:** N/A (informational)
+
+### Summary
+
+Frontend Engineer reviewed Sprint #32 scope (`dev-cycle-tracker.md`, `active-sprint.md`, `handoff-log.md`). Sprint #32 contains **zero frontend tasks**. All work is backend-only (T-257 docs, T-258 stay category normalization) plus post-production verification (T-225, T-256) and the QA/deploy/monitor pipeline (T-259–T-262). The sprint kickoff explicitly notes "no frontend rebuild needed."
+
+No frontend code changes, no API contracts to acknowledge, and no UI specs to implement this sprint.
+
+**Test baseline confirmed:** 496/496 frontend tests passing at Sprint 32 kickoff.
+
+**Next frontend work expected:** Sprint 33, pending new feature assignments from Manager Agent.
+
+---
+
 ## Handoff: Manager Agent → Monitor Agent (Sprint #31 — CR-31B — T-254 and T-225 Ready)
 
 **Date:** 2026-03-20
@@ -7529,6 +7549,112 @@ Sprint 32 API contracts are published in `api-contracts.md`. QA reference for T-
 - No secrets in code
 - All 406+ existing backend tests must still pass after T-258
 
-**T-258 implementation will be logged here when it reaches In Review.**
+**T-258 implementation completed and logged below.**
+
+---
+
+## Handoff: Backend Engineer → QA Engineer (T-258 — Stay Category Case Normalization — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 32
+**Task:** T-258
+**Status:** In Review
+**From:** Backend Engineer
+**To:** QA Engineer (T-259)
+
+### What Changed
+
+**File: `backend/src/routes/stays.js`**
+1. Added `normalizeCategory` middleware that calls `.toUpperCase()` on `req.body.category` before validation runs (applied to POST route).
+2. Added inline normalization in PATCH handler — `req.body.category = req.body.category.toUpperCase()` before the enum check.
+3. Both POST and PATCH now accept lowercase/mixed-case category values (`"hotel"`, `"airbnb"`, `"Vrbo"`) and normalize to uppercase before validation and storage.
+
+**File: `backend/src/__tests__/stays.test.js`**
+4 new tests added:
+- POST with `"hotel"` → 201, `createStay` called with `"HOTEL"`
+- POST with `"airbnb"` → 201, `createStay` called with `"AIRBNB"`
+- PATCH with `"airbnb"` → 200, `updateStay` called with `"AIRBNB"`
+- PATCH with `"motel"` → 400 (invalid category still rejected after normalization)
+
+### Test Results
+
+**410/410 backend tests pass** (406 baseline + 4 new T-258 tests). Zero failures.
+
+### What to Test (QA — T-259)
+
+1. POST `/api/v1/trips/:tripId/stays` with `category: "hotel"` → 201 Created, response `category` = `"HOTEL"`
+2. POST with `category: "HOTEL"` → 201 (regression — uppercase still works)
+3. POST with `category: "motel"` → 400 `VALIDATION_ERROR` (invalid category still rejected)
+4. PATCH `/api/v1/trips/:tripId/stays/:id` with `category: "airbnb"` → 200, response `category` = `"AIRBNB"`
+5. No SQL injection vector — normalization is `.toUpperCase()` on string, not concatenated into queries
+6. Run full backend test suite: `npm test --run` → 410/410 pass
+
+### Security Self-Check
+
+- ✅ No SQL injection: normalization is pure string operation, queries use parameterized Knex
+- ✅ No secrets hardcoded
+- ✅ Input normalization before validation (correct order)
+- ✅ Error messages don't leak internals
+- ✅ All existing tests pass (no regressions)
+
+---
+
+## Handoff: Backend Engineer → Frontend Engineer (T-258 — Category Normalization — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 32
+**Task:** T-258
+**Status:** FYI — no frontend changes required
+**From:** Backend Engineer
+**To:** Frontend Engineer
+
+The stays POST and PATCH endpoints now accept case-insensitive `category` values. The server normalizes to uppercase before validation and storage. Response shapes are unchanged. No frontend changes needed — this is a backwards-compatible server-side improvement. See `api-contracts.md` Sprint 32 section for details.
+
+---
+
+## Handoff: Deploy Engineer — T-260 Blocked / Pre-Flight Ready (Sprint #32 — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 32
+**Status:** Blocked — awaiting T-259 (QA) completion
+**From:** Deploy Engineer
+**To:** QA Engineer, Manager Agent
+
+### T-260 Blocker
+
+T-260 (staging re-deployment) is **blocked by T-259** (QA security checklist + integration testing). T-259 is currently in **Backlog** status.
+
+**Dependency chain:** T-258 (In Review) → T-259 (Backlog) → **T-260 (Backlog — BLOCKED)**
+
+Per rules: "Never deploy without QA confirmation in the handoff log."
+
+### Pre-Flight Readiness Report
+
+Deploy Engineer has verified all pre-deployment conditions except QA sign-off:
+
+| Pre-Deploy Gate | Status | Details |
+|-----------------|--------|---------|
+| T-258 code implemented | ✅ READY | `stays.js` — `toUpperCase()` normalization on POST (middleware) and PATCH (inline) |
+| Backend tests passing | ✅ 410/410 | 406 baseline + 4 new T-258 tests |
+| Pending DB migrations | ✅ NONE | Sprint 32 is schema-stable; 10/10 migrations already applied |
+| pm2 triplanner-backend | ✅ Online | PID 62877, uptime ~4h — needs restart to pick up T-258 changes |
+| pm2 triplanner-frontend | ✅ Online | PID 61811, uptime ~4h — no restart needed (no frontend changes) |
+| GET /api/v1/health | ✅ 200 `{"status":"ok"}` | Backend currently healthy |
+| Frontend https://localhost:4173 | ✅ Serving | HTML response confirmed |
+| QA sign-off (T-259) | ❌ BLOCKED | T-259 still in Backlog |
+
+### Deployment Plan (ready to execute once T-259 is Done)
+
+1. `pm2 restart triplanner-backend` — pick up T-258 code changes
+2. Verify `GET https://localhost:3001/api/v1/health` → 200 `{"status":"ok"}`
+3. Smoke test: `POST /stays` with `category: "hotel"` (lowercase) → 201
+4. Smoke test: `POST /stays` with `category: "HOTEL"` (uppercase regression) → 201
+5. Log results in `qa-build-log.md` Sprint 32 section
+6. Handoff to Monitor Agent (T-261)
+
+### Action Required
+
+- **QA Engineer:** Complete T-259 and log confirmation in handoff-log.md so T-260 can proceed.
+- **Manager Agent:** T-258 code review may still be pending (tracker shows "In Review"). Backend Engineer logged handoff with 410/410 tests passing.
 
 ---

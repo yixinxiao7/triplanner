@@ -149,6 +149,47 @@ describe('POST /api/v1/trips/:tripId/stays', () => {
     expect(res.body.error.fields.category).toMatch(/HOTEL.*AIRBNB.*VRBO/);
   });
 
+  // T-258 — Stay category case normalization
+  it('happy path: creates stay with lowercase category "hotel" → 201, stored as HOTEL', async () => {
+    stayModel.createStay.mockResolvedValue({ ...mockStay, category: 'HOTEL' });
+
+    const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/stays`, {
+      category: 'hotel',
+      name: 'Lowercase Hotel',
+      address: '123 Test St',
+      check_in_at: '2026-08-07T20:00:00.000Z',
+      check_in_tz: 'America/Los_Angeles',
+      check_out_at: '2026-08-09T15:00:00.000Z',
+      check_out_tz: 'America/Los_Angeles',
+    }, AUTH);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.category).toBe('HOTEL');
+    // Verify createStay was called with uppercase category
+    expect(stayModel.createStay).toHaveBeenCalledWith(
+      expect.objectContaining({ category: 'HOTEL' })
+    );
+  });
+
+  it('happy path: creates stay with lowercase category "airbnb" → 201, stored as AIRBNB', async () => {
+    stayModel.createStay.mockResolvedValue({ ...mockStay, category: 'AIRBNB', name: 'Nice Airbnb' });
+
+    const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/stays`, {
+      category: 'airbnb',
+      name: 'Nice Airbnb',
+      check_in_at: '2026-08-07T20:00:00.000Z',
+      check_in_tz: 'America/Los_Angeles',
+      check_out_at: '2026-08-09T15:00:00.000Z',
+      check_out_tz: 'America/Los_Angeles',
+    }, AUTH);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.category).toBe('AIRBNB');
+    expect(stayModel.createStay).toHaveBeenCalledWith(
+      expect.objectContaining({ category: 'AIRBNB' })
+    );
+  });
+
   it('error path: returns 400 when check_out is before check_in', async () => {
     const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/stays`, {
       category: 'HOTEL',
@@ -161,6 +202,39 @@ describe('POST /api/v1/trips/:tripId/stays', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.fields.check_out_at).toMatch(/after check-in/);
+  });
+});
+
+// T-258 — PATCH category case normalization
+describe('PATCH /api/v1/trips/:tripId/stays/:id — category normalization (T-258)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tripModel.findTripById.mockResolvedValue(mockTrip);
+    stayModel.findStayById.mockResolvedValue(mockStay);
+  });
+
+  it('happy path: PATCH with lowercase category "airbnb" → 200, stored as AIRBNB', async () => {
+    stayModel.updateStay.mockResolvedValue({ ...mockStay, category: 'AIRBNB' });
+
+    const res = await request(buildApp(), 'PATCH', `/api/v1/trips/${TRIP_UUID}/stays/${STAY_UUID}`, {
+      category: 'airbnb',
+    }, AUTH);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.category).toBe('AIRBNB');
+    expect(stayModel.updateStay).toHaveBeenCalledWith(
+      STAY_UUID,
+      expect.objectContaining({ category: 'AIRBNB' })
+    );
+  });
+
+  it('error path: PATCH with invalid category "motel" → 400', async () => {
+    const res = await request(buildApp(), 'PATCH', `/api/v1/trips/${TRIP_UUID}/stays/${STAY_UUID}`, {
+      category: 'motel',
+    }, AUTH);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.fields.category).toMatch(/HOTEL.*AIRBNB.*VRBO/);
   });
 });
 

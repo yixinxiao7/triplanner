@@ -4,6 +4,44 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #32 — Deploy Engineer — T-260 Pre-Flight Check (BLOCKED) — 2026-03-20
+
+**Task:** T-260 (Deploy Engineer — Sprint 32 staging re-deployment)
+**Date:** 2026-03-20
+**Environment:** Staging (localhost)
+**Build Status:** ⏳ BLOCKED — awaiting T-259 (QA sign-off)
+**Deploy Status:** ⏳ NOT YET DEPLOYED — pre-flight checks complete
+
+### Pre-Deploy Gate Review
+
+| Gate | Status | Notes |
+|------|--------|-------|
+| T-258 code implemented | ✅ CONFIRMED | Backend Engineer handoff logged — `stays.js` has category normalization |
+| T-258 tests passing | ✅ 410/410 | 406 baseline + 4 new T-258 tests — zero failures |
+| QA handoff (T-259 → T-260) | ❌ NOT YET | T-259 still in Backlog — QA has not run security checklist or integration tests |
+| Pending DB migrations | ✅ NONE | Sprint 32 schema-stable; 10/10 migrations already applied on staging |
+
+### Live Service Status (Pre-Deploy)
+
+| Check | Result | Details |
+|-------|--------|---------|
+| pm2 triplanner-backend | ✅ online | PID 62877, uptime ~4h, 5 restarts — running Sprint 31 code (pre-T-258) |
+| pm2 triplanner-frontend | ✅ online | PID 61811, uptime ~4h, 3 restarts — no changes needed |
+| `GET https://localhost:3001/api/v1/health` | ✅ 200 `{"status":"ok"}` | Backend healthy |
+| Frontend `https://localhost:4173` | ✅ 200 OK | HTML served |
+
+### Next Steps
+
+Once T-259 is marked Done with QA sign-off in handoff-log.md:
+1. `pm2 restart triplanner-backend`
+2. Health check + smoke tests (lowercase category POST)
+3. Update this entry with deploy results
+4. Handoff to Monitor Agent (T-261)
+
+*Deploy Engineer Sprint #32 — T-260 Pre-Flight — 2026-03-20*
+
+---
+
 ## Sprint #31 — Deploy Engineer — Staging Re-Verification Pass (T-253) — 2026-03-20
 
 **Task:** T-253 (Deploy Engineer — orchestrator re-invocation re-verification)
