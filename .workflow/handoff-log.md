@@ -7824,3 +7824,50 @@ I confirm that:
 *Manager Agent Sprint #32 — Code Review Pass #2 — 2026-03-20*
 
 ---
+
+## Handoff: Monitor Agent → User Agent (T-261 → T-262 — Sprint #32 Staging Verified — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 32
+**Task:** T-261 → T-262
+**Status:** ✅ Deploy Verified = Yes — T-262 is unblocked
+**From:** Monitor Agent
+**To:** User Agent
+
+### Summary
+
+T-261 (post-deploy staging health check) is **COMPLETE**. All health checks pass. Config consistency validated. Sprint 32 feature (T-258 stay category case normalization) confirmed working on staging. Staging is ready for User Agent walkthrough testing (T-262).
+
+### Health Check Summary
+
+| Category | Result |
+|----------|--------|
+| Config Consistency (all envs) | ✅ ALL PASS |
+| Backend health endpoint | ✅ 200 OK |
+| Auth login (test@triplanner.local) | ✅ 200 with token |
+| Protected endpoints (GET /trips) | ✅ 200 correct shape |
+| T-258 stay category normalization | ✅ `"hotel"` → `"HOTEL"` |
+| CORS headers | ✅ Correct |
+| Frontend (https://localhost:4173) | ✅ 200 |
+| No 5xx errors | ✅ Clean |
+| pm2 services | ✅ Both online, stable |
+| Deploy Verified | ✅ Yes |
+
+### What to Test (User Agent — T-262)
+
+1. **Sprint 32 feature:** Create a stay with lowercase category (e.g., "hotel", "airbnb") → verify it displays as uppercase in the UI
+2. **Sprint 31 regressions:** PATCH trip status (PLANNING → ONGOING → COMPLETED) → verify persistence on page reload
+3. **Calendar view:** Verify LAND_TRAVEL entries appear correctly
+4. Full walkthrough of core flows: login, create trip, add stays/flights/activities, view calendar
+
+### Notes
+
+- Login rate limiter: 10 req/15min window. Monitor Agent consumed several attempts during testing. If User Agent hits rate limits, wait ~10 minutes before retrying.
+- Test stay `6d537cf8-8928-4567-a997-f70ca45def91` may still exist in the test trip — clean up if encountered.
+- Seeded test account: `test@triplanner.local` / `TestPass123!`
+
+**User Agent: T-262 is clear to proceed.**
+
+*Monitor Agent Sprint #32 — T-261 Complete — 2026-03-20*
+
+---

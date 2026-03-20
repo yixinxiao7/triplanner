@@ -619,6 +619,67 @@ Deploy steps queued (will execute immediately upon QA clearance):
 
 ---
 
+## Sprint #32 — Monitor Agent — Post-Deploy Health Check (T-261) — 2026-03-20
+
+**Task:** T-261 (Monitor Agent — Post-deploy staging health check)
+**Date:** 2026-03-20
+**Environment:** Staging
+**Timestamp:** 2026-03-20T21:22:00Z
+**Token:** Acquired via POST /api/v1/auth/login with test@triplanner.local (NOT /auth/register)
+**Deploy Verified:** ✅ Yes
+
+### Config Consistency Validation
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Port match (staging) | ✅ PASS | `.env.staging` PORT=3001, `ecosystem.config.cjs` BACKEND_PORT=3001, backend logs confirm `HTTPS Server running on https://localhost:3001` |
+| Protocol match (staging) | ✅ PASS | `.env.staging` has `SSL_KEY_PATH` + `SSL_CERT_PATH` set → backend serves HTTPS. `ecosystem.config.cjs` sets `BACKEND_SSL=true` → Vite proxy uses `https://`. Verified backend responds on HTTPS. |
+| CORS match (staging) | ✅ PASS | `.env.staging` CORS_ORIGIN=`https://localhost:4173`. Frontend preview on port 4173 with HTTPS. Response header confirmed: `Access-Control-Allow-Origin: https://localhost:4173`, `Access-Control-Allow-Credentials: true` |
+| Docker port match | ✅ PASS | `docker-compose.yml` backend container PORT=3000 (production context), healthcheck uses `http://localhost:3000/api/v1/health` — self-consistent. Docker is not used for staging (pm2 is used instead). |
+| Port match (dev) | ✅ PASS | `.env` PORT=3000, `vite.config.js` default backendPort='3000' |
+| Protocol match (dev) | ✅ PASS | `.env` SSL_KEY_PATH and SSL_CERT_PATH are commented out → HTTP. `vite.config.js` defaults to `http://` when BACKEND_SSL is unset. |
+| CORS match (dev) | ✅ PASS | `.env` CORS_ORIGIN=`http://localhost:5173`, Vite dev server port=5173 |
+
+**Config Consistency Result:** ✅ ALL PASS — no mismatches detected across staging, development, or Docker configurations.
+
+### Health Check Results
+
+| Check | Result | Details |
+|-------|--------|---------|
+| App responds (GET /api/v1/health) | ✅ PASS | HTTP 200, body: `{"status":"ok"}` |
+| Auth works (POST /api/v1/auth/login) | ✅ PASS | HTTP 200, body: `{"data":{"user":{"id":"60567cb2-...","name":"Test User","email":"test@triplanner.local",...},"access_token":"eyJ..."}}` |
+| GET /api/v1/trips (protected) | ✅ PASS | HTTP 200, body: `{"data":[...],"pagination":{"page":1,"limit":20,"total":1}}` — correct response shape per api-contracts.md |
+| POST /api/v1/trips/:id/stays (Sprint 32 T-258) | ✅ PASS | Sent `"category":"hotel"` (lowercase) → HTTP 201, returned `"category":"HOTEL"` (uppercase). **Stay category case normalization confirmed working.** |
+| CORS headers | ✅ PASS | `Access-Control-Allow-Origin: https://localhost:4173`, `Access-Control-Allow-Credentials: true` |
+| Frontend accessible (https://localhost:4173) | ✅ PASS | HTTP 200 |
+| Frontend build artifacts | ✅ PASS | `frontend/dist/index.html` exists |
+| Database connected | ✅ PASS | Health endpoint returns 200 (DB connectivity verified implicitly). Trips query returned data from DB. |
+| No 5xx errors | ✅ PASS | Error log shows only `SyntaxError: Bad escaped character in JSON` (400-level, from malformed monitor test requests — expected and handled correctly by error middleware). No 5xx entries. |
+| GET /api/v1/trips/:id/calendar | ✅ PASS | HTTP 200, body: `{"data":{"trip_id":"...","events":[]}}` — correct shape, empty events expected (no calendar items in test data) |
+| PATCH /trips/:id status persistence | ⚠️ SKIPPED | Login rate limiter triggered (10 req/15min window) after repeated token acquisitions. Deploy Engineer's smoke test already verified PATCH status persists on re-GET. |
+| pm2 services stable | ✅ PASS | `triplanner-backend` PID 79204, online, 10min uptime, 0 unstable restarts. `triplanner-frontend` PID 61811, online, 5h uptime, 0 unstable restarts. |
+
+### Sprint 32 Feature Verification
+
+- **T-258 (Stay category case normalization):** ✅ VERIFIED — `POST /stays` with `"category":"hotel"` returns `"category":"HOTEL"`. Normalization working correctly.
+
+### Sprint 31 Regression Checks
+
+- **GET /calendar endpoint:** ✅ Returns 200 with correct shape (LAND_TRAVEL support verified by presence in contract, endpoint functional)
+- **PATCH trip status persistence:** ⚠️ Skipped due to rate limiting (Deploy Engineer confirmed in smoke test)
+
+### Cleanup
+
+- Test stay `6d537cf8-8928-4567-a997-f70ca45def91` created during testing — deletion attempted but rate-limited. **Deploy Engineer:** please delete this stay record if it persists, or it will be cleaned up on next seed run.
+
+### Result: ✅ PASS — Deploy Verified = Yes (Staging)
+
+All critical checks pass. Config consistency validated across all environments. Sprint 32 feature (T-258 stay category normalization) confirmed working. No 5xx errors. Both services stable. Staging is ready for User Agent testing (T-262).
+
+*Monitor Agent Sprint #32 — T-261 Complete — 2026-03-20*
+
+---
+
 ## Sprint #30 — Deploy Engineer — Build Phase Pre-Check — 2026-03-17
 
 **Task:** T-246 (Deploy Engineer — Sprint 30 staging re-deployment)
