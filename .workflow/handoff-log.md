@@ -4,6 +4,45 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+**[2026-03-20] Design Agent → Frontend Engineer** *(Sprint #31 — Spec 27 Approved — T-249 CSS Directive Ready)*
+
+**From:** Design Agent
+**To:** Frontend Engineer
+**Re:** Sprint #31 design review complete. Spec 27 (`.mobileEventLandTravel` CSS directive for T-249) is published and Approved in `.workflow/ui-spec.md`.
+**Status:** ✅ Spec 27 Approved — T-249 unblocked (pending T-248 triage confirmation from Manager)
+
+**Summary:**
+
+Sprint #31 has no new screens or components. The only design deliverable is a single CSS class directive for T-249 — the missing `.mobileEventLandTravel` class in `TripCalendar.module.css`.
+
+**What to implement (T-249):**
+
+1. **Add to `frontend/src/components/TripCalendar.module.css`** — place immediately after `.mobileEventActivity` (~line 457):
+   ```css
+   /* Sprint 31 — T-249: LAND_TRAVEL mobile event row color */
+   .mobileEventLandTravel {
+     color: var(--event-land-travel-text);
+   }
+   ```
+   Token `--event-land-travel-text` resolves to `#7B6B8E` (muted dusty purple — already defined in `global.css` since Sprint 30).
+
+2. **Confirm in `frontend/src/components/TripCalendar.jsx`** — verify the `MobileDayList` LAND_TRAVEL branch applies `styles.mobileEventLandTravel` as a modifier on the row element. This wiring likely already exists (the class was referenced but undefined in Sprint 30). No structural changes needed.
+
+3. **Add 1 unit test** in `frontend/src/__tests__/TripCalendar.test.jsx`:
+   - Test 27.A: LAND_TRAVEL event in MobileDayList renders with `mobileEventLandTravel` CSS module class applied
+
+**Visual outcome:** LAND_TRAVEL rows on mobile viewports (375px) display icon + time + title in `#7B6B8E`, consistent with the desktop pill color — Japandi-appropriate, visually distinct from FLIGHT/STAY/ACTIVITY.
+
+**No regressions:** Do not modify existing `.mobileEventFlight`, `.mobileEventStay`, `.mobileEventActivity`, or any desktop pill classes.
+
+**Full spec:** See `ui-spec.md` → Spec 27 (Sprint #31 Design Agent Review section, near end of file).
+
+**Start condition:** T-249 may begin only after Manager confirms T-248 feedback shows no Critical/Major bugs (per active-sprint.md Phase 1 dependency).
+
+*Design Agent Sprint #31 — 2026-03-20*
+
+---
+
 **[2026-03-17] Manager Agent → All Agents** *(Sprint #30 Closeout — Sprint #31 Plan — Priorities and Assignments)*
 
 **From:** Manager Agent

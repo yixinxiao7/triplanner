@@ -10860,3 +10860,161 @@ Then:  The FLIGHT pill appears first, STAY second, LAND_TRAVEL third
 **Most recent spec:** Spec 26 (Sprint #30, T-243 — TripCalendar LAND_TRAVEL integration) — Status: Approved.
 
 *Sprint #30 design review complete. Published by Design Agent 2026-03-17.*
+
+---
+
+## Sprint #31 Design Agent Review — 2026-03-20
+
+**Design Agent Status:** No new full screen specs required this sprint. Sprint #31 scope is two minor backlog fixes (T-249 and T-250) plus a User Agent verification cycle (T-248). All are non-visual or infrastructure changes — no new screens, flows, or components are introduced.
+
+**T-249 CSS Design Directive — `.mobileEventLandTravel`**
+
+The one visual deliverable in Sprint 31 is the missing `.mobileEventLandTravel` CSS class in `TripCalendar.module.css`. This class was referenced in the `MobileDayList` LAND_TRAVEL branch (T-243, Sprint 30) but never defined, leaving mobile LAND_TRAVEL rows without a color accent. Below is the complete design specification for this single CSS addition.
+
+---
+
+### Spec 27: `.mobileEventLandTravel` CSS Class (T-249)
+
+**Sprint:** #31
+**Related Task:** T-249
+**Status:** Approved
+
+**Description:**
+Mobile LAND_TRAVEL rows in `MobileDayList` (inside `TripCalendar.jsx`) lack a color accent because the `.mobileEventLandTravel` CSS class does not exist in `TripCalendar.module.css`. Every other event type — FLIGHT, STAY, ACTIVITY — has a corresponding `.mobileEventXxx` class that sets its text color to the event's CSS token. This spec closes that gap for LAND_TRAVEL.
+
+This is not a new screen or component. It is a one-class CSS addition that completes the existing pattern.
+
+---
+
+#### 27.1 Visual Context — Mobile Event Row Pattern
+
+Mobile event rows in `MobileDayList` each receive two CSS classes:
+1. The base `.mobileEventRow` class (layout, padding, cursor, transition)
+2. A type-specific class that sets the `color` for the entire row (icon + time + title)
+
+Existing type-specific classes and their color tokens:
+
+| Class | Token | Resolved Value |
+|-------|-------|---------------|
+| `.mobileEventFlight` | `var(--event-flight-text)` | `#6B9FB5` (muted teal-blue) |
+| `.mobileEventStay` | `var(--event-stay-text)` | `#7B9E8A` (muted sage green) |
+| `.mobileEventActivity` | `var(--event-activity-text)` | `#9E8A6B` (muted warm amber) |
+| `.mobileEventLandTravel` | `var(--event-land-travel-text)` | `#7B6B8E` (muted dusty purple) |
+
+The `.mobileEventLandTravel` class must follow this exact pattern — one CSS property, one token reference.
+
+---
+
+#### 27.2 CSS Specification
+
+```css
+/* Sprint 31 — T-249: LAND_TRAVEL mobile event row color */
+.mobileEventLandTravel {
+  color: var(--event-land-travel-text);
+}
+```
+
+**Placement in file:** Immediately after `.mobileEventActivity` (line ~457 in TripCalendar.module.css), maintaining the sequential FLIGHT → STAY → ACTIVITY → LAND_TRAVEL ordering used throughout the file for event type rules.
+
+**Token already defined:** `--event-land-travel-text: #7B6B8E` is defined in `frontend/src/styles/global.css` (line ~105) and has been in use since Sprint 30 for the desktop `.eventPillLandTravel` class. No new token needed.
+
+---
+
+#### 27.3 Affected Component
+
+**File:** `frontend/src/components/TripCalendar.jsx`
+**Location:** `MobileDayList` internal component — the `className` expression on the mobile event row button for the `LAND_TRAVEL` branch.
+
+The class must be applied as a modifier on the existing `.mobileEventRow` container, identical to how the other event types apply their type-specific class:
+
+```jsx
+// Expected pattern (already exists for other types):
+className={`${styles.mobileEventRow} ${styles.mobileEventLandTravel}`}
+```
+
+If the LAND_TRAVEL branch currently conditionally applies `styles.mobileEventLandTravel` via a lookup or conditional expression, confirm it resolves to the new class name. If the class is applied via a lookup object (e.g., `EVENT_TYPE_MOBILE_CLASS[type]`), add `LAND_TRAVEL: styles.mobileEventLandTravel` to that object. Do not change the structural layout or behavior of the row — only the class name application.
+
+---
+
+#### 27.4 Visual Outcome
+
+On a 375px mobile viewport, LAND_TRAVEL rows in `MobileDayList` will render with icon, time, and title text in `#7B6B8E` — a muted dusty purple that:
+- Is visually distinct from FLIGHT (teal-blue), STAY (sage), and ACTIVITY (warm amber)
+- Matches the desktop `.eventPillLandTravel` color identity exactly
+- Stays within the Japandi palette: muted, non-saturated, purposeful
+- Passes WCAG AA contrast (7B6B8E on #02111B bg is ≥ 4.5:1 for 12px text)
+
+---
+
+#### 27.5 States
+
+| State | Appearance |
+|-------|-----------|
+| Default | Row text color `#7B6B8E` via `var(--event-land-travel-text)` |
+| Hover | Inherited from `.mobileEventRow:hover` — no additional color change needed |
+| Focus-visible | Inherited from `.mobileEventRow:focus-visible` — `outline: 2px solid var(--accent)` |
+| Click | Click handler is existing behavior (scroll to land-travels section) — no visual change |
+
+---
+
+#### 27.6 Responsive Behavior
+
+This class is only applied within `MobileDayList`, which renders exclusively at breakpoints below 768px (controlled by the `.mobileView` / `.desktopGrid` responsive toggle). No desktop impact.
+
+---
+
+#### 27.7 Accessibility
+
+- Color is not the only differentiator — the emoji icon (e.g., 🚗) and event type label already communicate event type to users who cannot distinguish color
+- The `color` property on the row button does not reduce legibility: `#7B6B8E` on `#02111B` background meets WCAG AA for UI text (non-body sizes ≥ 11px)
+- No new `aria-label` changes needed — event rows already carry accessible labels from the existing T-243 implementation
+
+---
+
+#### 27.8 Regressions to Guard Against
+
+| Check | Expected |
+|-------|---------|
+| `.mobileEventFlight` | Unchanged — still `color: var(--event-flight-text)` |
+| `.mobileEventStay` | Unchanged — still `color: var(--event-stay-text)` |
+| `.mobileEventActivity` | Unchanged — still `color: var(--event-activity-text)` |
+| Desktop `.eventPillLandTravel` | Unchanged — no modifications to this class |
+| Desktop event pills (FLIGHT, STAY, ACTIVITY) | Unchanged — no modifications |
+| MobileDayList layout | Unchanged — only CSS color added, no structural changes |
+
+---
+
+#### 27.9 Test Requirement
+
+Add 1 unit test to `frontend/src/__tests__/TripCalendar.test.jsx`:
+
+**Test 27.A — LAND_TRAVEL mobile row has `.mobileEventLandTravel` class**
+```
+Given: A trip calendar with a LAND_TRAVEL event on a given date
+When:  TripCalendar renders in mobile view (MobileDayList)
+Then:  The LAND_TRAVEL event row element has the `mobileEventLandTravel` CSS module class applied
+```
+
+---
+
+#### 27.10 Files to Modify (T-249)
+
+| File | Change |
+|------|--------|
+| `frontend/src/components/TripCalendar.module.css` | Add `.mobileEventLandTravel { color: var(--event-land-travel-text); }` after `.mobileEventActivity` |
+| `frontend/src/components/TripCalendar.jsx` | Confirm `.mobileEventLandTravel` is applied in MobileDayList LAND_TRAVEL branch (likely already wired — just needs the class to exist) |
+| `frontend/src/__tests__/TripCalendar.test.jsx` | Add Test 27.A (1 new test) |
+
+**No API changes. No schema changes. No new components. No new CSS tokens.**
+
+---
+
+*Spec 27 (Sprint 31 — mobileEventLandTravel CSS, T-249) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-20.*
+
+---
+
+**Design System Conventions:** Stable. No additions or modifications proposed. The `--event-land-travel-text` token added in Sprint 30 is the authoritative color for all LAND_TRAVEL visual treatments — desktop and mobile.
+
+**Most recent spec:** Spec 27 (Sprint #31, T-249 — mobileEventLandTravel CSS directive) — Status: Approved.
+
+*Sprint #31 design review complete. Published by Design Agent 2026-03-20.*

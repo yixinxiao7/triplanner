@@ -2558,3 +2558,17 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 ---
 
+### Design Agent Review — Sprint 31
+
+**Status:** ✅ Complete — 2026-03-20
+
+- **Sprint 31 scope review:** No new screens, components, or user flows introduced this sprint. T-249 (mobileEventLandTravel CSS) and T-250 (knexfile seeds fix) are minor non-visual or infrastructure fixes. T-248/T-255 are User Agent verification tasks.
+- **Spec 27** published to `.workflow/ui-spec.md` — `.mobileEventLandTravel` CSS directive for T-249 (mobile LAND_TRAVEL row color). Status: **Approved**.
+- **Handoff to Frontend Engineer** logged in `.workflow/handoff-log.md` — CSS directive, exact token reference (`var(--event-land-travel-text)` = `#7B6B8E`), placement instructions, and 1-test requirement.
+- **Design System Conventions:** Stable. No changes proposed. `--event-land-travel-text` token (Sprint 30) is the authoritative color for all LAND_TRAVEL visual treatments.
+- **T-250 (Backend):** No design input required — pure config fix.
+
+*Design Agent Sprint #31 review complete — 2026-03-20*
+
+---
+
