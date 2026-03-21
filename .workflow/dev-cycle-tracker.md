@@ -2784,3 +2784,36 @@ Sprint 33 is a frontend-only calendar rendering fix sprint (FB-133/FB-134 — mu
 
 ---
 
+## Sprint 34 Tasks
+
+**Sprint 34 Kickoff (Manager Agent — 2026-03-20):** This sprint has one focus: production deployment and verification. The multi-day calendar fix (T-264) must be deployed to production, then T-225 (post-production health check, 5th carry-over) and T-256 (production walkthrough, 4th carry-over) must finally execute. No other engineering work this sprint — production verification has been delayed for too long.
+
+**Test baseline at Sprint 34 kickoff:** 410/410 backend | 501/501 frontend | 4/4 Playwright | 915 total
+
+---
+
+### Phase 0 — Production Deployment (P0 — START IMMEDIATELY)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-269 | Deploy Engineer: Deploy Sprint 33 frontend changes to production (Render). Rebuild frontend with production env vars, push to production branch or trigger Render deploy. Verify frontend loads at `https://triplanner.yixinx.com` with multi-day calendar fix. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P0 | S | 34 | — | Frontend deployed to production; multi-day calendar fix live; no build errors; production URL loads correctly. |
+
+---
+
+### Phase 1 — Post-Production Verification (sequential after Phase 0)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-225 | Monitor Agent: Post-production health check on `https://triplanner-backend-sp61.onrender.com`. Full health check protocol: health endpoint, CORS, auth register/login, trips CRUD, calendar (verify multi-day events), no 5xx. Log results in qa-build-log.md Sprint 34 section. If all pass: Deploy Verified = Yes (Production), handoff to T-256. **CARRY-OVER FROM SPRINT 30/31/32/33 — 5TH CARRY-OVER — EXECUTE IMMEDIATELY AFTER T-269.** | Infrastructure | Monitor Agent | Backlog | P0 | S | 34 | T-269 | All production API endpoints return expected status codes; auth flow works; CORS correct for custom domain; multi-day calendar events verified; Deploy Verified = Yes (Production). |
+| T-256 | User Agent: Production walkthrough on `https://triplanner.yixinx.com`. Full new-user flow: register → create trip → add flight/stay/activity/land travel → verify calendar (including multi-day spanning) → status change → mobile check → delete trip → logout. Submit feedback to feedback-log.md. **CARRY-OVER FROM SPRINT 30/31/32/33 — 4TH CARRY-OVER.** | Documentation | User Agent | Backlog | P0 | M | 34 | T-225 | Full new-user flow works on production; all event types display correctly including multi-day spanning; no Critical or Major issues; feedback submitted. |
+
+---
+
+### Phase 2 — QA + Monitoring (sequential after Phase 1)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-270 | QA Engineer: Production smoke test + security verification. Verify HTTPS, CORS headers, cookie SameSite=None, no sensitive data in responses, auth token handling on production. Log in qa-build-log.md. | Code Review | QA Engineer | Backlog | P1 | S | 34 | T-269 | Production HTTPS verified; CORS correct; cookies configured for cross-origin; security checklist PASS for production. |
+
+---
+

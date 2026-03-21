@@ -392,7 +392,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-264 (FB-134) |
 
 **Steps:** Register → Create trip (Tokyo, Osaka; Aug 1–10) → POST flight NH101 LAX→NRT departing Aug 1 23:00 UTC, arriving Aug 3 04:30 UTC → GET /calendar → Verify FLIGHT event has `start_date: "2026-08-01"`, `end_date: "2026-08-03"`.
@@ -409,7 +409,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-264 (FB-133) |
 
 **Steps:** POST land travel RENTAL_CAR Tokyo→Osaka, departure_date Aug 7, arrival_date Aug 9 → GET /calendar → Verify LAND_TRAVEL event has `start_date: "2026-08-07"`, `end_date: "2026-08-09"`.
@@ -426,7 +426,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-264 |
 
 **Steps:** POST single-day flight NRT→KIX, departure and arrival both on Aug 5 → GET /calendar → Verify `start_date === end_date === "2026-08-05"`.
@@ -443,7 +443,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-264 |
 
 **Steps:** POST single-day TRAIN Osaka→Kansai Airport, departure and arrival both on Aug 10 → GET /calendar → Verify `start_date === end_date === "2026-08-10"`.
@@ -460,7 +460,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-264 |
 
 **Steps:** GET /calendar for trip with 3 flights (multi-day, single-day, SQL-injection test), 1 stay, 1 activity, 2 land travel entries → Verify all 4 types (FLIGHT, STAY, ACTIVITY, LAND_TRAVEL) present in response.
@@ -477,7 +477,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-258 |
 
 **Steps:** POST stay with `"category": "airbnb"` (lowercase) → Verify response returns `"category": "AIRBNB"` (normalized uppercase). HTTP 201.
@@ -494,7 +494,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-264 |
 
 **Steps:** PATCH trip status from PLANNING → ONGOING → GET trip → Verify status is "ONGOING" with updated `updated_at` timestamp.
@@ -511,7 +511,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-264 |
 
 **Steps:** POST empty `{}` body to /flights and /land-travel endpoints → Verify 400 VALIDATION_ERROR with specific field messages.
@@ -528,7 +528,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-264 |
 
 **Steps:** GET /calendar without auth token → 401. GET /trips/not-a-uuid/calendar with auth → 400 VALIDATION_ERROR "Invalid ID format".
@@ -545,7 +545,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-264 |
 
 **Steps:** `npx vitest run` → 25 test files, 501 tests passed.
@@ -562,7 +562,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-264 |
 
 **Steps:** DELETE /trips/:id → 204 No Content → GET /trips/:id → 404 "Trip not found".
@@ -579,7 +579,7 @@ Full end-to-end user flow works cleanly on staging.
 | Sprint | 33 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-264 |
 
 **Steps:** Code review of `MobileDayList` component in TripCalendar.jsx — lines 165-303.

@@ -3322,4 +3322,87 @@ No new 'New' status entries in feedback-log.md entering this sprint. All prior e
 
 ---
 
+### Sprint #33 — 2026-03-20 to 2026-03-20
+
+**Goal:** Fix the two Major calendar rendering bugs (FB-133/FB-134 — LAND_TRAVEL and FLIGHT events not spanning multiple days) and complete production verification (T-225 post-production health check + T-256 production walkthrough).
+
+**Goal Met:** ⚠️ PARTIAL — The staging pipeline (T-263, T-264, T-265, T-266, T-267, T-268) completed cleanly with zero issues and zero bugs. Both Major calendar bugs are resolved. Production verification (T-225 and T-256) was not executed — carried over to Sprint 34 (5th and 4th carry-over respectively).
+
+---
+
+**Tasks Completed (7/9):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-263 | Design Agent: UI spec for multi-day FLIGHT and LAND_TRAVEL event rendering (Spec 28) | ✅ Done |
+| T-264 | Frontend Engineer: Multi-day event spanning for FLIGHT and LAND_TRAVEL in TripCalendar (FB-133, FB-134) | ✅ Done |
+| T-265 | QA Engineer: Security checklist + integration testing — 410/410 backend, 501/501 frontend, config PASS | ✅ Done |
+| T-266 | Deploy Engineer: Sprint 33 staging deployment — frontend rebuilt, smoke tests 7/7 PASS | ✅ Done |
+| T-267 | Monitor Agent: Staging health check — Deploy Verified = Yes (Staging), Playwright 4/4 PASS | ✅ Done |
+| T-268 | User Agent: Sprint 33 staging walkthrough — 12 feedback entries (FB-144–FB-155), all Positive, zero issues | ✅ Done |
+| CR-33 | Manager: Code review — T-264 APPROVED, T-266 APPROVED | ✅ Done |
+
+**Tasks Carried Over (2/9):**
+
+| ID | Description | Reason |
+|----|-------------|--------|
+| T-225 | Monitor Agent: Post-production health check | Not executed — 5th consecutive carry-over to Sprint 34 (P0) |
+| T-256 | User Agent: Production walkthrough on triplanner.yixinx.com | Blocked by T-225 — 4th consecutive carry-over to Sprint 34 |
+
+**Key Decisions:**
+
+- No architecture decisions this sprint. Frontend-only calendar rendering fix.
+- Manager approved T-264 with minor deviation noted: middle-day aria-labels use `(cont.)` instead of spec's `"day N of total"` format — pragmatic trade-off accepted.
+
+**Feedback Summary (Sprint 33 → Sprint 34 Triage):**
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-144 | Positive | — | Acknowledged — multi-day FLIGHT spanning verified |
+| FB-145 | Positive | — | Acknowledged — multi-day LAND_TRAVEL spanning verified |
+| FB-146 | Positive | — | Acknowledged — single-day FLIGHT no regression |
+| FB-147 | Positive | — | Acknowledged — single-day LAND_TRAVEL no regression |
+| FB-148 | Positive | — | Acknowledged — all 4 event types in calendar |
+| FB-149 | Positive | — | Acknowledged — stay category normalization intact |
+| FB-150 | Positive | — | Acknowledged — trip status persistence intact |
+| FB-151 | Positive | — | Acknowledged — input validation correct |
+| FB-152 | Positive | — | Acknowledged — auth + UUID validation correct |
+| FB-153 | Positive | — | Acknowledged — 501/501 frontend tests pass |
+| FB-154 | Positive | — | Acknowledged — trip deletion lifecycle clean |
+| FB-155 | Positive | — | Acknowledged — mobile multi-day rendering correct |
+
+**Zero 'New' entries remaining. All 12 feedback entries triaged.**
+
+---
+
+**What Went Well:**
+
+- **Third consecutive sprint with a clean staging pipeline:** T-263 → T-264 → T-265 → T-266 → T-267 → T-268 all completed without rework cycles. Zero bugs found on staging.
+- **Both Major calendar bugs resolved:** FB-133 (LAND_TRAVEL) and FB-134 (FLIGHT) multi-day spanning now works correctly, matching the existing STAY event pattern. Implementation is clean and consistent.
+- **Cleanest User Agent walkthrough ever:** 12/12 positive feedback entries, zero bugs, zero UX issues, zero feature gaps. The T-264 fix was verified across multi-day, single-day, mobile, and edge cases.
+- **Test baseline grew to 911 tests:** 410 backend + 501 frontend + 4 Playwright — all passing with zero regressions.
+- **Code review approved on first pass:** T-264 implementation closely followed Spec 28 with no rework needed.
+
+**What Could Improve:**
+
+- **T-225 and T-256 not executed for the 5th/4th consecutive sprint:** Production verification remains the persistent gap. These tasks have been unblocked since Sprint 31 but have never been executed. Sprint 34 must make this the exclusive focus — no other engineering work should take priority.
+- **Production is running an older version:** The multi-day calendar fix (T-264) is deployed to staging but not production. Sprint 34 needs a production deployment before health check.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory MemoryStore — no Redis persistence
+- ⚠️ B-024: Auth rate limit is IP-only — no per-account limiting
+- ⚠️ FB-135: "+x more" calendar overflow indicator not clickable (Minor — backlog)
+
+*Resolved this sprint:*
+- ✅ FB-133: LAND_TRAVEL calendar events single-day rendering → fixed by T-264 (multi-day spanning)
+- ✅ FB-134: FLIGHT calendar events single-day rendering → fixed by T-264 (multi-day spanning)
+
+---
+
+*Sprint #33 began 2026-03-20, closed 2026-03-20.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*
