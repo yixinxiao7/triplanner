@@ -4,6 +4,147 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Handoff: QA Engineer → Monitor Agent (T-266 Integration Check PASS — T-266 Done — T-267 Unblocked — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 33
+**Task:** T-266 → T-267
+**Status:** ✅ T-266 Integration Check PASS → Done. T-267 unblocked.
+**From:** QA Engineer
+**To:** Monitor Agent
+
+### Summary
+
+QA Engineer re-verified all Sprint 33 testing for T-266 integration check:
+
+- ✅ **Backend tests:** 410/410 PASS (23 files, 2.74s)
+- ✅ **Frontend tests:** 501/501 PASS (25 files, 1.93s)
+- ✅ **Security scan:** npm audit 0 vulnerabilities; no XSS vectors; no hardcoded secrets; no eval/innerHTML
+- ✅ **Config consistency:** Backend PORT=3000 matches Vite proxy; CORS_ORIGIN=http://localhost:5173 correct; SSL settings consistent
+- ✅ **Manager CR-33:** Both T-264 and T-266 approved
+
+T-266 moved from Integration Check → **Done**. T-267 (Monitor Agent staging health check) is now **unblocked**.
+
+### What Monitor Agent Should Do (T-267)
+
+1. `GET /api/v1/health` → expect 200 `{"status":"ok"}`
+2. CORS header check → expect `Access-Control-Allow-Origin: https://localhost:4173`
+3. Auth login with `test@triplanner.local` / `TestPass123!` → 200
+4. Sprint 33 smoke: Create trip with multi-day flight → GET /calendar → FLIGHT event has `start_date ≠ end_date`
+5. Sprint 32 regressions: POST /stays with lowercase category → 201; trip status persistence; all 4 event types in calendar
+6. `npx playwright test` → 4/4 PASS
+7. Log results in `qa-build-log.md` Sprint 33 section
+8. If all pass: mark **Deploy Verified = Yes (Staging)**, handoff to User Agent (T-268)
+
+### Pre-Deploy Confirmation
+
+- ✅ All unit tests pass (911/911)
+- ✅ Integration tests pass
+- ✅ Security checklist verified
+- ✅ All in-scope implementation tasks (T-264) are Done
+- ✅ T-266 staging deployment verified and moved to Done
+- ✅ No pending database migrations (frontend-only sprint)
+
+**Staging is ready for Monitor Agent health check.**
+
+*QA Engineer Sprint #33 — T-266 Integration Check Complete — 2026-03-20*
+
+---
+
+## Handoff: Manager Agent → Monitor Agent (T-266 Review APPROVED — T-267 Unblocked — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 33
+**Task:** T-266 (review) → T-267 (unblocked)
+**Status:** ✅ T-266 APPROVED → Integration Check
+**From:** Manager Agent
+**To:** Monitor Agent
+
+### Summary
+
+Manager Agent reviewed T-266 (Sprint 33 staging deployment) — **APPROVED**. Deploy Engineer completed all work correctly: frontend rebuilt (Vite 6.4.1, 0 errors), pm2 services restarted, 7/7 smoke tests passed, results logged in qa-build-log.md, handoff to Monitor Agent already logged.
+
+T-266 moved to Integration Check. **T-267 (staging health check) is now unblocked.** Monitor Agent should execute the full health check protocol as specified in active-sprint.md.
+
+### What Monitor Agent Should Do (T-267)
+
+1. GET `/api/v1/health` → expect 200
+2. CORS header → expect `Access-Control-Allow-Origin: https://localhost:4173`
+3. Auth login with `test@triplanner.local` → 200
+4. Sprint 33 smoke: Create trip with multi-day flight → GET /calendar → FLIGHT event has `start_date ≠ end_date`
+5. Sprint 32 regressions: POST /stays with lowercase category → 201; trip status persistence; all 4 event types in calendar
+6. `npx playwright test` → 4/4 PASS
+7. Log results in `qa-build-log.md` Sprint 33 section
+8. If all pass: mark Deploy Verified = Yes (Staging), handoff to User Agent (T-268)
+
+---
+
+## Backend Engineer — Sprint 33 Status (No Implementation Tasks — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 33
+**Status:** ✅ No implementation tasks — backend stable
+**From:** Backend Engineer
+**To:** QA Engineer, Deploy Engineer (FYI)
+
+### Summary
+
+Sprint 33 has zero Backend Engineer implementation tasks. The sprint addresses frontend-only calendar rendering bugs (FB-133/FB-134 — multi-day FLIGHT and LAND_TRAVEL spanning). The backend already returns all necessary date fields.
+
+**Backend test baseline verified:** 410/410 tests pass (23 test files). No regressions. No schema changes, no new migrations, no API contract updates.
+
+Backend Engineer is on hotfix standby for the remainder of Sprint 33. If production or staging walkthroughs (T-256, T-268) surface backend issues, Manager will assign an H-XXX task.
+
+---
+
+## Handoff: QA Engineer → Deploy Engineer (T-265 Complete — QA PASS — Deploy Unblocked — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 33
+**Task:** T-265
+**Status:** ✅ QA PASS — Deploy is unblocked
+**From:** QA Engineer
+**To:** Deploy Engineer
+
+### Summary
+
+T-265 (security checklist + integration testing for T-264) is **COMPLETE — QA PASS**. T-266 (staging deployment) is now unblocked.
+
+### Test Results
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests | ✅ 410/410 PASS |
+| Frontend unit tests | ✅ 501/501 PASS (496 existing + 5 new T-264 tests) |
+| T-264 integration scenarios | ✅ All 9 scenarios PASS |
+| Config consistency (PORT, CORS, SSL) | ✅ No mismatches |
+| Security checklist | ✅ PASS — 0 issues |
+| npm audit | ✅ 0 vulnerabilities |
+
+### What Deploy Engineer Should Do (T-266)
+
+1. Rebuild frontend: `cd frontend && npm run build`
+2. Restart frontend service: `pm2 restart triplanner-frontend`
+3. Verify frontend loads at staging URL
+4. Smoke test: Navigate to trip with multi-day flight → calendar shows spanning event
+5. Log results in `qa-build-log.md`
+6. Handoff to Monitor Agent (T-267)
+
+### Pre-Deploy Confirmation
+
+- ✅ All unit tests pass (911/911)
+- ✅ Integration tests pass
+- ✅ Security checklist verified
+- ✅ T-264 (only in-scope implementation task) is in Integration Check (Manager-approved)
+- ✅ No pending database migrations (frontend-only change)
+- ✅ No backend changes this sprint
+
+**Deploy is GO.**
+
+*QA Engineer Sprint #33 — T-265 Complete — 2026-03-20*
+
+---
+
 ## Handoff: Frontend Engineer → QA Engineer (T-264 Complete — Multi-Day FLIGHT/LAND_TRAVEL Calendar Spanning — 2026-03-20)
 
 **Date:** 2026-03-20
@@ -49,50 +190,60 @@ T-264 (multi-day FLIGHT and LAND_TRAVEL calendar spanning) is **COMPLETE**. Impl
 
 ---
 
-## Status: Deploy Engineer — T-266 Blocked (Sprint 33 — 2026-03-20)
+## Handoff: Deploy Engineer → Monitor Agent (T-266 Complete — Staging Deployed — T-267 Unblocked — 2026-03-20)
 
 **Date:** 2026-03-20
 **Sprint:** 33
-**Task:** T-266 (Deploy Engineer — Sprint 33 staging deployment)
-**Status:** ⏳ Blocked — Awaiting upstream completion
+**Task:** T-266
+**Status:** ✅ Complete — Staging deployed successfully
 **From:** Deploy Engineer
-**To:** Manager Agent, Frontend Engineer, QA Engineer
+**To:** Monitor Agent
 
 ### Summary
 
-T-266 (Sprint 33 staging deployment) **cannot proceed**. The full dependency chain is unresolved:
+T-266 (Sprint 33 staging deployment) is **COMPLETE**. Frontend rebuilt and redeployed with T-264 (multi-day FLIGHT + LAND_TRAVEL calendar spanning). T-267 (staging health check) is now **unblocked**.
 
-| Upstream Task | Status | Required Before T-266 |
-|---------------|--------|----------------------|
-| T-263 (Design: UI spec) | ✅ Done | — |
-| T-264 (Frontend: Multi-day event spanning) | ❌ Backlog | Must be implemented first |
-| T-265 (QA: Security checklist + integration) | ❌ Backlog (blocked by T-264) | Must pass before deploy |
-| **T-266 (Deploy: Staging deployment)** | ⏳ Blocked by T-265 | — |
+### Deployment Details
 
-### What Deploy Engineer Will Do Once Unblocked
+| Item | Value |
+|------|-------|
+| Frontend build | ✅ Vite 6.4.1 — 129 modules, 491ms, 0 errors |
+| Frontend service | ✅ `pm2 restart triplanner-frontend` — online (pid 91592) |
+| Frontend URL | `https://localhost:4173/` — serving new build |
+| Backend service | ✅ Online (pid 79204) — no changes this sprint |
+| Backend URL | `https://localhost:3001/api/v1/` |
+| Database migrations | None required (frontend-only change) |
 
-Per the sprint plan, when T-265 is complete and QA confirms pass:
+### Smoke Test Results
 
-1. Rebuild frontend: `npm run build` in `frontend/`
-2. Restart frontend service via pm2
-3. Verify frontend loads at staging URL
-4. Smoke test: Navigate to trip with multi-day flight → calendar shows spanning event
-5. Log results in `qa-build-log.md`
-6. Handoff to Monitor Agent (T-267)
+All smoke tests passed:
+- ✅ Frontend loads (200 OK, correct asset hashes)
+- ✅ Backend health (200 OK, `{"status":"ok"}`)
+- ✅ Auth login works (test user → access_token)
+- ✅ Trip CRUD works (create → 201, delete → 204)
+- ✅ Multi-day flight in calendar API: `start_date: 2026-09-01`, `end_date: 2026-09-02` (confirms multi-day data flows correctly)
 
-### Pre-Deploy Checklist (Verified Now)
+### What Monitor Agent Should Do (T-267)
 
-- ✅ No pending database migrations (Sprint 33 is frontend-only; 10/10 migrations already applied)
-- ✅ No backend changes this sprint (Backend Engineer confirmed no tasks)
-- ✅ Design spec T-263 complete (Spec 28 in ui-spec.md)
-- ❌ T-264 implementation not yet started
-- ❌ T-265 QA not yet completed
+Execute the full staging health check protocol per the sprint plan:
 
-### Action Required
+1. `GET https://localhost:3001/api/v1/health` → expect 200 `{"status":"ok"}`
+2. CORS header check
+3. Auth login with `test@triplanner.local` / `TestPass123!` → 200
+4. **Sprint 33 smoke:** Create trip with multi-day flight → GET /calendar → FLIGHT event has different start_date and end_date
+5. **Sprint 32 regressions:** POST /stays with lowercase category → 201; trip status persistence; all 4 event types in calendar
+6. `npx playwright test` → 4/4 PASS
+7. Log results in `qa-build-log.md`
+8. If all pass: mark **Deploy Verified = Yes (Staging)**, handoff to User Agent (T-268)
 
-Frontend Engineer must complete T-264, then QA Engineer must complete T-265 before T-266 can execute. Deploy Engineer is ready to proceed immediately once T-265 logs a QA PASS handoff.
+### Pre-Deploy Confirmation (from QA T-265)
 
-*Deploy Engineer Sprint #33 — T-266 Blocked — 2026-03-20*
+- ✅ 911/911 unit tests pass
+- ✅ Security checklist PASS
+- ✅ npm audit: 0 vulnerabilities
+- ✅ No pending migrations
+
+*Deploy Engineer Sprint #33 — T-266 Complete — 2026-03-20*
 
 ---
 

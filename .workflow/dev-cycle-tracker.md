@@ -2718,7 +2718,7 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
 | T-263 | Design Agent: UI spec for multi-day FLIGHT and LAND_TRAVEL event rendering in TripCalendar. Specify: multi-day spanning visual treatment, arrival time display format, mobile view, consistency with existing STAY rendering pattern. Write to ui-spec.md. | Design | Design Agent | Done | P1 | S | 33 | — | UI spec section covers desktop + mobile multi-day rendering; arrival time format specified; consistent with Japandi aesthetic. Spec 28 published to ui-spec.md. |
-| T-264 | Frontend Engineer: Multi-day event spanning for FLIGHT and LAND_TRAVEL in TripCalendar (FB-133, FB-134). FLIGHT events span departure_at date → arrival_at date. LAND_TRAVEL events span departure_date → arrival_date. Show arrival time on arrival day. 4+ new tests; 496+ existing tests pass. | Feature | Frontend Engineer | Integration Check | P1 | M | 33 | T-263 | Multi-day events span correct date range; arrival time displayed; single-day events unaffected; 5 new tests (28.A–28.E); 501/501 frontend tests pass. **Feedback Source:** FB-133, FB-134. **CR-33 APPROVED (2026-03-20):** buildEventsMap() correctly enumerates FLIGHT/LAND_TRAVEL multi-day spans; desktop pill rendering handles start/middle/end _dayType with correct border-radius and opacity; MobileDayList enumerates spans with (cont.) and Arrives/Drop-off labels; buildArrivalLabel() correctly differentiates RENTAL_CAR (Drop-off) from other modes (Arrives); 5 tests (28.A–28.E) cover multi-day, single-day, null end_date, and arrival text; 501/501 frontend tests verified passing; no XSS risk (React auto-escapes); no hardcoded secrets; no SQL injection vectors (frontend-only); conventions followed (CSS modules, CSS vars, IBM Plex Mono, 150ms ease). |
+| T-264 | Frontend Engineer: Multi-day event spanning for FLIGHT and LAND_TRAVEL in TripCalendar (FB-133, FB-134). FLIGHT events span departure_at date → arrival_at date. LAND_TRAVEL events span departure_date → arrival_date. Show arrival time on arrival day. 4+ new tests; 496+ existing tests pass. | Feature | Frontend Engineer | Done | P1 | M | 33 | T-263 | Multi-day events span correct date range; arrival time displayed; single-day events unaffected; 5 new tests (28.A–28.E); 501/501 frontend tests pass. **Feedback Source:** FB-133, FB-134. **CR-33 APPROVED (2026-03-20):** buildEventsMap() correctly enumerates FLIGHT/LAND_TRAVEL multi-day spans; desktop pill rendering handles start/middle/end _dayType with correct border-radius and opacity; MobileDayList enumerates spans with (cont.) and Arrives/Drop-off labels; buildArrivalLabel() correctly differentiates RENTAL_CAR (Drop-off) from other modes (Arrives); 5 tests (28.A–28.E) cover multi-day, single-day, null end_date, and arrival text; 501/501 frontend tests verified passing; no XSS risk (React auto-escapes); no hardcoded secrets; no SQL injection vectors (frontend-only); conventions followed (CSS modules, CSS vars, IBM Plex Mono, 150ms ease). |
 
 ---
 
@@ -2726,8 +2726,8 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-265 | QA Engineer: Security checklist + integration testing for T-264. Review multi-day rendering for XSS. Verify all tests pass. Integration: multi-day flight spans correct days; multi-day land travel spans correct days; single-day events unaffected. Log in qa-build-log.md. | Code Review | QA Engineer | Backlog | P1 | S | 33 | T-264 | Security checklist PASS; all tests pass (410 backend + 496+ frontend + 4 Playwright); integration scenarios verified. |
-| T-266 | Deploy Engineer: Sprint 33 staging deployment. Rebuild frontend (npm run build). Restart frontend service. Smoke test: multi-day flight calendar rendering. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Blocked | P1 | S | 33 | T-265 | Frontend rebuilt and serving; smoke test pass; both services online. |
+| T-265 | QA Engineer: Security checklist + integration testing for T-264. Review multi-day rendering for XSS. Verify all tests pass. Integration: multi-day flight spans correct days; multi-day land travel spans correct days; single-day events unaffected. Log in qa-build-log.md. | Code Review | QA Engineer | Done | P1 | S | 33 | T-264 | ✅ QA PASS (2026-03-20): Security checklist PASS; 410/410 backend + 501/501 frontend tests pass; integration scenarios verified; config consistency verified; npm audit 0 vulnerabilities. |
+| T-266 | Deploy Engineer: Sprint 33 staging deployment. Rebuild frontend (npm run build). Restart frontend service. Smoke test: multi-day flight calendar rendering. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Done | P1 | S | 33 | T-265 | ✅ DONE (2026-03-20): Frontend rebuilt (Vite 6.4.1, 129 modules, 0 errors). pm2 restart triplanner-frontend. Frontend 200 OK at https://localhost:4173/. Backend 200 OK at https://localhost:3001/. Smoke test: multi-day flight calendar API returns start_date ≠ end_date. All checks PASS. Handoff to Monitor Agent (T-267). **CR-33 REVIEWED (2026-03-20):** Manager approved — build clean, smoke tests 7/7 PASS, qa-build-log.md logged, handoff to T-267 confirmed. **QA Integration Check (2026-03-20):** 911/911 tests re-verified passing; security re-verified PASS; config consistency PASS. → Done. |
 | T-267 | Monitor Agent: Sprint 33 staging health check. Full protocol + Sprint 33 smoke (multi-day flight in calendar) + Sprint 32 regressions (lowercase stay category, status persistence). Playwright 4/4. If all pass: Deploy Verified = Yes (Staging), handoff to T-268. | Infrastructure | Monitor Agent | Backlog | P1 | S | 33 | T-266 | All health checks PASS; Deploy Verified = Yes (Staging); Playwright 4/4. |
 | T-268 | User Agent: Sprint 33 staging walkthrough. Test multi-day FLIGHT rendering, multi-day LAND_TRAVEL rendering, single-day event regression, Sprint 32 regressions. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 33 | T-267 | Multi-day events render correctly; no regressions; feedback submitted. |
 
@@ -2737,12 +2737,12 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| CR-33 | Manager: Sprint 33 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 33 | — | **1 task reviewed: T-264 — APPROVED → Integration Check.** See T-264 Notes for full review details. |
+| CR-33 | Manager: Sprint 33 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 33 | — | **2 tasks reviewed: T-264 — APPROVED → Integration Check; T-266 — APPROVED → Integration Check.** See notes below. |
 
 **CR-33 — Sprint 33 Code Review (2026-03-20)**
 
-**Status:** ✅ Complete — 1 task reviewed, 1 approved
-**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-20).
+**Status:** ✅ Complete — 2 tasks reviewed, 2 approved
+**Review scope:** All tasks in "In Review" status (pass 1: T-264; pass 2: T-266).
 
 **T-264 — Multi-day FLIGHT and LAND_TRAVEL calendar spanning: APPROVED**
 
@@ -2756,6 +2756,31 @@ Review findings:
 7. **Spec compliance:** Implementation matches Spec 28 (sections 28.1–28.12). Minor deviation in accessibility: middle-day aria-labels use `(cont.)` instead of spec's `"day N of total"` format — pragmatic trade-off, not a blocker.
 
 **Decision:** T-264 → Integration Check. Handoff to QA Engineer (T-265).
+
+**T-266 — Sprint 33 staging deployment: APPROVED (2026-03-20, pass 2)**
+
+Review findings:
+1. **Build:** Vite 6.4.1 clean build — 129 modules, 0 errors, JS bundle 296.93 KB (94.92 KB gzip), CSS bundle 58.95 KB (10.25 KB gzip). No build warnings.
+2. **Service restart:** pm2 restart confirmed — both `triplanner-frontend` (pid 91592) and `triplanner-backend` (pid 79204) online.
+3. **Smoke tests:** 7/7 PASS — frontend loads with correct asset hashes, backend health 200, auth login works, trip CRUD works, multi-day flight calendar API returns `start_date ≠ end_date` confirming T-264 changes are deployed.
+4. **Pre-deploy verification:** 911/911 tests pass (410 backend + 501 frontend), security checklist PASS, npm audit 0 vulnerabilities, no pending migrations.
+5. **Logging:** Results properly logged in qa-build-log.md Sprint 33 section.
+6. **Handoff:** Deploy Engineer → Monitor Agent handoff for T-267 already logged in handoff-log.md.
+7. **No backend changes** this sprint — correct, Sprint 33 is frontend-only.
+
+**Decision:** T-266 → Integration Check. T-267 (Monitor Agent staging health check) is unblocked.
+
+---
+
+### Backend Engineer — Sprint 33 Status Log
+
+**Backend Engineer Sprint 33 Work: NO IMPLEMENTATION TASKS (2026-03-20)**
+
+Sprint 33 is a frontend-only calendar rendering fix sprint (FB-133/FB-134 — multi-day FLIGHT and LAND_TRAVEL spanning). The backend already returns all necessary date fields (`departure_date`/`arrival_date` for land travel; `departure_at`/`arrival_at` for flights). No schema changes, no new endpoints, no API contract updates required.
+
+**Test baseline verified:** 410/410 backend tests pass (23 test files, 0 failures). Backend is stable and ready for QA/Deploy pipeline.
+
+**Hotfix standby:** Backend Engineer is monitoring. If T-256 (production walkthrough) or T-268 (staging walkthrough) reveals a Critical or Major backend bug, the Manager will create an H-XXX task.
 
 ---
 

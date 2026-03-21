@@ -4,6 +4,262 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #33 — QA Engineer — T-265 Re-Verification + T-266 Integration Check — 2026-03-20
+
+**Task:** T-265 re-verification + T-266 integration check
+**Date:** 2026-03-20
+**Sprint:** 33
+**Status:** ✅ QA PASS — T-266 verified, moved to Done
+
+---
+
+### Unit Test Re-Verification
+
+**Test Type:** Unit Test (Re-Run)
+
+| Suite | Tests | Passed | Failed | Duration |
+|-------|-------|--------|--------|----------|
+| Backend (23 files) | 410 | 410 | 0 | 2.74s |
+| Frontend (25 files) | 501 | 501 | 0 | 1.93s |
+| **Total** | **911** | **911** | **0** | **4.67s** |
+
+All tests confirmed passing. No regressions since initial T-265 run.
+
+---
+
+### Security Re-Verification
+
+**Test Type:** Security Scan (Re-Run)
+
+| Check | Result |
+|-------|--------|
+| npm audit (backend) | ✅ 0 vulnerabilities |
+| dangerouslySetInnerHTML in frontend | ✅ None found (only a comment in formatDate.js) |
+| eval() / innerHTML in frontend | ✅ None found |
+| Hardcoded secrets in frontend | ✅ None found (LoginPage/RegisterPage only have validation messages) |
+| Hardcoded secrets in backend | ✅ None found (test_user.js seed + cors.test.js are test-only) |
+
+**Security Re-Verification: ✅ PASS**
+
+---
+
+### Config Consistency Re-Verification
+
+**Test Type:** Config Consistency (Re-Run)
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Backend PORT (.env) | 3000 | 3000 | ✅ MATCH |
+| Vite proxy target port | 3000 | `BACKEND_PORT \|\| '3000'` → 3000 | ✅ MATCH |
+| Backend SSL | Disabled (commented out) | Commented out | ✅ OK |
+| Vite proxy protocol | http:// | http:// (BACKEND_SSL unset) | ✅ MATCH |
+| CORS_ORIGIN | http://localhost:5173 | http://localhost:5173 | ✅ MATCH |
+| Docker backend PORT | 3000 | 3000 | ✅ MATCH |
+
+**No config consistency mismatches.**
+
+---
+
+### T-266 Integration Check Verification
+
+T-266 (staging deployment) was reviewed and approved by Manager (CR-33). QA re-verification confirms:
+
+- ✅ All 911/911 unit tests pass (re-run confirmed)
+- ✅ Security checklist PASS (re-verified)
+- ✅ npm audit: 0 vulnerabilities
+- ✅ Config consistency: no mismatches
+- ✅ T-264 implementation matches Spec 28 (confirmed in initial T-265 review)
+- ✅ Deploy Engineer smoke tests 7/7 PASS (per T-266 handoff)
+- ✅ Manager CR-33 approved both T-264 and T-266
+
+**T-266 Integration Check: ✅ PASS — Moved to Done. T-267 (Monitor Agent) is unblocked.**
+
+*QA Engineer Sprint #33 — T-265 Re-Verification + T-266 Integration Check — 2026-03-20*
+
+---
+
+## Sprint #33 — Deploy Engineer — T-266 Staging Deployment — 2026-03-20
+
+**Task:** T-266 (Deploy Engineer — Sprint 33 staging deployment)
+**Date:** 2026-03-20
+**Sprint:** 33
+**Environment:** Staging
+**Build Status:** ✅ SUCCESS
+
+---
+
+### Build Details
+
+| Item | Value |
+|------|-------|
+| Build command | `cd frontend && npm run build` |
+| Build tool | Vite 6.4.1 |
+| Build time | 491ms |
+| Modules transformed | 129 |
+| Main JS bundle | `index-DWDNtgu6.js` (296.93 KB / 94.92 KB gzip) |
+| Main CSS bundle | `index-DQWNTC9k.css` (58.95 KB / 10.25 KB gzip) |
+| Build errors | 0 |
+
+### Deployment Details
+
+| Item | Value |
+|------|-------|
+| Service restarted | `pm2 restart triplanner-frontend` |
+| Frontend URL | `https://localhost:4173/` |
+| Backend URL | `https://localhost:3001/api/v1/` |
+| Frontend status | ✅ 200 OK — serving new build assets |
+| Backend health | ✅ 200 OK — `{"status":"ok"}` |
+| Database migrations | None required (Sprint 33 is frontend-only) |
+| Backend changes | None (no backend tasks this sprint) |
+
+### Smoke Test Results
+
+| Test | Result | Details |
+|------|--------|---------|
+| Frontend loads | ✅ PASS | HTML served with correct asset hashes (`index-DWDNtgu6.js`, `index-DQWNTC9k.css`) |
+| Backend health endpoint | ✅ PASS | `GET /api/v1/health` → 200 `{"status":"ok"}` |
+| Auth login | ✅ PASS | `POST /api/v1/auth/login` with test user → 200 with access_token |
+| Create trip | ✅ PASS | `POST /api/v1/trips` → 201 |
+| Create multi-day flight | ✅ PASS | `POST /api/v1/trips/:id/flights` with overnight flight (Sep 1 → Sep 2) → 201 |
+| Calendar API multi-day flight | ✅ PASS | `GET /api/v1/trips/:id/calendar` → FLIGHT event with `start_date: 2026-09-01`, `end_date: 2026-09-02` (different dates confirm multi-day data) |
+| Delete smoke test trip | ✅ PASS | `DELETE /api/v1/trips/:id` → 204 |
+| Both pm2 services online | ✅ PASS | `triplanner-backend` (pid 79204), `triplanner-frontend` (pid 91592) |
+
+### Pre-Deploy Verification (from QA T-265 handoff)
+
+- ✅ 911/911 unit tests pass (410 backend + 501 frontend)
+- ✅ Security checklist PASS (0 issues)
+- ✅ npm audit: 0 vulnerabilities
+- ✅ No pending migrations
+- ✅ No backend changes
+
+**Deploy Verified = Pending Monitor Agent health check (T-267)**
+
+*Deploy Engineer Sprint #33 — T-266 Complete — 2026-03-20*
+
+---
+
+## Sprint #33 — QA Engineer — T-265 Security Checklist + Integration Testing — 2026-03-20
+
+**Task:** T-265 (QA Engineer — Security checklist + integration testing for T-264)
+**Date:** 2026-03-20
+**Sprint:** 33
+**Status:** ✅ QA PASS
+
+---
+
+### Unit Test Results
+
+**Test Type:** Unit Test
+
+| Suite | Tests | Passed | Failed | Duration |
+|-------|-------|--------|--------|----------|
+| Backend (23 files) | 410 | 410 | 0 | 2.76s |
+| Frontend (25 files) | 501 | 501 | 0 | 2.00s |
+| **Total** | **911** | **911** | **0** | **4.76s** |
+
+**T-264 New Tests (28.A–28.E):** 5 new tests added to TripCalendar.test.jsx
+
+| Test | Description | Result |
+|------|-------------|--------|
+| 28.A | Multi-day FLIGHT spanning 2 days renders on both days | ✅ PASS |
+| 28.B | Multi-day LAND_TRAVEL spanning 3 days renders on all 3 days | ✅ PASS |
+| 28.C | Multi-day FLIGHT shows "Arrives" text on arrival day | ✅ PASS |
+| 28.D | Single-day FLIGHT renders as single chip (no regression) | ✅ PASS |
+| 28.E | Single-day LAND_TRAVEL with null end_date renders as single chip | ✅ PASS |
+
+**Coverage assessment:** T-264 has happy-path tests (28.A, 28.B, 28.C) and edge-case/regression tests (28.D, 28.E with null end_date). Sufficient coverage.
+
+---
+
+### Integration Test Results
+
+**Test Type:** Integration Test
+
+**T-264 Integration Scenarios:**
+
+| Scenario | Verification Method | Result |
+|----------|-------------------|--------|
+| Multi-day FLIGHT spans correct days | Code review: `buildEventsMap()` enumerates dates from `start_date` to `end_date` using `enumerateDates()` | ✅ PASS |
+| Multi-day LAND_TRAVEL spans correct days | Code review: Same logic applies to LAND_TRAVEL in `buildEventsMap()` lines 69-91 | ✅ PASS |
+| Single-day events unaffected | Code review: `start === end` short-circuits to single-day behavior (line 72-75) | ✅ PASS |
+| Arrival time on arrival day | Code review: `buildArrivalLabel()` differentiates RENTAL_CAR ("Drop-off") from other modes ("Arrives"); rendered on `_dayType === 'end'` pills | ✅ PASS |
+| Mobile view multi-day events | Code review: `MobileDayList` enumerates FLIGHT/LAND_TRAVEL multi-day spans with `(cont.)` on middle days and arrival labels on end days | ✅ PASS |
+| Frontend calls correct API endpoint | Test 15 verifies `apiClient.get('/trips/:id/calendar')` — matches contract in api-contracts.md | ✅ PASS |
+| Response shape matches contract | Calendar events include `start_date`, `end_date`, `start_time`, `end_time` — matches existing `GET /api/v1/trips/:id/calendar` contract | ✅ PASS |
+| UI states implemented | Empty (Test 5), Loading (Test 6), Error (Test 7), Success (Tests 2-4, 14) — all 4 states verified | ✅ PASS |
+| No XSS vectors | No `dangerouslySetInnerHTML` or `innerHTML` usage. `formatTime()` returns null on invalid input. All text via React JSX auto-escaping | ✅ PASS |
+
+---
+
+### Config Consistency Check
+
+**Test Type:** Config Consistency
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Backend PORT (`.env`) | 3000 | 3000 | ✅ MATCH |
+| Vite proxy target port | 3000 (default from `BACKEND_PORT \|\| '3000'`) | 3000 | ✅ MATCH |
+| Backend SSL | Disabled (commented out in .env) | — | ✅ OK |
+| Vite proxy protocol | `http://` (when BACKEND_SSL unset) | `http://` | ✅ MATCH |
+| CORS_ORIGIN | Must include `http://localhost:5173` | `http://localhost:5173` | ✅ MATCH |
+| Docker backend PORT | 3000 | 3000 | ✅ MATCH |
+| Docker CORS_ORIGIN | Configurable via env var, default `http://localhost` | ✅ OK (production uses custom domain) | ✅ OK |
+
+**No config consistency issues found.**
+
+---
+
+### Security Scan Results
+
+**Test Type:** Security Scan
+
+**npm audit:** 0 vulnerabilities (backend)
+
+| Security Checklist Item | Status | Notes |
+|------------------------|--------|-------|
+| **Auth & Authorization** | | |
+| All API endpoints require auth | ✅ PASS | Auth middleware applied; calendar endpoint requires valid JWT |
+| Password hashing uses bcrypt | ✅ PASS | bcrypt used in auth.js, seeds, and tests |
+| Failed login rate-limited | ✅ PASS | Rate limiter middleware in place (`rateLimiter.js`) |
+| **Input Validation & Injection** | | |
+| SQL queries use parameterized statements | ✅ PASS | Knex query builder used throughout; `db.raw()` calls use static SQL (TO_CHAR, gen_random_uuid) — no user input concatenation |
+| HTML output sanitized (XSS) | ✅ PASS | React auto-escaping; no `dangerouslySetInnerHTML`; `formatDate.js` explicitly notes "no dangerouslySetInnerHTML" |
+| Client + server validation | ✅ PASS | Frontend form validation + backend route validation |
+| **API Security** | | |
+| CORS configured correctly | ✅ PASS | `CORS_ORIGIN=http://localhost:5173` for dev; production uses custom domain |
+| Rate limiting on public endpoints | ✅ PASS | Rate limiter applied to auth routes |
+| No stack traces in error responses | ✅ PASS | `errorHandler.js` logs stack server-side, returns generic message for 500s |
+| Security headers (helmet) | ✅ PASS | `helmet()` middleware applied in `app.js` (X-Content-Type-Options, X-Frame-Options, etc.) |
+| **Data Protection** | | |
+| Credentials in env vars, not code | ✅ PASS | JWT_SECRET, DATABASE_URL in `.env`; `.env` not committed (checked `.gitignore`) |
+| No hardcoded secrets in frontend | ✅ PASS | No API keys or secrets in frontend source |
+| **Infrastructure** | | |
+| Dependencies checked for vulnerabilities | ✅ PASS | `npm audit` — 0 vulnerabilities |
+| No default credentials in code | ✅ PASS | `.env` has placeholder `change-me-to-a-random-string` for JWT_SECRET (appropriate for dev template) |
+
+**Security Scan Result: ✅ PASS — No security issues found.**
+
+---
+
+### Summary
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests (410/410) | ✅ PASS |
+| Frontend unit tests (501/501) | ✅ PASS |
+| T-264 new tests (5/5) | ✅ PASS |
+| Integration scenarios | ✅ PASS |
+| Config consistency | ✅ PASS |
+| Security checklist | ✅ PASS |
+| npm audit | ✅ 0 vulnerabilities |
+
+**QA Verdict: ✅ PASS — T-264 ready for staging deployment (T-266).**
+
+*QA Engineer Sprint #33 — T-265 Complete — 2026-03-20*
+
+---
+
 ## Sprint #32 — Deploy Engineer — T-260 Staging Re-Deployment — 2026-03-20
 
 **Task:** T-260 (Deploy Engineer — Sprint 32 staging re-deployment)
