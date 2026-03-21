@@ -11015,6 +11015,317 @@ Then:  The LAND_TRAVEL event row element has the `mobileEventLandTravel` CSS mod
 
 **Design System Conventions:** Stable. No additions or modifications proposed. The `--event-land-travel-text` token added in Sprint 30 is the authoritative color for all LAND_TRAVEL visual treatments — desktop and mobile.
 
-**Most recent spec:** Spec 27 (Sprint #31, T-249 — mobileEventLandTravel CSS directive) — Status: Approved.
+**Most recent spec:** Spec 28 (Sprint #33, T-263 — Multi-day FLIGHT and LAND_TRAVEL calendar spanning) — Status: Approved.
 
-*Sprint #31 design review complete. Published by Design Agent 2026-03-20.*
+---
+
+### Spec 28: Multi-Day FLIGHT and LAND_TRAVEL Calendar Spanning (FB-133, FB-134)
+
+**Sprint:** #33
+**Related Task:** T-263 (Design), T-264 (Frontend Implementation)
+**Feedback Source:** FB-133 (LAND_TRAVEL not spanning), FB-134 (FLIGHT not spanning)
+**Status:** Approved
+
+**Description:**
+Currently, STAY events span multiple days on the TripCalendar (rendered as multi-day bars from check-in to check-out). However, FLIGHT and LAND_TRAVEL events are rendered on a single day only — the departure date. When a flight departs on one date and arrives on another (e.g., overnight or international flights), or when land travel spans multiple days (e.g., a 3-day rental car), the calendar should show these events spanning their full date range, matching the existing STAY multi-day rendering pattern.
+
+The backend already returns `start_date` and `end_date` fields for all event types. The fix is frontend-only: update `buildEventsMap()` in `TripCalendar.jsx` to enumerate dates for FLIGHT and LAND_TRAVEL events the same way it does for STAY events, and render the corresponding multi-day bar chips.
+
+---
+
+#### 28.1 Data Model (No Changes Required)
+
+The calendar API (`GET /api/v1/trips/:id/calendar`) already returns the necessary fields:
+
+| Event Type | Start Date Field | End Date Field | Start Time Field | End Time Field |
+|------------|-----------------|----------------|-----------------|----------------|
+| FLIGHT | `start_date` (departure date) | `end_date` (arrival date) | `start_time` (departure time) | `end_time` (arrival time) |
+| LAND_TRAVEL | `start_date` (departure date) | `end_date` (arrival date) | `start_time` (departure time) | `end_time` (arrival time) |
+| STAY | `start_date` (check-in date) | `end_date` (check-out date) | `start_time` (check-in time) | `end_time` (check-out time) |
+| ACTIVITY | `start_date` (activity date) | — (single-day only) | `start_time` | `end_time` |
+
+**Key insight:** When `start_date === end_date` (or `end_date` is null), the event is single-day and renders as a single chip — no change from current behavior. When `start_date !== end_date`, the event spans multiple days.
+
+---
+
+#### 28.2 Updated `buildEventsMap()` Logic
+
+**Current behavior (broken):** FLIGHT and LAND_TRAVEL events are always placed on `start_date` only, with `_dayType: 'single'`.
+
+**Updated behavior:** FLIGHT and LAND_TRAVEL events follow the same multi-day spanning logic as STAY events. Specifically, the `buildEventsMap()` function should:
+
+1. Check if `end_date` exists and differs from `start_date`
+2. If multi-day: enumerate all dates from `start_date` to `end_date` (inclusive)
+3. For each date in the range, push the event with `_dayType` metadata:
+   - `'single'` if `start_date === end_date` (or `end_date` is null)
+   - `'start'` for the first day of the span
+   - `'middle'` for intermediate days
+   - `'end'` for the last day of the span
+4. Also set `_isFirst` and `_isLast` boolean flags (matching STAY pattern)
+5. If `end_date` is null or equals `start_date`, render as single-day (current behavior preserved)
+
+**Pseudocode:**
+```javascript
+// In buildEventsMap(), replace the FLIGHT/LAND_TRAVEL branch:
+if (event.type === 'FLIGHT' || event.type === 'LAND_TRAVEL') {
+  const start = event.start_date;
+  const end = event.end_date || event.start_date;
+  if (start === end) {
+    // Single-day: same as current behavior
+    if (!map[start]) map[start] = [];
+    map[start].push({ ...event, _dayType: 'single', _isFirst: true, _isLast: true });
+  } else {
+    // Multi-day: enumerate dates (same logic as STAY)
+    const dates = [];
+    const cur = new Date(start + 'T00:00:00');
+    const endDate = new Date(end + 'T00:00:00');
+    while (cur <= endDate) {
+      dates.push(cur.toISOString().slice(0, 10));
+      cur.setDate(cur.getDate() + 1);
+    }
+    for (let i = 0; i < dates.length; i++) {
+      const d = dates[i];
+      if (!map[d]) map[d] = [];
+      const isFirst = i === 0;
+      const isLast = i === dates.length - 1;
+      map[d].push({
+        ...event,
+        _dayType: isFirst ? 'start' : isLast ? 'end' : 'middle',
+        _isFirst: isFirst,
+        _isLast: isLast,
+      });
+    }
+  }
+}
+// ACTIVITY remains single-day only (no end_date):
+else if (event.type === 'ACTIVITY') {
+  const d = event.start_date;
+  if (!map[d]) map[d] = [];
+  map[d].push({ ...event, _dayType: 'single', _isFirst: true, _isLast: true });
+}
+```
+
+---
+
+#### 28.3 Desktop Visual Treatment — Multi-Day FLIGHT Chips
+
+Multi-day FLIGHT events use the **same spanning bar pattern** as STAY events, but with the FLIGHT color (`--color-flight: #5D737E`).
+
+**First day of span (departure day):**
+- Full-width colored bar within the cell
+- Background: `var(--color-flight)` (`#5D737E`)
+- Border-radius: `2px 0 0 2px` (rounded left edge)
+- Content: Flight label text (e.g., `"DL1234"`) — 10px, font-weight 500, `#FCFCFC`, truncated with ellipsis
+- Time element: departure time in compact format (e.g., `"6a"`) — same styling as CAL-1.4 (10px, opacity 0.7, below event name)
+
+**Middle days:**
+- Full-width colored bar, no border-radius
+- Background: `var(--color-flight)` at `opacity: 0.8` (same opacity pattern as STAY middle days)
+- No text content (bar only — continuation indicator)
+
+**Last day of span (arrival day):**
+- Full-width colored bar
+- Border-radius: `0 2px 2px 0` (rounded right edge)
+- Content: Arrival time label: `"Arrives [time]"` — e.g., `"Arrives 3:45p"`
+- Format: The word "Arrives" in 9px, `opacity: 0.6`, followed by the compact time (10px, `opacity: 0.7`)
+- If no arrival time available: show `"Arrives"` text only (no time), 10px, `opacity: 0.6`
+
+**Week boundary spanning:** If the flight span crosses a Sunday → new row boundary:
+- Last day of the week row: right edge rounding (`0 2px 2px 0`)
+- First day of the new week row: left edge rounding (`2px 0 0 2px`) with the flight label repeated (e.g., `"DL1234"`)
+- This matches the existing STAY week-break behavior (Spec 7.2.3)
+
+**Single-day FLIGHT (departure and arrival on same date):**
+- No change from current behavior: single chip on that date, showing flight label + departure time
+
+---
+
+#### 28.4 Desktop Visual Treatment — Multi-Day LAND_TRAVEL Chips
+
+Multi-day LAND_TRAVEL events use the **same spanning bar pattern**, with the LAND_TRAVEL color (`--color-land-travel: #7B6B8E`).
+
+**First day of span (departure day):**
+- Full-width colored bar
+- Background: `var(--color-land-travel)` (`#7B6B8E`)
+- Border-radius: `2px 0 0 2px` (rounded left edge)
+- Content: Mode label (e.g., `"Rental Car"`, `"Train"`) — 10px, font-weight 500, `#FCFCFC`, truncated with ellipsis
+- Time element: departure time in compact format (e.g., `"9a"`) — same CAL-1.4 styling
+- If no departure time: mode label only, no time element
+
+**Middle days:**
+- Full-width colored bar, no border-radius
+- Background: `var(--color-land-travel)` at `opacity: 0.8`
+- No text content
+
+**Last day of span (arrival day):**
+- Full-width colored bar
+- Border-radius: `0 2px 2px 0` (rounded right edge)
+- Content: Arrival time label: `"Arrives [time]"` — e.g., `"Arrives 2p"` or `"Drop-off [time]"` for RENTAL_CAR mode
+  - **Mode-specific arrival label:**
+    - RENTAL_CAR: `"Drop-off [time]"` (e.g., `"Drop-off 2p"`)
+    - All other modes (BUS, TRAIN, RIDESHARE, FERRY, OTHER): `"Arrives [time]"` (e.g., `"Arrives 10:30a"`)
+  - Format: Label word(s) in 9px, `opacity: 0.6`, followed by compact time (10px, `opacity: 0.7`)
+  - If no arrival time: show label only (`"Arrives"` or `"Drop-off"`), 10px, `opacity: 0.6`
+
+**Week boundary spanning:** Same pattern as FLIGHT (and STAY) — see 28.3.
+
+**Single-day LAND_TRAVEL (departure and arrival on same date, or no arrival date):**
+- No change from current behavior: single chip with mode + time range
+
+---
+
+#### 28.5 Updated `buildLandTravelPillText()` for Multi-Day Events
+
+The existing `buildLandTravelPillText()` function builds the pill text for single-day land travel chips. For multi-day events, the chip text varies by `_dayType`:
+
+| `_dayType` | Pill Text |
+|------------|-----------|
+| `'single'` | Current behavior: `"{Mode} {dep}–{arr}"` or `"{Mode} {dep}"` or `"{Mode}"` |
+| `'start'` | `"{Mode}"` + departure time as time element (via CAL-1.4 pattern) |
+| `'middle'` | No text (empty continuation bar) |
+| `'end'` | Arrival label text (see 28.3 / 28.4 for format by type) |
+
+The Frontend Engineer should add a helper or extend the existing rendering logic to determine chip content based on `_dayType` and `event.type`.
+
+---
+
+#### 28.6 Updated Event Priority / Stacking Order
+
+The stacking order within a calendar day cell is updated to include multi-day spans:
+
+1. **Flights** (highest visual priority) — both single-day and multi-day span chips
+2. **Stays** — multi-day span chips
+3. **Land Travel** — both single-day and multi-day span chips
+4. **Activities** (lowest priority)
+
+This maintains the existing order (Spec 7.2.3) with LAND_TRAVEL inserted between STAY and ACTIVITY, which is consistent with the T-243 implementation.
+
+---
+
+#### 28.7 Mobile View — Multi-Day FLIGHT and LAND_TRAVEL
+
+**Mobile list view (`MobileDayList`):**
+
+The `MobileDayList` component currently treats FLIGHT and LAND_TRAVEL as single-day events. It must be updated to handle multi-day spanning:
+
+1. **Update `daysWithEvents` computation:** When building the day map for FLIGHT and LAND_TRAVEL events, enumerate all dates from `start_date` to `end_date` (same logic as desktop `buildEventsMap`). Include each date that falls within the displayed month.
+
+2. **Departure day row:** Show the event with its departure time. Same format as current single-day rendering.
+
+3. **Middle day rows:** Show the event with a continuation indicator. Display the mode/flight label + `"(cont.)"` suffix in muted text. Example: `"DL1234 (cont.)"` or `"Rental Car (cont.)"`. Use the event's type color at `opacity: 0.6` for the row accent.
+
+4. **Arrival day row:** Show the event with arrival information:
+   - FLIGHT: `"DL1234 — Arrives 3:45p"`
+   - LAND_TRAVEL (RENTAL_CAR): `"Rental Car — Drop-off 2p"`
+   - LAND_TRAVEL (other): `"Train — Arrives 10:30a"`
+   - If no arrival time: omit the time, show only `"DL1234 — Arrives"` or `"Rental Car — Drop-off"`
+
+5. **Event color:** Use `--color-flight` for flights, `--color-land-travel` (`--event-land-travel-text`) for land travel — consistent with existing mobile styling.
+
+**Mobile dot view (compact, <640px calendar grid):**
+
+Multi-day events show their type-colored dot on every day they span (departure through arrival). No change to the dot rendering logic — the updated `buildEventsMap` will naturally place the event on each spanned date, and the dot renderer already uses the event `type` for coloring.
+
+---
+
+#### 28.8 Edge Cases
+
+| Case | Expected Behavior |
+|------|-------------------|
+| FLIGHT with `end_date === null` | Treat as single-day on `start_date`. No change from current behavior. |
+| FLIGHT with `end_date === start_date` | Single-day chip. No spanning. |
+| FLIGHT spanning 2 days (overnight) | Bar on departure date + bar on arrival date. |
+| FLIGHT spanning 3+ days (international with date line) | Full span: start bar → middle bar(s) → end bar. Rare but should work. |
+| LAND_TRAVEL with no `arrival_date` | Single-day on `departure_date`. Current behavior preserved. |
+| LAND_TRAVEL spanning many days (e.g., 7-day rental car) | Full span across all dates. Middle days show continuation bar. |
+| Multi-day event spanning month boundary | Show only the portion within the displayed month. The event appears on the edge days of the visible month, with appropriate rounding (same behavior as STAY month-boundary handling). |
+| Multiple multi-day events overlapping on the same day | Stack per priority order (28.6). If more than 3 event lines, `"+N more"` overflow applies. |
+| Single-day events on same day as multi-day span | Both render. Multi-day span bar occupies one event line; single-day chip occupies another. |
+
+---
+
+#### 28.9 Accessibility
+
+- Multi-day span chips on intermediate days: `aria-label="[type]: [name], day [N] of [total]"` (e.g., `aria-label="Flight: DL1234, day 2 of 3"`)
+- Arrival day chip: `aria-label="[type]: [name], arrives [time]"` (e.g., `aria-label="Flight: DL1234, arrives 3:45 PM"`)
+- Departure day chip: same as current `aria-label` pattern (e.g., `aria-label="Flight: DL1234"`)
+- Screen reader announcement for multi-day events should convey that the event spans multiple days. The `_dayType` metadata enables this.
+- Keyboard navigation: no change — event chips are already focusable via the click-to-scroll interaction added in previous sprints.
+
+---
+
+#### 28.10 Responsive Summary
+
+| Breakpoint | FLIGHT Multi-Day | LAND_TRAVEL Multi-Day |
+|------------|-----------------|----------------------|
+| Desktop (≥768px) | Colored spanning bar (`--color-flight`), departure label on first day, `"Arrives [time]"` on last day | Colored spanning bar (`--color-land-travel`), mode label on first day, `"Arrives/Drop-off [time]"` on last day |
+| Tablet (640–767px) | Same as desktop, abbreviated text | Same as desktop, abbreviated text |
+| Mobile list (<640px) | List rows with departure/continuation/arrival indicators | List rows with departure/continuation/arrival indicators |
+| Mobile dot (<640px grid) | Colored dot on each spanned day | Colored dot on each spanned day |
+
+---
+
+#### 28.11 Files to Modify (T-264)
+
+| File | Change |
+|------|--------|
+| `frontend/src/components/TripCalendar.jsx` | Update `buildEventsMap()` to enumerate dates for FLIGHT and LAND_TRAVEL when `end_date` differs from `start_date`. Update chip rendering to handle `_dayType` start/middle/end for these types. Update `MobileDayList` to enumerate multi-day FLIGHT/LAND_TRAVEL dates. Add arrival time label rendering for end-day chips. |
+| `frontend/src/components/TripCalendar.module.css` | No new classes expected — reuse existing span styles (`.eventSpanStart`, `.eventSpanMiddle`, `.eventSpanEnd` or equivalent) already used by STAY. If class names are type-specific, add flight/land-travel variants following the same pattern. |
+| `frontend/src/__tests__/TripCalendar.test.jsx` | Add 4+ new tests (see 28.12). |
+
+**No API changes. No backend changes. No schema changes. No new components. No new CSS tokens.**
+
+---
+
+#### 28.12 Test Plan (T-264)
+
+**Test 28.A — Multi-day FLIGHT event spans both days**
+```
+Given: A calendar with a FLIGHT event where start_date="2026-08-07" and end_date="2026-08-08"
+When:  TripCalendar renders the month of August 2026
+Then:  The FLIGHT event chip appears on both Aug 7 and Aug 8
+And:   Aug 7 chip has _dayType "start" (rounded left edge, flight label)
+And:   Aug 8 chip has _dayType "end" (rounded right edge, arrival text)
+```
+
+**Test 28.B — Multi-day LAND_TRAVEL event spans 3 days**
+```
+Given: A calendar with a LAND_TRAVEL event where start_date="2026-08-10" and end_date="2026-08-12"
+When:  TripCalendar renders the month of August 2026
+Then:  The LAND_TRAVEL event chip appears on Aug 10, Aug 11, and Aug 12
+And:   Aug 10 chip has _dayType "start"
+And:   Aug 11 chip has _dayType "middle"
+And:   Aug 12 chip has _dayType "end"
+```
+
+**Test 28.C — Arrival time displayed on arrival day**
+```
+Given: A FLIGHT event spanning Aug 7–8 with end_time="15:45"
+When:  TripCalendar renders
+Then:  The Aug 8 (arrival day) chip contains text matching /arrives/i
+And:   The arrival time "3:45p" (or equivalent compact format) is displayed
+```
+
+**Test 28.D — Single-day FLIGHT still renders correctly**
+```
+Given: A FLIGHT event where start_date="2026-08-07" and end_date="2026-08-07" (or end_date is null)
+When:  TripCalendar renders
+Then:  The FLIGHT event appears only on Aug 7
+And:   It renders as a single chip (_dayType "single"), not a span
+And:   No "Arrives" text is shown
+```
+
+**Test 28.E — Single-day LAND_TRAVEL still renders correctly**
+```
+Given: A LAND_TRAVEL event where start_date="2026-08-10" and end_date is null
+When:  TripCalendar renders
+Then:  The LAND_TRAVEL event appears only on Aug 10 as a single chip
+```
+
+---
+
+*Spec 28 (Sprint 33 — Multi-day FLIGHT and LAND_TRAVEL calendar spanning, T-263) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-20.*
+
+---
+
+*Sprint #33 design review complete. Published by Design Agent 2026-03-20.*

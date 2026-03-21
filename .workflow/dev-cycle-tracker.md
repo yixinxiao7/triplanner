@@ -2717,7 +2717,7 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-263 | Design Agent: UI spec for multi-day FLIGHT and LAND_TRAVEL event rendering in TripCalendar. Specify: multi-day spanning visual treatment, arrival time display format, mobile view, consistency with existing STAY rendering pattern. Write to ui-spec.md. | Design | Design Agent | Backlog | P1 | S | 33 | — | UI spec section covers desktop + mobile multi-day rendering; arrival time format specified; consistent with Japandi aesthetic. |
+| T-263 | Design Agent: UI spec for multi-day FLIGHT and LAND_TRAVEL event rendering in TripCalendar. Specify: multi-day spanning visual treatment, arrival time display format, mobile view, consistency with existing STAY rendering pattern. Write to ui-spec.md. | Design | Design Agent | Done | P1 | S | 33 | — | UI spec section covers desktop + mobile multi-day rendering; arrival time format specified; consistent with Japandi aesthetic. Spec 28 published to ui-spec.md. |
 | T-264 | Frontend Engineer: Multi-day event spanning for FLIGHT and LAND_TRAVEL in TripCalendar (FB-133, FB-134). FLIGHT events span departure_at date → arrival_at date. LAND_TRAVEL events span departure_date → arrival_date. Show arrival time on arrival day. 4+ new tests; 496+ existing tests pass. | Feature | Frontend Engineer | Backlog | P1 | M | 33 | T-263 | Multi-day events span correct date range; arrival time displayed; single-day events unaffected; 4+ new tests; 496+ existing pass. **Feedback Source:** FB-133, FB-134 |
 
 ---

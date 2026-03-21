@@ -4,6 +4,42 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Handoff: Design Agent → Frontend Engineer (T-263 Complete — Multi-Day Calendar Spanning UI Spec — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 33
+**Task:** T-263
+**Status:** ✅ Complete — Spec 28 written and auto-approved
+**From:** Design Agent
+**To:** Frontend Engineer
+
+### Summary
+
+T-263 (UI spec for multi-day FLIGHT and LAND_TRAVEL calendar spanning) is **COMPLETE**. Spec 28 has been written to `.workflow/ui-spec.md` and marked Approved.
+
+### What Was Specified
+
+- **Multi-day spanning logic:** FLIGHT and LAND_TRAVEL events now follow the same `buildEventsMap()` date-enumeration pattern as STAY events, using `_dayType` (start/middle/end/single) and `_isFirst`/`_isLast` metadata.
+- **Desktop visual treatment:** Spanning colored bars using `--color-flight` (#5D737E) for flights and `--color-land-travel` (#7B6B8E) for land travel. Departure label on first day, arrival label on last day.
+- **Arrival time display:** Last day of span shows `"Arrives [time]"` for flights and most land travel modes, or `"Drop-off [time]"` for RENTAL_CAR mode.
+- **Mobile view:** Updated `MobileDayList` enumeration + continuation indicators (`"(cont.)"` suffix on middle days).
+- **Edge cases:** Single-day events unchanged, null `end_date` handled, month boundary spanning, overlapping multi-day events.
+- **Test plan:** 5 test cases specified (28.A through 28.E).
+
+### Files to Modify (T-264)
+
+| File | Change |
+|------|--------|
+| `frontend/src/components/TripCalendar.jsx` | Update `buildEventsMap()`, chip rendering, `MobileDayList` |
+| `frontend/src/components/TripCalendar.module.css` | Reuse existing span styles or add type-specific variants |
+| `frontend/src/__tests__/TripCalendar.test.jsx` | Add 4+ new tests (Tests 28.A–28.E) |
+
+### Blocking
+
+T-264 (Frontend implementation) is now **unblocked**. Frontend Engineer can begin implementation using Spec 28 in `ui-spec.md`.
+
+---
+
 ## Handoff: User Agent → Manager Agent (T-262 Complete — Sprint #32 Staging Walkthrough — 2026-03-20)
 
 **Date:** 2026-03-20
