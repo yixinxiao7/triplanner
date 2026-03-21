@@ -7744,3 +7744,43 @@ Parallel start:
 *Manager Agent Sprint #32 Closeout / Sprint #33 Kickoff — 2026-03-20*
 
 ---
+
+## Handoff: Manager Agent → QA Engineer (Sprint 33 — T-265)
+
+**Date:** 2026-03-20
+**From:** Manager Agent (CR-33)
+**To:** QA Engineer
+**Task:** T-265 — Security checklist + integration testing for T-264
+**Status:** Ready for QA
+
+### Context
+
+T-264 (multi-day FLIGHT and LAND_TRAVEL calendar spanning) has been code-reviewed and APPROVED by Manager Agent (CR-33). The task is now in Integration Check status.
+
+### What Changed (T-264)
+
+- **File:** `frontend/src/components/TripCalendar.jsx`
+  - `buildEventsMap()`: FLIGHT and LAND_TRAVEL events now enumerate dates from `start_date` to `end_date` when multi-day, matching STAY behavior. Sets `_dayType` (start/middle/end/single) and `_isFirst`/`_isLast` metadata.
+  - `renderEventPill()`: Multi-day pill styles (rounded edges, opacity) applied for FLIGHT and LAND_TRAVEL. Arrival day shows "Arrives {time}" (FLIGHT) or "Drop-off {time}" (RENTAL_CAR) / "Arrives {time}" (other LAND_TRAVEL modes).
+  - `MobileDayList`: FLIGHT and LAND_TRAVEL now enumerated across multi-day spans. Middle days show "(cont.)" with opacity 0.6. End days show arrival info.
+- **File:** `frontend/src/__tests__/TripCalendar.test.jsx`
+  - 5 new tests (28.A–28.E): multi-day FLIGHT 2-day span, multi-day LAND_TRAVEL 3-day span, arrival time on arrival day, single-day FLIGHT regression, single-day LAND_TRAVEL null end_date.
+- **No CSS changes, no backend changes, no API changes.**
+
+### Test Baseline
+
+- **Frontend:** 501/501 pass (was 496 at sprint kickoff; +5 new tests from T-264)
+- **Backend:** 410/410 pass (unchanged)
+- **Playwright:** 4/4 pass (unchanged)
+- **Total:** 915
+
+### QA Focus Areas
+
+1. **Security:** Verify no XSS risk in multi-day event rendering (React auto-escapes, but confirm no `dangerouslySetInnerHTML` or raw HTML injection)
+2. **Integration:** Multi-day FLIGHT renders on correct date range; multi-day LAND_TRAVEL renders on correct date range; single-day events unaffected
+3. **Regression:** Existing STAY multi-day spanning still works; existing ACTIVITY single-day rendering unaffected
+4. **All tests pass:** 410 backend + 501 frontend + 4 Playwright = 915 total
+
+*Manager Agent Sprint #33 Code Review Handoff — 2026-03-20*
+
+---

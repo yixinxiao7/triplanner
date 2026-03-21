@@ -2718,7 +2718,7 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
 | T-263 | Design Agent: UI spec for multi-day FLIGHT and LAND_TRAVEL event rendering in TripCalendar. Specify: multi-day spanning visual treatment, arrival time display format, mobile view, consistency with existing STAY rendering pattern. Write to ui-spec.md. | Design | Design Agent | Done | P1 | S | 33 | — | UI spec section covers desktop + mobile multi-day rendering; arrival time format specified; consistent with Japandi aesthetic. Spec 28 published to ui-spec.md. |
-| T-264 | Frontend Engineer: Multi-day event spanning for FLIGHT and LAND_TRAVEL in TripCalendar (FB-133, FB-134). FLIGHT events span departure_at date → arrival_at date. LAND_TRAVEL events span departure_date → arrival_date. Show arrival time on arrival day. 4+ new tests; 496+ existing tests pass. | Feature | Frontend Engineer | In Review | P1 | M | 33 | T-263 | Multi-day events span correct date range; arrival time displayed; single-day events unaffected; 5 new tests (28.A–28.E); 501/501 frontend tests pass. **Feedback Source:** FB-133, FB-134 |
+| T-264 | Frontend Engineer: Multi-day event spanning for FLIGHT and LAND_TRAVEL in TripCalendar (FB-133, FB-134). FLIGHT events span departure_at date → arrival_at date. LAND_TRAVEL events span departure_date → arrival_date. Show arrival time on arrival day. 4+ new tests; 496+ existing tests pass. | Feature | Frontend Engineer | Integration Check | P1 | M | 33 | T-263 | Multi-day events span correct date range; arrival time displayed; single-day events unaffected; 5 new tests (28.A–28.E); 501/501 frontend tests pass. **Feedback Source:** FB-133, FB-134. **CR-33 APPROVED (2026-03-20):** buildEventsMap() correctly enumerates FLIGHT/LAND_TRAVEL multi-day spans; desktop pill rendering handles start/middle/end _dayType with correct border-radius and opacity; MobileDayList enumerates spans with (cont.) and Arrives/Drop-off labels; buildArrivalLabel() correctly differentiates RENTAL_CAR (Drop-off) from other modes (Arrives); 5 tests (28.A–28.E) cover multi-day, single-day, null end_date, and arrival text; 501/501 frontend tests verified passing; no XSS risk (React auto-escapes); no hardcoded secrets; no SQL injection vectors (frontend-only); conventions followed (CSS modules, CSS vars, IBM Plex Mono, 150ms ease). |
 
 ---
 
@@ -2730,6 +2730,32 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 | T-266 | Deploy Engineer: Sprint 33 staging deployment. Rebuild frontend (npm run build). Restart frontend service. Smoke test: multi-day flight calendar rendering. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Blocked | P1 | S | 33 | T-265 | Frontend rebuilt and serving; smoke test pass; both services online. |
 | T-267 | Monitor Agent: Sprint 33 staging health check. Full protocol + Sprint 33 smoke (multi-day flight in calendar) + Sprint 32 regressions (lowercase stay category, status persistence). Playwright 4/4. If all pass: Deploy Verified = Yes (Staging), handoff to T-268. | Infrastructure | Monitor Agent | Backlog | P1 | S | 33 | T-266 | All health checks PASS; Deploy Verified = Yes (Staging); Playwright 4/4. |
 | T-268 | User Agent: Sprint 33 staging walkthrough. Test multi-day FLIGHT rendering, multi-day LAND_TRAVEL rendering, single-day event regression, Sprint 32 regressions. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 33 | T-267 | Multi-day events render correctly; no regressions; feedback submitted. |
+
+---
+
+### Code Review — Sprint 33
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-33 | Manager: Sprint 33 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 33 | — | **1 task reviewed: T-264 — APPROVED → Integration Check.** See T-264 Notes for full review details. |
+
+**CR-33 — Sprint 33 Code Review (2026-03-20)**
+
+**Status:** ✅ Complete — 1 task reviewed, 1 approved
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-20).
+
+**T-264 — Multi-day FLIGHT and LAND_TRAVEL calendar spanning: APPROVED**
+
+Review findings:
+1. **buildEventsMap() (lines 65-115):** Correctly implements Spec 28.2 pseudocode. FLIGHT and LAND_TRAVEL events now check `end_date || start_date` and enumerate dates when multi-day, assigning `_dayType` metadata (start/middle/end/single) and `_isFirst`/`_isLast` flags. Single-day fallback preserves existing behavior.
+2. **Desktop pill rendering (renderEventPill, lines 427-541):** Multi-day pill styles correctly applied via inline `pillStyle` for start (rounded left), middle (no radius, opacity 0.8), and end (rounded right, no border-left). `buildArrivalLabel()` correctly differentiates RENTAL_CAR ("Drop-off") from other modes ("Arrives"). LAND_TRAVEL pills handle all 4 `_dayType` cases with appropriate text.
+3. **MobileDayList (lines 165-303):** FLIGHT and LAND_TRAVEL now enumerated alongside STAY. Middle days show `(cont.)` with opacity 0.6. End days show `— Arrives {time}` or `— Drop-off {time}`. Start days show departure time. Single days use existing behavior.
+4. **Tests (28.A–28.E):** 5 tests covering multi-day FLIGHT (2-day span), multi-day LAND_TRAVEL (3-day span), arrival time on arrival day, single-day FLIGHT regression, and single-day LAND_TRAVEL with null end_date. All 501/501 frontend tests pass.
+5. **Security:** No XSS risk (React auto-escapes JSX), no hardcoded secrets, no SQL injection vectors (frontend-only change), no auth bypass.
+6. **Conventions:** CSS modules, CSS variables, IBM Plex Mono (`var(--font-mono)`), 150ms ease transitions, no gradients/shadows.
+7. **Spec compliance:** Implementation matches Spec 28 (sections 28.1–28.12). Minor deviation in accessibility: middle-day aria-labels use `(cont.)` instead of spec's `"day N of total"` format — pragmatic trade-off, not a blocker.
+
+**Decision:** T-264 → Integration Check. Handoff to QA Engineer (T-265).
 
 ---
 
