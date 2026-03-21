@@ -374,3 +374,216 @@ All T-258 acceptance criteria met. Backwards-compatible — uppercase inputs sti
 Full end-to-end user flow works cleanly on staging.
 
 ---
+
+## Sprint 33 User Agent Feedback — T-268 Staging Walkthrough
+
+**Date:** 2026-03-20
+**Tester:** User Agent
+**Environment:** Staging — `https://localhost:4173` (frontend), `https://localhost:3001` (backend)
+**Scope:** Multi-day FLIGHT + LAND_TRAVEL calendar spanning (T-264/FB-133/FB-134), Sprint 32 regressions, edge cases
+
+---
+
+### FB-144
+
+| Field | Value |
+|-------|-------|
+| Feedback | Multi-day FLIGHT event correctly spans from departure date to arrival date on calendar |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-264 (FB-134) |
+
+**Steps:** Register → Create trip (Tokyo, Osaka; Aug 1–10) → POST flight NH101 LAX→NRT departing Aug 1 23:00 UTC, arriving Aug 3 04:30 UTC → GET /calendar → Verify FLIGHT event has `start_date: "2026-08-01"`, `end_date: "2026-08-03"`.
+
+**Result:** Calendar API returns correct multi-day span. Frontend `buildEventsMap()` correctly enumerates dates Aug 1, 2, 3 with `_dayType: start/middle/end`. The arrival day pill displays "Arrives 1:30p". Unit test "multi-day FLIGHT event spanning 2 days renders on both days" passes.
+
+---
+
+### FB-145
+
+| Field | Value |
+|-------|-------|
+| Feedback | Multi-day LAND_TRAVEL event correctly spans from departure date to arrival date on calendar |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-264 (FB-133) |
+
+**Steps:** POST land travel RENTAL_CAR Tokyo→Osaka, departure_date Aug 7, arrival_date Aug 9 → GET /calendar → Verify LAND_TRAVEL event has `start_date: "2026-08-07"`, `end_date: "2026-08-09"`.
+
+**Result:** Calendar API returns 3-day span. Frontend correctly renders on Aug 7 (start: "Rental Car 10a"), Aug 8 (middle: reduced opacity), Aug 9 (end: "Drop-off 2:30p"). The "Drop-off" label is correctly used for RENTAL_CAR mode (vs. "Arrives" for other modes). Unit test "multi-day LAND_TRAVEL event spanning 3 days renders on all 3 days" passes.
+
+---
+
+### FB-146
+
+| Field | Value |
+|-------|-------|
+| Feedback | Single-day FLIGHT renders correctly without regression |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-264 |
+
+**Steps:** POST single-day flight NRT→KIX, departure and arrival both on Aug 5 → GET /calendar → Verify `start_date === end_date === "2026-08-05"`.
+
+**Result:** Single-day flight correctly maps to one calendar cell with `_dayType: "single"`. No "Arrives" label on single-day events. Unit test "single-day FLIGHT renders as a single chip without Arrives text" passes.
+
+---
+
+### FB-147
+
+| Field | Value |
+|-------|-------|
+| Feedback | Single-day LAND_TRAVEL renders correctly without regression |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-264 |
+
+**Steps:** POST single-day TRAIN Osaka→Kansai Airport, departure and arrival both on Aug 10 → GET /calendar → Verify `start_date === end_date === "2026-08-10"`.
+
+**Result:** Single-day land travel renders as a single pill with departure/arrival time range. No spanning behavior. Correct.
+
+---
+
+### FB-148
+
+| Field | Value |
+|-------|-------|
+| Feedback | All 4 event types present in calendar with correct data — no regressions from Sprint 32 |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-264 |
+
+**Steps:** GET /calendar for trip with 3 flights (multi-day, single-day, SQL-injection test), 1 stay, 1 activity, 2 land travel entries → Verify all 4 types (FLIGHT, STAY, ACTIVITY, LAND_TRAVEL) present in response.
+
+**Result:** All event types render correctly. Calendar returns 7 events total across 4 types. No data corruption.
+
+---
+
+### FB-149
+
+| Field | Value |
+|-------|-------|
+| Feedback | Sprint 32 regression: Stay category normalization still works (lowercase → uppercase) |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-258 |
+
+**Steps:** POST stay with `"category": "airbnb"` (lowercase) → Verify response returns `"category": "AIRBNB"` (normalized uppercase). HTTP 201.
+
+**Result:** Category normalization from Sprint 32 (T-258) working correctly. No regression.
+
+---
+
+### FB-150
+
+| Field | Value |
+|-------|-------|
+| Feedback | Sprint 32 regression: Trip status persistence works correctly |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-264 |
+
+**Steps:** PATCH trip status from PLANNING → ONGOING → GET trip → Verify status is "ONGOING" with updated `updated_at` timestamp.
+
+**Result:** Status persisted correctly on re-fetch.
+
+---
+
+### FB-151
+
+| Field | Value |
+|-------|-------|
+| Feedback | Input validation handles empty request bodies gracefully with 400 errors |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-264 |
+
+**Steps:** POST empty `{}` body to /flights and /land-travel endpoints → Verify 400 VALIDATION_ERROR with specific field messages.
+
+**Result:** Both endpoints return clear, structured 400 errors listing every missing required field. Good developer experience.
+
+---
+
+### FB-152
+
+| Field | Value |
+|-------|-------|
+| Feedback | Auth and UUID validation prevent unauthorized/invalid access correctly |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-264 |
+
+**Steps:** GET /calendar without auth token → 401. GET /trips/not-a-uuid/calendar with auth → 400 VALIDATION_ERROR "Invalid ID format".
+
+**Result:** Both return correct error codes and messages. No information leakage.
+
+---
+
+### FB-153
+
+| Field | Value |
+|-------|-------|
+| Feedback | All 501 frontend tests pass (496 baseline + 5 new T-264 tests) |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-264 |
+
+**Steps:** `npx vitest run` → 25 test files, 501 tests passed.
+
+**Result:** Zero failures. New T-264 tests cover: multi-day FLIGHT spanning 2 days, multi-day LAND_TRAVEL spanning 3 days, FLIGHT arrival text on arrival day, single-day FLIGHT without "Arrives" text, single-day LAND_TRAVEL with null end_date. All pass.
+
+---
+
+### FB-154
+
+| Field | Value |
+|-------|-------|
+| Feedback | Trip deletion works cleanly with proper 204/404 lifecycle |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-264 |
+
+**Steps:** DELETE /trips/:id → 204 No Content → GET /trips/:id → 404 "Trip not found".
+
+**Result:** Clean lifecycle. Deletion confirmed.
+
+---
+
+### FB-155
+
+| Field | Value |
+|-------|-------|
+| Feedback | Mobile view correctly handles multi-day FLIGHT and LAND_TRAVEL events |
+| Sprint | 33 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-264 |
+
+**Steps:** Code review of `MobileDayList` component in TripCalendar.jsx — lines 165-303.
+
+**Result:** Mobile list correctly enumerates multi-day spans for FLIGHT and LAND_TRAVEL (same as STAY). Start day shows departure time, middle days show "(cont.)" with 0.6 opacity, end day shows "Arrives {time}" (or "Drop-off {time}" for RENTAL_CAR). Proper aria-labels on all rows.
+
+---
