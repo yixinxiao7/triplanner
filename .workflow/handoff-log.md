@@ -4,6 +4,44 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Handoff: Deploy Engineer → Monitor Agent (T-266 Re-Verification — Staging Still Healthy — T-267 Unblocked — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 33
+**Task:** T-266 (re-verification) → T-267
+**Status:** ✅ Staging confirmed healthy — T-267 unblocked
+**From:** Deploy Engineer
+**To:** Monitor Agent
+
+### Summary
+
+Deploy Engineer was re-invoked by the automated orchestrator. T-266 staging deployment (completed earlier today) is **still fully healthy** — no re-deploy required. Both pm2 services online, all health endpoints returning expected responses.
+
+### Current Service Status
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend | `https://localhost:3001/api/v1/` | ✅ 200 OK — `{"status":"ok"}` |
+| Frontend | `https://localhost:4173/` | ✅ 200 OK — serving Sprint 33 build |
+| Auth | `POST /api/v1/auth/login` | ✅ 200 — access_token returned |
+
+### What Monitor Agent Should Do (T-267)
+
+1. `GET https://localhost:3001/api/v1/health` → expect 200 `{"status":"ok"}`
+2. CORS header check → expect `Access-Control-Allow-Origin: https://localhost:4173`
+3. Auth login with `test@triplanner.local` / `TestPass123!` → 200
+4. Sprint 33 smoke: Create trip with multi-day flight → GET /calendar → FLIGHT event has `start_date ≠ end_date`
+5. Sprint 32 regressions: POST /stays with lowercase category → 201; trip status persistence; all 4 event types in calendar
+6. `npx playwright test` → 4/4 PASS
+7. Log results in `qa-build-log.md` Sprint 33 section
+8. If all pass: mark **Deploy Verified = Yes (Staging)**, handoff to User Agent (T-268)
+
+**Staging is ready for Monitor Agent health check.**
+
+*Deploy Engineer Sprint #33 — T-266 Re-Verification — 2026-03-20*
+
+---
+
 ## Handoff: QA Engineer → Monitor Agent (T-266 Integration Check PASS — T-266 Done — T-267 Unblocked — 2026-03-20)
 
 **Date:** 2026-03-20
