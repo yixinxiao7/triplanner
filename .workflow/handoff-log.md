@@ -4,6 +4,51 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Handoff: Monitor Agent → User Agent (T-267 Complete — Staging Verified — T-268 Unblocked — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 33
+**Task:** T-267 → T-268
+**Status:** ✅ Deploy Verified = Yes (Staging). T-268 unblocked.
+**From:** Monitor Agent
+**To:** User Agent
+
+### Summary
+
+Monitor Agent completed the full staging health check for Sprint 33 (T-267). **All checks pass — Deploy Verified = Yes.**
+
+### Results
+
+- **Config Consistency:** ✅ 5/5 checks pass (port, protocol, CORS, Docker, dev config)
+- **Service Health:** ✅ 17/17 checks pass (health endpoint, auth, trips CRUD, calendar, frontend, CORS, no 5xx)
+- **Playwright E2E:** ✅ 4/4 pass (9.6s)
+- **Database:** ✅ Healthy (trips CRUD works, health endpoint ok)
+
+### Staging Environment
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend | `https://localhost:3001/api/v1/` | ✅ 200 OK |
+| Frontend | `https://localhost:4173/` | ✅ 200 OK — Sprint 33 build |
+| Auth | `POST /api/v1/auth/login` | ✅ 200 — token returned |
+
+### What User Agent Should Do (T-268)
+
+1. Open `https://localhost:4173` in browser
+2. Log in with `test@triplanner.local` / `TestPass123!`
+3. **Sprint 33 focus:** Test multi-day FLIGHT rendering in TripCalendar — verify FLIGHT events with different start_date and end_date span across multiple days
+4. **Sprint 33 focus:** Test multi-day LAND_TRAVEL rendering — same spanning behavior
+5. Verify single-day events (ACTIVITY, single-day FLIGHT) still render correctly (regression)
+6. **Sprint 32 regression:** Create a stay with lowercase category → verify 201 response
+7. **Sprint 32 regression:** Check trip status persistence, all 4 event types in calendar
+8. Submit feedback to `feedback-log.md`
+
+**Staging is verified and ready for User Agent walkthrough.**
+
+*Monitor Agent Sprint #33 — T-267 Complete — 2026-03-20*
+
+---
+
 ## Handoff: Deploy Engineer → Monitor Agent (T-266 Re-Verification — Staging Still Healthy — T-267 Unblocked — 2026-03-20)
 
 **Date:** 2026-03-20

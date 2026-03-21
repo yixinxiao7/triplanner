@@ -4,6 +4,69 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #33 — Monitor Agent — T-267 Post-Deploy Health Check — 2026-03-20
+
+**Task:** T-267 (Monitor Agent — staging health check)
+**Date:** 2026-03-20
+**Sprint:** 33
+**Environment:** Staging (localhost — pm2)
+**Test Type:** Post-Deploy Health Check + Config Consistency
+**Deploy Verified:** ✅ Yes
+
+### Config Consistency Validation
+
+| Check | Result | Details |
+|-------|--------|---------|
+| **Port match** | ✅ PASS | `.env.staging` PORT=3001; pm2 backend PORT=3001; pm2 frontend BACKEND_PORT=3001 → Vite proxy target `https://localhost:3001`. All match. |
+| **Protocol match** | ✅ PASS | `.env.staging` sets SSL_KEY_PATH + SSL_CERT_PATH → backend serves HTTPS on 3001. pm2 frontend BACKEND_SSL=true → Vite proxy uses `https://`. Certs exist at `infra/certs/localhost-key.pem` and `infra/certs/localhost.pem`. |
+| **CORS match** | ✅ PASS | `.env.staging` CORS_ORIGIN=`https://localhost:4173`. Frontend preview runs on port 4173 with HTTPS. CORS preflight returns `Access-Control-Allow-Origin: https://localhost:4173`. |
+| **Docker port match** | ✅ PASS | `docker-compose.yml` backend PORT=3000 (internal), healthcheck targets `http://localhost:3000`. Consistent within Docker context. Docker is not used for staging (pm2 is used instead). |
+| **Dev config (.env)** | ✅ PASS | `.env` PORT=3000, SSL commented out, CORS_ORIGIN=http://localhost:5173. Vite defaults: proxy→http://localhost:3000, dev server port 5173. All consistent for local dev. |
+
+### Service Health Checks
+
+| Check | Result | Details |
+|-------|--------|---------|
+| pm2 triplanner-backend | ✅ online | PID 79204, uptime ~5h, 6 restarts |
+| pm2 triplanner-frontend | ✅ online | PID 91592, uptime ~11m, 4 restarts |
+| `GET https://localhost:3001/api/v1/health` | ✅ 200 | Response: `{"status":"ok"}` |
+| `POST /api/v1/auth/login` (test@triplanner.local) | ✅ 200 | access_token returned, user object matches contract |
+| `GET /api/v1/trips` (Bearer token) | ✅ 200 | Returns trip list with pagination. Response shape matches api-contracts.md |
+| `POST /api/v1/trips` (Bearer token) | ✅ 201 | Created "Health Check Trip" — response includes id, status "PLANNING", destinations array |
+| `GET /api/v1/trips/:id` (Bearer token) | ✅ 200 | Returns single trip with all fields per contract |
+| `GET /api/v1/trips/:id/calendar` (Bearer token) | ✅ 200 | Returns events array with start_date, end_date, start_time, end_time fields |
+| `DELETE /api/v1/trips/:id` (Bearer token) | ✅ 204 | Health check trip cleaned up successfully |
+| `POST /api/v1/auth/refresh` (no cookie) | ✅ 401 | Correctly returns INVALID_REFRESH_TOKEN |
+| `POST /api/v1/auth/logout` (no token) | ✅ 401 | Correctly returns UNAUTHORIZED |
+| `GET /api/v1/nonexistent` | ✅ 404 | Non-existent route returns 404 |
+| Frontend `https://localhost:4173` | ✅ 200 | HTML served with Sprint 33 build artifacts (index-DWDNtgu6.js, index-DQWNTC9k.css) |
+| Build artifacts in `frontend/dist/assets/` | ✅ Present | 10 files including lazy-loaded page chunks |
+| CORS preflight | ✅ 204 | `Access-Control-Allow-Origin: https://localhost:4173`, `Access-Control-Allow-Credentials: true` |
+| No 5xx errors | ✅ PASS | Zero 5xx responses across all checks |
+| Database connectivity | ✅ PASS | Health endpoint returns ok (requires DB); trips CRUD works end-to-end |
+
+### Playwright E2E Tests
+
+| Test | Result | Duration |
+|------|--------|----------|
+| Test 1: register, create trip, view details, delete, logout | ✅ PASS | 1.2s |
+| Test 2: create trip, add flight, add stay, verify on details page | ✅ PASS | 1.3s |
+| Test 3: search, filter, sort trips | ✅ PASS | 3.9s |
+| Test 4: rate limit lockout on rapid wrong-password login | ✅ PASS | 2.2s |
+| **Total** | **4/4 PASS** | **9.6s** |
+
+### Token Acquisition
+
+Token acquired via `POST /api/v1/auth/login` with `test@triplanner.local` / `TestPass123!` (NOT /auth/register — per Sprint 26 T-226 protocol to preserve rate-limit quota for Playwright).
+
+### Conclusion
+
+**Deploy Verified = Yes (Staging).** All 17 health checks pass. Config consistency validated across staging (.env.staging), dev (.env), Vite proxy, and Docker configs. Playwright 4/4 pass. No 5xx errors. Database healthy. CORS correctly configured. Staging is ready for User Agent walkthrough (T-268).
+
+*Monitor Agent Sprint #33 — T-267 Complete — 2026-03-20*
+
+---
+
 ## Sprint #33 — Deploy Engineer — T-266 Re-Verification Pass (Orchestrator Re-Invocation) — 2026-03-20
 
 **Task:** T-266 (Deploy Engineer — orchestrator re-invocation re-verification)
