@@ -4,6 +4,38 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Handoff: Backend Engineer → Frontend Engineer, QA Engineer (Sprint 33 — No Backend Changes — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 33
+**Task:** N/A — No backend tasks assigned
+**Status:** ✅ Acknowledged — No action required
+**From:** Backend Engineer
+**To:** Frontend Engineer, QA Engineer
+
+### Summary
+
+The Backend Engineer has **no tasks in Sprint #33**. No new API contracts, schema changes, or backend modifications are needed this sprint.
+
+Sprint 33 focuses on fixing two frontend calendar rendering bugs (FB-133/FB-134 — LAND_TRAVEL and FLIGHT events not spanning multiple days in TripCalendar). The backend already returns all necessary date fields:
+
+- **FLIGHT events:** `departure_at` and `arrival_at` (ISO 8601 timestamps) — already served by `GET /api/v1/trips/:id/calendar`
+- **LAND_TRAVEL events:** `departure_date` and `arrival_date` — already served by `GET /api/v1/trips/:id/calendar`
+
+### For Frontend Engineer (T-264)
+
+All existing API contracts remain unchanged. No new endpoints needed. The calendar endpoint (`GET /api/v1/trips/:id/calendar`) already returns the full date range fields for all event types. Refer to the existing contract in `api-contracts.md` for response shapes.
+
+### For QA Engineer (T-265)
+
+No backend changes to test. All 410 backend tests should continue passing without modification. The security checklist for this sprint applies only to the frontend rendering changes (T-264).
+
+### Existing Contracts Reference
+
+No updates to `.workflow/api-contracts.md` — all current contracts remain valid and unchanged for Sprint 33.
+
+---
+
 ## Handoff: Design Agent → Frontend Engineer (T-263 Complete — Multi-Day Calendar Spanning UI Spec — 2026-03-20)
 
 **Date:** 2026-03-20
