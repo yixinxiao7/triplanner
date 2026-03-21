@@ -49,26 +49,54 @@ function getInitialMonth(events) {
   return { year: y, month: m - 1 }; // month is 0-indexed
 }
 
-/** Build a map: dateStr → array of event objects (with _dayType metadata for STAY) */
+/** Enumerate dates from start to end (inclusive), returning YYYY-MM-DD strings */
+function enumerateDates(start, end) {
+  const dates = [];
+  const cur = new Date(start + 'T00:00:00');
+  const endDate = new Date(end + 'T00:00:00');
+  while (cur <= endDate) {
+    dates.push(cur.toISOString().slice(0, 10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
+/** Build a map: dateStr → array of event objects (with _dayType metadata for multi-day events) */
 function buildEventsMap(events) {
   const map = {};
   for (const event of events) {
-    // T-243: LAND_TRAVEL events are single-day (backend emits one event per day)
-    if (event.type === 'FLIGHT' || event.type === 'ACTIVITY' || event.type === 'LAND_TRAVEL') {
+    // T-264: FLIGHT and LAND_TRAVEL now support multi-day spanning (same as STAY)
+    if (event.type === 'FLIGHT' || event.type === 'LAND_TRAVEL') {
+      const start = event.start_date;
+      const end = event.end_date || event.start_date;
+      if (start === end) {
+        // Single-day: same as previous behavior
+        if (!map[start]) map[start] = [];
+        map[start].push({ ...event, _dayType: 'single', _isFirst: true, _isLast: true });
+      } else {
+        // Multi-day: enumerate dates
+        const dates = enumerateDates(start, end);
+        for (let i = 0; i < dates.length; i++) {
+          const d = dates[i];
+          if (!map[d]) map[d] = [];
+          const isFirst = i === 0;
+          const isLast = i === dates.length - 1;
+          map[d].push({
+            ...event,
+            _dayType: isFirst ? 'start' : isLast ? 'end' : 'middle',
+            _isFirst: isFirst,
+            _isLast: isLast,
+          });
+        }
+      }
+    } else if (event.type === 'ACTIVITY') {
       const d = event.start_date;
       if (!map[d]) map[d] = [];
-      map[d].push({ ...event, _dayType: 'single' });
+      map[d].push({ ...event, _dayType: 'single', _isFirst: true, _isLast: true });
     } else if (event.type === 'STAY') {
       const start = event.start_date;
       const end = event.end_date || event.start_date;
-      // Enumerate all dates in the stay range
-      const dates = [];
-      const cur = new Date(start + 'T00:00:00');
-      const endDate = new Date(end + 'T00:00:00');
-      while (cur <= endDate) {
-        dates.push(cur.toISOString().slice(0, 10));
-        cur.setDate(cur.getDate() + 1);
-      }
+      const dates = enumerateDates(start, end);
       for (let i = 0; i < dates.length; i++) {
         const d = dates[i];
         if (!map[d]) map[d] = [];
@@ -140,27 +168,33 @@ function MobileDayList({ events, displayedMonth }) {
   const daysWithEvents = useMemo(() => {
     const dayMap = {};
     for (const event of events) {
-      // T-243: LAND_TRAVEL is single-day (backend emits one event per day)
-      if (event.type === 'FLIGHT' || event.type === 'ACTIVITY' || event.type === 'LAND_TRAVEL') {
+      // T-264: FLIGHT and LAND_TRAVEL now enumerate multi-day spans (same as STAY)
+      if (event.type === 'ACTIVITY') {
         const [ey, em] = event.start_date.split('-').map(Number);
         if (ey === year && em - 1 === month) {
           if (!dayMap[event.start_date]) dayMap[event.start_date] = [];
-          dayMap[event.start_date].push(event);
+          dayMap[event.start_date].push({ ...event, _mobileDayType: 'single' });
         }
-      } else if (event.type === 'STAY') {
-        // Add stay to each day in this month it spans
+      } else if (event.type === 'STAY' || event.type === 'FLIGHT' || event.type === 'LAND_TRAVEL') {
         const start = event.start_date;
         const end = event.end_date || event.start_date;
         const cur = new Date(start + 'T00:00:00');
         const endDate = new Date(end + 'T00:00:00');
+        const dates = [];
         while (cur <= endDate) {
-          const [ey, em] = cur.toISOString().slice(0, 10).split('-').map(Number);
-          if (ey === year && em - 1 === month) {
-            const d = cur.toISOString().slice(0, 10);
-            if (!dayMap[d]) dayMap[d] = [];
-            dayMap[d].push(event);
-          }
+          dates.push(cur.toISOString().slice(0, 10));
           cur.setDate(cur.getDate() + 1);
+        }
+        for (let i = 0; i < dates.length; i++) {
+          const d = dates[i];
+          const [ey, em] = d.split('-').map(Number);
+          if (ey === year && em - 1 === month) {
+            if (!dayMap[d]) dayMap[d] = [];
+            const isFirst = i === 0;
+            const isLast = i === dates.length - 1;
+            const mobileDayType = dates.length === 1 ? 'single' : isFirst ? 'start' : isLast ? 'end' : 'middle';
+            dayMap[d].push({ ...event, _mobileDayType: mobileDayType });
+          }
         }
       }
     }
@@ -188,24 +222,71 @@ function MobileDayList({ events, displayedMonth }) {
                 : ev.type === 'STAY' ? '⌂'
                 : ev.type === 'LAND_TRAVEL' ? '→'
                 : '●';
-              const timeStr = formatTime(ev.start_time);
               const sectionId = getSectionId(ev.type);
               const typeClass = ev.type === 'FLIGHT' ? styles.mobileEventFlight
                 : ev.type === 'STAY' ? styles.mobileEventStay
                 : ev.type === 'LAND_TRAVEL' ? styles.mobileEventLandTravel
                 : styles.mobileEventActivity;
-              // T-243: land travel uses the compact pill label in mobile too
-              const displayTitle = ev.type === 'LAND_TRAVEL'
-                ? buildLandTravelPillText(ev)
-                : ev.title;
+
+              // T-264: Build mobile display title and time based on day type
+              const mdt = ev._mobileDayType || 'single';
+              let timeStr;
+              let displayTitle;
+              let rowStyle = {};
+
+              if (ev.type === 'LAND_TRAVEL') {
+                const rawMode = ev.title ? ev.title.split(' \u2014 ')[0] : '';
+                const mode = formatLandTravelMode(rawMode) || 'Land Travel';
+                const isRentalCar = rawMode.toUpperCase() === 'RENTAL_CAR';
+                if (mdt === 'start') {
+                  timeStr = formatTime(ev.start_time);
+                  displayTitle = mode;
+                } else if (mdt === 'middle') {
+                  timeStr = null;
+                  displayTitle = `${mode} (cont.)`;
+                  rowStyle = { opacity: 0.6 };
+                } else if (mdt === 'end') {
+                  const arrTime = formatTime(ev.end_time);
+                  const prefix = isRentalCar ? 'Drop-off' : 'Arrives';
+                  timeStr = null;
+                  displayTitle = arrTime ? `${mode} — ${prefix} ${arrTime}` : `${mode} — ${prefix}`;
+                } else {
+                  // single
+                  timeStr = formatTime(ev.start_time);
+                  displayTitle = buildLandTravelPillText(ev);
+                }
+              } else if (ev.type === 'FLIGHT') {
+                if (mdt === 'start') {
+                  timeStr = formatTime(ev.start_time);
+                  displayTitle = ev.title;
+                } else if (mdt === 'middle') {
+                  timeStr = null;
+                  displayTitle = `${ev.title} (cont.)`;
+                  rowStyle = { opacity: 0.6 };
+                } else if (mdt === 'end') {
+                  const arrTime = formatTime(ev.end_time);
+                  timeStr = null;
+                  displayTitle = arrTime ? `${ev.title} — Arrives ${arrTime}` : `${ev.title} — Arrives`;
+                } else {
+                  timeStr = formatTime(ev.start_time);
+                  displayTitle = ev.title;
+                }
+              } else {
+                timeStr = formatTime(ev.start_time);
+                displayTitle = ev.title;
+              }
+
+              const ariaLabel = ev.type === 'LAND_TRAVEL'
+                ? `Land travel: ${ev.title} — scroll to land travel section`
+                : `${ev.type.charAt(0) + ev.type.slice(1).toLowerCase()}: ${ev.title}`;
+
               return (
                 <button
                   key={i}
                   type="button"
                   className={`${styles.mobileEventRow} ${typeClass}`}
-                  aria-label={ev.type === 'LAND_TRAVEL'
-                    ? `Land travel: ${ev.title} — scroll to land travel section`
-                    : `${ev.type.charAt(0) + ev.type.slice(1).toLowerCase()}: ${ev.title}`}
+                  style={rowStyle}
+                  aria-label={ariaLabel}
                   onClick={() => sectionId && scrollToSection(sectionId)}
                 >
                   <span className={styles.mobileEventIcon}>{icon}</span>
@@ -354,27 +435,63 @@ export default function TripCalendar({ tripId }) {
     else if (event.type === 'ACTIVITY') pillClass += ` ${styles.eventPillActivity}`;
     else if (event.type === 'LAND_TRAVEL') pillClass += ` ${styles.eventPillLandTravel}`;
 
-    // Stay pill border-radius based on position
+    // T-264: Multi-day spanning pill styles for STAY, FLIGHT, and LAND_TRAVEL
     let pillStyle = {};
-    if (event.type === 'STAY') {
+    const isSpannable = event.type === 'STAY' || event.type === 'FLIGHT' || event.type === 'LAND_TRAVEL';
+    if (isSpannable) {
       if (event._dayType === 'start') {
         pillStyle = { borderRadius: 'var(--radius-sm) 0 0 var(--radius-sm)' };
       } else if (event._dayType === 'end') {
         pillStyle = { borderRadius: '0 var(--radius-sm) var(--radius-sm) 0', borderLeft: 'none' };
       } else if (event._dayType === 'middle') {
-        pillStyle = { borderRadius: 0, borderLeft: 'none' };
+        pillStyle = { borderRadius: 0, borderLeft: 'none', opacity: 0.8 };
       }
     }
 
-    // T-243: LAND_TRAVEL pills use a dedicated label builder and scroll to land-travels-section
+    // T-264: Build arrival label for last day of multi-day FLIGHT or LAND_TRAVEL
+    function buildArrivalLabel(ev) {
+      const arrTime = formatTime(ev.end_time);
+      if (ev.type === 'FLIGHT') {
+        return arrTime ? `Arrives ${arrTime}` : 'Arrives';
+      }
+      if (ev.type === 'LAND_TRAVEL') {
+        // Extract raw mode from title (first segment before " — ")
+        const rawMode = ev.title ? ev.title.split(' \u2014 ')[0] : '';
+        const isRentalCar = rawMode.toUpperCase() === 'RENTAL_CAR';
+        const prefix = isRentalCar ? 'Drop-off' : 'Arrives';
+        return arrTime ? `${prefix} ${arrTime}` : prefix;
+      }
+      return '';
+    }
+
+    // T-264: LAND_TRAVEL pills — handle multi-day and single-day
     if (event.type === 'LAND_TRAVEL') {
-      const pillText = buildLandTravelPillText(event);
-      const ariaLabel = `Land travel: ${event.title} — scroll to land travel section`;
+      let pillText;
+      let ariaLabel;
+      if (event._dayType === 'single') {
+        pillText = buildLandTravelPillText(event);
+        ariaLabel = `Land travel: ${event.title} — scroll to land travel section`;
+      } else if (event._dayType === 'start') {
+        const rawMode = event.title ? event.title.split(' \u2014 ')[0] : '';
+        const mode = formatLandTravelMode(rawMode) || 'Land Travel';
+        const depTime = formatTime(event.start_time);
+        pillText = depTime ? `${mode} ${depTime}` : mode;
+        ariaLabel = `Land travel: ${event.title}`;
+      } else if (event._dayType === 'end') {
+        pillText = buildArrivalLabel(event);
+        ariaLabel = `Land travel: ${event.title}, ${pillText.toLowerCase()}`;
+      } else {
+        // middle — no text
+        pillText = null;
+        // Count total days for accessibility
+        ariaLabel = `Land travel: ${event.title} (cont.)`;
+      }
       return (
         <button
           key={idx}
           type="button"
           className={pillClass}
+          style={pillStyle}
           aria-label={ariaLabel}
           role="button"
           tabIndex={0}
@@ -386,15 +503,26 @@ export default function TripCalendar({ tripId }) {
             }
           }}
         >
-          <span className={styles.eventPillText}>{pillText}</span>
+          {pillText && <span className={styles.eventPillText}>{pillText}</span>}
         </button>
       );
     }
 
-    const ariaLabel = `${event.type.charAt(0) + event.type.slice(1).toLowerCase()}: ${event.title}${timeStr ? `, ${timeStr}${endTimeStr ? `–${endTimeStr}` : ''}` : ''}`;
-    // For STAY: only show text on first/single day
-    const showText = event.type !== 'STAY' || event._isFirst || event._dayType === 'single';
-    const displayText = showText ? (timeStr ? `${timeStr} ${event.title}` : event.title) : null;
+    // T-264: FLIGHT pills — handle multi-day arrival label
+    let displayText;
+    let ariaLabel;
+    if (event.type === 'FLIGHT' && event._dayType === 'end') {
+      displayText = buildArrivalLabel(event);
+      ariaLabel = `Flight: ${event.title}, ${displayText.toLowerCase()}`;
+    } else if (event.type === 'FLIGHT' && event._dayType === 'middle') {
+      displayText = null;
+      ariaLabel = `Flight: ${event.title} (cont.)`;
+    } else {
+      // For STAY: only show text on first/single day
+      const showText = event.type !== 'STAY' || event._isFirst || event._dayType === 'single';
+      displayText = showText ? (timeStr ? `${timeStr} ${event.title}` : event.title) : null;
+      ariaLabel = `${event.type.charAt(0) + event.type.slice(1).toLowerCase()}: ${event.title}${timeStr ? `, ${timeStr}${endTimeStr ? `–${endTimeStr}` : ''}` : ''}`;
+    }
 
     return (
       <button

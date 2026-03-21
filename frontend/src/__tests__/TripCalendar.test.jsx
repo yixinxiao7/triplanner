@@ -1213,4 +1213,121 @@ describe('TripCalendar — Sprint 25 (T-213)', () => {
       expect(stayIdx).toBeLessThan(landTravelIdx);
     });
   });
+
+  // ── Sprint 33 — T-264: Multi-day FLIGHT and LAND_TRAVEL spanning ──
+
+  // Test 28.A — Multi-day FLIGHT event spans both days
+  it('multi-day FLIGHT event spanning 2 days renders on both days', async () => {
+    const multiDayFlight = {
+      id: 'flight-multiday',
+      type: 'FLIGHT',
+      title: 'UA456 — SFO → NRT',
+      start_date: '2026-08-07',
+      end_date: '2026-08-08',
+      start_time: '23:00',
+      end_time: '15:45',
+      timezone: 'America/Los_Angeles',
+      source_id: 'flight-md-001',
+    };
+    mockSuccess([multiDayFlight]);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      // Should have flight pills on both Aug 7 and Aug 8
+      const flightPills = document.querySelectorAll('[class*="eventPillFlight"]');
+      expect(flightPills.length).toBe(2);
+    });
+  });
+
+  // Test 28.B — Multi-day LAND_TRAVEL event spans 3 days
+  it('multi-day LAND_TRAVEL event spanning 3 days renders on all 3 days', async () => {
+    const multiDayLandTravel = {
+      id: 'lt-multiday',
+      type: 'LAND_TRAVEL',
+      title: 'RENTAL_CAR — LAX → SFO',
+      start_date: '2026-08-10',
+      end_date: '2026-08-12',
+      start_time: '09:00',
+      end_time: '14:00',
+      timezone: 'America/Los_Angeles',
+      source_id: 'lt-md-001',
+    };
+    mockSuccess([multiDayLandTravel]);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      const ltPills = document.querySelectorAll('[class*="eventPillLandTravel"]');
+      expect(ltPills.length).toBe(3);
+    });
+  });
+
+  // Test 28.C — Arrival time displayed on arrival day
+  it('multi-day FLIGHT shows "Arrives" text on the arrival day', async () => {
+    const multiDayFlight = {
+      id: 'flight-multiday',
+      type: 'FLIGHT',
+      title: 'DL1234 — LAX → JFK',
+      start_date: '2026-08-07',
+      end_date: '2026-08-08',
+      start_time: '22:00',
+      end_time: '15:45',
+      timezone: 'America/Los_Angeles',
+      source_id: 'flight-md-002',
+    };
+    mockSuccess([multiDayFlight]);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      const flightPills = document.querySelectorAll('[class*="eventPillFlight"]');
+      expect(flightPills.length).toBe(2);
+      // The second pill (arrival day) should contain "Arrives" text
+      const arrivalPill = flightPills[1];
+      const pillText = arrivalPill.textContent;
+      expect(pillText).toMatch(/arrives/i);
+      expect(pillText).toMatch(/3:45p/);
+    });
+  });
+
+  // Test 28.D — Single-day FLIGHT still renders correctly (no spanning)
+  it('single-day FLIGHT renders as a single chip without "Arrives" text', async () => {
+    const singleDayFlight = {
+      id: 'flight-single',
+      type: 'FLIGHT',
+      title: 'AA789 — SFO → LAX',
+      start_date: '2026-08-07',
+      end_date: '2026-08-07',
+      start_time: '06:00',
+      end_time: '08:30',
+      timezone: 'America/Los_Angeles',
+      source_id: 'flight-sd-001',
+    };
+    mockSuccess([singleDayFlight]);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      const flightPills = document.querySelectorAll('[class*="eventPillFlight"]');
+      // Only 1 pill (single day)
+      expect(flightPills.length).toBe(1);
+      // Should NOT contain "Arrives"
+      expect(flightPills[0].textContent).not.toMatch(/arrives/i);
+    });
+  });
+
+  // Test 28.E — Single-day LAND_TRAVEL (null end_date) renders correctly
+  it('single-day LAND_TRAVEL with null end_date renders as single chip', async () => {
+    const singleDayLt = {
+      id: 'lt-single',
+      type: 'LAND_TRAVEL',
+      title: 'BUS — Downtown → Airport',
+      start_date: '2026-08-10',
+      end_date: null,
+      start_time: '14:00',
+      end_time: '15:30',
+      timezone: null,
+      source_id: 'lt-sd-001',
+    };
+    mockSuccess([singleDayLt]);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      const ltPills = document.querySelectorAll('[class*="eventPillLandTravel"]');
+      // Only 1 pill (single day)
+      expect(ltPills.length).toBe(1);
+    });
+  });
 });

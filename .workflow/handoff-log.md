@@ -4,6 +4,98 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Handoff: Frontend Engineer → QA Engineer (T-264 Complete — Multi-Day FLIGHT/LAND_TRAVEL Calendar Spanning — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 33
+**Task:** T-264
+**Status:** ✅ Complete — In Review
+**From:** Frontend Engineer
+**To:** QA Engineer
+
+### API Contract Acknowledgment
+
+No new API contracts for Sprint 33. The existing `GET /api/v1/trips/:id/calendar` endpoint already returns `start_date`, `end_date`, `start_time`, and `end_time` for all event types. Confirmed per Backend Engineer handoff (Sprint 33 — no backend changes needed). Contract acknowledged.
+
+### Summary
+
+T-264 (multi-day FLIGHT and LAND_TRAVEL calendar spanning) is **COMPLETE**. Implementation follows Spec 28 from Design Agent (T-263).
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| `frontend/src/components/TripCalendar.jsx` | Refactored `buildEventsMap()` to enumerate dates for FLIGHT and LAND_TRAVEL when `end_date` differs from `start_date`. Added `enumerateDates()` helper. Updated `renderEventPill()` to handle `_dayType` start/middle/end for FLIGHT and LAND_TRAVEL (spanning bar styles, arrival text). Updated `MobileDayList` to enumerate multi-day FLIGHT/LAND_TRAVEL with continuation `(cont.)` and arrival labels. |
+| `frontend/src/__tests__/TripCalendar.test.jsx` | Added 5 new tests (28.A–28.E): multi-day FLIGHT spanning 2 days, multi-day LAND_TRAVEL spanning 3 days, arrival time on arrival day, single-day FLIGHT no regression, single-day LAND_TRAVEL no regression. |
+
+### Test Results
+
+- **501/501** frontend tests pass (496 existing + 5 new)
+- Zero regressions
+
+### What to Test (QA Engineer — T-265)
+
+1. **Multi-day FLIGHT:** Create trip with overnight flight (departure date ≠ arrival date). Calendar should show flight spanning both days. Arrival day shows "Arrives [time]".
+2. **Multi-day LAND_TRAVEL:** Create trip with multi-day rental car. Calendar should show event spanning all days. Last day shows "Drop-off [time]" for RENTAL_CAR, "Arrives [time]" for other modes.
+3. **Single-day events:** Verify single-day FLIGHT and LAND_TRAVEL still render as single chips (no spanning, no "Arrives" text).
+4. **Middle days:** Multi-day spans show empty continuation bars on middle days (opacity 0.8).
+5. **Mobile view:** Multi-day events show "(cont.)" on middle days, arrival info on last day.
+6. **No XSS vectors:** All text rendering uses React JSX (no dangerouslySetInnerHTML). Time display uses `formatTime()` which returns null on invalid input.
+7. **All 501 frontend tests pass.**
+
+### Known Limitations
+
+- Week boundary spanning (event crossing Sunday → next row) does not repeat the event label on the new row — the bar continues with the same visual treatment but no repeated text. This is consistent with existing STAY behavior.
+
+---
+
+## Status: Deploy Engineer — T-266 Blocked (Sprint 33 — 2026-03-20)
+
+**Date:** 2026-03-20
+**Sprint:** 33
+**Task:** T-266 (Deploy Engineer — Sprint 33 staging deployment)
+**Status:** ⏳ Blocked — Awaiting upstream completion
+**From:** Deploy Engineer
+**To:** Manager Agent, Frontend Engineer, QA Engineer
+
+### Summary
+
+T-266 (Sprint 33 staging deployment) **cannot proceed**. The full dependency chain is unresolved:
+
+| Upstream Task | Status | Required Before T-266 |
+|---------------|--------|----------------------|
+| T-263 (Design: UI spec) | ✅ Done | — |
+| T-264 (Frontend: Multi-day event spanning) | ❌ Backlog | Must be implemented first |
+| T-265 (QA: Security checklist + integration) | ❌ Backlog (blocked by T-264) | Must pass before deploy |
+| **T-266 (Deploy: Staging deployment)** | ⏳ Blocked by T-265 | — |
+
+### What Deploy Engineer Will Do Once Unblocked
+
+Per the sprint plan, when T-265 is complete and QA confirms pass:
+
+1. Rebuild frontend: `npm run build` in `frontend/`
+2. Restart frontend service via pm2
+3. Verify frontend loads at staging URL
+4. Smoke test: Navigate to trip with multi-day flight → calendar shows spanning event
+5. Log results in `qa-build-log.md`
+6. Handoff to Monitor Agent (T-267)
+
+### Pre-Deploy Checklist (Verified Now)
+
+- ✅ No pending database migrations (Sprint 33 is frontend-only; 10/10 migrations already applied)
+- ✅ No backend changes this sprint (Backend Engineer confirmed no tasks)
+- ✅ Design spec T-263 complete (Spec 28 in ui-spec.md)
+- ❌ T-264 implementation not yet started
+- ❌ T-265 QA not yet completed
+
+### Action Required
+
+Frontend Engineer must complete T-264, then QA Engineer must complete T-265 before T-266 can execute. Deploy Engineer is ready to proceed immediately once T-265 logs a QA PASS handoff.
+
+*Deploy Engineer Sprint #33 — T-266 Blocked — 2026-03-20*
+
+---
+
 ## Handoff: Backend Engineer → Frontend Engineer, QA Engineer (Sprint 33 — No Backend Changes — 2026-03-20)
 
 **Date:** 2026-03-20
