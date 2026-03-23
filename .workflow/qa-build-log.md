@@ -687,7 +687,3 @@ QA Engineer was re-invoked by the automated orchestrator. T-251 (security checkl
 
 **Note:** During this QA session, manual curl registration attempts exhausted the in-memory rate limit for 127.0.0.1 (registerLimiter: 5 per 60-min window). Backend was restarted (`pm2 restart triplanner-backend`) to reset rate limiter before Playwright run. Health confirmed `{"status":"ok"}` post-restart. This is expected behavior — the rate limiter is functioning correctly (Test 4 validates it).
 
-### Sprint 32 Feature Verification
-
-- **T-258 (Stay category case normalization):** ✅ VERIFIED — `POST /stays` with `"category":"hotel"` returns `"category":"HOTEL"`. Normalization working correctly.
-
