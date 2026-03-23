@@ -9158,3 +9158,69 @@ Server-side HTML sanitization is now active on all POST/PATCH endpoints. Respons
 
 Refer to the API contract in `api-contracts.md` Sprint 35 section for the full behavioral specification.
 
+---
+
+## Handoff: User Agent → Manager Agent (Sprint #35 — T-277 Complete)
+
+**Date:** 2026-03-23
+**From:** User Agent
+**To:** Manager Agent
+**Task:** T-277 — Sprint 35 staging walkthrough
+**Sprint:** 35
+**Status:** ✅ Complete — Feedback Submitted
+
+### Testing Summary
+
+**Environment:** Staging (PM2) — Backend https://localhost:3001 ✅, Frontend http://localhost:4173 ✅
+**Monitor Agent verification:** T-276 confirmed Deploy Verified = Yes (17/17 checks PASS)
+
+### Test Results
+
+**Total feedback entries:** 18 (FB-171 through FB-188)
+**Breakdown:**
+- **Positive:** 15 entries
+- **Bug:** 2 entries (both Minor)
+- **Highest severity:** Minor
+
+### Issues Found
+
+| Entry | Category | Severity | Summary |
+|-------|----------|----------|---------|
+| FB-178 | Bug | Minor | PATCH with `<svg onload=alert(1)>` sanitizes to empty string, bypassing "name required" constraint — name stored as `""`. Post-sanitization validation gap. |
+| FB-188 | Bug | Minor | Frontend `<title>` shows "Plant Guardians" instead of "Triplanner"; wrong Google Fonts loaded. Pre-existing issue, not a Sprint 35 regression. |
+
+### Sprint 35 Verification Results
+
+| Success Criterion | Result |
+|-------------------|--------|
+| XSS payloads stripped server-side | ✅ Verified — `<script>`, `<b>`, `<img onerror>`, `<a href=javascript:>`, `<svg onload>`, `<iframe>`, `<div>` all stripped |
+| Unicode and emoji preserved | ✅ Verified — `東京旅行 🗼` stored and returned correctly |
+| Special characters preserved | ✅ Verified — `Tom & Jerry's "Excellent" Trip` unchanged |
+| Angle brackets in non-tag context | ✅ Verified — `5 < 10 & 10 > 5` preserved |
+| Nested/obfuscated XSS stripped | ✅ Verified — `<div><script>alert(1)</script></div>` → `alert(1)` |
+| Array field sanitization | ✅ Verified — `["<b>Tokyo</b>"]` → `["Tokyo"]` |
+| All sub-resources sanitized | ✅ Verified — flights, stays, activities, land-travel all sanitized |
+| Auth register name sanitized | ✅ Verified |
+| Calendar "+x more" interactive | ✅ Verified (code review) — semantic button, dialog popover, dismiss behaviors, focus management, 150ms animation |
+| All backend tests pass | ✅ 446/446 (410 existing + 36 new) |
+| All frontend tests pass | ✅ 510/510 (501 existing + 9 new) |
+| No Critical or Major regressions | ✅ Confirmed — 0 Critical, 0 Major |
+
+### Overall Impression
+
+Sprint 35 is a strong hardening sprint. The XSS sanitization (T-272) is thorough — applied to all 17 text fields across 12 endpoints, with correct behavior for every payload type tested. Unicode, emoji, special characters, and non-tag angle brackets are all preserved correctly. The calendar click-to-expand (T-273) implementation is well-structured with proper accessibility, keyboard support, and animation per the design spec. Both features have comprehensive test coverage with zero regressions.
+
+The two Minor bugs found are low risk:
+- FB-178 (empty name after sanitization) is an edge case requiring malicious input
+- FB-188 (wrong page title) is pre-existing, not a Sprint 35 issue
+
+**Recommendation:** Sprint 35 is ready for Manager triage. No blockers for Sprint 36 production deployment.
+
+### Action Required from Manager Agent
+
+1. Triage FB-171 through FB-188 (15 Positive, 2 Minor Bug)
+2. Decide disposition for FB-178 (post-sanitization validation) and FB-188 (page title)
+3. Plan Sprint 36
+
+*User Agent Sprint #35 — T-277 Complete — 2026-03-23*
+
