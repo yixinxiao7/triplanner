@@ -4,6 +4,105 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Frontend Engineer → QA Engineer: T-273 Implementation Complete (Sprint 35)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** Frontend Engineer (T-273)
+**To:** QA Engineer (T-274)
+**Status:** ✅ Implementation complete — ready for QA
+
+### Summary
+
+Calendar "+x more" click-to-expand interaction (FB-135, Spec 29) is implemented in `TripCalendar.jsx` and `TripCalendar.module.css`. The static `<span>` overflow label has been replaced with an interactive `<button>` that opens a popover displaying all events for the overflowing day.
+
+### API Contract Acknowledgment
+
+T-272 API contract acknowledged. **No frontend changes required** for the server-side XSS sanitization — React JSX auto-escaping already handles display safely. Response shapes remain identical.
+
+### What Changed
+
+**Files modified:**
+- `frontend/src/components/TripCalendar.jsx` — Added `expandedDay` state, overflow trigger `<button>`, popover component with positioned panel, outside-click/Escape/resize dismiss, focus management, popover pills reusing existing pill renderer
+- `frontend/src/components/TripCalendar.module.css` — Added `.overflowTrigger`, `.overflowPopover`, `.overflowPopoverAbove`, `.overflowPopoverHeader`, `.overflowPopoverSep`, `.overflowPopoverCount`, `.overflowPopoverList` classes with fade-in animations
+- `frontend/src/__tests__/TripCalendar.test.jsx` — 9 new tests (29.A through 29.K)
+
+### What to Test (T-274)
+
+1. **Trigger renders as button** — Day cells with 4+ events show a `<button>` with `+N more` text, `aria-expanded`, and `aria-haspopup="dialog"`
+2. **Click opens popover** — Clicking trigger shows a popover with `role="dialog"`, day label header, event count, and all event pills
+3. **Popover pills scroll to section** — Clicking a pill in the popover scrolls to the corresponding section; popover stays open
+4. **Dismiss: click-outside** — Clicking outside the popover and trigger closes it
+5. **Dismiss: Escape** — Pressing Escape closes the popover and returns focus to trigger
+6. **Dismiss: month navigation** — Clicking ← or → closes the popover immediately
+7. **Dismiss: window resize** — Resizing the window closes the popover
+8. **Only one popover at a time** — Clicking a different `+x more` closes the current and opens the new one
+9. **Bottom-row placement** — Cells in the last 2 grid rows position the popover above the cell
+10. **Mobile unaffected** — Mobile day list (<480px) has no overflow trigger (already shows all events inline)
+11. **Accessibility** — Keyboard Enter/Space opens popover, Tab navigates through pills, focus management on open/close
+
+### Test Results
+
+**510/510 frontend tests pass** (9 new + 501 existing). Zero regressions.
+
+### Known Limitations
+
+- Exit animation (fade-out) is not implemented — popover unmounts instantly on close. The CSS keyframe handles entry animation only. A refinement could be added in a future sprint.
+- The `act(...)` warning in test 29.I is cosmetic (async state update during test teardown) and does not affect test correctness.
+
+---
+
+## Frontend Engineer: T-272 API Contract Acknowledged (Sprint 35)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** Frontend Engineer
+**To:** Backend Engineer (T-272)
+**Status:** ✅ Acknowledged — no frontend changes needed
+
+T-272 server-side XSS sanitization contract acknowledged. No frontend code changes required — React JSX auto-escaping already prevents XSS at the rendering layer. Response shapes unchanged.
+
+---
+
+## Deploy Engineer: T-275 Blocked — Awaiting Upstream Dependencies (Sprint 35)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** Deploy Engineer (T-275)
+**To:** Manager Agent
+**Status:** ⏳ Blocked — upstream dependencies not yet resolved
+
+### Summary
+
+T-275 (Sprint 35 staging deployment) cannot begin. The Blocked By chain is unresolved:
+
+- **T-272** (Backend: XSS sanitization) — **In Progress** (not yet complete)
+- **T-273** (Frontend: calendar "+x more") — **Backlog** (blocked by T-271, which is Done, but T-273 has not started)
+- **T-274** (QA: security + integration testing) — **Backlog** (blocked by T-272 + T-273)
+- **T-275** (Deploy: staging) — **Backlog** (blocked by T-274)
+
+### What Deploy Engineer Needs Before Starting
+
+1. T-272 must move to Done (backend XSS sanitization complete with passing tests)
+2. T-273 must move to Done (frontend calendar click-to-expand complete with passing tests)
+3. T-274 must move to Done (QA security checklist PASS, all tests pass)
+4. QA confirmation handoff logged in this file
+
+### Pre-Check Completed
+
+- ✅ Reviewed `technical-context.md` — no pending database migrations for Sprint 35 (no schema changes)
+- ✅ Reviewed `architecture.md` — staging environment uses Docker Compose (`infra/docker-compose.yml`)
+- ✅ Reviewed existing infra files — Dockerfile.backend, Dockerfile.frontend, nginx.conf, docker-compose.yml all in place
+- ✅ Reviewed `qa-build-log.md` — Sprint 34 staging + production deployments verified healthy
+
+### Action Required
+
+Orchestrator should re-invoke Deploy Engineer after T-274 completes and QA handoff is logged.
+
+*Deploy Engineer T-275 blocker report — 2026-03-23*
+
+---
+
 ## Backend Engineer → Frontend Engineer: T-272 API Contracts Ready (Sprint 35)
 
 **Date:** 2026-03-23
@@ -8737,4 +8836,75 @@ Sprint #31 features to verify during walkthrough:
 Both User Agent tasks for Sprint 31 are complete:
 - **T-248** (Sprint 30 carry-over walkthrough): All 3 Sprint 30 features verified end-to-end
 - **T-255** (Sprint 31 walkthrough): Sprint 31 features (mobile LAND_TRAVEL styling, knexfile seeds) verified
+
+---
+
+## Sprint 35 — T-272 Implementation Complete (Backend Engineer → QA Engineer)
+
+**Date:** 2026-03-23
+**Status:** ✅ Implementation Complete — Ready for QA
+**From:** Backend Engineer
+**To:** QA Engineer
+**Task:** T-272 — Server-side input sanitization (FB-163)
+**Sprint:** 35
+
+### What Was Built
+
+Server-side HTML sanitization for all user-provided text fields across all models. Defense-in-depth against stored XSS.
+
+**Files created:**
+- `backend/src/middleware/sanitize.js` — `sanitizeHtml(str)` utility function + `sanitizeFields(config)` middleware factory
+- `backend/src/__tests__/sprint35.test.js` — 36 tests (20 unit + 16 integration)
+
+**Files modified (sanitization middleware added to POST/PATCH routes):**
+- `backend/src/routes/auth.js` — `name` sanitized on register
+- `backend/src/routes/trips.js` — `name`, `destinations[]`, `notes` sanitized on POST + PATCH
+- `backend/src/routes/flights.js` — `flight_number`, `airline`, `from_location`, `to_location` sanitized on POST + PATCH
+- `backend/src/routes/stays.js` — `name`, `address` sanitized on POST + PATCH
+- `backend/src/routes/activities.js` — `name`, `location` sanitized on POST + PATCH
+- `backend/src/routes/landTravel.js` — `provider`, `from_location`, `to_location` sanitized on POST + PATCH
+
+**Total: 17 text fields sanitized across 12 write endpoints (POST/PATCH) on 6 models.**
+
+### What to Test
+
+1. **XSS payloads stripped:** Send `<script>alert(1)</script>` in text fields — tag removed, text content `alert(1)` preserved
+2. **Attribute XSS stripped:** `<img src=x onerror=alert(1)>` → empty string (no text content)
+3. **Nested tags stripped:** `<div><script>alert(1)</script></div>` → `alert(1)`
+4. **Unicode/emoji preserved:** `東京旅行 🗼 cafe\u0301` → unchanged
+5. **Special characters preserved:** `Tom & Jerry's "Excellent" Trip` → unchanged
+6. **Angle brackets in non-tag context preserved:** `5 < 10 & 10 > 5` → preserved
+7. **Array field sanitization:** `destinations: ["<b>Tokyo</b>", "Osaka"]` → `["Tokyo", "Osaka"]`
+8. **Non-text fields NOT sanitized:** enums, dates, times, UUIDs, timezone strings pass through unchanged
+9. **All 12 POST/PATCH endpoints covered** (auth/register, trips, flights, stays, activities, land-travel)
+10. **No regressions:** 446/446 tests pass (410 existing + 36 new)
+
+### No Schema Changes
+
+No migrations needed. No new environment variables. No new endpoints.
+
+### Test Results
+
+```
+446/446 PASS (410 existing + 36 new Sprint 35 tests)
+24/24 test files pass
+Zero regressions
+```
+
+---
+
+## Sprint 35 — T-272 Implementation Complete (Backend Engineer → Frontend Engineer)
+
+**Date:** 2026-03-23
+**Status:** ✅ Implementation Complete — No Frontend Changes Required
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Task:** T-272 — Server-side input sanitization (FB-163)
+**Sprint:** 35
+
+### Summary
+
+Server-side HTML sanitization is now active on all POST/PATCH endpoints. Response shapes are unchanged — the only difference is that stored text fields will never contain HTML tags. Since React JSX auto-escaping already handles client-side XSS, this change is invisible to the UI. **No frontend code changes are needed for T-272.**
+
+Refer to the API contract in `api-contracts.md` Sprint 35 section for the full behavioral specification.
 

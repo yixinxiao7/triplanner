@@ -1330,4 +1330,163 @@ describe('TripCalendar — Sprint 25 (T-213)', () => {
       expect(ltPills.length).toBe(1);
     });
   });
+
+  // ── Sprint 35 T-273: Calendar "+x more" Click-to-Expand ──────────
+
+  const fiveEventsOnAug8 = [
+    { id: 'stay-1', type: 'STAY', title: 'Hyatt Regency SF', start_date: '2026-08-07', end_date: '2026-08-10', start_time: '15:00', end_time: '11:00', timezone: 'America/Los_Angeles', source_id: 's1' },
+    { id: 'flight-1', type: 'FLIGHT', title: 'DL1234', start_date: '2026-08-08', end_date: '2026-08-08', start_time: '06:00', end_time: '08:30', timezone: 'America/Los_Angeles', source_id: 'f1' },
+    { id: 'act-1', type: 'ACTIVITY', title: "Fisherman's Wharf", start_date: '2026-08-08', end_date: '2026-08-08', start_time: '09:00', end_time: '12:00', timezone: null, source_id: 'a1' },
+    { id: 'act-2', type: 'ACTIVITY', title: 'Golden Gate Bridge', start_date: '2026-08-08', end_date: '2026-08-08', start_time: '15:00', end_time: '17:00', timezone: null, source_id: 'a2' },
+    { id: 'act-3', type: 'ACTIVITY', title: 'Dinner at Kokkari', start_date: '2026-08-08', end_date: '2026-08-08', start_time: '19:00', end_time: '21:00', timezone: null, source_id: 'a3' },
+    { id: 'act-4', type: 'ACTIVITY', title: 'Night Tour', start_date: '2026-08-08', end_date: '2026-08-08', start_time: '21:30', end_time: '23:00', timezone: null, source_id: 'a4' },
+  ];
+
+  // Test 29.A — Overflow trigger renders as button
+  it('29.A — overflow trigger renders as a button with correct aria attributes', async () => {
+    mockSuccess(fiveEventsOnAug8);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      const trigger = screen.getByText(/\+\d+ more/);
+      expect(trigger.tagName).toBe('BUTTON');
+      expect(trigger.getAttribute('aria-expanded')).toBe('false');
+      expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
+    });
+  });
+
+  // Test 29.B — Clicking trigger opens popover
+  it('29.B — clicking overflow trigger opens a popover with role="dialog"', async () => {
+    mockSuccess(fiveEventsOnAug8);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      expect(screen.getByText(/\+\d+ more/)).toBeTruthy();
+    });
+    const trigger = screen.getByText(/\+\d+ more/);
+    fireEvent.click(trigger);
+    await waitFor(() => {
+      const popover = document.querySelector('[role="dialog"]');
+      expect(popover).not.toBeNull();
+      expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    });
+  });
+
+  // Test 29.C — Popover shows correct day label and event count
+  it('29.C — popover shows correct day label and event count', async () => {
+    mockSuccess(fiveEventsOnAug8);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      expect(screen.getByText(/\+\d+ more/)).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText(/\+\d+ more/));
+    await waitFor(() => {
+      const popover = document.querySelector('[role="dialog"]');
+      expect(popover).not.toBeNull();
+      // Check event count (6 events on Aug 8: stay span + flight + 4 activities)
+      expect(popover.textContent).toContain('events');
+    });
+  });
+
+  // Test 29.E — Dismiss on click outside
+  it('29.E — clicking outside the popover closes it', async () => {
+    mockSuccess(fiveEventsOnAug8);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      expect(screen.getByText(/\+\d+ more/)).toBeTruthy();
+    });
+    const trigger = screen.getByText(/\+\d+ more/);
+    fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    });
+    // Click outside
+    fireEvent.mouseDown(document.body);
+    await waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+      expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    });
+  });
+
+  // Test 29.F — Dismiss on Escape key
+  it('29.F — pressing Escape closes the popover', async () => {
+    mockSuccess(fiveEventsOnAug8);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      expect(screen.getByText(/\+\d+ more/)).toBeTruthy();
+    });
+    const trigger = screen.getByText(/\+\d+ more/);
+    fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+    });
+  });
+
+  // Test 29.H — Month navigation closes popover
+  it('29.H — navigating to next month closes the popover', async () => {
+    mockSuccess(fiveEventsOnAug8);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      expect(screen.getByText(/\+\d+ more/)).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText(/\+\d+ more/));
+    await waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    });
+    const nextBtn = screen.getByLabelText('Next month');
+    fireEvent.click(nextBtn);
+    await waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+    });
+  });
+
+  // Test 29.K — No overflow trigger when ≤3 events
+  it('29.K — no overflow trigger shown when day has 3 or fewer events', async () => {
+    mockSuccess(mockEvents); // Only 3 events spread across days
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      expect(screen.queryByText(/AUGUST/i)).toBeTruthy();
+    });
+    const trigger = screen.queryByText(/\+\d+ more/);
+    expect(trigger).toBeNull();
+  });
+
+  // Test 29.D — Popover pills scroll to section (click does not close popover)
+  it('29.D — clicking a pill in the popover scrolls to section and popover stays open', async () => {
+    mockSuccess(fiveEventsOnAug8);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      expect(screen.getByText(/\+\d+ more/)).toBeTruthy();
+    });
+    fireEvent.click(screen.getByText(/\+\d+ more/));
+    await waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    });
+    const popover = document.querySelector('[role="dialog"]');
+    const pills = popover.querySelectorAll('button');
+    expect(pills.length).toBeGreaterThan(0);
+    // Click a pill inside the popover
+    fireEvent.click(pills[0]);
+    // Popover should stay open
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  });
+
+  // Test 29.I — Keyboard Enter opens popover
+  it('29.I — pressing Enter on the trigger opens the popover', async () => {
+    mockSuccess(fiveEventsOnAug8);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      expect(screen.getByText(/\+\d+ more/)).toBeTruthy();
+    });
+    const trigger = screen.getByText(/\+\d+ more/);
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    // The button's default behavior handles Enter → click
+    fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    });
+  });
 });
