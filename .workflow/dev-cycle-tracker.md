@@ -2968,8 +2968,8 @@ Review findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-272 | Backend Engineer: Server-side input sanitization for all user-provided text fields (FB-163). Strip HTML tags from trip name, notes, destinations, flight fields, stay fields, activity fields, land travel fields. Preserve Unicode/emoji. Add backend tests. | Feature | Backend Engineer | In Review | P1 | M | 35 | — | XSS payloads stripped; Unicode/emoji preserved; backend tests cover each model; no regressions in 410 backend tests. **[API Contracts Published 2026-03-23]** Contract in api-contracts.md Sprint 35 section. Handoffs to Frontend Engineer and QA Engineer logged. No schema changes — auto-approved. **[Implementation Complete 2026-03-23]** `sanitizeHtml` utility + `sanitizeFields` middleware created in `backend/src/middleware/sanitize.js`. Applied to all 12 POST/PATCH endpoints across 6 models (17 text fields). 36 new tests added (unit + integration). Full suite: 446/446 PASS (410 existing + 36 new). Zero regressions. |
-| T-273 | Frontend Engineer: Calendar "+x more" click-to-expand interaction (FB-135). Implement click handler on overflow indicator, show expanded view per T-271 spec, dismiss on click-outside/Escape, mobile responsive, accessible, 150ms ease animation. Add frontend tests. | Feature | Frontend Engineer | In Review | P1 | M | 35 | T-271 | "+x more" clickable and expands; dismiss works; mobile responsive; accessible; tests cover expand/collapse/dismiss; no regressions in 501 frontend tests. **[Implementation Complete 2026-03-23]** 510/510 frontend tests pass (9 new T-273 tests + 501 existing). |
+| T-272 | Backend Engineer: Server-side input sanitization for all user-provided text fields (FB-163). Strip HTML tags from trip name, notes, destinations, flight fields, stay fields, activity fields, land travel fields. Preserve Unicode/emoji. Add backend tests. | Feature | Backend Engineer | Integration Check | P1 | M | 35 | — | XSS payloads stripped; Unicode/emoji preserved; backend tests cover each model; no regressions in 410 backend tests. **[API Contracts Published 2026-03-23]** Contract in api-contracts.md Sprint 35 section. Handoffs to Frontend Engineer and QA Engineer logged. No schema changes — auto-approved. **[Implementation Complete 2026-03-23]** `sanitizeHtml` utility + `sanitizeFields` middleware created in `backend/src/middleware/sanitize.js`. Applied to all 12 POST/PATCH endpoints across 6 models (17 text fields). 36 new tests added (unit + integration). Full suite: 446/446 PASS (410 existing + 36 new). Zero regressions. **[Manager Review APPROVED 2026-03-23]** Sanitization regex correct (strips HTML tags, preserves Unicode/emoji/special chars). Applied to all 12 POST/PATCH endpoints across 6 route files. Middleware ordering correct (validate → sanitize → handler). 36 tests cover happy-path + error-path + edge cases. No hardcoded secrets, no SQL injection vectors, no internal detail leakage. API contract compliant. |
+| T-273 | Frontend Engineer: Calendar "+x more" click-to-expand interaction (FB-135). Implement click handler on overflow indicator, show expanded view per T-271 spec, dismiss on click-outside/Escape, mobile responsive, accessible, 150ms ease animation. Add frontend tests. | Feature | Frontend Engineer | Integration Check | P1 | M | 35 | T-271 | "+x more" clickable and expands; dismiss works; mobile responsive; accessible; tests cover expand/collapse/dismiss; no regressions in 501 frontend tests. **[Implementation Complete 2026-03-23]** 510/510 frontend tests pass (9 new T-273 tests + 501 existing). **[Manager Review APPROVED 2026-03-23]** Overflow trigger renders as semantic `<button>` with aria-expanded/aria-haspopup/aria-label. Popover uses role="dialog" with correct aria attributes. Dismiss on click-outside, Escape (with focus restoration), month navigation, and resize all implemented. 150ms ease animations correct. No dangerouslySetInnerHTML, no XSS vectors. 9 new tests cover expand/collapse/dismiss/keyboard/edge cases. Mobile responsive via min(280px, calc(100vw-32px)). Spec 29 compliant. |
 
 ---
 
@@ -2981,6 +2981,59 @@ Review findings:
 | T-275 | Deploy Engineer: Sprint 35 staging deployment. Rebuild frontend + backend, deploy to staging (Docker Compose), smoke test all endpoints. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 35 | T-274 | Staging deployed; smoke tests pass. **[2026-03-23 Pre-check: No pending migrations. Infra files verified. Awaiting T-274 completion.]** |
 | T-276 | Monitor Agent: Staging health check. Full protocol + verify XSS sanitization on staging + Playwright E2E 4/4 PASS. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 35 | T-275 | All endpoints healthy; XSS sanitization confirmed; Playwright 4/4; Deploy Verified = Yes (Staging). |
 | T-277 | User Agent: Sprint 35 staging walkthrough. Test XSS sanitization, "+x more" calendar click-to-expand, regression check on CRUD/calendar/auth. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 35 | T-276 | XSS sanitization verified; calendar overflow interaction works; no Critical/Major regressions; feedback submitted. |
+
+---
+
+### Manager Agent — Sprint 35 Code Review (CR-35)
+
+| Task ID | Description | Status | Assigned To | Result | Sprint | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| CR-35 | Manager: Sprint 35 code review pass | Review | Manager Agent | ✅ Done | 35 | — | **2 tasks reviewed and APPROVED.** T-272 (backend sanitization) and T-273 (calendar click-to-expand) both moved to Integration Check. |
+
+**Sprint 35 Code Review Summary (Manager Agent — 2026-03-23):**
+
+**Review scope:** All tasks in "In Review" status at time of invocation. Found 2: T-272 and T-273.
+
+---
+
+#### T-272 — Backend: Server-side input sanitization — APPROVED ✅
+
+- ✅ `sanitizeHtml()` utility in `backend/src/middleware/sanitize.js`: Regex `/<\/?[a-zA-Z][^>]*\/?>/g` correctly strips HTML/XML tags. HTML comments stripped via `<!--[\s\S]*?-->`. Type-safe (returns non-strings unchanged). No third-party dependency needed.
+- ✅ `sanitizeFields()` middleware: Handles both string and array fields. Respects null/undefined. Chains to `next()` correctly.
+- ✅ All 12 POST/PATCH endpoints across 6 route files have sanitization applied: trips (name, destinations[], notes), flights (flight_number, airline, from_location, to_location), stays (name, address), activities (name, location), land travel (provider, from_location, to_location), auth (name).
+- ✅ Middleware ordering correct: validate → sanitize → handler.
+- ✅ XSS bypass vectors tested: `<script>`, `<img onerror>`, `<svg onload>`, nested tags, self-closing tags, HTML comments, style tags — all stripped.
+- ✅ Unicode, emoji, accented characters, ampersands, quotes, math angle brackets — all preserved.
+- ✅ No double-encoding (output is plain text, not HTML-encoded).
+- ✅ 36 new tests (15 unit + 21 integration). 446/446 total PASS.
+- ✅ No hardcoded secrets. No SQL injection (Knex parameterized queries). No internal detail leakage. Error format matches convention.
+- ✅ API contract compliant (Sprint 35 section in api-contracts.md).
+
+**T-272** → **Integration Check** ✅
+
+---
+
+#### T-273 — Frontend: Calendar "+x more" click-to-expand — APPROVED ✅
+
+- ✅ Overflow trigger rendered as semantic `<button>` with `aria-expanded`, `aria-haspopup="dialog"`, descriptive `aria-label`.
+- ✅ Popover uses `role="dialog"`, `aria-label`, `aria-modal="false"` (non-modal, correct).
+- ✅ Dismiss behavior complete: click-outside (mousedown listener), Escape (with focus restoration to trigger), month navigation, window resize.
+- ✅ Focus management: Focus moves to first pill on open; returns to trigger on Escape.
+- ✅ Smart positioning: auto-anchors above/below based on viewport proximity. Mobile responsive via `min(280px, calc(100vw - 32px))`.
+- ✅ Animation: `popoverEnterBelow` / `popoverEnterAbove` at 150ms ease — matches design system.
+- ✅ No `dangerouslySetInnerHTML`. All dynamic content rendered via JSX auto-escaping. No XSS vectors.
+- ✅ Event listener cleanup in useEffect return. No memory leaks.
+- ✅ 9 new tests covering: render with aria attributes, open/close, event count display, click-outside dismiss, Escape dismiss, month nav dismiss, no trigger when ≤3 events, pill click scrolls, Enter key opens.
+- ✅ 510/510 total frontend tests PASS.
+- ✅ Spec 29 (ui-spec.md) compliant.
+
+**T-273** → **Integration Check** ✅
+
+---
+
+**Both T-272 and T-273 are now unblocked for T-274 (QA Engineer).** Handoffs logged in handoff-log.md.
+
+*Manager Agent Sprint #35 Code Review — 2026-03-23*
 
 ---
 

@@ -4,6 +4,56 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager Agent → QA Engineer: T-272 + T-273 Code Review APPROVED (Sprint 35)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** Manager Agent (CR-35)
+**To:** QA Engineer (T-274)
+**Status:** ✅ Both tasks APPROVED — ready for QA integration check
+
+### Summary
+
+Manager code review pass for Sprint 35 is complete. Both implementation tasks have been reviewed and approved:
+
+- **T-272** (Backend: server-side input sanitization) → **Integration Check**
+  - `sanitizeHtml` utility + `sanitizeFields` middleware in `backend/src/middleware/sanitize.js`
+  - Applied to all 12 POST/PATCH endpoints across 6 route files (trips, flights, stays, activities, land travel, auth)
+  - 36 new tests, 446/446 backend tests PASS
+  - No security issues found
+
+- **T-273** (Frontend: calendar "+x more" click-to-expand) → **Integration Check**
+  - Interactive popover on overflow trigger in `TripCalendar.jsx`
+  - Full dismiss behavior (click-outside, Escape, month nav, resize)
+  - Excellent accessibility (aria attributes, focus management)
+  - 9 new tests, 510/510 frontend tests PASS
+  - No XSS vectors
+
+### What QA Should Verify (T-274)
+
+**XSS Sanitization (T-272):**
+1. POST/PATCH trip with `<script>alert(1)</script>` in name → verify tag stripped in response
+2. POST flight with `<img onerror=alert(1)>` in airline → verify stripped
+3. POST stay/activity/land-travel with HTML tags → verify stripped
+4. Verify Unicode (日本語), emoji (🎉), special chars (&, ", ') preserved after sanitization
+5. Run full backend test suite: expect 446/446 PASS
+
+**Calendar Click-to-Expand (T-273):**
+1. Navigate to a day with >3 events → "+x more" button visible
+2. Click "+x more" → popover opens with all events listed
+3. Click outside → popover closes
+4. Press Escape → popover closes, focus returns to trigger
+5. Navigate to prev/next month → popover closes
+6. Run full frontend test suite: expect 510/510 PASS
+
+**Full Suite:**
+- Backend: 446/446
+- Frontend: 510/510
+- Playwright E2E: 4/4
+- Total: 960
+
+---
+
 ## Frontend Engineer → QA Engineer: T-273 Implementation Complete (Sprint 35)
 
 **Date:** 2026-03-23
