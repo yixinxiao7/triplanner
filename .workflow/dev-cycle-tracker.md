@@ -2960,7 +2960,7 @@ Review findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-271 | Design Agent: UI spec for calendar "+x more" click-to-expand behavior (FB-135). Define click target, expanded state (popover/dropdown/inline), dismiss behavior, mobile behavior, animation, accessibility. Publish to ui-spec.md. | Feature | Design Agent | Backlog | P1 | S | 35 | — | UI spec published with interaction fully defined; desktop + mobile behaviors specified; accessibility documented. |
+| T-271 | Design Agent: UI spec for calendar "+x more" click-to-expand behavior (FB-135). Define click target, expanded state (popover/dropdown/inline), dismiss behavior, mobile behavior, animation, accessibility. Publish to ui-spec.md. | Feature | Design Agent | Done | P1 | S | 35 | — | UI spec published with interaction fully defined; desktop + mobile behaviors specified; accessibility documented. |
 
 ---
 

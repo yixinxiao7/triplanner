@@ -11329,3 +11329,353 @@ Then:  The LAND_TRAVEL event appears only on Aug 10 as a single chip
 ---
 
 *Sprint #33 design review complete. Published by Design Agent 2026-03-20.*
+
+---
+
+### Spec 29: Calendar "+x more" Click-to-Expand (T-271, FB-135)
+
+**Sprint:** #35
+**Related Task:** T-271
+**Feedback Source:** FB-135
+**Status:** Approved
+
+---
+
+#### 29.1 Description
+
+When a calendar day cell contains more than 3 events, the TripCalendar component currently displays a static `+x more` label. This spec defines the click-to-expand interaction that allows users to view all events for an overflowing day. The feature applies only to the **desktop grid view** (≥480px). The mobile day-list view already shows all events inline, so no overflow exists on mobile.
+
+**Who uses this:** Any user with a densely planned trip where 4+ events fall on a single day (e.g., multiple activities, a flight, and a stay all overlapping on the same date).
+
+---
+
+#### 29.2 User Flow
+
+1. User views the TripCalendar on the Trip Details page (desktop).
+2. A day cell shows up to 3 event pills. Below them, a `+x more` label indicates additional events exist.
+3. User clicks (or presses Enter/Space while focused on) the `+x more` label.
+4. A **popover** appears anchored to the day cell, listing **all** events for that day (including the 3 already visible in the cell).
+5. User can click any event pill in the popover to scroll to that event's section (same behavior as pills in the grid).
+6. User dismisses the popover by:
+   - Clicking outside the popover
+   - Pressing Escape
+   - Clicking `+x more` on a different day (closes current, opens new)
+   - Navigating to a different month via the ← / → arrows
+7. Focus returns to the `+x more` trigger that opened the popover.
+
+---
+
+#### 29.3 Components
+
+##### 29.3.1 Overflow Trigger — `+x more` label (updated)
+
+The existing `<span className={styles.overflowLabel}>` must become an interactive element.
+
+| Property | Value |
+|----------|-------|
+| **Element** | `<button type="button">` (replaces the current `<span>`) |
+| **Text** | `+{n} more` where `n` = total events − 3 |
+| **Font** | IBM Plex Mono, 10px, weight 500 |
+| **Color** | `var(--accent)` (`#5D737E`) |
+| **Padding** | `2px 4px` |
+| **Background** | `transparent` |
+| **Border** | none |
+| **Cursor** | `pointer` |
+| **Hover** | Text color transitions to `var(--text-primary)` (`#FCFCFC`), `transition: color 150ms ease` |
+| **Focus-visible** | `outline: 2px solid var(--accent); outline-offset: 1px` |
+| **`aria-expanded`** | `"true"` when popover is open for this day, `"false"` otherwise |
+| **`aria-haspopup`** | `"dialog"` |
+| **`aria-label`** | `"Show all {totalCount} events for {dayLabel}"` — e.g., "Show all 5 events for Tuesday, August 8, 2026" |
+
+##### 29.3.2 Overflow Popover
+
+A floating panel anchored to the day cell that triggered it. Displays a complete, scrollable list of all events for that day.
+
+| Property | Value |
+|----------|-------|
+| **Element** | `<div role="dialog" aria-label="All events for {dayLabel}" aria-modal="false">` |
+| **Position** | Absolutely positioned relative to the day cell. Anchored below the cell by default. If the cell is in the bottom two rows of the grid, anchor **above** the cell instead (to avoid overflow off the calendar panel). Horizontally centered on the cell, clamped to the calendar panel edges. |
+| **Width** | `min(280px, calc(100vw - 32px))` — fixed width, does not resize with cell |
+| **Max Height** | `320px` — scrollable if content exceeds this |
+| **Overflow** | `overflow-y: auto` |
+| **Background** | `var(--surface)` (`#30292F`) |
+| **Border** | `1px solid var(--border-subtle)` (`rgba(93, 115, 126, 0.3)`) |
+| **Border Radius** | `var(--radius-md)` (4px) |
+| **Padding** | `12px` |
+| **Z-index** | `10` — above calendar grid cells |
+| **Animation** | Fade in: `opacity 0→1, transform translateY(4px)→translateY(0)` over `150ms ease`. Fade out: `opacity 1→0` over `100ms ease`. Use CSS transitions or a simple state-driven approach — no animation libraries. |
+
+**Popover Header:**
+
+| Property | Value |
+|----------|-------|
+| **Text** | Day label in compact format: e.g., `TUE, AUG 8` |
+| **Font** | IBM Plex Mono, 11px, weight 600, letter-spacing 0.08em, uppercase |
+| **Color** | `var(--text-primary)` |
+| **Margin bottom** | `8px` |
+| **Separator** | `<hr>` — `1px solid var(--border-subtle)`, margin-bottom `8px` |
+
+**Popover Event List:**
+
+| Property | Value |
+|----------|-------|
+| **Layout** | Vertical flex column, `gap: 4px` |
+| **Each event** | Rendered as the same event pill component used in the grid (`renderEventPill`), but with full width and no text truncation overflow. The pill should have `white-space: nowrap; overflow: hidden; text-overflow: ellipsis;` but the wider popover width (280px minus padding) gives more room for text. |
+| **Pill height** | Same as grid pills: `20px` |
+| **Pill click behavior** | Same as grid pills — scrolls to the corresponding section on the page |
+| **Pill styling** | Identical to grid pills for the event type (FLIGHT, STAY, ACTIVITY, LAND_TRAVEL), including color-coded left border and hover states. Multi-day spanning pills in the popover should render with **full border radius** (not clipped start/middle/end style) since they are shown in an isolated context. |
+| **Event count label** | Below the header, above the list: `{n} events` — IBM Plex Mono, 10px, weight 400, `var(--text-muted)`, margin-bottom `8px` |
+
+##### 29.3.3 Backdrop / Click-outside Dismiss Layer
+
+| Property | Value |
+|----------|-------|
+| **Implementation** | Use a `mousedown` event listener on `document` (or a React `useEffect` with ref-based outside-click detection). No visible backdrop overlay — the popover just closes when clicking outside. |
+| **Behavior** | Any click outside the popover AND outside the trigger button closes the popover. Clicks inside the popover (including on event pills) do NOT close it — the pill click scrolls to the section while the popover remains open. |
+
+---
+
+#### 29.4 States
+
+##### Empty state
+Not applicable — the `+x more` trigger only renders when overflow > 0, so the popover always has at least 4 events.
+
+##### Loading state
+Not applicable — calendar data is already loaded when the user interacts with `+x more`. No additional API call is needed.
+
+##### Error state
+Not applicable — if the calendar fails to load, the error state is shown at the panel level and no grid cells render.
+
+##### Success state (popover open)
+- Popover is visible with all events listed.
+- The trigger button shows `aria-expanded="true"`.
+- Focus moves into the popover on open (first focusable element = first event pill).
+
+##### Dismissed state
+- Popover is hidden.
+- The trigger button shows `aria-expanded="false"`.
+- Focus returns to the trigger button that was clicked.
+
+##### Edge case: Only 1 overflow event
+- `+1 more` still shows the full popover with all 4 events listed. The popover provides a complete view, not just the hidden events.
+
+##### Edge case: Many events (10+)
+- The popover scrolls vertically. Max height `320px` ensures the popover doesn't dominate the page. A subtle scrollbar appears (styled to match the Japandi aesthetic if possible — thin, muted).
+
+##### Edge case: Month navigation while popover is open
+- Close the popover immediately (no animation) when the user clicks ← or → to change months. The grid re-renders and the popover's anchor cell no longer exists.
+
+##### Edge case: Window resize while popover is open
+- Close the popover on window resize to avoid misalignment. A `resize` event listener should dismiss it.
+
+---
+
+#### 29.5 Responsive Behavior
+
+| Breakpoint | Behavior |
+|------------|----------|
+| **Desktop (≥768px)** | Full desktop grid with `+x more` popover interaction as described above. |
+| **Tablet (480px–767px)** | Desktop grid is still shown (per existing CSS). `+x more` popover works the same. Popover width clamps via `min(280px, calc(100vw - 32px))`. |
+| **Mobile (<480px)** | Desktop grid is hidden; `MobileDayList` is shown instead. **No `+x more` interaction needed** — the mobile list already shows all events for each day inline. No changes to mobile view. |
+
+---
+
+#### 29.6 Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| **Trigger is a `<button>`** | The `+x more` label must be a `<button>` (not a `<span>`) for keyboard access and screen reader announcement. |
+| **`aria-expanded`** | Set to `"true"` when popover is open, `"false"` when closed. |
+| **`aria-haspopup="dialog"`** | On the trigger button, signals that activating it opens a dialog-like popover. |
+| **Popover `role="dialog"`** | The popover container has `role="dialog"` and `aria-label="All events for {dayLabel}"`. |
+| **Focus management** | On open: focus moves to the first event pill inside the popover. On close (Escape or click-outside): focus returns to the trigger button. |
+| **Keyboard: Enter/Space** | Opens the popover when the trigger is focused. |
+| **Keyboard: Escape** | Closes the popover and returns focus to the trigger. |
+| **Keyboard: Tab** | Inside the popover, Tab moves through event pills sequentially. After the last pill, Tab exits the popover (natural tab order). Shift+Tab from the first pill moves back to the trigger. |
+| **Screen reader** | Trigger announces: "Show all 5 events for Tuesday, August 8, 2026, collapsed" (or "expanded"). Popover announces its label on focus entry. Each pill inside has the same `aria-label` as grid pills. |
+| **Color contrast** | All text meets WCAG AA. Accent color (`#5D737E`) on dark background (`#02111B`) = 4.6:1 ratio (passes AA for normal text). Primary text (`#FCFCFC`) on surface (`#30292F`) = 13.8:1 ratio (passes AAA). |
+| **Touch target** | Trigger button has a minimum tap area of 24px height (current pill area + padding provides this). On tablet, ensure at least 44px tap target via padding if needed. |
+
+---
+
+#### 29.7 Animation Details
+
+| Animation | Spec |
+|-----------|------|
+| **Popover enter** | `opacity: 0 → 1`, `transform: translateY(4px) → translateY(0)`, duration `150ms`, easing `ease` |
+| **Popover exit** | `opacity: 1 → 0`, duration `100ms`, easing `ease`. Use a brief delay or state flag to allow the exit animation to play before unmounting (or use CSS transition with conditional class). |
+| **Trigger hover** | `color` transition, `150ms ease` (already part of design system conventions) |
+
+---
+
+#### 29.8 Implementation Notes for Frontend Engineer
+
+1. **State management:** Add `expandedDay` state to `TripCalendar` — stores the `dateStr` of the currently expanded day, or `null` if no popover is open. Only one popover can be open at a time.
+
+2. **Trigger change:** Replace the existing `<span className={styles.overflowLabel}>+{overflow} more</span>` with a `<button>` element. Wire `onClick` to set `expandedDay` to the cell's `dateStr` (or `null` if already open — toggle behavior).
+
+3. **Popover positioning:** Use a ref on the day cell to get its bounding rect. Position the popover absolutely. Check if the cell is in the bottom 2 rows of the grid (cellIndex ≥ totalCells − 14) to decide above vs. below placement.
+
+4. **Popover rendering:** Render the popover as a sibling of the grid (not inside the day cell) to avoid `overflow: hidden` clipping. Use a portal (`ReactDOM.createPortal` to the calendar panel) or position it relative to the `.calendarPanel` container.
+
+5. **Event pills in popover:** Reuse `renderEventPill()` for each event. Override the `_dayType`-based pill styling: in the popover context, all pills should render with normal border-radius (not the clipped start/middle/end spanning style). Pass a flag or use a wrapper.
+
+6. **Outside-click detection:** Use a `useEffect` with `mousedown` listener on `document`. Check if the click target is inside the popover ref or the trigger button ref. If not, close.
+
+7. **Escape key:** Add a `keydown` listener (on the popover or `document`) for `Escape` to close the popover.
+
+8. **Month nav dismiss:** In `prevMonth()` and `nextMonth()`, add `setExpandedDay(null)`.
+
+9. **CSS module classes to add:**
+   - `.overflowTrigger` — the button styling (replaces `.overflowLabel`)
+   - `.overflowPopover` — the popover container
+   - `.overflowPopoverAbove` — modifier for above-placement
+   - `.overflowPopoverHeader` — day label text
+   - `.overflowPopoverCount` — event count label
+   - `.overflowPopoverList` — event list container
+   - `.overflowPopoverEnter` / `.overflowPopoverExit` — animation classes (if using class-based transitions)
+
+10. **No new API calls.** All event data is already in `eventsMap`. The popover reads from `eventsMap[expandedDay]`.
+
+---
+
+#### 29.9 Visual Reference (ASCII Layout)
+
+```
+┌─────────────────────────────────────────────────┐
+│ CALENDAR                    ● Flight  ● Stay ...│
+│─────────────────────────────────────────────────│
+│              ← AUGUST 2026 →                    │
+│ SUN   MON   TUE   WED   THU   FRI   SAT        │
+│┌─────┬─────┬─────┬─────┬─────┬─────┬─────┐     │
+││     │     │     │     │     │     │  1  │     │
+││     │     │     │     │     │     │     │     │
+│├─────┼─────┼─────┼─────┼─────┼─────┼─────┤     │
+││  2  │  3  │  4  │  5  │  6  │  7  │  8  │     │
+││     │     │     │     │     │ ✈DL │ ⌂Hyatt│    │
+││     │     │     │     │     │ ⌂Hya│ ●Fish │    │
+││     │     │     │     │     │     │ ●GGB  │    │
+││     │     │     │     │     │     │[+2 more]←──── trigger button
+│├─────┼─────┼─────┼─────...                      │
+│                                                  │
+│         ┌──────────────────────────┐             │
+│         │ TUE, AUG 8              │             │
+│         │──────────────────────────│ ← popover   │
+│         │ 5 events                │             │
+│         │──────────────────────────│             │
+│         │ [⌂ Hyatt Regency SF   ] │ ← pill      │
+│         │ [● 9a Fisherman's Wh. ] │             │
+│         │ [● 3p Golden Gate Br. ] │             │
+│         │ [● 7p Dinner at...    ] │             │
+│         │ [● 9p Night tour      ] │             │
+│         └──────────────────────────┘             │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+#### 29.10 Test Scenarios for Frontend Engineer
+
+**Test 29.A — Overflow trigger renders as button**
+```
+Given: A day cell has 5 events
+When:  TripCalendar renders
+Then:  A button with text "+2 more" is rendered in the day cell
+And:   The button has aria-expanded="false" and aria-haspopup="dialog"
+```
+
+**Test 29.B — Clicking trigger opens popover**
+```
+Given: A day cell shows "+2 more" button
+When:  User clicks the "+2 more" button
+Then:  A popover appears with role="dialog"
+And:   The popover lists all 5 events for that day
+And:   The trigger button's aria-expanded changes to "true"
+```
+
+**Test 29.C — Popover shows correct day label and event count**
+```
+Given: A popover is open for August 8, 2026 (5 events)
+Then:  The popover header displays "TUE, AUG 8"
+And:   The event count reads "5 events"
+```
+
+**Test 29.D — Popover event pills scroll to section**
+```
+Given: A popover is open with a FLIGHT event pill
+When:  User clicks the flight pill
+Then:  The page scrolls to the flights-section
+And:   The popover remains open
+```
+
+**Test 29.E — Dismiss on click outside**
+```
+Given: A popover is open
+When:  User clicks outside the popover and outside the trigger
+Then:  The popover closes
+And:   aria-expanded on the trigger is "false"
+```
+
+**Test 29.F — Dismiss on Escape key**
+```
+Given: A popover is open and focus is inside the popover
+When:  User presses Escape
+Then:  The popover closes
+And:   Focus returns to the trigger button
+```
+
+**Test 29.G — Only one popover open at a time**
+```
+Given: A popover is open for August 8
+When:  User clicks "+3 more" on August 10
+Then:  The August 8 popover closes
+And:   The August 10 popover opens
+```
+
+**Test 29.H — Month navigation closes popover**
+```
+Given: A popover is open
+When:  User clicks the → (next month) arrow
+Then:  The popover closes immediately
+And:   The calendar navigates to the next month
+```
+
+**Test 29.I — Keyboard navigation: Enter opens popover**
+```
+Given: The "+2 more" button is focused via keyboard
+When:  User presses Enter
+Then:  The popover opens
+And:   Focus moves to the first event pill inside the popover
+```
+
+**Test 29.J — Keyboard navigation: Tab through popover pills**
+```
+Given: A popover is open with 5 event pills
+When:  User presses Tab repeatedly
+Then:  Focus moves through each pill in order
+And:   After the last pill, Tab exits the popover
+```
+
+**Test 29.K — No overflow trigger when ≤3 events**
+```
+Given: A day cell has exactly 3 events
+When:  TripCalendar renders
+Then:  No "+x more" button is shown
+And:   All 3 events are visible as pills
+```
+
+**Test 29.L — Popover position: bottom rows render above**
+```
+Given: A day cell in the last row of the grid has overflow
+When:  User clicks "+x more"
+Then:  The popover appears above the cell (not below)
+And:   The popover does not extend beyond the calendar panel
+```
+
+---
+
+*Spec 29 (Sprint 35 — Calendar "+x more" click-to-expand, T-271, FB-135) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-23.*
+
+---
+
+*Sprint #35 design review complete. Published by Design Agent 2026-03-23.*

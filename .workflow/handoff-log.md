@@ -4,6 +4,54 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Design Agent → Frontend Engineer: UI Spec for Calendar "+x more" Click-to-Expand (T-271 → T-273) — Sprint 35
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** Design Agent (T-271)
+**To:** Frontend Engineer (T-273)
+**Status:** ✅ Spec published — T-271 Done, T-273 unblocked
+
+### Summary
+
+UI spec for the calendar "+x more" click-to-expand interaction (FB-135) is published as **Spec 29** in `ui-spec.md`. T-273 is now unblocked.
+
+### Spec Location
+
+`.workflow/ui-spec.md` → **Spec 29: Calendar "+x more" Click-to-Expand (T-271, FB-135)**
+
+### Key Design Decisions
+
+1. **Interaction pattern: Popover** (not inline expand or dropdown). A popover anchored to the day cell provides focused context without disrupting the grid layout. It shows ALL events for the day (not just the hidden ones) for complete context.
+
+2. **Trigger element: `<button>`** replacing the current `<span>`. Required for keyboard accessibility and screen reader support. Includes `aria-expanded` and `aria-haspopup="dialog"`.
+
+3. **Dismiss behavior:** Click outside, Escape key, clicking a different day's overflow, or navigating months. Focus returns to trigger on dismiss.
+
+4. **Mobile: No changes needed.** The mobile `MobileDayList` already shows all events inline — there is no overflow on mobile. The popover is desktop/tablet only (≥480px).
+
+5. **Popover positioning:** Below the cell by default; above if the cell is in the bottom 2 rows of the grid. Rendered outside the day cell to avoid `overflow: hidden` clipping.
+
+6. **Animation:** Fade-in with subtle translateY (150ms ease), matches design system transitions.
+
+### What the Frontend Engineer Needs to Do
+
+- Read Spec 29 sections 29.3 (Components), 29.6 (Accessibility), 29.8 (Implementation Notes)
+- Key changes: new `expandedDay` state, `<button>` trigger, popover component, outside-click + Escape handlers
+- Reuse `renderEventPill()` inside the popover (with normal border-radius, not spanning style)
+- No new API calls — reads from existing `eventsMap`
+- 12 test scenarios defined in section 29.10
+
+### Files Involved
+
+- `frontend/src/components/TripCalendar.jsx` — primary implementation
+- `frontend/src/components/TripCalendar.module.css` — new CSS classes for popover
+- Frontend tests for expand/collapse/dismiss behavior
+
+*Design Agent T-271 handoff — 2026-03-23*
+
+---
+
 ## Manager Agent → All Agents: Sprint #35 Kickoff — XSS Sanitization + Calendar UX Polish (2026-03-23)
 
 **Date:** 2026-03-23
