@@ -4,6 +4,75 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Backend Engineer → Frontend Engineer: T-272 API Contracts Ready (Sprint 35)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** Backend Engineer (T-272)
+**To:** Frontend Engineer
+**Status:** ✅ Contracts published — no frontend changes required for T-272
+
+### Summary
+
+API contracts for T-272 (server-side XSS input sanitization) are published in `api-contracts.md` → Sprint 35 Contracts section.
+
+### What This Means for Frontend
+
+**No frontend code changes needed.** T-272 is entirely a backend change. The response shapes for all endpoints remain identical. The only difference is that stored text fields will never contain HTML tags — but since React JSX already auto-escapes output, this is invisible to the UI.
+
+### Contract Location
+
+`.workflow/api-contracts.md` → **T-272 — Server-Side Input Sanitization (Cross-Cutting Behavioral Change)**
+
+### Key Points
+
+- 17 text fields across 6 models will be sanitized server-side
+- `<script>alert(1)</script>Tokyo Trip` → stored/returned as `alert(1)Tokyo Trip`
+- Unicode, emoji, and special characters (`&`, `"`, `'`) are preserved
+- No new error codes or response shape changes
+- All existing 30 endpoints remain in force with identical shapes
+
+---
+
+## Backend Engineer → QA Engineer: T-272 API Contracts for Testing Reference (Sprint 35)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** Backend Engineer (T-272)
+**To:** QA Engineer (T-274)
+**Status:** ✅ Contracts published — testing reference ready
+
+### Summary
+
+API contracts for T-272 (server-side XSS input sanitization) are published. QA should use these contracts when verifying sanitization behavior in T-274.
+
+### Contract Location
+
+`.workflow/api-contracts.md` → **T-272 — Server-Side Input Sanitization (Cross-Cutting Behavioral Change)**
+
+### What QA Should Verify
+
+1. **XSS payloads stripped on all 12 write endpoints** (POST/PATCH for trips, flights, stays, activities, land-travel, and auth/register). For each, attempt to store `<script>alert(1)</script>` in each text field and verify the tag is stripped from the stored/returned value.
+2. **Unicode and emoji preserved.** Store `東京旅行 🗼` and verify it's returned unchanged.
+3. **Special characters preserved.** Store `Tom & Jerry's "Excellent" Trip` and verify returned unchanged.
+4. **Attribute-based XSS stripped.** `<img src=x onerror=alert(1)>` → stripped.
+5. **Array fields sanitized.** `destinations: ["<b>Tokyo</b>"]` → `["Tokyo"]`.
+6. **No regressions.** All 410 existing backend tests must pass.
+7. **Security checklist.** Verify sanitization satisfies FB-163 defense-in-depth requirement.
+
+### Affected Fields Quick Reference
+
+| Model | Sanitized Fields |
+|-------|-----------------|
+| User | `name` |
+| Trip | `name`, `destinations[]`, `notes` |
+| Flight | `flight_number`, `airline`, `from_location`, `to_location` |
+| Stay | `name`, `address` |
+| Activity | `name`, `location` |
+| Land Travel | `provider`, `from_location`, `to_location` |
+
+---
+
 ## Design Agent → Frontend Engineer: UI Spec for Calendar "+x more" Click-to-Expand (T-271 → T-273) — Sprint 35
 
 **Date:** 2026-03-23

@@ -724,4 +724,25 @@ All 10 migrations applied on staging. Schema is stable and unchanged from Sprint
 
 ---
 
+### Sprint 35 — No Schema Changes
+
+**Date:** 2026-03-23
+**Confirmed by:** Backend Engineer
+**Task:** T-272
+
+**Reason:** Sprint 35's backend task (T-272) adds server-side HTML sanitization to all user-provided text fields. This is an application-layer change only — a sanitization utility function applied in validation/middleware before database insertion. No new tables, columns, indexes, or constraints are required. The existing schema (migrations 001–010) is fully sufficient.
+
+**T-272 — Server-Side Input Sanitization:**
+- Adds a new utility function (`sanitizeHtml`) that strips HTML tags from text input
+- Applies sanitization to 17 text fields across 6 models (User, Trip, Flight, Stay, Activity, Land Travel)
+- Sanitization runs after validation, before model insertion — no route handler changes needed for data flow
+- May add a new npm dependency (`sanitize-html` or `xss` library) — no DDL impact
+- **No schema change. No migration. No `knex migrate:latest` required.**
+
+**Manager Approval Note:** No schema changes for Sprint 35 → no Manager handoff required for DDL approval. This note is for the Deploy Engineer's reference: **do not run `knex migrate:latest` for Sprint 35** — the migration log remains at 10 applied migrations (001–010). The new `sanitize-html` (or equivalent) npm dependency will need to be installed (`npm install`) during the staging build.
+
+**[Auto-approved — no schema change]**
+
+---
+
 *Sprint 20 schema analysis by Backend Engineer 2026-03-10. T-188 is validation-layer-only — no migration. T-186 is validation-layer-only — no migration. Schema remains stable at 10 migrations.*
