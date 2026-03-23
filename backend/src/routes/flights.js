@@ -69,10 +69,11 @@ const flightValidationSchema = {
   },
   departure_at: {
     required: true,
-    type: 'isoDate',
+    type: 'isoDateWithOffset',
     messages: {
       required: 'Departure time is required',
-      type: 'Departure time must be a valid ISO 8601 datetime',
+      type: 'departure_at must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-07T06:50:00-04:00)',
+      offset: 'departure_at must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-07T06:50:00-04:00)',
     },
   },
   departure_tz: {
@@ -84,10 +85,11 @@ const flightValidationSchema = {
   },
   arrival_at: {
     required: true,
-    type: 'isoDate',
+    type: 'isoDateWithOffset',
     messages: {
       required: 'Arrival time is required',
-      type: 'Arrival time must be a valid ISO 8601 datetime',
+      type: 'arrival_at must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-07T06:50:00-04:00)',
+      offset: 'arrival_at must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-07T06:50:00-04:00)',
     },
     custom: (value, body) => {
       if (body.departure_at && value) {
@@ -188,9 +190,23 @@ router.patch('/:id', async (req, res, next) => {
     for (const [field, rules] of Object.entries(partialSchema)) {
       let value = req.body[field];
       if (typeof value === 'string') value = value.trim();
+
+      // isoDate — basic parse check
       if (rules.type === 'isoDate' && typeof value === 'string' && isNaN(Date.parse(value))) {
         errors[field] = rules.messages?.type || `${field} must be a valid ISO 8601 datetime`;
       }
+
+      // isoDateWithOffset — parse check + offset check (T-240)
+      if (rules.type === 'isoDateWithOffset') {
+        if (typeof value !== 'string' || isNaN(Date.parse(value))) {
+          errors[field] = rules.messages?.type ||
+            `${field} must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-07T06:50:00-04:00)`;
+        } else if (!/(Z|[+-]\d{2}:\d{2})$/.test(value)) {
+          errors[field] = rules.messages?.offset ||
+            `${field} must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-07T06:50:00-04:00)`;
+        }
+      }
+
       if (rules.maxLength && typeof value === 'string' && value.length > rules.maxLength) {
         errors[field] = `${field} must be at most ${rules.maxLength} characters`;
       }

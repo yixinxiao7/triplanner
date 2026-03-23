@@ -65,6 +65,10 @@
   background: var(--event-activity-border);
 }
 
+.legendDotLandTravel {
+  background: var(--event-land-travel-border);
+}
+
 .legendText {
   font-size: 10px;
   font-weight: 600;
@@ -273,6 +277,25 @@
   color: var(--event-activity-text);
 }
 
+/* Sprint 30 — T-243: LAND_TRAVEL pill */
+.eventPillLandTravel {
+  background: var(--event-land-travel-bg);
+  border-left-color: var(--event-land-travel-border);
+}
+
+.eventPillLandTravel:hover {
+  background: var(--event-land-travel-hover);
+}
+
+.eventPillLandTravel:focus-visible {
+  outline: 2px solid var(--event-land-travel-border);
+  outline-offset: 1px;
+}
+
+.eventPillLandTravel .eventPillText {
+  color: var(--event-land-travel-text);
+}
+
 .overflowLabel {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -433,6 +456,11 @@
 
 .mobileEventActivity {
   color: var(--event-activity-text);
+}
+
+/* Sprint 31 — T-249: LAND_TRAVEL mobile row color accent */
+.mobileEventLandTravel {
+  color: var(--event-land-travel-text);
 }
 
 .mobileNoEvents {

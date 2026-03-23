@@ -95,6 +95,14 @@ const stayValidationSchema = {
   },
 };
 
+// ---- Normalize category to uppercase (T-258) ----
+function normalizeCategory(req, _res, next) {
+  if (req.body.category && typeof req.body.category === 'string') {
+    req.body.category = req.body.category.toUpperCase();
+  }
+  next();
+}
+
 // ---- GET /api/v1/trips/:tripId/stays ----
 router.get('/', async (req, res, next) => {
   try {
@@ -109,7 +117,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // ---- POST /api/v1/trips/:tripId/stays ----
-router.post('/', validate(stayValidationSchema), async (req, res, next) => {
+router.post('/', normalizeCategory, validate(stayValidationSchema), async (req, res, next) => {
   try {
     const trip = await requireTripOwnership(req, res);
     if (!trip) return;
@@ -163,6 +171,11 @@ router.patch('/:id', async (req, res, next) => {
 
     const UPDATABLE = ['category', 'name', 'address', 'check_in_at', 'check_in_tz', 'check_out_at', 'check_out_tz'];
     const errors = {};
+
+    // Normalize category to uppercase (T-258)
+    if (req.body.category !== undefined && typeof req.body.category === 'string') {
+      req.body.category = req.body.category.toUpperCase();
+    }
 
     if (req.body.category !== undefined && !['HOTEL', 'AIRBNB', 'VRBO'].includes(req.body.category)) {
       errors.category = 'Category must be one of: HOTEL, AIRBNB, VRBO';

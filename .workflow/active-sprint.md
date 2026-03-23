@@ -4,121 +4,133 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #29 — 2026-03-12
+## Sprint #34 — 2026-03-20
 
-**Sprint Goal:** Achieve a clean Deploy Verified = Yes status on staging by fixing the Playwright E2E Test 2 locator bug (FB-124/T-235) — the sole remaining QA gate blocking full staging verification. Once the locator is fixed and the Monitor Agent confirms 4/4 Playwright, staging will be fully verified and the application will be in a production-ready state pending project owner action on T-224 (AWS RDS + Render provisioning, 4th escalation).
+**Sprint Goal:** Deploy Sprint 33's multi-day calendar fix to production, then finally complete production verification (T-225 post-production health check + T-256 production walkthrough) which have been carried over since Sprint 30.
 
-**Context:** Sprint 28 delivered the T-229 trip date COALESCE fix cleanly — User Agent confirmed all three scenarios pass and zero regressions exist. The application is MVP feature-complete. The only open engineering item is a test-code locator bug in `e2e/critical-flows.spec.js` (not an application bug) that prevents `npx playwright test` from reaching 4/4. This was introduced in Sprint 27 when TripCalendar began rendering airport codes in additional DOM elements, making the pre-existing `getByText('SFO')` locator ambiguous. All other health checks pass cleanly.
+**Context:** Sprint 33 completed its staging pipeline cleanly — T-264 (multi-day FLIGHT and LAND_TRAVEL calendar spanning) shipped to staging with zero bugs and 12/12 positive feedback entries. However, T-225 (post-production health check) and T-256 (production walkthrough) were not executed for the 5th and 4th consecutive sprints. Production is live at `https://triplanner.yixinx.com` but is running an older version without the Sprint 33 calendar fix. This sprint deploys the fix to production and runs the long-overdue production verification pipeline.
 
-**Feedback Triage (Sprint 28 → Sprint 29):**
+**Feedback Triage (Sprint 33 → Sprint 34):**
 
-| Entry | Category | Severity | Disposition | Description |
-|-------|----------|----------|-------------|-------------|
-| Monitor Alert Sprint #28 (Playwright locator) | Monitor Alert | Major | **Tasked → T-235** | `getByText('SFO')` resolves to 3 elements — TripCalendar adds airport codes to pills and MobileDayList. Test-code fix needed. |
-| FB-123 (T-229 COALESCE fix working) | Positive | — | Acknowledged | Trip date "Set dates" UI fully functional end-to-end. |
-| FB-124 (Playwright locator bug) | Bug | Major | **Tasked → T-235** | Same root cause as Monitor Alert. Test 2 fails; application is correct. |
-| FB-125 (Calendar endpoint regression-free) | Positive | — | Acknowledged | GET /api/v1/trips/:id/calendar returns correct events after tripModel.js change. |
-| FB-126 (Validation + security edge cases) | Positive | — | Acknowledged | All date validation + security edge cases pass. |
-| FB-127 (StatusFilterTabs + notes regression-free) | Positive | — | Acknowledged | Status filtering and notes unaffected by COALESCE change. |
-| FB-128 (Rate limiter triggered during testing) | UX Issue | Minor | Acknowledged (B-020 backlog) | In-memory store resets on restart; Redis-backed limiter on backlog. |
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-144–FB-155 | Positive | — | **Acknowledged** — All 12 entries are positive confirmations of T-264, regressions, and test suites |
+
+**No new tasks created from feedback.** Sprint 33 produced zero bugs, zero UX issues, zero feature gaps.
 
 ---
 
 ## In Scope
 
-### Phase 1 — Playwright Locator Fix (P0 — NO BLOCKERS — START IMMEDIATELY)
+### Phase 0 — Production Deployment (P0 — NO BLOCKERS — START IMMEDIATELY)
 
-- [ ] **T-235** — QA Engineer: Fix `e2e/critical-flows.spec.js` Playwright Test 2 locator (FB-124) ← **NO DEPENDENCIES — START IMMEDIATELY**
+- [ ] **T-269** — Deploy Engineer: Deploy Sprint 33 frontend changes to production (Render)
 
-  **Root Cause:** Sprint 27 TripCalendar feature renders flight `arrival_airport` ('SFO') and `departure_airport` ('JFK') in multiple DOM elements:
-  1. `<span>` inside flight calendar event pill (TripCalendar)
-  2. `<span>` inside MobileDayList event title (TripCalendar)
-  3. `<div class="_airportCode_...">SFO</div>` (flight card in flights section)
+  **Context:** The multi-day calendar fix (T-264) is deployed to staging but not production. Production at `https://triplanner.yixinx.com` is running an older frontend build.
 
-  The pre-existing `page.getByText('SFO')` locator at `e2e/critical-flows.spec.js:202` was written before TripCalendar and now resolves to 3 elements, triggering Playwright strict mode violation.
-
-  **Fix (test-code only — no app changes):**
-  ```js
-  // Before (ambiguous):
-  await expect(page.getByText('JFK')).toBeVisible();
-  await expect(page.getByText('SFO')).toBeVisible();
-
-  // After (scoped to flight card airport code element):
-  await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()).toBeVisible();
-  await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible();
-  ```
-  Alternative: if `data-testid="airport-code"` is available on the airport code div in the flight card, use that instead.
+  **Execute:**
+  1. Rebuild frontend with production environment variables (`npm run build` in `frontend/`)
+  2. Deploy to Render (push to production branch or trigger Render deploy via CLI/dashboard)
+  3. Verify frontend loads at `https://triplanner.yixinx.com`
+  4. Smoke test: Navigate to a trip with a multi-day flight → verify calendar shows spanning event
+  5. Log results in `qa-build-log.md` Sprint 34 section
 
   **Acceptance criteria:**
-  1. `npx playwright test` from project root → **4/4 PASS** (no failures)
-  2. No changes to any application source files (`frontend/`, `backend/`, `shared/`)
-  3. Log fix and test results in `qa-build-log.md` Sprint 29 section
-  4. Handoff to Monitor Agent (T-236)
+  - Frontend deployed to production on Render
+  - Multi-day calendar fix live on production
+  - No build errors
+  - Production URL loads correctly with new assets
 
-  **Files:** `e2e/critical-flows.spec.js` lines 201–202 only
-
----
-
-### Phase 2 — Monitor Health Check (after T-235)
-
-- [ ] **T-236** — Monitor Agent: Full staging health check post-Playwright fix ← Blocked by T-235
-
-  Full health check protocol:
-  - GET `/api/v1/health` → 200 ✅
-  - CORS header → `Access-Control-Allow-Origin: https://localhost:4173` ✅
-  - Login with `test@triplanner.local` → 200 + access token ✅
-  - GET `/api/v1/trips` → 200 ✅
-  - GET `/api/v1/trips/:id/calendar` → 200 ✅
-  - **`npx playwright test` → 4/4 PASS** ← required for Deploy Verified = Yes
-  - Regression: PATCH `/api/v1/trips/:id` with `{"start_date":"2026-09-01","end_date":"2026-09-30"}` → user values returned (T-229 check)
-  - Log results in `qa-build-log.md` Sprint 29 section
-  - If 4/4 PASS: mark **Deploy Verified = Yes**, handoff to User Agent (T-237)
-  - If still failing: escalate to Manager before proceeding
+  **Files:** `qa-build-log.md`, `dev-cycle-tracker.md`, `handoff-log.md`
 
 ---
 
-### Phase 3 — User Agent Final Verification (after T-236, if Deploy Verified = Yes)
+### Phase 1 — Post-Production Verification (P0 — sequential after Phase 0)
 
-- [ ] **T-237** — User Agent: Sprint 29 quick regression verification ← Blocked by T-236
+- [ ] **T-225** — Monitor Agent: Post-production health check ← **CARRY-OVER FROM SPRINT 30/31/32/33 — 5TH CARRY-OVER — EXECUTE IMMEDIATELY AFTER T-269**
 
-  **Scope:** Confirm no visible application regressions from the Playwright test-code change (which touches no app code). Quick pass only.
-  1. Login with test account → home page shows trips ✅
-  2. Navigate to a trip with a flight → confirm flight card shows airport codes (JFK, SFO) correctly in the flights section ✅
-  3. Confirm TripCalendar renders the flight event as a calendar pill ✅
-  4. Confirm "Set dates" UI still works (PATCH trip with start_date/end_date → correct dates returned) ✅
-  5. Submit structured feedback to `feedback-log.md` under **"Sprint 29 User Agent Feedback"**
+  **Context:** Production is live at `https://triplanner.yixinx.com` (frontend) and `https://triplanner-backend-sp61.onrender.com` (backend). This task has been unblocked since Sprint 31 but has not been executed for five consecutive sprints. It MUST run now.
+
+  **Execute the full production health check protocol:**
+  1. `GET https://triplanner-backend-sp61.onrender.com/api/v1/health` → expect `{"status":"ok"}` 200
+  2. CORS header → expect `Access-Control-Allow-Origin: https://triplanner.yixinx.com`
+  3. Auth register with a new test user → 201
+  4. Auth login → 200 with `access_token`
+  5. `GET /api/v1/trips` → 200 (authenticated)
+  6. `POST /api/v1/trips` + `GET /api/v1/trips/:id` → 201/200
+  7. PATCH trip status → verify persisted on re-GET
+  8. Add multi-day flight → `GET /api/v1/trips/:id/calendar` → verify FLIGHT event has `start_date ≠ end_date`
+  9. Verify no CORS errors, no 5xx in response
+  10. Log full results in `qa-build-log.md` Sprint 34 section
+  11. If all pass: set **Deploy Verified = Yes (Production)** in `qa-build-log.md`, update T-225 → Done in `dev-cycle-tracker.md`, log handoff to User Agent (T-256) in `handoff-log.md`
+
+  **Acceptance criteria:**
+  - All production API endpoints return expected status codes
+  - Auth flow (register → login → authenticated request) works on production
+  - CORS configured correctly for custom domain
+  - Multi-day calendar events verified on production
+  - Deploy Verified = Yes (Production) confirmed in qa-build-log.md
+
+  **Files:** `qa-build-log.md`, `dev-cycle-tracker.md`, `handoff-log.md`
 
 ---
 
-### Phase 4 — Production Deployment (P1 — project owner gate — parallel with all phases)
+- [ ] **T-256** — User Agent: Production walkthrough on `https://triplanner.yixinx.com` ← Blocked by T-225
 
-> ⚠️ **PROJECT OWNER ACTION REQUIRED (FOURTH ESCALATION):**
-> T-224 has been blocked for four consecutive sprints (Sprints 25, 26, 27, 28). All engineering work is 100% complete. The project owner must take the following human-only actions:
-> 1. **AWS:** Create an RDS PostgreSQL 15 instance (db.t3.micro, us-east-1, free tier) and provide the connection string
-> 2. **Render:** Apply the `render.yaml` Blueprint to provision frontend (static site) and backend (web service), both in Ohio region, free plan
->
-> Documents ready: `render.yaml`, `docs/production-deploy-guide.md`, `backend/knexfile.js` (SSL + pool), `backend/src/app.js` (SameSite=None cookie for production). No agent can provision external cloud infrastructure.
+  **Context:** This is the first User Agent walkthrough on production. Same scope as originally planned in Sprint 30. **CARRY-OVER FROM SPRINT 30/31/32/33 — 4TH CARRY-OVER.**
 
-- [ ] **T-224** — Deploy Engineer: Production deployment to Render + AWS RDS ← Blocked on project owner
-  - Follow `docs/production-deploy-guide.md` step by step
-  - Run migrations against AWS RDS on first deploy
-  - Verify: `GET https://<render-backend>.onrender.com/api/v1/health` → 200
+  **Execute:**
+  1. New user flow: Register → home page
+  2. Trip creation: Create trip, add flight (multi-day) + stay + activity + land travel (multi-day)
+  3. Verify all entries display correctly
+  4. TripCalendar: all event types present on correct days, multi-day events span correctly
+  5. Status change: PLANNING → ONGOING, reload, confirm persisted
+  6. Mobile viewport check (375px)
+  7. Notes + destinations functional
+  8. Delete trip, confirm removed
+  9. Logout, confirm redirect
+  10. Submit structured feedback to `feedback-log.md`
 
-- [ ] **T-225** — Monitor Agent: Post-production health check ← Blocked by T-224
-  - Full health check on production URLs (Render frontend + backend)
-  - Confirm `SameSite=None; Secure` cookie is sent correctly in cross-origin flow
-  - Confirm CORS header set to Render frontend URL
+  **Acceptance criteria:**
+  - Full new-user flow works end-to-end on production
+  - All event types display correctly in TripCalendar, including multi-day spanning
+  - No Critical or Major issues found on production
+  - Structured feedback submitted to feedback-log.md
+
+  **Files:** `feedback-log.md`, `handoff-log.md`
+
+---
+
+### Phase 2 — Production QA (sequential after Phase 0)
+
+- [ ] **T-270** — QA Engineer: Production smoke test + security verification ← Blocked by T-269
+
+  **Scope:**
+  - Verify HTTPS is enforced on production
+  - Verify CORS headers correct for `https://triplanner.yixinx.com`
+  - Verify cookie `SameSite=None` and `Secure=true` on production (cross-origin deployment)
+  - Verify no sensitive data in API error responses
+  - Verify auth token handling works correctly on production
+  - Log results in `qa-build-log.md` Sprint 34 section
+
+  **Acceptance criteria:**
+  - Production HTTPS verified
+  - CORS correct for custom domain
+  - Cookies configured for cross-origin deployment
+  - Security checklist PASS for production environment
+
+  **Files:** `qa-build-log.md`, `dev-cycle-tracker.md`
 
 ---
 
 ## Out of Scope
 
-- **New features** — Application is MVP feature-complete; no new feature work until production is deployed and stable.
-- **B-020 (Redis rate limiter)** — Backlog; in-memory store is sufficient for current staging scale. Prioritize after production deployment.
+- **New feature development** — Sprint 34 is exclusively focused on production deployment and verification. No new features.
+- **FB-135 ("+x more" click-to-scroll)** — Minor feature gap, backlog for a future sprint.
+- **B-020 (Redis rate limiter)** — Backlog; in-memory store sufficient for current scale.
 - **B-024 (per-account rate limiting)** — Backlog.
-- **FB-121 (stay category case normalization)** — Minor UX; external API consumers only. Backlog.
-- **knexfile staging seeds config** — Workaround exists (`NODE_ENV=development`). Not this sprint.
-- **MFA, home page summary calendar, auto-generated itinerary** — Explicitly out of scope per project brief.
+- **B-032 (trip export/print)** — Deferred.
+- **Staging pipeline changes** — Staging is stable; no staging work this sprint.
 
 ---
 
@@ -126,72 +138,65 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| QA Engineer | Fix Playwright E2E locator bug | T-235 |
-| Monitor Agent | Staging health check (after Playwright fix); production health check (if T-224 unblocked) | T-236, T-225 |
-| User Agent | Quick regression verification after Playwright fix | T-237 |
-| Deploy Engineer | Production deployment (if project owner unblocks T-224) | T-224 |
-| Manager | Triage T-237 feedback; Sprint 29 closeout | Reviews |
-| Backend Engineer | No tasks this sprint (application complete) | — |
-| Design Agent | No tasks this sprint (specs accurate) | — |
-| Frontend Engineer | No tasks this sprint (available to assist QA if locator requires component context) | — |
+| Deploy Engineer | Production deployment of Sprint 33 frontend changes | T-269 |
+| Monitor Agent | Post-production health check (P0, 5th carry-over) | T-225 |
+| User Agent | Production walkthrough (P0, 4th carry-over) | T-256 |
+| QA Engineer | Production security verification | T-270 |
+| Design Agent | No tasks this sprint | — |
+| Frontend Engineer | No tasks this sprint (no new features) | — |
+| Backend Engineer | No tasks this sprint (no backend changes needed) | — |
+| Manager | Triage T-256 feedback; Sprint 35 plan | Reviews |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-Phase 1 (IMMEDIATE — NO BLOCKERS):
-T-235 (QA: Fix Playwright locator in e2e/critical-flows.spec.js lines 201–202)
+T-269 (Deploy: Production deployment of Sprint 33 changes)
     |
-T-236 (Monitor: Staging health check → 4/4 Playwright → Deploy Verified = Yes)
+    ├── T-225 (Monitor: Post-production health check) ← 5th carry-over
+    |       |
+    |       T-256 (User Agent: Production walkthrough) ← 4th carry-over
+    |               |
+    |               Manager: Triage T-256 feedback
     |
-T-237 (User Agent: Quick regression verification)
-    |
-Manager: Triage feedback → Sprint 30 plan (or project closeout if production deployed)
-
-Phase 4 (PROJECT OWNER GATE — parallel with all phases):
-[Project owner provides AWS RDS + Render credentials — 4th escalation]
-    |
-T-224 (Deploy: Production deployment)
-    |
-T-225 (Monitor: Post-production health check)
+    └── T-270 (QA: Production security verification) ← parallel with T-225
 ```
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #29 is complete?*
+*How do we know Sprint #34 is complete?*
 
-- [ ] T-235: `e2e/critical-flows.spec.js` lines 201–202 updated with scoped locators — no application code changed
-- [ ] T-235: `npx playwright test` → 4/4 PASS (verified by QA Engineer before handoff)
-- [ ] T-236: Monitor Agent confirms Deploy Verified = Yes (4/4 Playwright confirmed independently)
-- [ ] T-237: User Agent confirms no regressions — structured feedback submitted
-- [ ] T-237 feedback triaged by Manager (all entries Acknowledged or Tasked)
-- [ ] T-224: Production deployed to Render + AWS RDS *(conditional on project owner providing access)*
-- [ ] T-225: Post-production health check complete *(conditional on T-224)*
-- [ ] Sprint 29 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 30 plan written in `.workflow/active-sprint.md`
+- [ ] T-269: Frontend deployed to production with Sprint 33 multi-day calendar fix
+- [ ] T-225: Monitor Agent post-production health check complete — Deploy Verified = Yes (Production)
+- [ ] T-256: User Agent production walkthrough complete — no Critical or Major issues; feedback submitted
+- [ ] T-256 feedback triaged by Manager (all entries Acknowledged or Tasked)
+- [ ] T-270: QA production security verification complete — security checklist PASS
+- [ ] Sprint 34 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 35 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #29)
+## Success Criteria (Sprint #34)
 
-By end of Sprint #29, the following must be verifiable:
+By end of Sprint #34, the following must be verifiable:
 
-- [ ] **T-235 Done** — `npx playwright test` reaches 4/4 PASS with scoped locators; test fix is test-code only (no app changes)
-- [ ] **T-236 Done** — Staging Deploy Verified = Yes; Monitor Agent confirms full health check passing
-- [ ] **T-237 Done** — User Agent quick regression pass confirms application correct; feedback submitted and triaged
-- [ ] **T-224 Done** *(project owner dependent)* — Application live in production; AWS RDS connected; migrations run
-- [ ] **T-225 Done** *(project owner dependent)* — Monitor confirms production health; SameSite=None cookie verified across origins
+- [ ] **Production deployed with latest code** — T-269 confirms frontend at `https://triplanner.yixinx.com` includes the multi-day calendar fix
+- [ ] **Production verified** — T-225 confirms all production API endpoints healthy; CORS correct; multi-day events work
+- [ ] **Production user walkthrough clean** — T-256 confirms full user flow works on production with zero Critical or Major issues
+- [ ] **Production security verified** — T-270 confirms HTTPS, CORS, cookies, and auth are correctly configured for production
 
 ---
 
 ## Blockers
 
-- **T-224/T-225 are blocked on the project owner.** This is the **fourth consecutive sprint** this escalation has been raised. AWS RDS + Render account provisioning is required before production deployment can proceed. All application code, `render.yaml`, and `docs/production-deploy-guide.md` are complete and production-ready. **No agent can resolve this — it requires a human action.**
-- No blockers on the engineering track. T-235 can begin immediately.
+- **No blockers on T-269.** Production infrastructure is already set up on Render. Deploy Engineer should push the latest build.
+- **T-225 blocked by T-269.** Health check must run against the updated production deployment.
+- **T-256 blocked by T-225.** User Agent production walkthrough cannot start until Monitor confirms production is healthy.
+- **T-270 blocked by T-269.** QA can run in parallel with T-225 after T-269 completes.
 
 ---
 
-*Sprint #28 archived to `.workflow/sprint-log.md` on 2026-03-12. Sprint #29 plan written by Manager Agent 2026-03-12.*
+*Sprint #33 archived to `.workflow/sprint-log.md` on 2026-03-20. Sprint #34 plan written by Manager Agent 2026-03-20.*

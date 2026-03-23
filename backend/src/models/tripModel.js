@@ -95,42 +95,29 @@ const TRIP_COLUMNS = [
 ];
 
 /**
- * Compute the trip status based on start_date, end_date, and today's UTC date.
- * Status auto-calculation rules (T-030):
+ * Return the trip row unchanged.
  *
- *   - Requires BOTH start_date AND end_date to be set (non-null). If either is null,
- *     the stored status is returned as-is (no auto-calc).
- *   - end_date < today                   → "COMPLETED"  (highest priority)
- *   - start_date <= today <= end_date    → "ONGOING"
- *   - start_date > today                 → "PLANNING"   (trip in the future)
+ * T-238 (Sprint 30) — Removed the date-based auto-compute override.
  *
- * The stored status column in the DB is NOT mutated — this is a read-time transform.
- * PATCH /trips/:id still writes status overrides, reflected when dates are null.
+ * Previously (T-030, Sprint 3), this function rewrote `trip.status` with a value
+ * derived from start_date / end_date whenever both were set. That caused a bug
+ * (FB-130): PATCH /trips/:id with { status: "ONGOING" } on a trip with future dates
+ * returned "PLANNING" instead of "ONGOING" because the re-fetch called this function,
+ * which silently overrode the value just written to the DB.
  *
- * @param {Object|undefined} trip - raw trip row from DB (may include formatted date strings)
- * @returns {Object|undefined} trip with computed status applied
+ * Status is now ALWAYS the stored DB value. The user controls status explicitly
+ * through PATCH /trips/:id. The frontend TripStatusSelector is the authoritative
+ * mechanism for status changes.
+ *
+ * The function is kept (rather than inlined) so that callers (findTripById,
+ * listTripsByUser) require no structural changes and the function remains
+ * unit-testable.
+ *
+ * @param {Object|undefined} trip - raw trip row from DB
+ * @returns {Object|undefined} trip unchanged
  */
 export function computeTripStatus(trip) {
-  if (!trip) return trip;
-
-  const { start_date, end_date } = trip;
-
-  // Only auto-calculate when BOTH dates are present
-  if (!start_date || !end_date) {
-    return trip;
-  }
-
-  // Today as YYYY-MM-DD in UTC — consistent with DATE column storage
-  const today = new Date().toISOString().substring(0, 10);
-
-  if (end_date < today) {
-    return { ...trip, status: 'COMPLETED' };
-  }
-  if (start_date <= today && today <= end_date) {
-    return { ...trip, status: 'ONGOING' };
-  }
-  // start_date > today: trip is in the future
-  return { ...trip, status: 'PLANNING' };
+  return trip;
 }
 
 /**

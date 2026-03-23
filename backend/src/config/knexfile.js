@@ -37,6 +37,8 @@ function buildConnectionConfig(url) {
 
 const connectionConfig = buildConnectionConfig(process.env.DATABASE_URL || '');
 
+export { buildConnectionConfig };
+
 export default {
   development: {
     client: 'pg',
@@ -53,6 +55,9 @@ export default {
     connection: connectionConfig,
     migrations: {
       directory: migrationsDir,
+    },
+    seeds: {
+      directory: seedsDir,
     },
   },
   production: {

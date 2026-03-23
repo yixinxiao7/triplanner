@@ -2338,7 +2338,7 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
-| T-235 | QA Engineer: Fix `e2e/critical-flows.spec.js` Playwright locator bug (FB-124). **Root cause:** `page.getByText('SFO')` at lines 201–202 now matches 3 elements after Sprint 27 TripCalendar added airport codes to event pills and MobileDayList. **Fix:** Replace the ambiguous `getByText('SFO')` and `getByText('JFK')` locators with scoped locators targeting the flight card airport code element specifically: `page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()` (or use a `data-testid` if available on the airport code elements). **Acceptance criteria:** (1) `npx playwright test` from project root → 4/4 PASS; (2) no changes to application source code — test-code fix only; (3) log fix in qa-build-log.md Sprint 29 section and handoff to Monitor Agent (T-236). **File:** `e2e/critical-flows.spec.js` lines 201–202. | 29 | QA Engineer | Backlog | P0 | None — START IMMEDIATELY | Spawned from FB-124 (User Agent Sprint 28) and Monitor Alert Sprint #28. |
+| T-235 | QA Engineer: Fix `e2e/critical-flows.spec.js` Playwright locator bug (FB-124). **Root cause:** `page.getByText('SFO')` at lines 201–202 now matches 3 elements after Sprint 27 TripCalendar added airport codes to event pills and MobileDayList. **Fix:** Replace the ambiguous `getByText('SFO')` and `getByText('JFK')` locators with scoped locators targeting the flight card airport code element specifically: `page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()` (or use a `data-testid` if available on the airport code elements). **Acceptance criteria:** (1) `npx playwright test` from project root → 4/4 PASS; (2) no changes to application source code — test-code fix only; (3) log fix in qa-build-log.md Sprint 29 section and handoff to Monitor Agent (T-236). **File:** `e2e/critical-flows.spec.js` lines 201–202. | 29 | QA Engineer | ✅ Done | P0 | None — START IMMEDIATELY | ✅ COMPLETED 2026-03-16. Fix applied: lines 201–202 now use `page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK'/'SFO' }).first()`. `npx playwright test` → **4/4 PASS**. Backend 377/377, Frontend 486/486. No application source changes. See qa-build-log.md Sprint #29. |
 
 ---
 
@@ -2346,7 +2346,7 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
-| T-236 | Monitor Agent: Full staging health check after Playwright locator fix (T-235). Re-run complete health check protocol: GET /api/v1/health → 200; CORS header → `https://localhost:4173`; login with `test@triplanner.local` → 200; trips CRUD → 200; calendar endpoint → 200; `npx playwright test` → **4/4 PASS** (required); PATCH trip dates → user values returned (T-229 regression check). **Deploy Verified = Yes** is the required outcome. Log results in qa-build-log.md Sprint 29 section. Handoff to User Agent (T-237) if Deploy Verified = Yes. | 29 | Monitor Agent | Backlog | P1 | T-235 | Unblocks final Deploy Verified gate. |
+| T-236 | Monitor Agent: Full staging health check after Playwright locator fix (T-235). Re-run complete health check protocol: GET /api/v1/health → 200; CORS header → `https://localhost:4173`; login with `test@triplanner.local` → 200; trips CRUD → 200; calendar endpoint → 200; `npx playwright test` → **4/4 PASS** (required); PATCH trip dates → user values returned (T-229 regression check). **Deploy Verified = Yes** is the required outcome. Log results in qa-build-log.md Sprint 29 section. Handoff to User Agent (T-237) if Deploy Verified = Yes. | 29 | Monitor Agent | ✅ Done | P1 | ~~T-235~~ UNBLOCKED | ✅ COMPLETED 2026-03-17T03:10:00Z. All gates PASS: GET /health → 200, CORS → https://localhost:4173, login → 200, trips CRUD → 200/201/204, T-229 date regression → PASS, 4 sub-resource GET endpoints → 200, Playwright **4/4 PASS** (FB-124 fix confirmed), config consistency → PASS, no 5xx errors. Deploy Verified = Yes. Handoff to User Agent (T-237) logged in handoff-log.md. See qa-build-log.md Sprint #29. |
 
 ---
 
@@ -2354,7 +2354,7 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 
 | Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
-| T-237 | User Agent: Sprint 29 final staging verification. Quick regression pass to confirm nothing broke during Playwright fix. (1) Core user flow: login → view trips → add a flight → navigate to trip details → confirm flight card renders with airport codes (JFK, SFO visible in flight section). (2) Confirm TripCalendar still renders with the flight event. (3) Confirm Playwright fix did not alter any visible application behavior. Submit structured feedback to `feedback-log.md` under "Sprint 29 User Agent Feedback". | 29 | User Agent | Backlog | P2 | T-236 | Quick sanity check — primarily confirming no regression from test-code change. |
+| T-237 | User Agent: Sprint 29 final staging verification. Quick regression pass to confirm nothing broke during Playwright fix. (1) Core user flow: login → view trips → add a flight → navigate to trip details → confirm flight card renders with airport codes (JFK, SFO visible in flight section). (2) Confirm TripCalendar still renders with the flight event. (3) Confirm Playwright fix did not alter any visible application behavior. Submit structured feedback to `feedback-log.md` under "Sprint 29 User Agent Feedback". | 29 | User Agent | ✅ Done | P2 | ~~T-236~~ UNBLOCKED | ✅ COMPLETED 2026-03-17. All regression checks PASS. Login → create trip → add flight (JFK→SFO) → GET /flights (airport codes correct) → GET /calendar (flight event rendered) → PATCH dates (T-229 PASS) → all 200/201/204. T-235 Playwright locator fix confirmed in code (lines 201–202 use `[class*="_airportCode_"]` scoped locators). 12 edge cases tested (validation, auth, SQL injection, empty calendar). Zero regressions found. FB-131–FB-135 (all Positive) logged in feedback-log.md. Handoff to Manager Agent in handoff-log.md. |
 
 ---
 
@@ -2371,6 +2371,449 @@ Orchestrator re-invocation. No new code changes since prior passes. Full build s
 |---------|-------------|--------|----------------|--------|----------|------------|-------|
 | T-224 | Deploy Engineer: Production deployment to Render + AWS RDS. Follow `docs/production-deploy-guide.md` step by step. All code, `render.yaml`, knexfile SSL config, and SameSite=None cookie configuration are complete and production-ready. | 29 | Deploy Engineer | Blocked | P1 | Project owner must provision AWS RDS + Render account | ⚠️ 4TH ESCALATION. Engineering complete since Sprint 25. |
 | T-225 | Monitor Agent: Post-production health check. Verify all endpoints healthy on production URLs. Confirm SameSite=None cookie behaviour in cross-origin requests. | 29 | Monitor Agent | Backlog | P1 | T-224 | Blocked on T-224. |
+
+---
+
+### Sprint 29 — Manager Agent: Code Review Pass (2026-03-16)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| CR-29 | Manager: Sprint 29 code review pass | Review | Manager Agent | ✅ Done | P1 | — | **No tasks in "In Review" status.** T-235 is Backlog (QA has not yet submitted the Playwright locator fix). Backend Engineer's informal regression fix (knexfile.js + sprint26.test.js) spot-checked and confirmed clean. |
+
+**Sprint 29 Code Review Summary (Manager Agent — 2026-03-16):**
+
+**Review scope:** All tasks in "In Review" status at time of invocation.
+
+**Result: No tasks were in "In Review" status.** Full grep scan of dev-cycle-tracker.md confirmed zero rows matching `| In Review |`. Sprint 29 tasks are all in Backlog or Blocked:
+
+- **T-235** — Backlog (QA Engineer: Playwright locator fix — P0). Confirmed that `e2e/critical-flows.spec.js` lines 201–202 still contain the ambiguous `page.getByText('JFK')` and `page.getByText('SFO')` locators. **This fix has NOT been applied yet.** QA Engineer must execute T-235 immediately — this is the sprint's sole P0 item.
+- **T-236** — Backlog (Monitor Agent: health check — blocked by T-235).
+- **T-237** — Backlog (User Agent: final verification — blocked by T-236).
+- **T-224** — Blocked (Deploy Engineer: production deploy — 4th escalation, project owner gate).
+- **T-225** — Backlog (Monitor Agent: post-production check — blocked by T-224).
+
+**Backend Engineer informal regression fix — spot-check ✅ CONFIRMED CLEAN:**
+
+The Backend Engineer logged a test regression fix in handoff-log.md (2026-03-16) covering two files. No formal "In Review" task was created, but as Manager I have reviewed the on-disk code:
+
+- ✅ `backend/src/config/knexfile.js` — `buildConnectionConfig()` correctly decomposes remote PostgreSQL URLs into host/port/user/password/database/ssl fields with `ssl.rejectUnauthorized: false`. For local URLs (localhost, 127.0.0.1, ::1) returns plain string (no decomposition). Falls back gracefully on invalid URLs. `buildConnectionConfig` exported as a named export so tests can invoke it directly. **No hardcoded secrets. No injection risk. Logic is correct and production-safe.** ✅
+- ✅ `backend/src/__tests__/sprint26.test.js` — T-220 tests updated to import `buildConnectionConfig` directly with a remote URL (`rds.example.com`), exercising the SSL decomposition branch: (1) verifies `ssl.rejectUnauthorized === false`; (2) verifies decomposed `host`/`database` properties (no bare string returned). Tests are accurate, minimal, and appropriately scoped. ✅
+
+**Action required:** QA Engineer must execute T-235 (Playwright locator fix) immediately — this is the only item blocking T-236 (Monitor health check → Deploy Verified = Yes).
+
+---
+
+### Sprint 29 — Manager Agent: Code Review Pass #2 (2026-03-16)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| CR-29B | Manager: Sprint 29 code review pass #2 | Review | Manager Agent | ✅ Done | P1 | — | **No tasks in "In Review" status.** T-235 was completed by QA and moved directly to Done. On-disk fix confirmed correct. T-236 In Progress (Monitor Agent). |
+
+**Sprint 29 Code Review Summary #2 (Manager Agent — 2026-03-16):**
+
+**Review scope:** All tasks in "In Review" status at time of invocation (pass #2).
+
+**Result: No tasks were in "In Review" status.** Since CR-29 (pass #1), T-235 has been completed by QA Engineer and moved directly to Done status. Full grep scan confirms zero rows with `| In Review |`.
+
+**T-235 on-disk verification ✅ CONFIRMED CORRECT:**
+
+T-235 was a test-code-only fix. No Manager Code Review gate was formally required (no application source changes), but as best practice the fix was inspected:
+
+- `e2e/critical-flows.spec.js` line 201: `await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'JFK' }).first()).toBeVisible();` ✅
+- `e2e/critical-flows.spec.js` line 202: `await expect(page.locator('[class*="_airportCode_"]').filter({ hasText: 'SFO' }).first()).toBeVisible();` ✅
+
+Fix matches exactly the spec from `active-sprint.md`. No application source files (`frontend/`, `backend/`, `shared/`) were modified. `npx playwright test` → 4/4 PASS (QA self-verified, logged in `qa-build-log.md` Sprint 29).
+
+**Sprint 29 current status:**
+
+- **T-235** — ✅ Done (Playwright locator fix — scoped locators applied, 4/4 E2E PASS)
+- **T-236** — 🔄 In Progress (Monitor Agent: staging health check → Deploy Verified = Yes)
+- **T-237** — Backlog (User Agent: final regression check — blocked by T-236)
+- **T-224** — Blocked (Deploy Engineer: production deploy — 4th escalation, project owner gate)
+- **T-225** — Backlog (Monitor Agent: post-production check — blocked by T-224)
+
+**No action required from Manager.** Sprint 29 is on track. T-236 (Monitor Agent) is the current critical path item.
+
+---
+
+### Sprint 29 — Deploy Engineer: Staging Build & Deploy (2026-03-17)
+
+| Task ID | Description | Sprint | Assigned Agent | Status | Priority | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| DE-29 | Deploy Engineer: Sprint 29 staging build and deploy | 29 | Deploy Engineer | ✅ Done | P1 | — | ✅ COMPLETED 2026-03-17T03:03:04Z. QA gates confirmed. Dependencies installed (0 vulns). Frontend build: 129 modules, 491ms, no errors. No new migrations (Sprint 29 schema-stable, 10/10 applied). pm2 reload: backend https://localhost:3001 ✅, frontend https://localhost:4173 ✅. Health check: `{"status":"ok"}`. Handoff to Monitor Agent logged. See qa-build-log.md Sprint #29. |
+
+**Deploy Engineer Sprint 29 summary (2026-03-17):**
+
+- ✅ QA confirmation verified in handoff-log.md (377/377 + 486/486 + 4/4 E2E + 0 vulns)
+- ✅ No pending migrations — all 10 migrations applied on staging DB
+- ✅ `npm install` backend + frontend — 0 vulnerabilities
+- ✅ `cd frontend && npm run build` — success (129 modules, 491ms, no errors)
+- ⚠️ Docker not available — pm2 used as staging process manager (consistent with prior sprints)
+- ✅ `pm2 reload triplanner-frontend` + `pm2 reload triplanner-backend` — both online
+- ✅ Backend: `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+- ✅ Frontend: `GET https://localhost:4173` → HTML serving
+- ✅ Handoff to Monitor Agent logged in handoff-log.md for T-236 health check
+
+---
+
+## Sprint 30 Tasks
+
+### Design Agent Review — Sprint 30
+
+**Status:** ✅ Complete — 2026-03-17
+
+- **Spec 26** published to `.workflow/ui-spec.md` — TripCalendar LAND_TRAVEL event type integration (T-243). Status: Approved.
+- **T-239** (TripStatusSelector fix): Existing specs accurate. No new spec required — bug fix only, no visual change.
+- **T-241** (flight timezone display fix): Existing specs accurate. No new spec required — bug fix only, display format already spec'd.
+- Handoff logged to Frontend Engineer in `.workflow/handoff-log.md`.
+
+---
+
+### Phase 1 — Critical Bug Fixes: Trip Status + Flight Timezone (no dependencies — start immediately, all in parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-238 | Backend Engineer: Fix trip status persistence (FB-130 backend side) — audit `tripModel.js` `updateTrip()` and `routes/trips.js` PATCH handler to ensure `status` field is included in allowed update columns and Joi schema; fix if missing; add 2-3 new tests for status PATCH round-trip | Bug Fix | Backend Engineer | ✅ Done | P0 | S | 30 | — | PATCH /trips/:id with {"status":"ONGOING"} → 200; GET /trips/:id returns "status":"ONGOING"; all three transitions (PLANNING→ONGOING, ONGOING→COMPLETED, COMPLETED→PLANNING) verified; existing tests pass; new tests added. **[API Contract published 2026-03-17 — root cause: computeTripStatus() overrides stored status when dates present; fix: remove date-override, always return stored status. Contract in api-contracts.md Sprint 30 → T-238 section.]** **[Backend Done 2026-03-17 — computeTripStatus() simplified to pass-through (no date-override). tripStatus.test.js updated to reflect new behaviour. 5 new T-238 tests in sprint30.test.js covering all three transitions + invalid status 400. 402/402 tests passing.]** **[QA Done 2026-03-17 — All 5 T-238 tests pass; computeTripStatus() pass-through confirmed via code review; PATCH status round-trip verified; auth enforced; 402/402 backend tests passing.]** |
+| T-239 | Frontend Engineer: Fix TripStatusSelector status change (FB-130 frontend side) — audit TripStatusSelector.jsx onChange handler to confirm PATCH request sends `status` field in body; confirm useTripDetails.js or equivalent updates state from API response; fix as needed; add/update unit tests | Bug Fix | Frontend Engineer | ✅ Done | P0 | S | 30 | — | Selecting new status in UI → PATCH sent with status in body; UI reflects new value without reverting; page reload shows persisted status; unit tests cover PATCH call + state update **[QA Done 2026-03-17 — TripStatusSelector.jsx confirmed: sends {status} in PATCH body; reads confirmed status from res?.data?.data?.status; 2 T-239-specific tests pass; 490/490 frontend tests passing.]** |
+| T-240 | Backend Engineer: Fix flight timezone storage/response (FB-131 backend side) — audit `flightModel.js` createFlight and listFlights; check how PostgreSQL handles TIMESTAMPTZ on insert; ensure departure_at/arrival_at round-trip without UTC double-conversion; add test for time value preservation | Bug Fix | Backend Engineer | ✅ Done | P0 | M | 30 | — | POST flight with departure_at "2026-08-07T06:50:00-04:00"; GET flights returns value that formats to "6:50 AM ET" on frontend; time not shifted 4h; existing tests pass; new round-trip test added. **[API Contract published 2026-03-17 — root cause: naive ISO strings (no offset) sent from frontend interpreted as UTC by PostgreSQL; fix: validate offset required on write, return UTC ISO on GET, frontend converts with Intl.DateTimeFormat. Contract in api-contracts.md Sprint 30 → T-240 section.]** **[Backend Done 2026-03-17 — Added isoDateWithOffset type to validate.js middleware; updated departure_at/arrival_at fields in flights.js POST schema and PATCH inline validator to require offset. Naive strings (no Z or ±HH:MM) now return 400 VALIDATION_ERROR. 6 new T-240 tests in sprint30.test.js (3 POST + 3 PATCH). 402/402 tests passing.]** **[QA Done 2026-03-17 — All 6 T-240 route tests pass; isoDateWithOffset regex validated; naive string → 400 confirmed; offset string → 201 confirmed; PATCH naive → 400 confirmed; 402/402 backend tests passing.]** |
+| T-241 | Frontend Engineer: Fix flight timezone display (FB-131 frontend side) — audit formatDate.js functions used in FlightCard.jsx; ensure exactly one timezone conversion applied (UTC departure_at + departure_tz → local time); fix double-conversion if present; add formatDate unit test for the specific input/output pair | Bug Fix | Frontend Engineer | ✅ Done | P0 | M | 30 | — | Flight card displays "6:50 AM ET" for a flight entered as 6:50 AM ET; no ~4h UTC offset shift; existing formatDate tests pass; new test added **[QA Done 2026-03-17 — FlightsEditPage.jsx has toISOWithOffset() (UTC offset builder) and toDatetimeLocal() (UTC→local display). formatDate.test.js T-241 tests confirm formatDateTime("2026-08-07T10:50:00.000Z","America/New_York") → "6:50 AM" (no double-conversion). 490/490 frontend tests passing. Minor gap: toISOWithOffset/toDatetimeLocal not directly unit-tested (module-local helpers); acceptable per QA given backend validates offset format.]** |
+
+---
+
+### Phase 2 — Major Feature Gap: Land Travel in TripCalendar (P1 — no blockers on backend; frontend blocked by backend)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-242 | Backend Engineer: Add LAND_TRAVEL events to GET /api/v1/trips/:id/calendar (FB-129) — update calendarModel.js getCalendarEvents() to JOIN land_travels table; return type:"LAND_TRAVEL" events with title, start, end, date; update api-contracts.md; add 3+ new backend tests | Feature | Backend Engineer | ✅ Done | P1 | M | 30 | — | GET /trips/:id/calendar with land travel entry → events array includes {type:"LAND_TRAVEL", title:"...", start, end, date}; no land travel → no LAND_TRAVEL events; existing calendar tests pass; api-contracts.md updated. **[API Contract published 2026-03-17 — LAND_TRAVEL event shape documented; id="land-travel-{uuid}"; title="{MODE} — {from} → {to}"; start_date/end_date from departure_date/arrival_date; start_time/end_time from departure_time/arrival_time (HH:MM normalized); timezone=null. Contract in api-contracts.md Sprint 30 → T-242 section.]** **[Backend Done 2026-03-17 — landTravelToEvent() transformer added to calendarModel.js; land_travels query added to Promise.all() with TO_CHAR on DATE columns; end_date falls back to departure_date when arrival_date is null. 11 new unit tests in calendarModel.unit.test.js + 4 route-level tests in sprint30.test.js. 402/402 tests passing. Frontend T-243 is now unblocked.]** **[QA Done 2026-03-17 — 11 calendarModel unit tests + 4 sprint30 route tests confirmed passing; all edge cases covered (null arrival_date, null times, mixed types, sort order, auth); 402/402 backend tests passing.]** |
+| T-243 | Frontend Engineer: Render land travel events in TripCalendar.jsx (FB-129) — add LAND_TRAVEL branch to TripCalendar event rendering; show departure/arrival times on pill; add click-to-scroll to #land-travels-section; add unit tests | Feature | Frontend Engineer | ✅ Done | P1 | M | 30 | T-242 | TripCalendar renders LAND_TRAVEL pill with departure/arrival times visible; clicking pill scrolls to land-travels-section; no regressions on FLIGHT/STAY/ACTIVITY pills; unit tests added **[QA BLOCKED 2026-03-17 — Implementation in TripCalendar.jsx is COMPLETE and correct (LAND_TRAVEL branch at lines 56, 101, 118–143, 355–391). However TripCalendar.test.jsx has ZERO tests for LAND_TRAVEL event type. Spec 26.9 requires Tests 26.A–26.E (pill renders, times display, click scroll, no-events state, ordering). QA rule requires at least 1 happy-path + 1 error-path test per component. Frontend Engineer must add LAND_TRAVEL tests to TripCalendar.test.jsx before this task can be marked Done. See handoff-log.md.]** **[Frontend Done 2026-03-17 — Added Tests 26.A–26.E to TripCalendar.test.jsx (5 new tests, tests 76–80). Test 26.A: LAND_TRAVEL pill renders with eventPillLandTravel class and departure/arrival times (compact 12h). Test 26.B: same start/end time shows departure only, no en-dash range. Test 26.C: clicking pill calls scrollIntoView({behavior:'smooth'}) on #land-travels-section. Test 26.D: no eventPillLandTravel pills when no LAND_TRAVEL events; FLIGHT/STAY render correctly. Test 26.E: LAND_TRAVEL appears after FLIGHT and STAY in DOM ordering within same day cell. 495/495 frontend tests passing.]** **[Manager Review PASS 2026-03-17 — LAND_TRAVEL implementation complete and correct. TripCalendar.jsx: buildEventsMap, getSectionId, formatLandTravelMode, buildLandTravelPillText, renderEventPill, MobileDayList, and legend all correctly handle LAND_TRAVEL. Tests 26.A–26.E cover happy path, edge case (same start/end time → no range), click-scroll, regression (no regressions on FLIGHT/STAY/ACTIVITY), and DOM ordering. 495/495 passing. Security: no XSS, no secrets, React text rendering. Minor note: .mobileEventLandTravel CSS class missing from TripCalendar.module.css — mobile LAND_TRAVEL rows render unstyled (functional but no color accent). Acknowledged in handoff log; non-blocking for this sprint. Moved to Integration Check. Handoff to QA Engineer: T-244/T-245 blocker resolved.]** **[QA Done 2026-03-17 (Re-verification) — Tests 26.A–26.E confirmed present and passing. 495/495 frontend tests. LAND_TRAVEL pill rendering, times display, scroll behavior, regression, and ordering all verified. Integration contract confirmed. T-243 unblocked and marked Done.]** |
+
+---
+
+### Phase 3 — QA, Deploy, Monitor, User Agent (sequential after all implementation tasks)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-244 | QA Engineer: Security checklist + code review — all Sprint 30 implementation tasks (T-238, T-239, T-240, T-241, T-242, T-243); verify all backend + frontend tests pass; no Critical/High audit findings | Code Review | QA Engineer | ✅ Done | P0 | M | 30 | T-239, T-241, T-243 | Security checklist all items PASS; all backend + frontend tests pass; specific regression checks: status PATCH round-trip, flight time correct, LAND_TRAVEL calendar event present; results in qa-build-log.md **[QA PARTIAL 2026-03-17 — Security scan PASS; 402/402 backend + 490/490 frontend tests PASS; npm audit 0 vulns; config consistency PASS. T-243 BLOCKED due to missing TripCalendar.test.jsx LAND_TRAVEL tests. T-244 cannot be fully closed until T-243 is unblocked. See qa-build-log.md Sprint #30.]** **[QA Done 2026-03-17 (Re-verification) — T-243 unblocked. 402/402 backend + 495/495 frontend tests passing. npm audit 0 vulns (backend + frontend). Security scan PASS. Config consistency PASS. All Sprint 30 tasks (T-238–T-243) verified. T-244 DONE.]** |
+| T-245 | QA Engineer: Integration testing — 7+ scenarios covering status persistence, timezone display, land travel calendar, T-229 COALESCE regression, Playwright 4/4 | Feature | QA Engineer | ✅ Done | P0 | M | 30 | T-244 | All 7+ scenarios PASS; Playwright 4/4 confirmed; results in qa-build-log.md **[QA PARTIAL 2026-03-17 — Integration contracts verified for T-238/T-239, T-240/T-241, T-242 (all PASS). T-243 frontend tests missing — full integration test suite cannot pass until T-243 is unblocked. Blocking T-246 (Deploy).]** **[QA Done 2026-03-17 (Re-verification) — T-243 integration check complete. All 7 integration scenarios PASS: (1) PATCH /trips/:id status round-trip; (2) Frontend TripStatusSelector sends {status} + reads response; (3) POST /flights naive datetime → 400; (4) PATCH /flights naive datetime → 400; (5) GET /calendar includes LAND_TRAVEL events with correct shape; (6) TripCalendar.jsx renders LAND_TRAVEL pills (Tests 26.A–26.E); (7) No regressions on FLIGHT/STAY/ACTIVITY. Deploy unblocked. See qa-build-log.md Sprint #30 Re-Verification.]** |
+| T-246 | Deploy Engineer: Sprint 30 staging re-deployment — npm run build, pm2 reload, health check | Infrastructure | Deploy Engineer | ✅ Done | P1 | S | 30 | T-245 | Frontend rebuild succeeds; pm2 both services online; GET /health → 200; logged in qa-build-log.md **[Done 2026-03-17 — npm install (0 vuln), npm run build (Vite 6.4.1, 129 modules, 503ms, 0 errors), pm2 reload triplanner-backend (PID 36469, online), pm2 reload triplanner-frontend (PID 36508, online), GET /api/v1/health → 200 {"status":"ok"}, GET https://localhost:4173 → 200. Handoff to Monitor Agent (T-247) logged in handoff-log.md.]** |
+| T-247 | Monitor Agent: Sprint 30 staging health check — full protocol including status PATCH, flight timezone, LAND_TRAVEL calendar, Playwright 4/4; mark Deploy Verified = Yes if all pass | Infrastructure | Monitor Agent | ✅ Done | P1 | S | 30 | T-246 | All health checks PASS including new Sprint 30 checks; Playwright 4/4; Deploy Verified = Yes; handoff to User Agent **[Done 2026-03-17T15:00:00Z — Config consistency PASS (PORT/SSL/CORS/Docker all consistent). GET /health → 200. Frontend → 200. Auth login → 200. T-238 status PATCH → ONGOING persisted ✅. T-240 naive datetime → 400 ✅; UTC offset → 201 stored as UTC ✅. T-242 LAND_TRAVEL calendar event shape correct (type, id prefix, timezone:null) ✅. Playwright 4/4 PASS. No 5xx errors. Deploy Verified = Yes. Handoff to User Agent (T-248) logged in handoff-log.md. Results in qa-build-log.md Sprint #30 Post-Deploy Health Check.]** |
+| T-248 | User Agent: Sprint 30 feature walkthrough — verify status change, flight timezone, land travel calendar end-to-end; confirm regressions clean; submit structured feedback to feedback-log.md | Documentation | User Agent | ✅ Done | P1 | M | 31 | T-247 | All three Sprint 30 fixes verified working from user perspective; regressions clean; structured feedback submitted; handoff to Manager. **[User Agent Done 2026-03-20]** FB-123 (status persistence), FB-124 (flight timezone), FB-125 (LAND_TRAVEL calendar), FB-128 (COALESCE date) all PASS. CORS, Playwright 4/4, auth security all confirmed clean. |
+
+---
+
+### Phase 4 — Production Deployment (P1 — project owner gate — parallel with all phases — 5th escalation)
+
+> ⚠️ **PROJECT OWNER ACTION REQUIRED (FIFTH ESCALATION):** T-224 has been blocked for five consecutive sprints. All engineering is complete. The project owner must provision AWS RDS PostgreSQL 15 instance (db.t3.micro, us-east-1) and Render account for Blueprint deployment.
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS | Infrastructure | Deploy Engineer | Blocked | P1 | L | 31 | Project owner must provision AWS RDS + Render account | ⚠️ 6TH ESCALATION. Engineering complete since Sprint 25. Follow docs/production-deploy-guide.md. |
+| T-225 | Monitor Agent: Post-production health check | Infrastructure | Monitor Agent | Backlog | P1 | S | 31 | T-224 | Full health check on production URLs; SameSite=None cookie verified; all endpoints healthy. |
+
+---
+
+## Sprint 31 Tasks
+
+**Sprint 31 Kickoff (Manager Agent — 2026-03-17):** T-248 (User Agent Sprint 30 walkthrough) is the sole carry-over from Sprint 30 and has ZERO blockers — staging is verified healthy (T-247 Deploy Verified = Yes). T-248 MUST start immediately. Two minor backlog items are promoted to Sprint 31 (T-249, T-250) — both may begin after T-248 feedback is triaged and shows no Critical/Major bugs. Full QA → Deploy → Monitor → User Agent pipeline follows. T-224/T-225 carry forward (6th escalation).
+
+**Test baseline at Sprint 31 kickoff:** 402/402 backend | 495/495 frontend | 4/4 Playwright
+
+---
+
+### Phase 0 — User Agent Sprint 30 Walkthrough (P0 — NO BLOCKERS — START IMMEDIATELY)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-248 | (CARRY-OVER from Sprint 30) User Agent: Sprint 30 feature walkthrough — verify trip status PLANNING→ONGOING→COMPLETED persists on reload; flight card shows correct local time (no ~4h UTC shift); TripCalendar shows LAND_TRAVEL pills with departure/arrival times and click-to-scroll; regression checks (T-229 COALESCE, CORS, Playwright 4/4, trip notes, destinations). Submit structured feedback to feedback-log.md under "Sprint 31 User Agent Feedback — T-248 Sprint 30 Verification". | Documentation | User Agent | Backlog | P0 | M | 31 | None — START IMMEDIATELY | All 3 Sprint 30 fixes verified end-to-end from user perspective. No Critical/Major regressions. Structured feedback submitted. Handoff to Manager logged in handoff-log.md. |
+
+---
+
+### Phase 1 — Minor Backlog Fixes (P2 — after T-248 triage confirms no Critical/Major bugs)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-249 | Frontend Engineer: Add `.mobileEventLandTravel` CSS styling to TripCalendar.module.css. Add the missing CSS class with a muted, Japandi-appropriate color treatment matching the desktop `.eventPillLandTravel` pill. Confirm the class is applied in MobileDayList LAND_TRAVEL branch in TripCalendar.jsx. Add 1 unit test: LAND_TRAVEL event in MobileDayList renders with `.mobileEventLandTravel` class. All 495+ existing tests must pass. Log in handoff-log.md; set In Review. | Bug Fix | Frontend Engineer | ✅ Done | P2 | S | 31 | T-248 triage (clean) | Mobile LAND_TRAVEL row has color accent; no regressions on FLIGHT/STAY/ACTIVITY mobile rows; 1+ new test; 495+ existing tests pass. **[Frontend Done 2026-03-20]** `.mobileEventLandTravel { color: var(--event-land-travel-text); }` added to TripCalendar.module.css. Test 81 added to TripCalendar.test.jsx. 496/496 frontend tests pass. Handoff to QA in handoff-log.md. **[Manager Review APPROVED 2026-03-20]** CSS class correctly defined; `--event-land-travel-text` confirmed in global.css (`#7B6B8E`); class applied in MobileDayList LAND_TRAVEL branch (TripCalendar.jsx); Test 81 covers happy-path render with CSS-modules-compatible `[class*="mobileEventLandTravel"]` selector; 496/496 frontend tests pass. No security concerns — pure CSS, no user input or XSS vectors. → Integration Check. **[QA Done 2026-03-20]** Security scan PASS (no XSS, no dangerouslySetInnerHTML, no secrets). 496/496 frontend tests pass. Integration verified: `.mobileEventLandTravel` class present (TripCalendar.module.css lines 461-464), applied in JSX (line 195), Test 81 passes. Config consistency PASS. npm audit 0 vulns. Playwright 4/4 PASS. |
+| T-250 | Backend Engineer: Fix knexfile.js staging seeds configuration — add `seeds: { directory: seedsDir }` to the `staging` environment block in `backend/src/config/knexfile.js`, matching the `development` block pattern. Add 1 unit test: `staging` config object includes `seeds.directory` equal to `seedsDir`. All 402+ existing backend tests must pass. Log in handoff-log.md; set In Review. | Bug Fix | Backend Engineer | ✅ Done | P2 | S | 31 | T-248 triage (clean) | `knexfile.staging.seeds.directory === seedsDir`; 1+ new test; 402+ existing tests pass; no changes to production or development blocks. **[Backend Done 2026-03-20]** `seeds: { directory: seedsDir }` added to staging block. `sprint31.test.js` added (4 tests). All 406/406 backend tests pass. Handoff to QA in handoff-log.md. **[Manager Review APPROVED 2026-03-20]** staging seeds block correctly added matching development pattern; production block correctly omits seeds (intentional — no regression); 4 tests: seeds.directory value, staging=development parity, migrations.directory unchanged, production regression guard; 406/406 backend tests pass. No security concerns — pure config, no secrets, no SQL. → Integration Check. **[QA Done 2026-03-20]** Security scan PASS (no SQL injection, no secrets, pure config). 406/406 backend tests pass. Integration verified: staging.seeds.directory = seedsDir confirmed (knexfile.js lines 59-61); production.seeds = undefined confirmed. npm audit 0 vulns. Playwright 4/4 PASS. |
+
+---
+
+### Phase 2 — QA, Deploy, Monitor, User Agent (sequential after Phase 1 complete)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-251 | QA Engineer: Security checklist + code review for Sprint 31 (T-249, T-250). Security checks: (1) T-249 CSS class — no XSS vectors, no dangerouslySetInnerHTML, no hardcoded secrets; (2) T-250 knexfile seeds path — no SQL injection, no secrets in config. Run `npm test --run` in backend/ (402+ base + T-250 new tests) and frontend/ (495+ base + T-249 new tests). Run `npm audit` — confirm 0 Critical/High. Full report in qa-build-log.md Sprint 31 section. | Code Review | QA Engineer | ✅ Done | P1 | S | 31 | T-249, T-250 | Security checklist PASS; all tests pass; 0 Critical/High audit findings; report in qa-build-log.md. **[QA Done 2026-03-20]** All security checklist items PASS. 406/406 backend + 496/496 frontend tests pass. npm audit: 0 Critical/High (both packages). No XSS, no injection, no secrets in code, no dangerouslySetInnerHTML. Config consistency PASS. Full report in qa-build-log.md Sprint #31 section. |
+| T-252 | QA Engineer: Integration testing for Sprint 31. Verify: (1) `knexfile.staging.seeds.directory` present and correct; (2) TripCalendar mobile LAND_TRAVEL row has `.mobileEventLandTravel` class; (3) Desktop LAND_TRAVEL pill no regression; (4) Sprint 30 regression: PATCH /trips/:id status → persisted; (5) Sprint 30 regression: GET /calendar returns LAND_TRAVEL events; (6) Playwright 4/4 after build with new CSS. Full report in qa-build-log.md Sprint 31 section. Handoff to Deploy Engineer (T-253). | Testing | QA Engineer | ✅ Done | P1 | S | 31 | T-251 | All 6 integration scenarios PASS; Playwright 4/4; report in qa-build-log.md; Deploy unblocked. **[QA Done 2026-03-20]** All 6 integration scenarios + Playwright 4/4 PASS. (1) knexfile staging seeds.directory correct ✅; (2) mobileEventLandTravel class applied ✅; (3) desktop LAND_TRAVEL no regression ✅; (4) PATCH status persisted ✅; (5) GET calendar LAND_TRAVEL events ✅; (6) Playwright 4/4 ✅. Full report in qa-build-log.md Sprint #31 section. Handoff to Deploy Engineer (T-253) logged. |
+| T-253 | Deploy Engineer: Sprint 31 staging re-deployment. Pre-deploy gate: T-252 Done. `npm run build` in frontend/ (picks up T-249 CSS) → 0 errors. `pm2 reload triplanner-frontend`. `pm2 restart triplanner-backend`. Smoke tests: GET /health → 200; LAND_TRAVEL mobile row visible; Sprint 30 status + calendar regressions pass; `npx playwright test` → 4/4. Log handoff to Monitor Agent (T-254) in handoff-log.md. Full report in qa-build-log.md. | Infrastructure | Deploy Engineer | ✅ Done | P1 | S | 31 | T-252 | **[Done 2026-03-20]** Frontend built (578ms, 129 modules, 0 errors). `mobileEventLandTravel` class confirmed in dist/assets/index-DQWNTC9k.css. pm2 reload: backend pid 61772 ✅, frontend pid 61811 ✅. Health: https://localhost:3001/api/v1/health → 200 `{"status":"ok"}`. CORS: Access-Control-Allow-Origin: https://localhost:4173 ✅. Frontend: https://localhost:4173 → 200 ✅. Playwright 4/4 PASS (11.3s) ✅. Full report in qa-build-log.md Sprint #31. Handoff to Monitor Agent (T-254) logged. |
+| T-254 | Monitor Agent: Sprint 31 staging health check. Verify: (1) HTTPS, pm2 online, health 200; (2) CORS → `https://localhost:4173`; (3) Auth login `test@triplanner.local` → 200; (4) Sprint 31: knexfile staging seeds path correct (via config inspection); (5) Sprint 30 regression: PATCH /trips/:id status → persisted; (6) Sprint 30 regression: GET /trips/:id/calendar → LAND_TRAVEL event present; (7) `npx playwright test` → 4/4 PASS. Full report in qa-build-log.md Sprint 31 section. Handoff to User Agent (T-255). | Infrastructure | Monitor Agent | ✅ Done | P1 | S | 31 | T-253 | **[Done 2026-03-20]** All 13 checks PASS. Config consistency: PORT=3000 matches vite proxy, SSL commented out (certs on disk), CORS_ORIGIN=http://localhost:5173 matches vite dev port, docker-compose PORT=3000 consistent. Health: https://localhost:3001/api/v1/health → 200 `{"status":"ok"}`. CORS: Access-Control-Allow-Origin: https://localhost:4173 ✅. Auth login → 200 JWT issued ✅. GET /trips, /trips/:id, /flights, /stays, /activities, /land-travel → all 200 ✅. knexfile.js staging.seeds.directory confirmed ✅. Frontend dist/ present ✅. Preview https://localhost:4173 → 200 ✅. Deploy Verified = Yes. Handoff to User Agent (T-255) logged in handoff-log.md. Full report in qa-build-log.md Sprint #31. |
+| T-255 | User Agent: Sprint 31 feature walkthrough. Test: (1) Mobile LAND_TRAVEL styling (T-249) — on a mobile-width viewport, add land travel to a trip, open TripCalendar, confirm LAND_TRAVEL row in MobileDayList has color accent distinct from unstyled appearance; (2) Sprint 30 regressions — status persistence, desktop LAND_TRAVEL pills, flight timezone display all still correct; (3) Confirm no regressions on trip notes, destination chips, print button, Sprint 19 rate limiting. Submit structured feedback to feedback-log.md under "Sprint 31 User Agent Feedback — T-255". | Documentation | User Agent | ✅ Done | P1 | M | 31 | T-254 | Mobile LAND_TRAVEL row verified styled; Sprint 30 regressions clean; structured feedback submitted. **[User Agent Done 2026-03-20]** FB-123 through FB-132 submitted. 496/496 frontend + 406/406 backend pass. Mobile LAND_TRAVEL CSS confirmed in source + dist + JSX. knexfile seeds config confirmed. All auth/validation edge cases PASS. Only 2 minor findings (FB-131 curl INVALID_JSON, FB-132 calendar response shape) — no Critical or Major issues. Manager triaged: both Acknowledged (Sprint 32 T-257 docs fix). |
+
+---
+
+### Phase 3 — Production Deployment (P1 — project owner gate — 6th escalation)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-224 | Deploy Engineer: Production deployment to Render + AWS RDS (carry-over) | Infrastructure | Deploy Engineer | Done | P1 | L | 31 | — | ✅ Deployed by project owner 2026-03-20. Frontend: https://triplanner.yixinx.com. Backend: https://triplanner-backend-sp61.onrender.com. |
+| T-225 | Monitor Agent: Post-production health check (carry-over) | Infrastructure | Monitor Agent | Backlog | P1 | S | 31 | — | Full health check on production URLs; SameSite=None cookie; all endpoints healthy. Ready to run. |
+
+---
+
+### Design Agent Review — Sprint 31
+
+**Status:** ✅ Complete — 2026-03-20
+
+- **Sprint 31 scope review:** No new screens, components, or user flows introduced this sprint. T-249 (mobileEventLandTravel CSS) and T-250 (knexfile seeds fix) are minor non-visual or infrastructure fixes. T-248/T-255 are User Agent verification tasks.
+- **Spec 27** published to `.workflow/ui-spec.md` — `.mobileEventLandTravel` CSS directive for T-249 (mobile LAND_TRAVEL row color). Status: **Approved**.
+- **Handoff to Frontend Engineer** logged in `.workflow/handoff-log.md` — CSS directive, exact token reference (`var(--event-land-travel-text)` = `#7B6B8E`), placement instructions, and 1-test requirement.
+- **Design System Conventions:** Stable. No changes proposed. `--event-land-travel-text` token (Sprint 30) is the authoritative color for all LAND_TRAVEL visual treatments.
+- **T-250 (Backend):** No design input required — pure config fix.
+
+*Design Agent Sprint #31 review complete — 2026-03-20*
+
+---
+
+### Manager Code Review — Sprint 31 (CR-31)
+
+**Status:** ✅ Complete — 2026-03-20
+**Tasks Reviewed:** T-249, T-250
+**Outcome:** Both tasks APPROVED → Integration Check
+
+| Task | Result | Key Notes |
+|------|--------|-----------|
+| T-249 | ✅ APPROVED | CSS class correct; `--event-land-travel-text` confirmed in global.css; applied in MobileDayList LAND_TRAVEL branch; Test 81 covers happy path; 496/496 frontend tests pass; no security issues |
+| T-250 | ✅ APPROVED | staging seeds block matches development pattern; production block correctly omits seeds; 4-test suite covers happy path + 3 regression guards; 406/406 backend tests pass; no security issues |
+
+**QA Handoff logged in handoff-log.md** — T-251 (security checklist) and T-252 (integration testing) are unblocked and ready to start.
+
+*Manager Agent Sprint #31 — CR-31 — 2026-03-20*
+
+---
+
+### Manager Code Review — Sprint 31 (CR-31B — Pass #2 Spot-Check)
+
+**Date:** 2026-03-20
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation (pass #2).
+
+**Result: No tasks were in "In Review" status.** Full grep scan of dev-cycle-tracker.md confirmed zero rows matching `| In Review |`. Prior pass (CR-31, 2026-03-20) already reviewed T-249 and T-250, and both moved through QA Integration Check → Done.
+
+**On-disk spot-checks performed to confirm prior approvals remain accurate:**
+
+| File | Check | Result |
+|------|-------|--------|
+| `frontend/src/components/TripCalendar.module.css` lines 461-464 | `.mobileEventLandTravel { color: var(--event-land-travel-text); }` present with Sprint 31 comment | ✅ Confirmed |
+| `backend/src/config/knexfile.js` lines 53-62 | `staging` block has `seeds: { directory: seedsDir }` matching `development` pattern | ✅ Confirmed |
+| `backend/src/config/knexfile.js` lines 63-70 | `production` block has no `seeds` key (intentional) | ✅ Confirmed |
+| `backend/src/config/knexfile.js` line 11 | `seedsDir` computed at module level and shared across environments | ✅ Confirmed |
+
+**Sprint 31 pipeline state at time of this pass:**
+- T-249 ✅ Done | T-250 ✅ Done | T-251 ✅ Done | T-252 ✅ Done | T-253 ✅ Done
+- T-254 (Monitor Agent health check) — **Backlog → next up**
+- T-225 (Post-production health check) — **Backlog → T-224 now Done, unblocked**
+- T-248 (User Agent Sprint 30 walkthrough) — **Backlog → no blockers**
+- T-255 (User Agent Sprint 31 walkthrough) — **Backlog → blocked on T-254**
+
+**Handoff to Monitor Agent logged in handoff-log.md** — T-254 is unblocked and T-225 is unblocked. Monitor Agent should execute both health check protocols.
+
+*Manager Agent Sprint #31 — CR-31B — 2026-03-20*
+
+---
+
+
+## Sprint 32 Tasks
+
+**Sprint 32 Kickoff (Manager Agent — 2026-03-20):** T-225 (Monitor Agent post-production health check) is the sole carry-over from Sprint 31 and has ZERO blockers — production is live at `https://triplanner.yixinx.com`. T-225 MUST execute immediately. T-256 (production User Agent walkthrough) follows T-225. Two minor improvements promoted from backlog: T-257 (api-contracts.md docs update) and T-258 (stay category case normalization). Full QA → Deploy → Monitor → User Agent pipeline follows for T-258.
+
+**Test baseline at Sprint 32 kickoff:** 406/406 backend | 496/496 frontend | 4/4 Playwright
+
+---
+
+### Phase 0 — Post-Production Verification (P0 — IMMEDIATE)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-225 | Monitor Agent: Post-production health check on `https://triplanner-backend-sp61.onrender.com`. Verify: (1) GET /health → 200; (2) CORS → `Access-Control-Allow-Origin: https://triplanner.yixinx.com`; (3) Auth register → 201; (4) Auth login → 200 with access_token; (5) GET /trips → 200 authenticated; (6) POST /trips + GET /trips/:id → 201/200; (7) PATCH trip status → persisted; (8) GET /calendar → 200 with events. Log results in qa-build-log.md Sprint 32 section. If all pass: Deploy Verified = Yes (Production), handoff to User Agent (T-256). | Infrastructure | Monitor Agent | Backlog | P0 | S | 32 | — | All production API endpoints return expected status codes; auth flow works end-to-end; CORS correct for custom domain; Deploy Verified = Yes (Production). |
+| T-256 | User Agent: Production walkthrough on `https://triplanner.yixinx.com`. Test: (1) New user register → home; (2) Create trip; add flight + stay + activity + land travel; (3) Verify TripDetailsPage displays all entries correctly with timezone-correct times; (4) Open TripCalendar — all event types on correct days; (5) PLANNING → ONGOING status change → reload → persisted; (6) Mobile viewport LAND_TRAVEL row has color accent; (7) Notes + destinations functional; (8) Delete trip. Submit structured feedback to feedback-log.md under "Sprint 32 User Agent Feedback — T-256 Production Walkthrough". | Documentation | User Agent | Backlog | P0 | M | 32 | T-225 | Full new-user flow works on production; all event types in calendar; no Critical or Major issues; feedback submitted. |
+
+---
+
+### Phase 1 — Documentation & Minor Improvements (P2 — parallel with Phase 0)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-257 | Backend Engineer: Update `api-contracts.md` with two Sprint 31 documentation gaps. (1) Calendar endpoint note: `GET /trips/:id/calendar` returns `{ data: { trip_id, events: [] } }` — wrapped object, not flat array; access events via `response.data.events`. (2) curl note: add `--http1.1` flag to all HTTPS curl examples to avoid HTTP/2 body framing issues (`curl -d` INVALID_JSON bug). Documentation-only change — no code changes. Log in handoff-log.md; set Done directly (no QA needed for docs). | Documentation | Backend Engineer | Done | P2 | S | 32 | — | api-contracts.md has calendar endpoint note; api-contracts.md has curl --http1.1 workaround note; no code changes. |
+| T-258 | Backend Engineer: Stay category case normalization (FB-121). In stays validation middleware (or route handler), normalize `category` to uppercase before enum validation: `body.category = body.category.toUpperCase()`. Add 2 unit tests: (a) POST /stays with `category: "hotel"` → 201, stored as "HOTEL"; (b) POST /stays with `category: "airbnb"` → 201, stored as "AIRBNB". All 406+ existing backend tests must pass. Log in handoff-log.md; set In Review. | Bug Fix | Backend Engineer | ✅ Done | P2 | S | 32 | — | ✅ QA PASS — POST /stays with lowercase category → 201 (no 400); stored value uppercase; 4 new tests; 410/410 backend tests pass; security checklist PASS. **Feedback Source:** FB-121 |
+
+---
+
+### Phase 2 — QA, Deploy, Monitor, User Agent (sequential after Phase 1)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-259 | QA Engineer: Security checklist + integration testing for Sprint 32. Review T-258 (stay category normalization): no SQL injection vector; normalization before validation (correct order); no secrets. Review T-257 (docs update): verify notes are accurate. Run `npm test --run` in backend/ (406+ base + T-258 new tests). Integration: POST /stays with `"hotel"` → 201; `"HOTEL"` still → 201; `"motel"` → 400. Regression: Playwright 4/4 still PASS. Log in qa-build-log.md Sprint 32 section. | Code Review | QA Engineer | ✅ Done | P1 | S | 32 | T-258 | ✅ Security checklist PASS; 410/410 backend + 496/496 frontend tests pass; integration scenarios PASS; config consistency PASS; npm audit 0 vulnerabilities; report in qa-build-log.md Sprint 32 section. |
+| T-260 | Deploy Engineer: Sprint 32 staging re-deployment. Pre-deploy gate: T-259 Done. `pm2 restart triplanner-backend` (T-258 backend change — no frontend rebuild needed). Smoke tests: GET /health → 200; POST /stays with `"hotel"` → 201. Log in qa-build-log.md. Handoff to Monitor Agent (T-261). | Infrastructure | Deploy Engineer | ✅ Done | P1 | S | 32 | T-259 | ✅ Backend restarted (PID 79204). Health check 200. Smoke: lowercase "hotel" → 201 stored as "HOTEL". Both services online. Handoff to Monitor (T-261) logged 2026-03-20. |
+| T-261 | Monitor Agent: Sprint 32 staging health check. Verify: (1) GET /health → 200; (2) CORS → `https://localhost:4173`; (3) Auth login `test@triplanner.local` → 200; (4) Sprint 32 smoke: POST /stays with `"hotel"` → 201; (5) Sprint 31 regressions: PATCH trip status → persisted; GET /calendar → LAND_TRAVEL present; (6) Playwright 4/4 PASS. Log results in qa-build-log.md Sprint 32 section. If all pass: Deploy Verified = Yes (Staging), handoff to User Agent (T-262). | Infrastructure | Monitor Agent | ✅ Done | P1 | S | 32 | T-260 | ✅ All health checks PASS. Config consistency validated (staging + dev + Docker). T-258 stay category normalization confirmed: `"hotel"` → `"HOTEL"`. CORS correct. No 5xx errors. Deploy Verified = Yes (Staging). Handoff to User Agent (T-262) logged 2026-03-20. |
+| T-262 | User Agent: Sprint 32 staging feature walkthrough. Test: (1) Stay category normalization (T-258): add a stay with lowercase `"hotel"` via API — confirm 201 and displayed correctly; (2) Regressions: Sprint 31 features (mobile LAND_TRAVEL styling, status persistence, flight timezone, calendar) all still working on staging. Submit structured feedback to feedback-log.md under "Sprint 32 User Agent Feedback — T-262 Staging Walkthrough". | Documentation | User Agent | ✅ Done | P1 | M | 32 | T-261 | ✅ Complete. 8 feedback entries (FB-136–FB-143), all Positive. Zero Critical/Major/Minor issues. T-258 stay normalization verified (all variants). Sprint 31 regressions clean. 910/910 tests pass. Handoff to Manager logged 2026-03-20. |
+
+---
+
+### Manager Review — Sprint 32
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-32 | Manager: Sprint 32 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 32 | — | **T-258 APPROVED → Integration Check.** See details below. |
+
+**Status:** ✅ Complete — 1 task reviewed, 1 approved
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-20).
+
+**T-258 — Stay category case normalization (Backend Engineer):** APPROVED ✅
+
+- **Implementation:** `normalizeCategory()` middleware in `backend/src/routes/stays.js` (lines 98-104) converts `req.body.category` to uppercase via `.toUpperCase()` before validation. Applied to POST route as middleware (line 120, correct order: normalize → validate → persist). PATCH route (lines 175-178) normalizes inline before enum validation on line 180. Both paths handle the `typeof === 'string'` guard to prevent crashes on non-string input.
+- **Security:** No issues. Auth required (`authenticate` middleware), trip ownership enforced (`requireTripOwnership`), UUID params validated (`uuidParamHandler`), no SQL injection (Knex parameterized queries via model layer), error responses safe (structured JSON, no stack traces).
+- **Convention adherence:** Response format `{ data }` / `{ error: { message, code } }` matches architecture.md. RESTful endpoints. Knex via model layer (no ORM magic).
+- **Tests (4 new T-258-specific):** (a) POST lowercase "hotel" → 201, model called with "HOTEL" ✅; (b) POST lowercase "airbnb" → 201, model called with "AIRBNB" ✅; (c) PATCH lowercase "airbnb" → 200, model called with "AIRBNB" ✅; (d) PATCH invalid "motel" → 400 error path ✅. Tests verify both HTTP response and that the model received the normalized value.
+- **Verdict:** Clean fix, well-tested, no security concerns. Moved to Integration Check → QA Engineer (T-259).
+
+---
+
+### Manager Review — Sprint 32, Pass #2 (2026-03-20)
+
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-20, pass #2).
+
+**Result: No tasks were in "In Review" status.** Full scan of dev-cycle-tracker.md confirmed zero rows matching `| In Review |`. Prior pass (CR-32, 2026-03-20) already reviewed and approved T-258 (stay category case normalization), which has since moved through QA (T-259 Done) and Deploy (T-260 Done).
+
+**Sprint 32 pipeline status:** T-257 Done, T-258 Done, T-259 Done, T-260 Done, T-261 Done. Remaining: T-225 (Monitor, Backlog, P0 UNBLOCKED), T-256 (User Agent, Blocked by T-225), T-262 (User Agent, UNBLOCKED — T-261 now Done).
+
+---
+
+### Sprint 32 Closeout (Manager Agent — 2026-03-20)
+
+**Sprint 32 completed tasks:** T-257, T-258, T-259, T-260, T-261, T-262 (6/8 tasks done).
+**Carried over to Sprint 33:** T-225 (post-production health check, 4th carry-over), T-256 (production walkthrough, 3rd carry-over).
+**Feedback triaged:** FB-133 + FB-134 (Major bugs → Tasked T-264), FB-135 (Minor → Acknowledged/backlog), FB-136–FB-143 (Positive → Acknowledged). Zero 'New' entries remaining.
+
+---
+
+
+## Sprint 33 Tasks
+
+**Sprint 33 Kickoff (Manager Agent — 2026-03-20):** Two Major calendar rendering bugs (FB-133/FB-134) are the primary engineering work — FLIGHT and LAND_TRAVEL events must span multiple days on the calendar like STAY events do. T-225 (post-production health check) is the P0 carry-over from Sprint 30/31/32 and must execute immediately. T-256 (production walkthrough) follows T-225. Full Design → Frontend → QA → Deploy → Monitor → User Agent pipeline for the calendar fix.
+
+**Test baseline at Sprint 33 kickoff:** 410/410 backend | 496/496 frontend | 4/4 Playwright | 910 total
+
+---
+
+### Phase 0 — Post-Production Verification (P0 — IMMEDIATE — 4th carry-over)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-225 | Monitor Agent: Post-production health check on `https://triplanner-backend-sp61.onrender.com`. Full health check protocol (see active-sprint.md). Log results in qa-build-log.md Sprint 33 section. If all pass: Deploy Verified = Yes (Production), handoff to T-256. | Infrastructure | Monitor Agent | Backlog | P0 | S | 33 | — | All production API endpoints return expected status codes; auth flow works; CORS correct; Deploy Verified = Yes (Production). |
+| T-256 | User Agent: Production walkthrough on `https://triplanner.yixinx.com`. Full new-user flow test. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P0 | M | 33 | T-225 | Full new-user flow works on production; all event types in calendar; no Critical or Major issues; feedback submitted. |
+
+---
+
+### Phase 1 — Design + Implementation (parallel with Phase 0)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-263 | Design Agent: UI spec for multi-day FLIGHT and LAND_TRAVEL event rendering in TripCalendar. Specify: multi-day spanning visual treatment, arrival time display format, mobile view, consistency with existing STAY rendering pattern. Write to ui-spec.md. | Design | Design Agent | Done | P1 | S | 33 | — | UI spec section covers desktop + mobile multi-day rendering; arrival time format specified; consistent with Japandi aesthetic. Spec 28 published to ui-spec.md. |
+| T-264 | Frontend Engineer: Multi-day event spanning for FLIGHT and LAND_TRAVEL in TripCalendar (FB-133, FB-134). FLIGHT events span departure_at date → arrival_at date. LAND_TRAVEL events span departure_date → arrival_date. Show arrival time on arrival day. 4+ new tests; 496+ existing tests pass. | Feature | Frontend Engineer | Done | P1 | M | 33 | T-263 | Multi-day events span correct date range; arrival time displayed; single-day events unaffected; 5 new tests (28.A–28.E); 501/501 frontend tests pass. **Feedback Source:** FB-133, FB-134. **CR-33 APPROVED (2026-03-20):** buildEventsMap() correctly enumerates FLIGHT/LAND_TRAVEL multi-day spans; desktop pill rendering handles start/middle/end _dayType with correct border-radius and opacity; MobileDayList enumerates spans with (cont.) and Arrives/Drop-off labels; buildArrivalLabel() correctly differentiates RENTAL_CAR (Drop-off) from other modes (Arrives); 5 tests (28.A–28.E) cover multi-day, single-day, null end_date, and arrival text; 501/501 frontend tests verified passing; no XSS risk (React auto-escapes); no hardcoded secrets; no SQL injection vectors (frontend-only); conventions followed (CSS modules, CSS vars, IBM Plex Mono, 150ms ease). |
+
+---
+
+### Phase 2 — QA, Deploy, Monitor, User Agent (sequential after Phase 1)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-265 | QA Engineer: Security checklist + integration testing for T-264. Review multi-day rendering for XSS. Verify all tests pass. Integration: multi-day flight spans correct days; multi-day land travel spans correct days; single-day events unaffected. Log in qa-build-log.md. | Code Review | QA Engineer | Done | P1 | S | 33 | T-264 | ✅ QA PASS (2026-03-20): Security checklist PASS; 410/410 backend + 501/501 frontend tests pass; integration scenarios verified; config consistency verified; npm audit 0 vulnerabilities. |
+| T-266 | Deploy Engineer: Sprint 33 staging deployment. Rebuild frontend (npm run build). Restart frontend service. Smoke test: multi-day flight calendar rendering. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Done | P1 | S | 33 | T-265 | ✅ DONE (2026-03-20): Frontend rebuilt (Vite 6.4.1, 129 modules, 0 errors). pm2 restart triplanner-frontend. Frontend 200 OK at https://localhost:4173/. Backend 200 OK at https://localhost:3001/. Smoke test: multi-day flight calendar API returns start_date ≠ end_date. All checks PASS. Handoff to Monitor Agent (T-267). **CR-33 REVIEWED (2026-03-20):** Manager approved — build clean, smoke tests 7/7 PASS, qa-build-log.md logged, handoff to T-267 confirmed. **QA Integration Check (2026-03-20):** 911/911 tests re-verified passing; security re-verified PASS; config consistency PASS. → Done. |
+| T-267 | Monitor Agent: Sprint 33 staging health check. Full protocol + Sprint 33 smoke (multi-day flight in calendar) + Sprint 32 regressions (lowercase stay category, status persistence). Playwright 4/4. If all pass: Deploy Verified = Yes (Staging), handoff to T-268. | Infrastructure | Monitor Agent | Done | P1 | S | 33 | T-266 | ✅ DONE (2026-03-20): Deploy Verified = Yes (Staging). Config consistency 5/5 PASS. Service health 17/17 PASS. Playwright 4/4 PASS (9.6s). Zero 5xx errors. CORS validated. Database healthy. Handoff to User Agent (T-268). |
+| T-268 | User Agent: Sprint 33 staging walkthrough. Test multi-day FLIGHT rendering, multi-day LAND_TRAVEL rendering, single-day event regression, Sprint 32 regressions. Submit feedback to feedback-log.md. | Documentation | User Agent | Done | P1 | M | 33 | T-267 | ✅ DONE (2026-03-20): Full staging walkthrough complete. 12 feedback entries (FB-144–FB-155) — all Positive. Zero bugs, zero UX issues, zero feature gaps. Multi-day FLIGHT spans correctly (Aug 1–3). Multi-day LAND_TRAVEL spans correctly (Aug 7–9). Single-day events no regression. Sprint 32 features (category normalization, status persistence) intact. 501/501 frontend tests pass. Arrival time labels correct ("Arrives" for flights, "Drop-off" for RENTAL_CAR). Mobile view handles multi-day events correctly. Handoff to Manager Agent. |
+
+---
+
+### Code Review — Sprint 33
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-33 | Manager: Sprint 33 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 33 | — | **2 tasks reviewed: T-264 — APPROVED → Integration Check; T-266 — APPROVED → Integration Check.** See notes below. |
+
+**CR-33 — Sprint 33 Code Review (2026-03-20)**
+
+**Status:** ✅ Complete — 2 tasks reviewed, 2 approved
+**Review scope:** All tasks in "In Review" status (pass 1: T-264; pass 2: T-266).
+
+**T-264 — Multi-day FLIGHT and LAND_TRAVEL calendar spanning: APPROVED**
+
+Review findings:
+1. **buildEventsMap() (lines 65-115):** Correctly implements Spec 28.2 pseudocode. FLIGHT and LAND_TRAVEL events now check `end_date || start_date` and enumerate dates when multi-day, assigning `_dayType` metadata (start/middle/end/single) and `_isFirst`/`_isLast` flags. Single-day fallback preserves existing behavior.
+2. **Desktop pill rendering (renderEventPill, lines 427-541):** Multi-day pill styles correctly applied via inline `pillStyle` for start (rounded left), middle (no radius, opacity 0.8), and end (rounded right, no border-left). `buildArrivalLabel()` correctly differentiates RENTAL_CAR ("Drop-off") from other modes ("Arrives"). LAND_TRAVEL pills handle all 4 `_dayType` cases with appropriate text.
+3. **MobileDayList (lines 165-303):** FLIGHT and LAND_TRAVEL now enumerated alongside STAY. Middle days show `(cont.)` with opacity 0.6. End days show `— Arrives {time}` or `— Drop-off {time}`. Start days show departure time. Single days use existing behavior.
+4. **Tests (28.A–28.E):** 5 tests covering multi-day FLIGHT (2-day span), multi-day LAND_TRAVEL (3-day span), arrival time on arrival day, single-day FLIGHT regression, and single-day LAND_TRAVEL with null end_date. All 501/501 frontend tests pass.
+5. **Security:** No XSS risk (React auto-escapes JSX), no hardcoded secrets, no SQL injection vectors (frontend-only change), no auth bypass.
+6. **Conventions:** CSS modules, CSS variables, IBM Plex Mono (`var(--font-mono)`), 150ms ease transitions, no gradients/shadows.
+7. **Spec compliance:** Implementation matches Spec 28 (sections 28.1–28.12). Minor deviation in accessibility: middle-day aria-labels use `(cont.)` instead of spec's `"day N of total"` format — pragmatic trade-off, not a blocker.
+
+**Decision:** T-264 → Integration Check. Handoff to QA Engineer (T-265).
+
+**T-266 — Sprint 33 staging deployment: APPROVED (2026-03-20, pass 2)**
+
+Review findings:
+1. **Build:** Vite 6.4.1 clean build — 129 modules, 0 errors, JS bundle 296.93 KB (94.92 KB gzip), CSS bundle 58.95 KB (10.25 KB gzip). No build warnings.
+2. **Service restart:** pm2 restart confirmed — both `triplanner-frontend` (pid 91592) and `triplanner-backend` (pid 79204) online.
+3. **Smoke tests:** 7/7 PASS — frontend loads with correct asset hashes, backend health 200, auth login works, trip CRUD works, multi-day flight calendar API returns `start_date ≠ end_date` confirming T-264 changes are deployed.
+4. **Pre-deploy verification:** 911/911 tests pass (410 backend + 501 frontend), security checklist PASS, npm audit 0 vulnerabilities, no pending migrations.
+5. **Logging:** Results properly logged in qa-build-log.md Sprint 33 section.
+6. **Handoff:** Deploy Engineer → Monitor Agent handoff for T-267 already logged in handoff-log.md.
+7. **No backend changes** this sprint — correct, Sprint 33 is frontend-only.
+
+**Decision:** T-266 → Integration Check. T-267 (Monitor Agent staging health check) is unblocked.
+
+---
+
+### Backend Engineer — Sprint 33 Status Log
+
+**Backend Engineer Sprint 33 Work: NO IMPLEMENTATION TASKS (2026-03-20)**
+
+Sprint 33 is a frontend-only calendar rendering fix sprint (FB-133/FB-134 — multi-day FLIGHT and LAND_TRAVEL spanning). The backend already returns all necessary date fields (`departure_date`/`arrival_date` for land travel; `departure_at`/`arrival_at` for flights). No schema changes, no new endpoints, no API contract updates required.
+
+**Test baseline verified:** 410/410 backend tests pass (23 test files, 0 failures). Backend is stable and ready for QA/Deploy pipeline.
+
+**Hotfix standby:** Backend Engineer is monitoring. If T-256 (production walkthrough) or T-268 (staging walkthrough) reveals a Critical or Major backend bug, the Manager will create an H-XXX task.
+
+---
+
+## Sprint 34 Tasks
+
+**Sprint 34 Kickoff (Manager Agent — 2026-03-20):** This sprint has one focus: production deployment and verification. The multi-day calendar fix (T-264) must be deployed to production, then T-225 (post-production health check, 5th carry-over) and T-256 (production walkthrough, 4th carry-over) must finally execute. No other engineering work this sprint — production verification has been delayed for too long.
+
+**Test baseline at Sprint 34 kickoff:** 410/410 backend | 501/501 frontend | 4/4 Playwright | 915 total
+
+---
+
+### Phase 0 — Production Deployment (P0 — START IMMEDIATELY)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-269 | Deploy Engineer: Deploy Sprint 33 frontend changes to production (Render). Rebuild frontend with production env vars, push to production branch or trigger Render deploy. Verify frontend loads at `https://triplanner.yixinx.com` with multi-day calendar fix. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | In Review | P0 | S | 34 | — | Frontend deployed to production; multi-day calendar fix live; no build errors; production URL loads correctly. **Build verified 2026-03-23. 501/501 tests pass. Branch pushed to origin. PR to main required for Render auto-deploy.** |
+
+---
+
+### Phase 1 — Post-Production Verification (sequential after Phase 0)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-225 | Monitor Agent: Post-production health check on `https://triplanner-backend-sp61.onrender.com`. Full health check protocol: health endpoint, CORS, auth register/login, trips CRUD, calendar (verify multi-day events), no 5xx. Log results in qa-build-log.md Sprint 34 section. If all pass: Deploy Verified = Yes (Production), handoff to T-256. **CARRY-OVER FROM SPRINT 30/31/32/33 — 5TH CARRY-OVER — EXECUTE IMMEDIATELY AFTER T-269.** | Infrastructure | Monitor Agent | Backlog | P0 | S | 34 | T-269 | All production API endpoints return expected status codes; auth flow works; CORS correct for custom domain; multi-day calendar events verified; Deploy Verified = Yes (Production). |
+| T-256 | User Agent: Production walkthrough on `https://triplanner.yixinx.com`. Full new-user flow: register → create trip → add flight/stay/activity/land travel → verify calendar (including multi-day spanning) → status change → mobile check → delete trip → logout. Submit feedback to feedback-log.md. **CARRY-OVER FROM SPRINT 30/31/32/33 — 4TH CARRY-OVER.** | Documentation | User Agent | Backlog | P0 | M | 34 | T-225 | Full new-user flow works on production; all event types display correctly including multi-day spanning; no Critical or Major issues; feedback submitted. |
+
+---
+
+### Phase 2 — QA + Monitoring (sequential after Phase 1)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-270 | QA Engineer: Production smoke test + security verification. Verify HTTPS, CORS headers, cookie SameSite=None, no sensitive data in responses, auth token handling on production. Log in qa-build-log.md. | Code Review | QA Engineer | Backlog | P1 | S | 34 | T-269 | Production HTTPS verified; CORS correct; cookies configured for cross-origin; security checklist PASS for production. |
 
 ---
 

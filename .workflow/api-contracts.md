@@ -6772,3 +6772,758 @@ All contracts from Sprints 1–27 remain in force unchanged. Sprint 28 adds no n
 ---
 
 *Sprint 28 contracts published by Backend Engineer 2026-03-11. No new endpoints. No schema changes. T-229 is a pure SQL query correction (COALESCE on TRIP_COLUMNS) — the only API-observable change is that `start_date`/`end_date` in trip responses now correctly reflect user-stored values when present, rather than always returning computed sub-resource aggregates. Test baseline entering Sprint 28: 363/363 backend | 486/486 frontend.*
+
+---
+
+## Sprint 29 Contracts
+
+**Sprint #29 — 2026-03-16**
+
+**Backend Engineer API Contract Review: NO NEW CONTRACTS REQUIRED**
+
+Sprint 29 is a single-task sprint scoped exclusively to a Playwright E2E test locator bug (T-235 — test-code fix only). The active sprint explicitly assigns the Backend Engineer no tasks: *"No tasks this sprint (application complete)."*
+
+**Contract Status:** All contracts from Sprints 1–28 remain in force, unchanged, and applied on staging.
+
+**New Endpoints:** None
+
+**Changed Endpoints:** None
+
+**Schema Changes:** None. No migrations required.
+
+### Sprint 29 — Full Contract Registry (Status Check)
+
+All endpoints listed below are `✅ Agreed, Applied on Staging`. No changes from Sprint 28.
+
+| Sprint | Endpoint | Sprint 29 Status |
+|--------|----------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/login` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Unchanged |
+| 1 | `GET /api/v1/health` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Unchanged (T-229 COALESCE semantics from Sprint 28 in effect) |
+| 1 | `POST /api/v1/trips` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id` | ✅ Unchanged (T-229 COALESCE semantics from Sprint 28 in effect) |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Unchanged (T-229 user-date fix from Sprint 28 in effect) |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Unchanged |
+
+### Sprint 29 — QA Reference: Key Endpoint Behaviors Under Test
+
+The following endpoint behaviors are relevant to T-235 (Playwright locator fix) and T-236 (Monitor health check) for QA reference:
+
+**`GET /api/v1/trips/:id/calendar`** — Sprint 25 contract, unchanged
+- Returns a unified timeline of all trip sub-resources (flights, stays, activities, land-travel) sorted by `start_datetime` ascending
+- Flight events include `departure_airport` and `arrival_airport` (e.g., `"JFK"`, `"SFO"`) in the event payload
+- These airport codes are rendered in multiple DOM locations by the frontend (TripCalendar pill, MobileDayList, and flight card `_airportCode_` div) — this is the root cause of the T-235 Playwright strict-mode violation; the API shape is correct and unchanged
+
+**`PATCH /api/v1/trips/:id`** — T-229 regression check (T-236 Monitor protocol)
+- Request: `{ "start_date": "2026-09-01", "end_date": "2026-09-30" }` (Bearer auth required)
+- Expected response: `{ "data": { ..., "start_date": "2026-09-01", "end_date": "2026-09-30", ... } }`
+- User-provided dates must be returned exactly as supplied (COALESCE fix from Sprint 28 confirmed by User Agent FB-123/FB-125)
+
+---
+
+*Sprint 29 contracts reviewed by Backend Engineer 2026-03-16. No new endpoints. No schema changes. No migrations. Application is MVP feature-complete — all 30 endpoints from Sprints 1–25 remain in force and applied on staging. Test baseline entering Sprint 29: 363/363 backend | 486/486 frontend (from Sprint 28 closeout).*
+
+---
+
+## Sprint 30 Contracts
+
+**Sprint #30 — 2026-03-17**
+**Published by:** Backend Engineer
+**Date:** 2026-03-17
+**Status:** Agreed — Auto-approved per automated sprint cycle
+
+**Summary of changes:**
+
+| Task | Endpoint | Change |
+|------|----------|--------|
+| T-238 | `PATCH /api/v1/trips/:id` | Audit confirms `status` field is correctly plumbed. Root bug identified: `computeTripStatus()` overrides stored `status` when both dates are set. Fix clarifies expected response contract. |
+| T-240 | `POST /api/v1/trips/:id/flights`, `PATCH /api/v1/trips/:id/flights/:fid`, `GET /api/v1/trips/:id/flights` | Clarify `departure_at`/`arrival_at` MUST include timezone offset in writes. GET returns UTC ISO strings. |
+| T-242 | `GET /api/v1/trips/:id/calendar` | Add `LAND_TRAVEL` as a new event type. Updated event type enum and derivation rules. |
+
+---
+
+### T-238 — Trip Status Persistence: Audit Findings & Corrected Contract
+
+**Sprint:** 30
+**Task:** T-238
+**Date:** 2026-03-17
+**Author:** Backend Engineer
+**Status:** Agreed (auto-approved)
+
+---
+
+#### Audit Findings
+
+Files audited: `backend/src/models/tripModel.js`, `backend/src/routes/trips.js`
+
+**Backend plumbing — CORRECT:**
+- `status` is present in the PATCH Joi/validate schema with `enum: ['PLANNING', 'ONGOING', 'COMPLETED']`
+- `status` is in the `UPDATABLE_FIELDS` array in the PATCH route handler
+- `updateTrip()` passes `{ ...processedUpdates, updated_at: new Date() }` to Knex — `status` is included with no filtering
+
+**Root cause of bug identified — `computeTripStatus()` override:**
+After `updateTrip()` succeeds, `findTripById()` is called to re-fetch the updated record. `findTripById()` applies `computeTripStatus()` to the returned row. `computeTripStatus()` checks whether both `start_date` and `end_date` are non-null on the trip. If both are present, it **recomputes** `status` from the dates, **ignoring the value just written to the DB**.
+
+This means:
+- PATCH `{"status": "ONGOING"}` on a trip with future dates → DB stores `ONGOING` correctly → `findTripById()` returns `PLANNING` (computed from future dates) → response shows `PLANNING`, not `ONGOING`
+- PATCH `{"status": "ONGOING"}` on a trip with NO dates → `computeTripStatus()` short-circuits (no dates) → response correctly shows `ONGOING`
+
+The stored value in the DB is always correct. The bug is read-time: `computeTripStatus()` unconditionally overrides any manually-set status when dates are present.
+
+**Fix direction (T-238 implementation):** When `status` is explicitly stored in the DB (i.e., the user has patched it), it should take precedence over the date-computed value. The simplest correct fix: apply `COALESCE`-style logic in `computeTripStatus()` — if the trip has a non-null stored `status` in the DB that was explicitly set, honor it. A practical implementation: store a `status_override` flag, OR simply revert `computeTripStatus()` to only auto-compute status when the status field has never been explicitly PATCHed (i.e., is still the default `PLANNING`).
+
+The recommended minimal fix for Sprint 30: remove the auto-compute override in `computeTripStatus()` entirely. Status should always reflect the stored DB value. Date-based auto-compute was a Sprint 3 feature (T-030) but is now causing more harm than good since users explicitly control status through the UI. The frontend TripStatusSelector (T-239) is the primary mechanism for status changes — the auto-compute adds confusion.
+
+---
+
+#### Corrected: PATCH /api/v1/trips/:id (status field behavior)
+
+| Field | Value |
+|-------|-------|
+| Method | PATCH |
+| Path | `/api/v1/trips/:id` |
+| Sprint | 1 (updated Sprint 30 — T-238 status fix) |
+| Task | T-238 |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Change from previous sprint:** The `status` field, when included in a PATCH request, MUST be reflected as-is in the 200 response. The date-based auto-computation (`computeTripStatus()`) MUST NOT override a user-supplied status value.
+
+**Corrected status field contract:**
+
+| Scenario | Before fix (broken) | After fix (correct) |
+|----------|--------------------|--------------------|
+| PATCH `{"status":"ONGOING"}` on trip with future dates | Response returns `"PLANNING"` (computed from dates) | Response returns `"ONGOING"` (user-set value) |
+| PATCH `{"status":"COMPLETED"}` on trip with future dates | Response returns `"PLANNING"` | Response returns `"COMPLETED"` |
+| GET trip with future dates (no explicit PATCH to status) | Returns `"PLANNING"` (computed) | Returns stored `status` (no auto-compute) |
+
+**All status values accepted by PATCH:**
+
+| Value | Description |
+|-------|-------------|
+| `"PLANNING"` | Trip in planning phase |
+| `"ONGOING"` | Trip currently in progress |
+| `"COMPLETED"` | Trip completed |
+
+**Request body (status-only PATCH):**
+```json
+{ "status": "ONGOING" }
+```
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "ONGOING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-21",
+    "notes": null,
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-03-17T10:00:00.000Z"
+  }
+}
+```
+
+The `status` field in the response MUST equal the value sent in the PATCH request body.
+
+**Error responses (unchanged):**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 400 | `VALIDATION_ERROR` | `status` value not in `["PLANNING", "ONGOING", "COMPLETED"]` |
+| 400 | `NO_UPDATABLE_FIELDS` | Request body contains no recognized fields |
+| 401 | `UNAUTHORIZED` | Missing or invalid Bearer token |
+| 403 | `FORBIDDEN` | Trip belongs to another user |
+| 404 | `NOT_FOUND` | Trip ID does not exist |
+
+**Test cases required (T-238):**
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 1 | PATCH `{"status":"ONGOING"}` on trip with future `start_date`/`end_date` → 200 | `data.status === "ONGOING"` |
+| 2 | PATCH `{"status":"COMPLETED"}` on trip with future dates → GET same trip → 200 | `data.status === "COMPLETED"` |
+| 3 | PATCH `{"status":"PLANNING"}` on trip → 200 | `data.status === "PLANNING"` |
+| 4 | All three transitions verified: PLANNING→ONGOING, ONGOING→COMPLETED, COMPLETED→PLANNING | Each transition round-trips correctly |
+
+**No schema changes.** `status` column already exists in `trips` table. Fix is purely in `tripModel.js` read-time computation logic.
+
+---
+
+### T-240 — Flight Timezone: Clarified departure_at / arrival_at Contract
+
+**Sprint:** 30
+**Task:** T-240
+**Date:** 2026-03-17
+**Author:** Backend Engineer
+**Status:** Agreed (auto-approved)
+
+---
+
+#### Audit Findings
+
+Files audited: `backend/src/models/flightModel.js`, `backend/src/models/calendarModel.js`, `backend/src/migrations/20260227_009_create_land_travels.js` (flights schema via prior migrations)
+
+**Storage column type:** `departure_at` and `arrival_at` are stored as `TIMESTAMPTZ` (timestamp with timezone) in PostgreSQL.
+
+**Root cause of timezone shift (FB-131):**
+PostgreSQL's TIMESTAMPTZ stores all values internally as UTC. When the application receives an ISO 8601 string **without** a timezone offset (e.g., `"2026-08-07T06:50:00"`), PostgreSQL interprets it in the **database server's session timezone** (typically UTC for Node.js/Knex applications). A user entering `6:50 AM ET (UTC-4)` who sends `"2026-08-07T06:50:00"` (no offset) has that value stored as `2026-08-07T06:50:00Z` — four hours ahead of the intended time.
+
+When `calendarModel.js` later converts the stored UTC value back using `departure_tz = "America/New_York"`, it produces `2:50 AM ET` — a ~4h shift matching FB-131.
+
+**Correct pipeline:**
+1. User enters `6:50 AM ET`
+2. Frontend sends `"2026-08-07T06:50:00-04:00"` (ISO 8601 with UTC offset) to API
+3. PostgreSQL converts to UTC: `"2026-08-07T10:50:00Z"` stored internally
+4. `calendarModel.js` converts: UTC 10:50 + `"America/New_York"` → `6:50 AM ET` ✓
+5. GET response returns UTC ISO string: `"2026-08-07T10:50:00.000Z"`
+
+---
+
+#### Clarified: POST /api/v1/trips/:id/flights (departure_at / arrival_at fields)
+
+| Field | Value |
+|-------|-------|
+| Method | POST |
+| Path | `/api/v1/trips/:id/flights` |
+| Sprint | 1 (clarified Sprint 30 — T-240) |
+| Task | T-240 |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Change from Sprint 1:** Explicit clarification that `departure_at` and `arrival_at` values sent in the request body MUST include a UTC offset (e.g., `"2026-08-07T06:50:00-04:00"`) or a `Z` suffix for UTC (`"2026-08-07T10:50:00Z"`). Sending a naive ISO string without offset (e.g., `"2026-08-07T06:50:00"`) will cause the timezone shift bug (FB-131). No request/response shape changes — this is a clarification of the expected value format.
+
+**`departure_at` / `arrival_at` field contract:**
+
+| Field | Required | Type | Format | Notes |
+|-------|----------|------|--------|-------|
+| `departure_at` | Yes | string | ISO 8601 with UTC offset | MUST include offset: `"2026-08-07T06:50:00-04:00"` or `"2026-08-07T10:50:00Z"`. Naive strings (no offset) are rejected with 400. |
+| `arrival_at` | Yes | string | ISO 8601 with UTC offset | Same requirement as `departure_at`. Must be after `departure_at`. |
+| `departure_tz` | Yes | string | IANA timezone name | e.g., `"America/New_York"`. Used for display conversion on GET. |
+| `arrival_tz` | Yes | string | IANA timezone name | e.g., `"America/Los_Angeles"`. Used for display conversion on GET. |
+
+**New validation error (400) added for naive datetime strings:**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "departure_at": "departure_at must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-07T06:50:00-04:00)"
+    }
+  }
+}
+```
+
+**GET /api/v1/trips/:id/flights — departure_at / arrival_at response format:**
+
+`departure_at` and `arrival_at` in GET responses are returned as UTC ISO 8601 strings (what PostgreSQL returns from a TIMESTAMPTZ column), e.g.:
+```json
+{
+  "departure_at": "2026-08-07T10:50:00.000Z",
+  "arrival_at": "2026-08-07T14:35:00.000Z",
+  "departure_tz": "America/New_York",
+  "arrival_tz": "America/New_York"
+}
+```
+
+The **frontend is responsible** for converting the UTC `departure_at` + `departure_tz` into local display time using `Intl.DateTimeFormat`. This matches the pattern used in `calendarModel.js`.
+
+**Example round-trip (T-240 acceptance test):**
+
+| Step | Value |
+|------|-------|
+| Frontend sends | `"departure_at": "2026-08-07T06:50:00-04:00"`, `"departure_tz": "America/New_York"` |
+| PostgreSQL stores | `2026-08-07T10:50:00Z` (UTC internally) |
+| GET returns | `"departure_at": "2026-08-07T10:50:00.000Z"` |
+| Frontend displays | `new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }).format(new Date("2026-08-07T10:50:00.000Z"))` → `"6:50 AM"` ✓ |
+
+This same contract applies to `PATCH /api/v1/trips/:id/flights/:fid` for any updates to `departure_at` or `arrival_at`.
+
+**No schema changes.** Flights table columns are already TIMESTAMPTZ. Fix is in input validation (reject naive strings) and frontend datetime construction.
+
+---
+
+### T-242 — Calendar Endpoint: Add LAND_TRAVEL Event Type
+
+**Sprint:** 30
+**Task:** T-242
+**Date:** 2026-03-17
+**Author:** Backend Engineer
+**Status:** Agreed (auto-approved)
+
+---
+
+#### Overview
+
+`GET /api/v1/trips/:id/calendar` currently returns events for `FLIGHT`, `STAY`, and `ACTIVITY` types only. Land travel entries (trains, buses, rental cars, etc.) exist in the `land_travels` table but are not included. This task adds `LAND_TRAVEL` to the calendar event array.
+
+**No new endpoint.** Only the response shape of the existing `GET /api/v1/trips/:id/calendar` endpoint changes.
+
+---
+
+#### Updated: GET /api/v1/trips/:id/calendar
+
+| Field | Value |
+|-------|-------|
+| Method | GET |
+| Path | `/api/v1/trips/:id/calendar` |
+| Sprint | 25 (updated Sprint 30 — T-242) |
+| Task | T-242 |
+| Status | Agreed |
+| Auth Required | Yes — Bearer token |
+
+**Change from Sprint 25:** The `type` enum is extended from `"FLIGHT | STAY | ACTIVITY"` to `"FLIGHT | LAND_TRAVEL | STAY | ACTIVITY"`. A new derivation rule is added for `LAND_TRAVEL` events. All existing event shapes are unchanged.
+
+**Updated event type field:**
+
+| Field | Type | Nullable | Description |
+|-------|------|----------|-------------|
+| `type` | enum | No | One of: `FLIGHT`, `LAND_TRAVEL`, `STAY`, `ACTIVITY` *(updated — LAND_TRAVEL added)* |
+
+**New: LAND_TRAVEL events (sourced from `land_travels` table)**
+
+| Calendar field | Derived from | Notes |
+|----------------|-------------|-------|
+| `id` | `"land-travel-" + land_travel.id` | Composite ID — prefix matches pattern of other event types |
+| `type` | `"LAND_TRAVEL"` | Literal string |
+| `title` | `"{mode} — {from_location} → {to_location}"` | e.g., `"TRAIN — Tokyo → Osaka"`. Mode is the raw enum value (RENTAL_CAR, BUS, TRAIN, RIDESHARE, FERRY, OTHER) |
+| `start_date` | `land_travel.departure_date` | Already stored as `DATE` (`YYYY-MM-DD`) — used directly, no conversion |
+| `end_date` | `land_travel.arrival_date ?? land_travel.departure_date` | If `arrival_date` is null (same-day or unknown), falls back to `departure_date` |
+| `start_time` | `land_travel.departure_time` normalized to `HH:MM`, or `null` | Normalize PostgreSQL `TIME` value (`HH:MM:SS`) by slicing to first 5 chars. `null` if departure_time is null. |
+| `end_time` | `land_travel.arrival_time` normalized to `HH:MM`, or `null` | Same normalization as `start_time`. `null` if arrival_time is null. |
+| `timezone` | `null` | Land travels do not have a timezone column — they use date/time columns directly |
+| `source_id` | `land_travel.id` | Original UUID from `land_travels` table |
+
+**Updated sort ordering (unchanged algorithm — LAND_TRAVEL included):**
+1. `start_date` ASC
+2. `start_time` ASC NULLS LAST
+3. `type` ASC alphabetical tiebreaker: `ACTIVITY` < `FLIGHT` < `LAND_TRAVEL` < `STAY`
+
+**Updated response example (with LAND_TRAVEL event):**
+
+```json
+{
+  "data": {
+    "trip_id": "550e8400-e29b-41d4-a716-446655440000",
+    "events": [
+      {
+        "id": "flight-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "type": "FLIGHT",
+        "title": "JAL JL7 — JFK → NRT",
+        "start_date": "2026-08-07",
+        "end_date": "2026-08-08",
+        "start_time": "06:50",
+        "end_time": "09:30",
+        "timezone": "America/New_York",
+        "source_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      },
+      {
+        "id": "land-travel-d4e5f6a7-b8c9-0123-def0-234567890123",
+        "type": "LAND_TRAVEL",
+        "title": "TRAIN — Tokyo → Osaka",
+        "start_date": "2026-08-12",
+        "end_date": "2026-08-12",
+        "start_time": "10:00",
+        "end_time": "12:30",
+        "timezone": null,
+        "source_id": "d4e5f6a7-b8c9-0123-def0-234567890123"
+      },
+      {
+        "id": "stay-b2c3d4e5-f6a7-8901-bcde-f12345678901",
+        "type": "STAY",
+        "title": "Park Hyatt Tokyo",
+        "start_date": "2026-08-08",
+        "end_date": "2026-08-15",
+        "start_time": "15:00",
+        "end_time": "11:00",
+        "timezone": "Asia/Tokyo",
+        "source_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+      }
+    ]
+  }
+}
+```
+
+**Error responses (unchanged from Sprint 25):**
+
+| HTTP Status | Code | Condition |
+|-------------|------|-----------|
+| 401 | `UNAUTHORIZED` | Missing or invalid Bearer token |
+| 403 | `FORBIDDEN` | Trip belongs to another user |
+| 404 | `NOT_FOUND` | Trip ID does not exist |
+
+**Implementation note for `calendarModel.js`:**
+Add a `land_travels` query to the existing `Promise.all()` in `getCalendarEvents()`, then map results through a new `landTravelToEvent()` transformer function. The query selects: `id`, `mode`, `from_location`, `to_location`, `departure_date`, `departure_time`, `arrival_date`, `arrival_time`.
+
+```js
+// Query to add to Promise.all:
+db('land_travels')
+  .where({ trip_id: tripId })
+  .select('id', 'mode', 'from_location', 'to_location',
+          'departure_date', 'departure_time', 'arrival_date', 'arrival_time')
+```
+
+`departure_date` and `arrival_date` are `DATE` columns — Knex returns them as JavaScript `Date` objects by default. Use `TO_CHAR(departure_date, 'YYYY-MM-DD')` in the query (same pattern as `activityModel.js` for `activity_date`) to ensure the value is a plain `YYYY-MM-DD` string, not a JS Date.
+
+**Test cases required (T-242):**
+
+| # | Scenario | Expected |
+|---|----------|----------|
+| 1 | Trip with no land travels → GET calendar | No `LAND_TRAVEL` events in response |
+| 2 | Trip with 1 land travel (with departure and arrival times) → GET calendar | 1 `LAND_TRAVEL` event with correct `title`, `start_date`, `end_date`, `start_time`, `end_time` |
+| 3 | Trip with 1 land travel where `arrival_date` is null → GET calendar | `end_date` equals `start_date` (departure fallback) |
+| 4 | Trip with 1 land travel where `departure_time` and `arrival_time` are null → GET calendar | `start_time` and `end_time` are `null` |
+| 5 | Trip with mixed events (FLIGHT + LAND_TRAVEL + STAY + ACTIVITY) → GET calendar | All event types present, sorted correctly by start_date/start_time |
+| 6 | All existing calendar tests (FLIGHT, STAY, ACTIVITY) still pass | No regressions |
+
+**No schema changes.** `land_travels` table exists since Sprint 6 (migration 009). No new migrations required.
+
+---
+
+### Sprint 30 — Schema State (No Changes)
+
+No database migrations are introduced in Sprint 30. All three Sprint 30 backend tasks (T-238, T-240, T-242) are code-only fixes — no DDL changes required.
+
+| # | Sprint | Description | Status |
+|---|--------|-------------|--------|
+| 001–006 | 1 | Core tables (users, refresh_tokens, trips, flights, stays, activities) | ✅ Applied on Staging |
+| 007 | 2 | Add `start_date` + `end_date` to `trips` | ✅ Applied on Staging |
+| 008 | 3 | Make `start_time`/`end_time` nullable on `activities` | ✅ Applied on Staging |
+| 009 | 6 | Create `land_travels` table | ✅ Applied on Staging |
+| 010 | 7 | Add `notes TEXT NULL` to `trips` | ✅ Applied on Staging |
+| — | 8–29 | *(No new migrations)* | Sprints 8–29 schema-stable |
+| — | **30** | *(No new migrations)* | **Sprint 30: code fixes only — zero schema work** |
+
+**Total migrations on staging: 10 (001–010). All applied. None pending.**
+
+**Deploy Engineer: No migration step required for Sprint 30.**
+
+---
+
+### Sprint 30 — All-Endpoints Reference
+
+| Sprint | Endpoint | Sprint 30 Status |
+|--------|----------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/login` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Unchanged |
+| 1 | `GET /api/v1/health` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id` | ⚠️ **T-238 behavior fix** — `status` field now always reflects patched value; `computeTripStatus()` date-override removed |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ⚠️ **T-240 clarification** — `departure_at`/`arrival_at` returned as UTC ISO strings; frontend converts to local using `*_tz` |
+| 1 | `POST /api/v1/trips/:id/flights` | ⚠️ **T-240 clarification** — `departure_at`/`arrival_at` MUST include UTC offset; naive strings rejected with 400 |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ⚠️ **T-240 clarification** — same `departure_at`/`arrival_at` offset requirement as POST |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ⚠️ **T-242 new event type** — `LAND_TRAVEL` added to event type enum and response |
+
+---
+
+*Sprint 30 contracts published by Backend Engineer 2026-03-17. Three changes: (1) T-238 — PATCH /trips/:id status behavior fix (computeTripStatus override removed, stored value always returned); (2) T-240 — Flight datetime fields clarified to require UTC offset in writes, return UTC ISO strings in reads; (3) T-242 — Calendar endpoint extended with LAND_TRAVEL event type from land_travels table. No schema changes. No migrations. Auto-approved per automated sprint cycle. Test baseline entering Sprint 30: 363/363 backend | 486/486 frontend.*
+
+---
+
+## Sprint 31 Contracts
+
+**Sprint #31 — 2026-03-20**
+**Published by:** Backend Engineer
+**Date:** 2026-03-20
+**Status:** Confirmed — No new or changed API contracts this sprint
+
+---
+
+### Overview
+
+Sprint #31 backend task is **T-250: Fix `knexfile.js` staging seeds configuration gap**. This is a pure server-side configuration fix. No new API endpoints are introduced, no existing endpoint contracts change, and no DDL schema migrations are required.
+
+| Task | Type | Contract Impact |
+|------|------|----------------|
+| T-250 | Config fix (`knexfile.js` staging seeds block) | ✅ None — internal config only, no API surface change |
+
+---
+
+### T-250 — knexfile.js Staging Seeds Config Fix
+
+**Sprint:** 31
+**Task:** T-250
+**Date:** 2026-03-20
+**Author:** Backend Engineer
+**Status:** Confirmed — No API contract changes
+
+#### Summary
+
+The `staging` environment block in `backend/src/config/knexfile.js` is missing `seeds: { directory: seedsDir }`. This causes `NODE_ENV=staging npm run seed` to fail with `ENOENT` because Knex cannot locate the seeds directory. The `development` block has the correct `seeds` config and serves as the workaround today.
+
+**Fix:** Add `seeds: { directory: seedsDir }` to the `staging` environment block in `knexfile.js`, matching the pattern already used in the `development` block. `seedsDir` is already defined at the top of the file and shared across environments.
+
+#### API Impact
+
+**None.** This fix affects only the Knex configuration used by CLI seed commands (`knex seed:run` / `npm run seed`). It has zero effect on:
+
+- Any REST API endpoint (no routes added, changed, or removed)
+- Request or response shapes
+- Authentication behavior
+- Database schema (no DDL — no new tables, columns, or indexes)
+- The existing `development` or `production` knexfile blocks (those are not touched)
+
+#### What Changes
+
+| File | Change |
+|------|--------|
+| `backend/src/config/knexfile.js` | Add `seeds: { directory: seedsDir }` to the `staging` environment block |
+| Backend test file | Add 1 unit test: staging config object includes `seeds.directory === seedsDir` |
+
+#### Verification (QA reference)
+
+| Check | Expected result |
+|-------|----------------|
+| `config.staging.seeds.directory` | Equals `seedsDir` (the path already computed at top of knexfile) |
+| `config.development.seeds.directory` | Unchanged — still equals `seedsDir` |
+| `config.production.seeds` | Unchanged — not modified by this fix |
+| `NODE_ENV=staging npm run seed` | Resolves seeds directory without `ENOENT` |
+| All 402+ existing backend tests | Still pass — no logic changed |
+
+#### Schema Changes
+
+None. Migration log remains at **10 applied migrations (001–010)**. No `knex migrate:latest` is required for Sprint 31.
+
+---
+
+### All Existing Contracts — Sprint 31 Status
+
+All 30 endpoints defined across Sprints 1–30 remain in force and unchanged.
+
+| Sprint | Endpoint | Sprint 31 Status |
+|--------|----------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/login` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Unchanged (T-238 fix applied in Sprint 30 — no further changes) |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Unchanged (T-240 clarification applied in Sprint 30) |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Unchanged (T-242 LAND_TRAVEL integration complete in Sprint 30) |
+
+---
+
+*Sprint 31 contracts published by Backend Engineer 2026-03-20. No new endpoints. No contract changes. No schema migrations. T-250 is a pure knexfile.js config fix (staging seeds directory) with zero API surface impact. All 30 endpoints from Sprints 1–30 remain in force. Test baseline entering Sprint 31: 402/402 backend | 495/495 frontend | 4/4 Playwright.*
+
+---
+
+## Sprint 32 — API Contracts
+
+**Sprint Goal:** Post-production verification, API documentation updates (T-257), and stay category case normalization (T-258).
+
+**Published by:** Backend Engineer
+**Date:** 2026-03-20
+**Status:** Published
+
+---
+
+### T-257 — Documentation Updates (No Code Changes)
+
+#### Update 1: Calendar Endpoint Response Shape Note (FB-132)
+
+**Applies to:** `GET /api/v1/trips/:id/calendar` (Sprint 25 / T-212)
+
+> **Note:** This endpoint returns a wrapped object `{ data: { trip_id, events: [] } }` rather than a flat array. Access events via `response.data.events`. This differs from other sub-resource list endpoints (e.g., `GET /api/v1/trips/:id/flights`) which return `{ data: [...] }` directly. The `trip_id` field provides context when the response is consumed outside the original request scope (e.g., cached or passed between components). This is intentional and will not change.
+
+#### Update 2: curl HTTPS Usage Note (FB-131)
+
+**Applies to:** All HTTPS endpoints
+
+> **API Usage Note — curl + HTTPS:** When using `curl` to send POST/PATCH/PUT requests with JSON bodies against HTTPS endpoints, add `--http1.1` to avoid HTTP/2 body framing issues that can cause `INVALID_JSON` errors. Example:
+>
+> ```bash
+> curl --http1.1 -sk -X POST \
+>   -H "Content-Type: application/json" \
+>   -H "Authorization: Bearer <token>" \
+>   -d '{"name":"My Trip"}' \
+>   https://triplanner-backend-sp61.onrender.com/api/v1/trips
+> ```
+>
+> This is a developer tooling note only — the application itself (frontend ↔ backend) is not affected. The issue occurs because `curl` defaults to HTTP/2 on HTTPS connections, and some HTTP/2 implementations have body framing inconsistencies with `-d` payloads.
+
+---
+
+### T-258 — Stay Category Case Normalization (Behavioral Change)
+
+**Applies to:** `POST /api/v1/trips/:tripId/stays` (Sprint 1 / T-006) and `PATCH /api/v1/trips/:tripId/stays/:id` (Sprint 1 / T-006)
+
+**Change type:** Behavioral — no new endpoints, no schema changes, no new response shapes.
+
+**Summary:** The `category` field on stays endpoints now accepts case-insensitive input. The server normalizes the value to uppercase before validation and storage. This is a backwards-compatible change — existing clients sending uppercase values are unaffected.
+
+#### Updated Validation Behavior
+
+**Before (Sprint 1–31):**
+| Input | Result |
+|-------|--------|
+| `"HOTEL"` | ✅ 201 Created |
+| `"hotel"` | ❌ 400 `VALIDATION_ERROR` — "Category must be one of: HOTEL, AIRBNB, VRBO" |
+| `"Hotel"` | ❌ 400 `VALIDATION_ERROR` |
+
+**After (Sprint 32 — T-258):**
+| Input | Result | Stored Value |
+|-------|--------|-------------|
+| `"HOTEL"` | ✅ 201 Created | `HOTEL` |
+| `"hotel"` | ✅ 201 Created | `HOTEL` |
+| `"Hotel"` | ✅ 201 Created | `HOTEL` |
+| `"airbnb"` | ✅ 201 Created | `AIRBNB` |
+| `"Vrbo"` | ✅ 201 Created | `VRBO` |
+| `"motel"` | ❌ 400 `VALIDATION_ERROR` | — |
+| `""` | ❌ 400 `VALIDATION_ERROR` | — |
+
+**Normalization rule:** `category = category.toUpperCase()` applied before enum validation. The enum check still requires the value to be one of `HOTEL`, `AIRBNB`, `VRBO` — only the casing requirement is relaxed.
+
+**Affected endpoints:**
+
+1. **POST /api/v1/trips/:tripId/stays** — `category` field in request body is normalized to uppercase before validation.
+2. **PATCH /api/v1/trips/:tripId/stays/:id** — `category` field (if provided) in request body is normalized to uppercase before validation.
+
+**Response shapes:** Unchanged. The `category` field in response bodies has always been uppercase and remains so.
+
+**Error response (unchanged for invalid categories):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "category": "Category must be one of: HOTEL, AIRBNB, VRBO"
+    }
+  }
+}
+```
+
+**Schema changes:** None. The PostgreSQL CHECK constraint on the `stays.category` column still requires uppercase values. Normalization happens in the application layer before the value reaches the database.
+
+**Test plan (for QA reference):**
+| Test | Input | Expected |
+|------|-------|----------|
+| POST with lowercase `"hotel"` | `{ "category": "hotel", ... }` | 201; stored `HOTEL` |
+| POST with lowercase `"airbnb"` | `{ "category": "airbnb", ... }` | 201; stored `AIRBNB` |
+| POST with mixed case `"Vrbo"` | `{ "category": "Vrbo", ... }` | 201; stored `VRBO` |
+| POST with uppercase `"HOTEL"` (regression) | `{ "category": "HOTEL", ... }` | 201; stored `HOTEL` |
+| POST with invalid `"motel"` | `{ "category": "motel", ... }` | 400 `VALIDATION_ERROR` |
+| PATCH with lowercase `"airbnb"` | `{ "category": "airbnb" }` | 200; stored `AIRBNB` |
+
+---
+
+### Sprint 32 — No Schema Changes
+
+No database migrations are introduced in Sprint 32. The migration set remains at 10 applied migrations (001–010), identical to Sprint 31.
+
+**Total migrations on staging: 10 (001–010). All applied. None pending for Sprint 32. Deploy Engineer: no `knex migrate:latest` run required.**
+
+---
+
+### All Existing Contracts — Sprint 32 Status
+
+All 30 endpoints defined across Sprints 1–30 remain in force. T-258 introduces a behavioral change (case normalization) to the stays POST and PATCH endpoints but does not alter their method, path, request shape, response shape, or error codes.
+
+| Sprint | Endpoint | Sprint 32 Status |
+|--------|----------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/login` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ **T-258: category now case-insensitive** (normalized to uppercase before validation) |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ **T-258: category now case-insensitive** (normalized to uppercase before validation) |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Unchanged (T-257 adds documentation note only — response shape is unchanged) |
+
+---
+
+*Sprint 32 contracts published by Backend Engineer 2026-03-20. No new endpoints. T-257 is documentation-only (calendar response shape note + curl --http1.1 workaround). T-258 is a behavioral change to stays POST/PATCH (case-insensitive category input, normalized to uppercase). No schema migrations. All 30 endpoints from Sprints 1–30 remain in force. Test baseline entering Sprint 32: 406/406 backend | 496/496 frontend | 4/4 Playwright.*

@@ -71,8 +71,22 @@ function makeActivity(overrides = {}) {
   };
 }
 
+function makeLandTravel(overrides = {}) {
+  return {
+    id: 'dddd0001-0000-4000-8000-000000000001',
+    mode: 'TRAIN',
+    from_location: 'Tokyo',
+    to_location: 'Osaka',
+    departure_date: '2026-08-12',
+    departure_time: '10:00:00',
+    arrival_date: '2026-08-12',
+    arrival_time: '12:30:00',
+    ...overrides,
+  };
+}
+
 // Helper: configure mock db to return specific rows for each table
-function setupDbMocks({ flights = [], stays = [], activities = [] } = {}) {
+function setupDbMocks({ flights = [], stays = [], activities = [], landTravels = [] } = {}) {
   const makeChain = (rows) => {
     const chain = { where: vi.fn().mockReturnThis(), select: vi.fn() };
     chain.select.mockResolvedValue(rows);
@@ -83,6 +97,7 @@ function setupDbMocks({ flights = [], stays = [], activities = [] } = {}) {
     if (table === 'flights') return makeChain(flights);
     if (table === 'stays') return makeChain(stays);
     if (table === 'activities') return makeChain(activities);
+    if (table === 'land_travels') return makeChain(landTravels);
     return makeChain([]);
   });
   db.raw = vi.fn((sql) => sql);
@@ -264,6 +279,110 @@ describe('calendarModel — getCalendarEvents()', () => {
     const events = await getCalendarEvents('trip-id');
     expect(events[0].title).toBe('Timed');
     expect(events[1].title).toBe('All-day');
+  });
+
+  // ---- LAND_TRAVEL event transformation (T-242) ----
+
+  it('transforms a land travel into a LAND_TRAVEL event with correct id prefix', async () => {
+    setupDbMocks({ landTravels: [makeLandTravel()] });
+    const events = await getCalendarEvents('trip-id');
+
+    expect(events).toHaveLength(1);
+    const e = events[0];
+    expect(e.type).toBe('LAND_TRAVEL');
+    expect(e.id).toBe(`land-travel-${makeLandTravel().id}`);
+    expect(e.source_id).toBe(makeLandTravel().id);
+  });
+
+  it('derives LAND_TRAVEL title as "{mode} — {from_location} → {to_location}"', async () => {
+    setupDbMocks({ landTravels: [makeLandTravel()] });
+    const events = await getCalendarEvents('trip-id');
+    expect(events[0].title).toBe('TRAIN — Tokyo → Osaka');
+  });
+
+  it('uses departure_date as start_date and arrival_date as end_date', async () => {
+    setupDbMocks({ landTravels: [makeLandTravel()] });
+    const events = await getCalendarEvents('trip-id');
+    expect(events[0].start_date).toBe('2026-08-12');
+    expect(events[0].end_date).toBe('2026-08-12');
+  });
+
+  it('normalizes departure_time and arrival_time to HH:MM', async () => {
+    setupDbMocks({ landTravels: [makeLandTravel({ departure_time: '10:00:00', arrival_time: '12:30:00' })] });
+    const events = await getCalendarEvents('trip-id');
+    expect(events[0].start_time).toBe('10:00');
+    expect(events[0].end_time).toBe('12:30');
+  });
+
+  it('falls back end_date to departure_date when arrival_date is null', async () => {
+    setupDbMocks({ landTravels: [makeLandTravel({ arrival_date: null })] });
+    const events = await getCalendarEvents('trip-id');
+    expect(events[0].start_date).toBe('2026-08-12');
+    expect(events[0].end_date).toBe('2026-08-12'); // fallback to departure_date
+  });
+
+  it('returns null start_time and end_time when departure_time and arrival_time are null', async () => {
+    setupDbMocks({ landTravels: [makeLandTravel({ departure_time: null, arrival_time: null })] });
+    const events = await getCalendarEvents('trip-id');
+    expect(events[0].start_time).toBeNull();
+    expect(events[0].end_time).toBeNull();
+  });
+
+  it('LAND_TRAVEL timezone is always null', async () => {
+    setupDbMocks({ landTravels: [makeLandTravel()] });
+    const events = await getCalendarEvents('trip-id');
+    expect(events[0].timezone).toBeNull();
+  });
+
+  it('returns no LAND_TRAVEL events when land_travels table has no rows for trip', async () => {
+    setupDbMocks({ landTravels: [] });
+    const events = await getCalendarEvents('trip-id');
+    expect(events.filter(e => e.type === 'LAND_TRAVEL')).toHaveLength(0);
+  });
+
+  it('returns all four event types when all sub-resources are present', async () => {
+    setupDbMocks({
+      flights: [makeFlight()],
+      stays: [makeStay()],
+      activities: [makeActivity()],
+      landTravels: [makeLandTravel()],
+    });
+    const events = await getCalendarEvents('trip-id');
+    const types = events.map(e => e.type);
+    expect(types).toContain('FLIGHT');
+    expect(types).toContain('STAY');
+    expect(types).toContain('ACTIVITY');
+    expect(types).toContain('LAND_TRAVEL');
+    expect(events).toHaveLength(4);
+  });
+
+  it('sorts LAND_TRAVEL events by start_date with other event types', async () => {
+    // LAND_TRAVEL on 2026-08-12, ACTIVITY on 2026-08-08 → ACTIVITY first
+    setupDbMocks({
+      activities: [makeActivity({ activity_date: '2026-08-08' })],
+      landTravels: [makeLandTravel({ departure_date: '2026-08-12' })],
+    });
+    const events = await getCalendarEvents('trip-id');
+    expect(events[0].type).toBe('ACTIVITY');
+    expect(events[1].type).toBe('LAND_TRAVEL');
+  });
+
+  it('uses alphabetical type tiebreaker: LAND_TRAVEL after FLIGHT on same date+time', async () => {
+    // FLIGHT and LAND_TRAVEL on same date+time → FLIGHT < LAND_TRAVEL alphabetically
+    const flight = makeFlight({
+      departure_at: '2026-08-12T15:00:00.000Z',
+      departure_tz: 'UTC',
+      arrival_at: '2026-08-12T17:00:00.000Z',
+      arrival_tz: 'UTC',
+    });
+    const lt = makeLandTravel({
+      departure_date: '2026-08-12',
+      departure_time: '15:00:00', // same local time
+    });
+    setupDbMocks({ flights: [flight], landTravels: [lt] });
+    const events = await getCalendarEvents('trip-id');
+    expect(events[0].type).toBe('FLIGHT');
+    expect(events[1].type).toBe('LAND_TRAVEL');
   });
 
   it('uses type as alphabetical tiebreaker (ACTIVITY < FLIGHT < STAY)', async () => {

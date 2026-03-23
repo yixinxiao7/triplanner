@@ -703,4 +703,25 @@ All 10 migrations applied on staging. Schema is stable and unchanged from Sprint
 
 ---
 
+### Sprint 31 — No Schema Changes
+
+**Date:** 2026-03-20
+**Confirmed by:** Backend Engineer
+**Task:** T-250
+
+**Reason:** Sprint #31's sole backend task (T-250) is a configuration fix to `backend/src/config/knexfile.js`. Specifically, it adds `seeds: { directory: seedsDir }` to the `staging` environment block to resolve an `ENOENT` error when running `NODE_ENV=staging npm run seed`. No DDL is required.
+
+**T-250 — knexfile.js Staging Seeds Config:**
+- Modifies `backend/src/config/knexfile.js` staging block only — adds `seeds: { directory: seedsDir }`
+- `seedsDir` is already defined at the top of the file (shared with development block) — no new path computation needed
+- Does not touch the `development` or `production` blocks
+- Does not introduce any new tables, columns, indexes, or constraints
+- **No schema change. No migration. No `knex migrate:latest` required.**
+
+**Manager Approval Note:** No schema changes for Sprint 31 → no Manager handoff required for DDL approval. This note is for the Deploy Engineer's reference: **do not run `knex migrate:latest` for Sprint 31** — the migration log remains at 10 applied migrations (001–010). The staging seeds fix allows `NODE_ENV=staging npm run seed` to resolve correctly; however, whether to re-seed staging is at the Deploy Engineer's discretion (the test user seed is idempotent and safe to re-run).
+
+**[Auto-approved — no schema change]**
+
+---
+
 *Sprint 20 schema analysis by Backend Engineer 2026-03-10. T-188 is validation-layer-only — no migration. T-186 is validation-layer-only — no migration. Schema remains stable at 10 migrations.*
