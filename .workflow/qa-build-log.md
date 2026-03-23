@@ -4,6 +4,74 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #34 — Monitor Agent — Post-Deploy Health Check — 2026-03-23
+
+**Task:** T-225 (Monitor Agent — Post-deploy health check)
+**Date:** 2026-03-23
+**Sprint:** 34
+**Environment:** Staging (http://localhost:3001) + Production (https://triplanner-backend-sp61.onrender.com)
+**Overall Status:** ✅ ALL PASS
+**Deploy Verified:** Yes
+
+### Test Type: Config Consistency
+
+| Check | Status | Details |
+|-------|--------|---------|
+| Port match | ✅ PASS | `backend/.env` PORT=3000; `vite.config.js` proxy defaults to `http://localhost:3000` (via `BACKEND_PORT` env, default `3000`). Staging override to 3001 is a runtime env var, not a config file mismatch. |
+| Protocol match | ✅ PASS | `SSL_KEY_PATH` and `SSL_CERT_PATH` are **commented out** in `backend/.env` → backend serves HTTP. Vite proxy defaults to `http://` protocol. Consistent. |
+| CORS match | ✅ PASS | `CORS_ORIGIN=http://localhost:5173` in `backend/.env`; Vite dev server `port: 5173`. Frontend origin matches. |
+| Docker port match | ✅ PASS | `infra/docker-compose.yml` backend container `PORT: 3000` (internal); backend healthcheck targets `http://localhost:3000/api/v1/health`. Consistent with `.env` PORT=3000. No host port mapping for backend (frontend nginx reverse-proxies internally). |
+
+**Config Consistency Result:** PASS — All cross-service configurations are consistent.
+
+### Test Type: Post-Deploy Health Check — Staging (http://localhost:3001)
+
+**Token:** Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT /auth/register)
+
+| Check | Status | Details |
+|-------|--------|---------|
+| App responds | ✅ PASS | `GET /api/v1/health` → 200 `{"status":"ok"}` |
+| Auth login | ✅ PASS | `POST /api/v1/auth/login` → 200 with `access_token` and user object |
+| Auth refresh (no cookie) | ✅ PASS | `POST /api/v1/auth/refresh` → 401 `INVALID_REFRESH_TOKEN` (expected — no cookie sent) |
+| GET /api/v1/trips | ✅ PASS | 200 — returns paginated trip list with correct shape |
+| POST /api/v1/trips | ✅ PASS | 201 — creates trip, returns full trip object with UUID id |
+| GET /api/v1/trips/:id | ✅ PASS | 200 — returns single trip with all fields |
+| DELETE /api/v1/trips/:id | ✅ PASS | 204 No Content — trip deleted |
+| GET /api/v1/trips/:id/activities | ✅ PASS | 200 — returns `{"data":[]}` (empty, expected) |
+| GET /api/v1/trips/:id/flights | ✅ PASS | 200 — returns `{"data":[]}` (empty, expected) |
+| GET /api/v1/trips/:id/stays | ✅ PASS | 200 — returns stay data with correct shape |
+| GET /api/v1/trips/:id/calendar | ✅ PASS | 200 — returns calendar events with multi-day stay event |
+| Database connected | ✅ PASS | All CRUD operations succeed; health endpoint confirms DB connectivity |
+| No 5xx errors | ✅ PASS | Zero 5xx responses across all checks |
+| Frontend build | ✅ PASS | `frontend/dist/` exists with `index.html` + assets |
+
+### Test Type: Post-Deploy Health Check — Production (https://triplanner-backend-sp61.onrender.com)
+
+**Token:** Acquired via `POST /api/v1/auth/register` (test seed not available on production)
+
+| Check | Status | Details |
+|-------|--------|---------|
+| App responds | ✅ PASS | `GET /api/v1/health` → 200 `{"status":"ok"}` |
+| Auth register | ✅ PASS | `POST /api/v1/auth/register` → 201 with user + access_token |
+| Auth login (seeded account) | ⚠️ N/A | `test@triplanner.local` not seeded on production — 401 `INVALID_CREDENTIALS`. Expected for prod. |
+| GET /api/v1/trips | ✅ PASS | 200 — returns empty paginated list `{"data":[],"pagination":{...}}` |
+| POST /api/v1/trips | ✅ PASS | 201 — creates trip, returns full trip object |
+| DELETE /api/v1/trips/:id | ✅ PASS | 204 — cleanup successful |
+| CORS preflight | ✅ PASS | OPTIONS → 204, `Access-Control-Allow-Origin: https://triplanner.yixinx.com`, credentials allowed |
+| Frontend (https://triplanner.yixinx.com) | ✅ PASS | Page loads — title "triplanner" |
+| Database connected | ✅ PASS | CRUD operations succeed on production |
+| No 5xx errors | ✅ PASS | Zero 5xx responses across all production checks |
+
+### Summary
+
+All health checks pass across both staging and production environments. Config consistency is verified — ports, protocols, CORS, and Docker wiring are all aligned.
+
+**Deploy Verified: ✅ Yes (Staging + Production)**
+
+*Monitor Agent Sprint #34 — T-225 — 2026-03-23*
+
+---
+
 ## Sprint #34 — Deploy Engineer — Staging Build & Deploy — 2026-03-23
 
 **Task:** Deploy Engineer Sprint 34 staging build and deployment
