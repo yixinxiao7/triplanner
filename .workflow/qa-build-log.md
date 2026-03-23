@@ -4,6 +4,197 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #34 — Deploy Engineer — T-269 Production Deployment — 2026-03-23
+
+**Task:** T-269 (Deploy Engineer — Deploy Sprint 33 frontend changes to production)
+**Date:** 2026-03-23
+**Sprint:** 34
+**Environment:** Production (`https://triplanner.yixinx.com` / `https://triplanner-backend-sp61.onrender.com`)
+**Overall Status:** ✅ DEPLOYED
+
+---
+
+### Deployment Summary
+
+| Step | Status | Details |
+|------|--------|---------|
+| Pre-deploy gates | ✅ PASS | CR-33 approved, QA T-265/T-266 passed, Monitor T-267 passed (17/17 + 4/4 Playwright), User T-268 passed (12/12 positive), CR-34 approved, QA T-270 code-level PASS |
+| Frontend build verification | ✅ PASS | 501/501 tests, `VITE_API_URL=https://triplanner-backend-sp61.onrender.com/api/v1` baked in, 0 npm vulnerabilities |
+| Backend test verification | ✅ PASS | 410/410 tests pass |
+| Pending migrations | ✅ None | 10/10 migrations already applied. No new migrations in Sprint 33 or 34. |
+| Security self-check | ✅ PASS | No secrets in code/artifacts, HTTPS via Render, render.yaml has no hardcoded secrets, no .env committed |
+| PR created | ✅ PR #6 | `feature/T-264-multi-day-calendar-spanning` → `main` at `https://github.com/yixinxiao7/triplanner/pull/6` |
+| PR merged | ✅ Merged | Merge commit `7e62a63` on `main` — 2026-03-23 |
+| Render auto-deploy | ✅ Triggered | Render monitors `main` branch — auto-deploy initiated on merge |
+| Backend health check | ✅ PASS | `GET /api/v1/health` → `{"status":"ok"}` 200 |
+| Frontend loads | ✅ PASS | `https://triplanner.yixinx.com` returns HTML with title "triplanner" (SPA shell) |
+
+### What Was Deployed
+
+- **Sprint 33 T-264:** Multi-day FLIGHT and LAND_TRAVEL calendar spanning fix
+- All Sprint 29–33 changes that accumulated on the feature branch since last production deploy
+
+### Deploy Verified
+
+- **Staging:** Yes (verified in Sprint 33 — T-267 Monitor health check passed)
+- **Production:** Pending — awaiting Monitor Agent T-225 post-production health check
+
+### Next Steps
+
+1. **Monitor Agent (T-225):** Execute full production health check protocol
+2. **QA Engineer (T-270):** Complete live production security verification
+3. **User Agent (T-256):** Production walkthrough after T-225 confirms healthy
+
+---
+
+## Sprint #34 — QA Engineer — T-270 Production Smoke Test + Security Verification — 2026-03-23
+
+**Task:** T-270 (QA Engineer — Production smoke test + security verification)
+**Date:** 2026-03-23
+**Sprint:** 34
+**Environment:** Local codebase verification + production readiness assessment
+**Overall Status:** ✅ PASS (code-level) | 🔶 Production live verification blocked (T-269 deploy pending PR merge)
+
+---
+
+### Test Type: Unit Test — Backend
+
+**Date:** 2026-03-23
+**Result:** ✅ PASS — 410/410 tests pass (23 test files)
+**Duration:** 2.74s
+**Failures:** 0
+**Notes:** All happy-path and error-path tests pass. Test coverage includes auth, trips CRUD, flights, stays, activities, land travel, calendar, CORS, rate limiting, cookie SameSite, trip status, and coalesce date logic. Matches Sprint 34 kickoff baseline (410/410).
+
+### Test Type: Unit Test — Frontend
+
+**Date:** 2026-03-23
+**Result:** ✅ PASS — 501/501 tests pass (25 test files)
+**Duration:** 1.87s
+**Failures:** 0
+**Notes:** All component render tests, hook tests, utility tests pass. Coverage includes HomePage, TripDetailsPage, TripCalendar (86 tests including multi-day spanning), all edit pages (Flights, Stays, Activities, LandTravel), LoginPage, RegisterPage, Navbar, FilterToolbar, StatusFilterTabs, formatDate, axiosInterceptor, rateLimitUtils. Matches Sprint 34 kickoff baseline (501/501).
+
+---
+
+### Test Type: Integration Test — T-270 Code-Level API Contract Verification
+
+**Date:** 2026-03-23
+**Result:** ✅ PASS
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Frontend API base URL | ✅ PASS | Production build uses `VITE_API_URL=https://triplanner-backend-sp61.onrender.com/api/v1` (baked into build artifact `index-UYLYitJo.js`) |
+| Dev proxy target matches backend PORT | ✅ PASS | Vite proxy targets `http://localhost:3000` (default); backend `.env` sets `PORT=3000` |
+| CORS_ORIGIN includes frontend dev origin | ✅ PASS | Backend `.env` has `CORS_ORIGIN=http://localhost:5173`; Vite dev server runs on port 5173 |
+| Backend SSL / Vite proxy protocol | ✅ PASS | SSL is commented out in backend `.env`; Vite proxy defaults to `http://` protocol. Consistent. |
+| Docker compose PORT alignment | ✅ PASS | `docker-compose.yml` backend service uses `PORT: 3000`, matching backend `.env` |
+| Docker CORS_ORIGIN | ⚠️ NOTE | Docker compose defaults to `${CORS_ORIGIN:-http://localhost}` — fine for Docker networking where frontend nginx proxies to backend internally. Not a mismatch. |
+| Auth enforcement tested | ✅ PASS | 14 auth tests cover 401 on missing/invalid tokens, token refresh, register, login |
+| Input validation tested | ✅ PASS | Tests verify 400 on missing fields, bad JSON, invalid types across all endpoints |
+| Error response safety | ✅ PASS | errorHandler.js returns generic "An unexpected error occurred" for 500s; never leaks stack traces |
+| Cookie SameSite/Secure for production | ✅ PASS | `getSameSite()` returns `'none'` in production; `Secure` flag set when `COOKIE_SECURE=true`. Tests verify both in sprint26.test.js |
+
+---
+
+### Test Type: Config Consistency Check
+
+**Date:** 2026-03-23
+**Result:** ✅ PASS — No mismatches found
+
+| Config Item | backend/.env | vite.config.js | docker-compose.yml | Status |
+|-------------|-------------|----------------|-------------------|--------|
+| Backend PORT | 3000 | Proxy target: `localhost:3000` (default) | 3000 | ✅ Consistent |
+| SSL enabled | No (commented out) | `http://` protocol (default) | N/A | ✅ Consistent |
+| CORS_ORIGIN | `http://localhost:5173` | Dev server on 5173 | `${CORS_ORIGIN:-http://localhost}` | ✅ Consistent |
+| VITE_API_URL (production) | N/A | Build arg in Dockerfile.frontend | `${VITE_API_URL:-/api/v1}` | ✅ Consistent |
+
+---
+
+### Test Type: Security Scan — T-270
+
+**Date:** 2026-03-23
+**Result:** ✅ PASS — All applicable security checklist items verified
+
+#### Authentication & Authorization
+| Item | Status | Evidence |
+|------|--------|----------|
+| All API endpoints require authentication | ✅ PASS | `authenticate` middleware on all `/trips`, `/flights`, `/stays`, `/activities`, `/land-travel`, `/calendar` routes. Auth routes (register/login/refresh/logout) are appropriately public. |
+| Auth tokens have expiration + refresh | ✅ PASS | JWT_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d. Refresh token rotation implemented with hashed storage. |
+| Password hashing uses bcrypt (12 rounds) | ✅ PASS | `bcrypt.hash(password, 12)` in auth.js |
+| Failed login rate-limited | ✅ PASS | `loginLimiter` (5 attempts/15min), `registerLimiter`, `generalAuthLimiter` in rateLimiter.js |
+
+#### Input Validation & Injection Prevention
+| Item | Status | Evidence |
+|------|--------|----------|
+| SQL uses parameterized queries | ✅ PASS | All models use Knex query builder. `db.raw()` calls use static SQL strings only — no user input concatenation. |
+| HTML output sanitized (XSS prevention) | ✅ PASS | No `dangerouslySetInnerHTML` in frontend code. React's default JSX escaping provides XSS protection. |
+| Server-side input validation | ✅ PASS | Validation middleware on all mutation endpoints (register, login, trips CRUD, sub-resources). |
+
+#### API Security
+| Item | Status | Evidence |
+|------|--------|----------|
+| CORS configured for expected origins | ✅ PASS | `cors({ origin: process.env.CORS_ORIGIN })` — dev: `http://localhost:5173`, production: `https://triplanner.yixinx.com` |
+| Rate limiting on public endpoints | ✅ PASS | express-rate-limit on login, register, and general auth routes |
+| No internal error details leaked | ✅ PASS | errorHandler returns generic message for 500s. Stack traces logged server-side only. |
+| Security headers via helmet | ✅ PASS | `helmet()` middleware applied — sets X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, etc. |
+
+#### Data Protection
+| Item | Status | Evidence |
+|------|--------|----------|
+| Credentials in env vars, not code | ✅ PASS | JWT_SECRET, DATABASE_URL in `.env` files. `.env` is gitignored. No hardcoded secrets found in source. |
+| No secrets committed to git | ✅ PASS | `.gitignore` excludes `.env`, `.env.local`, `.env.*.local`, `backend/.env.staging` |
+| Logs do not contain PII/tokens | ✅ PASS | ErrorHandler logs error stack only. No password/token logging found in source. |
+
+#### Infrastructure
+| Item | Status | Evidence |
+|------|--------|----------|
+| HTTPS enforced | ✅ PASS | Render enforces HTTPS by default. render.yaml configured correctly. |
+| npm audit — backend | ✅ PASS | 0 vulnerabilities |
+| npm audit — frontend | ✅ PASS | 0 vulnerabilities |
+| No default/sample credentials | ✅ PASS | `.env` has `JWT_SECRET=change-me-to-a-random-string` (dev only — production uses Render's `generateValue: true`) |
+
+#### Production-Specific Checks (T-270 scope)
+| Item | Status | Evidence |
+|------|--------|----------|
+| HTTPS enforced on production | ✅ PASS (by Render config) | Render auto-provisions TLS for custom domains |
+| CORS correct for custom domain | ✅ PASS (code verified) | Production CORS_ORIGIN is set to `https://triplanner.yixinx.com` in Render env vars (per render.yaml) |
+| Cookie SameSite=None + Secure in production | ✅ PASS (code verified) | `getSameSite()` returns `'none'` when NODE_ENV=production; cookie `secure: process.env.COOKIE_SECURE === 'true' \|\| process.env.NODE_ENV === 'production'` |
+| No sensitive data in error responses | ✅ PASS | Verified in errorHandler.js — 500 errors return "An unexpected error occurred" only |
+| Auth token handling | ✅ PASS | JWT verification with proper error handling; refresh token rotation with hash storage |
+
+#### ⚠️ Production Live Verification — BLOCKED
+
+The following checks require the production deploy to actually land (T-269 PR merge pending):
+- Live HTTPS response headers verification
+- Live CORS header verification (`Access-Control-Allow-Origin: https://triplanner.yixinx.com`)
+- Live cookie `Set-Cookie` header verification (`SameSite=None; Secure`)
+- Live error response verification (no stack traces in 4xx/5xx)
+- Live auth flow end-to-end
+
+**These will be verified by Monitor Agent (T-225) post-deploy.**
+
+---
+
+### Dependency Audit Summary
+
+| Package Manager | Scope | Vulnerabilities | Date |
+|----------------|-------|----------------|------|
+| npm (backend) | production + dev | 0 | 2026-03-23 |
+| npm (frontend) | production + dev | 0 | 2026-03-23 |
+
+---
+
+### QA Conclusion — T-270
+
+**Code-level security verification: ✅ PASS.** All applicable security checklist items verified at the code/configuration level. No P1 security issues found.
+
+**Production live verification: 🔶 BLOCKED.** T-269 deploy has not landed on production yet — PR from `feature/T-264-multi-day-calendar-spanning` to `main` must be merged to trigger Render auto-deploy. Live production checks (HTTPS headers, CORS headers, cookie behavior, error responses) cannot be executed until the deploy completes. These are delegated to Monitor Agent (T-225).
+
+**Unit test baseline confirmed: 410/410 backend + 501/501 frontend = 911 total (matches kickoff baseline of 915 = 410 + 501 + 4 Playwright).**
+
+*QA Engineer Sprint #34 — T-270 Code-Level Verification Complete — 2026-03-23*
+
+---
+
 ## Sprint #34 — Deploy Engineer — T-269 Production Build & Deploy — 2026-03-23
 
 **Task:** T-269 (Deploy Engineer — Deploy Sprint 33 frontend changes to production)
