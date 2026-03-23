@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { sanitizeFields } from '../middleware/sanitize.js';
 import { uuidParamHandler } from '../middleware/validateUUID.js';
 import {
   listTripsByUser,
@@ -141,6 +142,7 @@ router.post(
       },
     },
   }),
+  sanitizeFields({ name: 'string', destinations: 'array', notes: 'string' }),
   async (req, res, next) => {
     try {
       const { name, destinations, start_date, end_date } = req.body;
@@ -245,6 +247,7 @@ router.patch(
       },
     },
   }),
+  sanitizeFields({ name: 'string', destinations: 'array', notes: 'string' }),
   async (req, res, next) => {
     try {
       const trip = await findTripById(req.params.id);
