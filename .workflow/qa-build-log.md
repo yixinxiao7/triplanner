@@ -4,6 +4,231 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #35 — QA Engineer — T-274 Full QA Pass — 2026-03-23
+
+**Task:** T-274 (QA Engineer: Security checklist + integration testing)
+**Date:** 2026-03-23
+**Sprint:** 35
+**Environment:** Local development
+**Overall Status:** ✅ PASS
+
+---
+
+### Unit Tests (Test Type: Unit Test)
+
+#### Backend — 446/446 PASS ✅
+
+| Suite | Tests | Status |
+|-------|-------|--------|
+| sprint35.test.js (T-272 sanitization) | 36 | ✅ PASS |
+| All other backend suites (24 files) | 410 | ✅ PASS |
+| **Total** | **446** | **✅ PASS** |
+
+- Duration: 2.78s
+- Regressions: 0
+- New tests (T-272): 36 — covers sanitizeHtml unit tests, sanitizeFields middleware, integration tests on all 6 models (trips, flights, stays, activities, land travel, auth)
+- Happy-path coverage: XSS payloads stripped from all user text fields ✅
+- Error-path coverage: Non-string inputs preserved, null/undefined handled, empty strings handled ✅
+
+#### Frontend — 510/510 PASS ✅
+
+| Suite | Tests | Status |
+|-------|-------|--------|
+| TripCalendar.test.jsx (T-273 click-to-expand) | 95 (9 new) | ✅ PASS |
+| All other frontend suites (25 files) | 415 | ✅ PASS |
+| **Total** | **510** | **✅ PASS** |
+
+- Duration: 1.86s
+- Regressions: 0
+- New tests (T-273): 9 — covers expand/collapse, dismiss (click-outside, Escape, month nav), keyboard navigation, edge cases (≤3 events no trigger), pill click scroll, Enter key
+- Known cosmetic warning: `act(...)` warning in test 29.I — async state update during teardown, does not affect correctness
+
+---
+
+### Integration Testing (Test Type: Integration Test)
+
+#### T-272 — Backend XSS Sanitization Integration ✅
+
+| Check | Result | Details |
+|-------|--------|---------|
+| sanitizeFields middleware on all POST routes | ✅ PASS | Applied to 6 route files: trips, flights, stays, activities, land travel, auth |
+| sanitizeHtml inline on all PATCH routes | ✅ PASS | flights (4 fields), activities (2 fields), stays (2 fields), land travel (3 fields), trips (3 fields via middleware) |
+| Middleware ordering (validate → sanitize → handler) | ✅ PASS | All POST routes follow correct order |
+| HTML tags stripped (`<script>`, `<img onerror>`, `<svg onload>`) | ✅ PASS | Regex `/<\/?[a-zA-Z][^>]*\/?>/g` + HTML comment stripping verified |
+| Unicode preserved (日本語, 東京旅行) | ✅ PASS | Non-ASCII characters unaffected |
+| Emoji preserved (🗼🎉) | ✅ PASS | Emoji unaffected |
+| Special chars preserved (&, ", ', <math angles) | ✅ PASS | `5 < 10` preserved (regex only matches tags starting with letter) |
+| Array fields sanitized (destinations[]) | ✅ PASS | Each string element sanitized individually |
+| Null/undefined fields skipped | ✅ PASS | Let validation handle missing fields |
+
+#### T-273 — Calendar Click-to-Expand Integration ✅
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Overflow trigger renders as `<button>` | ✅ PASS | Semantic button with aria-expanded, aria-haspopup="dialog" |
+| Popover uses role="dialog" | ✅ PASS | Correct ARIA attributes |
+| Dismiss: click-outside | ✅ PASS | mousedown listener |
+| Dismiss: Escape key | ✅ PASS | Focus returns to trigger |
+| Dismiss: month navigation | ✅ PASS | Popover closes on ← / → |
+| Dismiss: window resize | ✅ PASS | Popover closes |
+| Smart positioning (above/below) | ✅ PASS | Last 2 grid rows → popover above |
+| Animation: 150ms ease | ✅ PASS | popoverEnterBelow / popoverEnterAbove keyframes |
+| Mobile responsive | ✅ PASS | min(280px, calc(100vw - 32px)) |
+| No dangerouslySetInnerHTML | ✅ PASS | All content via JSX auto-escaping |
+| No XSS vectors in frontend | ✅ PASS | No raw HTML injection |
+
+#### API Contract Compliance ✅
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Frontend uses apiClient for all API calls | ✅ PASS | Centralized in utils/api |
+| Proxy config matches backend PORT | ✅ PASS | Default port 3000 matches backend/.env |
+| Response shapes unchanged by sanitization | ✅ PASS | Same JSON structure, just cleaned text values |
+
+---
+
+### Config Consistency Check (Test Type: Config Consistency)
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Backend PORT (3000) matches vite proxy target | ✅ PASS | backend/.env PORT=3000, vite defaults to port 3000 |
+| SSL consistency | ✅ PASS | Backend SSL commented out (dev mode), vite proxy uses http:// by default. BACKEND_SSL env var controls https switch. |
+| CORS_ORIGIN includes frontend dev server | ✅ PASS | CORS_ORIGIN=http://localhost:5173 matches vite server.port 5173 |
+| Docker compose backend PORT | ✅ PASS | docker-compose.yml backend PORT=3000, consistent |
+| Docker compose CORS_ORIGIN | ✅ PASS | Defaults to http://localhost (nginx proxies in Docker) |
+
+No config mismatches found.
+
+---
+
+### Security Verification (Test Type: Security Scan)
+
+#### npm audit — 0 vulnerabilities ✅
+
+```
+found 0 vulnerabilities
+```
+
+#### Security Checklist Verification
+
+| Checklist Item | Status | Evidence |
+|----------------|--------|----------|
+| **Authentication & Authorization** | | |
+| All API endpoints require authentication | ✅ PASS | `authenticate` middleware on all resource routes; auth routes appropriately public |
+| Auth tokens have expiration + refresh | ✅ PASS | JWT_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d |
+| Password hashing uses bcrypt | ✅ PASS | bcrypt.hash with 12 rounds (auth.js line 124) |
+| Failed login rate-limited | ✅ PASS | rateLimiter.js exists, applied to auth routes |
+| **Input Validation & Injection Prevention** | | |
+| All inputs validated (client + server) | ✅ PASS | validate middleware on POST, inline validation on PATCH |
+| SQL queries use parameterized statements | ✅ PASS | Knex query builder; db.raw() only for formatting (TO_CHAR, gen_random_uuid) — no user input in raw SQL |
+| HTML output sanitized (XSS prevention) | ✅ PASS | T-272: sanitizeHtml on all user text fields server-side; React JSX auto-escaping client-side |
+| **API Security** | | |
+| CORS configured for expected origins only | ✅ PASS | CORS_ORIGIN=http://localhost:5173 |
+| Rate limiting on public endpoints | ✅ PASS | rateLimiter middleware in use |
+| API responses don't leak internal details | ✅ PASS | errorHandler returns generic message for 500s; stack traces logged server-side only |
+| Sensitive data not in URL params | ✅ PASS | Auth via httpOnly cookies, not query params |
+| Security headers (helmet) | ✅ PASS | `helmet()` applied in app.js (X-Content-Type-Options, X-Frame-Options, etc.) |
+| **Data Protection** | | |
+| Credentials in env vars, not code | ✅ PASS | JWT_SECRET, DATABASE_URL in .env; docker-compose uses env vars with required validation |
+| Logs don't contain PII/passwords/tokens | ✅ PASS | Error handler logs stack traces only; no request body logging |
+| No hardcoded secrets in source | ✅ PASS | Only test fixtures (TestPass123!) and .env template (change-me-to-a-random-string placeholder) |
+| **Infrastructure** | | |
+| Dependencies checked for vulnerabilities | ✅ PASS | npm audit: 0 vulnerabilities |
+| Default credentials removed | ✅ PASS | .env JWT_SECRET has "change-me" placeholder; docker-compose requires DB_PASSWORD and JWT_SECRET |
+| Error pages don't reveal server info | ✅ PASS | helmet() hides X-Powered-By; 500 errors return generic message |
+| No dangerouslySetInnerHTML XSS vectors | ✅ PASS | Only in formatDate.js for safe non-user content (date formatting) |
+
+**Security Checklist Result: ✅ PASS — No P1 security issues found.**
+
+---
+
+### Summary
+
+| Category | Result |
+|----------|--------|
+| Backend Unit Tests (446/446) | ✅ PASS |
+| Frontend Unit Tests (510/510) | ✅ PASS |
+| Integration: T-272 XSS Sanitization | ✅ PASS |
+| Integration: T-273 Calendar Click-to-Expand | ✅ PASS |
+| Config Consistency | ✅ PASS |
+| Security Checklist | ✅ PASS |
+| npm audit | ✅ PASS (0 vulnerabilities) |
+
+**Total tests: 956 (446 backend + 510 frontend)**
+**Regressions: 0**
+**Security issues: 0**
+
+**T-274 Verdict: ✅ ALL PASS — Ready for deployment.**
+
+*QA Engineer Sprint #35 — T-274 — 2026-03-23*
+
+---
+
+## Sprint #35 — Deploy Engineer — Staging Build & Deploy — 2026-03-23
+
+**Task:** T-275 (Deploy Engineer: Sprint 35 staging deployment)
+**Date:** 2026-03-23
+**Sprint:** 35
+**Environment:** Staging (local — Docker not available, PM2 used)
+**Overall Status:** ✅ PASS
+
+### Pre-Deploy Checks
+
+| Check | Status | Details |
+|-------|--------|---------|
+| QA confirmation (T-274) | ✅ PASS | T-274 Done — 446/446 backend tests, 510/510 frontend tests, security checklist PASS. Handoff received. |
+| Pending migrations | ✅ None | Migration status: 0 (up to date). 10 migrations applied (001–010). No new migrations for Sprint 35. |
+| New environment variables | ✅ None | No new env vars required for Sprint 35. |
+| npm vulnerabilities | ✅ 0 | Backend: 0 vulnerabilities. Frontend: 0 vulnerabilities. |
+
+### Build Results
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| Backend `npm ci` | ✅ PASS | Dependencies installed, 0 vulnerabilities |
+| Frontend `npm ci` | ✅ PASS | Dependencies installed, 0 vulnerabilities |
+| Frontend `npm run build` | ✅ PASS | Vite 6.4.1 — 129 modules transformed, built in 506ms. 12 output files in `frontend/dist/`. Main bundle: `index-D5XCtSYR.js` (300.27 kB, 95.79 kB gzip). CSS: `index-CFSmeAES.css` (60.44 kB, 10.46 kB gzip). |
+
+### Staging Deployment (Local — PM2)
+
+**Note:** Docker is not available on this machine. Staging deployed using PM2 with local PostgreSQL.
+
+| Service | Status | URL/Port | Details |
+|---------|--------|----------|---------|
+| PostgreSQL | ✅ Running | localhost:5432 | Database `triplanner` — accepting connections |
+| Backend API | ✅ Running | https://localhost:3001 | PM2 `triplanner-backend` — PID 25791, 0 restarts, 83.8 MB |
+| Frontend Preview | ✅ Running | http://localhost:4173 | PM2 `triplanner-frontend` — PID 25792, 0 restarts, 67.5 MB |
+| Frontend Build | ✅ Ready | `frontend/dist/` | Static files built, 12 assets |
+
+### Smoke Tests
+
+| Test | Status | Details |
+|------|--------|---------|
+| `GET /api/v1/health` | ✅ PASS | 200 — `{"status":"ok"}` |
+| `POST /api/v1/auth/login` (test@triplanner.local) | ✅ PASS | 200 — access_token returned, user object matches contract |
+| `POST /api/v1/trips` with XSS payload | ✅ PASS | 201 — `<script>alert(1)</script>` stripped from trip name. Stored as `alert(1)Test Trip`. **XSS sanitization confirmed on staging.** |
+| `GET /api/v1/trips` | ✅ PASS | 200 — returns paginated trip list (page: 1, limit: 20) |
+| `GET /api/v1/trips/:id` | ✅ PASS | 200 — returns single trip with all fields |
+| `GET /api/v1/trips/:id/calendar` | ✅ PASS | 200 — returns calendar event data |
+| `DELETE /api/v1/trips/:id` | ✅ PASS | 204 No Content — cleanup successful |
+| Frontend accessible | ✅ PASS | HTTP 200 on http://localhost:4173 |
+
+### Summary
+
+| Item | Value |
+|------|-------|
+| Environment | Staging (local PM2) |
+| Build Status | ✅ Success |
+| Deploy Status | ✅ Success |
+| Smoke Tests | ✅ 8/8 PASS |
+| XSS Sanitization Verified | ✅ Yes — script tags stripped on staging |
+| Migrations | Up to date (10 applied, 0 pending) |
+| Handoff | → Monitor Agent (T-276) for staging health check |
+
+*Deploy Engineer Sprint #35 — Staging Build & Deploy — 2026-03-23*
+
+---
+
 ## Sprint #34 — Monitor Agent — Post-Deploy Health Check — 2026-03-23
 
 **Task:** T-225 (Monitor Agent — Post-deploy health check)
@@ -1280,4 +1505,224 @@ QA Engineer was re-invoked by the automated orchestrator. T-251 (security checkl
 | **Total** | **✅ 4/4 PASS** | **11.5s** |
 
 **Note:** During this QA session, manual curl registration attempts exhausted the in-memory rate limit for 127.0.0.1 (registerLimiter: 5 per 60-min window). Backend was restarted (`pm2 restart triplanner-backend`) to reset rate limiter before Playwright run. Health confirmed `{"status":"ok"}` post-restart. This is expected behavior — the rate limiter is functioning correctly (Test 4 validates it).
+
+---
+
+## Sprint 35 — T-274: QA Security Checklist + Integration Testing
+
+**Date:** 2026-03-23
+**QA Engineer:** QA Agent (T-274)
+**Sprint:** 35
+**Tasks Under Test:** T-272 (Backend XSS sanitization), T-273 (Frontend calendar "+x more" click-to-expand)
+
+---
+
+### Test Run 1 — Unit Tests (Backend)
+
+| Field | Value |
+|-------|-------|
+| Test Type | Unit Test |
+| Scope | Backend — all test files |
+| Command | `cd backend && npm test` |
+| Result | ✅ PASS |
+| Total Tests | 446/446 |
+| Test Files | 24/24 |
+| Duration | 2.75s |
+| Regressions | 0 |
+
+**Sprint 35-specific tests (sprint35.test.js):** 36/36 PASS
+- 18 unit tests for `sanitizeHtml()` utility: script tags, img onerror, nested tags, svg/onload, iframe, style, bold/italic, anchor, self-closing, HTML comments, Unicode, emoji, special chars, non-tag angle brackets, empty string, non-string passthrough, no double-encoding, multiple mixed tags
+- 18 integration tests: POST/PATCH sanitization on trips (name, destinations[], notes), flights (flight_number, airline, from_location, to_location), stays (name, address), activities (name, location), land travel (provider, from_location, to_location), auth/register (name), plus edge cases (array sanitization, angle brackets, null fields, non-text field passthrough)
+
+**Coverage assessment:**
+- ✅ Happy-path tests for all 12 POST/PATCH endpoints
+- ✅ Error-path tests (XSS payloads stripped)
+- ✅ Edge cases (null, non-string, Unicode, emoji, special chars, non-tag angle brackets)
+- ✅ No regressions in pre-existing 410 tests
+
+---
+
+### Test Run 2 — Unit Tests (Frontend)
+
+| Field | Value |
+|-------|-------|
+| Test Type | Unit Test |
+| Scope | Frontend — all test files |
+| Command | `cd frontend && npm test` |
+| Result | ✅ PASS |
+| Total Tests | 510/510 |
+| Test Files | 25/25 |
+| Duration | 1.91s |
+| Regressions | 0 |
+
+**Sprint 35-specific tests (TripCalendar.test.jsx — tests 29.A–29.K):** 9/9 PASS (within 95 total TripCalendar tests)
+- 29.A: Overflow trigger renders with correct aria attributes (aria-expanded, aria-haspopup="dialog", aria-label)
+- 29.B: Click opens popover with event count
+- 29.C: Click-outside dismisses popover
+- 29.D: Escape dismisses popover (with focus restoration)
+- 29.E: Month navigation dismisses popover
+- 29.F: No trigger when ≤3 events
+- 29.G: Pill click in popover scrolls to section
+- 29.I: Enter key opens popover
+- Additional existing tests: loading, error, empty, retry, event pills, scroll-to-section
+
+**Coverage assessment:**
+- ✅ Happy-path: popover opens on click, shows all events
+- ✅ Error-path: no trigger rendered when insufficient events
+- ✅ Dismiss behaviors: click-outside, Escape, month nav
+- ✅ Keyboard accessibility: Enter opens popover
+- ✅ No regressions in pre-existing 501 tests
+
+**Note:** Minor React `act()` warning on test 29.I (Enter key opens popover). This is a test-environment artifact, not a runtime issue. No user-facing impact.
+
+---
+
+### Test Run 3 — Integration Test (T-272: Backend XSS Sanitization)
+
+| Field | Value |
+|-------|-------|
+| Test Type | Integration Test |
+| Scope | T-272 — Server-side input sanitization across all write endpoints |
+| Result | ✅ PASS |
+
+**Verification checklist:**
+
+| # | Check | Result | Detail |
+|---|-------|--------|--------|
+| 1 | sanitizeFields middleware applied to all POST routes | ✅ | Confirmed on: trips, flights, stays, activities, land-travel, auth/register (6 route files) |
+| 2 | sanitizeFields middleware applied to all PATCH routes | ✅ | PATCH routes use inline `sanitizeHtml()` calls in update handlers (flights, stays, activities, land-travel). Trips PATCH uses `sanitizeFields` middleware. |
+| 3 | Middleware ordering: validate → sanitize → handler | ✅ | Verified in all route files. Validation runs first, sanitization second. |
+| 4 | All 17 text fields covered | ✅ | auth(name), trips(name, destinations[], notes), flights(flight_number, airline, from_location, to_location), stays(name, address), activities(name, location), land-travel(provider, from_location, to_location) |
+| 5 | Non-text fields NOT sanitized | ✅ | Enums, dates, times, UUIDs, timezones pass through unchanged (verified in tests) |
+| 6 | XSS bypass vectors stripped | ✅ | `<script>`, `<img onerror>`, `<svg onload>`, nested tags, self-closing, HTML comments, style tags — all stripped |
+| 7 | Unicode/emoji preserved | ✅ | `東京旅行 🗼 café` stored unchanged |
+| 8 | Special characters preserved | ✅ | `Tom & Jerry's "Excellent" Trip` stored unchanged |
+| 9 | No double-encoding | ✅ | `&amp;` remains `&amp;`, not double-encoded to `&amp;amp;` |
+| 10 | No SQL injection vectors | ✅ | All queries use Knex parameterized queries. No string concatenation (`query(... +`) found. |
+| 11 | API contract compliance | ✅ | Response shapes unchanged. Sanitization is transparent — only stored values change. Sprint 35 contract in api-contracts.md matches implementation. |
+
+---
+
+### Test Run 4 — Integration Test (T-273: Calendar "+x more" Click-to-Expand)
+
+| Field | Value |
+|-------|-------|
+| Test Type | Integration Test |
+| Scope | T-273 — Calendar overflow popover interaction |
+| Result | ✅ PASS |
+
+**Verification checklist:**
+
+| # | Check | Result | Detail |
+|---|-------|--------|--------|
+| 1 | "+x more" renders as semantic `<button>` | ✅ | Overflow indicator is `<button>` with proper aria attributes |
+| 2 | Popover opens on click with `role="dialog"` | ✅ | Dialog with `aria-label`, `aria-modal="false"` |
+| 3 | All events listed in popover | ✅ | Event count displayed, all pills rendered |
+| 4 | Dismiss: click-outside | ✅ | mousedown listener on document |
+| 5 | Dismiss: Escape key | ✅ | With focus restoration to trigger button |
+| 6 | Dismiss: month navigation | ✅ | Popover closes on prev/next month |
+| 7 | Dismiss: window resize | ✅ | Resize listener cleanup in useEffect |
+| 8 | Smart positioning (above/below) | ✅ | Last 2 grid rows position popover above |
+| 9 | Mobile responsive | ✅ | `min(280px, calc(100vw - 32px))` width. Mobile day list (<480px) shows all events inline — no overflow trigger needed. |
+| 10 | Animation | ✅ | 150ms ease — matches design system specification |
+| 11 | No XSS vectors | ✅ | No `dangerouslySetInnerHTML` used (only 1 mention in codebase — a comment in formatDate.js confirming it's NOT used). All dynamic content via JSX auto-escaping. |
+| 12 | Event listener cleanup | ✅ | useEffect return cleanup prevents memory leaks |
+| 13 | UI spec compliance (Spec 29) | ✅ | Matches ui-spec.md specification per Manager review |
+
+**UI States verified:**
+- ✅ Empty state: "Add flights, stays, or activities" message
+- ✅ Loading state: `aria-busy="true"` skeleton
+- ✅ Error state: alert role with "Calendar unavailable" message + retry button
+- ✅ Success state: calendar grid with events + overflow popover
+
+---
+
+### Test Run 5 — Config Consistency Check
+
+| Field | Value |
+|-------|-------|
+| Test Type | Config Consistency |
+| Scope | backend/.env, frontend/vite.config.js, infra/docker-compose.yml |
+| Result | ✅ PASS |
+
+| # | Check | Result | Detail |
+|---|-------|--------|--------|
+| 1 | Backend PORT matches vite proxy target | ✅ | backend/.env `PORT=3000`, vite proxy default `backendPort = process.env.BACKEND_PORT \|\| '3000'` → `http://localhost:3000` |
+| 2 | SSL consistency | ✅ | backend/.env has SSL commented out. Vite uses `BACKEND_SSL` env var — defaults to `http://` when unset. Consistent. |
+| 3 | CORS_ORIGIN includes frontend dev origin | ✅ | backend/.env `CORS_ORIGIN=http://localhost:5173`, vite dev server `port: 5173`. Match. |
+| 4 | Docker Compose backend PORT | ✅ | `PORT: 3000` matches backend/.env default. No host port mapped — internal only, proxied through nginx. |
+| 5 | Docker Compose CORS_ORIGIN | ✅ | `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}` — correct for Docker (nginx serves on localhost). |
+
+No config mismatches found.
+
+---
+
+### Test Run 6 — Security Scan
+
+| Field | Value |
+|-------|-------|
+| Test Type | Security Scan |
+| Scope | Full security checklist verification for Sprint 35 |
+| Command | `cd backend && npm audit` |
+| npm audit Result | ✅ 0 vulnerabilities |
+
+**Security Checklist Results:**
+
+#### Authentication & Authorization
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 1 | All API endpoints require appropriate auth | ✅ PASS | All data endpoints require Bearer token. Auth endpoints (register, login) are public as expected. Calendar endpoint requires auth. |
+| 2 | Auth tokens have expiration and refresh | ✅ PASS | JWT 15m expiry, refresh token 7d. httpOnly cookie for refresh. |
+| 3 | Password hashing uses bcrypt | ✅ PASS | bcryptjs with 12 rounds. Timing-safe comparison with dummy hash for non-existent users. |
+| 4 | Failed login rate-limited | ✅ PASS | express-rate-limit on auth endpoints. Tests verify rate limiting. |
+
+#### Input Validation & Injection Prevention
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 5 | All user inputs validated server-side | ✅ PASS | Joi/custom validation on all endpoints. Client-side validation also present. |
+| 6 | SQL queries use parameterized statements | ✅ PASS | Knex query builder throughout. No string concatenation in queries (verified via grep). |
+| 7 | HTML output sanitized (XSS prevention) | ✅ PASS | **NEW in Sprint 35:** `sanitizeHtml()` strips HTML tags server-side on all 17 user text fields. React JSX auto-escaping on client. No `dangerouslySetInnerHTML`. |
+| 8 | File uploads validated | N/A | No file upload functionality in current scope. |
+
+#### API Security
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 9 | CORS configured for expected origins | ✅ PASS | `CORS_ORIGIN=http://localhost:5173` matches frontend dev server. |
+| 10 | Rate limiting on public endpoints | ✅ PASS | Rate limiters on register and login endpoints. |
+| 11 | API responses don't leak internals | ✅ PASS | Error handler logs stack server-side, returns only structured `{error: {message, code}}` to client. Never leaks stack traces. |
+| 12 | No sensitive data in URL params | ✅ PASS | Tokens in headers/cookies, not URL. |
+| 13 | Security headers (helmet) | ✅ PASS | `helmet()` middleware applied in app.js. Covers X-Content-Type-Options, X-Frame-Options, etc. |
+
+#### Data Protection
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 14 | DB credentials in env vars | ✅ PASS | `DATABASE_URL` from `.env`. Docker Compose uses `${DB_PASSWORD:?required}`. |
+| 15 | No hardcoded secrets in code | ✅ PASS | JWT_SECRET from `process.env.JWT_SECRET`. No hardcoded tokens found in source. |
+| 16 | Logs don't contain PII/tokens | ✅ PASS | Error handler logs error message/stack only, not request bodies or tokens. |
+
+#### Infrastructure
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 17 | Dependencies checked for vulnerabilities | ✅ PASS | `npm audit` returns 0 vulnerabilities. |
+| 18 | Default credentials removed | ✅ PASS | `.env` uses `change-me-to-a-random-string` as JWT_SECRET placeholder (development only). Docker requires `JWT_SECRET` and `DB_PASSWORD` via `?required`. |
+
+**Security Scan Verdict: ✅ PASS — No P1 security issues found.**
+
+---
+
+### Sprint 35 QA Summary
+
+| Test Category | Result | Details |
+|---------------|--------|---------|
+| Backend Unit Tests | ✅ 446/446 PASS | 36 new Sprint 35 tests, 0 regressions |
+| Frontend Unit Tests | ✅ 510/510 PASS | 9 new Sprint 35 tests, 0 regressions |
+| Integration: T-272 (XSS sanitization) | ✅ PASS | All 17 fields sanitized, all 12 endpoints covered |
+| Integration: T-273 (calendar popover) | ✅ PASS | All interactions verified, UI states complete |
+| Config Consistency | ✅ PASS | No mismatches |
+| Security Scan | ✅ PASS | 0 npm vulnerabilities, full checklist verified |
+| **Overall** | **✅ PASS** | **Ready for staging deployment** |
+
+**Total test count:** 446 backend + 510 frontend = 956 (Playwright E2E deferred to staging — T-276)
+
+*QA Engineer — Sprint #35 T-274 — 2026-03-23*
 

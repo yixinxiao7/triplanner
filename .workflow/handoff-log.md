@@ -4,6 +4,161 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager → Monitor Agent: T-275 Review APPROVED — Proceed with T-276 Staging Health Check (Sprint 35)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** Manager Agent (CR-35 — T-275 review)
+**To:** Monitor Agent (T-276)
+**Status:** ✅ T-275 approved and moved to Done — T-276 unblocked
+
+### Summary
+
+T-275 (Sprint 35 staging deployment) has been reviewed and approved by the Manager Agent. The deployment is verified:
+
+- **Build:** Frontend Vite 6.4.1 (129 modules), Backend deps installed. 0 npm vulnerabilities.
+- **Services:** Backend on https://localhost:3001, Frontend on http://localhost:4173, PostgreSQL on 5432.
+- **Smoke tests:** 8/8 PASS including XSS sanitization verification.
+- **Deploy method:** PM2 (Docker unavailable) — documented in qa-build-log.md.
+
+### What Monitor Agent Should Do (T-276)
+
+1. Full staging health check protocol on https://localhost:3001
+2. Verify XSS sanitization: `POST /api/v1/trips` with `<script>` in name → verify stripped in response
+3. Run Playwright E2E tests (expect 4/4 PASS)
+4. Config consistency check
+5. Set Deploy Verified = Yes (Staging)
+6. Log results in qa-build-log.md
+
+---
+
+## Deploy Engineer → Monitor Agent: T-275 Complete — Staging Deployed, Ready for Health Check (Sprint 35)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** Deploy Engineer (T-275)
+**To:** Monitor Agent (T-276)
+**Status:** ✅ Staging deployed — ready for health check
+
+### Summary
+
+T-275 (Sprint 35 staging deployment) is complete. Frontend and backend rebuilt with Sprint 35 changes (T-272 XSS sanitization + T-273 calendar click-to-expand). All smoke tests pass.
+
+### Staging Environment
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend API | https://localhost:3001 | ✅ Online (PM2) |
+| Frontend Preview | http://localhost:4173 | ✅ Online (PM2) |
+| PostgreSQL | localhost:5432 | ✅ Running |
+
+### Deploy Details
+
+- **Build:** Frontend Vite build (129 modules, 506ms). Backend dependencies installed.
+- **Migrations:** 0 pending — 10 applied (001–010). No new migrations for Sprint 35.
+- **New env vars:** None
+- **npm vulnerabilities:** 0 (both frontend and backend)
+
+### Smoke Test Results (8/8 PASS)
+
+1. ✅ `GET /api/v1/health` → 200 `{"status":"ok"}`
+2. ✅ `POST /api/v1/auth/login` → 200 with access_token
+3. ✅ `POST /api/v1/trips` with `<script>alert(1)</script>` → tag stripped (XSS sanitization confirmed)
+4. ✅ `GET /api/v1/trips` → 200 paginated list
+5. ✅ `GET /api/v1/trips/:id` → 200 single trip
+6. ✅ `GET /api/v1/trips/:id/calendar` → 200 calendar events
+7. ✅ `DELETE /api/v1/trips/:id` → 204
+8. ✅ Frontend → HTTP 200
+
+### What Monitor Agent Should Verify (T-276)
+
+1. Full staging health check protocol on https://localhost:3001
+2. XSS sanitization: `POST /api/v1/trips` with `<script>` in name → verify stripped in response
+3. Playwright E2E tests (expect 4/4 PASS)
+4. Config consistency check
+5. Deploy Verified = Yes (Staging)
+
+---
+
+## QA Engineer → Deploy Engineer: T-274 Complete — Ready for Staging Deployment (Sprint 35)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** QA Engineer (T-274)
+**To:** Deploy Engineer (T-275)
+**Status:** ✅ All checks PASS — cleared for staging deployment
+
+### Summary
+
+T-274 (QA security checklist + integration testing) is complete. All tests pass, security checklist verified, no blockers.
+
+### Results
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests | ✅ 446/446 PASS (36 new Sprint 35 tests) |
+| Frontend unit tests | ✅ 510/510 PASS (9 new Sprint 35 tests) |
+| Integration: T-272 XSS sanitization | ✅ PASS — all 17 fields across 12 endpoints verified |
+| Integration: T-273 calendar popover | ✅ PASS — all interactions, UI states, accessibility verified |
+| Config consistency | ✅ PASS — no mismatches between .env, vite.config.js, docker-compose.yml |
+| Security checklist | ✅ PASS — 0 npm vulnerabilities, no hardcoded secrets, no SQL injection, no XSS vectors, helmet active, rate limiting active |
+| **Overall** | **✅ READY FOR DEPLOY** |
+
+### Tasks Status
+
+- **T-272** (Backend XSS sanitization) → **Done** ✅
+- **T-273** (Frontend calendar popover) → **Done** ✅
+- **T-274** (QA) → **Done** ✅
+
+### Deploy Notes
+
+- No schema migrations needed for Sprint 35
+- No new environment variables
+- No new endpoints — behavioral change only (sanitization on existing POST/PATCH)
+- Frontend changes are CSS + JSX only — no new dependencies
+- Full results logged in `qa-build-log.md` → Sprint 35 section
+
+### What to Verify on Staging (T-275 Smoke Tests)
+
+1. `POST /api/v1/trips` with `<script>alert(1)</script>` in name → verify tag stripped in response
+2. Calendar page loads with events → "+x more" visible on days with 4+ events
+3. All existing CRUD operations still work
+4. Health endpoint returns `{"status":"ok"}`
+
+---
+
+## QA Engineer → Deploy Engineer: T-274 QA PASS — Ready for Deployment (Sprint 35)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** QA Engineer (T-274)
+**To:** Deploy Engineer (T-275)
+**Status:** ✅ All checks PASS — cleared for staging deployment
+
+### QA Summary
+
+All testing and verification for Sprint 35 is complete:
+
+- **Backend unit tests:** 446/446 PASS (36 new T-272 sanitization tests + 410 existing)
+- **Frontend unit tests:** 510/510 PASS (9 new T-273 calendar tests + 501 existing)
+- **Integration tests:** T-272 XSS sanitization verified on all POST and PATCH routes across 6 models. T-273 calendar click-to-expand verified: accessibility, dismiss behaviors, animations, mobile responsive.
+- **Config consistency:** Backend PORT, vite proxy, CORS_ORIGIN, docker-compose all consistent.
+- **Security checklist:** ✅ PASS — all items verified. 0 npm vulnerabilities. No hardcoded secrets, no SQL injection vectors, no XSS vectors, no information leakage.
+- **Regressions:** 0
+
+### What Deploy Should Verify
+
+1. Rebuild frontend and backend with latest Sprint 35 changes
+2. Deploy to staging (Docker Compose or PM2)
+3. Smoke test: POST a trip with `<script>alert(1)</script>` in name → verify tag stripped in response
+4. Smoke test: Health endpoint returns `{"status":"ok"}`
+5. Smoke test: All CRUD operations functional
+6. Smoke test: Calendar endpoint returns data
+
+**No blockers. T-275 is unblocked.**
+
+---
+
 ## Manager Agent → QA Engineer: T-272 + T-273 Code Review APPROVED (Sprint 35)
 
 **Date:** 2026-03-23

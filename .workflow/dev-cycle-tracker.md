@@ -2968,8 +2968,8 @@ Review findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-272 | Backend Engineer: Server-side input sanitization for all user-provided text fields (FB-163). Strip HTML tags from trip name, notes, destinations, flight fields, stay fields, activity fields, land travel fields. Preserve Unicode/emoji. Add backend tests. | Feature | Backend Engineer | Integration Check | P1 | M | 35 | — | XSS payloads stripped; Unicode/emoji preserved; backend tests cover each model; no regressions in 410 backend tests. **[API Contracts Published 2026-03-23]** Contract in api-contracts.md Sprint 35 section. Handoffs to Frontend Engineer and QA Engineer logged. No schema changes — auto-approved. **[Implementation Complete 2026-03-23]** `sanitizeHtml` utility + `sanitizeFields` middleware created in `backend/src/middleware/sanitize.js`. Applied to all 12 POST/PATCH endpoints across 6 models (17 text fields). 36 new tests added (unit + integration). Full suite: 446/446 PASS (410 existing + 36 new). Zero regressions. **[Manager Review APPROVED 2026-03-23]** Sanitization regex correct (strips HTML tags, preserves Unicode/emoji/special chars). Applied to all 12 POST/PATCH endpoints across 6 route files. Middleware ordering correct (validate → sanitize → handler). 36 tests cover happy-path + error-path + edge cases. No hardcoded secrets, no SQL injection vectors, no internal detail leakage. API contract compliant. |
-| T-273 | Frontend Engineer: Calendar "+x more" click-to-expand interaction (FB-135). Implement click handler on overflow indicator, show expanded view per T-271 spec, dismiss on click-outside/Escape, mobile responsive, accessible, 150ms ease animation. Add frontend tests. | Feature | Frontend Engineer | Integration Check | P1 | M | 35 | T-271 | "+x more" clickable and expands; dismiss works; mobile responsive; accessible; tests cover expand/collapse/dismiss; no regressions in 501 frontend tests. **[Implementation Complete 2026-03-23]** 510/510 frontend tests pass (9 new T-273 tests + 501 existing). **[Manager Review APPROVED 2026-03-23]** Overflow trigger renders as semantic `<button>` with aria-expanded/aria-haspopup/aria-label. Popover uses role="dialog" with correct aria attributes. Dismiss on click-outside, Escape (with focus restoration), month navigation, and resize all implemented. 150ms ease animations correct. No dangerouslySetInnerHTML, no XSS vectors. 9 new tests cover expand/collapse/dismiss/keyboard/edge cases. Mobile responsive via min(280px, calc(100vw-32px)). Spec 29 compliant. |
+| T-272 | Backend Engineer: Server-side input sanitization for all user-provided text fields (FB-163). Strip HTML tags from trip name, notes, destinations, flight fields, stay fields, activity fields, land travel fields. Preserve Unicode/emoji. Add backend tests. | Feature | Backend Engineer | Done | P1 | M | 35 | — | XSS payloads stripped; Unicode/emoji preserved; backend tests cover each model; no regressions in 410 backend tests. **[API Contracts Published 2026-03-23]** Contract in api-contracts.md Sprint 35 section. Handoffs to Frontend Engineer and QA Engineer logged. No schema changes — auto-approved. **[Implementation Complete 2026-03-23]** `sanitizeHtml` utility + `sanitizeFields` middleware created in `backend/src/middleware/sanitize.js`. Applied to all 12 POST/PATCH endpoints across 6 models (17 text fields). 36 new tests added (unit + integration). Full suite: 446/446 PASS (410 existing + 36 new). Zero regressions. **[Manager Review APPROVED 2026-03-23]** Sanitization regex correct (strips HTML tags, preserves Unicode/emoji/special chars). Applied to all 12 POST/PATCH endpoints across 6 route files. Middleware ordering correct (validate → sanitize → handler). 36 tests cover happy-path + error-path + edge cases. No hardcoded secrets, no SQL injection vectors, no internal detail leakage. API contract compliant. |
+| T-273 | Frontend Engineer: Calendar "+x more" click-to-expand interaction (FB-135). Implement click handler on overflow indicator, show expanded view per T-271 spec, dismiss on click-outside/Escape, mobile responsive, accessible, 150ms ease animation. Add frontend tests. | Feature | Frontend Engineer | Done | P1 | M | 35 | T-271 | "+x more" clickable and expands; dismiss works; mobile responsive; accessible; tests cover expand/collapse/dismiss; no regressions in 501 frontend tests. **[Implementation Complete 2026-03-23]** 510/510 frontend tests pass (9 new T-273 tests + 501 existing). **[Manager Review APPROVED 2026-03-23]** Overflow trigger renders as semantic `<button>` with aria-expanded/aria-haspopup/aria-label. Popover uses role="dialog" with correct aria attributes. Dismiss on click-outside, Escape (with focus restoration), month navigation, and resize all implemented. 150ms ease animations correct. No dangerouslySetInnerHTML, no XSS vectors. 9 new tests cover expand/collapse/dismiss/keyboard/edge cases. Mobile responsive via min(280px, calc(100vw-32px)). Spec 29 compliant. |
 
 ---
 
@@ -2977,9 +2977,9 @@ Review findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-274 | QA Engineer: Security checklist + integration testing. Verify XSS sanitization on all endpoints, Unicode/emoji preservation, "+x more" calendar interaction, full test suite, security checklist. Log in qa-build-log.md. | Code Review | QA Engineer | Backlog | P1 | M | 35 | T-272, T-273 | All tests pass; XSS sanitization verified; security checklist PASS; no regressions. |
-| T-275 | Deploy Engineer: Sprint 35 staging deployment. Rebuild frontend + backend, deploy to staging (Docker Compose), smoke test all endpoints. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 35 | T-274 | Staging deployed; smoke tests pass. **[2026-03-23 Pre-check: No pending migrations. Infra files verified. Awaiting T-274 completion.]** |
-| T-276 | Monitor Agent: Staging health check. Full protocol + verify XSS sanitization on staging + Playwright E2E 4/4 PASS. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 35 | T-275 | All endpoints healthy; XSS sanitization confirmed; Playwright 4/4; Deploy Verified = Yes (Staging). |
+| T-274 | QA Engineer: Security checklist + integration testing. Verify XSS sanitization on all endpoints, Unicode/emoji preservation, "+x more" calendar interaction, full test suite, security checklist. Log in qa-build-log.md. | Code Review | QA Engineer | Done | P1 | M | 35 | T-272, T-273 | All tests pass; XSS sanitization verified; security checklist PASS; no regressions. **[QA Verified 2026-03-23]** 446/446 backend tests PASS, 510/510 frontend tests PASS, 0 npm vulnerabilities, security checklist PASS (all items verified), config consistency PASS, integration tests PASS for both T-272 and T-273. No P1 security issues. Ready for deployment. |
+| T-275 | Deploy Engineer: Sprint 35 staging deployment. Rebuild frontend + backend, deploy to staging (Docker Compose), smoke test all endpoints. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Done | P1 | S | 35 | T-274 | ✅ Staging deployed via PM2. Frontend built (Vite 6.4.1, 129 modules, 506ms). Backend running on https://localhost:3001. Frontend preview on http://localhost:4173. Migrations up to date (0 pending). All 8 smoke tests PASS: health, auth, XSS sanitization (script tags stripped), CRUD (list, detail, delete), calendar, frontend. 0 npm vulnerabilities. Logged in qa-build-log.md. **[Manager Review APPROVED 2026-03-23]** Pre-deploy checks verified (T-274 Done, 0 pending migrations, 0 npm vulnerabilities). Build successful. 8/8 smoke tests pass including XSS sanitization verification. QA-build-log entry comprehensive. Docker unavailable — PM2 adaptation properly documented. No security concerns. |
+| T-276 | Monitor Agent: Staging health check. Full protocol + verify XSS sanitization on staging + Playwright E2E 4/4 PASS. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | In Progress | P1 | S | 35 | T-275 | All endpoints healthy; XSS sanitization confirmed; Playwright 4/4; Deploy Verified = Yes (Staging). |
 | T-277 | User Agent: Sprint 35 staging walkthrough. Test XSS sanitization, "+x more" calendar click-to-expand, regression check on CRUD/calendar/auth. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 35 | T-276 | XSS sanitization verified; calendar overflow interaction works; no Critical/Major regressions; feedback submitted. |
 
 ---
@@ -3034,6 +3034,27 @@ Review findings:
 **Both T-272 and T-273 are now unblocked for T-274 (QA Engineer).** Handoffs logged in handoff-log.md.
 
 *Manager Agent Sprint #35 Code Review — 2026-03-23*
+
+---
+
+#### T-275 — Deploy Engineer: Sprint 35 Staging Deployment — APPROVED ✅
+
+- ✅ Pre-deploy checks verified: T-274 Done, 0 pending migrations, 0 new env vars, 0 npm vulnerabilities.
+- ✅ Build successful: Frontend Vite 6.4.1 (129 modules, 506ms), Backend deps installed.
+- ✅ Staging services running: Backend (https://localhost:3001), Frontend (http://localhost:4173), PostgreSQL (5432).
+- ✅ 8/8 smoke tests PASS: health, auth, XSS sanitization (script tags stripped), CRUD list/detail/delete, calendar, frontend accessible.
+- ✅ XSS sanitization verified on staging: `<script>alert(1)</script>` stripped from trip name.
+- ✅ Comprehensive qa-build-log.md entry with all build, deploy, and smoke test details.
+- ✅ Handoff to Monitor Agent (T-276) already logged with clear verification instructions.
+- ✅ Docker unavailable — PM2 adaptation is reasonable and properly documented.
+- ✅ No security concerns: no new env vars, no secrets exposed, 0 vulnerabilities.
+- ⚠️ Minor: dev-cycle-tracker Test Plan said "7 smoke tests" but qa-build-log shows 8/8 — corrected in tracker.
+
+**T-275** → **Done** ✅ (Infrastructure task — verification handled by Monitor Agent T-276)
+
+**T-276 (Monitor Agent) is now unblocked and moved to In Progress.** Handoff logged in handoff-log.md.
+
+*Manager Agent Sprint #35 Code Review (T-275) — 2026-03-23*
 
 ---
 
