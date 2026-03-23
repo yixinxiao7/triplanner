@@ -432,3 +432,264 @@ button: "please wait…" [disabled]
 **Result:** Mobile list correctly enumerates multi-day spans for FLIGHT and LAND_TRAVEL (same as STAY). Start day shows departure time, middle days show "(cont.)" with 0.6 opacity, end day shows "Arrives {time}" (or "Drop-off {time}" for RENTAL_CAR). Proper aria-labels on all rows.
 
 ---
+
+## Sprint #34 User Agent Feedback — T-256 Production Walkthrough
+
+*Tested on: 2026-03-23 against production at https://triplanner.yixinx.com (backend: https://triplanner-backend-sp61.onrender.com)*
+
+---
+
+### FB-156
+
+| Field | Value |
+|-------|-------|
+| Feedback | Production health endpoint responds fast and correctly |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** `GET https://triplanner-backend-sp61.onrender.com/api/v1/health`
+
+**Result:** Returns `{"status":"ok"}` with HTTP 200 in ~88ms. Excellent response time for a cold Render instance.
+
+---
+
+### FB-157
+
+| Field | Value |
+|-------|-------|
+| Feedback | CORS headers correctly configured for production custom domain |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** `curl -I -H "Origin: https://triplanner.yixinx.com" https://triplanner-backend-sp61.onrender.com/api/v1/health`
+
+**Result:** Response includes `Access-Control-Allow-Origin: https://triplanner.yixinx.com` and `Access-Control-Allow-Credentials: true`. Correctly scoped to the production domain.
+
+---
+
+### FB-158
+
+| Field | Value |
+|-------|-------|
+| Feedback | Full auth flow works end-to-end on production (register, login, authenticated requests) |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** (1) POST /api/v1/auth/register with new user -> 201 with user data + access_token. (2) POST /api/v1/auth/login with same credentials -> 200 with access_token. (3) GET /api/v1/trips with token -> 200 with empty array. (4) Login with wrong password -> 401 "Incorrect email or password". (5) Duplicate registration -> 409 "An account with this email already exists".
+
+**Result:** All auth flows return correct status codes and error messages. Token-based auth works correctly across subsequent requests.
+
+---
+
+### FB-159
+
+| Field | Value |
+|-------|-------|
+| Feedback | Input validation is thorough and returns clear, field-specific error messages |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** Tested multiple validation scenarios: (1) Empty body to /register -> 400 with per-field errors (name, email, password all listed). (2) Trip name >255 chars -> 400 "name must be at most 255 characters". (3) end_date before start_date -> 400 "End date must be on or after start date". (4) Missing required fields on flights, stays, activities, land-travel -> 400 with field-specific messages.
+
+**Result:** Every validation error returns HTTP 400 with `VALIDATION_ERROR` code and a `fields` object listing each invalid field. This is excellent for frontend form integration.
+
+---
+
+### FB-160
+
+| Field | Value |
+|-------|-------|
+| Feedback | Full Trip CRUD lifecycle works on production — create, read, update status, add notes, delete |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** (1) POST /trips with name, destinations, dates -> 201 with trip data. (2) GET /trips -> 200 with trip in list. (3) PATCH /trips/:id with status:"ONGOING" -> 200, status persisted on re-GET. (4) PATCH /trips/:id with notes -> 200, notes persisted. (5) DELETE /trips/:id -> 204. (6) GET /trips/:id after delete -> 404 "Trip not found".
+
+**Result:** Complete CRUD lifecycle works correctly. Status changes persist across requests. Deletion is clean with proper 204/404 responses.
+
+---
+
+### FB-161
+
+| Field | Value |
+|-------|-------|
+| Feedback | All sub-resources (flights, stays, activities, land-travel) create successfully on production |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** Created a trip and added: (1) Multi-day flight LAX->NRT (Apr 1 departure, Apr 2 arrival) -> 201. (2) Hotel stay with check-in/check-out and timezone -> 201. (3) Activity with date and time range -> 201. (4) Land travel (TRAIN) with departure/arrival -> 201.
+
+**Result:** All four sub-resource types created successfully with correct data returned. Timezone fields properly stored.
+
+---
+
+### FB-162
+
+| Field | Value |
+|-------|-------|
+| Feedback | Calendar endpoint correctly shows multi-day flight spanning two dates (T-264 fix verified on production) |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256, T-264 |
+
+**Steps:** Created a flight departing 2026-04-01T10:00:00Z arriving 2026-04-02T14:00:00Z. Called GET /trips/:id/calendar.
+
+**Result:** Calendar response shows FLIGHT event with `start_date: "2026-04-01"` and `end_date: "2026-04-02"` — correctly spanning two days. The Sprint 33 multi-day calendar fix (T-264) is confirmed working on production. STAY also spans correctly (Apr 3-6). LAND_TRAVEL (same-day) correctly shows matching start/end dates. ACTIVITY shows single-day event.
+
+---
+
+### FB-163
+
+| Field | Value |
+|-------|-------|
+| Feedback | XSS payload stored in trip name without server-side sanitization |
+| Sprint | 34 |
+| Category | Security |
+| Severity | Minor |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** POST /api/v1/trips with name `<script>alert(1)</script>` -> 201, stored as-is in database.
+
+**Result:** The backend stores raw HTML/script tags in trip names without sanitization. React's JSX auto-escaping prevents execution on the frontend (renders as text), so this is not exploitable in the current stack. However, if data is ever consumed by a non-React client (email templates, PDF exports, admin dashboard), stored XSS could execute. Recommend adding server-side input sanitization as defense-in-depth.
+
+---
+
+### FB-164
+
+| Field | Value |
+|-------|-------|
+| Feedback | Cloudflare WAF blocks SQL injection payloads before they reach the backend |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** POST /api/v1/trips with name containing `"); DROP TABLE trips;--`
+
+**Result:** Cloudflare returned HTTP 403 "You have been blocked" before the request reached the backend. This provides an extra layer of defense. Note: the backend likely also uses parameterized queries, but the WAF caught it first.
+
+---
+
+### FB-165
+
+| Field | Value |
+|-------|-------|
+| Feedback | Unicode and emoji characters handled correctly in trip names |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** POST /api/v1/trips with name `東京旅行 🗼 — Tōkyō & Beyond` -> 201
+
+**Result:** Japanese characters, emoji, macron-accented Latin characters, and em-dash all stored and returned correctly. Good internationalization support.
+
+---
+
+### FB-166
+
+| Field | Value |
+|-------|-------|
+| Feedback | Auth and access control properly enforce authentication |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** (1) GET /api/v1/trips with no auth header -> 401 "Authentication required". (2) GET /api/v1/trips with invalid token "Bearer invalid_token_here" -> 401 "Invalid or expired token".
+
+**Result:** Both missing and invalid tokens return appropriate 401 responses with clear error messages. No data leakage in error responses.
+
+---
+
+### FB-167
+
+| Field | Value |
+|-------|-------|
+| Feedback | API response times are excellent on production |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** Measured response times: Health endpoint ~88ms, authenticated trips list ~108ms, trip creation ~200ms, sub-resource creation ~200ms each.
+
+**Result:** All API responses under 250ms on production (Render). No performance concerns for the current feature set.
+
+---
+
+### FB-168
+
+| Field | Value |
+|-------|-------|
+| Feedback | Frontend build is present and properly code-split |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** Checked frontend/dist/ directory. Verified build artifacts.
+
+**Result:** Build output includes main bundle (~297KB JS, ~59KB CSS) plus lazy-loaded page chunks for FlightsEditPage, StaysEditPage, ActivitiesEditPage, and LandTravelEditPage. Code splitting is properly configured for route-based lazy loading.
+
+---
+
+### FB-169
+
+| Field | Value |
+|-------|-------|
+| Feedback | TripCalendar component correctly implements multi-day spanning for all event types |
+| Sprint | 34 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-256, T-264 |
+
+**Steps:** Code review of TripCalendar.jsx — `buildEventsMap()` function and `renderEventPill()` function.
+
+**Result:** Multi-day spanning correctly implemented for FLIGHT, STAY, and LAND_TRAVEL. Events enumerate dates from start to end, with proper `_dayType` metadata (start/middle/end/single). Pills render with connected border-radius styling. Middle days show 0.8 opacity. End days show "Arrives {time}" for flights and "Arrives/Drop-off {time}" for land travel. Mobile view also handles multi-day events with cont./arrives labels. Loading, error, and empty states all implemented. Keyboard navigation with arrow keys across the grid. Good accessibility with aria-labels.
+
+---
+
+### FB-170
+
+| Field | Value |
+|-------|-------|
+| Feedback | Frontend SPA shell loads on production but content requires JavaScript rendering |
+| Sprint | 34 |
+| Category | Suggestion |
+| Severity | Suggestion |
+| Status | New |
+| Related Task | T-256 |
+
+**Steps:** Fetched https://triplanner.yixinx.com via curl/WebFetch — only the text "triplanner" is visible without JavaScript execution.
+
+**Result:** Expected behavior for a React SPA. The HTML shell loads and Vite assets are referenced. Full content renders client-side. This is acceptable but means zero SEO value and users with JS disabled see nothing. Not a priority for a productivity tool, but SSR could be considered in the future for landing/marketing pages.
+
+---
