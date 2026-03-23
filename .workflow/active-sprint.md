@@ -4,115 +4,90 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #35 — 2026-03-23
+## Sprint #36 — 2026-03-23
 
-**Sprint Goal:** Harden security with server-side input sanitization (FB-163) and improve calendar UX with clickable "+x more" overflow indicators (FB-135). Both are backlog items from prior sprints — no new features, focused on defense-in-depth and polish.
+**Sprint Goal:** Deploy Sprint 35 hardening changes (XSS sanitization + calendar click-to-expand) to production, fix the long-standing page title/font branding bug (FB-188), and add post-sanitization validation for required fields (FB-178). Small, focused sprint — production deployment + two quick fixes + full verification pipeline.
 
-**Context:** Sprint 34 completed the production deployment and verification pipeline. Production is live, healthy, and verified with zero Critical or Major issues. The MVP is feature-complete. Sprint 35 shifts to hardening and polish: fixing the two longest-standing minor backlog items (FB-163 server-side XSS sanitization, FB-135 calendar overflow click-to-expand).
+**Context:** Sprint 35 completed successfully on staging: server-side XSS sanitization (T-272) and calendar "+x more" click-to-expand (T-273) are verified and ready for production. Two minor bugs were found: FB-188 (wrong page title "Plant Guardians" + wrong fonts) and FB-178 (post-sanitization empty name allowed). Both are quick fixes that should ship alongside the production deployment.
 
-**Feedback Triage (Sprint 34 → Sprint 35):**
+**Feedback Triage (Sprint 35 → Sprint 36):**
 
 | Entry | Category | Severity | Disposition |
 |-------|----------|----------|-------------|
-| FB-156–FB-162 | Positive | — | **Acknowledged** — 7 positive confirmations of production health |
-| FB-163 | Security | Minor | **Acknowledged** — Backlog. Server-side XSS sanitization (defense-in-depth). Tasked as T-272 this sprint. |
-| FB-164–FB-169 | Positive | — | **Acknowledged** — 6 positive confirmations |
-| FB-170 | Suggestion | Suggestion | **Acknowledged** — SSR for landing pages, remains in backlog |
+| FB-171–FB-177 | Positive | — | **Acknowledged** — XSS sanitization confirmed |
+| FB-178 | Bug | Minor | **Acknowledged** → B-035 (Backlog). Promoted to T-278 this sprint — quick fix, ships with production deploy. |
+| FB-179–FB-187 | Positive | — | **Acknowledged** — all confirmations |
+| FB-188 | Bug | Minor | **Tasked** → T-279 this sprint — fix page title and font references |
 
-**No Critical or Major issues to address.** Sprint 35 pulls two Minor backlog items forward for polish.
+**No Critical or Major issues to address.** Sprint 36 focuses on production deployment of Sprint 35 work + two minor bug fixes.
 
 ---
 
 ## In Scope
 
-### Phase 1 — Design Specs (no blockers — start immediately)
+### Phase 1 — Bug Fixes (parallel — start immediately)
 
-- [ ] **T-271** — Design Agent: UI spec for calendar "+x more" click-to-expand behavior (FB-135)
+- [ ] **T-278** — Backend Engineer: Post-sanitization validation for required fields (FB-178)
 
-  **Context:** When a calendar day has more events than can fit, a "+x more" indicator is shown but is not interactive. Users should be able to click it to see all events for that day.
-
-  **Deliver:**
-  1. Add to `ui-spec.md` a new spec section describing the click-to-expand interaction for "+x more" indicators
-  2. Define: click target area, expanded state (dropdown/popover/inline expand), dismiss behavior, mobile behavior, animation (150ms ease per design principles), accessibility (focus management, Escape to close)
-  3. Ensure consistency with existing calendar pill styling and Japandi design language
-
-  **Acceptance criteria:**
-  - UI spec published in `ui-spec.md` with click-to-expand interaction fully defined
-  - Desktop and mobile behaviors specified
-  - Accessibility requirements documented
-
-  **Files:** `ui-spec.md`, `dev-cycle-tracker.md`, `handoff-log.md`
-
----
-
-### Phase 2 — Implementation (parallel — after Phase 1 for frontend, immediate for backend)
-
-- [ ] **T-272** — Backend Engineer: Server-side input sanitization for all user-provided text fields (FB-163)
-
-  **Context:** FB-163 identified that XSS payloads (e.g. `<script>alert(1)</script>`) are stored in the database without sanitization. While React's JSX auto-escaping prevents exploitation in the current frontend, defense-in-depth requires sanitizing inputs server-side to protect against future non-React consumers (email templates, PDF exports, admin dashboards).
+  **Context:** FB-178 identified that `PATCH /api/v1/trips/:id` with `name: "<svg onload=alert(1)>"` sanitizes to `""` but stores the empty string because validation runs before sanitization. The fix is to either: (a) swap middleware order to sanitize → validate, or (b) add a post-sanitization check that rejects empty required fields.
 
   **Execute:**
-  1. Add an HTML sanitization utility (e.g. strip HTML tags from text fields, or use a library like `sanitize-html` or `xss`)
-  2. Apply sanitization to all user-provided text fields across all models: trip name, trip notes, destinations, flight airline/flight_number/from_location/to_location, stay name/address, activity name/location, land travel departure_location/arrival_location
-  3. Sanitization should strip HTML tags but preserve Unicode, emoji, and special characters (ampersands, quotes, etc.)
-  4. Add backend tests for sanitization (XSS payloads stripped, Unicode preserved, empty strings handled)
-  5. Do NOT sanitize fields that are not user-provided (IDs, timestamps, enums)
+  1. Adjust middleware ordering so that sanitization runs BEFORE validation on all endpoints, OR add a post-sanitization validation step
+  2. Ensure that if a required field (e.g., trip name) becomes empty after sanitization, a 400 VALIDATION_ERROR is returned
+  3. Add backend tests: PATCH trip name with all-HTML input → expect 400; POST trip with all-HTML name → expect 400
+  4. Verify no regressions in existing 446 backend tests
 
   **Acceptance criteria:**
-  - All user-provided text fields sanitized before database insertion
-  - XSS payloads (`<script>`, `<img onerror>`, etc.) stripped from stored data
-  - Unicode, emoji, and legitimate special characters preserved
-  - Backend tests cover sanitization for each model
-  - No regressions in existing 410 backend tests
+  - All-HTML required fields rejected with 400 after sanitization
+  - Non-required fields (e.g., notes) can still be empty after sanitization
+  - Backend tests cover the new behavior
+  - No regressions
 
-  **Blocked By:** None — can start immediately
+  **Blocked By:** None
 
-  **Files:** Backend model files, validation middleware, `dev-cycle-tracker.md`, `handoff-log.md`
+  **Files:** Backend middleware/sanitize.js, route files, `dev-cycle-tracker.md`, `handoff-log.md`
 
 ---
 
-- [ ] **T-273** — Frontend Engineer: Calendar "+x more" click-to-expand (FB-135) ← Blocked by T-271
+- [ ] **T-279** — Frontend Engineer: Fix page title and font references (FB-188)
 
-  **Context:** The TripCalendar component shows "+x more" when a day has more events than fit in the cell, but clicking it does nothing. Implement the interaction defined in T-271's UI spec.
+  **Context:** FB-188 identified that `frontend/index.html` has `<title>Plant Guardians</title>` instead of "Triplanner", and loads Google Fonts for "DM Sans" and "Playfair Display" instead of "IBM Plex Mono" per the design context. This is a long-standing branding issue.
 
   **Execute:**
-  1. Implement click handler on "+x more" indicator in `TripCalendar.jsx`
-  2. On click, show expanded view (popover/dropdown/inline — per T-271 spec) listing all events for that day
-  3. Dismiss on click outside, Escape key, or clicking another day
-  4. Mobile: adapt per T-271 spec (likely inline expand or bottom sheet)
-  5. Add frontend tests for the new interaction
-  6. Ensure animation follows design principles (150ms ease)
+  1. Update `frontend/index.html` `<title>` to "Triplanner"
+  2. Remove any Google Fonts `<link>` tags for "DM Sans" and "Playfair Display"
+  3. Ensure IBM Plex Mono is the only font loaded (verify it's already imported via CSS or add the correct Google Fonts link)
+  4. Update `<meta name="description">` if it references "Plant Guardians"
+  5. Check for any favicon or manifest references that need updating
+  6. Add or update frontend tests if applicable
 
   **Acceptance criteria:**
-  - "+x more" is clickable and expands to show all events for that day
-  - Expanded view matches T-271 spec styling
-  - Dismiss behavior works (click outside, Escape, click another day)
-  - Mobile responsive
-  - Accessible (focus management, keyboard navigation)
-  - Frontend tests cover expand/collapse/dismiss
-  - No regressions in existing 501 frontend tests
+  - Page title shows "Triplanner"
+  - Only IBM Plex Mono font loaded
+  - No references to "Plant Guardians", "DM Sans", or "Playfair Display" in index.html
+  - No regressions in existing 510 frontend tests
 
-  **Blocked By:** T-271
+  **Blocked By:** None
 
-  **Files:** `frontend/src/components/TripCalendar.jsx`, tests, `dev-cycle-tracker.md`, `handoff-log.md`
+  **Files:** `frontend/index.html`, possibly `frontend/src/index.css`, `dev-cycle-tracker.md`, `handoff-log.md`
 
 ---
 
-### Phase 3 — QA + Deploy + Verify (sequential after Phase 2)
+### Phase 2 — QA + Deploy Staging (sequential after Phase 1)
 
-- [ ] **T-274** — QA Engineer: Security checklist + integration testing ← Blocked by T-272, T-273
+- [ ] **T-280** — QA Engineer: Integration testing for Sprint 36 fixes ← Blocked by T-278, T-279
 
   **Scope:**
-  - Verify XSS sanitization works on all endpoints (attempt to store `<script>` tags, verify stripped)
-  - Verify Unicode/emoji preservation after sanitization
-  - Verify "+x more" calendar interaction works correctly
+  - Verify post-sanitization validation: all-HTML required fields return 400
+  - Verify page title and font corrections
   - Run full test suite (backend + frontend + Playwright)
   - Security checklist PASS
   - Log results in `qa-build-log.md`
 
   **Acceptance criteria:**
   - All tests pass (backend + frontend + Playwright)
-  - XSS sanitization verified on all user-facing text fields
+  - Post-sanitization validation verified
+  - Page branding verified
   - Security checklist PASS
   - No regressions
 
@@ -120,34 +95,37 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-- [ ] **T-275** — Deploy Engineer: Sprint 35 staging deployment ← Blocked by T-274
+- [ ] **T-281** — Deploy Engineer: Sprint 36 staging deployment ← Blocked by T-280
 
   **Scope:**
-  - Rebuild frontend and backend with latest changes
-  - Deploy to staging (local Docker Compose)
-  - Smoke test all endpoints
+  - Rebuild frontend and backend with Sprint 36 changes
+  - Deploy to staging (PM2)
+  - Smoke test all endpoints including post-sanitization validation
   - Log results in `qa-build-log.md`
 
   **Acceptance criteria:**
-  - Staging deployed with Sprint 35 changes
-  - Frontend and backend running
-  - Smoke tests pass
+  - Staging deployed with Sprint 36 changes
+  - Frontend shows "Triplanner" title
+  - All smoke tests pass
+  - Post-sanitization validation confirmed on staging
 
   **Files:** `qa-build-log.md`, `dev-cycle-tracker.md`, `handoff-log.md`
 
 ---
 
-- [ ] **T-276** — Monitor Agent: Staging health check ← Blocked by T-275
+- [ ] **T-282** — Monitor Agent: Staging health check ← Blocked by T-281
 
   **Scope:**
   - Full staging health check protocol
-  - Verify XSS sanitization on staging (attempt to store `<script>` in trip name, verify stripped in response)
+  - Verify page title is "Triplanner"
+  - Verify post-sanitization validation (all-HTML name → 400)
   - Playwright E2E tests (expect 4/4 PASS)
   - Deploy Verified = Yes (Staging)
 
   **Acceptance criteria:**
   - All staging endpoints healthy
-  - XSS sanitization confirmed on staging
+  - Page title verified
+  - Post-sanitization validation confirmed
   - Playwright 4/4 PASS
   - Deploy Verified = Yes (Staging)
 
@@ -155,17 +133,60 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-- [ ] **T-277** — User Agent: Sprint 35 staging walkthrough ← Blocked by T-276
+### Phase 3 — Production Deployment + Verification (sequential after Phase 2)
+
+- [ ] **T-283** — Deploy Engineer: Deploy to production (Render) ← Blocked by T-282
 
   **Scope:**
-  - Test XSS sanitization: create trip with `<script>` in name, verify tag stripped
-  - Test "+x more" calendar click-to-expand: create enough events to trigger overflow, click "+x more", verify expanded view
+  - Merge feature branch to main via PR
+  - Render auto-deploys from main
+  - Verify production deployment completes
+  - Smoke test production endpoints
+  - Log results in `qa-build-log.md`
+
+  **Acceptance criteria:**
+  - PR merged to main
+  - Render deployment successful
+  - Production endpoints responding
+  - XSS sanitization confirmed on production
+  - Page title shows "Triplanner" on production
+
+  **Files:** `qa-build-log.md`, `dev-cycle-tracker.md`, `handoff-log.md`
+
+---
+
+- [ ] **T-284** — Monitor Agent: Production health check ← Blocked by T-283
+
+  **Scope:**
+  - Full production health check protocol
+  - Verify XSS sanitization on production
+  - Verify post-sanitization validation on production
+  - Verify page title on production
+  - Deploy Verified = Yes (Production)
+
+  **Acceptance criteria:**
+  - All production endpoints healthy
+  - XSS sanitization confirmed on production
+  - Post-sanitization validation confirmed
+  - Page title "Triplanner" confirmed
+  - Deploy Verified = Yes (Production)
+
+  **Files:** `qa-build-log.md`, `dev-cycle-tracker.md`, `handoff-log.md`
+
+---
+
+- [ ] **T-285** — User Agent: Production walkthrough ← Blocked by T-284
+
+  **Scope:**
+  - Test XSS sanitization on production
+  - Test post-sanitization validation (all-HTML name → 400)
+  - Verify page title and fonts
+  - Test calendar "+x more" click-to-expand on production
   - Regression check: CRUD flows, calendar, auth
   - Submit feedback to `feedback-log.md`
 
   **Acceptance criteria:**
-  - XSS sanitization verified from user perspective
-  - Calendar "+x more" interaction works correctly
+  - All Sprint 35+36 features verified on production
   - No Critical or Major regressions
   - Feedback submitted
 
@@ -175,11 +196,11 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ## Out of Scope
 
-- **Production deployment** — Sprint 35 changes will deploy to staging only. Production deploy in Sprint 36 after staging verification.
 - **B-020 (Redis rate limiter)** — Backlog; in-memory store sufficient for current scale.
 - **B-024 (per-account rate limiting)** — Backlog.
 - **B-032 (trip export/print)** — Deferred.
 - **FB-170 (SSR for landing pages)** — Suggestion; low priority for productivity tool.
+- **B-030 (trip notes/description field)** — Backlog; not prioritized this sprint.
 
 ---
 
@@ -187,78 +208,72 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Design Agent | UI spec for calendar overflow click-to-expand | T-271 |
-| Backend Engineer | Server-side XSS input sanitization | T-272 |
-| Frontend Engineer | Calendar "+x more" click-to-expand interaction | T-273 |
-| QA Engineer | Security checklist + integration testing | T-274 |
-| Deploy Engineer | Staging deployment | T-275 |
-| Monitor Agent | Staging health check | T-276 |
-| User Agent | Staging walkthrough — verify sanitization + calendar UX | T-277 |
-| Manager | Code review, triage T-277 feedback, Sprint 36 plan | Reviews |
+| Backend Engineer | Post-sanitization validation fix | T-278 |
+| Frontend Engineer | Page title and font branding fix | T-279 |
+| QA Engineer | Integration testing + security checklist | T-280 |
+| Deploy Engineer | Staging deploy + production deploy | T-281, T-283 |
+| Monitor Agent | Staging + production health checks | T-282, T-284 |
+| User Agent | Production walkthrough | T-285 |
+| Manager | Code review, triage T-285 feedback, Sprint 37 plan | Reviews |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-T-271 (Design: "+x more" click-to-expand spec)
-    |
-    T-273 (Frontend: implement "+x more" interaction)
-        |
-        T-274 (QA: security + integration) ← also depends on T-272
-            |
-            T-275 (Deploy: staging)
-                |
-                T-276 (Monitor: staging health check)
-                    |
-                    T-277 (User Agent: staging walkthrough)
-
-T-272 (Backend: XSS sanitization) ← NO BLOCKERS, parallel with T-271/T-273
-    |
-    T-274 (QA: also blocked by T-272)
+T-278 (Backend: post-sanitization validation) ──┐
+                                                 ├── T-280 (QA) → T-281 (Deploy Staging) → T-282 (Monitor Staging)
+T-279 (Frontend: page title/font fix) ──────────┘                                              |
+                                                                                    T-283 (Deploy Production)
+                                                                                                |
+                                                                                    T-284 (Monitor Production)
+                                                                                                |
+                                                                                    T-285 (User Agent Production)
 ```
 
-**Critical path:** T-271 → T-273 → T-274 → T-275 → T-276 → T-277
-**Parallel work:** T-272 (backend) runs in parallel with T-271 + T-273 (design + frontend)
+**Critical path:** T-278/T-279 (parallel) → T-280 → T-281 → T-282 → T-283 → T-284 → T-285
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #35 is complete?*
+*How do we know Sprint #36 is complete?*
 
-- [ ] T-271: UI spec for "+x more" click-to-expand published
-- [ ] T-272: Server-side XSS sanitization implemented and tested
-- [ ] T-273: Calendar "+x more" click-to-expand implemented and tested
-- [ ] T-274: QA security checklist PASS, all tests pass, XSS sanitization verified
-- [ ] T-275: Staging deployed with Sprint 35 changes
-- [ ] T-276: Monitor staging health check — Deploy Verified = Yes (Staging)
-- [ ] T-277: User Agent staging walkthrough — no Critical or Major issues; feedback submitted
-- [ ] T-277 feedback triaged by Manager (all entries Acknowledged or Tasked)
-- [ ] Sprint 35 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 36 plan written in `.workflow/active-sprint.md`
+- [ ] T-278: Post-sanitization validation implemented and tested
+- [ ] T-279: Page title and font references fixed
+- [ ] T-280: QA security checklist PASS, all tests pass
+- [ ] T-281: Staging deployed with Sprint 36 changes
+- [ ] T-282: Monitor staging health check — Deploy Verified = Yes (Staging)
+- [ ] T-283: Production deployed via Render
+- [ ] T-284: Monitor production health check — Deploy Verified = Yes (Production)
+- [ ] T-285: User Agent production walkthrough — no Critical or Major issues; feedback submitted
+- [ ] T-285 feedback triaged by Manager (all entries Acknowledged or Tasked)
+- [ ] Sprint 36 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 37 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #35)
+## Success Criteria (Sprint #36)
 
-By end of Sprint #35, the following must be verifiable:
+By end of Sprint #36, the following must be verifiable:
 
-- [ ] **XSS payloads stripped server-side** — Storing `<script>alert(1)</script>` in any text field results in the script tag being stripped from the stored/returned value
-- [ ] **Unicode and emoji preserved** — `東京旅行 🗼` stored and returned correctly after sanitization
-- [ ] **Calendar "+x more" is interactive** — Clicking the overflow indicator shows all events for that day
+- [ ] **XSS sanitization live on production** — Sprint 35's server-side sanitization deployed and verified on production
+- [ ] **Calendar "+x more" live on production** — Sprint 35's click-to-expand deployed and verified on production
+- [ ] **Post-sanitization validation works** — All-HTML required fields (e.g., trip name `<script>alert(1)</script>`) return 400 VALIDATION_ERROR
+- [ ] **Page title is "Triplanner"** — Not "Plant Guardians". IBM Plex Mono is the only font loaded.
 - [ ] **All tests pass** — Backend + frontend + Playwright, zero regressions
-- [ ] **Staging verified** — Deploy Verified = Yes (Staging) confirmed
+- [ ] **Production verified** — Deploy Verified = Yes (Production) confirmed
 
 ---
 
 ## Blockers
 
-- **No blockers on T-271 or T-272.** Design and backend work can start immediately in parallel.
-- **T-273 blocked by T-271.** Frontend needs the UI spec before implementing the interaction.
-- **T-274 blocked by T-272 and T-273.** QA needs both backend and frontend changes complete.
-- **T-275 → T-276 → T-277** — Sequential staging pipeline, standard flow.
+- **No blockers on T-278 or T-279.** Both bug fixes can start immediately in parallel.
+- **T-280 blocked by T-278 and T-279.** QA needs both fixes complete.
+- **T-281 → T-282** — Sequential staging pipeline.
+- **T-283 blocked by T-282.** Production deploy requires staging verification.
+- **T-283 → T-284 → T-285** — Sequential production pipeline.
 
 ---
 
-*Sprint #34 archived to `.workflow/sprint-log.md` on 2026-03-23. Sprint #35 plan written by Manager Agent 2026-03-23.*
+*Sprint #35 archived to `.workflow/sprint-log.md` on 2026-03-23. Sprint #36 plan written by Manager Agent 2026-03-23.*

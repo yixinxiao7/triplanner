@@ -278,6 +278,7 @@ Each task is a row in the table below. Agents update their assigned tasks as the
 *Promoted to Sprint 4: B-018 → T-063, B-019 → T-064, B-023 → T-058, B-025 → T-059, B-026 → T-060, B-027 → T-061, B-028 → T-062.*
 
 | B-033 | Escape ILIKE wildcard characters (%, _) in search parameter before constructing ILIKE pattern — prevents `%` from matching all trips | Bug Fix | P3 | S | FB-062 (Sprint 5). No cross-user security impact (results are user-scoped), but correctness issue. Fix: `search.trim().replace(/%/g, '\\%').replace(/_/g, '\\_')` in tripModel.js. |
+| B-035 | Post-sanitization validation: re-validate required fields after HTML sanitization to prevent empty strings bypassing constraints | Bug Fix | P2 | S | FB-178 (Sprint 35). Sanitization strips all HTML from `<svg onload=alert(1)>` → `""`, bypassing "name is required" validation. Fix: sanitize before validate, or add post-sanitization check. Promoted to T-278 (Sprint 36). |
 | B-034 | Fix FilterToolbar refetch flicker — remove `!isLoading` from `showToolbar` condition in HomePage.jsx so toolbar stays visible during API refetch (Spec 11.7.4 violation) | Bug Fix | P1 | S | FB-067 (Sprint 5). Tasked for Sprint 6. One-line fix. Toolbar briefly unmounts during refetch, violating spec requirement that toolbar remains visible and interactive during loading. |
 
 *Promoted to Sprint 5: B-029 (trip search) → T-072+T-073.*
@@ -3055,6 +3056,39 @@ Review findings:
 **T-276 (Monitor Agent) is now unblocked and moved to In Progress.** Handoff logged in handoff-log.md.
 
 *Manager Agent Sprint #35 Code Review (T-275) — 2026-03-23*
+
+---
+
+## Sprint 36 Tasks
+
+**Sprint Goal:** Deploy Sprint 35 hardening to production, fix page title/font branding (FB-188), add post-sanitization validation (FB-178).
+
+### Phase 1 — Bug Fixes (parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-278 | Backend Engineer: Post-sanitization validation for required fields (FB-178). Swap middleware order to sanitize → validate, or add post-sanitization check. All-HTML required fields must return 400. | Bug Fix | Backend Engineer | Backlog | P1 | S | 36 | — | All-HTML required fields rejected with 400; non-required fields still allow empty; backend tests cover new behavior; no regressions in 446 tests. |
+| T-279 | Frontend Engineer: Fix page title "Plant Guardians" → "Triplanner" and remove wrong font references (FB-188). Update index.html title, meta description, and font links. | Bug Fix | Frontend Engineer | Backlog | P1 | S | 36 | — | Page title shows "Triplanner"; only IBM Plex Mono font loaded; no references to "Plant Guardians"/"DM Sans"/"Playfair Display"; no regressions in 510 tests. |
+
+---
+
+### Phase 2 — QA + Deploy Staging (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-280 | QA Engineer: Integration testing for Sprint 36. Verify post-sanitization validation, page title/font fix, full test suite, security checklist. Log in qa-build-log.md. | Code Review | QA Engineer | Backlog | P1 | M | 36 | T-278, T-279 | All tests pass; post-sanitization validation verified; page branding verified; security checklist PASS. |
+| T-281 | Deploy Engineer: Sprint 36 staging deployment. Rebuild frontend + backend, deploy to staging (PM2), smoke test. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 36 | T-280 | Staging deployed; page title "Triplanner" on staging; smoke tests pass. |
+| T-282 | Monitor Agent: Staging health check. Full protocol + verify page title + post-sanitization validation + Playwright 4/4. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 36 | T-281 | All staging checks pass; Deploy Verified = Yes (Staging). |
+
+---
+
+### Phase 3 — Production Deployment + Verification (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-283 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | M | 36 | T-282 | PR merged; Render deploy successful; production endpoints healthy; XSS + page title verified on production. |
+| T-284 | Monitor Agent: Production health check. Full protocol + verify XSS sanitization + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 36 | T-283 | All production checks pass; Deploy Verified = Yes (Production). |
+| T-285 | User Agent: Production walkthrough. Test XSS sanitization, post-sanitization validation, page title, calendar click-to-expand, CRUD regression. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 36 | T-284 | All Sprint 35+36 features verified on production; no Critical/Major regressions; feedback submitted. |
 
 ---
 

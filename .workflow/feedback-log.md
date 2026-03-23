@@ -235,7 +235,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Steps:** POST /api/v1/trips with `name: "<script>alert(1)</script>"`. Expected: tags stripped. Actual: `"alert(1)"` — correct.
 
@@ -249,7 +249,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Steps:** POST with HTML in destinations array. Expected: tags stripped per element. Actual: `["Tokyo", ""]` — correct per API contract.
 
@@ -263,7 +263,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Steps:** POST with Japanese text and emoji. Expected: preserved exactly. Actual: preserved — correct.
 
@@ -277,7 +277,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Steps:** POST with ampersands, quotes, apostrophes. Expected: preserved. Actual: preserved — correct.
 
@@ -291,7 +291,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Steps:** POST with nested tags and javascript: hrefs. Expected: all HTML stripped, text content preserved. Actual: correct.
 
@@ -305,7 +305,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Steps:** PATCH trip with iframe in notes. Expected: iframe stripped. Actual: `" My notes"` with leading space — correct (space was between the tags and the text content).
 
@@ -319,7 +319,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Steps:** POST to each sub-resource endpoint with `<script>`, `<b>`, `<img onerror>`, `<a href=javascript:>` payloads. Expected: all HTML stripped. Actual: all HTML stripped correctly across all 4 sub-resource types.
 
@@ -333,7 +333,8 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Bug |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
+| Tasked As | B-035 (Backlog — post-sanitization validation for required fields) |
 
 **Steps:** PATCH trip with `{"name": "<svg onload=alert(1)>"}`. Expected: XSS stripped (correct), but ideally a 400 validation error since the sanitized result is empty. Actual: 200 OK, name stored as `""`. The trip now has an empty name.
 
@@ -349,7 +350,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Steps:** POST with mathematical angle brackets. Expected: preserved (not valid HTML tags). Actual: `"5 < 10 & 10 > 5"` — correct.
 
@@ -363,7 +364,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 ---
 
@@ -375,7 +376,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Steps:** POST with `{"name":"","destinations":[],"start_date":"","end_date":"","timezone":""}`. Expected: 400 validation error. Actual: 400 with `"name": "Trip name is required", "destinations": "At least one destination is required"` — correct.
 
@@ -389,7 +390,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 ---
 
@@ -401,7 +402,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 ---
 
@@ -413,7 +414,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 ---
 
@@ -425,7 +426,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Details:** Reviewed TripCalendar.jsx lines 317-876 and TripCalendar.module.css lines 300-399. All Spec 29 requirements implemented: trigger is a `<button>` (not `<span>`), popover rendered outside grid to avoid overflow:hidden clipping, above/below placement based on cell row position, scrollbar styling, header with day label + separator + event count, event pills reuse the same pill component. Keyboard accessibility: Escape closes and restores focus. Animation: 150ms ease opacity transition per design principles. CSS follows Japandi design language with var(--surface), var(--border-subtle), var(--font-mono), 11px uppercase labels.
 
@@ -439,7 +440,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 **Details:** Tests cover: 29.A (overflow trigger renders as button with correct aria), 29.B (click opens popover with role=dialog), 29.C (correct day label and event count), 29.D (pill click scrolls to section), 29.E (click outside closes), 29.F (Escape closes), 29.H (month nav closes), 29.I (Enter on trigger opens), 29.K (no trigger when ≤3 events). One minor React act() warning in test 29.I — non-blocking.
 
@@ -453,7 +454,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 
 ---
 
@@ -465,7 +466,8 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Bug |
 | Severity | Minor |
-| Status | New |
+| Status | Tasked |
+| Tasked As | T-279 (Sprint 36 — fix page title and font references) |
 
 **Steps:** Visit http://localhost:4173 and check the page title. Expected: "Triplanner" or similar. Actual: "Plant Guardians". Also loads Google Fonts for "DM Sans" and "Playfair Display" instead of "IBM Plex Mono" per design context.
 

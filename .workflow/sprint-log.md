@@ -3483,4 +3483,77 @@ None. All tasks completed.
 
 ---
 
+### Sprint #35 — 2026-03-23 to 2026-03-23
+
+**Goal:** Harden security with server-side input sanitization (FB-163) and improve calendar UX with clickable "+x more" overflow indicators (FB-135).
+
+**Goal Met:** ✅ YES — Both Sprint 35 features implemented, tested, and verified on staging. All 7 sprint tasks completed. Zero Critical or Major issues in user testing. 18 feedback entries submitted (16 Positive, 2 Minor Bug).
+
+---
+
+**Tasks Completed (7/7):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-271 | Design Agent: UI spec for calendar "+x more" click-to-expand behavior (Spec 29) | ✅ Done |
+| T-272 | Backend Engineer: Server-side input sanitization for all user-provided text fields (17 fields across 6 models, 12 endpoints) | ✅ Done |
+| T-273 | Frontend Engineer: Calendar "+x more" click-to-expand interaction with full accessibility | ✅ Done |
+| T-274 | QA Engineer: Security checklist + integration testing — 446/446 backend + 510/510 frontend, security checklist PASS | ✅ Done |
+| T-275 | Deploy Engineer: Sprint 35 staging deployment via PM2 — 8/8 smoke tests PASS | ✅ Done |
+| T-276 | Monitor Agent: Staging health check — 17/17 checks PASS, Deploy Verified = Yes (Staging) | ✅ Done |
+| T-277 | User Agent: Sprint 35 staging walkthrough — 25 tests, 18 feedback entries (FB-171–FB-188) | ✅ Done |
+
+**Tasks Carried Over (0/7):**
+
+None. All tasks completed.
+
+**Key Decisions:**
+
+- CR-35 approved T-272 (backend sanitization) and T-273 (calendar click-to-expand). Both moved through Integration Check to Done.
+- CR-35 approved T-275 (staging deployment). PM2 used as Docker alternative — documented and approved.
+- No new ADRs this sprint. Sanitization approach (regex tag stripping, no third-party library) reviewed and approved.
+
+**Feedback Summary (Sprint 35 → Sprint 36 Triage):**
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-171–FB-177 | Positive | — | Acknowledged — XSS sanitization verified across all models and edge cases |
+| FB-178 | Bug | Minor | Acknowledged → B-035 (Backlog — post-sanitization validation for required fields) |
+| FB-179–FB-187 | Positive | — | Acknowledged — angle brackets, auth, SQL injection, validation, calendar, test suites all confirmed |
+| FB-188 | Bug | Minor | Tasked → T-279 (Sprint 36 — fix page title "Plant Guardians" → "Triplanner" and font references) |
+
+**Zero 'New' entries remaining. All 18 feedback entries triaged.**
+
+---
+
+**What Went Well:**
+
+- **Clean sprint execution:** All 7 tasks completed in sequence with zero rework cycles. No tasks sent back during code review.
+- **Comprehensive XSS sanitization:** 36 new backend tests, 17 text fields across 6 models sanitized. Unicode, emoji, and special characters all preserved correctly.
+- **Excellent calendar UX:** "+x more" click-to-expand implements full accessibility (ARIA, focus management, keyboard navigation), responsive design, and 150ms ease animations per design system.
+- **Test baseline grew:** 446/446 backend + 510/510 frontend = 956 total tests, zero regressions.
+- **Overwhelmingly positive feedback:** 16/18 feedback entries are positive confirmations. Only 2 minor bugs found.
+
+**What Could Improve:**
+
+- **FB-188 (wrong page title) is a long-standing issue** that should have been caught earlier. Basic branding elements (title, fonts) should be verified in every staging walkthrough.
+- **FB-178 (post-sanitization empty name)** reveals a middleware ordering gap: sanitization runs after validation, so a field that passes validation as non-empty can become empty after sanitization. Consider reversing the order (sanitize → validate) in a future sprint.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory MemoryStore — no Redis persistence
+- ⚠️ B-024: Auth rate limit is IP-only — no per-account limiting
+- ⚠️ FB-170: SPA has no SSR fallback for SEO/no-JS users (Suggestion — low priority)
+
+*New this sprint:*
+- ⚠️ B-035: Post-sanitization validation — sanitized fields should be re-validated for required constraints (FB-178)
+- ⚠️ FB-188: Frontend index.html has wrong page title and font references (Tasked as T-279 for Sprint 36)
+
+---
+
+*Sprint #35 began 2026-03-23, closed 2026-03-23.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*
