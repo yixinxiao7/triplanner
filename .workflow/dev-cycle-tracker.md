@@ -2796,7 +2796,7 @@ Sprint 33 is a frontend-only calendar rendering fix sprint (FB-133/FB-134 — mu
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-269 | Deploy Engineer: Deploy Sprint 33 frontend changes to production (Render). Rebuild frontend with production env vars, push to production branch or trigger Render deploy. Verify frontend loads at `https://triplanner.yixinx.com` with multi-day calendar fix. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P0 | S | 34 | — | Frontend deployed to production; multi-day calendar fix live; no build errors; production URL loads correctly. |
+| T-269 | Deploy Engineer: Deploy Sprint 33 frontend changes to production (Render). Rebuild frontend with production env vars, push to production branch or trigger Render deploy. Verify frontend loads at `https://triplanner.yixinx.com` with multi-day calendar fix. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | In Review | P0 | S | 34 | — | Frontend deployed to production; multi-day calendar fix live; no build errors; production URL loads correctly. **Build verified 2026-03-23. 501/501 tests pass. Branch pushed to origin. PR to main required for Render auto-deploy.** |
 
 ---
 
