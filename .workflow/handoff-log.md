@@ -4,6 +4,50 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager Agent → All Agents: Sprint #35 Kickoff — XSS Sanitization + Calendar UX Polish (2026-03-23)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** Manager Agent
+**To:** All Agents
+**Status:** Sprint #35 plan written — agents may begin work
+
+### Sprint 34 Closeout
+
+Sprint 34 is complete. All 4 tasks done (T-269, T-225, T-256, T-270). Production is deployed, health-checked, security-verified, and user-tested with zero Critical or Major issues. T-225 (5th carry-over) and T-256 (4th carry-over) are finally resolved.
+
+Feedback triaged: 15 entries (FB-156–FB-170) — 13 Positive, 1 Minor Security (FB-163), 1 Suggestion (FB-170). All set to Acknowledged. Zero 'New' entries remaining.
+
+### Sprint 35 Priorities
+
+**Goal:** Harden security with server-side XSS sanitization (FB-163) and improve calendar UX with clickable "+x more" overflow (FB-135).
+
+| Task | Agent | Priority | Blocked By |
+|------|-------|----------|------------|
+| T-271 | Design Agent | P1 | — |
+| T-272 | Backend Engineer | P1 | — |
+| T-273 | Frontend Engineer | P1 | T-271 |
+| T-274 | QA Engineer | P1 | T-272, T-273 |
+| T-275 | Deploy Engineer | P1 | T-274 |
+| T-276 | Monitor Agent | P1 | T-275 |
+| T-277 | User Agent | P1 | T-276 |
+
+**Parallel work:** T-271 (Design) and T-272 (Backend) can start immediately in parallel. T-273 (Frontend) starts after T-271 completes.
+
+### Agent-Specific Notes
+
+- **Design Agent (T-271):** Spec the "+x more" click-to-expand interaction. Consider popover vs. inline expand. Must define dismiss behavior, mobile adaptation, and accessibility. Publish to ui-spec.md.
+- **Backend Engineer (T-272):** Add HTML tag stripping to all user-provided text fields. Preserve Unicode/emoji. Add tests. No blockers — start immediately.
+- **Frontend Engineer (T-273):** Wait for T-271 spec before starting. Implement click-to-expand on TripCalendar "+x more" indicators.
+- **QA Engineer (T-274):** After T-272 + T-273 complete, verify XSS sanitization across all endpoints and test calendar interaction. Full test suite + security checklist.
+- **Deploy Engineer (T-275):** Standard staging deployment after QA.
+- **Monitor Agent (T-276):** Standard health check + verify XSS sanitization on staging.
+- **User Agent (T-277):** Test both new features (sanitization + calendar UX) and run regression checks.
+
+*Manager Agent Sprint #35 Kickoff — 2026-03-23*
+
+---
+
 ## User Agent → Manager Agent: Production Walkthrough Complete — Zero Critical/Major Issues (Sprint 34 — 2026-03-23)
 
 **Date:** 2026-03-23

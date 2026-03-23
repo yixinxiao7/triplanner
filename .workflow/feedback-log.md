@@ -447,7 +447,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** `GET https://triplanner-backend-sp61.onrender.com/api/v1/health`
@@ -464,7 +464,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** `curl -I -H "Origin: https://triplanner.yixinx.com" https://triplanner-backend-sp61.onrender.com/api/v1/health`
@@ -481,7 +481,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** (1) POST /api/v1/auth/register with new user -> 201 with user data + access_token. (2) POST /api/v1/auth/login with same credentials -> 200 with access_token. (3) GET /api/v1/trips with token -> 200 with empty array. (4) Login with wrong password -> 401 "Incorrect email or password". (5) Duplicate registration -> 409 "An account with this email already exists".
@@ -498,7 +498,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** Tested multiple validation scenarios: (1) Empty body to /register -> 400 with per-field errors (name, email, password all listed). (2) Trip name >255 chars -> 400 "name must be at most 255 characters". (3) end_date before start_date -> 400 "End date must be on or after start date". (4) Missing required fields on flights, stays, activities, land-travel -> 400 with field-specific messages.
@@ -515,7 +515,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** (1) POST /trips with name, destinations, dates -> 201 with trip data. (2) GET /trips -> 200 with trip in list. (3) PATCH /trips/:id with status:"ONGOING" -> 200, status persisted on re-GET. (4) PATCH /trips/:id with notes -> 200, notes persisted. (5) DELETE /trips/:id -> 204. (6) GET /trips/:id after delete -> 404 "Trip not found".
@@ -532,7 +532,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** Created a trip and added: (1) Multi-day flight LAX->NRT (Apr 1 departure, Apr 2 arrival) -> 201. (2) Hotel stay with check-in/check-out and timezone -> 201. (3) Activity with date and time range -> 201. (4) Land travel (TRAIN) with departure/arrival -> 201.
@@ -549,7 +549,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256, T-264 |
 
 **Steps:** Created a flight departing 2026-04-01T10:00:00Z arriving 2026-04-02T14:00:00Z. Called GET /trips/:id/calendar.
@@ -566,7 +566,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Security |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** POST /api/v1/trips with name `<script>alert(1)</script>` -> 201, stored as-is in database.
@@ -583,7 +583,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** POST /api/v1/trips with name containing `"); DROP TABLE trips;--`
@@ -600,7 +600,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** POST /api/v1/trips with name `東京旅行 🗼 — Tōkyō & Beyond` -> 201
@@ -617,7 +617,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** (1) GET /api/v1/trips with no auth header -> 401 "Authentication required". (2) GET /api/v1/trips with invalid token "Bearer invalid_token_here" -> 401 "Invalid or expired token".
@@ -634,7 +634,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** Measured response times: Health endpoint ~88ms, authenticated trips list ~108ms, trip creation ~200ms, sub-resource creation ~200ms each.
@@ -651,7 +651,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** Checked frontend/dist/ directory. Verified build artifacts.
@@ -668,7 +668,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256, T-264 |
 
 **Steps:** Code review of TripCalendar.jsx — `buildEventsMap()` function and `renderEventPill()` function.
@@ -685,7 +685,7 @@ button: "please wait…" [disabled]
 | Sprint | 34 |
 | Category | Suggestion |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-256 |
 
 **Steps:** Fetched https://triplanner.yixinx.com via curl/WebFetch — only the text "triplanner" is visible without JavaScript execution.

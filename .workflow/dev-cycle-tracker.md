@@ -2805,7 +2805,7 @@ Sprint 33 is a frontend-only calendar rendering fix sprint (FB-133/FB-134 — mu
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
 | T-225 | Monitor Agent: Post-production health check on `https://triplanner-backend-sp61.onrender.com`. Full health check protocol: health endpoint, CORS, auth register/login, trips CRUD, calendar (verify multi-day events), no 5xx. Log results in qa-build-log.md Sprint 34 section. If all pass: Deploy Verified = Yes (Production), handoff to T-256. **CARRY-OVER FROM SPRINT 30/31/32/33 — 5TH CARRY-OVER — EXECUTE IMMEDIATELY AFTER T-269.** | Infrastructure | Monitor Agent | ✅ Done | P0 | S | 34 | ~~T-269~~ | **COMPLETED 2026-03-23.** Config consistency: ✅ PASS (port/protocol/CORS/Docker all consistent). Staging health check: ✅ ALL PASS (health, auth login, trips CRUD, activities, flights, stays, calendar, no 5xx). Production health check: ✅ ALL PASS (health 200, auth register/login, trips CRUD, CORS preflight correct for `https://triplanner.yixinx.com`, frontend loads). Deploy Verified = Yes (Staging + Production). Handoff to T-256 (User Agent) logged. |
-| T-256 | User Agent: Production walkthrough on `https://triplanner.yixinx.com`. Full new-user flow: register → create trip → add flight/stay/activity/land travel → verify calendar (including multi-day spanning) → status change → mobile check → delete trip → logout. Submit feedback to feedback-log.md. **CARRY-OVER FROM SPRINT 30/31/32/33 — 4TH CARRY-OVER.** | Documentation | User Agent | Backlog | P0 | M | 34 | T-225 | Full new-user flow works on production; all event types display correctly including multi-day spanning; no Critical or Major issues; feedback submitted. |
+| T-256 | User Agent: Production walkthrough on `https://triplanner.yixinx.com`. Full new-user flow: register → create trip → add flight/stay/activity/land travel → verify calendar (including multi-day spanning) → status change → mobile check → delete trip → logout. Submit feedback to feedback-log.md. **CARRY-OVER FROM SPRINT 30/31/32/33 — 4TH CARRY-OVER.** | Documentation | User Agent | ✅ Done | P0 | M | 34 | ~~T-225~~ | **COMPLETED 2026-03-23.** Full production walkthrough executed. 15 feedback entries submitted (FB-156–FB-170): 13 Positive, 1 Minor Security (FB-163 — stored XSS, not exploitable via React), 1 Suggestion (FB-170 — SSR). Zero Critical or Major issues. All CRUD flows, auth, calendar multi-day spanning, validation, and security verified on production. |
 
 ---
 
@@ -2945,6 +2945,42 @@ Review findings:
 **Hotfix standby:** Frontend Engineer is monitoring. If T-225 (Monitor Agent health check) or T-256 (User Agent production walkthrough) reveals a Critical or Major frontend bug, the Manager will create an H-XXX task. Frontend Engineer will respond immediately.
 
 **Frontend Engineer Sprint 34 work: COMPLETE (no tasks assigned). On standby for hotfixes.**
+
+---
+
+## Sprint 35 Tasks
+
+**Sprint 35 Kickoff (Manager Agent — 2026-03-23):** Two focus areas: (1) Server-side XSS input sanitization (FB-163 defense-in-depth), (2) Calendar "+x more" click-to-expand (FB-135 UX polish). MVP is feature-complete and production-verified. This sprint hardens security and improves calendar usability.
+
+**Test baseline at Sprint 35 kickoff:** 410/410 backend | 501/501 frontend | 4/4 Playwright | 915 total
+
+---
+
+### Phase 1 — Design Specs (no blockers)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-271 | Design Agent: UI spec for calendar "+x more" click-to-expand behavior (FB-135). Define click target, expanded state (popover/dropdown/inline), dismiss behavior, mobile behavior, animation, accessibility. Publish to ui-spec.md. | Feature | Design Agent | Backlog | P1 | S | 35 | — | UI spec published with interaction fully defined; desktop + mobile behaviors specified; accessibility documented. |
+
+---
+
+### Phase 2 — Implementation (parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-272 | Backend Engineer: Server-side input sanitization for all user-provided text fields (FB-163). Strip HTML tags from trip name, notes, destinations, flight fields, stay fields, activity fields, land travel fields. Preserve Unicode/emoji. Add backend tests. | Feature | Backend Engineer | Backlog | P1 | M | 35 | — | XSS payloads stripped; Unicode/emoji preserved; backend tests cover each model; no regressions in 410 backend tests. |
+| T-273 | Frontend Engineer: Calendar "+x more" click-to-expand interaction (FB-135). Implement click handler on overflow indicator, show expanded view per T-271 spec, dismiss on click-outside/Escape, mobile responsive, accessible, 150ms ease animation. Add frontend tests. | Feature | Frontend Engineer | Backlog | P1 | M | 35 | T-271 | "+x more" clickable and expands; dismiss works; mobile responsive; accessible; tests cover expand/collapse/dismiss; no regressions in 501 frontend tests. |
+
+---
+
+### Phase 3 — QA + Deploy + Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-274 | QA Engineer: Security checklist + integration testing. Verify XSS sanitization on all endpoints, Unicode/emoji preservation, "+x more" calendar interaction, full test suite, security checklist. Log in qa-build-log.md. | Code Review | QA Engineer | Backlog | P1 | M | 35 | T-272, T-273 | All tests pass; XSS sanitization verified; security checklist PASS; no regressions. |
+| T-275 | Deploy Engineer: Sprint 35 staging deployment. Rebuild frontend + backend, deploy to staging (Docker Compose), smoke test all endpoints. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 35 | T-274 | Staging deployed; smoke tests pass. |
+| T-276 | Monitor Agent: Staging health check. Full protocol + verify XSS sanitization on staging + Playwright E2E 4/4 PASS. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 35 | T-275 | All endpoints healthy; XSS sanitization confirmed; Playwright 4/4; Deploy Verified = Yes (Staging). |
+| T-277 | User Agent: Sprint 35 staging walkthrough. Test XSS sanitization, "+x more" calendar click-to-expand, regression check on CRUD/calendar/auth. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 35 | T-276 | XSS sanitization verified; calendar overflow interaction works; no Critical/Major regressions; feedback submitted. |
 
 ---
 
