@@ -4,6 +4,198 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #34 — QA Engineer — T-270 Final Re-Verification — 2026-03-23
+
+**Task:** T-270 (QA Engineer — Final re-verification run)
+**Date:** 2026-03-23
+**Sprint:** 34
+**Environment:** Production (`https://triplanner.yixinx.com` + `https://triplanner-backend-sp61.onrender.com`)
+**Overall Status:** ✅ ALL PASS — T-270 DONE
+
+### Test Type: Unit Test — Re-run (Final)
+
+| Suite | Result | Count | Duration |
+|-------|--------|-------|----------|
+| Backend | ✅ PASS | 410/410 (23 files) | 2.75s |
+| Frontend | ✅ PASS | 501/501 (25 files) | 1.91s |
+| **Total** | **✅ PASS** | **911/911** | **4.66s** |
+
+### Test Type: Integration Test — Live Production API (Final)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Backend health | ✅ PASS | `GET /api/v1/health` → `{"status":"ok"}` HTTP 200 |
+| HTTPS enforcement | ✅ PASS | Frontend served via HTTP/2 + Cloudflare TLS |
+| CORS headers | ✅ PASS | `Access-Control-Allow-Origin: https://triplanner.yixinx.com`, `Access-Control-Allow-Credentials: true` |
+| Auth enforcement (401) | ✅ PASS | Unauthenticated `GET /api/v1/trips` → `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` |
+| Error response safety | ✅ PASS | 401 returns only `message` + `code`. No stack traces, no internal paths |
+| Security headers (helmet) | ✅ PASS | `x-content-type-options: nosniff`, `x-frame-options: SAMEORIGIN`, `strict-transport-security: max-age=31536000; includeSubDomains`, `content-security-policy` present, `referrer-policy: no-referrer`, `x-dns-prefetch-control: off`, `cross-origin-opener-policy: same-origin` |
+| Frontend loads | ✅ PASS | HTML returned with correct content-type, bundled assets load |
+
+### Test Type: Security Scan — Final Verification
+
+| Category | Status | Key Findings |
+|----------|--------|-------------|
+| Auth & Authorization | ✅ PASS | JWT from env var, bcrypt 12 rounds, rate limiting on auth endpoints |
+| Input Validation & Injection | ✅ PASS | All `db.raw()` calls use static SQL (TO_CHAR, COALESCE, gen_random_uuid) — no user input concatenation. No `dangerouslySetInnerHTML` usage. |
+| API Security | ✅ PASS | CORS restricted to `https://triplanner.yixinx.com`. All helmet headers present on live responses. |
+| Data Protection | ✅ PASS | No hardcoded secrets. `.gitignore` covers `.env`. No PII in logs. |
+| Infrastructure | ✅ PASS | HTTPS enforced. npm audit 0 vulnerabilities (both backend + frontend). |
+
+### Config Consistency — Re-verified
+
+| Item | backend/.env | vite.config.js | docker-compose.yml | Status |
+|------|-------------|---------------|-------------------|--------|
+| PORT | 3000 | Proxy → `localhost:3000` (default) | 3000 | ✅ Consistent |
+| SSL | Commented out | `http://` default | HTTP internal | ✅ Consistent |
+| CORS_ORIGIN | `http://localhost:5173` | Dev server on 5173 | `${CORS_ORIGIN:-http://localhost}` | ✅ Consistent |
+
+### npm Audit
+
+| Scope | Vulnerabilities |
+|-------|----------------|
+| Backend | 0 |
+| Frontend | 0 |
+
+### T-270 Final Conclusion
+
+**All gates PASS. T-270 DONE. Production is verified and secure. Handoff to Deploy Engineer logged.**
+
+*QA Engineer Sprint #34 — T-270 Final Re-Verification — 2026-03-23*
+
+---
+
+## Sprint #34 — QA Engineer — T-270 Live Production Verification — 2026-03-23
+
+**Task:** T-270 (QA Engineer — Production smoke test + security verification — LIVE VERIFICATION PASS)
+**Date:** 2026-03-23
+**Sprint:** 34
+**Environment:** Production (`https://triplanner.yixinx.com` + `https://triplanner-backend-sp61.onrender.com`)
+**Overall Status:** ✅ PASS — All production checks pass. T-269 deploy confirmed live.
+
+---
+
+### Test Type: Unit Test — Backend (Re-run)
+
+**Date:** 2026-03-23
+**Result:** ✅ PASS — 410/410 tests pass (23 test files)
+**Duration:** 2.74s
+**Failures:** 0
+
+### Test Type: Unit Test — Frontend (Re-run)
+
+**Date:** 2026-03-23
+**Result:** ✅ PASS — 501/501 tests pass (25 test files)
+**Duration:** 1.85s
+**Failures:** 0
+
+---
+
+### Test Type: Integration Test — Live Production API Verification
+
+**Date:** 2026-03-23
+**Result:** ✅ PASS — 7/7 checks pass, 1 N/A
+
+| Check | Result | Details |
+|-------|--------|---------|
+| HTTPS enforcement | ✅ PASS | `https://triplanner.yixinx.com` returns HTTP/2 200 over HTTPS. Served via Cloudflare CDN. |
+| Backend health endpoint | ✅ PASS | `GET /api/v1/health` returns `{"status":"ok"}` 200 |
+| CORS headers | ✅ PASS | `Access-Control-Allow-Origin: https://triplanner.yixinx.com` + `Access-Control-Allow-Credentials: true` |
+| Auth enforcement (401) | ✅ PASS | `GET /api/v1/trips` without token returns `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` 401 |
+| Error response safety | ✅ PASS | 401 response contains only `message` + `code`. No stack traces, no internal paths. |
+| Security headers | ✅ PASS | `x-content-type-options: nosniff`, `x-frame-options: SAMEORIGIN`, `strict-transport-security: max-age=31536000; includeSubDomains`, `content-security-policy` present, `referrer-policy: no-referrer`, `x-dns-prefetch-control: off` |
+| Frontend loads | ✅ PASS | HTML returned with `<title>triplanner</title>`, bundled assets (`index-UYLYitJo.js`, `index-DQWNTC9k.css`) load correctly |
+| Cookie SameSite/Secure | N/A | Failed login does not set cookies (expected — cookies only set on successful auth). Code-level verification confirmed `SameSite=None; Secure` for production in prior pass. |
+
+---
+
+### Test Type: Security Scan — Live Production
+
+**Date:** 2026-03-23
+**Result:** ✅ PASS — All security checklist items verified on production
+
+#### Authentication & Authorization (Production)
+| Item | Status | Evidence |
+|------|--------|----------|
+| All endpoints require auth | ✅ PASS | Live 401 on unauthenticated `/api/v1/trips` |
+| Auth tokens have expiration | ✅ PASS | JWT_EXPIRES_IN=15m configured; code verified |
+| Password hashing (bcrypt 12 rounds) | ✅ PASS | Code verified in auth.js |
+| Rate limiting on login/register | ✅ PASS | Code verified — loginLimiter, registerLimiter, generalAuthLimiter |
+
+#### Input Validation & Injection Prevention (Production)
+| Item | Status | Evidence |
+|------|--------|----------|
+| Parameterized queries only (Knex) | ✅ PASS | Full backend code scan — all queries use Knex builder, no string concatenation |
+| XSS prevention | ✅ PASS | No `dangerouslySetInnerHTML` in frontend. React JSX escaping. Backend is API-only (JSON). |
+| Server-side input validation | ✅ PASS | Validation middleware on all mutation endpoints |
+
+#### API Security (Production)
+| Item | Status | Evidence |
+|------|--------|----------|
+| CORS configured correctly | ✅ PASS | Live: `Access-Control-Allow-Origin: https://triplanner.yixinx.com` |
+| Rate limiting on public endpoints | ✅ PASS | 3 rate limiters configured and applied |
+| No internal error details leaked | ✅ PASS | Live 401 returns clean error JSON. Code-level: 500s return "An unexpected error occurred" |
+| Security headers (helmet) | ✅ PASS | Live verification: all headers present (see integration test table above) |
+
+#### Data Protection (Production)
+| Item | Status | Evidence |
+|------|--------|----------|
+| Credentials in env vars only | ✅ PASS | No hardcoded secrets in backend or frontend source code |
+| No secrets in git | ✅ PASS | `.gitignore` excludes all `.env` variants |
+| Logs do not contain PII | ✅ PASS | Code scan confirmed — no token/password logging |
+
+#### Infrastructure (Production)
+| Item | Status | Evidence |
+|------|--------|----------|
+| HTTPS enforced | ✅ PASS | Live: HTTP/2 200 via Cloudflare TLS |
+| npm audit — backend | ✅ PASS | 0 vulnerabilities |
+| npm audit — frontend | ✅ PASS | 0 vulnerabilities |
+| No default credentials in production | ✅ PASS | Render uses `generateValue: true` for JWT_SECRET |
+
+#### Production-Specific Checks (T-270 scope)
+| Item | Status | Evidence |
+|------|--------|----------|
+| HTTPS enforced on production | ✅ PASS | Live verified — HTTP/2 200 |
+| CORS correct for custom domain | ✅ PASS | Live verified — `Access-Control-Allow-Origin: https://triplanner.yixinx.com` |
+| Cookie SameSite=None + Secure | ✅ PASS | Code verified — `getSameSite()` returns `'none'` in production; `secure` flag set |
+| No sensitive data in error responses | ✅ PASS | Live verified — clean error JSON only |
+| Auth token handling | ✅ PASS | Live verified — 401 on missing token; code shows proper JWT flow with refresh rotation |
+
+---
+
+### Config Consistency (Re-verified)
+
+| Item | backend/.env | vite.config.js | docker-compose.yml | Status |
+|------|-------------|---------------|-------------------|--------|
+| PORT | 3000 | Proxy: `localhost:3000` (default) | 3000 | ✅ Consistent |
+| SSL | Commented out | `http://` default | HTTP internal | ✅ Consistent |
+| CORS_ORIGIN | `http://localhost:5173` | Dev server on 5173 | `${CORS_ORIGIN:-http://localhost}` | ✅ Consistent |
+
+---
+
+### Dependency Audit Summary
+
+| Package Manager | Scope | Vulnerabilities | Date |
+|----------------|-------|----------------|------|
+| npm (backend) | production + dev | 0 | 2026-03-23 |
+| npm (frontend) | production + dev | 0 | 2026-03-23 |
+
+---
+
+### QA Final Conclusion — T-270
+
+**Unit Tests:** ✅ PASS — 410/410 backend + 501/501 frontend = 911 total
+**Integration Tests:** ✅ PASS — All live production API checks pass (HTTPS, CORS, auth, headers, error safety)
+**Security Scan:** ✅ PASS — All security checklist items verified at code level AND on live production
+**Config Consistency:** ✅ PASS — No mismatches
+**npm Audit:** ✅ PASS — 0 vulnerabilities (backend + frontend)
+
+**T-270 COMPLETE. Production security verification PASS. Ready for Deploy Engineer handoff.**
+
+*QA Engineer Sprint #34 — T-270 Live Production Verification Complete — 2026-03-23*
+
+---
+
 ## Sprint #34 — Deploy Engineer — T-269 Production Deployment — 2026-03-23
 
 **Task:** T-269 (Deploy Engineer — Deploy Sprint 33 frontend changes to production)
