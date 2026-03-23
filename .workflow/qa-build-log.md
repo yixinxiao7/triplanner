@@ -4,6 +4,78 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #35 — Monitor Agent — T-276 Post-Deploy Health Check — 2026-03-23
+
+**Task:** T-276 (Monitor Agent: Post-deploy health check + config consistency)
+**Date:** 2026-03-23
+**Sprint:** 35
+**Environment:** Staging
+**Deploy Verified:** Yes
+
+---
+
+### Config Consistency (Test Type: Config Consistency)
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| **Port match** | backend/.env `PORT=3000` = Vite proxy target port | Vite defaults to `http://localhost:3000` (via `BACKEND_PORT \|\| '3000'`) | ✅ PASS |
+| **Protocol match** | SSL_KEY_PATH/SSL_CERT_PATH commented out in .env → HTTP; Vite defaults to `http://` | Backend serves HTTP by default; Vite proxy uses `http://` | ✅ PASS |
+| **CORS match** | `CORS_ORIGIN=http://localhost:5173` includes Vite dev server `http://localhost:5173` | Exact match | ✅ PASS |
+| **Docker port match** | docker-compose.yml backend `PORT: 3000`, healthcheck targets `http://localhost:3000` | Matches .env `PORT=3000` | ✅ PASS |
+| **SSL certs exist** | infra/certs/localhost-key.pem + localhost.pem present (for staging HTTPS) | Both files present (key: 1704B, cert: 1151B) | ✅ PASS |
+
+**Staging runtime note:** Staging runs with `PORT=3001` + HTTPS via PM2 (runtime override). The base config files (.env, vite.config.js, docker-compose.yml) are internally consistent for the default dev environment (PORT=3000, HTTP). Vite supports staging via `BACKEND_PORT` and `BACKEND_SSL` env vars.
+
+**Config Consistency Result:** ✅ PASS — All 5 checks pass.
+
+---
+
+### Health Checks (Test Type: Post-Deploy Health Check)
+
+**Staging Backend:** https://localhost:3001 (PM2, HTTPS)
+**Staging Frontend:** http://localhost:4173 (PM2, Vite preview)
+**Token:** Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT /auth/register)
+
+| # | Check | Endpoint | HTTP Status | Response | Result |
+|---|-------|----------|-------------|----------|--------|
+| 1 | Health endpoint | `GET /api/v1/health` | 200 | `{"status":"ok"}` | ✅ PASS |
+| 2 | Auth login | `POST /api/v1/auth/login` | 200 | `{"data":{"user":{...},"access_token":"eyJ..."}}` | ✅ PASS |
+| 3 | Auth refresh (no cookie) | `POST /api/v1/auth/refresh` | 401 | `{"error":{"message":"Invalid or expired refresh token","code":"INVALID_REFRESH_TOKEN"}}` | ✅ PASS (expected 401) |
+| 4 | Auth logout (no token) | `POST /api/v1/auth/logout` | 401 | `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS (expected 401) |
+| 5 | List trips | `GET /api/v1/trips` | 200 | `{"data":[...],"pagination":{"page":1,"limit":20,"total":1}}` | ✅ PASS |
+| 6 | Get single trip | `GET /api/v1/trips/:id` | 200 | `{"data":{"id":"b525...","name":"Sprint 30 Test Trip",...}}` | ✅ PASS |
+| 7 | Create trip (XSS test) | `POST /api/v1/trips` | 201 | Name `<script>alert(1)</script>Test Trip` → stored as `alert(1)Test Trip` | ✅ PASS (XSS stripped) |
+| 8 | Delete trip | `DELETE /api/v1/trips/:id` | 204 | (empty body) | ✅ PASS |
+| 9 | List flights | `GET /api/v1/trips/:id/flights` | 200 | `{"data":[]}` | ✅ PASS |
+| 10 | List stays | `GET /api/v1/trips/:id/stays` | 200 | `{"data":[{"id":"6d53...","category":"HOTEL",...}]}` | ✅ PASS |
+| 11 | List activities | `GET /api/v1/trips/:id/activities` | 200 | `{"data":[]}` | ✅ PASS |
+| 12 | Calendar | `GET /api/v1/trips/:id/calendar` | 200 | `{"data":{"trip_id":"b525...","events":[...]}}` | ✅ PASS |
+| 13 | Land travel | `GET /api/v1/trips/:id/land-travel` | 200 | `{"data":[]}` | ✅ PASS |
+| 14 | Frontend accessible | `GET http://localhost:4173` | 200 | HTML with `<div id="root">`, JS/CSS assets loaded | ✅ PASS |
+| 15 | Frontend build artifacts | `ls frontend/dist/` | — | index.html, assets/, favicon.png present | ✅ PASS |
+| 16 | No 5xx errors | PM2 backend logs | — | Only 400-level JSON parse errors (from earlier curl escaping). Zero 5xx. | ✅ PASS |
+| 17 | Database connected | Health endpoint + all CRUD ops succeed | — | Queries execute, data persisted and retrieved | ✅ PASS |
+
+**Sprint 35 Feature Verification:**
+- **T-272 XSS Sanitization:** ✅ Confirmed — `<script>alert(1)</script>` tags stripped from trip name on POST. Response contains `alert(1)Test Trip`.
+- **T-273 Calendar Click-to-Expand:** Frontend build includes Sprint 35 changes (129 modules). Calendar endpoint responds correctly.
+
+**Health Check Result:** ✅ PASS — 17/17 checks pass. Zero 5xx errors. All response shapes match api-contracts.md.
+
+---
+
+### Overall Result
+
+**Deploy Verified: Yes**
+**Config Consistency: PASS**
+**Health Checks: PASS (17/17)**
+**XSS Sanitization: Verified**
+**Environment: Staging — https://localhost:3001 (backend), http://localhost:4173 (frontend)**
+
+*Monitor Agent Sprint #35 — T-276 — 2026-03-23*
+
+---
+
 ## Sprint #35 — QA Engineer — T-274 Full QA Pass — 2026-03-23
 
 **Task:** T-274 (QA Engineer: Security checklist + integration testing)

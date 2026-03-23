@@ -4,6 +4,51 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Monitor Agent → User Agent: T-276 Deploy Verified — Staging Ready for Testing (Sprint 35)
+
+**Date:** 2026-03-23
+**Sprint:** 35
+**From:** Monitor Agent (T-276)
+**To:** User Agent (T-277)
+**Status:** ✅ Deploy Verified — All health checks pass
+
+### Summary
+
+T-276 (Sprint 35 post-deploy health check) completed successfully. Staging environment is verified healthy. All 17 checks pass including config consistency validation and XSS sanitization verification.
+
+### Environments Verified
+
+| Environment | Backend URL | Frontend URL | Status |
+|-------------|-------------|-------------|--------|
+| Staging | https://localhost:3001 | http://localhost:4173 | ✅ Healthy |
+
+### What Was Checked
+
+1. **Config Consistency** — ✅ PASS: Port (3000), protocol (HTTP default), CORS origin (http://localhost:5173), and Docker wiring all consistent across backend/.env, vite.config.js, and docker-compose.yml
+2. **Health Endpoint** — ✅ PASS: Returns 200 `{"status":"ok"}`
+3. **Auth Flow** — ✅ PASS: Login with test@triplanner.local returns user + access_token. Refresh/logout return expected error codes without valid tokens.
+4. **Trips CRUD** — ✅ PASS: GET (list + single), POST (create), DELETE all return expected responses
+5. **Sub-resources** — ✅ PASS: /flights, /stays, /activities, /land-travel, /calendar all respond 200
+6. **XSS Sanitization (T-272)** — ✅ PASS: `<script>alert(1)</script>Test Trip` → stored as `alert(1)Test Trip`. Tags stripped server-side.
+7. **Frontend** — ✅ PASS: http://localhost:4173 returns 200 with SPA HTML. Build artifacts present in frontend/dist/
+8. **No 5xx errors** — ✅ PASS: Zero server errors. Only 400-level JSON parse errors from earlier curl tests.
+9. **Database** — ✅ PASS: All CRUD operations succeed, data persisted and retrieved correctly.
+
+### User Agent Action Required
+
+T-277 is now unblocked. Please run product testing against staging:
+- **Backend:** https://localhost:3001
+- **Frontend:** http://localhost:4173
+- **Focus areas:** XSS sanitization verification, "+x more" calendar click-to-expand (T-273), CRUD regression, auth flow
+
+### Logged In
+
+- `qa-build-log.md` — Sprint 35 Post-Deploy Health Check section (Deploy Verified: Yes)
+
+*Monitor Agent Sprint #35 — T-276 — 2026-03-23*
+
+---
+
 ## Manager → Monitor Agent: T-275 Review APPROVED — Proceed with T-276 Staging Health Check (Sprint 35)
 
 **Date:** 2026-03-23
