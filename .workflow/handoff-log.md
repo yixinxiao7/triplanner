@@ -4,6 +4,108 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Deploy Engineer: T-281 + T-283 Blocked — Awaiting Upstream Dependencies (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** Deploy Engineer (T-281, T-283)
+**To:** Manager Agent, QA Engineer
+**Status:** ⏳ Blocked — waiting on upstream tasks
+
+### Summary
+
+Deploy Engineer checked in for Sprint 36 tasks. Both assigned tasks are blocked by upstream dependencies that are not yet complete:
+
+| Task | Description | Blocked By | Blocker Status |
+|------|-------------|------------|----------------|
+| T-281 | Sprint 36 staging deployment | T-280 (QA integration testing) | Backlog — waiting on T-278 + T-279 |
+| T-283 | Production deployment (Render) | T-282 (Monitor staging health check) | Backlog — waiting on T-281 |
+
+### Dependency Chain Status
+
+```
+T-278 (Backend: post-sanitization validation) — In Progress ⏳
+T-279 (Frontend: page title/font fix) — Backlog ⏳
+    └── T-280 (QA: integration testing) — Backlog (blocked)
+        └── T-281 (Deploy: staging) — Backlog (blocked) ← ME
+            └── T-282 (Monitor: staging health check) — Backlog (blocked)
+                └── T-283 (Deploy: production) — Backlog (blocked) ← ME
+```
+
+### Action Required
+
+- **Backend Engineer:** Complete T-278 (post-sanitization validation)
+- **Frontend Engineer:** Complete T-279 (page title/font fix)
+- **QA Engineer:** Once T-278 + T-279 are done, run T-280 integration testing
+- **Deploy Engineer** will proceed with T-281 staging deployment as soon as T-280 is marked complete with a QA PASS handoff
+
+### Readiness
+
+Deploy Engineer has reviewed the sprint context and is ready to execute immediately once unblocked:
+- **T-281 plan:** Rebuild frontend + backend, deploy to staging via PM2, run smoke tests (health, auth, XSS sanitization, post-sanitization validation, page title), log results in qa-build-log.md
+- **T-283 plan:** After T-282 staging verification, merge feature branch to main via PR, Render auto-deploys, smoke test production endpoints
+- **Migrations:** 0 pending — all 10 migrations (001–010) already applied. No new migrations for Sprint 36.
+- **New env vars:** None expected for Sprint 36.
+
+*Deploy Engineer Sprint #36 — T-281/T-283 — 2026-03-24*
+
+---
+
+## Frontend Engineer → QA Engineer: T-279 Complete — Page Branding & Font Fix (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** Frontend Engineer (T-279)
+**To:** QA Engineer (T-280)
+**Status:** ✅ Complete — Ready for QA
+
+### Summary
+
+T-279 (FB-188) is complete. Fixed page branding compliance in `frontend/index.html`.
+
+### Changes Made
+
+1. **`<title>`** — Already correct: `triplanner` (lowercase). No change needed.
+2. **`<meta name="description">`** — **Added.** Content: `"Plan every detail of your trip — flights, stays, activities, and itinerary in one calm, focused workspace."`
+3. **`<meta name="theme-color">`** — **Added.** Value: `#02111B` (matches `--bg-primary`).
+4. **`<link rel="icon">`** — Already correct: points to `/favicon.png` which exists in `frontend/public/`.
+5. **Google Fonts `<link>` tags** — None present in `index.html`. Font loading via CSS `@import` in `global.css` is correct (IBM Plex Mono only).
+6. **`global.css`** — Already correct: Only IBM Plex Mono imported, `--font-mono` set correctly, `body` uses `var(--font-mono)`.
+
+### Verification
+
+- `grep -ri "plant guardians" frontend/` → **zero results** ✓
+- `grep -ri "DM Sans" frontend/src/` → **zero results** ✓
+- `grep -ri "Playfair Display" frontend/src/` → **zero results** ✓
+- Frontend test suite: **510/510 pass** ✓
+
+### What QA Should Test
+
+1. Open the app in browser — tab title must show "triplanner"
+2. View page source — verify `<meta name="description">` and `<meta name="theme-color">` present with correct values
+3. DevTools Network tab — only IBM Plex Mono font requests, no DM Sans or Playfair Display
+4. Run `npx vitest run` — all 510 tests pass
+
+*Frontend Engineer Sprint #36 — T-279 — 2026-03-24*
+
+---
+
+## Frontend Engineer: T-278 API Contract Acknowledged (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** Frontend Engineer
+**To:** Backend Engineer
+**Status:** ✅ Acknowledged
+
+### Summary
+
+T-278 API contract (post-sanitization validation) acknowledged. No frontend code changes needed — the frontend already handles 400 VALIDATION_ERROR responses. The behavioral change (all-HTML required fields now return 400) is transparent to existing error handling.
+
+*Frontend Engineer Sprint #36 — T-278 acknowledgment — 2026-03-24*
+
+---
+
 ## Backend Engineer → Frontend Engineer: T-278 API Contract Published — Post-Sanitization Validation (Sprint 36)
 
 **Date:** 2026-03-24
