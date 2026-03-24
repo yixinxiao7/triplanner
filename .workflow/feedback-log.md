@@ -534,3 +534,226 @@ button: "please wait…" [disabled]
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
 
 ---
+
+### FB-189 — Show checkout time for stays on calendar view
+
+| Field | Value |
+|-------|-------|
+| Feedback | Stay events on the calendar should display the checkout time on the end date |
+| Sprint | 35 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | New |
+| Related Task | — |
+
+**Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
+
+---
+### FB-190 — Add dark/light mode toggle button in navbar
+
+| Field | Value |
+|-------|-------|
+| Feedback | Add a theme toggle button in the navbar to switch between dark mode and light mode |
+| Sprint | 35 |
+| Category | Feature Gap |
+| Severity | Suggestion |
+| Status | New |
+| Related Task | — |
+
+**Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
+
+---
+### FB-189 — Show checkout time for stays on calendar view
+
+| Field | Value |
+|-------|-------|
+| Feedback | Stay events on the calendar should display the checkout time on the end date |
+| Sprint | 35 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | New |
+| Related Task | — |
+
+**Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
+
+---
+### FB-190 — Add dark/light mode toggle button in navbar
+
+| Field | Value |
+|-------|-------|
+| Feedback | Add a theme toggle button in the navbar to switch between dark mode and light mode |
+| Sprint | 35 |
+| Category | Feature Gap |
+| Severity | Suggestion |
+| Status | New |
+| Related Task | — |
+
+**Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
+
+---
+
+## Sprint #36 User Agent Feedback — 2026-03-24
+
+### FB-191 — Nested/obfuscated XSS bypass in sanitizer
+
+| Field | Value |
+|-------|-------|
+| Feedback | Nested HTML tags bypass the sanitizer, resulting in stored XSS payload |
+| Sprint | 36 |
+| Category | Security |
+| Severity | Major |
+| Status | New |
+| Related Task | T-278 / T-272 |
+
+**Description:** `POST /api/v1/trips` with `name: "<<script>script>alert(1)<</script>/script>"` — the sanitizer strips the outer tags in one pass, but the remaining text reassembles into `<script>alert(1)</script>`, which is stored in the database. Expected: after sanitization, no valid HTML tags remain. Actual: the stored value is `<script>alert(1)</script>`. While React's JSX auto-escaping prevents client-side exploitation, this violates the defense-in-depth contract (T-272) which states all HTML tags should be stripped from stored values. Fix: run the sanitizer in a loop until no tags remain, or use a proper HTML parser instead of a single-pass regex strip.
+
+**Steps to reproduce:**
+1. `POST /api/v1/trips` with body `{"name":"<<script>script>alert(1)<</script>/script>","start_date":"2026-04-01","end_date":"2026-04-10","destinations":["Tokyo"]}`
+2. Observe the response: `"name":"<script>alert(1)</script>"`
+3. The stored name contains a full `<script>` tag
+
+---
+
+### FB-192 — Post-sanitization validation correctly rejects all-HTML required fields
+
+| Field | Value |
+|-------|-------|
+| Feedback | T-278 working as designed — all-HTML trip names are rejected with 400 |
+| Sprint | 36 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-278 |
+
+**Description:** `POST /api/v1/trips` with `name: "<svg onload=alert(1)>"` correctly returns `400 VALIDATION_ERROR` with `{"fields":{"name":"Trip name is required"}}`. The sanitizer strips the tag to empty string, and the post-sanitization validation catches it. `PATCH /api/v1/trips/:id` with `name: "<svg onload=alert(1)>"` also correctly returns `400 VALIDATION_ERROR` with `{"fields":{"name":"name must be at least 1 characters"}}`. Non-required fields (notes) correctly accept empty-after-sanitization values. Register with all-HTML name also returns `400 VALIDATION_ERROR` with `"Name is required"`.
+
+---
+
+### FB-193 — Page title and font branding fix confirmed
+
+| Field | Value |
+|-------|-------|
+| Feedback | T-279 working as designed — page title is "triplanner", IBM Plex Mono is the only font loaded |
+| Sprint | 36 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-279 |
+
+**Description:** `<title>triplanner</title>` confirmed in both the source `index.html` and the served build output. `<meta name="description">` correctly references trip planning, not "Plant Guardians". CSS imports `IBM Plex Mono` from Google Fonts. No references to "DM Sans" or "Playfair Display" found in the built CSS or HTML. Theme color `#02111B` correctly set.
+
+---
+
+### FB-194 — XSS sanitization working across all models
+
+| Field | Value |
+|-------|-------|
+| Feedback | HTML tags stripped from flights, stays, activities — sanitization defense-in-depth working |
+| Sprint | 36 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-272 |
+
+**Description:** Tested XSS sanitization across multiple models:
+- **Flights:** `airline: "<img src=x>"` sanitized to empty, correctly rejected with 400 (required field). `flight_number: "<script>alert(1)</script>"` sanitized to `"alert(1)"` — text preserved, tags stripped.
+- **Stays:** `name: "<div onmouseover=alert(1)>Hotel</div>"` stored as `"Hotel"` — tags stripped, text preserved.
+- **Activities:** `location: "<script>alert(1)</script>"` stored as `"alert(1)"`. `name: "<marquee>Bad Activity</marquee>"` stored as `"Bad Activity"`.
+- **Notes (non-required):** `notes: "<b>Some bold notes</b>"` stored as `"Some bold notes"` — tags stripped, no validation error.
+
+---
+
+### FB-195 — Auth edge cases handled correctly
+
+| Field | Value |
+|-------|-------|
+| Feedback | Authentication and registration validation is solid |
+| Sprint | 36 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | — |
+
+**Description:** All auth edge cases return appropriate errors:
+- No token: `401 UNAUTHORIZED` — "Authentication required"
+- Invalid token: `401 UNAUTHORIZED` — "Invalid or expired token"
+- Wrong password: `401 INVALID_CREDENTIALS` — "Incorrect email or password"
+- Empty email: `400 VALIDATION_ERROR` — "Email is required"
+- Empty password: `400 VALIDATION_ERROR` — "Password is required"
+- Duplicate email: `409 EMAIL_TAKEN` — "An account with this email already exists"
+- All-HTML name on register: `400 VALIDATION_ERROR` — "Name is required" (post-sanitization)
+
+---
+
+### FB-196 — Input validation edge cases handled well
+
+| Field | Value |
+|-------|-------|
+| Feedback | Long strings, type mismatches, special characters all validated correctly |
+| Sprint | 36 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | — |
+
+**Description:** Edge case validation is solid:
+- Long name (1000 chars): `400 VALIDATION_ERROR` — "name must be at most 255 characters"
+- Number where string expected: `400 VALIDATION_ERROR` — "name must be a string"
+- Whitespace-only name: `400 VALIDATION_ERROR` — "Trip name is required"
+- Missing required fields: rejected with appropriate messages
+- SQL injection `"Tokyo; DROP TABLE trips;--"`: stored as literal string (parameterized queries working)
+- Emoji and special chars: `"Trip with émojis 🗼 & spëcial chars"` stored and returned correctly
+
+---
+
+### FB-197 — CRUD operations working end-to-end
+
+| Field | Value |
+|-------|-------|
+| Feedback | Full trip lifecycle (create, read, list, update, delete) works correctly |
+| Sprint | 36 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | — |
+
+**Description:** Complete CRUD regression check passed:
+- `POST /api/v1/trips`: creates trip, returns full object with UUID, timestamps, PLANNING status
+- `GET /api/v1/trips`: lists trips with pagination (`page`, `limit`, `total`)
+- `GET /api/v1/trips/:id`: returns single trip with all fields
+- `PATCH /api/v1/trips/:id`: updates fields, returns updated object with new `updated_at`
+- `DELETE /api/v1/trips/:id`: returns empty response (success)
+- Sub-resources: flights, stays, activities create/list/get all work correctly
+- Not found: nonexistent trip (valid UUID) returns `404 NOT_FOUND`; malformed UUID returns `400 VALIDATION_ERROR`
+
+---
+
+### FB-198 — Calendar "+x more" click-to-expand implementation confirmed
+
+| Field | Value |
+|-------|-------|
+| Feedback | Calendar overflow popover code (T-273) is properly implemented |
+| Sprint | 36 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-273 |
+
+**Description:** Code review of `TripCalendar.jsx` confirms the "+x more" click-to-expand feature (T-273) is properly implemented: `expandedDay` state tracks open popover, click-outside/Escape/resize handlers close it, dynamic positioning (above/below), `aria-expanded` for accessibility, popover rendered outside grid to avoid clipping, all events listed with count header.
+
+---
+
+### FB-199 — Activity notes field silently dropped
+
+| Field | Value |
+|-------|-------|
+| Feedback | Activity notes sent in POST request but not returned in response |
+| Sprint | 36 |
+| Category | Bug |
+| Severity | Minor |
+| Status | New |
+| Related Task | — |
+
+**Description:** `POST /api/v1/trips/:id/activities` with `notes: "Visit note"` — response includes `name`, `location`, `activity_date`, `start_time`, `end_time`, `created_at`, `updated_at` but no `notes` field. Either the activity schema doesn't support notes (field silently ignored), or it's stored but not serialized in the response. Worth documenting or fixing for consistency since trips and other models support notes.
+
+---

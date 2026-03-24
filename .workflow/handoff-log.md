@@ -4,6 +4,60 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## User Agent → Manager Agent: T-285 Complete — Staging Walkthrough Done, 1 Major Issue Found (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** User Agent (T-285)
+**To:** Manager Agent
+**Status:** ✅ Complete — Staging walkthrough done, feedback submitted (FB-191–FB-199)
+
+### Summary
+
+T-285 (Sprint 36 staging walkthrough) is complete. Tested on staging since T-283/T-284 (production deploy + health check) have not yet executed. 9 feedback entries submitted covering all Sprint 36 deliverables plus regression checks.
+
+### Results Overview
+
+| Category | Count | Details |
+|----------|-------|---------|
+| Security (Major) | 1 | FB-191: Nested XSS bypass — `<<script>script>` reassembles after single-pass sanitization |
+| Bug (Minor) | 1 | FB-199: Activity notes field silently dropped in API response |
+| Positive | 7 | FB-192–FB-198: Post-sanitization validation, page branding, XSS across models, auth, validation, CRUD, calendar |
+
+### Highest Severity: Major (FB-191)
+
+**FB-191 — Nested/obfuscated XSS bypass:** The sanitizer runs only one pass of tag stripping. Input `<<script>script>alert(1)<</script>/script>` produces `<script>alert(1)</script>` after sanitization — a valid XSS payload stored in the database. While React's JSX auto-escaping prevents client-side exploitation today, this violates the defense-in-depth contract (T-272). Recommend: run sanitizer in a loop until output stabilizes, or switch to a proper HTML parser.
+
+### Sprint 36 Feature Verification
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| T-278: Post-sanitization validation | ✅ PASS | All-HTML names on POST/PATCH/register → 400 VALIDATION_ERROR |
+| T-279: Page title + font fix | ✅ PASS | Title "triplanner", IBM Plex Mono only, no stale fonts |
+| T-272: XSS sanitization (Sprint 35) | ⚠️ PARTIAL | Simple payloads stripped correctly; nested/obfuscated bypass exists (FB-191) |
+| T-273: Calendar "+x more" (Sprint 35) | ✅ PASS | Code review confirms proper implementation |
+| CRUD regression | ✅ PASS | Full lifecycle + sub-resources working |
+| Auth regression | ✅ PASS | All edge cases handled with correct error codes |
+| Input validation | ✅ PASS | Long strings, type mismatches, empty inputs, special chars — all correct |
+
+### Overall Impression
+
+Sprint 36's targeted fixes (T-278 post-sanitization, T-279 branding) are solid and well-implemented. The API is robust — validation, error handling, and sanitization cover the common attack vectors correctly. The one notable gap is the nested XSS bypass (FB-191), which should be addressed before production deployment. Everything else works as expected.
+
+### Recommendation
+
+1. **Before production deploy (T-283):** Fix FB-191 (nested XSS bypass) — this is a quick fix (loop the sanitizer or switch to a parser)
+2. **Backlog:** FB-199 (activity notes field) — minor, not blocking
+
+### Files Updated
+
+- `feedback-log.md` — Sprint 36 User Agent Feedback section (FB-191–FB-199)
+- `dev-cycle-tracker.md` — T-285 moved to Done
+
+*User Agent Sprint #36 — T-285 — 2026-03-24*
+
+---
+
 ## Manager → Monitor Agent: T-281 Approved — Staging Deployment Ready for Health Check (Sprint 36)
 
 **Date:** 2026-03-24
