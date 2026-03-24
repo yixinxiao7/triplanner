@@ -3067,8 +3067,8 @@ Review findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-278 | Backend Engineer: Post-sanitization validation for required fields (FB-178). Swap middleware order to sanitize → validate, or add post-sanitization check. All-HTML required fields must return 400. | Bug Fix | Backend Engineer | Integration Check | P1 | S | 36 | — | All-HTML required fields rejected with 400; non-required fields still allow empty; backend tests cover new behavior; no regressions in 446 tests. API contract published 2026-03-24. **[Implemented 2026-03-24]** Middleware order swapped to sanitize→validate on all 6 POST routes and 5 PATCH routes. validate.js updated to enforce minLength on empty strings. 25 new tests added (sprint36.test.js). 471/471 tests pass. **[CR-36 APPROVED 2026-03-24]** Code review passed. |
-| T-279 | Frontend Engineer: Fix page title "Plant Guardians" → "Triplanner" and remove wrong font references (FB-188). Update index.html title, meta description, and font links. | Bug Fix | Frontend Engineer | Integration Check | P1 | S | 36 | — | Page title shows "Triplanner"; only IBM Plex Mono font loaded; no references to "Plant Guardians"/"DM Sans"/"Playfair Display"; no regressions in 510 tests. **[CR-36 APPROVED 2026-03-24]** Code review passed. |
+| T-278 | Backend Engineer: Post-sanitization validation for required fields (FB-178). Swap middleware order to sanitize → validate, or add post-sanitization check. All-HTML required fields must return 400. | Bug Fix | Backend Engineer | Done | P1 | S | 36 | — | All-HTML required fields rejected with 400; non-required fields still allow empty; backend tests cover new behavior; no regressions in 446 tests. API contract published 2026-03-24. **[Implemented 2026-03-24]** Middleware order swapped to sanitize→validate on all 6 POST routes and 5 PATCH routes. validate.js updated to enforce minLength on empty strings. 25 new tests added (sprint36.test.js). 471/471 tests pass. **[CR-36 APPROVED 2026-03-24]** Code review passed. **[QA PASS 2026-03-24]** Integration check + security verification passed. 471/471 backend tests, 510/510 frontend tests. |
+| T-279 | Frontend Engineer: Fix page title "Plant Guardians" → "Triplanner" and remove wrong font references (FB-188). Update index.html title, meta description, and font links. | Bug Fix | Frontend Engineer | Done | P1 | S | 36 | — | Page title shows "Triplanner"; only IBM Plex Mono font loaded; no references to "Plant Guardians"/"DM Sans"/"Playfair Display"; no regressions in 510 tests. **[CR-36 APPROVED 2026-03-24]** Code review passed. **[QA PASS 2026-03-24]** Integration check passed. Title, fonts, meta tags all verified correct. |
 
 ---
 
@@ -3076,8 +3076,8 @@ Review findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-280 | QA Engineer: Integration testing for Sprint 36. Verify post-sanitization validation, page title/font fix, full test suite, security checklist. Log in qa-build-log.md. | Code Review | QA Engineer | Backlog | P1 | M | 36 | T-278, T-279 | All tests pass; post-sanitization validation verified; page branding verified; security checklist PASS. |
-| T-281 | Deploy Engineer: Sprint 36 staging deployment. Rebuild frontend + backend, deploy to staging (PM2), smoke test. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 36 | T-280 | Staging deployed; page title "Triplanner" on staging; smoke tests pass. |
+| T-280 | QA Engineer: Integration testing for Sprint 36. Verify post-sanitization validation, page title/font fix, full test suite, security checklist. Log in qa-build-log.md. | Code Review | QA Engineer | Done | P1 | M | 36 | T-278, T-279 | All tests pass; post-sanitization validation verified; page branding verified; security checklist PASS. **[QA COMPLETE 2026-03-24]** Backend 471/471, Frontend 510/510, npm audit 0 vulns, security checklist all-pass, config consistency all-pass. Ready for staging deploy. |
+| T-281 | Deploy Engineer: Sprint 36 staging deployment. Rebuild frontend + backend, deploy to staging (PM2), smoke test. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Integration Check | P1 | S | 36 | T-280 | **[DEPLOYED 2026-03-24]** Staging deployed via PM2. Build: 471 backend + 510 frontend tests pass, 0 npm vulns. All 9 smoke tests pass: health ✅, page title "triplanner" ✅, post-sanitization validation ✅, auth ✅, CRUD ✅, no stale fonts ✅. Handoff to Monitor Agent T-282. **[CR-36B APPROVED 2026-03-24]** Manager review passed — deployment verified clean. |
 | T-282 | Monitor Agent: Staging health check. Full protocol + verify page title + post-sanitization validation + Playwright 4/4. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 36 | T-281 | All staging checks pass; Deploy Verified = Yes (Staging). |
 
 ---
@@ -3127,6 +3127,32 @@ Findings:
 - T-278: Status → **Integration Check**
 - T-279: Status → **Integration Check**
 - Handoff logged for QA Engineer (T-280) — both blocking dependencies resolved
+
+---
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-36B | Manager: Sprint 36 code review pass #2 | Review | Manager Agent | ✅ Done | P1 | S | 36 | — | **1 task in "In Review": T-281. APPROVED.** See details below. |
+
+**Status:** ✅ Complete — 1 task reviewed and approved
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-24, pass #2).
+
+**T-281 — Deploy Engineer: Sprint 36 staging deployment → APPROVED**
+
+Reviewed: `qa-build-log.md` (T-281 entry), `handoff-log.md` (Deploy → Monitor handoff), `ecosystem.config.cjs`, staging smoke test results.
+
+Findings:
+1. **Build verified:** Backend 471/471 tests pass, Frontend 510/510 tests pass, 0 npm vulnerabilities. ✅
+2. **Deploy verified:** PM2 restart successful for both backend (PID 43362) and frontend (PID 43400). ✅
+3. **Migrations:** None needed — 10 migrations already applied, no new DDL for Sprint 36. ✅
+4. **Smoke tests:** All 9/9 pass — health endpoint, page title "triplanner", post-sanitization validation (all-HTML → 400), auth, CRUD, no stale fonts. ✅
+5. **Security:** Post-sanitization validation confirmed working on staging — `<svg onload=alert(1)>` correctly rejected with 400 VALIDATION_ERROR. `<script>alert(1)</script>` correctly strips tags but preserves text content. ✅
+6. **qa-build-log.md:** Properly documented with build phase, deploy phase, and smoke test details. ✅
+7. **Handoff logged:** Deploy Engineer → Monitor Agent handoff in handoff-log.md with full verification checklist for T-282. ✅
+
+**Actions taken:**
+- T-281: Status → **Integration Check**
+- Handoff logged for Monitor Agent (T-282) — T-281 blocking dependency resolved
 
 ---
 

@@ -4,6 +4,128 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager → Monitor Agent: T-281 Approved — Staging Deployment Ready for Health Check (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** Manager Agent (CR-36B)
+**To:** Monitor Agent (T-282)
+**Status:** ✅ Complete — T-281 reviewed and approved, T-282 unblocked
+
+### Summary
+
+CR-36B code review pass #2 reviewed T-281 (Sprint 36 staging deployment). The deployment is clean:
+- Build: 471 backend + 510 frontend tests pass, 0 npm vulnerabilities
+- Deploy: PM2 restart successful, no new migrations needed
+- Smoke: All 9/9 smoke tests pass (health, title, XSS validation, auth, CRUD, fonts)
+
+T-281 moved to **Integration Check**. T-282 (Monitor Agent staging health check) is now unblocked.
+
+### What Monitor Agent Should Verify (T-282)
+
+1. **Health endpoint:** `GET /api/v1/health` → `{"status":"ok"}`
+2. **Page title:** `<title>triplanner</title>` in browser/curl
+3. **Post-sanitization validation:** `PATCH /api/v1/trips/:id` with `name: "<svg onload=alert(1)>"` → 400 VALIDATION_ERROR
+4. **XSS sanitization:** HTML tags stripped from all text fields (Sprint 35 T-272)
+5. **Playwright E2E tests:** Expect 4/4 PASS
+6. **No stale font references:** No DM Sans or Playfair Display in network requests
+7. **CRUD regression:** Create trip, list trips, update trip, delete trip all work
+
+*Manager Agent Sprint #36 — CR-36B — 2026-03-24*
+
+---
+
+## Deploy Engineer → Monitor Agent: T-281 Complete — Staging Deployed, Ready for Health Check (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** Deploy Engineer (T-281)
+**To:** Monitor Agent (T-282)
+**Status:** ✅ Complete — Staging deployed and smoke-tested, ready for health check
+
+### Summary
+
+T-281 (Sprint 36 staging deployment) is complete. Backend and frontend rebuilt with Sprint 36 changes (T-278 post-sanitization validation + T-279 page branding fix). All smoke tests pass on staging.
+
+### Deployment Details
+
+| Item | Value |
+|------|-------|
+| Backend URL | https://localhost:3001 |
+| Frontend URL | https://localhost:4173 |
+| Health Endpoint | https://localhost:3001/api/v1/health |
+| Process Manager | PM2 v6.0.14 |
+| Backend Tests | 471/471 pass |
+| Frontend Tests | 510/510 pass |
+| Migrations | None needed (10 applied, schema-stable) |
+| Build | Frontend Vite build: 129 modules, 506ms |
+
+### What Monitor Agent Should Verify (T-282)
+
+1. **Health endpoint:** `GET /api/v1/health` → `{"status":"ok"}`
+2. **Page title:** `<title>triplanner</title>` in browser/curl
+3. **Post-sanitization validation:** `PATCH /api/v1/trips/:id` with `name: "<svg onload=alert(1)>"` → 400 VALIDATION_ERROR
+4. **XSS sanitization:** HTML tags stripped from all text fields (Sprint 35 T-272)
+5. **Playwright E2E tests:** Expect 4/4 PASS
+6. **No stale font references:** No DM Sans or Playfair Display in network requests
+7. **CRUD regression:** Create trip, list trips, update trip, delete trip all work
+
+### Smoke Test Results (Summary)
+
+All 9 smoke tests passed. See `qa-build-log.md` for full details.
+
+### Blocking Issues
+
+None. All clear for T-282 staging health check.
+
+*Deploy Engineer Sprint #36 — T-281 — 2026-03-24*
+
+---
+
+## QA Engineer → Deploy Engineer: T-280 Complete — Sprint 36 Ready for Staging Deploy (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** QA Engineer (T-280)
+**To:** Deploy Engineer (T-281)
+**Status:** ✅ Complete — All tests pass, ready for staging deployment
+
+### Summary
+
+T-280 (Sprint 36 integration testing + security verification) is complete. All checks pass. Sprint 36 is cleared for staging deployment.
+
+### Test Results
+
+| Test Type | Result | Details |
+|-----------|--------|---------|
+| Backend Unit Tests | ✅ 471/471 pass | 25 new T-278 tests in sprint36.test.js |
+| Frontend Unit Tests | ✅ 510/510 pass | No regressions from T-279 |
+| Integration Tests (T-278) | ✅ PASS | Post-sanitization validation verified across all 6 entity types (trips, flights, stays, activities, land-travel, auth) |
+| Integration Tests (T-279) | ✅ PASS | Page title "triplanner", IBM Plex Mono only, no stale references |
+| Config Consistency | ✅ PASS | Port, protocol, CORS, Docker all consistent |
+| Security Scan | ✅ PASS | npm audit: 0 vulnerabilities; full security checklist verified |
+
+### What Changed in Sprint 36
+
+1. **T-278 (Backend):** Middleware order swapped to sanitize→validate on all write endpoints. All-HTML required fields now return 400 VALIDATION_ERROR. Non-required fields unaffected.
+2. **T-279 (Frontend):** `index.html` title confirmed "triplanner", meta description and theme-color added. Only IBM Plex Mono font loaded.
+
+### What Deploy Engineer Should Verify on Staging
+
+1. `POST /api/v1/trips` with `name: "<script>alert(1)</script>"` → expect 400
+2. `PATCH /api/v1/trips/:id` with `name: "<svg onload=alert(1)>"` → expect 400
+3. Page title shows "triplanner" in browser tab
+4. No DM Sans or Playfair Display font requests in Network tab
+5. All existing CRUD flows work (no regressions)
+
+### Blocking Issues
+
+None. All clear for T-281 staging deployment.
+
+*QA Engineer Sprint #36 — T-280 — 2026-03-24*
+
+---
+
 ## Manager → QA Engineer: T-278 + T-279 Code Review APPROVED (Sprint 36)
 
 **Date:** 2026-03-24
