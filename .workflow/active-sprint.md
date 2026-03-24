@@ -4,90 +4,64 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #36 — 2026-03-23
+## Sprint #37 — 2026-03-24
 
-**Sprint Goal:** Deploy Sprint 35 hardening changes (XSS sanitization + calendar click-to-expand) to production, fix the long-standing page title/font branding bug (FB-188), and add post-sanitization validation for required fields (FB-178). Small, focused sprint — production deployment + two quick fixes + full verification pipeline.
+**Sprint Goal:** Fix the nested XSS sanitization bypass (FB-191), deploy all Sprint 35+36 changes to production, and verify production health. Small, focused sprint — one security fix + production deployment + full verification pipeline.
 
-**Context:** Sprint 35 completed successfully on staging: server-side XSS sanitization (T-272) and calendar "+x more" click-to-expand (T-273) are verified and ready for production. Two minor bugs were found: FB-188 (wrong page title "Plant Guardians" + wrong fonts) and FB-178 (post-sanitization empty name allowed). Both are quick fixes that should ship alongside the production deployment.
+**Context:** Sprint 36 completed staging verification successfully but held production deployment because FB-191 identified a nested/obfuscated XSS bypass in the single-pass regex sanitizer. The fix (T-286) must land before T-283 (production deploy) can proceed. T-283 and T-284 carry over from Sprint 36.
 
-**Feedback Triage (Sprint 35 → Sprint 36):**
+**Feedback Triage (Sprint 36 → Sprint 37):**
 
 | Entry | Category | Severity | Disposition |
 |-------|----------|----------|-------------|
-| FB-171–FB-177 | Positive | — | **Acknowledged** — XSS sanitization confirmed |
-| FB-178 | Bug | Minor | **Acknowledged** → B-035 (Backlog). Promoted to T-278 this sprint — quick fix, ships with production deploy. |
-| FB-179–FB-187 | Positive | — | **Acknowledged** — all confirmations |
-| FB-188 | Bug | Minor | **Tasked** → T-279 this sprint — fix page title and font references |
+| FB-191 | Security | Major | **Tasked** → T-286 this sprint — fix nested XSS bypass |
+| FB-192–FB-198 | Positive | — | **Acknowledged** — all confirmations |
+| FB-199 | Bug | Minor | **Acknowledged** → B-036 (Backlog — activity notes field silently dropped) |
 
-**No Critical or Major issues to address.** Sprint 36 focuses on production deployment of Sprint 35 work + two minor bug fixes.
+**One Major security issue to address.** Sprint 37 focuses on fixing the XSS bypass, then deploying everything to production.
 
 ---
 
 ## In Scope
 
-### Phase 1 — Bug Fixes (parallel — start immediately)
+### Phase 1 — Security Fix (start immediately)
 
-- [ ] **T-278** — Backend Engineer: Post-sanitization validation for required fields (FB-178)
+- [ ] **T-286** — Backend Engineer: Fix nested/obfuscated XSS bypass in sanitizer (FB-191)
 
-  **Context:** FB-178 identified that `PATCH /api/v1/trips/:id` with `name: "<svg onload=alert(1)>"` sanitizes to `""` but stores the empty string because validation runs before sanitization. The fix is to either: (a) swap middleware order to sanitize → validate, or (b) add a post-sanitization check that rejects empty required fields.
+  **Context:** FB-191 identified that `<<script>script>alert(1)<</script>/script>` bypasses the single-pass regex sanitizer, reassembling into `<script>alert(1)</script>` after one strip pass. This violates the defense-in-depth contract (T-272).
 
   **Execute:**
-  1. Adjust middleware ordering so that sanitization runs BEFORE validation on all endpoints, OR add a post-sanitization validation step
-  2. Ensure that if a required field (e.g., trip name) becomes empty after sanitization, a 400 VALIDATION_ERROR is returned
-  3. Add backend tests: PATCH trip name with all-HTML input → expect 400; POST trip with all-HTML name → expect 400
-  4. Verify no regressions in existing 446 backend tests
+  1. Modify `sanitizeHtml()` in `backend/src/middleware/sanitize.js` to run the tag-stripping regex in a loop until the output stabilizes (no more tags found), OR replace with a proper HTML parser (e.g., sanitize-html library)
+  2. Add backend tests for nested tag patterns: `<<script>script>`, `<<b>img src=x>`, `<<<div>div>div>`, and other multi-level nesting
+  3. Verify that legitimate text containing angle brackets (e.g., `"5 < 10"`, `"A > B"`) is preserved correctly
+  4. Run full backend test suite — expect 471+ tests pass with zero regressions
 
   **Acceptance criteria:**
-  - All-HTML required fields rejected with 400 after sanitization
-  - Non-required fields (e.g., notes) can still be empty after sanitization
-  - Backend tests cover the new behavior
-  - No regressions
+  - Nested/obfuscated HTML tags fully stripped after iterative sanitization
+  - No valid HTML tags remain in stored values after sanitization
+  - Legitimate angle bracket text preserved
+  - Backend tests cover nested bypass patterns
+  - No regressions in existing tests
 
   **Blocked By:** None
 
-  **Files:** Backend middleware/sanitize.js, route files, `dev-cycle-tracker.md`, `handoff-log.md`
-
----
-
-- [ ] **T-279** — Frontend Engineer: Fix page title and font references (FB-188)
-
-  **Context:** FB-188 identified that `frontend/index.html` has `<title>Plant Guardians</title>` instead of "Triplanner", and loads Google Fonts for "DM Sans" and "Playfair Display" instead of "IBM Plex Mono" per the design context. This is a long-standing branding issue.
-
-  **Execute:**
-  1. Update `frontend/index.html` `<title>` to "Triplanner"
-  2. Remove any Google Fonts `<link>` tags for "DM Sans" and "Playfair Display"
-  3. Ensure IBM Plex Mono is the only font loaded (verify it's already imported via CSS or add the correct Google Fonts link)
-  4. Update `<meta name="description">` if it references "Plant Guardians"
-  5. Check for any favicon or manifest references that need updating
-  6. Add or update frontend tests if applicable
-
-  **Acceptance criteria:**
-  - Page title shows "Triplanner"
-  - Only IBM Plex Mono font loaded
-  - No references to "Plant Guardians", "DM Sans", or "Playfair Display" in index.html
-  - No regressions in existing 510 frontend tests
-
-  **Blocked By:** None
-
-  **Files:** `frontend/index.html`, possibly `frontend/src/index.css`, `dev-cycle-tracker.md`, `handoff-log.md`
+  **Files:** `backend/src/middleware/sanitize.js`, backend test files, `dev-cycle-tracker.md`, `handoff-log.md`
 
 ---
 
 ### Phase 2 — QA + Deploy Staging (sequential after Phase 1)
 
-- [ ] **T-280** — QA Engineer: Integration testing for Sprint 36 fixes ← Blocked by T-278, T-279
+- [ ] **T-287** — QA Engineer: Integration testing for Sprint 37 XSS fix ← Blocked by T-286
 
   **Scope:**
-  - Verify post-sanitization validation: all-HTML required fields return 400
-  - Verify page title and font corrections
+  - Verify nested XSS bypass is fixed: `<<script>script>` patterns fully stripped
   - Run full test suite (backend + frontend + Playwright)
   - Security checklist PASS
   - Log results in `qa-build-log.md`
 
   **Acceptance criteria:**
   - All tests pass (backend + frontend + Playwright)
-  - Post-sanitization validation verified
-  - Page branding verified
+  - Nested XSS bypass verified fixed
   - Security checklist PASS
   - No regressions
 
@@ -95,37 +69,34 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-- [ ] **T-281** — Deploy Engineer: Sprint 36 staging deployment ← Blocked by T-280
+- [ ] **T-288** — Deploy Engineer: Sprint 37 staging deployment ← Blocked by T-287
 
   **Scope:**
-  - Rebuild frontend and backend with Sprint 36 changes
+  - Rebuild backend with Sprint 37 XSS fix
   - Deploy to staging (PM2)
-  - Smoke test all endpoints including post-sanitization validation
+  - Smoke test: verify nested XSS patterns are fully stripped
   - Log results in `qa-build-log.md`
 
   **Acceptance criteria:**
-  - Staging deployed with Sprint 36 changes
-  - Frontend shows "Triplanner" title
+  - Staging deployed with Sprint 37 fix
+  - Nested XSS bypass confirmed fixed on staging
   - All smoke tests pass
-  - Post-sanitization validation confirmed on staging
 
   **Files:** `qa-build-log.md`, `dev-cycle-tracker.md`, `handoff-log.md`
 
 ---
 
-- [ ] **T-282** — Monitor Agent: Staging health check ← Blocked by T-281
+- [ ] **T-289** — Monitor Agent: Staging health check ← Blocked by T-288
 
   **Scope:**
   - Full staging health check protocol
-  - Verify page title is "Triplanner"
-  - Verify post-sanitization validation (all-HTML name → 400)
+  - Verify nested XSS bypass is fixed on staging
   - Playwright E2E tests (expect 4/4 PASS)
   - Deploy Verified = Yes (Staging)
 
   **Acceptance criteria:**
   - All staging endpoints healthy
-  - Page title verified
-  - Post-sanitization validation confirmed
+  - Nested XSS bypass confirmed fixed
   - Playwright 4/4 PASS
   - Deploy Verified = Yes (Staging)
 
@@ -135,58 +106,61 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ### Phase 3 — Production Deployment + Verification (sequential after Phase 2)
 
-- [ ] **T-283** — Deploy Engineer: Deploy to production (Render) ← Blocked by T-282
+- [ ] **T-290** — Deploy Engineer: Deploy to production (Render) ← Blocked by T-289
 
   **Scope:**
   - Merge feature branch to main via PR
   - Render auto-deploys from main
   - Verify production deployment completes
   - Smoke test production endpoints
+  - Verify XSS sanitization (simple + nested patterns) on production
+  - Verify page title "triplanner" on production
   - Log results in `qa-build-log.md`
 
   **Acceptance criteria:**
   - PR merged to main
   - Render deployment successful
   - Production endpoints responding
-  - XSS sanitization confirmed on production
-  - Page title shows "Triplanner" on production
+  - XSS sanitization (simple + nested) confirmed on production
+  - Page title "triplanner" confirmed on production
+  - Post-sanitization validation confirmed on production
 
   **Files:** `qa-build-log.md`, `dev-cycle-tracker.md`, `handoff-log.md`
 
 ---
 
-- [ ] **T-284** — Monitor Agent: Production health check ← Blocked by T-283
+- [ ] **T-291** — Monitor Agent: Production health check ← Blocked by T-290
 
   **Scope:**
   - Full production health check protocol
-  - Verify XSS sanitization on production
+  - Verify nested XSS bypass is fixed on production
   - Verify post-sanitization validation on production
   - Verify page title on production
   - Deploy Verified = Yes (Production)
 
   **Acceptance criteria:**
   - All production endpoints healthy
-  - XSS sanitization confirmed on production
+  - Nested XSS bypass confirmed fixed on production
   - Post-sanitization validation confirmed
-  - Page title "Triplanner" confirmed
+  - Page title "triplanner" confirmed
   - Deploy Verified = Yes (Production)
 
   **Files:** `qa-build-log.md`, `dev-cycle-tracker.md`, `handoff-log.md`
 
 ---
 
-- [ ] **T-285** — User Agent: Production walkthrough ← Blocked by T-284
+- [ ] **T-292** — User Agent: Production walkthrough ← Blocked by T-291
 
   **Scope:**
-  - Test XSS sanitization on production
-  - Test post-sanitization validation (all-HTML name → 400)
-  - Verify page title and fonts
+  - Test nested XSS bypass fix on production
+  - Test post-sanitization validation on production
+  - Verify page title and fonts on production
   - Test calendar "+x more" click-to-expand on production
   - Regression check: CRUD flows, calendar, auth
   - Submit feedback to `feedback-log.md`
 
   **Acceptance criteria:**
-  - All Sprint 35+36 features verified on production
+  - All Sprint 35+36+37 features verified on production
   - No Critical or Major regressions
   - Feedback submitted
 
@@ -199,6 +173,7 @@ The operational reference for the current development cycle. Refreshed at the st
 - **B-020 (Redis rate limiter)** — Backlog; in-memory store sufficient for current scale.
 - **B-024 (per-account rate limiting)** — Backlog.
 - **B-032 (trip export/print)** — Deferred.
+- **B-036 (activity notes field)** — Backlog; minor, not blocking.
 - **FB-170 (SSR for landing pages)** — Suggestion; low priority for productivity tool.
 - **B-030 (trip notes/description field)** — Backlog; not prioritized this sprint.
 
@@ -208,59 +183,54 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Backend Engineer | Post-sanitization validation fix | T-278 |
-| Frontend Engineer | Page title and font branding fix | T-279 |
-| QA Engineer | Integration testing + security checklist | T-280 |
-| Deploy Engineer | Staging deploy + production deploy | T-281, T-283 |
-| Monitor Agent | Staging + production health checks | T-282, T-284 |
-| User Agent | Production walkthrough | T-285 |
-| Manager | Code review, triage T-285 feedback, Sprint 37 plan | Reviews |
+| Backend Engineer | Fix nested XSS sanitization bypass | T-286 |
+| QA Engineer | Integration testing + security checklist | T-287 |
+| Deploy Engineer | Staging deploy + production deploy | T-288, T-290 |
+| Monitor Agent | Staging + production health checks | T-289, T-291 |
+| User Agent | Production walkthrough | T-292 |
+| Manager | Code review, triage T-292 feedback, Sprint 38 plan | Reviews |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-T-278 (Backend: post-sanitization validation) ──┐
-                                                 ├── T-280 (QA) → T-281 (Deploy Staging) → T-282 (Monitor Staging)
-T-279 (Frontend: page title/font fix) ──────────┘                                              |
-                                                                                    T-283 (Deploy Production)
-                                                                                                |
-                                                                                    T-284 (Monitor Production)
-                                                                                                |
-                                                                                    T-285 (User Agent Production)
+T-286 (Backend: fix nested XSS) → T-287 (QA) → T-288 (Deploy Staging) → T-289 (Monitor Staging)
+                                                                                    |
+                                                                          T-290 (Deploy Production)
+                                                                                    |
+                                                                          T-291 (Monitor Production)
+                                                                                    |
+                                                                          T-292 (User Agent Production)
 ```
 
-**Critical path:** T-278/T-279 (parallel) → T-280 → T-281 → T-282 → T-283 → T-284 → T-285
+**Critical path:** T-286 → T-287 → T-288 → T-289 → T-290 → T-291 → T-292
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #36 is complete?*
+*How do we know Sprint #37 is complete?*
 
-- [ ] T-278: Post-sanitization validation implemented and tested
-- [ ] T-279: Page title and font references fixed
-- [ ] T-280: QA security checklist PASS, all tests pass
-- [ ] T-281: Staging deployed with Sprint 36 changes
-- [ ] T-282: Monitor staging health check — Deploy Verified = Yes (Staging)
-- [ ] T-283: Production deployed via Render
-- [ ] T-284: Monitor production health check — Deploy Verified = Yes (Production)
-- [ ] T-285: User Agent production walkthrough — no Critical or Major issues; feedback submitted
-- [ ] T-285 feedback triaged by Manager (all entries Acknowledged or Tasked)
-- [ ] Sprint 36 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 37 plan written in `.workflow/active-sprint.md`
+- [ ] T-286: Nested XSS bypass fixed with iterative sanitization, tests added
+- [ ] T-287: QA security checklist PASS, all tests pass
+- [ ] T-288: Staging deployed with Sprint 37 fix
+- [ ] T-289: Monitor staging health check — Deploy Verified = Yes (Staging)
+- [ ] T-290: Production deployed via Render
+- [ ] T-291: Monitor production health check — Deploy Verified = Yes (Production)
+- [ ] T-292: User Agent production walkthrough — no Critical or Major issues; feedback submitted
+- [ ] T-292 feedback triaged by Manager (all entries Acknowledged or Tasked)
+- [ ] Sprint 37 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 38 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #36)
+## Success Criteria (Sprint #37)
 
-By end of Sprint #36, the following must be verifiable:
+By end of Sprint #37, the following must be verifiable:
 
-- [ ] **XSS sanitization live on production** — Sprint 35's server-side sanitization deployed and verified on production
-- [ ] **Calendar "+x more" live on production** — Sprint 35's click-to-expand deployed and verified on production
-- [ ] **Post-sanitization validation works** — All-HTML required fields (e.g., trip name `<script>alert(1)</script>`) return 400 VALIDATION_ERROR
-- [ ] **Page title is "Triplanner"** — Not "Plant Guardians". IBM Plex Mono is the only font loaded.
+- [ ] **Nested XSS bypass fixed** — `<<script>script>alert(1)<</script>/script>` and similar patterns fully stripped, no valid HTML tags in stored values
+- [ ] **All Sprint 35+36 features live on production** — XSS sanitization, post-sanitization validation, calendar "+x more", page title "triplanner"
 - [ ] **All tests pass** — Backend + frontend + Playwright, zero regressions
 - [ ] **Production verified** — Deploy Verified = Yes (Production) confirmed
 
@@ -268,12 +238,12 @@ By end of Sprint #36, the following must be verifiable:
 
 ## Blockers
 
-- **No blockers on T-278 or T-279.** Both bug fixes can start immediately in parallel.
-- **T-280 blocked by T-278 and T-279.** QA needs both fixes complete.
-- **T-281 → T-282** — Sequential staging pipeline.
-- **T-283 blocked by T-282.** Production deploy requires staging verification.
-- **T-283 → T-284 → T-285** — Sequential production pipeline.
+- **No blockers on T-286.** The XSS fix can start immediately.
+- **T-287 blocked by T-286.** QA needs the fix complete.
+- **T-288 → T-289** — Sequential staging pipeline.
+- **T-290 blocked by T-289.** Production deploy requires staging verification.
+- **T-290 → T-291 → T-292** — Sequential production pipeline.
 
 ---
 
-*Sprint #35 archived to `.workflow/sprint-log.md` on 2026-03-23. Sprint #36 plan written by Manager Agent 2026-03-23.*
+*Sprint #36 archived to `.workflow/sprint-log.md` on 2026-03-24. Sprint #37 plan written by Manager Agent 2026-03-24.*

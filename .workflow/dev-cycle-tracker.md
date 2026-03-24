@@ -3086,8 +3086,8 @@ Review findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-283 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | M | 36 | T-282 | PR merged; Render deploy successful; production endpoints healthy; XSS + page title verified on production. |
-| T-284 | Monitor Agent: Production health check. Full protocol + verify XSS sanitization + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 36 | T-283 | All production checks pass; Deploy Verified = Yes (Production). |
+| T-283 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | M | 36 | T-282 | **Carried over to Sprint 37** — held for FB-191 (nested XSS bypass) fix. Superseded by T-290 (Sprint 37). |
+| T-284 | Monitor Agent: Production health check. Full protocol + verify XSS sanitization + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 36 | T-283 | **Carried over to Sprint 37** — blocked by T-283. Superseded by T-291 (Sprint 37). |
 | T-285 | User Agent: Production walkthrough. Test XSS sanitization, post-sanitization validation, page title, calendar click-to-expand, CRUD regression. Submit feedback to feedback-log.md. | Documentation | User Agent | Done | P1 | M | 36 | T-284 | Staging walkthrough complete (production not yet deployed). 9 feedback entries (FB-191–FB-199): 1 Major security issue (nested XSS bypass), 1 Minor bug, 7 Positive. Feedback submitted. |
 
 ---
@@ -3153,6 +3153,38 @@ Findings:
 **Actions taken:**
 - T-281: Status → **Integration Check**
 - Handoff logged for Monitor Agent (T-282) — T-281 blocking dependency resolved
+
+---
+
+## Sprint 37 Tasks
+
+**Sprint Goal:** Fix nested XSS sanitization bypass (FB-191), deploy all Sprint 35+36+37 changes to production, verify production health.
+
+### Phase 1 — Security Fix
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-286 | Backend Engineer: Fix nested/obfuscated XSS bypass in sanitizer (FB-191). Run tag-stripping in a loop until output stabilizes, or use proper HTML parser. Add tests for nested patterns. | Bug Fix | Backend Engineer | Backlog | P0 | S | 37 | — | FB-191. Nested `<<script>script>` reassembles into `<script>` after single-pass strip. Must fix before production deploy. |
+
+---
+
+### Phase 2 — QA + Deploy Staging (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-287 | QA Engineer: Integration testing for Sprint 37 XSS fix. Verify nested bypass fixed, full test suite, security checklist. Log in qa-build-log.md. | Code Review | QA Engineer | Backlog | P1 | M | 37 | T-286 | Verify nested XSS patterns fully stripped; all tests pass; security checklist PASS. |
+| T-288 | Deploy Engineer: Sprint 37 staging deployment. Rebuild backend, deploy to staging (PM2), smoke test nested XSS fix. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 37 | T-287 | Deploy staging with XSS fix; verify nested patterns stripped on staging. |
+| T-289 | Monitor Agent: Staging health check. Full protocol + verify nested XSS fix + Playwright 4/4. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 37 | T-288 | All staging checks pass; Deploy Verified = Yes (Staging). |
+
+---
+
+### Phase 3 — Production Deployment + Verification (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-290 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Supersedes T-283. | Infrastructure | Deploy Engineer | Backlog | P1 | M | 37 | T-289 | Production deploy of all Sprint 35+36+37 changes. Verify XSS (simple + nested), page title, post-sanitization validation. |
+| T-291 | Monitor Agent: Production health check. Full protocol + verify nested XSS fix + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). Supersedes T-284. | Infrastructure | Monitor Agent | Backlog | P1 | S | 37 | T-290 | All production checks pass; Deploy Verified = Yes (Production). |
+| T-292 | User Agent: Production walkthrough. Test nested XSS fix, post-sanitization validation, page title, calendar, CRUD regression. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 37 | T-291 | All Sprint 35+36+37 features verified on production. No Critical or Major regressions. Feedback submitted. |
 
 ---
 

@@ -602,8 +602,9 @@ button: "please wait…" [disabled]
 | Sprint | 36 |
 | Category | Security |
 | Severity | Major |
-| Status | New |
+| Status | Tasked |
 | Related Task | T-278 / T-272 |
+| Tasked As | T-286 (Sprint 37 — fix nested XSS bypass with iterative sanitization) |
 
 **Description:** `POST /api/v1/trips` with `name: "<<script>script>alert(1)<</script>/script>"` — the sanitizer strips the outer tags in one pass, but the remaining text reassembles into `<script>alert(1)</script>`, which is stored in the database. Expected: after sanitization, no valid HTML tags remain. Actual: the stored value is `<script>alert(1)</script>`. While React's JSX auto-escaping prevents client-side exploitation, this violates the defense-in-depth contract (T-272) which states all HTML tags should be stripped from stored values. Fix: run the sanitizer in a loop until no tags remain, or use a proper HTML parser instead of a single-pass regex strip.
 
@@ -622,7 +623,7 @@ button: "please wait…" [disabled]
 | Sprint | 36 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-278 |
 
 **Description:** `POST /api/v1/trips` with `name: "<svg onload=alert(1)>"` correctly returns `400 VALIDATION_ERROR` with `{"fields":{"name":"Trip name is required"}}`. The sanitizer strips the tag to empty string, and the post-sanitization validation catches it. `PATCH /api/v1/trips/:id` with `name: "<svg onload=alert(1)>"` also correctly returns `400 VALIDATION_ERROR` with `{"fields":{"name":"name must be at least 1 characters"}}`. Non-required fields (notes) correctly accept empty-after-sanitization values. Register with all-HTML name also returns `400 VALIDATION_ERROR` with `"Name is required"`.
@@ -637,7 +638,7 @@ button: "please wait…" [disabled]
 | Sprint | 36 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-279 |
 
 **Description:** `<title>triplanner</title>` confirmed in both the source `index.html` and the served build output. `<meta name="description">` correctly references trip planning, not "Plant Guardians". CSS imports `IBM Plex Mono` from Google Fonts. No references to "DM Sans" or "Playfair Display" found in the built CSS or HTML. Theme color `#02111B` correctly set.
@@ -652,7 +653,7 @@ button: "please wait…" [disabled]
 | Sprint | 36 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-272 |
 
 **Description:** Tested XSS sanitization across multiple models:
@@ -671,7 +672,7 @@ button: "please wait…" [disabled]
 | Sprint | 36 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** All auth edge cases return appropriate errors:
@@ -693,7 +694,7 @@ button: "please wait…" [disabled]
 | Sprint | 36 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Edge case validation is solid:
@@ -714,7 +715,7 @@ button: "please wait…" [disabled]
 | Sprint | 36 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Complete CRUD regression check passed:
@@ -736,7 +737,7 @@ button: "please wait…" [disabled]
 | Sprint | 36 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-273 |
 
 **Description:** Code review of `TripCalendar.jsx` confirms the "+x more" click-to-expand feature (T-273) is properly implemented: `expandedDay` state tracks open popover, click-outside/Escape/resize handlers close it, dynamic positioning (above/below), `aria-expanded` for accessibility, popover rendered outside grid to avoid clipping, all events listed with count header.
@@ -751,7 +752,7 @@ button: "please wait…" [disabled]
 | Sprint | 36 |
 | Category | Bug |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** `POST /api/v1/trips/:id/activities` with `notes: "Visit note"` — response includes `name`, `location`, `activity_date`, `start_time`, `end_time`, `created_at`, `updated_at` but no `notes` field. Either the activity schema doesn't support notes (field silently ignored), or it's stored but not serialized in the response. Worth documenting or fixing for consistency since trips and other models support notes.
