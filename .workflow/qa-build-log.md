@@ -4,6 +4,78 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #36 — Monitor Agent — T-282 Post-Deploy Health Check (Staging) — 2026-03-24
+
+**Task:** T-282 (Monitor Agent: Staging health check)
+**Date:** 2026-03-24
+**Sprint:** 36
+**Environment:** Staging (https://localhost:3001 backend, https://localhost:4173 frontend)
+**Monitor Agent:** Automated Monitor
+
+---
+
+### Test Type: Config Consistency
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Backend PORT matches Vite proxy target port | PORT=3000, Vite defaults to `http://localhost:3000` | `.env` PORT=3000, Vite `backendPort` defaults to `'3000'` | ✅ PASS |
+| Protocol match (HTTP/HTTPS) | SSL_KEY_PATH and SSL_CERT_PATH commented out → HTTP. Vite defaults to `http://` | SSL lines commented out in `.env`, Vite `backendSSL` defaults to `false` → `http://` | ✅ PASS |
+| CORS_ORIGIN includes frontend dev server | `http://localhost:5173` | CORS_ORIGIN=`http://localhost:5173`, Vite dev port=5173 | ✅ PASS |
+| Docker port consistency | Backend container PORT=3000 matches `.env` PORT=3000 | docker-compose backend env `PORT: 3000`, `.env` PORT=3000 | ✅ PASS |
+| Docker backend healthcheck URL | Uses port 3000 internally | `wget ... http://localhost:3000/api/v1/health` | ✅ PASS |
+
+**Config Consistency Result:** ✅ ALL PASS
+
+**Note:** Staging deployment uses separate config (PORT=3001 + HTTPS via PM2/TLS) which is the staging overlay, not a dev config mismatch. The dev config (.env + vite.config.js + docker-compose.yml) is internally consistent.
+
+---
+
+### Test Type: Post-Deploy Health Check
+
+**Token:** Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT `/auth/register`)
+
+| # | Check | Method | Expected | Actual | Result |
+|---|-------|--------|----------|--------|--------|
+| 1 | App responds | `GET https://localhost:3001/api/v1/health` | 200 `{"status":"ok"}` | HTTP 200 `{"status":"ok"}` | ✅ PASS |
+| 2 | Auth login works | `POST https://localhost:3001/api/v1/auth/login` | 200 with `access_token` | HTTP 200, token returned, user `test@triplanner.local` | ✅ PASS |
+| 3 | Auth protection (no token) | `GET https://localhost:3001/api/v1/trips` (no auth) | 401 UNAUTHORIZED | HTTP 401 `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS |
+| 4 | List trips | `GET https://localhost:3001/api/v1/trips` | 200 with `data` array + `pagination` | HTTP 200, 1 trip returned with correct shape, pagination present | ✅ PASS |
+| 5 | Get single trip | `GET https://localhost:3001/api/v1/trips/:id` | 200 with trip object | HTTP 200, trip `b525c806...` returned with all expected fields | ✅ PASS |
+| 6 | Create trip | `POST https://localhost:3001/api/v1/trips` | 201 with new trip | HTTP 201, trip created with id `82a8682b...`, status PLANNING | ✅ PASS |
+| 7 | Delete trip | `DELETE https://localhost:3001/api/v1/trips/:id` | 204 No Content | HTTP 204, trip deleted successfully | ✅ PASS |
+| 8 | List flights | `GET https://localhost:3001/api/v1/trips/:id/flights` | 200 with `data` array | HTTP 200, empty array (no flights) | ✅ PASS |
+| 9 | List stays | `GET https://localhost:3001/api/v1/trips/:id/stays` | 200 with `data` array | HTTP 200, 1 stay returned with correct shape | ✅ PASS |
+| 10 | List activities | `GET https://localhost:3001/api/v1/trips/:id/activities` | 200 with `data` array | HTTP 200, empty array (no activities) | ✅ PASS |
+| 11 | XSS POST rejection (T-278) | `POST /trips` with `name: "<svg onload=alert(1)>"` | 400 VALIDATION_ERROR | HTTP 400 `{"error":{"message":"Validation failed","code":"VALIDATION_ERROR","fields":{"name":"Trip name is required"}}}` | ✅ PASS |
+| 12 | XSS PATCH rejection (T-278) | `PATCH /trips/:id` with `name: "<svg onload=alert(1)>"` | 400 VALIDATION_ERROR | HTTP 400 `{"error":{"message":"Validation failed","code":"VALIDATION_ERROR","fields":{"name":"name must be at least 1 characters"}}}` | ✅ PASS |
+| 13 | Frontend accessible | `GET https://localhost:4173` | 200 with HTML | HTTP 200, full HTML returned | ✅ PASS |
+| 14 | Page title correct (T-279) | `<title>` in HTML | `triplanner` | `<title>triplanner</title>` | ✅ PASS |
+| 15 | Meta description present (T-279) | `<meta name="description">` | Present | `content="Plan every detail of your trip..."` | ✅ PASS |
+| 16 | Theme color present (T-279) | `<meta name="theme-color">` | `#02111B` | `content="#02111B"` | ✅ PASS |
+| 17 | No 5xx errors | All responses checked | No 5xx | No 5xx errors observed | ✅ PASS |
+| 18 | Database connected | Health endpoint + CRUD operations | Healthy | All CRUD operations succeed, data persisted | ✅ PASS |
+
+**No stale font references:** Frontend HTML contains no DM Sans or Playfair Display references. Only IBM Plex Mono loaded via CSS.
+
+---
+
+### Summary
+
+| Category | Result |
+|----------|--------|
+| Config Consistency | ✅ ALL PASS (5/5 checks) |
+| Health Checks | ✅ ALL PASS (18/18 checks) |
+| Sprint 36 Specific — T-278 (post-sanitization validation) | ✅ PASS — XSS-only names rejected with 400 on both POST and PATCH |
+| Sprint 36 Specific — T-279 (page branding) | ✅ PASS — title, meta description, theme-color all correct |
+
+### Deploy Verified: ✅ Yes (Staging)
+
+All 23 checks passed. Staging environment is healthy and ready for User Agent testing.
+
+*Monitor Agent Sprint #36 — T-282 — 2026-03-24*
+
+---
+
 ## Sprint #36 — QA Engineer — T-280 Re-Verification (Post-Staging Deploy) — 2026-03-24
 
 **Task:** T-280 (QA Engineer: Re-verification after staging deployment)
