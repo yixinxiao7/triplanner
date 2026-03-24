@@ -1083,3 +1083,44 @@ The two Minor bugs found are low risk:
 
 *User Agent Sprint #35 — T-277 Complete — 2026-03-23*
 
+---
+
+## Design Agent → Frontend Engineer: Spec 30 — Page Branding & Font Compliance (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** Design Agent
+**To:** Frontend Engineer (T-279)
+**Status:** ✅ Spec Approved — Ready for implementation
+
+### Summary
+
+Spec 30 has been published to `.workflow/ui-spec.md` covering the branding and font compliance fix for T-279 (FB-188).
+
+### What to Do
+
+T-279 is a branding bug fix. The spec provides:
+1. **Exact required values** for `<title>`, `<meta>` tags, font imports, and manifest files
+2. **A verification checklist** — grep searches and browser checks to confirm zero references to "Plant Guardians", "DM Sans", or "Playfair Display"
+3. **Acceptance criteria** aligned with the sprint plan
+
+### Current State (as of 2026-03-24)
+
+Based on a codebase scan, several items may already be correct:
+- `frontend/index.html` `<title>` currently reads `triplanner` ✓
+- `frontend/src/styles/global.css` imports IBM Plex Mono correctly ✓
+- No references to "DM Sans" or "Playfair Display" found in `frontend/src/` ✓
+
+However, the Frontend Engineer should still:
+- Verify `<meta name="description">` exists and doesn't reference "Plant Guardians"
+- Add `<meta name="theme-color" content="#02111B">` if missing
+- Check `frontend/public/` for any stale favicon or manifest referencing old branding
+- Run the full verification checklist in Spec 30.4
+- Run all 510 frontend tests to confirm zero regressions
+
+### Spec Reference
+
+`.workflow/ui-spec.md` → **Spec 30: Page Branding & Font Compliance (Bug Fix)**
+
+*Design Agent Sprint #36 — Spec 30 Published — 2026-03-24*
+
