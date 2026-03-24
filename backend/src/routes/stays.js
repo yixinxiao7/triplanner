@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { sanitizeFields, sanitizeHtml } from '../middleware/sanitize.js';
 import { uuidParamHandler } from '../middleware/validateUUID.js';
 import { findTripById } from '../models/tripModel.js';
 import {
@@ -117,7 +118,9 @@ router.get('/', async (req, res, next) => {
 });
 
 // ---- POST /api/v1/trips/:tripId/stays ----
-router.post('/', normalizeCategory, validate(stayValidationSchema), async (req, res, next) => {
+const staySanitizeConfig = { name: 'string', address: 'string' };
+
+router.post('/', normalizeCategory, validate(stayValidationSchema), sanitizeFields(staySanitizeConfig), async (req, res, next) => {
   try {
     const trip = await requireTripOwnership(req, res);
     if (!trip) return;
@@ -195,9 +198,14 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     const updates = {};
+    const SANITIZE_FIELDS = ['name', 'address'];
     for (const field of UPDATABLE) {
       if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
+        let value = req.body[field];
+        if (SANITIZE_FIELDS.includes(field) && typeof value === 'string') {
+          value = sanitizeHtml(value);
+        }
+        updates[field] = value;
       }
     }
 

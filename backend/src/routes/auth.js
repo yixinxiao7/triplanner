@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { parse as parseCookies } from 'cookie';
 import { validate } from '../middleware/validate.js';
+import { sanitizeFields } from '../middleware/sanitize.js';
 import { authenticate } from '../middleware/auth.js';
 import {
   loginLimiter,
@@ -103,6 +104,7 @@ router.post(
       },
     },
   }),
+  sanitizeFields({ name: 'string' }),
   async (req, res, next) => {
     try {
       const { name, email, password } = req.body;

@@ -218,217 +218,262 @@ button: "please wait…" [disabled]
 
 ---
 
----
+## Sprint 35 — User Agent Feedback (T-277)
 
-## Sprint 33 User Agent Feedback — T-268 Staging Walkthrough
-
-**Date:** 2026-03-20
-**Tester:** User Agent
-**Environment:** Staging — `https://localhost:4173` (frontend), `https://localhost:3001` (backend)
-**Scope:** Multi-day FLIGHT + LAND_TRAVEL calendar spanning (T-264/FB-133/FB-134), Sprint 32 regressions, edge cases
+**Date:** 2026-03-23
+**Tested by:** User Agent
+**Environment:** Staging (PM2) — Backend https://localhost:3001, Frontend http://localhost:4173
+**Scope:** T-272 (server-side XSS sanitization), T-273 (calendar "+x more" click-to-expand), regression checks
 
 ---
 
-### FB-144
+### FB-171 — XSS sanitization works correctly on trip name (script tags stripped, text preserved)
 
 | Field | Value |
 |-------|-------|
-| Feedback | Multi-day FLIGHT event correctly spans from departure date to arrival date on calendar |
-| Sprint | 33 |
+| Feedback | POST /api/v1/trips with `name: "<script>alert(1)</script>"` correctly returns `name: "alert(1)"` — script tags stripped, text content preserved |
+| Sprint | 35 |
 | Category | Positive |
 | Severity | — |
 | Status | Acknowledged |
-| Related Task | T-264 (FB-134) |
 
-**Steps:** Register → Create trip (Tokyo, Osaka; Aug 1–10) → POST flight NH101 LAX→NRT departing Aug 1 23:00 UTC, arriving Aug 3 04:30 UTC → GET /calendar → Verify FLIGHT event has `start_date: "2026-08-01"`, `end_date: "2026-08-03"`.
-
-**Result:** Calendar API returns correct multi-day span. Frontend `buildEventsMap()` correctly enumerates dates Aug 1, 2, 3 with `_dayType: start/middle/end`. The arrival day pill displays "Arrives 1:30p". Unit test "multi-day FLIGHT event spanning 2 days renders on both days" passes.
+**Steps:** POST /api/v1/trips with `name: "<script>alert(1)</script>"`. Expected: tags stripped. Actual: `"alert(1)"` — correct.
 
 ---
 
-### FB-145
+### FB-172 — XSS sanitization works on destinations array (array elements sanitized individually)
 
 | Field | Value |
 |-------|-------|
-| Feedback | Multi-day LAND_TRAVEL event correctly spans from departure date to arrival date on calendar |
-| Sprint | 33 |
+| Feedback | POST /api/v1/trips with `destinations: ["<b>Tokyo</b>", "<img src=x onerror=alert(1)>"]` correctly returns `["Tokyo", ""]` |
+| Sprint | 35 |
 | Category | Positive |
 | Severity | — |
 | Status | Acknowledged |
-| Related Task | T-264 (FB-133) |
 
-**Steps:** POST land travel RENTAL_CAR Tokyo→Osaka, departure_date Aug 7, arrival_date Aug 9 → GET /calendar → Verify LAND_TRAVEL event has `start_date: "2026-08-07"`, `end_date: "2026-08-09"`.
-
-**Result:** Calendar API returns 3-day span. Frontend correctly renders on Aug 7 (start: "Rental Car 10a"), Aug 8 (middle: reduced opacity), Aug 9 (end: "Drop-off 2:30p"). The "Drop-off" label is correctly used for RENTAL_CAR mode (vs. "Arrives" for other modes). Unit test "multi-day LAND_TRAVEL event spanning 3 days renders on all 3 days" passes.
+**Steps:** POST with HTML in destinations array. Expected: tags stripped per element. Actual: `["Tokyo", ""]` — correct per API contract.
 
 ---
 
-### FB-146
+### FB-173 — Unicode and emoji preservation confirmed
 
 | Field | Value |
 |-------|-------|
-| Feedback | Single-day FLIGHT renders correctly without regression |
-| Sprint | 33 |
+| Feedback | POST /api/v1/trips with `name: "東京旅行 🗼"` and `destinations: ["東京", "大阪"]` returned values unchanged |
+| Sprint | 35 |
 | Category | Positive |
 | Severity | — |
 | Status | Acknowledged |
-| Related Task | T-264 |
 
-**Steps:** POST single-day flight NRT→KIX, departure and arrival both on Aug 5 → GET /calendar → Verify `start_date === end_date === "2026-08-05"`.
-
-**Result:** Single-day flight correctly maps to one calendar cell with `_dayType: "single"`. No "Arrives" label on single-day events. Unit test "single-day FLIGHT renders as a single chip without Arrives text" passes.
+**Steps:** POST with Japanese text and emoji. Expected: preserved exactly. Actual: preserved — correct.
 
 ---
 
-### FB-147
+### FB-174 — Special characters (ampersands, quotes, apostrophes) preserved correctly
 
 | Field | Value |
 |-------|-------|
-| Feedback | Single-day LAND_TRAVEL renders correctly without regression |
-| Sprint | 33 |
+| Feedback | POST /api/v1/trips with `name: "Tom & Jerry's \"Excellent\" Trip"` returned unchanged |
+| Sprint | 35 |
 | Category | Positive |
 | Severity | — |
 | Status | Acknowledged |
-| Related Task | T-264 |
 
-**Steps:** POST single-day TRAIN Osaka→Kansai Airport, departure and arrival both on Aug 10 → GET /calendar → Verify `start_date === end_date === "2026-08-10"`.
-
-**Result:** Single-day land travel renders as a single pill with departure/arrival time range. No spanning behavior. Correct.
+**Steps:** POST with ampersands, quotes, apostrophes. Expected: preserved. Actual: preserved — correct.
 
 ---
 
-### FB-148
+### FB-175 — Nested/obfuscated XSS stripped correctly (div+script, javascript: href)
 
 | Field | Value |
 |-------|-------|
-| Feedback | All 4 event types present in calendar with correct data — no regressions from Sprint 32 |
-| Sprint | 33 |
+| Feedback | `<div><script>alert(1)</script></div>` → `"alert(1)"`, `<a href="javascript:alert(1)">click</a>` → `"click"` |
+| Sprint | 35 |
 | Category | Positive |
 | Severity | — |
 | Status | Acknowledged |
-| Related Task | T-264 |
 
-**Steps:** GET /calendar for trip with 3 flights (multi-day, single-day, SQL-injection test), 1 stay, 1 activity, 2 land travel entries → Verify all 4 types (FLIGHT, STAY, ACTIVITY, LAND_TRAVEL) present in response.
-
-**Result:** All event types render correctly. Calendar returns 7 events total across 4 types. No data corruption.
+**Steps:** POST with nested tags and javascript: hrefs. Expected: all HTML stripped, text content preserved. Actual: correct.
 
 ---
 
-### FB-149
+### FB-176 — Notes field sanitization works (iframe stripped)
 
 | Field | Value |
 |-------|-------|
-| Feedback | Sprint 32 regression: Stay category normalization still works (lowercase → uppercase) |
-| Sprint | 33 |
+| Feedback | PATCH /api/v1/trips/:id with `notes: "<iframe src=evil.com></iframe> My notes"` returned `notes: " My notes"` — iframe stripped, text preserved |
+| Sprint | 35 |
 | Category | Positive |
 | Severity | — |
 | Status | Acknowledged |
-| Related Task | T-258 |
 
-**Steps:** POST stay with `"category": "airbnb"` (lowercase) → Verify response returns `"category": "AIRBNB"` (normalized uppercase). HTTP 201.
-
-**Result:** Category normalization from Sprint 32 (T-258) working correctly. No regression.
+**Steps:** PATCH trip with iframe in notes. Expected: iframe stripped. Actual: `" My notes"` with leading space — correct (space was between the tags and the text content).
 
 ---
 
-### FB-150
+### FB-177 — XSS sanitization works on all sub-resource fields (flights, stays, activities, land-travel)
 
 | Field | Value |
 |-------|-------|
-| Feedback | Sprint 32 regression: Trip status persistence works correctly |
-| Sprint | 33 |
+| Feedback | All 4 sub-resource types correctly strip HTML from sanitized fields: flights (airline, from_location, to_location, flight_number), stays (name, address), activities (name, location), land-travel (provider, from_location, to_location) |
+| Sprint | 35 |
 | Category | Positive |
 | Severity | — |
 | Status | Acknowledged |
-| Related Task | T-264 |
 
-**Steps:** PATCH trip status from PLANNING → ONGOING → GET trip → Verify status is "ONGOING" with updated `updated_at` timestamp.
-
-**Result:** Status persisted correctly on re-fetch.
+**Steps:** POST to each sub-resource endpoint with `<script>`, `<b>`, `<img onerror>`, `<a href=javascript:>` payloads. Expected: all HTML stripped. Actual: all HTML stripped correctly across all 4 sub-resource types.
 
 ---
 
-### FB-151
+### FB-178 — SVG XSS sanitization allows empty name via PATCH
 
 | Field | Value |
 |-------|-------|
-| Feedback | Input validation handles empty request bodies gracefully with 400 errors |
-| Sprint | 33 |
-| Category | Positive |
-| Severity | — |
+| Feedback | PATCH /api/v1/trips/:id with `name: "<svg onload=alert(1)>"` sanitizes to empty string `""` — name becomes blank. Sanitization is correct (XSS blocked), but the resulting empty name bypasses the "name is required" validation on PATCH. |
+| Sprint | 35 |
+| Category | Bug |
+| Severity | Minor |
 | Status | Acknowledged |
-| Related Task | T-264 |
+| Tasked As | B-035 (Backlog — post-sanitization validation for required fields) |
 
-**Steps:** POST empty `{}` body to /flights and /land-travel endpoints → Verify 400 VALIDATION_ERROR with specific field messages.
+**Steps:** PATCH trip with `{"name": "<svg onload=alert(1)>"}`. Expected: XSS stripped (correct), but ideally a 400 validation error since the sanitized result is empty. Actual: 200 OK, name stored as `""`. The trip now has an empty name.
 
-**Result:** Both endpoints return clear, structured 400 errors listing every missing required field. Good developer experience.
+**Note:** This is a defense-in-depth edge case. The sanitization itself works correctly — the XSS is blocked. The issue is that post-sanitization validation doesn't re-check required field constraints. Low risk since it requires a malicious input pattern.
 
 ---
 
-### FB-152
+### FB-179 — Angle brackets in non-tag context correctly preserved
 
 | Field | Value |
 |-------|-------|
-| Feedback | Auth and UUID validation prevent unauthorized/invalid access correctly |
-| Sprint | 33 |
+| Feedback | POST /api/v1/trips with `name: "5 < 10 & 10 > 5"` returned unchanged |
+| Sprint | 35 |
 | Category | Positive |
 | Severity | — |
 | Status | Acknowledged |
-| Related Task | T-264 |
 
-**Steps:** GET /calendar without auth token → 401. GET /trips/not-a-uuid/calendar with auth → 400 VALIDATION_ERROR "Invalid ID format".
-
-**Result:** Both return correct error codes and messages. No information leakage.
+**Steps:** POST with mathematical angle brackets. Expected: preserved (not valid HTML tags). Actual: `"5 < 10 & 10 > 5"` — correct.
 
 ---
 
-### FB-153
+### FB-180 — Auth register name field sanitized
 
 | Field | Value |
 |-------|-------|
-| Feedback | All 501 frontend tests pass (496 baseline + 5 new T-264 tests) |
-| Sprint | 33 |
+| Feedback | POST /api/v1/auth/register with `name: "<script>alert(1)</script>"` returns `name: "alert(1)"` — sanitization applied to auth endpoint |
+| Sprint | 35 |
 | Category | Positive |
 | Severity | — |
 | Status | Acknowledged |
-| Related Task | T-264 |
-
-**Steps:** `npx vitest run` → 25 test files, 501 tests passed.
-
-**Result:** Zero failures. New T-264 tests cover: multi-day FLIGHT spanning 2 days, multi-day LAND_TRAVEL spanning 3 days, FLIGHT arrival text on arrival day, single-day FLIGHT without "Arrives" text, single-day LAND_TRAVEL with null end_date. All pass.
 
 ---
 
-### FB-154
+### FB-181 — Validation errors return proper 400 status (empty inputs)
 
 | Field | Value |
 |-------|-------|
-| Feedback | Trip deletion works cleanly with proper 204/404 lifecycle |
-| Sprint | 33 |
+| Feedback | POST /api/v1/trips with empty name and destinations returns 400 VALIDATION_ERROR with field-level messages |
+| Sprint | 35 |
 | Category | Positive |
 | Severity | — |
 | Status | Acknowledged |
-| Related Task | T-264 |
 
-**Steps:** DELETE /trips/:id → 204 No Content → GET /trips/:id → 404 "Trip not found".
-
-**Result:** Clean lifecycle. Deletion confirmed.
+**Steps:** POST with `{"name":"","destinations":[],"start_date":"","end_date":"","timezone":""}`. Expected: 400 validation error. Actual: 400 with `"name": "Trip name is required", "destinations": "At least one destination is required"` — correct.
 
 ---
 
-### FB-155
+### FB-182 — Auth enforcement working (missing token, invalid token, cross-user access)
 
 | Field | Value |
 |-------|-------|
-| Feedback | Mobile view correctly handles multi-day FLIGHT and LAND_TRAVEL events |
-| Sprint | 33 |
+| Feedback | Missing auth token returns 401 UNAUTHORIZED, invalid token returns 401, accessing another user's trip returns 403 FORBIDDEN |
+| Sprint | 35 |
 | Category | Positive |
 | Severity | — |
 | Status | Acknowledged |
-| Related Task | T-264 |
-
-**Steps:** Code review of `MobileDayList` component in TripCalendar.jsx — lines 165-303.
-
-**Result:** Mobile list correctly enumerates multi-day spans for FLIGHT and LAND_TRAVEL (same as STAY). Start day shows departure time, middle days show "(cont.)" with 0.6 opacity, end day shows "Arrives {time}" (or "Drop-off {time}" for RENTAL_CAR). Proper aria-labels on all rows.
 
 ---
+
+### FB-183 — SQL injection attempt safely handled
+
+| Field | Value |
+|-------|-------|
+| Feedback | POST /api/v1/trips with `name: "Robert'); DROP TABLE trips;--"` stored and returned literally — parameterized queries prevent injection |
+| Sprint | 35 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+
+---
+
+### FB-184 — Long string validation works (5000 chars rejected)
+
+| Field | Value |
+|-------|-------|
+| Feedback | POST /api/v1/trips with 5000-character name returns 400 VALIDATION_ERROR: "name must be at most 255 characters" |
+| Sprint | 35 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+
+---
+
+### FB-185 — Calendar "+x more" click-to-expand implementation looks solid (code review)
+
+| Field | Value |
+|-------|-------|
+| Feedback | TripCalendar.jsx implements the +x more click-to-expand per Spec 29: semantic `<button>` with aria-expanded/aria-haspopup/aria-label, role="dialog" popover, dismiss on click-outside/Escape/month-nav/resize, focus management (first pill focused on open, trigger refocused on Escape), 150ms ease animation, mobile responsive via min(280px, calc(100vw-32px)) |
+| Sprint | 35 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+
+**Details:** Reviewed TripCalendar.jsx lines 317-876 and TripCalendar.module.css lines 300-399. All Spec 29 requirements implemented: trigger is a `<button>` (not `<span>`), popover rendered outside grid to avoid overflow:hidden clipping, above/below placement based on cell row position, scrollbar styling, header with day label + separator + event count, event pills reuse the same pill component. Keyboard accessibility: Escape closes and restores focus. Animation: 150ms ease opacity transition per design principles. CSS follows Japandi design language with var(--surface), var(--border-subtle), var(--font-mono), 11px uppercase labels.
+
+---
+
+### FB-186 — Frontend tests pass with zero regressions (510/510)
+
+| Field | Value |
+|-------|-------|
+| Feedback | All 510 frontend tests pass (501 existing + 9 new T-273 calendar overflow tests) |
+| Sprint | 35 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+
+**Details:** Tests cover: 29.A (overflow trigger renders as button with correct aria), 29.B (click opens popover with role=dialog), 29.C (correct day label and event count), 29.D (pill click scrolls to section), 29.E (click outside closes), 29.F (Escape closes), 29.H (month nav closes), 29.I (Enter on trigger opens), 29.K (no trigger when ≤3 events). One minor React act() warning in test 29.I — non-blocking.
+
+---
+
+### FB-187 — Backend tests pass with zero regressions (446/446)
+
+| Field | Value |
+|-------|-------|
+| Feedback | All 446 backend tests pass (410 existing + 36 new T-272 sanitization tests) |
+| Sprint | 35 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+
+---
+
+### FB-188 — Frontend title shows "Plant Guardians" instead of "Triplanner"
+
+| Field | Value |
+|-------|-------|
+| Feedback | The frontend index.html `<title>` tag shows "Plant Guardians" instead of "Triplanner" |
+| Sprint | 35 |
+| Category | Bug |
+| Severity | Minor |
+| Status | Tasked |
+| Tasked As | T-279 (Sprint 36 — fix page title and font references) |
+
+**Steps:** Visit http://localhost:4173 and check the page title. Expected: "Triplanner" or similar. Actual: "Plant Guardians". Also loads Google Fonts for "DM Sans" and "Playfair Display" instead of "IBM Plex Mono" per design context.
+
+**Note:** This appears to be a long-standing issue, not a Sprint 35 regression. Flagging for awareness.
+
+---
+
+---
+

@@ -278,6 +278,7 @@ Each task is a row in the table below. Agents update their assigned tasks as the
 *Promoted to Sprint 4: B-018 → T-063, B-019 → T-064, B-023 → T-058, B-025 → T-059, B-026 → T-060, B-027 → T-061, B-028 → T-062.*
 
 | B-033 | Escape ILIKE wildcard characters (%, _) in search parameter before constructing ILIKE pattern — prevents `%` from matching all trips | Bug Fix | P3 | S | FB-062 (Sprint 5). No cross-user security impact (results are user-scoped), but correctness issue. Fix: `search.trim().replace(/%/g, '\\%').replace(/_/g, '\\_')` in tripModel.js. |
+| B-035 | Post-sanitization validation: re-validate required fields after HTML sanitization to prevent empty strings bypassing constraints | Bug Fix | P2 | S | FB-178 (Sprint 35). Sanitization strips all HTML from `<svg onload=alert(1)>` → `""`, bypassing "name is required" validation. Fix: sanitize before validate, or add post-sanitization check. Promoted to T-278 (Sprint 36). |
 | B-034 | Fix FilterToolbar refetch flicker — remove `!isLoading` from `showToolbar` condition in HomePage.jsx so toolbar stays visible during API refetch (Spec 11.7.4 violation) | Bug Fix | P1 | S | FB-067 (Sprint 5). Tasked for Sprint 6. One-line fix. Toolbar briefly unmounts during refetch, violating spec requirement that toolbar remains visible and interactive during loading. |
 
 *Promoted to Sprint 5: B-029 (trip search) → T-072+T-073.*
@@ -2633,7 +2634,7 @@ Fix matches exactly the spec from `active-sprint.md`. No application source file
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
 | T-225 | Monitor Agent: Post-production health check on `https://triplanner-backend-sp61.onrender.com`. Verify: (1) GET /health → 200; (2) CORS → `Access-Control-Allow-Origin: https://triplanner.yixinx.com`; (3) Auth register → 201; (4) Auth login → 200 with access_token; (5) GET /trips → 200 authenticated; (6) POST /trips + GET /trips/:id → 201/200; (7) PATCH trip status → persisted; (8) GET /calendar → 200 with events. Log results in qa-build-log.md Sprint 32 section. If all pass: Deploy Verified = Yes (Production), handoff to User Agent (T-256). | Infrastructure | Monitor Agent | Backlog | P0 | S | 32 | — | All production API endpoints return expected status codes; auth flow works end-to-end; CORS correct for custom domain; Deploy Verified = Yes (Production). |
-| T-256 | User Agent: Production walkthrough on `https://triplanner.yixinx.com`. Test: (1) New user register → home; (2) Create trip; add flight + stay + activity + land travel; (3) Verify TripDetailsPage displays all entries correctly with timezone-correct times; (4) Open TripCalendar — all event types on correct days; (5) PLANNING → ONGOING status change → reload → persisted; (6) Mobile viewport LAND_TRAVEL row has color accent; (7) Notes + destinations functional; (8) Delete trip. Submit structured feedback to feedback-log.md under "Sprint 32 User Agent Feedback — T-256 Production Walkthrough". | Documentation | User Agent | Backlog | P0 | M | 32 | T-225 | Full new-user flow works on production; all event types in calendar; no Critical or Major issues; feedback submitted. |
+| T-256 | User Agent: Production walkthrough on `https://triplanner.yixinx.com`. Test: (1) New user register → home; (2) Create trip; add flight + stay + activity + land travel; (3) Verify TripDetailsPage displays all entries correctly with timezone-correct times; (4) Open TripCalendar — all event types on correct days; (5) PLANNING → ONGOING status change → reload → persisted; (6) Mobile viewport LAND_TRAVEL row has color accent; (7) Notes + destinations functional; (8) Delete trip. Submit structured feedback to feedback-log.md under "Sprint 32 User Agent Feedback — T-256 Production Walkthrough". | Documentation | User Agent | Done | P0 | M | 32 | T-225 | Full new-user flow works on production; all event types in calendar; no Critical or Major issues; feedback submitted. |
 
 ---
 
@@ -2796,7 +2797,7 @@ Sprint 33 is a frontend-only calendar rendering fix sprint (FB-133/FB-134 — mu
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-269 | Deploy Engineer: Deploy Sprint 33 frontend changes to production (Render). Rebuild frontend with production env vars, push to production branch or trigger Render deploy. Verify frontend loads at `https://triplanner.yixinx.com` with multi-day calendar fix. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | In Review | P0 | S | 34 | — | Frontend deployed to production; multi-day calendar fix live; no build errors; production URL loads correctly. **Build verified 2026-03-23. 501/501 tests pass. Branch pushed to origin. PR to main required for Render auto-deploy.** |
+| T-269 | Deploy Engineer: Deploy Sprint 33 frontend changes to production (Render). Rebuild frontend with production env vars, push to production branch or trigger Render deploy. Verify frontend loads at `https://triplanner.yixinx.com` with multi-day calendar fix. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | ✅ Done | P0 | S | 34 | — | Frontend deployed to production; multi-day calendar fix live; no build errors; production URL loads correctly. **Build verified 2026-03-23. 501/501 tests pass. Branch pushed to origin. PR to main required for Render auto-deploy.** **CR-34 APPROVED (2026-03-23): Build verification thorough, all gates cleared, security self-check passed. PR merge to main is the remaining gate for Render auto-deploy.** **PR #6 created and merged to main 2026-03-23. Render auto-deploy triggered. Backend health check confirms {"status":"ok"}. T-269 COMPLETE.** |
 
 ---
 
@@ -2804,8 +2805,8 @@ Sprint 33 is a frontend-only calendar rendering fix sprint (FB-133/FB-134 — mu
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-225 | Monitor Agent: Post-production health check on `https://triplanner-backend-sp61.onrender.com`. Full health check protocol: health endpoint, CORS, auth register/login, trips CRUD, calendar (verify multi-day events), no 5xx. Log results in qa-build-log.md Sprint 34 section. If all pass: Deploy Verified = Yes (Production), handoff to T-256. **CARRY-OVER FROM SPRINT 30/31/32/33 — 5TH CARRY-OVER — EXECUTE IMMEDIATELY AFTER T-269.** | Infrastructure | Monitor Agent | Backlog | P0 | S | 34 | T-269 | All production API endpoints return expected status codes; auth flow works; CORS correct for custom domain; multi-day calendar events verified; Deploy Verified = Yes (Production). |
-| T-256 | User Agent: Production walkthrough on `https://triplanner.yixinx.com`. Full new-user flow: register → create trip → add flight/stay/activity/land travel → verify calendar (including multi-day spanning) → status change → mobile check → delete trip → logout. Submit feedback to feedback-log.md. **CARRY-OVER FROM SPRINT 30/31/32/33 — 4TH CARRY-OVER.** | Documentation | User Agent | Backlog | P0 | M | 34 | T-225 | Full new-user flow works on production; all event types display correctly including multi-day spanning; no Critical or Major issues; feedback submitted. |
+| T-225 | Monitor Agent: Post-production health check on `https://triplanner-backend-sp61.onrender.com`. Full health check protocol: health endpoint, CORS, auth register/login, trips CRUD, calendar (verify multi-day events), no 5xx. Log results in qa-build-log.md Sprint 34 section. If all pass: Deploy Verified = Yes (Production), handoff to T-256. **CARRY-OVER FROM SPRINT 30/31/32/33 — 5TH CARRY-OVER — EXECUTE IMMEDIATELY AFTER T-269.** | Infrastructure | Monitor Agent | ✅ Done | P0 | S | 34 | ~~T-269~~ | **COMPLETED 2026-03-23.** Config consistency: ✅ PASS (port/protocol/CORS/Docker all consistent). Staging health check: ✅ ALL PASS (health, auth login, trips CRUD, activities, flights, stays, calendar, no 5xx). Production health check: ✅ ALL PASS (health 200, auth register/login, trips CRUD, CORS preflight correct for `https://triplanner.yixinx.com`, frontend loads). Deploy Verified = Yes (Staging + Production). Handoff to T-256 (User Agent) logged. |
+| T-256 | User Agent: Production walkthrough on `https://triplanner.yixinx.com`. Full new-user flow: register → create trip → add flight/stay/activity/land travel → verify calendar (including multi-day spanning) → status change → mobile check → delete trip → logout. Submit feedback to feedback-log.md. **CARRY-OVER FROM SPRINT 30/31/32/33 — 4TH CARRY-OVER.** | Documentation | User Agent | ✅ Done | P0 | M | 34 | ~~T-225~~ | **COMPLETED 2026-03-23.** Full production walkthrough executed. 15 feedback entries submitted (FB-156–FB-170): 13 Positive, 1 Minor Security (FB-163 — stored XSS, not exploitable via React), 1 Suggestion (FB-170 — SSR). Zero Critical or Major issues. All CRUD flows, auth, calendar multi-day spanning, validation, and security verified on production. |
 
 ---
 
@@ -2813,7 +2814,281 @@ Sprint 33 is a frontend-only calendar rendering fix sprint (FB-133/FB-134 — mu
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-270 | QA Engineer: Production smoke test + security verification. Verify HTTPS, CORS headers, cookie SameSite=None, no sensitive data in responses, auth token handling on production. Log in qa-build-log.md. | Code Review | QA Engineer | Backlog | P1 | S | 34 | T-269 | Production HTTPS verified; CORS correct; cookies configured for cross-origin; security checklist PASS for production. |
+| T-270 | QA Engineer: Production smoke test + security verification. Verify HTTPS, CORS headers, cookie SameSite=None, no sensitive data in responses, auth token handling on production. Log in qa-build-log.md. | Code Review | QA Engineer | ✅ Done | P1 | S | 34 | ~~T-269~~ | Production HTTPS verified; CORS correct; cookies configured for cross-origin; security checklist PASS for production. **Code-level verification COMPLETE 2026-03-23: 410/410 backend + 501/501 frontend tests pass. Security checklist all items PASS. npm audit 0 vulnerabilities. Config consistency verified.** **Live production verification COMPLETE 2026-03-23: All 7 live checks PASS — HTTPS enforced (HTTP/2 via Cloudflare), CORS correct (`Access-Control-Allow-Origin: https://triplanner.yixinx.com`), auth enforcement verified (401 on unauthenticated), error responses safe (no stack traces), all security headers present (helmet), npm audit 0 vulnerabilities. T-270 DONE.** |
+
+---
+
+### Sprint 34 Code Review — CR-34
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-34 | Manager: Sprint 34 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 34 | — | **1 task in "In Review": T-269. APPROVED.** See review details below. |
+
+**Status:** ✅ Complete — 1 task reviewed, 1 approved
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-23).
+
+**T-269 — Deploy Engineer: Deploy Sprint 33 frontend changes to production — APPROVED ✅**
+
+Review findings:
+1. **No new application code.** T-269 is a deployment task. The underlying code changes (TripCalendar.jsx multi-day calendar spanning) were from T-264, already reviewed and approved in CR-33 (Sprint 33). No re-review of application code needed.
+2. **Deploy Engineer's commit (2de5f71)** only modifies workflow files (qa-build-log.md, dev-cycle-tracker.md, handoff-log.md) — appropriate for a deploy task.
+3. **Build verification thorough:** 501/501 tests pass, production `VITE_API_URL` correctly baked into build artifacts, 0 npm vulnerabilities, build completes in 531ms.
+4. **All pre-deploy gates verified:** CR-33 approved, QA T-265/T-266 passed, Monitor T-267 passed (17/17 checks + 4/4 Playwright), User T-268 passed (12/12 positive feedback).
+5. **Security self-check passed:** No secrets in code/artifacts, HTTPS enforced via Render, render.yaml has no hardcoded secrets, no .env files committed.
+6. **Convention adherence:** Commit message references task ID (T-269), branch follows naming convention (`feature/T-264-multi-day-calendar-spanning`), qa-build-log.md entry is well-structured.
+
+**Remaining gate:** PR from `feature/T-264-multi-day-calendar-spanning` → `main` must be created and merged to trigger Render auto-deploy. `gh` CLI is not available on this machine. **Escalation: Project owner must create/merge the PR at `https://github.com/yixinxiao7/triplanner/pull/new/feature/T-264-multi-day-calendar-spanning` or install `gh` CLI.**
+
+**Action taken:** T-269 → Integration Check. T-225 and T-270 remain Backlog (blocked by T-269 completion — deploy must actually land on production before health check / security verification can run). Handoff logged to QA Engineer and Monitor Agent in handoff-log.md.
+
+### Sprint 34 — Backend Engineer Status Update (2026-03-23)
+
+**Backend Engineer:** No implementation tasks assigned in Sprint 34. Sprint focus is production deployment and verification (Deploy Engineer, Monitor Agent, User Agent, QA Engineer).
+
+**Standby verification:** Backend test suite verified — **410/410 tests pass**. Test baseline matches Sprint 34 kickoff (410/410 backend). No regressions, no schema changes, no new API contracts required.
+
+**Hotfix standby:** Backend Engineer is monitoring. If T-225 (Monitor Agent health check) or T-256 (User Agent production walkthrough) reveals a Critical or Major backend bug, the Manager will create an H-XXX task. Backend Engineer will respond immediately.
+
+**Backend Engineer Sprint 34 work: COMPLETE (no tasks assigned). On standby for hotfixes.**
+
+---
+
+### Sprint 34 Code Review — CR-34B (Pass #2)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-34B | Manager: Sprint 34 code review pass #2 | Review | Manager Agent | ✅ Done | P1 | S | 34 | — | **No tasks in "In Review" status.** See details below. |
+
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-23, pass #2).
+
+**Result: No tasks were in "In Review" status.** Full grep scan of dev-cycle-tracker.md confirmed zero task rows matching `| In Review |`. Sprint 34 task statuses:
+
+- **T-269** (Deploy Engineer: production deploy) — Already reviewed and APPROVED in CR-34 (pass #1). Now Done (PR #6 merged to main, Render auto-deploy triggered).
+- **T-225** (Monitor Agent: post-production health check) — In Progress. Not yet submitted for review (infrastructure verification task, not code).
+- **T-256** (User Agent: production walkthrough) — Backlog (blocked by T-225). Documentation task, no code to review.
+- **T-270** (QA Engineer: production smoke test + security verification) — In Progress. Code-level verification complete; live production verification underway. Not a code-producing task.
+
+**No action required.** All Sprint 34 tasks are either already reviewed, in progress (non-code verification tasks), or blocked. Next review pass will occur if any task moves to "In Review".
+
+---
+
+### Sprint 34 Code Review — CR-34C (Pass #3)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-34C | Manager: Sprint 34 code review pass #3 | Review | Manager Agent | ✅ Done | P1 | S | 34 | — | **No tasks in "In Review" status.** See details below. |
+
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-23, pass #3).
+
+**Result: No tasks were in "In Review" status.** Grep scan of dev-cycle-tracker.md confirmed zero task rows matching `| In Review |`. Sprint 34 task statuses:
+
+- **T-269** (Deploy Engineer: production deploy) — ✅ Done. Reviewed and APPROVED in CR-34 (pass #1). PR #6 merged to main, Render auto-deploy triggered.
+- **T-225** (Monitor Agent: post-production health check) — In Progress. Infrastructure verification task, not code. No review needed.
+- **T-256** (User Agent: production walkthrough) — Backlog (blocked by T-225). Documentation task, no code to review.
+- **T-270** (QA Engineer: production smoke test + security verification) — In Progress. Verification task, no code to review.
+
+**No action required.** Sprint 34 is in its verification phase — all remaining tasks are non-code verification/documentation tasks (Monitor Agent health check, QA security verification, User Agent walkthrough). No engineering code is pending review.
+
+---
+
+### Sprint 34 Code Review — CR-34D (Pass #4)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-34D | Manager: Sprint 34 code review pass #4 | Review | Manager Agent | ✅ Done | P1 | S | 34 | — | **No tasks in "In Review" status.** See details below. |
+
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-23, pass #4).
+
+**Result: No tasks were in "In Review" status.** Full grep scan of dev-cycle-tracker.md confirmed zero task rows matching `| In Review |`. Sprint 34 task statuses:
+
+- **T-269** (Deploy Engineer: production deploy) — ✅ Done. PR #6 merged to main, Render auto-deploy triggered. Reviewed and APPROVED in CR-34.
+- **T-225** (Monitor Agent: post-production health check) — In Progress. Infrastructure verification task, no code to review.
+- **T-256** (User Agent: production walkthrough) — Backlog (blocked by T-225). Documentation task, no code to review.
+- **T-270** (QA Engineer: production smoke test + security verification) — ✅ Done. All 7 live production checks PASS. No code to review.
+
+**No action required.** Sprint 34 remains in its verification/documentation phase. All engineering code was reviewed in prior passes. Remaining tasks (T-225 Monitor health check, T-256 User Agent walkthrough) are non-code verification tasks that do not require Manager code review.
+
+*Manager Agent Sprint #34 Code Review Pass #4 — 2026-03-23*
+
+---
+
+### Sprint 34 Code Review — CR-34E (Pass #5)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-34E | Manager: Sprint 34 code review pass #5 | Review | Manager Agent | ✅ Done | P1 | S | 34 | — | **No tasks in "In Review" status.** See details below. |
+
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-23, pass #5).
+
+**Result: No tasks were in "In Review" status.** Grep scan of dev-cycle-tracker.md confirmed zero task rows matching `| In Review |`. Sprint 34 task statuses:
+
+- **T-269** (Deploy Engineer: production deploy) — ✅ Done. PR #6 merged to main, Render auto-deploy complete.
+- **T-225** (Monitor Agent: post-production health check) — In Progress. Infrastructure verification task, no code to review.
+- **T-256** (User Agent: production walkthrough) — Backlog (blocked by T-225). Documentation task, no code to review.
+- **T-270** (QA Engineer: production smoke test + security verification) — ✅ Done. All 7 live checks PASS.
+
+**No action required.** Sprint 34 remains in its verification phase. All engineering code was reviewed in CR-34 (pass #1). Remaining tasks (T-225 Monitor health check, T-256 User Agent walkthrough) are non-code verification tasks that do not require Manager code review.
+
+*Manager Agent Sprint #34 Code Review Pass #5 — 2026-03-23*
+
+---
+
+### Sprint 34 — Frontend Engineer Status Update (2026-03-23)
+
+**Frontend Engineer:** No implementation tasks assigned in Sprint 34. Sprint focus is production deployment and verification (Deploy Engineer, Monitor Agent, User Agent, QA Engineer).
+
+**Standby verification:** Frontend test suite verified — **501/501 tests pass**. Test baseline matches Sprint 34 kickoff (501/501 frontend). No regressions.
+
+**Hotfix standby:** Frontend Engineer is monitoring. If T-225 (Monitor Agent health check) or T-256 (User Agent production walkthrough) reveals a Critical or Major frontend bug, the Manager will create an H-XXX task. Frontend Engineer will respond immediately.
+
+**Frontend Engineer Sprint 34 work: COMPLETE (no tasks assigned). On standby for hotfixes.**
+
+---
+
+## Sprint 35 Tasks
+
+**Sprint 35 Kickoff (Manager Agent — 2026-03-23):** Two focus areas: (1) Server-side XSS input sanitization (FB-163 defense-in-depth), (2) Calendar "+x more" click-to-expand (FB-135 UX polish). MVP is feature-complete and production-verified. This sprint hardens security and improves calendar usability.
+
+**Test baseline at Sprint 35 kickoff:** 410/410 backend | 501/501 frontend | 4/4 Playwright | 915 total
+
+---
+
+### Phase 1 — Design Specs (no blockers)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-271 | Design Agent: UI spec for calendar "+x more" click-to-expand behavior (FB-135). Define click target, expanded state (popover/dropdown/inline), dismiss behavior, mobile behavior, animation, accessibility. Publish to ui-spec.md. | Feature | Design Agent | Done | P1 | S | 35 | — | UI spec published with interaction fully defined; desktop + mobile behaviors specified; accessibility documented. |
+
+---
+
+### Phase 2 — Implementation (parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-272 | Backend Engineer: Server-side input sanitization for all user-provided text fields (FB-163). Strip HTML tags from trip name, notes, destinations, flight fields, stay fields, activity fields, land travel fields. Preserve Unicode/emoji. Add backend tests. | Feature | Backend Engineer | Done | P1 | M | 35 | — | XSS payloads stripped; Unicode/emoji preserved; backend tests cover each model; no regressions in 410 backend tests. **[API Contracts Published 2026-03-23]** Contract in api-contracts.md Sprint 35 section. Handoffs to Frontend Engineer and QA Engineer logged. No schema changes — auto-approved. **[Implementation Complete 2026-03-23]** `sanitizeHtml` utility + `sanitizeFields` middleware created in `backend/src/middleware/sanitize.js`. Applied to all 12 POST/PATCH endpoints across 6 models (17 text fields). 36 new tests added (unit + integration). Full suite: 446/446 PASS (410 existing + 36 new). Zero regressions. **[Manager Review APPROVED 2026-03-23]** Sanitization regex correct (strips HTML tags, preserves Unicode/emoji/special chars). Applied to all 12 POST/PATCH endpoints across 6 route files. Middleware ordering correct (validate → sanitize → handler). 36 tests cover happy-path + error-path + edge cases. No hardcoded secrets, no SQL injection vectors, no internal detail leakage. API contract compliant. |
+| T-273 | Frontend Engineer: Calendar "+x more" click-to-expand interaction (FB-135). Implement click handler on overflow indicator, show expanded view per T-271 spec, dismiss on click-outside/Escape, mobile responsive, accessible, 150ms ease animation. Add frontend tests. | Feature | Frontend Engineer | Done | P1 | M | 35 | T-271 | "+x more" clickable and expands; dismiss works; mobile responsive; accessible; tests cover expand/collapse/dismiss; no regressions in 501 frontend tests. **[Implementation Complete 2026-03-23]** 510/510 frontend tests pass (9 new T-273 tests + 501 existing). **[Manager Review APPROVED 2026-03-23]** Overflow trigger renders as semantic `<button>` with aria-expanded/aria-haspopup/aria-label. Popover uses role="dialog" with correct aria attributes. Dismiss on click-outside, Escape (with focus restoration), month navigation, and resize all implemented. 150ms ease animations correct. No dangerouslySetInnerHTML, no XSS vectors. 9 new tests cover expand/collapse/dismiss/keyboard/edge cases. Mobile responsive via min(280px, calc(100vw-32px)). Spec 29 compliant. |
+
+---
+
+### Phase 3 — QA + Deploy + Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-274 | QA Engineer: Security checklist + integration testing. Verify XSS sanitization on all endpoints, Unicode/emoji preservation, "+x more" calendar interaction, full test suite, security checklist. Log in qa-build-log.md. | Code Review | QA Engineer | Done | P1 | M | 35 | T-272, T-273 | All tests pass; XSS sanitization verified; security checklist PASS; no regressions. **[QA Verified 2026-03-23]** 446/446 backend tests PASS, 510/510 frontend tests PASS, 0 npm vulnerabilities, security checklist PASS (all items verified), config consistency PASS, integration tests PASS for both T-272 and T-273. No P1 security issues. Ready for deployment. |
+| T-275 | Deploy Engineer: Sprint 35 staging deployment. Rebuild frontend + backend, deploy to staging (Docker Compose), smoke test all endpoints. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Done | P1 | S | 35 | T-274 | ✅ Staging deployed via PM2. Frontend built (Vite 6.4.1, 129 modules, 506ms). Backend running on https://localhost:3001. Frontend preview on http://localhost:4173. Migrations up to date (0 pending). All 8 smoke tests PASS: health, auth, XSS sanitization (script tags stripped), CRUD (list, detail, delete), calendar, frontend. 0 npm vulnerabilities. Logged in qa-build-log.md. **[Manager Review APPROVED 2026-03-23]** Pre-deploy checks verified (T-274 Done, 0 pending migrations, 0 npm vulnerabilities). Build successful. 8/8 smoke tests pass including XSS sanitization verification. QA-build-log entry comprehensive. Docker unavailable — PM2 adaptation properly documented. No security concerns. |
+| T-276 | Monitor Agent: Staging health check. Full protocol + verify XSS sanitization on staging + Playwright E2E 4/4 PASS. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Done | P1 | S | 35 | T-275 | ✅ **[Health Check Complete 2026-03-23]** Deploy Verified = Yes. 17/17 checks PASS: health endpoint 200, auth login 200 (test@triplanner.local), trips CRUD (list/get/create/delete), sub-resources (flights/stays/activities/land-travel/calendar), XSS sanitization confirmed (`<script>` tags stripped), frontend 200, config consistency PASS (port/protocol/CORS/Docker all consistent), zero 5xx errors, database healthy. Handoff to User Agent logged. |
+| T-277 | User Agent: Sprint 35 staging walkthrough. Test XSS sanitization, "+x more" calendar click-to-expand, regression check on CRUD/calendar/auth. Submit feedback to feedback-log.md. | Documentation | User Agent | Done | P1 | M | 35 | T-276 | XSS sanitization verified; calendar overflow interaction works; no Critical/Major regressions; feedback submitted. **[Testing Complete 2026-03-23]** 25 tests executed. 18 feedback entries (FB-171–FB-188): 15 Positive, 2 Minor Bug (FB-178 post-sanitization empty name, FB-188 wrong page title). All Sprint 35 success criteria verified. 446/446 backend + 510/510 frontend tests pass. Handoff to Manager logged. |
+
+---
+
+### Manager Agent — Sprint 35 Code Review (CR-35)
+
+| Task ID | Description | Status | Assigned To | Result | Sprint | Blocked By | Notes |
+|---------|-------------|--------|----------------|--------|----------|------------|-------|
+| CR-35 | Manager: Sprint 35 code review pass | Review | Manager Agent | ✅ Done | 35 | — | **2 tasks reviewed and APPROVED.** T-272 (backend sanitization) and T-273 (calendar click-to-expand) both moved to Integration Check. |
+
+**Sprint 35 Code Review Summary (Manager Agent — 2026-03-23):**
+
+**Review scope:** All tasks in "In Review" status at time of invocation. Found 2: T-272 and T-273.
+
+---
+
+#### T-272 — Backend: Server-side input sanitization — APPROVED ✅
+
+- ✅ `sanitizeHtml()` utility in `backend/src/middleware/sanitize.js`: Regex `/<\/?[a-zA-Z][^>]*\/?>/g` correctly strips HTML/XML tags. HTML comments stripped via `<!--[\s\S]*?-->`. Type-safe (returns non-strings unchanged). No third-party dependency needed.
+- ✅ `sanitizeFields()` middleware: Handles both string and array fields. Respects null/undefined. Chains to `next()` correctly.
+- ✅ All 12 POST/PATCH endpoints across 6 route files have sanitization applied: trips (name, destinations[], notes), flights (flight_number, airline, from_location, to_location), stays (name, address), activities (name, location), land travel (provider, from_location, to_location), auth (name).
+- ✅ Middleware ordering correct: validate → sanitize → handler.
+- ✅ XSS bypass vectors tested: `<script>`, `<img onerror>`, `<svg onload>`, nested tags, self-closing tags, HTML comments, style tags — all stripped.
+- ✅ Unicode, emoji, accented characters, ampersands, quotes, math angle brackets — all preserved.
+- ✅ No double-encoding (output is plain text, not HTML-encoded).
+- ✅ 36 new tests (15 unit + 21 integration). 446/446 total PASS.
+- ✅ No hardcoded secrets. No SQL injection (Knex parameterized queries). No internal detail leakage. Error format matches convention.
+- ✅ API contract compliant (Sprint 35 section in api-contracts.md).
+
+**T-272** → **Integration Check** ✅
+
+---
+
+#### T-273 — Frontend: Calendar "+x more" click-to-expand — APPROVED ✅
+
+- ✅ Overflow trigger rendered as semantic `<button>` with `aria-expanded`, `aria-haspopup="dialog"`, descriptive `aria-label`.
+- ✅ Popover uses `role="dialog"`, `aria-label`, `aria-modal="false"` (non-modal, correct).
+- ✅ Dismiss behavior complete: click-outside (mousedown listener), Escape (with focus restoration to trigger), month navigation, window resize.
+- ✅ Focus management: Focus moves to first pill on open; returns to trigger on Escape.
+- ✅ Smart positioning: auto-anchors above/below based on viewport proximity. Mobile responsive via `min(280px, calc(100vw - 32px))`.
+- ✅ Animation: `popoverEnterBelow` / `popoverEnterAbove` at 150ms ease — matches design system.
+- ✅ No `dangerouslySetInnerHTML`. All dynamic content rendered via JSX auto-escaping. No XSS vectors.
+- ✅ Event listener cleanup in useEffect return. No memory leaks.
+- ✅ 9 new tests covering: render with aria attributes, open/close, event count display, click-outside dismiss, Escape dismiss, month nav dismiss, no trigger when ≤3 events, pill click scrolls, Enter key opens.
+- ✅ 510/510 total frontend tests PASS.
+- ✅ Spec 29 (ui-spec.md) compliant.
+
+**T-273** → **Integration Check** ✅
+
+---
+
+**Both T-272 and T-273 are now unblocked for T-274 (QA Engineer).** Handoffs logged in handoff-log.md.
+
+*Manager Agent Sprint #35 Code Review — 2026-03-23*
+
+---
+
+#### T-275 — Deploy Engineer: Sprint 35 Staging Deployment — APPROVED ✅
+
+- ✅ Pre-deploy checks verified: T-274 Done, 0 pending migrations, 0 new env vars, 0 npm vulnerabilities.
+- ✅ Build successful: Frontend Vite 6.4.1 (129 modules, 506ms), Backend deps installed.
+- ✅ Staging services running: Backend (https://localhost:3001), Frontend (http://localhost:4173), PostgreSQL (5432).
+- ✅ 8/8 smoke tests PASS: health, auth, XSS sanitization (script tags stripped), CRUD list/detail/delete, calendar, frontend accessible.
+- ✅ XSS sanitization verified on staging: `<script>alert(1)</script>` stripped from trip name.
+- ✅ Comprehensive qa-build-log.md entry with all build, deploy, and smoke test details.
+- ✅ Handoff to Monitor Agent (T-276) already logged with clear verification instructions.
+- ✅ Docker unavailable — PM2 adaptation is reasonable and properly documented.
+- ✅ No security concerns: no new env vars, no secrets exposed, 0 vulnerabilities.
+- ⚠️ Minor: dev-cycle-tracker Test Plan said "7 smoke tests" but qa-build-log shows 8/8 — corrected in tracker.
+
+**T-275** → **Done** ✅ (Infrastructure task — verification handled by Monitor Agent T-276)
+
+**T-276 (Monitor Agent) is now unblocked and moved to In Progress.** Handoff logged in handoff-log.md.
+
+*Manager Agent Sprint #35 Code Review (T-275) — 2026-03-23*
+
+---
+
+## Sprint 36 Tasks
+
+**Sprint Goal:** Deploy Sprint 35 hardening to production, fix page title/font branding (FB-188), add post-sanitization validation (FB-178).
+
+### Phase 1 — Bug Fixes (parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-278 | Backend Engineer: Post-sanitization validation for required fields (FB-178). Swap middleware order to sanitize → validate, or add post-sanitization check. All-HTML required fields must return 400. | Bug Fix | Backend Engineer | Backlog | P1 | S | 36 | — | All-HTML required fields rejected with 400; non-required fields still allow empty; backend tests cover new behavior; no regressions in 446 tests. |
+| T-279 | Frontend Engineer: Fix page title "Plant Guardians" → "Triplanner" and remove wrong font references (FB-188). Update index.html title, meta description, and font links. | Bug Fix | Frontend Engineer | Backlog | P1 | S | 36 | — | Page title shows "Triplanner"; only IBM Plex Mono font loaded; no references to "Plant Guardians"/"DM Sans"/"Playfair Display"; no regressions in 510 tests. |
+
+---
+
+### Phase 2 — QA + Deploy Staging (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-280 | QA Engineer: Integration testing for Sprint 36. Verify post-sanitization validation, page title/font fix, full test suite, security checklist. Log in qa-build-log.md. | Code Review | QA Engineer | Backlog | P1 | M | 36 | T-278, T-279 | All tests pass; post-sanitization validation verified; page branding verified; security checklist PASS. |
+| T-281 | Deploy Engineer: Sprint 36 staging deployment. Rebuild frontend + backend, deploy to staging (PM2), smoke test. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 36 | T-280 | Staging deployed; page title "Triplanner" on staging; smoke tests pass. |
+| T-282 | Monitor Agent: Staging health check. Full protocol + verify page title + post-sanitization validation + Playwright 4/4. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 36 | T-281 | All staging checks pass; Deploy Verified = Yes (Staging). |
+
+---
+
+### Phase 3 — Production Deployment + Verification (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
+| T-283 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | M | 36 | T-282 | PR merged; Render deploy successful; production endpoints healthy; XSS + page title verified on production. |
+| T-284 | Monitor Agent: Production health check. Full protocol + verify XSS sanitization + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 36 | T-283 | All production checks pass; Deploy Verified = Yes (Production). |
+| T-285 | User Agent: Production walkthrough. Test XSS sanitization, post-sanitization validation, page title, calendar click-to-expand, CRUD regression. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 36 | T-284 | All Sprint 35+36 features verified on production; no Critical/Major regressions; feedback submitted. |
 
 ---
 

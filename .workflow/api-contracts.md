@@ -7527,3 +7527,232 @@ All 30 endpoints defined across Sprints 1–30 remain in force. T-258 introduces
 ---
 
 *Sprint 32 contracts published by Backend Engineer 2026-03-20. No new endpoints. T-257 is documentation-only (calendar response shape note + curl --http1.1 workaround). T-258 is a behavioral change to stays POST/PATCH (case-insensitive category input, normalized to uppercase). No schema migrations. All 30 endpoints from Sprints 1–30 remain in force. Test baseline entering Sprint 32: 406/406 backend | 496/496 frontend | 4/4 Playwright.*
+
+---
+
+## Sprint 35 Contracts
+
+---
+
+## T-272 — Server-Side Input Sanitization (Cross-Cutting Behavioral Change)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 35 |
+| Task | T-272 |
+| Status | Proposed |
+| Feedback Source | FB-163 |
+| Auth Required | N/A (applies to all existing authenticated write endpoints) |
+
+**Description:** Add server-side HTML sanitization to all user-provided text fields across all models. This is a defense-in-depth measure: React's JSX auto-escaping prevents client-side XSS, but stored HTML tags could be exploited by future non-React consumers (email templates, PDF exports, admin dashboards). Sanitization strips HTML tags while preserving Unicode, emoji, and legitimate special characters.
+
+**No new endpoints.** This is a behavioral change to existing POST and PATCH endpoints.
+
+---
+
+### Sanitization Rules
+
+1. **Strip all HTML tags** from user-provided text fields before database insertion. Tags like `<script>`, `<img>`, `<div>`, `<a>`, `<iframe>`, `<style>`, `<svg>`, and any other HTML/XML-like tags are removed.
+2. **Preserve plain text content** inside stripped tags. Input `Hello <b>world</b>` → stored as `Hello world`.
+3. **Preserve Unicode and emoji.** Input `東京旅行 🗼 café` → stored as `東京旅行 🗼 café`.
+4. **Preserve legitimate special characters.** Ampersands (`&`), quotes (`"`, `'`), angle brackets in non-tag contexts (e.g., `5 < 10`), and other punctuation must be preserved as literal characters, not HTML-encoded.
+5. **Do NOT sanitize non-text fields:** IDs (UUID), timestamps, enums, booleans, numeric values, timezone strings.
+6. **Do NOT double-encode:** The sanitizer strips tags only — it does not HTML-encode the output. Stored values remain plain text.
+7. **Empty strings remain empty.** Sanitization does not reject empty input — that is handled by existing validation rules.
+8. **Whitespace-only strings after sanitization:** If stripping tags leaves only whitespace (e.g., `<script>alert(1)</script>`), the field becomes an empty string. Existing `required` validation will reject it if the field is required.
+
+---
+
+### Affected Endpoints and Fields
+
+#### Auth Endpoints
+
+| Endpoint | Sanitized Fields |
+|----------|-----------------|
+| `POST /api/v1/auth/register` | `name` |
+
+Note: `email` is validated as email format (no HTML possible). `password` is hashed immediately — not sanitized.
+
+#### Trip Endpoints
+
+| Endpoint | Sanitized Fields |
+|----------|-----------------|
+| `POST /api/v1/trips` | `name`, `destinations` (each array item), `notes` |
+| `PATCH /api/v1/trips/:id` | `name`, `destinations` (each array item), `notes`, `start_date`, `end_date` — only `name`, `destinations`, `notes` are text fields requiring sanitization. `start_date`/`end_date` are date strings validated by existing `dateString` type check. |
+
+Clarification: Only `name`, `destinations` (array items), and `notes` are sanitized on trips. `status` is an enum. Date fields are validated by type.
+
+#### Flight Endpoints
+
+| Endpoint | Sanitized Fields |
+|----------|-----------------|
+| `POST /api/v1/trips/:id/flights` | `flight_number`, `airline`, `from_location`, `to_location` |
+| `PATCH /api/v1/trips/:id/flights/:fid` | `flight_number`, `airline`, `from_location`, `to_location` |
+
+Note: `departure_at`, `arrival_at` are ISO datetime strings (validated by type). `departure_tz`, `arrival_tz` are IANA timezone strings (validated by format). Not sanitized.
+
+#### Stay Endpoints
+
+| Endpoint | Sanitized Fields |
+|----------|-----------------|
+| `POST /api/v1/trips/:id/stays` | `name`, `address` |
+| `PATCH /api/v1/trips/:id/stays/:sid` | `name`, `address` |
+
+Note: `category` is an enum (`HOTEL`, `AIRBNB`, `HOSTEL`, `OTHER`). Not sanitized.
+
+#### Activity Endpoints
+
+| Endpoint | Sanitized Fields |
+|----------|-----------------|
+| `POST /api/v1/trips/:id/activities` | `name`, `location` |
+| `PATCH /api/v1/trips/:id/activities/:aid` | `name`, `location` |
+
+Note: `activity_date` is a date string. `start_time`/`end_time` are time strings. Not sanitized.
+
+#### Land Travel Endpoints
+
+| Endpoint | Sanitized Fields |
+|----------|-----------------|
+| `POST /api/v1/trips/:id/land-travel` | `provider`, `from_location`, `to_location` |
+| `PATCH /api/v1/trips/:id/land-travel/:lid` | `provider`, `from_location`, `to_location` |
+
+Note: `mode` is an enum. Date/time fields are validated by type. Not sanitized.
+
+---
+
+### Complete Sanitized Fields Reference
+
+| Model | Sanitized Fields | Non-Sanitized Fields (for clarity) |
+|-------|-----------------|-----------------------------------|
+| **User** | `name` | `email` (email format), `password` (hashed) |
+| **Trip** | `name`, `destinations[]`, `notes` | `status` (enum), `start_date`/`end_date` (date) |
+| **Flight** | `flight_number`, `airline`, `from_location`, `to_location` | `departure_at`/`arrival_at` (ISO datetime), `departure_tz`/`arrival_tz` (timezone) |
+| **Stay** | `name`, `address` | `category` (enum), `check_in_at`/`check_out_at` (ISO datetime), `check_in_tz`/`check_out_tz` (timezone) |
+| **Activity** | `name`, `location` | `activity_date` (date), `start_time`/`end_time` (time) |
+| **Land Travel** | `provider`, `from_location`, `to_location` | `mode` (enum), `departure_date`/`arrival_date` (date), `departure_time`/`arrival_time` (time) |
+
+**Total: 17 distinct text fields sanitized across 6 models.**
+
+---
+
+### Implementation Approach (Contract-Level)
+
+Sanitization will be applied as a **middleware layer** that runs after existing validation but before model insertion. This ensures:
+- Invalid requests are still rejected by validation first (400 errors unchanged)
+- Valid requests have their text fields sanitized before reaching the database
+- Response shapes are unchanged — sanitized values are returned in the same `{ "data": ... }` format
+
+The sanitization utility will be a pure function: `sanitizeHtml(input: string) → string` that strips HTML/XML tags via regex or a lightweight library (e.g., `sanitize-html` configured to allow no tags, or the `xss` library).
+
+---
+
+### Behavioral Contract Changes
+
+**Before T-272:**
+```
+POST /api/v1/trips  { "name": "<script>alert(1)</script>Tokyo Trip" }
+→ 201 { "data": { "name": "<script>alert(1)</script>Tokyo Trip", ... } }
+```
+
+**After T-272:**
+```
+POST /api/v1/trips  { "name": "<script>alert(1)</script>Tokyo Trip" }
+→ 201 { "data": { "name": "alert(1)Tokyo Trip", ... } }
+```
+
+**Unicode preserved:**
+```
+POST /api/v1/trips  { "name": "東京旅行 🗼" }
+→ 201 { "data": { "name": "東京旅行 🗼", ... } }
+```
+
+**Special characters preserved:**
+```
+POST /api/v1/trips  { "name": "Tom & Jerry's \"Excellent\" Trip" }
+→ 201 { "data": { "name": "Tom & Jerry's \"Excellent\" Trip", ... } }
+```
+
+**Nested/obfuscated XSS stripped:**
+```
+POST /api/v1/trips  { "name": "<img src=x onerror=alert(1)>Trip" }
+→ 201 { "data": { "name": "Trip", ... } }
+
+POST /api/v1/trips  { "name": "<svg/onload=alert(1)>Trip" }
+→ 201 { "data": { "name": "Trip", ... } }
+```
+
+---
+
+### Error Responses — No Changes
+
+Sanitization does not introduce any new error codes or response shapes. Existing error responses remain unchanged:
+- `400 VALIDATION_ERROR` — still returned for missing/invalid fields (validation runs before sanitization)
+- `401 UNAUTHORIZED` — unchanged
+- `403 FORBIDDEN` — unchanged
+- `404 NOT_FOUND` — unchanged
+- `500 INTERNAL_ERROR` — unchanged
+
+---
+
+### Frontend Impact
+
+**None.** Response shapes are identical. The only difference is that stored text fields will never contain HTML tags. Since the frontend already uses React JSX auto-escaping, this change is invisible to the UI. The Frontend Engineer does not need to make any code changes for T-272.
+
+---
+
+### Test Plan (Backend)
+
+Tests must cover:
+1. **XSS payloads stripped:** `<script>alert(1)</script>` → `alert(1)` (tag removed, text content preserved)
+2. **Attribute-based XSS stripped:** `<img src=x onerror=alert(1)>` → empty string (self-closing tag with no text content)
+3. **Nested tags stripped:** `<div><script>alert(1)</script></div>` → `alert(1)`
+4. **Unicode preserved:** `東京旅行 🗼 café` → unchanged
+5. **Emoji preserved:** `Trip 🎉🌍✈️` → unchanged
+6. **Special characters preserved:** `Tom & Jerry's "Excellent" Trip` → unchanged
+7. **Angle brackets in non-tag context:** `5 < 10 & 10 > 5` → preserved (implementation should handle this; if regex-based, document any edge cases)
+8. **Empty string input:** `""` → `""` (no change)
+9. **Whitespace-only after strip:** `<script>alert(1)</script>` on a required field → sanitized to `alert(1)` (the text content of the script tag is preserved)
+10. **Array field sanitization:** `destinations: ["<b>Tokyo</b>", "Osaka"]` → `["Tokyo", "Osaka"]`
+11. **Each model covered:** At least one test per model (trip, flight, stay, activity, land travel, user registration)
+12. **No regressions:** All existing 410 backend tests must continue to pass
+
+---
+
+### Endpoint Compatibility Matrix (Sprint 35)
+
+| Sprint | Endpoint | Sprint 35 Change |
+|--------|----------|-----------------|
+| 1 | `POST /api/v1/auth/register` | ✅ **T-272: `name` field sanitized** |
+| 1 | `POST /api/v1/auth/login` | ✅ Unchanged (no text fields stored) |
+| 1 | `POST /api/v1/auth/refresh` | ✅ Unchanged |
+| 1 | `POST /api/v1/auth/logout` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips` | ✅ Unchanged (read-only) |
+| 1 | `POST /api/v1/trips` | ✅ **T-272: `name`, `destinations[]`, `notes` sanitized** |
+| 1 | `GET /api/v1/trips/:id` | ✅ Unchanged (read-only) |
+| 1 | `PATCH /api/v1/trips/:id` | ✅ **T-272: `name`, `destinations[]`, `notes` sanitized** |
+| 1 | `DELETE /api/v1/trips/:id` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/flights` | ✅ Unchanged (read-only) |
+| 1 | `POST /api/v1/trips/:id/flights` | ✅ **T-272: `flight_number`, `airline`, `from_location`, `to_location` sanitized** |
+| 1 | `GET /api/v1/trips/:id/flights/:fid` | ✅ Unchanged (read-only) |
+| 1 | `PATCH /api/v1/trips/:id/flights/:fid` | ✅ **T-272: `flight_number`, `airline`, `from_location`, `to_location` sanitized** |
+| 1 | `DELETE /api/v1/trips/:id/flights/:fid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/stays` | ✅ Unchanged (read-only) |
+| 1 | `POST /api/v1/trips/:id/stays` | ✅ **T-272: `name`, `address` sanitized** |
+| 1 | `GET /api/v1/trips/:id/stays/:sid` | ✅ Unchanged (read-only) |
+| 1 | `PATCH /api/v1/trips/:id/stays/:sid` | ✅ **T-272: `name`, `address` sanitized** |
+| 1 | `DELETE /api/v1/trips/:id/stays/:sid` | ✅ Unchanged |
+| 1 | `GET /api/v1/trips/:id/activities` | ✅ Unchanged (read-only) |
+| 1 | `POST /api/v1/trips/:id/activities` | ✅ **T-272: `name`, `location` sanitized** |
+| 1 | `GET /api/v1/trips/:id/activities/:aid` | ✅ Unchanged (read-only) |
+| 1 | `PATCH /api/v1/trips/:id/activities/:aid` | ✅ **T-272: `name`, `location` sanitized** |
+| 1 | `DELETE /api/v1/trips/:id/activities/:aid` | ✅ Unchanged |
+| 6 | `GET /api/v1/trips/:id/land-travel` | ✅ Unchanged (read-only) |
+| 6 | `POST /api/v1/trips/:id/land-travel` | ✅ **T-272: `provider`, `from_location`, `to_location` sanitized** |
+| 6 | `GET /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged (read-only) |
+| 6 | `PATCH /api/v1/trips/:id/land-travel/:lid` | ✅ **T-272: `provider`, `from_location`, `to_location` sanitized** |
+| 6 | `DELETE /api/v1/trips/:id/land-travel/:lid` | ✅ Unchanged |
+| 25 | `GET /api/v1/trips/:id/calendar` | ✅ Unchanged (read-only aggregation) |
+
+---
+
+*Sprint 35 contracts published by Backend Engineer 2026-03-23. No new endpoints. T-272 is a cross-cutting behavioral change: server-side HTML sanitization applied to 17 text fields across 12 write endpoints (POST/PATCH) on 6 models. No schema migrations. All 30 endpoints from Sprints 1–30 remain in force. Test baseline entering Sprint 35: 410/410 backend | 501/501 frontend | 4/4 Playwright.*

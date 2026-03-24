@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { sanitizeFields, sanitizeHtml } from '../middleware/sanitize.js';
 import { uuidParamHandler } from '../middleware/validateUUID.js';
 import { findTripById } from '../models/tripModel.js';
 import {
@@ -155,7 +156,9 @@ router.get('/', async (req, res, next) => {
 });
 
 // ---- POST /api/v1/trips/:tripId/land-travel ----
-router.post('/', validate(createLandTravelSchema), async (req, res, next) => {
+const landTravelSanitizeConfig = { provider: 'string', from_location: 'string', to_location: 'string' };
+
+router.post('/', validate(createLandTravelSchema), sanitizeFields(landTravelSanitizeConfig), async (req, res, next) => {
   try {
     const trip = await requireTripOwnership(req, res);
     if (!trip) return;
@@ -364,9 +367,14 @@ router.patch('/:ltId', async (req, res, next) => {
     }
 
     const updates = {};
+    const SANITIZE_FIELDS = ['provider', 'from_location', 'to_location'];
     for (const field of UPDATABLE) {
       if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
+        let value = req.body[field];
+        if (SANITIZE_FIELDS.includes(field) && typeof value === 'string') {
+          value = sanitizeHtml(value);
+        }
+        updates[field] = value;
       }
     }
 

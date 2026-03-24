@@ -313,6 +313,12 @@ export default function TripCalendar({ tripId }) {
     return { year: now.getFullYear(), month: now.getMonth() };
   });
 
+  // T-273: Expanded day popover state
+  const [expandedDay, setExpandedDay] = useState(null);
+  const popoverRef = useRef(null);
+  const triggerRefs = useRef({});
+  const calendarPanelRef = useRef(null);
+
   const hasSetInitialMonth = useRef(false);
   const abortControllerRef = useRef(null);
   // Grid keyboard navigation: focused cell index
@@ -394,6 +400,7 @@ export default function TripCalendar({ tripId }) {
       month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 }
     );
     setFocusedCellIndex(null);
+    setExpandedDay(null); // T-273: close popover on month nav
   }
 
   function nextMonth() {
@@ -401,6 +408,7 @@ export default function TripCalendar({ tripId }) {
       month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 }
     );
     setFocusedCellIndex(null);
+    setExpandedDay(null); // T-273: close popover on month nav
   }
 
   // Grid keyboard navigation handler
@@ -421,6 +429,164 @@ export default function TripCalendar({ tripId }) {
       setFocusedCellIndex(newIndex);
       cellRefs.current[newIndex]?.focus();
     }
+  }
+
+  // T-273: Close popover on click-outside, Escape, and window resize
+  useEffect(() => {
+    if (!expandedDay) return;
+
+    function handleMouseDown(e) {
+      if (
+        popoverRef.current && !popoverRef.current.contains(e.target) &&
+        triggerRefs.current[expandedDay] && !triggerRefs.current[expandedDay].contains(e.target)
+      ) {
+        setExpandedDay(null);
+      }
+    }
+
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        setExpandedDay(null);
+        // Return focus to the trigger button
+        triggerRefs.current[expandedDay]?.focus();
+      }
+    }
+
+    function handleResize() {
+      setExpandedDay(null);
+    }
+
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [expandedDay]);
+
+  // T-273: Focus first pill inside popover when it opens
+  useEffect(() => {
+    if (expandedDay && popoverRef.current) {
+      const firstPill = popoverRef.current.querySelector('button');
+      if (firstPill) firstPill.focus();
+    }
+  }, [expandedDay]);
+
+  // T-273: Compute popover position for expanded day
+  function getPopoverPosition(dateStr, cellIndex) {
+    const cellEl = cellRefs.current[cellIndex];
+    const panelEl = calendarPanelRef.current;
+    if (!cellEl || !panelEl) return { top: 0, left: 0, above: false };
+
+    const cellRect = cellEl.getBoundingClientRect();
+    const panelRect = panelEl.getBoundingClientRect();
+    const totalCells = calendarDays.length;
+    const isBottomRows = cellIndex >= totalCells - 14;
+
+    // Position relative to the panel
+    const left = cellRect.left - panelRect.left + cellRect.width / 2;
+    let top;
+    let above = false;
+    if (isBottomRows) {
+      // Anchor above the cell
+      top = cellRect.top - panelRect.top;
+      above = true;
+    } else {
+      // Anchor below the cell
+      top = cellRect.bottom - panelRect.top;
+      above = false;
+    }
+    return { top, left, above };
+  }
+
+  // T-273: Handle overflow trigger click
+  function handleOverflowClick(dateStr, cellIndex) {
+    if (expandedDay === dateStr) {
+      setExpandedDay(null);
+    } else {
+      setExpandedDay(dateStr);
+    }
+  }
+
+  // T-273: Render the overflow popover
+  function renderOverflowPopover(dateStr, cellIndex) {
+    if (expandedDay !== dateStr) return null;
+    const allEvents = eventsMap[dateStr] || [];
+    const { top, left, above } = getPopoverPosition(dateStr, cellIndex);
+
+    const [dy, dm, dd] = dateStr.split('-').map(Number);
+    const date = new Date(dy, dm - 1, dd);
+    const dayLabel = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const shortLabel = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
+
+    const popoverStyle = {
+      position: 'absolute',
+      left: `${left}px`,
+      zIndex: 10,
+    };
+    if (above) {
+      popoverStyle.top = `${top}px`;
+      popoverStyle.transform = 'translateX(-50%) translateY(-100%)';
+    } else {
+      popoverStyle.top = `${top}px`;
+      popoverStyle.transform = 'translateX(-50%)';
+    }
+
+    return (
+      <div
+        ref={popoverRef}
+        role="dialog"
+        aria-label={`All events for ${dayLabel}`}
+        aria-modal="false"
+        className={`${styles.overflowPopover} ${above ? styles.overflowPopoverAbove : ''}`}
+        style={popoverStyle}
+      >
+        <div className={styles.overflowPopoverHeader}>{shortLabel}</div>
+        <hr className={styles.overflowPopoverSep} aria-hidden="true" />
+        <div className={styles.overflowPopoverCount}>{allEvents.length} events</div>
+        <div className={styles.overflowPopoverList}>
+          {allEvents.map((ev, idx) => renderPopoverPill(ev, idx))}
+        </div>
+      </div>
+    );
+  }
+
+  // T-273: Render event pill inside the popover (full border-radius, no clipping)
+  function renderPopoverPill(event, idx) {
+    const sectionId = getSectionId(event.type);
+    const timeStr = formatTime(event.start_time);
+
+    let pillClass = styles.eventPill;
+    if (event.type === 'FLIGHT') pillClass += ` ${styles.eventPillFlight}`;
+    else if (event.type === 'STAY') pillClass += ` ${styles.eventPillStay}`;
+    else if (event.type === 'ACTIVITY') pillClass += ` ${styles.eventPillActivity}`;
+    else if (event.type === 'LAND_TRAVEL') pillClass += ` ${styles.eventPillLandTravel}`;
+
+    let displayText;
+    if (event.type === 'LAND_TRAVEL') {
+      displayText = buildLandTravelPillText(event);
+    } else {
+      displayText = timeStr ? `${timeStr} ${event.title}` : event.title;
+    }
+
+    const ariaLabel = event.type === 'LAND_TRAVEL'
+      ? `Land travel: ${event.title}`
+      : `${event.type.charAt(0) + event.type.slice(1).toLowerCase()}: ${event.title}`;
+
+    return (
+      <button
+        key={idx}
+        type="button"
+        className={pillClass}
+        style={{ borderRadius: 'var(--radius-sm)' }}
+        aria-label={ariaLabel}
+        onClick={() => sectionId && scrollToSection(sectionId)}
+      >
+        {displayText && <span className={styles.eventPillText}>{displayText}</span>}
+      </button>
+    );
   }
 
   // Render an event pill
@@ -542,10 +708,12 @@ export default function TripCalendar({ tripId }) {
 
   return (
     <div
+      ref={calendarPanelRef}
       className={styles.calendarPanel}
       role="region"
       aria-label="Trip calendar"
       aria-busy={loading ? 'true' : undefined}
+      style={{ position: 'relative' }}
     >
       {/* Panel header: "CALENDAR" label + legend */}
       <div className={styles.panelHeader}>
@@ -650,7 +818,7 @@ export default function TripCalendar({ tripId }) {
                 const overflow = isOutsideMonth ? 0 : dayEvents.length - 3;
                 const [dy, dm, dd] = dateStr.split('-').map(Number);
                 const dayName = new Date(dy, dm - 1, dd).toLocaleDateString('en-US', { weekday: 'long' });
-                const cellLabel = `${dayName}, ${MONTHS[dm - 1]} ${dd}, ${dy}`;
+                const fullDayLabel = `${dayName}, ${MONTHS[dm - 1]} ${dd}, ${dy}`;
                 const isFocused = focusedCellIndex === cellIndex;
 
                 return (
@@ -660,7 +828,7 @@ export default function TripCalendar({ tripId }) {
                     role="gridcell"
                     tabIndex={isFocused ? 0 : -1}
                     className={`${styles.dayCell} ${isOutsideMonth ? styles.dayCellOutside : ''}`}
-                    aria-label={cellLabel}
+                    aria-label={fullDayLabel}
                     aria-current={isToday ? 'date' : undefined}
                     onFocus={() => setFocusedCellIndex(cellIndex)}
                     onKeyDown={(e) => handleGridKeyDown(e, cellIndex)}
@@ -671,7 +839,17 @@ export default function TripCalendar({ tripId }) {
                     <div className={styles.eventsArea}>
                       {visible.map((ev, idx) => renderEventPill(ev, idx))}
                       {overflow > 0 && (
-                        <span className={styles.overflowLabel}>+{overflow} more</span>
+                        <button
+                          type="button"
+                          ref={(el) => { triggerRefs.current[dateStr] = el; }}
+                          className={styles.overflowTrigger}
+                          aria-expanded={expandedDay === dateStr ? 'true' : 'false'}
+                          aria-haspopup="dialog"
+                          aria-label={`Show all ${dayEvents.length} events for ${fullDayLabel}`}
+                          onClick={() => handleOverflowClick(dateStr, cellIndex)}
+                        >
+                          +{overflow} more
+                        </button>
                       )}
                     </div>
                   </div>
@@ -679,6 +857,13 @@ export default function TripCalendar({ tripId }) {
               })}
             </div>
           </div>
+
+          {/* T-273: Overflow popover — rendered outside the grid to avoid overflow:hidden clipping */}
+          {expandedDay && (() => {
+            const cellIndex = calendarDays.findIndex(d => d.dateStr === expandedDay);
+            if (cellIndex < 0) return null;
+            return renderOverflowPopover(expandedDay, cellIndex);
+          })()}
 
           {/* Mobile day list (hidden on desktop via CSS) */}
           <div className={styles.mobileView}>
