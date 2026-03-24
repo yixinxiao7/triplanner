@@ -3067,8 +3067,8 @@ Review findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-278 | Backend Engineer: Post-sanitization validation for required fields (FB-178). Swap middleware order to sanitize → validate, or add post-sanitization check. All-HTML required fields must return 400. | Bug Fix | Backend Engineer | In Review | P1 | S | 36 | — | All-HTML required fields rejected with 400; non-required fields still allow empty; backend tests cover new behavior; no regressions in 446 tests. API contract published 2026-03-24. **[Implemented 2026-03-24]** Middleware order swapped to sanitize→validate on all 6 POST routes and 5 PATCH routes. validate.js updated to enforce minLength on empty strings. 25 new tests added (sprint36.test.js). 471/471 tests pass. |
-| T-279 | Frontend Engineer: Fix page title "Plant Guardians" → "Triplanner" and remove wrong font references (FB-188). Update index.html title, meta description, and font links. | Bug Fix | Frontend Engineer | In Review | P1 | S | 36 | — | Page title shows "Triplanner"; only IBM Plex Mono font loaded; no references to "Plant Guardians"/"DM Sans"/"Playfair Display"; no regressions in 510 tests. |
+| T-278 | Backend Engineer: Post-sanitization validation for required fields (FB-178). Swap middleware order to sanitize → validate, or add post-sanitization check. All-HTML required fields must return 400. | Bug Fix | Backend Engineer | Integration Check | P1 | S | 36 | — | All-HTML required fields rejected with 400; non-required fields still allow empty; backend tests cover new behavior; no regressions in 446 tests. API contract published 2026-03-24. **[Implemented 2026-03-24]** Middleware order swapped to sanitize→validate on all 6 POST routes and 5 PATCH routes. validate.js updated to enforce minLength on empty strings. 25 new tests added (sprint36.test.js). 471/471 tests pass. **[CR-36 APPROVED 2026-03-24]** Code review passed. |
+| T-279 | Frontend Engineer: Fix page title "Plant Guardians" → "Triplanner" and remove wrong font references (FB-188). Update index.html title, meta description, and font links. | Bug Fix | Frontend Engineer | Integration Check | P1 | S | 36 | — | Page title shows "Triplanner"; only IBM Plex Mono font loaded; no references to "Plant Guardians"/"DM Sans"/"Playfair Display"; no regressions in 510 tests. **[CR-36 APPROVED 2026-03-24]** Code review passed. |
 
 ---
 
@@ -3089,6 +3089,44 @@ Review findings:
 | T-283 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Log in qa-build-log.md. | Infrastructure | Deploy Engineer | Backlog | P1 | M | 36 | T-282 | PR merged; Render deploy successful; production endpoints healthy; XSS + page title verified on production. |
 | T-284 | Monitor Agent: Production health check. Full protocol + verify XSS sanitization + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 36 | T-283 | All production checks pass; Deploy Verified = Yes (Production). |
 | T-285 | User Agent: Production walkthrough. Test XSS sanitization, post-sanitization validation, page title, calendar click-to-expand, CRUD regression. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 36 | T-284 | All Sprint 35+36 features verified on production; no Critical/Major regressions; feedback submitted. |
+
+---
+
+### Code Review Log — Sprint 36
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-36 | Manager: Sprint 36 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 36 | — | **2 tasks in "In Review": T-278 and T-279. Both APPROVED.** See details below. |
+
+**Status:** ✅ Complete — 2 tasks reviewed and approved
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-24).
+
+**T-278 — Backend: Post-sanitization validation (FB-178) → APPROVED**
+
+Reviewed files: `validate.js`, `sanitize.js`, `trips.js`, `flights.js`, `stays.js`, `activities.js`, `landTravel.js`, `auth.js`, `sprint36.test.js`.
+
+Findings:
+1. **Middleware order correct:** `sanitizeFields()` runs before `validate()` on all 6 POST routes (trips, flights, stays, activities, land-travel, auth/register). ✅
+2. **PATCH routes hardened:** Inline `sanitizeHtml()` applied to text fields before minLength checks on all 5 PATCH routes (trips, flights, stays, activities, land-travel). ✅
+3. **validate.js logic correct:** Line 62 — empty strings with `minLength > 0` now fall through to the minLength check instead of being skipped. Backward-compatible: empty strings without minLength constraints still skip. ✅
+4. **Security:** No hardcoded secrets, no SQL injection vectors. Error responses use standard `{ error: { message, code, fields } }` format — no internal details leaked. ✅
+5. **Tests:** 25 new tests in `sprint36.test.js` covering POST + PATCH for all 6 entity types. Happy-path (valid input, mixed HTML+text) and error-path (all-HTML required fields → 400) both covered. ✅
+6. **Convention adherence:** Parameterized queries (via Knex), standard error format, proper middleware composition. ✅
+
+**T-279 — Frontend: Page title fix (FB-188) → APPROVED**
+
+Reviewed files: `frontend/index.html`.
+
+Findings:
+1. **Title fixed:** `<title>triplanner</title>` — correct. ✅
+2. **Meta description appropriate:** Describes trip planning functionality. ✅
+3. **No stale references:** Grep across entire `frontend/` directory confirmed zero matches for "Plant Guardians", "DM Sans", or "Playfair Display". ✅
+4. **No security concerns:** Static HTML change only, no new inputs or dynamic content. ✅
+
+**Actions taken:**
+- T-278: Status → **Integration Check**
+- T-279: Status → **Integration Check**
+- Handoff logged for QA Engineer (T-280) — both blocking dependencies resolved
 
 ---
 

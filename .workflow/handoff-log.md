@@ -4,6 +4,46 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager → QA Engineer: T-278 + T-279 Code Review APPROVED (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** Manager Agent (CR-36)
+**To:** QA Engineer (T-280)
+**Status:** ✅ Complete — both tasks approved, ready for QA integration testing
+
+### Summary
+
+Code review CR-36 is complete. Both Sprint 36 implementation tasks have been reviewed and approved, moving to Integration Check. T-280 (QA integration testing) is now unblocked.
+
+### Tasks Approved
+
+| Task | Result | Key Verification |
+|------|--------|------------------|
+| T-278 (Backend: post-sanitization validation) | ✅ APPROVED | Middleware order sanitize→validate on all 6 POST + 5 PATCH routes. 25 new tests. No security issues. |
+| T-279 (Frontend: page title fix) | ✅ APPROVED | Title changed to "triplanner". No stale "Plant Guardians"/"DM Sans"/"Playfair Display" references. |
+
+### What QA Should Verify (T-280)
+
+1. **Post-sanitization validation (T-278):**
+   - POST with all-HTML required field → 400 VALIDATION_ERROR (e.g., `name: "<svg onload=alert(1)>"`)
+   - PATCH with all-HTML required field → 400 VALIDATION_ERROR
+   - Non-required field all-HTML → 200/201, stored as empty/null
+   - Mixed HTML+text → 200/201, text preserved
+   - Clean input → no behavior change
+   - Full backend test suite passes (471 tests)
+
+2. **Page title fix (T-279):**
+   - Page title shows "triplanner" (not "Plant Guardians")
+   - Only IBM Plex Mono font loaded
+   - Full frontend test suite passes (510 tests)
+
+3. **Security checklist:** Standard pass required before Done.
+
+### No Schema Changes, No API Contract Changes
+
+---
+
 ## Backend Engineer → QA Engineer: T-278 Ready for Review (Sprint 36)
 
 **Date:** 2026-03-24
