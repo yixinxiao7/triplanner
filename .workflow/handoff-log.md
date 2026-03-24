@@ -4,6 +4,66 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Backend Engineer → Frontend Engineer: T-278 API Contract Published — Post-Sanitization Validation (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** Backend Engineer (T-278)
+**To:** Frontend Engineer
+**Status:** ✅ Contract Published
+
+### Summary
+
+Sprint 36 API contract for T-278 (post-sanitization validation) has been published to `api-contracts.md`. This is a behavioral bug fix, not a new endpoint.
+
+### What Changed
+
+- Middleware ordering is being changed from `validate → sanitize` to `sanitize → validate` on all 12 write endpoints
+- Required fields that become empty after HTML sanitization (e.g., `name: "<svg onload=alert(1)>"` → `""`) will now return **400 VALIDATION_ERROR** instead of being stored as empty strings
+- Non-required fields (e.g., `notes`, `address`) are unaffected — they can still be empty after sanitization
+
+### Frontend Impact
+
+**Minimal.** The frontend already handles 400 VALIDATION_ERROR responses. The only difference is that an edge case (all-HTML required field) that previously succeeded will now correctly fail with 400. No frontend code changes are needed for T-278 — this is purely a backend fix.
+
+### Reference
+
+- Full contract: `.workflow/api-contracts.md` → Sprint 36 Contracts → T-278
+
+*Backend Engineer Sprint #36 — T-278 — 2026-03-24*
+
+---
+
+## Backend Engineer → QA Engineer: T-278 API Contract Published — Post-Sanitization Validation (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** Backend Engineer (T-278)
+**To:** QA Engineer (T-280)
+**Status:** ✅ Contract Published — Implementation pending
+
+### Summary
+
+Sprint 36 API contract for T-278 has been published. QA should use these contracts as reference for integration testing in T-280.
+
+### Key Test Scenarios for QA (from contract)
+
+1. `PATCH /api/v1/trips/:id` with `name: "<svg onload=alert(1)>"` → expect **400** `VALIDATION_ERROR` (previously stored `""`)
+2. `POST /api/v1/trips` with `name: "<script>alert(1)</script>"` → expect **400** `VALIDATION_ERROR`
+3. `POST /api/v1/trips` with `destinations: ["<b></b>"]` → expect **400** `VALIDATION_ERROR`
+4. `PATCH /api/v1/trips/:id` with `name: "<b>Valid</b>"` → expect **200** with `name: "Valid"` (mixed HTML + text passes)
+5. Valid inputs with no HTML → expect unchanged behavior (no regressions)
+6. Non-required fields with all-HTML → expect success (e.g., `notes: "<script></script>"` → stored as `""`)
+
+### Reference
+
+- Full contract: `.workflow/api-contracts.md` → Sprint 36 Contracts → T-278
+- Test plan in contract: 10 test scenarios documented
+
+*Backend Engineer Sprint #36 — T-278 — 2026-03-24*
+
+---
+
 ## Monitor Agent → User Agent: T-276 Deploy Verified — Staging Ready for Testing (Sprint 35)
 
 **Date:** 2026-03-23

@@ -7756,3 +7756,177 @@ Tests must cover:
 ---
 
 *Sprint 35 contracts published by Backend Engineer 2026-03-23. No new endpoints. T-272 is a cross-cutting behavioral change: server-side HTML sanitization applied to 17 text fields across 12 write endpoints (POST/PATCH) on 6 models. No schema migrations. All 30 endpoints from Sprints 1–30 remain in force. Test baseline entering Sprint 35: 410/410 backend | 501/501 frontend | 4/4 Playwright.*
+
+---
+
+## Sprint 36 Contracts
+
+---
+
+## T-278 — Post-Sanitization Validation for Required Fields (Bug Fix)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 36 |
+| Task | T-278 |
+| Status | Proposed |
+| Type | Behavioral change (bug fix) — no new endpoints |
+| Feedback Source | FB-178 (Sprint 35) |
+
+### Summary
+
+**Problem:** Sprint 35 (T-272) introduced server-side HTML sanitization on all write endpoints. However, sanitization runs AFTER validation. This means a request like `PATCH /api/v1/trips/:id` with `name: "<svg onload=alert(1)>"` passes the "name is required" validation check (the string is non-empty before sanitization), then sanitization strips all tags to produce `""`, which gets stored as an empty string — violating the required-field constraint.
+
+**Fix:** Change middleware ordering so that **sanitization runs BEFORE validation** on all write endpoints (POST and PATCH). This way, the input is sanitized first, and then the existing validation rules (e.g., "min length 1 after trim") catch any fields that became empty after tag stripping.
+
+### Behavioral Change
+
+**Before (Sprint 35 — broken):**
+```
+Request → Validate → Sanitize → Store
+```
+
+**After (Sprint 36 — fixed):**
+```
+Request → Sanitize → Validate → Store
+```
+
+### Affected Endpoints
+
+All 12 write endpoints that have sanitization (from T-272) are affected by this middleware reordering. The behavioral change is only observable when a required text field contains **only** HTML tags with no text content.
+
+| Endpoint | Required Text Fields Affected |
+|----------|------------------------------|
+| `POST /api/v1/auth/register` | `name` |
+| `POST /api/v1/trips` | `name`, `destinations[]` |
+| `PATCH /api/v1/trips/:id` | `name` (when provided), `destinations[]` (when provided) |
+| `POST /api/v1/trips/:id/flights` | `airline`, `from_location`, `to_location` |
+| `PATCH /api/v1/trips/:id/flights/:fid` | `airline` (when provided), `from_location` (when provided), `to_location` (when provided) |
+| `POST /api/v1/trips/:id/stays` | `name` |
+| `PATCH /api/v1/trips/:id/stays/:sid` | `name` (when provided) |
+| `POST /api/v1/trips/:id/activities` | `name` |
+| `PATCH /api/v1/trips/:id/activities/:aid` | `name` (when provided) |
+| `POST /api/v1/trips/:id/land-travel` | `from_location`, `to_location` |
+| `PATCH /api/v1/trips/:id/land-travel/:lid` | `from_location` (when provided), `to_location` (when provided) |
+
+**Non-required text fields** (e.g., `notes`, `address`, `location`, `flight_number`, `provider`) are unaffected — they are allowed to be empty/null after sanitization, same as before.
+
+### New Error Case — All-HTML Required Field
+
+When a required field contains only HTML tags and sanitization strips them to an empty string, the existing validation will now catch it and return 400.
+
+**Example — PATCH trip with all-HTML name:**
+
+Request:
+```http
+PATCH /api/v1/trips/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "<svg onload=alert(1)>"
+}
+```
+
+Response (400 Bad Request):
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "name": "Trip name is required"
+    }
+  }
+}
+```
+
+**Example — POST trip with all-HTML name:**
+
+Request:
+```http
+POST /api/v1/trips
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "<script>alert(1)</script>",
+  "destinations": ["Tokyo"]
+}
+```
+
+Response (400 Bad Request):
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "name": "Trip name is required"
+    }
+  }
+}
+```
+
+**Example — POST trip with all-HTML destination:**
+
+Request:
+```http
+POST /api/v1/trips
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Valid Trip",
+  "destinations": ["<b></b>"]
+}
+```
+
+Response (400 Bad Request):
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "destinations": "At least one destination is required"
+    }
+  }
+}
+```
+
+### What Does NOT Change
+
+- **Response shapes** — All success and error responses remain identical to existing contracts.
+- **Error codes** — No new error codes. `VALIDATION_ERROR` is the existing code.
+- **Non-required fields** — Fields like `notes`, `address`, `location`, `flight_number`, `provider` can still be empty after sanitization. No change.
+- **Valid inputs** — Inputs that contain text content alongside HTML (e.g., `"<b>Tokyo</b>"` → `"Tokyo"`) continue to work as before — they pass both sanitization and validation.
+- **Schema** — No database changes. No migrations.
+
+### Correction to Sprint 35 Contract
+
+The Sprint 35 contract (T-272) stated:
+
+> `400 VALIDATION_ERROR` — still returned for missing/invalid fields (validation runs before sanitization)
+
+This line is now **superseded**. As of Sprint 36, sanitization runs BEFORE validation. The corrected behavior:
+
+> `400 VALIDATION_ERROR` — returned for missing/invalid fields. Sanitization runs before validation, so fields that become empty after HTML stripping are caught by existing required-field validation.
+
+### Test Plan (Backend)
+
+Tests must cover:
+1. **PATCH trip name with all-HTML input** → expect 400 `VALIDATION_ERROR` with `fields.name`
+2. **POST trip with all-HTML name** → expect 400 `VALIDATION_ERROR` with `fields.name`
+3. **POST trip with all-HTML destination** → expect 400 `VALIDATION_ERROR` with `fields.destinations`
+4. **POST flight with all-HTML airline** → expect 400 `VALIDATION_ERROR`
+5. **POST activity with all-HTML name** → expect 400 `VALIDATION_ERROR`
+6. **POST stay with all-HTML name** → expect 400 `VALIDATION_ERROR`
+7. **POST land-travel with all-HTML from_location** → expect 400 `VALIDATION_ERROR`
+8. **PATCH trip with mixed HTML + text name** (e.g., `"<b>Valid</b>"`) → expect 200 with `name: "Valid"` (sanitized but non-empty)
+9. **Non-required field all-HTML** (e.g., `notes: "<script></script>"`) → expect 200/201 with `notes: ""` (allowed to be empty)
+10. **No regressions** — All existing 446 backend tests must continue to pass
+
+---
+
+*Sprint 36 contracts published by Backend Engineer 2026-03-24. No new endpoints. T-278 is a behavioral bug fix: middleware reordering to sanitize before validate, so all-HTML required fields are properly rejected. No schema migrations. All 30 endpoints from Sprints 1–35 remain in force. Test baseline entering Sprint 36: 446/446 backend | 510/510 frontend | 4/4 Playwright.*

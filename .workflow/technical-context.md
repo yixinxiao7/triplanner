@@ -745,4 +745,23 @@ All 10 migrations applied on staging. Schema is stable and unchanged from Sprint
 
 ---
 
+### Sprint 36 — No Schema Changes
+
+**Date:** 2026-03-24
+**Confirmed by:** Backend Engineer
+**Task:** T-278
+
+**Reason:** Sprint 36's backend task (T-278) is a middleware ordering fix — swapping sanitization to run before validation so that required fields stripped to empty strings by HTML sanitization are properly rejected. This is purely an application-layer change to middleware execution order. No new tables, columns, indexes, or constraints are required. The existing schema (migrations 001–010) is fully sufficient.
+
+**T-278 — Post-Sanitization Validation (Middleware Reorder):**
+- Changes middleware order from `validate → sanitize` to `sanitize → validate` on all write endpoints
+- No new utilities, no new dependencies, no new routes
+- **No schema change. No migration. No `knex migrate:latest` required.**
+
+**Manager Approval Note:** No schema changes for Sprint 36 → no Manager handoff required for DDL approval. This note is for the Deploy Engineer's reference: **do not run `knex migrate:latest` for Sprint 36** — the migration log remains at 10 applied migrations (001–010).
+
+**[Auto-approved — no schema change]**
+
+---
+
 *Sprint 20 schema analysis by Backend Engineer 2026-03-10. T-188 is validation-layer-only — no migration. T-186 is validation-layer-only — no migration. Schema remains stable at 10 migrations.*
