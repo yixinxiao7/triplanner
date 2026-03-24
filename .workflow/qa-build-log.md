@@ -4,6 +4,36 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #36 — Deploy Engineer — T-281 Pre-Deploy Check-In — 2026-03-24
+
+**Task:** T-281 (Deploy Engineer: Sprint 36 staging deployment)
+**Date:** 2026-03-24
+**Sprint:** 36
+**Environment:** Staging (pending)
+**Build Status:** ⏳ Awaiting upstream — T-280 (QA) not yet complete
+
+### Pre-Deploy Readiness Assessment
+
+| Item | Status | Notes |
+|------|--------|-------|
+| T-278 (Backend: post-sanitization validation) | ⏳ In Progress | Blocker for T-280 |
+| T-279 (Frontend: page title/font fix) | ⏳ Backlog | Blocker for T-280 |
+| T-280 (QA: integration testing) | ⏳ Backlog | Direct blocker for T-281 |
+| Pending migrations | ✅ None | 10 migrations applied (001–010). No new DDL for Sprint 36. |
+| New env vars | ✅ None | No new environment variables required. |
+| npm vulnerabilities | — | Will check at build time |
+
+**Deploy plan (once unblocked):**
+1. Rebuild frontend (`npm run build` in frontend/)
+2. Rebuild backend deps (`npm install` in backend/)
+3. Deploy to staging via PM2 (backend on :3001 HTTPS, frontend preview on :4173)
+4. Run smoke tests: health, auth, XSS sanitization, post-sanitization validation, page title
+5. Log results and hand off to Monitor Agent (T-282)
+
+*Deploy Engineer Sprint #36 — T-281 — 2026-03-24*
+
+---
+
 ## Sprint #35 — Monitor Agent — T-276 Post-Deploy Health Check — 2026-03-23
 
 **Task:** T-276 (Monitor Agent: Post-deploy health check + config consistency)

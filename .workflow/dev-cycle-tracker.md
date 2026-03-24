@@ -3067,7 +3067,7 @@ Review findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Test Plan |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-----------|
-| T-278 | Backend Engineer: Post-sanitization validation for required fields (FB-178). Swap middleware order to sanitize → validate, or add post-sanitization check. All-HTML required fields must return 400. | Bug Fix | Backend Engineer | In Progress | P1 | S | 36 | — | All-HTML required fields rejected with 400; non-required fields still allow empty; backend tests cover new behavior; no regressions in 446 tests. API contract published 2026-03-24. |
+| T-278 | Backend Engineer: Post-sanitization validation for required fields (FB-178). Swap middleware order to sanitize → validate, or add post-sanitization check. All-HTML required fields must return 400. | Bug Fix | Backend Engineer | In Review | P1 | S | 36 | — | All-HTML required fields rejected with 400; non-required fields still allow empty; backend tests cover new behavior; no regressions in 446 tests. API contract published 2026-03-24. **[Implemented 2026-03-24]** Middleware order swapped to sanitize→validate on all 6 POST routes and 5 PATCH routes. validate.js updated to enforce minLength on empty strings. 25 new tests added (sprint36.test.js). 471/471 tests pass. |
 | T-279 | Frontend Engineer: Fix page title "Plant Guardians" → "Triplanner" and remove wrong font references (FB-188). Update index.html title, meta description, and font links. | Bug Fix | Frontend Engineer | In Review | P1 | S | 36 | — | Page title shows "Triplanner"; only IBM Plex Mono font loaded; no references to "Plant Guardians"/"DM Sans"/"Playfair Display"; no regressions in 510 tests. |
 
 ---

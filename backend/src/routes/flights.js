@@ -126,7 +126,7 @@ router.get('/', async (req, res, next) => {
 // ---- POST /api/v1/trips/:tripId/flights ----
 const flightSanitizeConfig = { flight_number: 'string', airline: 'string', from_location: 'string', to_location: 'string' };
 
-router.post('/', validate(flightValidationSchema), sanitizeFields(flightSanitizeConfig), async (req, res, next) => {
+router.post('/', sanitizeFields(flightSanitizeConfig), validate(flightValidationSchema), async (req, res, next) => {
   try {
     const trip = await requireTripOwnership(req, res);
     if (!trip) return;
@@ -179,6 +179,15 @@ router.patch('/:id', async (req, res, next) => {
       return res.status(404).json({ error: { message: 'Flight not found', code: 'NOT_FOUND' } });
     }
 
+    // T-278: Sanitize text fields BEFORE validation so all-HTML values become empty
+    // and are caught by minLength/required checks
+    const SANITIZE_FIELDS = ['flight_number', 'airline', 'from_location', 'to_location'];
+    for (const field of SANITIZE_FIELDS) {
+      if (req.body[field] !== undefined && typeof req.body[field] === 'string') {
+        req.body[field] = sanitizeHtml(req.body[field]);
+      }
+    }
+
     // Build partial schema — only validate fields that are present in the request
     const UPDATABLE = ['flight_number', 'airline', 'from_location', 'to_location', 'departure_at', 'departure_tz', 'arrival_at', 'arrival_tz'];
     const partialSchema = {};
@@ -210,6 +219,11 @@ router.patch('/:id', async (req, res, next) => {
         }
       }
 
+      // T-278: Check minLength — catches empty strings after sanitization
+      if (rules.minLength && typeof value === 'string' && value.length < rules.minLength) {
+        errors[field] = rules.messages?.required || `${field} must be at least ${rules.minLength} character(s)`;
+      }
+
       if (rules.maxLength && typeof value === 'string' && value.length > rules.maxLength) {
         errors[field] = `${field} must be at most ${rules.maxLength} characters`;
       }
@@ -228,14 +242,11 @@ router.patch('/:id', async (req, res, next) => {
       });
     }
 
+    // T-278: Sanitization already applied above (before validation). Just trim and collect.
     const updates = {};
-    const SANITIZE_FIELDS = ['flight_number', 'airline', 'from_location', 'to_location'];
     for (const field of UPDATABLE) {
       if (req.body[field] !== undefined) {
-        let value = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
-        if (SANITIZE_FIELDS.includes(field) && typeof value === 'string') {
-          value = sanitizeHtml(value);
-        }
+        const value = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
         updates[field] = value;
       }
     }

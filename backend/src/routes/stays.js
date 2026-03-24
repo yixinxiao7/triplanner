@@ -120,7 +120,7 @@ router.get('/', async (req, res, next) => {
 // ---- POST /api/v1/trips/:tripId/stays ----
 const staySanitizeConfig = { name: 'string', address: 'string' };
 
-router.post('/', normalizeCategory, validate(stayValidationSchema), sanitizeFields(staySanitizeConfig), async (req, res, next) => {
+router.post('/', normalizeCategory, sanitizeFields(staySanitizeConfig), validate(stayValidationSchema), async (req, res, next) => {
   try {
     const trip = await requireTripOwnership(req, res);
     if (!trip) return;
@@ -173,7 +173,24 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     const UPDATABLE = ['category', 'name', 'address', 'check_in_at', 'check_in_tz', 'check_out_at', 'check_out_tz'];
+
+    // T-278: Sanitize text fields BEFORE validation so all-HTML values become empty
+    const SANITIZE_FIELDS_PATCH = ['name', 'address'];
+    for (const field of SANITIZE_FIELDS_PATCH) {
+      if (req.body[field] !== undefined && typeof req.body[field] === 'string') {
+        req.body[field] = sanitizeHtml(req.body[field]);
+      }
+    }
+
     const errors = {};
+
+    // T-278: Reject empty name after sanitization (required field, minLength 1)
+    if (req.body.name !== undefined && typeof req.body.name === 'string') {
+      const trimmed = req.body.name.trim();
+      if (trimmed.length < 1) {
+        errors.name = 'Name is required';
+      }
+    }
 
     // Normalize category to uppercase (T-258)
     if (req.body.category !== undefined && typeof req.body.category === 'string') {
@@ -197,15 +214,11 @@ router.patch('/:id', async (req, res, next) => {
       });
     }
 
+    // T-278: Sanitization already applied above (before validation). Just collect.
     const updates = {};
-    const SANITIZE_FIELDS = ['name', 'address'];
     for (const field of UPDATABLE) {
       if (req.body[field] !== undefined) {
-        let value = req.body[field];
-        if (SANITIZE_FIELDS.includes(field) && typeof value === 'string') {
-          value = sanitizeHtml(value);
-        }
-        updates[field] = value;
+        updates[field] = req.body[field];
       }
     }
 

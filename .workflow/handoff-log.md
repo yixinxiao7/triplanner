@@ -4,6 +4,55 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Backend Engineer → QA Engineer: T-278 Ready for Review (Sprint 36)
+
+**Date:** 2026-03-24
+**Sprint:** 36
+**From:** Backend Engineer (T-278)
+**To:** QA Engineer (T-280)
+**Status:** ✅ Complete — ready for QA
+
+### Summary
+
+T-278 (post-sanitization validation) is implemented and ready for review. This is a bug fix for FB-178: required fields containing only HTML tags were being stored as empty strings because validation ran before sanitization.
+
+### What Changed
+
+1. **Middleware order swapped** on all write endpoints: `sanitizeFields()` now runs BEFORE `validate()` on all 6 POST routes (trips, flights, stays, activities, land-travel, auth/register) and applied pre-validation sanitization on all 5 PATCH routes (trips, flights, stays, activities, land-travel).
+
+2. **validate.js updated** (line 57): Empty strings with `minLength` constraints are no longer skipped — they now fall through to the `minLength` check, catching fields that became empty after HTML stripping.
+
+3. **PATCH inline validation hardened**: Added `minLength`/non-empty checks for required-on-create text fields (`flight_number`, `airline`, `from_location`, `to_location`, `name`) in all PATCH route handlers.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `backend/src/middleware/validate.js` | Empty string no longer skips minLength check |
+| `backend/src/middleware/sanitize.js` | Updated usage comment |
+| `backend/src/routes/trips.js` | Swapped sanitize→validate on POST and PATCH |
+| `backend/src/routes/flights.js` | Swapped sanitize→validate on POST; added pre-validation sanitize + minLength in PATCH |
+| `backend/src/routes/stays.js` | Swapped sanitize→validate on POST; added pre-validation sanitize + name check in PATCH |
+| `backend/src/routes/activities.js` | Swapped sanitize→validate on POST; added pre-validation sanitize + name check in PATCH |
+| `backend/src/routes/landTravel.js` | Swapped sanitize→validate on POST; added pre-validation sanitize + from/to_location check in PATCH |
+| `backend/src/routes/auth.js` | Swapped sanitize→validate on POST /register |
+| `backend/src/__tests__/sprint36.test.js` | 25 new tests covering all endpoints |
+
+### What to Test
+
+1. **All-HTML required field on POST** → expect 400 VALIDATION_ERROR (e.g., `name: "<svg onload=alert(1)>"`)
+2. **All-HTML required field on PATCH** → expect 400 VALIDATION_ERROR
+3. **Non-required field all-HTML** (e.g., `notes`, `address`, `location`, `provider`) → expect 200/201, field stored as empty/null
+4. **Mixed HTML+text** (e.g., `"<b>Tokyo</b>"` → `"Tokyo"`) → expect 200/201, text preserved
+5. **Clean input (no HTML)** → expect no behavior change
+6. **Full regression**: all 471 backend tests pass (446 existing + 25 new)
+
+### No Schema Changes
+
+No migrations. No new environment variables. No changes to `app.js` route registration.
+
+---
+
 ## Deploy Engineer: T-281 + T-283 Blocked — Awaiting Upstream Dependencies (Sprint 36)
 
 **Date:** 2026-03-24

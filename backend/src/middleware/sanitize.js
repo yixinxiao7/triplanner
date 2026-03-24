@@ -6,12 +6,12 @@
  * special characters. Does NOT HTML-encode output — stored values remain
  * plain text.
  *
- * Usage:
+ * Usage (T-278: sanitize BEFORE validate so all-HTML required fields are rejected):
  *   import { sanitizeFields } from '../middleware/sanitize.js';
  *
  *   router.post('/',
- *     validate(schema),
  *     sanitizeFields({ name: 'string', destinations: 'array', notes: 'string' }),
+ *     validate(schema),
  *     handler
  *   );
  */
