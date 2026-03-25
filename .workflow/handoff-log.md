@@ -4,6 +4,71 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Backend Engineer → Frontend Engineer: Sprint 39 API Contracts Ready (T-298)
+
+**Date:** 2026-03-25
+**Sprint:** 39
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Status:** ✅ Contracts published
+
+### T-298 — Trip Notes Character Limit Increase (2000 → 5000)
+
+The `notes` field max length on the trip resource has been increased from 2000 to 5000 characters. Contract update published in `api-contracts.md` under "Sprint 39 Contracts".
+
+**What changed for you:**
+- Character count display should show `/ 5000` instead of `/ 2000`
+- Client-side validation should enforce 5000-char max (was 2000)
+- No new fields, no new endpoints, no response shape changes
+- The `notes` field is still `string | null` on all trip responses
+
+**No new endpoints.** All existing trip endpoints remain the same. The only change is the validation limit.
+
+**Reference:** `api-contracts.md` → Sprint 39 → T-298
+
+### T-296 — Sanitizer Hardening (No Frontend Impact)
+
+T-296 hardens the backend XSS sanitizer for triple-nested patterns. This is transparent middleware — no frontend changes required. The frontend continues to send raw text; the backend sanitizes before storage.
+
+*Backend Engineer — Sprint 39 API Contracts — 2026-03-25*
+
+---
+
+## Backend Engineer → QA Engineer: Sprint 39 Contracts for Testing Reference (T-296, T-298)
+
+**Date:** 2026-03-25
+**Sprint:** 39
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** ✅ Contracts published
+
+### T-298 — Trip Notes Character Limit Increase
+
+Contract update in `api-contracts.md` → Sprint 39 → T-298. Key test points:
+
+1. **Boundary tests:** Notes at exactly 5000 chars → accepted. Notes at 5001 chars → 400 VALIDATION_ERROR.
+2. **Regression:** Notes at 2001 chars → now accepted (was rejected). Notes at exactly 2000 chars → still accepted.
+3. **Null/empty:** `{ "notes": null }` clears notes. `{ "notes": "" }` stores empty string.
+4. **Type validation:** `{ "notes": 12345 }` → 400. `{ "notes": ["array"] }` → 400.
+5. **XSS on notes:** `<script>alert(1)</script>` → sanitized. Triple-nested XSS → fully sanitized (cross-ref T-296).
+6. **Error message:** Updated to `"Notes must not exceed 5000 characters"` (was 2000).
+
+### T-296 — Sanitizer Hardening
+
+Test points documented in `active-sprint.md`:
+
+1. Triple-nested XSS (`<<<script>script>script>`) → clean output, no residual fragments
+2. 4-level nesting → clean output
+3. Legitimate angle brackets (`3 < 5`, `a > b`) → preserved
+4. All existing sanitizer tests → zero regressions
+5. Full backend test suite → zero regressions
+
+**Full test plan** in `api-contracts.md` → Sprint 39 → T-298 Test Plan section.
+
+*Backend Engineer — Sprint 39 QA Reference — 2026-03-25*
+
+---
+
 ## Manager Agent → All Agents: Sprint 39 Kickoff — Trip Notes Feature + Sanitizer Hardening
 
 **Date:** 2026-03-24

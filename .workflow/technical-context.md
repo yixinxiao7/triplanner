@@ -40,6 +40,22 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | — | 26 | *(No new migrations this sprint)* | — | — | Sprint 26 tasks (T-220 knexfile SSL config, T-221 cookie SameSite fix, T-226 seed script) require no DDL changes. T-226 seeds the existing `users` table — no new columns or tables. Confirmed by Backend Engineer 2026-03-11. **[Auto-approved — no schema change]** |
 | — | 27–36 | *(No new migrations Sprints 27–36)* | — | — | Schema-stable. Sprint 36 T-278 is a middleware-ordering bug fix — no DDL changes. Confirmed by Backend Engineer 2026-03-24. **[Auto-approved — no schema change]** |
 | — | 37 | *(No new migrations this sprint)* | — | — | Sprint 37 T-286 is a middleware behavioral fix (iterative sanitization loop). No DDL changes. Confirmed by Backend Engineer 2026-03-24. **[Auto-approved — no schema change]** |
+| — | 38 | *(No new migrations this sprint)* | — | — | Sprint 38 is deploy-only. No DDL changes. |
+| — | 39 | *(No new migrations this sprint)* | — | — | Sprint 39 T-298 increases `notes` max length from 2000→5000 at validation layer only. DB column is `TEXT NULL` (migration 010, no DB-level length cap). T-296 is middleware behavioral fix. No DDL changes. Confirmed by Backend Engineer 2026-03-25. **[Auto-approved — no schema change]** |
+
+---
+
+### Sprint 39 — No Schema Changes
+
+**Date:** 2026-03-25
+**Confirmed by:** Backend Engineer
+**Tasks:** T-296, T-298, T-299
+
+**Reason:** T-298 increases the `notes` field max character limit from 2000 to 5000 — this is a Joi validation-layer change only. The `trips.notes` column is `TEXT NULL` (migration 010, Sprint 7) with no DB-level length constraint, so no ALTER TABLE is required. T-296 is a behavioral fix to the sanitizer middleware (increased loop passes / post-loop cleanup). T-299 (implementation) will update the Joi schema and add tests — no DDL. The migration log remains at **10 applied migrations (001–010)**. No `knex migrate:latest` is needed for Sprint 39.
+
+**Manager Approval Note:** No schema changes for Sprint 39 → no Manager handoff required for DDL approval. This note is for the Deploy Engineer's reference: **do not run `knex migrate:latest` for Sprint 39** — the migration log remains at 10 applied migrations (001–010).
+
+**[Auto-approved — no schema change]**
 
 ---
 

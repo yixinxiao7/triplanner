@@ -8049,3 +8049,255 @@ All previously published contracts remain current:
 ---
 
 *Sprint 38 contracts published by Backend Engineer 2026-03-24. Deploy-only sprint — no new endpoints, no code changes, no schema migrations. All 30 endpoints from Sprints 1–37 remain in force. Test baseline: 493 backend | 510 frontend | 4 Playwright.*
+
+---
+
+## Sprint 39 Contracts
+
+**Sprint 39 — 2026-03-25**
+**Sprint Goal:** Add trip notes/description field (B-030) and harden sanitizer for triple-nested XSS (B-037).
+
+### Contract Changes Summary
+
+| Task | Type | Description |
+|------|------|-------------|
+| T-298 | Contract Update | Increase `notes` max character limit from 2000 → 5000 on all trip endpoints (POST, GET, PATCH). No schema migration — DB column is `TEXT NULL` (no DB-level length cap). Validation-layer change only. |
+| T-296 | Implementation Only | Harden sanitizer for triple-nested XSS. No API signature changes — existing sanitization middleware behavior is improved. No contract update needed. |
+
+---
+
+### T-298 — Trip Notes Character Limit Increase (2000 → 5000)
+
+**Sprint:** 39
+**Task:** T-298
+**Status:** Agreed
+**Auth Required:** Bearer token (all endpoints below)
+**Schema Change:** None — `trips.notes` column is `TEXT NULL` (migration 010, Sprint 7). No DB-level length constraint exists. This is a validation-layer-only change.
+
+#### Overview
+
+The existing `notes` field on the trip resource (added Sprint 7 T-103, formalized in Sprint 20 T-188) has its API-enforced maximum length increased from **2000 to 5000 characters**. This allows users to store richer freeform notes (restaurant links, packing lists, travel tips) alongside trip details.
+
+No new endpoints are introduced. No schema migration is required. All changes are in the Joi validation layer.
+
+**What changes:**
+- `notes` max length validation: 2000 → 5000 (on both POST and PATCH)
+- Validation error messages updated to reference 5000
+- XSS sanitization continues to apply to `notes` (existing middleware, enhanced by T-296)
+
+**What does NOT change:**
+- Field name, type, nullability (still `string | null`)
+- All other trip fields and validation rules
+- All error response shapes and codes
+- Endpoint paths and HTTP methods
+- Auth requirements
+- Pagination behavior
+
+---
+
+#### Updated: POST /api/v1/trips — notes max length increased
+
+| Field | Value |
+|-------|-------|
+| Sprint | 39 (updates Sprint 20 T-188) |
+| Task | T-298 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change | `notes` max length 2000 → 5000 |
+
+**Request Body (unchanged shape):**
+```json
+{
+  "name": "string",
+  "destinations": ["string"],
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD",
+  "notes": "string"
+}
+```
+
+**Field Validation Rules (T-298 change only):**
+| Field | Rules |
+|-------|-------|
+| `notes` | Optional. String. Max length **5000 characters** (was 2000). Empty string `""` normalized to `null`. XSS sanitization applied via middleware. |
+
+All other field validation rules are unchanged.
+
+**Response (Success — 201 Created):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-14",
+    "notes": "Day 1: Arrive at Narita, take Narita Express to Shinjuku...",
+    "created_at": "2026-03-25T12:00:00.000Z",
+    "updated_at": "2026-03-25T12:00:00.000Z"
+  }
+}
+```
+
+**Response (Error — 400 Bad Request — notes exceeds max length):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "notes": "Notes must not exceed 5000 characters"
+    }
+  }
+}
+```
+
+**All other error responses unchanged.**
+
+---
+
+#### Updated: GET /api/v1/trips — notes field (no contract change)
+
+No change to the GET list endpoint. The `notes` field continues to be returned as `string | null`. The max length increase only affects write validation (POST/PATCH). Existing notes under 2000 chars are unaffected. New notes up to 5000 chars will be returned as-is.
+
+---
+
+#### Updated: GET /api/v1/trips/:id — notes field (no contract change)
+
+No change to the GET detail endpoint. The `notes` field continues to be returned as `string | null` with no truncation.
+
+---
+
+#### Updated: PATCH /api/v1/trips/:id — notes max length increased
+
+| Field | Value |
+|-------|-------|
+| Sprint | 39 (updates Sprint 7 T-103) |
+| Task | T-298 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change | `notes` max length 2000 → 5000 |
+
+**Request Body (all fields optional — PATCH semantics, unchanged shape):**
+```json
+{
+  "name": "string",
+  "destinations": ["string"],
+  "status": "PLANNING | ONGOING | COMPLETED",
+  "start_date": "YYYY-MM-DD | null",
+  "end_date": "YYYY-MM-DD | null",
+  "notes": "string | null"
+}
+```
+
+**Field Validation Rules (T-298 change only):**
+| Field | Rules |
+|-------|-------|
+| `notes` | Optional. String or `null`. If string: max length **5000 characters** (was 2000). Whitespace is preserved (no trimming). If `null`: clears the notes field. Empty string `""` accepted and stored as-is. XSS sanitization applied via middleware. |
+
+All other field validation rules are unchanged.
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-14",
+    "notes": "Day 1: Arrive at Narita. Restaurants: Ichiran Ramen (Shibuya), Tsukiji Outer Market. Packing: JR Pass, portable WiFi, umbrella for rainy season...",
+    "created_at": "2026-03-25T12:00:00.000Z",
+    "updated_at": "2026-03-25T14:00:00.000Z"
+  }
+}
+```
+
+**Response (Error — 400 Bad Request — notes exceeds max length):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "notes": "Notes must not exceed 5000 characters"
+    }
+  }
+}
+```
+
+**All other error responses unchanged (400 NO_UPDATABLE_FIELDS, 401, 403, 404).**
+
+**Notes:**
+- Sending `{ "notes": null }` explicitly clears the notes field (unchanged behavior).
+- Sending `{ "notes": "" }` stores an empty string (unchanged behavior).
+- `notes` is sanitized by the XSS middleware before validation (sanitize → validate order, established Sprint 36 T-278).
+- The character count is checked post-sanitization — if sanitization strips malicious content, the resulting shorter string is what gets validated against the 5000-char limit.
+
+---
+
+#### Test Plan — T-298
+
+**Happy paths:**
+- `POST /trips` with `notes` at exactly 5000 characters → 201 (boundary: accepted)
+- `POST /trips` with `notes` at 2001 characters → 201 (previously rejected, now accepted)
+- `PATCH /trips/:id` with `notes` at exactly 5000 characters → 200 (boundary: accepted)
+- `PATCH /trips/:id` with `notes` at 2001 characters → 200 (previously rejected, now accepted)
+- `PATCH /trips/:id` with `notes` containing legitimate angle brackets (e.g., `"3 < 5"`) → 200, content preserved
+- `GET /trips/:id` after saving 5000-char notes → full notes returned, no truncation
+- `GET /trips` list → notes field present on each trip object (up to 5000 chars)
+
+**Error paths:**
+- `POST /trips` with `notes` at 5001 characters → 400 `VALIDATION_ERROR`, `fields.notes: "Notes must not exceed 5000 characters"`
+- `PATCH /trips/:id` with `notes` at 5001 characters → 400 `VALIDATION_ERROR`
+- `PATCH /trips/:id` with `notes` containing XSS (`<script>alert(1)</script>`) → 200, script tags sanitized
+- `PATCH /trips/:id` with `notes` containing triple-nested XSS (`<<<script>script>script>alert(1)<<<\/script>\/script>\/script>`) → 200, fully sanitized with no residual fragments (verified by T-296)
+
+**Regression paths (must still pass):**
+- All existing T-103 (Sprint 7) and T-188 (Sprint 20) notes test cases
+- `PATCH /trips/:id` with `{ "notes": null }` → 200, notes cleared
+- `PATCH /trips/:id` with `{ "notes": "" }` → 200, empty string stored
+- `PATCH /trips/:id` with `{ "notes": 12345 }` → 400 (type validation still enforced)
+
+---
+
+### T-296 — Sanitizer Hardening for Triple-Nested XSS (No Contract Change)
+
+**Sprint:** 39
+**Task:** T-296
+**Status:** No contract change required
+
+T-296 is a behavioral improvement to the existing XSS sanitization middleware (`backend/src/middleware/`). The iterative sanitization loop (introduced Sprint 37 T-286) is enhanced to handle 3+ levels of nested XSS patterns and clean up residual angle bracket fragments.
+
+**No API signature, endpoint, or response shape changes.** The middleware runs transparently on all write endpoints. Existing sanitization contracts (Sprint 35 T-272, Sprint 36 T-278, Sprint 37 T-286) remain in force.
+
+**What changes (implementation only):**
+- Sanitization loop max passes increased or post-loop cleanup added
+- Residual angle bracket fragments eliminated from stored data
+- New test cases for 3-level and 4-level nested XSS patterns
+
+**Frontend impact:** None. The sanitizer is transparent middleware — the frontend sends data as-is, and the backend sanitizes before storage.
+
+---
+
+### Active Contracts Summary (Sprints 1–39)
+
+All previously published contracts remain current with the T-298 update:
+- **Auth:** 4 endpoints (register, login, refresh, logout)
+- **Trips:** 5 endpoints (CRUD + list) — `notes` max length now 5000 chars
+- **Flights:** 4 endpoints (CRUD scoped to trip)
+- **Stays:** 4 endpoints (CRUD scoped to trip)
+- **Activities:** 5 endpoints (CRUD + list scoped to trip)
+- **Land Travel:** 4 endpoints (CRUD scoped to trip)
+- **Calendar:** 1 endpoint (trip calendar view)
+- **Health:** 1 endpoint (server health check)
+- **Search/Filter/Sort:** Query parameters on list endpoints
+- **Middleware:** XSS sanitization (iterative, enhanced Sprint 39 T-296), post-sanitization validation (Sprint 36), rate limiting
+
+---
+
+*Sprint 39 contracts published by Backend Engineer 2026-03-25. T-298: notes max length increased from 2000 to 5000 characters (validation-layer change only, no schema migration). T-296: sanitizer hardening — no contract change, implementation only. All 30 endpoints from Sprints 1–38 remain in force with T-298 update applied.*
