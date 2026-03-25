@@ -3307,3 +3307,46 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 ---
 
+## Sprint 39 Tasks
+
+**Sprint Goal:** Add trip notes/description field (B-030) and harden sanitizer for triple-nested XSS (B-037/FB-221). First feature sprint after production deployment.
+
+### Phase 1 — Design Spec + API Contract + Sanitizer Hardening (start immediately, in parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-296 | Backend Engineer: Harden sanitizer for triple-nested XSS (FB-221/B-037). Increase loop passes or add post-loop cleanup for residual angle brackets. Add 3+ level nesting tests. Zero regressions. | Bug Fix | Backend Engineer | Backlog | P2 | S | 39 | — | FB-221/B-037. Triple-nested XSS leaves non-exploitable residual fragments. Cosmetic fix + defense-in-depth. |
+| T-297 | Design Agent: UI spec for trip notes/description field on trip details page (B-030). Placement, dimensions, empty state, edit behavior, character limit display. | Feature | Design Agent | Backlog | P1 | S | 39 | — | B-030. Long-deferred backlog item (since Sprint 5). |
+| T-298 | Backend Engineer: API contract for trip notes field (B-030). Add `notes` (string, optional, max 5000 chars) to trip resource. Update PATCH contract. | Documentation | Backend Engineer | Backlog | P1 | S | 39 | — | B-030. Publish to api-contracts.md. |
+
+---
+
+### Phase 2 — Implementation (after specs approved)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-299 | Backend Engineer: Implement trip notes field. Migration (add `notes` column), model update, validation (max 5000 chars), XSS sanitization, tests. | Feature | Backend Engineer | Backlog | P1 | M | 39 | T-298 | B-030. Schema migration + CRUD update. |
+| T-300 | Frontend Engineer: Implement trip notes UI per spec (T-297). Inline edit, auto-save, character count, empty state. Tests. | Feature | Frontend Engineer | Backlog | P1 | M | 39 | T-297, T-299 | B-030. Depends on both UI spec and backend API. |
+
+---
+
+### Phase 3 — QA + Deploy + Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-301 | QA Engineer: Integration testing for Sprint 39. Trip notes CRUD, XSS on notes, triple-nested XSS fix (T-296), full test suite, security checklist, config consistency. | Code Review | QA Engineer | Backlog | P1 | M | 39 | T-296, T-300 | Full QA pass. |
+| T-302 | Deploy Engineer: Staging deployment. Rebuild, run migrations (notes column), deploy to PM2, smoke test. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 39 | T-301 | Standard staging deploy. |
+| T-303 | Monitor Agent: Staging health check. Full protocol, verify trip notes in API, verify triple-nested XSS fix. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 39 | T-302 | Standard health check. |
+| T-304 | User Agent: Staging walkthrough. Test trip notes (add, edit, clear, char limit), XSS on notes, regression check, submit feedback. | Documentation | User Agent | Backlog | P1 | M | 39 | T-303 | Standard user walkthrough. |
+
+---
+
+### Backlog Items (created/updated Sprint 38)
+
+| ID | Description | Type | Priority | Complexity | Notes |
+|----|-------------|------|----------|------------|-------|
+| B-037 | Triple-nested XSS leaves residual angle bracket fragments in stored data (non-exploitable, cosmetic) | Bug Fix | P2 | S | FB-221 (Sprint 38). Promoted to T-296 (Sprint 39). |
+| B-038 | Rate limiter window too aggressive for e2e cross-user testing — blocks registration during test sessions | UX Issue | P3 | S | FB-222 (Sprint 38). Testing friction, not a user-facing bug. Consider test-mode bypass or wider window. |
+
+---
+

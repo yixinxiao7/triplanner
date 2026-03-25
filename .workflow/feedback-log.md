@@ -32,7 +32,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:** `curl http://localhost:3001/api/v1/health` returns `{"status":"ok"}` with HTTP 200. Database connectivity confirmed.
@@ -47,7 +47,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:** `frontend/dist/index.html` contains `<title>triplanner</title>`. CSS build file references `IBM+Plex+Mono` via Google Fonts import and uses `IBM Plex Mono, monospace` as the font-family throughout the application. Both Sprint 35 deliverables confirmed.
@@ -62,7 +62,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:** Tested the following auth scenarios, all working correctly:
@@ -86,7 +86,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:** Tested XSS payloads across multiple endpoints:
@@ -106,7 +106,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:** `<<script>script>alert(1)<</script>/script>My Trip` → stored as `alert(1)My Trip`. Tags fully stripped, text content preserved. Iterative sanitization confirmed working.
@@ -121,7 +121,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:** Tested post-sanitization validation:
@@ -138,7 +138,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:**
@@ -161,7 +161,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:**
@@ -181,7 +181,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:** Calendar endpoint aggregates events with correct structure: `id`, `type`, `title`, `start_date`, `end_date`, `start_time`, `end_time`, `timezone`, `source_id`. After creating 1 flight + 1 stay + 2 activities, calendar returns 5 events (stay spans multiple days). Timezone handling preserved.
@@ -196,7 +196,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:** Code review of `TripCalendar.jsx` confirms:
@@ -217,7 +217,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:** Sent `'; DROP TABLE trips; --` as trip name. It was stored as a literal string. Subsequent trip list queries returned all trips correctly — the trips table was not affected. Parameterized queries (Knex) prevent SQL injection.
@@ -232,7 +232,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:**
@@ -251,7 +251,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Security |
 | **Severity** | Minor |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:** Input: `<<<script>>script>script>alert(1)<<<//script>>/script>/script>Test`. Stored as: `<<>script>script>alert(1)<<<//script>>/script>/script>Test`. The iterative sanitizer strips valid `<script>` tags but the triple-nested pattern with extra angle brackets leaves residual fragments. These fragments are **not executable HTML** (malformed, would not run in a browser), and React escapes all output by default, so this is not exploitable. However, the stored data looks messy and contains angle brackets that ideally should be cleaned. **Mitigated by:** React's JSX escaping prevents any XSS execution on the frontend. **Suggestion:** Consider a more aggressive sanitization loop or strip all angle brackets from non-exempt fields.
@@ -266,7 +266,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | UX Issue |
 | **Severity** | Minor |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-295 |
 
 **Details:** Attempted to register a second user to test cross-user trip access (should return 403). Registration was blocked by rate limiter (429 "Too many registration attempts"). The rate limiter window appears aggressive for testing scenarios. Cross-user authorization is covered by unit tests (backend tests verify 403 on wrong ownership), but could not be verified end-to-end in this session. **Note:** Rate limiting itself is working correctly — this is a testing friction issue, not a bug.
@@ -281,7 +281,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 38 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-293 |
 
 **Details:** Per Deploy Engineer handoff, PR #8 was merged to main and Render auto-deployed. 13/13 production smoke tests passed. This resolves FB-207 (Major Feature Gap from Sprint 37) — production deployment is no longer pending. Production URLs: `https://triplanner-backend-sp61.onrender.com` (backend), `https://triplanner.yixinx.com` (frontend).

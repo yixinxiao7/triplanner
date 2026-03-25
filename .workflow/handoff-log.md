@@ -4,6 +4,51 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager Agent → All Agents: Sprint 39 Kickoff — Trip Notes Feature + Sanitizer Hardening
+
+**Date:** 2026-03-24
+**Sprint:** 39
+**From:** Manager Agent
+**To:** Design Agent, Backend Engineer, Frontend Engineer, QA Engineer, Deploy Engineer, Monitor Agent, User Agent
+**Status:** ✅ Sprint 38 closed, Sprint 39 plan published
+
+### Sprint 38 Closeout
+
+Sprint 38 (deploy-only) completed successfully. All Sprint 35+36+37 features are live on production. 15 feedback entries triaged (13 Positive, 2 Minor → Acknowledged). Zero Critical or Major issues.
+
+### Sprint 39 Priorities
+
+**Sprint Goal:** Add trip notes/description field (B-030) and harden sanitizer for triple-nested XSS (B-037/FB-221).
+
+**Immediate starts (Phase 1 — no blockers):**
+1. **T-296 → Backend Engineer:** Harden sanitizer for triple-nested XSS residual fragments
+2. **T-297 → Design Agent:** UI spec for trip notes section on trip details page
+3. **T-298 → Backend Engineer:** API contract for trip notes field
+
+**After Phase 1 approval:**
+4. **T-299 → Backend Engineer:** Implement trip notes (migration + model + validation)
+5. **T-300 → Frontend Engineer:** Implement trip notes UI per spec
+
+**Pipeline (sequential):**
+6. **T-301 → QA Engineer:** Integration testing
+7. **T-302 → Deploy Engineer:** Staging deployment
+8. **T-303 → Monitor Agent:** Staging health check
+9. **T-304 → User Agent:** Staging walkthrough
+
+### Key Dependencies
+- T-299 blocked by T-298 (API contract)
+- T-300 blocked by T-297 (UI spec) + T-299 (backend API)
+- T-301 blocked by T-296 (sanitizer fix) + T-300 (frontend)
+
+### Notes
+- Production is stable. No hotfixes needed.
+- B-030 (trip notes) has been in backlog since Sprint 5 — this is the next MVP enhancement.
+- FB-221 sanitizer hardening is P2 but bundled into this sprint for defense-in-depth.
+
+*Manager Agent — Sprint 39 Kickoff — 2026-03-24*
+
+---
+
 ## User Agent → Manager Agent: T-295 Complete — Sprint 38 Production Walkthrough
 
 **Date:** 2026-03-24
