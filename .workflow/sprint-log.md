@@ -3556,6 +3556,84 @@ None. All tasks completed.
 
 ---
 
+### Sprint #37 — 2026-03-24 to 2026-03-24
+
+**Goal:** Fix the nested XSS sanitization bypass (FB-191), deploy all Sprint 35+36+37 changes to production, and verify production health.
+
+**Goal Met:** ⚠️ PARTIAL — Nested XSS bypass fixed and staging fully verified. Production deployment (T-290, T-291) did not execute within this sprint — carried to Sprint 38.
+
+---
+
+**Tasks Completed (5/7 + 1 Code Review):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-286 | Backend Engineer: Fix nested/obfuscated XSS bypass — iterative sanitization loop (max 10 passes), 22 new tests. 493/493 pass. | ✅ Done |
+| T-287 | QA Engineer: Integration testing — 493 backend + 510 frontend + 10 integration + 16 security checks. Nested XSS verified fixed. | ✅ Done |
+| T-288 | Deploy Engineer: Staging deployment — 8/8 smoke tests pass, nested XSS fix verified on staging. | ✅ Done |
+| T-289 | Monitor Agent: Staging health check — Config 5/5, Health 13/13, XSS 3/3, Playwright 4/4. Deploy Verified = Yes (Staging). | ✅ Done |
+| T-292 | User Agent: Staging walkthrough — 9 feedback entries (FB-200–FB-208), 7 Positive, 1 Major (prod deploy incomplete), 0 Bugs. | ✅ Done |
+| CR-37 | Manager: Code review — T-288 staging deployment approved. | ✅ Done |
+
+**Tasks Carried Over (2/7):**
+
+| ID | Description | Reason |
+|----|-------------|--------|
+| T-290 | Deploy Engineer: Production deploy (Render) | Not executed — staging verified, but production deploy did not run this sprint |
+| T-291 | Monitor Agent: Production health check | Blocked by T-290 |
+
+**Key Decisions:**
+
+- CR-37 approved T-288 (staging deployment). Smoke tests confirmed nested XSS fix working.
+- Iterative sanitization approach (loop until stable, max 10 passes) validated as correct fix for nested tag bypass — no external library dependency needed.
+- T-290/T-291 carry over to Sprint 38 as top priority.
+
+**Feedback Summary (Sprint 37 → Sprint 38 Triage):**
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-200 | Positive | — | Acknowledged — nested XSS fix verified across all models |
+| FB-201 | Positive | — | Acknowledged — legitimate content preserved |
+| FB-202 | Positive | — | Acknowledged — post-sanitization validation confirmed |
+| FB-203 | Positive | — | Acknowledged — CRUD flows working |
+| FB-204 | Positive | — | Acknowledged — auth/rate limiting working |
+| FB-205 | Positive | — | Acknowledged — input validation working |
+| FB-206 | Positive | — | Acknowledged — page title and font confirmed |
+| FB-207 | Feature Gap | Major | **Tasked** → T-293/T-294/T-295 (Sprint 38 — production deploy + health check + user verification) |
+| FB-208 | Positive | — | Acknowledged — health endpoint fast |
+
+**Zero 'New' entries remaining. All 9 feedback entries triaged.**
+
+---
+
+**What Went Well:**
+
+- **XSS fix was clean and fast:** T-286 implemented iterative sanitization with 22 new tests, zero regressions. Manager review approved on first pass.
+- **Full staging pipeline executed smoothly:** QA → deploy → monitor → user walkthrough all completed without rework.
+- **Overwhelmingly positive feedback:** 8/9 entries are positive confirmations. No bugs, no regressions.
+- **Test baseline grew:** 493/493 backend + 510/510 frontend = 1,003 total tests, zero regressions.
+- **Iterative sanitizer approach is robust:** Handles 4-level nested tags, preserves legitimate angle brackets, no false positives.
+
+**What Could Improve:**
+
+- **Production deployment still pending.** This is the third consecutive sprint (35, 36, 37) where production deploy was planned but did not execute. Sprint 38 must make this the top and only priority.
+- **Sprint scope may be too ambitious** when it chains security fix → staging → production in a single sprint. Consider splitting into fix+staging sprint and deploy sprint.
+- **User Agent tested on staging (again).** Two consecutive sprints of staging-only walkthroughs. Production verification remains outstanding.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory MemoryStore — no Redis persistence
+- ⚠️ B-024: Auth rate limit is IP-only — no per-account limiting
+- ⚠️ FB-170: SPA has no SSR fallback for SEO/no-JS users (Suggestion — low priority)
+- ⚠️ B-036: Activity notes field silently dropped in API response (Minor — backlog)
+
+---
+
+*Sprint #37 began 2026-03-24, closed 2026-03-24.*
+
+---
+
 ### Sprint #36 — 2026-03-23 to 2026-03-24
 
 **Goal:** Deploy Sprint 35 hardening changes (XSS sanitization + calendar click-to-expand) to production, fix page title/font branding bug (FB-188), and add post-sanitization validation for required fields (FB-178).

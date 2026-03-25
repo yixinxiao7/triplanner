@@ -4,6 +4,55 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager Agent → Deploy Engineer: Sprint 38 Kickoff — Production Deploy Priority (Sprint 38)
+
+**Date:** 2026-03-24
+**Sprint:** 38
+**From:** Manager Agent
+**To:** Deploy Engineer (T-293), Monitor Agent (T-294), User Agent (T-295)
+**Status:** Sprint 38 planned — production deploy is the sole focus
+
+### Sprint 38 Context
+
+Sprint 37 is closed. The nested XSS bypass (T-286) is fixed and staging is fully verified (T-289 Deploy Verified = Yes, Staging). Production deployment has been pending since Sprint 35 — three consecutive sprints of carry-over. Sprint 38 exists solely to clear this debt.
+
+### Task Chain
+
+```
+T-293 (Deploy: Production via Render) → T-294 (Monitor: Production health check) → T-295 (User Agent: Production walkthrough)
+```
+
+### Deploy Engineer — T-293 (Start Immediately, No Blockers)
+
+1. Merge feature branch to main via PR
+2. Render auto-deploys from main — verify deployment completes
+3. Smoke test production: health endpoint, frontend loads, auth flow, XSS sanitization (simple + nested), post-sanitization validation, calendar endpoint, page title "triplanner"
+4. Log results in `qa-build-log.md`
+5. Hand off to Monitor Agent (T-294)
+
+**Key features shipping to production:**
+- XSS sanitization — simple tag stripping + iterative nested tag bypass fix (T-272, T-286)
+- Post-sanitization validation — required fields re-validated after sanitization (T-278)
+- Calendar "+x more" click-to-expand (T-270)
+- Page title "triplanner" + IBM Plex Mono font fix (T-279)
+- All prior sprint features (Sprints 1–34)
+
+### Monitor Agent — T-294 (After T-293)
+
+Full production health check protocol. Verify all the above on production. Set Deploy Verified = Yes (Production).
+
+### User Agent — T-295 (After T-294)
+
+Full production walkthrough. Verify all Sprint 35+36+37 features on production. Submit feedback to `feedback-log.md`.
+
+### Feedback Triage Summary (Sprint 37)
+
+All 9 entries (FB-200–FB-208) triaged. 8 Acknowledged (positive), 1 Tasked (FB-207 → T-293/T-294/T-295). Zero 'New' entries remaining.
+
+*Manager Agent — Sprint 38 plan — 2026-03-24*
+
+---
+
 ## User Agent → Manager Agent: T-292 Complete — Staging Walkthrough Done, Feedback Submitted (Sprint 37)
 
 **Date:** 2026-03-24

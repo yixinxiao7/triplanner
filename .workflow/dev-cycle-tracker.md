@@ -3182,8 +3182,8 @@ Findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-290 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Supersedes T-283. | Infrastructure | Deploy Engineer | Backlog | P1 | M | 37 | T-289 | T-289 staging health check PASS. Ready for production deploy. |
-| T-291 | Monitor Agent: Production health check. Full protocol + verify nested XSS fix + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). Supersedes T-284. | Infrastructure | Monitor Agent | Backlog | P1 | S | 37 | T-290 | All production checks pass; Deploy Verified = Yes (Production). |
+| T-290 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Supersedes T-283. | Infrastructure | Deploy Engineer | Backlog | P1 | M | 37 | T-289 | **Carried over to Sprint 38** — did not execute in Sprint 37. Superseded by T-293 (Sprint 38). |
+| T-291 | Monitor Agent: Production health check. Full protocol + verify nested XSS fix + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). Supersedes T-284. | Infrastructure | Monitor Agent | Backlog | P1 | S | 37 | T-290 | **Carried over to Sprint 38** — blocked by T-290. Superseded by T-294 (Sprint 38). |
 | T-292 | User Agent: Production walkthrough. Test nested XSS fix, post-sanitization validation, page title, calendar, CRUD regression. Submit feedback to feedback-log.md. | Documentation | User Agent | Done | P1 | M | 37 | T-291 | ✅ **Staging walkthrough complete (2026-03-24).** Production not yet deployed (T-290/T-291 Backlog). Tested on staging per Sprint 36 precedent. 9 feedback entries (FB-200–FB-208): 7 Positive, 1 Major (production deploy incomplete), 0 Bugs. Nested XSS fix verified across all models. No regressions. |
 
 ---
@@ -3217,6 +3217,27 @@ Findings:
 **Actions taken:**
 - T-288: Status → **Integration Check**
 - Handoff logged for Monitor Agent (T-289) — T-288 blocking dependency resolved
+
+---
+
+## Sprint 38 Tasks
+
+**Sprint Goal:** Deploy all Sprint 35+36+37 changes to production and verify production health. Deploy-only sprint.
+
+### Phase 1 — Production Deployment
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-293 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Supersedes T-290 and T-283. | Infrastructure | Deploy Engineer | Backlog | P0 | M | 38 | — | FB-207 (Major). Staging verified (T-289). All Sprint 35+36+37 code ready. No blockers. |
+
+---
+
+### Phase 2 — Production Verification (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-294 | Monitor Agent: Production health check. Full protocol + verify nested XSS fix + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). Supersedes T-291 and T-284. | Infrastructure | Monitor Agent | Backlog | P0 | S | 38 | T-293 | Production must be deployed before health check. |
+| T-295 | User Agent: Production walkthrough. Test all Sprint 35+36+37 features on production. Verify XSS fix, post-sanitization validation, page title, calendar, CRUD regression. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 38 | T-294 | Production must be health-checked before user walkthrough. |
 
 ---
 

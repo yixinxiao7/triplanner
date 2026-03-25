@@ -32,7 +32,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 37 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-286 |
 
 **Details:** Tested the Sprint 37 primary fix (T-286) — iterative sanitization of nested HTML tags — across all resource types:
@@ -60,7 +60,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 37 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-286 |
 
 **Details:** Verified that the iterative sanitizer does not over-strip legitimate content:
@@ -83,7 +83,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 37 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-286, T-278 |
 
 **Details:** Tested that fields which become empty after sanitization are properly rejected:
@@ -105,7 +105,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 37 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-292 |
 
 **Details:** Regression test of core CRUD flows:
@@ -129,7 +129,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 37 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-292 |
 
 **Details:**
@@ -151,7 +151,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 37 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-292 |
 
 **Details:**
@@ -170,7 +170,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 37 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-292 |
 
 **Details:**
@@ -190,7 +190,8 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 37 |
 | **Category** | Feature Gap |
 | **Severity** | Major |
-| **Status** | New |
+| **Status** | Tasked |
+| **Tasked As** | T-293, T-294, T-295 (Sprint 38 — production deploy + health check + user verification) |
 | **Related Task** | T-290, T-291 |
 
 **Details:** Sprint 37 scope includes production deployment (T-290) and production health check (T-291) as Phase 3. Both tasks remain in Backlog status in `dev-cycle-tracker.md`. T-289 (staging health check) completed successfully and unblocked T-290, but T-290 has not been executed.
@@ -211,7 +212,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | **Sprint** | 37 |
 | **Category** | Positive |
 | **Severity** | — |
-| **Status** | New |
+| **Status** | Acknowledged |
 | **Related Task** | T-292 |
 
 **Details:** Health endpoint responds instantly with `{"status":"ok"}`. No delays, no errors. Confirms backend is running and database is connected on staging.
