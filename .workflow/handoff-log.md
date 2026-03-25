@@ -4,6 +4,40 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Backend Engineer → Frontend Engineer: No New API Contracts — Sprint 38 (Deploy-Only)
+
+**Date:** 2026-03-24
+**Sprint:** 38
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Status:** ✅ Complete — No frontend action required
+
+### Summary
+
+Sprint 38 is a deploy-only sprint (T-293, T-294, T-295). There are no Backend Engineer tasks assigned. No new or changed API endpoints. All 30 existing endpoint contracts from Sprints 1–37 remain unchanged and current in `api-contracts.md`.
+
+**Frontend impact:** None. No integration changes needed.
+
+*Backend Engineer — Sprint 38 — 2026-03-24*
+
+---
+
+## Backend Engineer → QA Engineer: No New Contracts or Code — Sprint 38 (Deploy-Only)
+
+**Date:** 2026-03-24
+**Sprint:** 38
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** ✅ Complete — No QA action required from Backend
+
+### Summary
+
+Sprint 38 has no Backend Engineer tasks. No new endpoints, no code changes, no schema changes. The existing test suite (493 backend tests) covers all current functionality. QA focus this sprint is on production verification (T-294, T-295), not new backend code.
+
+*Backend Engineer — Sprint 38 — 2026-03-24*
+
+---
+
 ## Design Agent → Manager Agent: No Design Tasks This Sprint (Sprint 38)
 
 **Date:** 2026-03-24

@@ -8008,3 +8008,44 @@ Tests must cover:
 ---
 
 *Sprint 37 contracts published by Backend Engineer 2026-03-24. No new endpoints. T-286 is a middleware behavioral fix: iterative sanitization loop to prevent nested XSS bypass. No schema migrations. All 30 endpoints from Sprints 1–35 remain in force. Test baseline entering Sprint 37: 471+ backend | 510/510 frontend | 4/4 Playwright.*
+
+---
+
+## Sprint 38 Contracts
+
+---
+
+## Sprint 38 — No New Contracts (Deploy-Only Sprint)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 38 |
+| Tasks | T-293 (Deploy), T-294 (Monitor), T-295 (User Agent) |
+| Backend Engineer Tasks | None |
+| New Endpoints | None |
+| Changed Endpoints | None |
+| Schema Changes | None |
+
+### Summary
+
+Sprint 38 is a deploy-only sprint focused on shipping all Sprint 35+36+37 changes to production and verifying production health. There are no Backend Engineer tasks assigned. No new or changed API endpoints. No schema migrations.
+
+All 30 existing endpoint contracts from Sprints 1–37 remain unchanged and in force. The test baseline entering Sprint 38 is 493 backend tests, 510 frontend tests, and 4 Playwright E2E tests.
+
+### Active Contracts Summary (Sprints 1–37)
+
+All previously published contracts remain current:
+- **Auth:** 4 endpoints (register, login, refresh, logout)
+- **Trips:** 5 endpoints (CRUD + list)
+- **Flights:** 4 endpoints (CRUD scoped to trip)
+- **Stays:** 4 endpoints (CRUD scoped to trip)
+- **Activities:** 5 endpoints (CRUD + list scoped to trip)
+- **Land Travel:** 4 endpoints (CRUD scoped to trip)
+- **Calendar:** 1 endpoint (trip calendar view)
+- **Health:** 1 endpoint (server health check)
+- **Search/Filter/Sort:** Query parameters on list endpoints
+- **Middleware:** XSS sanitization (iterative, Sprint 37), post-sanitization validation (Sprint 36), rate limiting
+
+---
+
+*Sprint 38 contracts published by Backend Engineer 2026-03-24. Deploy-only sprint — no new endpoints, no code changes, no schema migrations. All 30 endpoints from Sprints 1–37 remain in force. Test baseline: 493 backend | 510 frontend | 4 Playwright.*
