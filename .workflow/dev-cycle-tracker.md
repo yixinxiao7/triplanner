@@ -3228,7 +3228,7 @@ Findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-293 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Supersedes T-290 and T-283. | Infrastructure | Deploy Engineer | Backlog | P0 | M | 38 | — | FB-207 (Major). Staging verified (T-289). All Sprint 35+36+37 code ready. No blockers. |
+| T-293 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Supersedes T-290 and T-283. | Infrastructure | Deploy Engineer | In Progress | P0 | M | 38 | — | FB-207 (Major). Pre-deploy verification PASS (backend 493/493, frontend 510/510, build ✅). Branch pushed to origin. **BLOCKED:** `gh` CLI not authenticated — PR must be created manually at https://github.com/yixinxiao7/triplanner/pull/new/fix/T-279-page-branding-fix. Once PR merged → Render auto-deploys → T-294 can proceed. |
 
 ---
 
