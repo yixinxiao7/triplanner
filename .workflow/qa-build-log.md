@@ -4,6 +4,62 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #38 — Deploy Engineer — T-293 Production Deployment — 2026-03-24
+
+**Task:** T-293 (Deploy Engineer: Deploy to production via Render)
+**Date:** 2026-03-24
+**Sprint:** 38
+**Environment:** Production
+**Build Status:** ✅ Success
+
+---
+
+### Deployment Details
+
+| Field | Value |
+|-------|-------|
+| PR | [#8](https://github.com/yixinxiao7/triplanner/pull/8) — T-293: Deploy Sprint 35-37 changes to production |
+| Branch | `fix/T-279-page-branding-fix` → `main` |
+| Merged At | 2026-03-25T01:44:03Z |
+| Deploy Method | Render auto-deploy from `main` |
+| Database Migrations | None required — schema stable at 10 migrations (001–010) |
+
+---
+
+### Production Smoke Tests
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 1 | Health endpoint | 200 `{"status":"ok"}` | 200 `{"status":"ok"}` | ✅ PASS |
+| 2 | Frontend loads | 200 | 200 | ✅ PASS |
+| 3 | Page title | `<title>triplanner</title>` | `<title>triplanner</title>` | ✅ PASS |
+| 4 | Auth register | 201 with user + token | 201 with user object + JWT | ✅ PASS |
+| 5 | Auth 401 (no token) | 401 UNAUTHORIZED | 401 `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS |
+| 6 | XSS simple sanitization | `<script>alert(1)</script>SimpleTest` → `alert(1)SimpleTest` | `alert(1)SimpleTest` | ✅ PASS |
+| 7 | XSS nested sanitization | `<<script>script>alert(1)<</script>/script>OnlyThis` → `alert(1)OnlyThis` | `alert(1)OnlyThis` | ✅ PASS |
+| 8 | Post-sanitization validation | All-HTML name `<script></script><b></b>` → rejected | 400 `{"error":{"message":"Validation failed","code":"VALIDATION_ERROR","fields":{"name":"Name is required"}}}` | ✅ PASS |
+| 9 | Trips CRUD - list | 200 with data array + pagination | 200 with data + pagination | ✅ PASS |
+| 10 | Trips CRUD - create | 201 with trip object | 201 with trip object | ✅ PASS |
+| 11 | Calendar endpoint | 200 with events | 200 `{"data":{"trip_id":"...","events":[]}}` | ✅ PASS |
+| 12 | Trips CRUD - delete | 204 | 204 | ✅ PASS |
+| 13 | No 5xx errors | No 5xx status codes | 404 on nonexistent route (not 5xx) | ✅ PASS |
+
+**Production Smoke Test Result:** ✅ ALL PASS (13/13)
+
+---
+
+### Features Deployed to Production
+
+- XSS sanitization — simple tag stripping (T-272) + iterative nested bypass fix (T-286)
+- Post-sanitization validation — required fields re-validated after sanitize (T-278)
+- Calendar "+x more" click-to-expand (T-270)
+- Page title "triplanner" + IBM Plex Mono font (T-279)
+- All Sprint 1–34 features already on production
+
+**Next step:** Monitor Agent (T-294) runs full production health check protocol.
+
+---
+
 ## Sprint #38 — Deploy Engineer — T-293 Pre-Deploy Build Verification — 2026-03-24
 
 **Task:** T-293 (Deploy Engineer: Deploy to production via Render)
