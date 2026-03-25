@@ -39,6 +39,17 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | — | 25 | *(No new migrations this sprint)* | — | — | Sprint 25 `GET /api/v1/trips/:id/calendar` (T-212) is a read-only aggregation over existing `flights`, `stays`, `activities` tables. No DDL changes required. Confirmed by Backend Engineer 2026-03-10. **[Auto-approved — no schema change]** |
 | — | 26 | *(No new migrations this sprint)* | — | — | Sprint 26 tasks (T-220 knexfile SSL config, T-221 cookie SameSite fix, T-226 seed script) require no DDL changes. T-226 seeds the existing `users` table — no new columns or tables. Confirmed by Backend Engineer 2026-03-11. **[Auto-approved — no schema change]** |
 | — | 27–36 | *(No new migrations Sprints 27–36)* | — | — | Schema-stable. Sprint 36 T-278 is a middleware-ordering bug fix — no DDL changes. Confirmed by Backend Engineer 2026-03-24. **[Auto-approved — no schema change]** |
+| — | 37 | *(No new migrations this sprint)* | — | — | Sprint 37 T-286 is a middleware behavioral fix (iterative sanitization loop). No DDL changes. Confirmed by Backend Engineer 2026-03-24. **[Auto-approved — no schema change]** |
+
+---
+
+### Sprint 37 — No Schema Changes
+
+**Date:** 2026-03-24
+**Confirmed by:** Backend Engineer
+**Task:** T-286
+
+**Reason:** T-286 is a behavioral bug fix (iterative loop in `sanitizeHtml()` to prevent nested XSS bypass). No new tables, columns, or indexes. The migration log remains at **10 applied migrations (001–010)**. No `knex migrate:latest` is needed for Sprint 37.
 
 ---
 

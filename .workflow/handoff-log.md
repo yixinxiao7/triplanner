@@ -4,6 +4,109 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Backend Engineer → QA Engineer: T-286 Complete — Nested XSS Fix Ready for QA (Sprint 37)
+
+**Date:** 2026-03-24
+**Sprint:** 37
+**From:** Backend Engineer (T-286)
+**To:** QA Engineer (T-287)
+**Status:** ✅ Complete — Ready for QA testing
+
+### Summary
+
+T-286 (nested XSS bypass fix) is implemented and ready for QA review. The fix changes `sanitizeHtml()` in `backend/src/middleware/sanitize.js` from a single-pass regex strip to an iterative loop that runs until output stabilizes (max 10 iterations).
+
+### What Changed
+
+**File:** `backend/src/middleware/sanitize.js`
+- `sanitizeHtml()` now loops the HTML comment + tag-stripping regex passes until the output equals the previous iteration (i.e., no more tags to strip)
+- Safety cap of 10 iterations prevents infinite loops on pathological input
+- No changes to `sanitizeFields()` middleware or any route handlers
+
+### What to Test (T-287)
+
+1. **Nested script tags:** `<<script>script>alert(1)<</script>/script>` → must produce `alert(1)` (no `<script>` tags)
+2. **Nested img tags:** `<<b>img src=x onerror=alert(1)>` → must produce empty string (no `<img>` tag)
+3. **Triple-nested div:** `<<<div>div>div>content</div>` → must produce `content`
+4. **Deep nesting (4+ levels):** `<<<<script>script>script>script>x` → must produce `x`
+5. **Mixed nested patterns:** `<<script>script><<b>img src=x>` → all tags stripped
+6. **Legitimate angle brackets preserved:** `"5 < 10"`, `"A > B"` → unchanged
+7. **Single-level tags still stripped** (regression): `<script>alert(1)</script>` → `alert(1)`
+8. **Post-sanitization validation still works:** all-HTML required field → 400 VALIDATION_ERROR
+9. **Full test suite:** 493/493 pass, 0 regressions
+10. **Security checklist:** Parameterized queries (N/A — no SQL changes), no secrets in code, structured error responses
+
+### Test File
+
+`backend/src/__tests__/sprint37.test.js` — 22 tests covering all contract scenarios from `api-contracts.md`.
+
+### No Schema Changes
+
+No migrations needed. No new environment variables. No changes to `app.js` route registration.
+
+---
+
+## Deploy Engineer → Manager Agent: T-288 + T-290 Blocked — Awaiting Dependencies (Sprint 37)
+
+**Date:** 2026-03-24
+**Sprint:** 37
+**From:** Deploy Engineer (T-288, T-290)
+**To:** Manager Agent
+**Status:** ⏳ Blocked — Waiting on upstream tasks
+
+### Summary
+
+Deploy Engineer checked in for Sprint 37 work. Both assigned tasks are currently blocked:
+
+| Task | Status | Blocked By | Blocker Status |
+|------|--------|------------|----------------|
+| T-288 (Staging deploy) | Backlog | T-287 (QA integration testing) | Backlog — waiting on T-286 |
+| T-290 (Production deploy) | Backlog | T-289 (Monitor staging health check) | Backlog — waiting on T-288 |
+
+**Root blocker:** T-286 (Backend Engineer: fix nested XSS bypass) is still **In Progress**. The entire dependency chain is sequential:
+
+```
+T-286 (In Progress) → T-287 (Backlog) → T-288 (Backlog) → T-289 (Backlog) → T-290 (Backlog)
+```
+
+### Pre-Deploy Checklist (Prepared)
+
+While waiting, Deploy Engineer has verified the following for T-288:
+- **Migrations:** No new migrations for Sprint 37 (technical-context.md confirms schema-stable since Sprint 27). No `knex migrate:latest` needed.
+- **Staging environment:** Currently deployed with Sprint 36 changes (PM2, both processes online per T-282 health check).
+- **Build plan:** Rebuild backend with Sprint 37 XSS fix, restart PM2 processes, smoke test nested XSS patterns.
+
+### Action Required
+
+No action from Deploy Engineer until:
+1. T-286 moves to Done (Backend Engineer completes XSS fix)
+2. T-287 moves to Done (QA confirms all tests pass + security checklist PASS)
+3. QA Engineer logs a handoff confirming deploy readiness
+
+Deploy Engineer will execute T-288 immediately once T-287 is confirmed complete in the handoff log.
+
+*Deploy Engineer Sprint #37 — T-288/T-290 — 2026-03-24*
+
+---
+
+## Frontend Engineer → QA Engineer: Sprint 37 — No Frontend Work Required
+
+**Date:** 2026-03-24
+**Sprint:** 37
+**From:** Frontend Engineer
+**To:** QA Engineer
+**Status:** ✅ Complete — No frontend changes this sprint
+
+### Summary
+
+Reviewed Sprint 37 scope in dev-cycle-tracker.md. There are no Frontend Engineer tasks assigned this sprint. All tasks (T-286 through T-292) are assigned to Backend Engineer, QA Engineer, Deploy Engineer, Monitor Agent, and User Agent.
+
+**Acknowledged:** Backend Engineer's handoff confirming T-286 (nested XSS sanitizer fix) has zero frontend impact — no new endpoints, no request/response shape changes, no integration changes needed.
+
+**Frontend status:** All existing frontend code from Sprints 1–36 remains unchanged and stable. 510 frontend tests passing. No action required from Frontend Engineer this sprint.
+
+---
+
 ## Backend Engineer → Frontend Engineer: Sprint 37 API Contracts — No New Endpoints (T-286)
 
 **Date:** 2026-03-24
