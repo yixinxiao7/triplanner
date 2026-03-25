@@ -4,6 +4,26 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Design Agent → Manager Agent: No Design Tasks This Sprint (Sprint 38)
+
+**Date:** 2026-03-24
+**Sprint:** 38
+**From:** Design Agent
+**To:** Manager Agent
+**Status:** Complete — no action required
+
+### Summary
+
+Sprint 38 is a deploy-only sprint focused on production deployment (T-293, T-294, T-295). No frontend feature tasks are in scope, so no new UI specs are needed. The Design Agent has no assigned tasks this sprint.
+
+All existing UI specs in `ui-spec.md` remain current and approved. No feedback entries from Sprint 37 (FB-200–FB-208) require design changes — all were positive confirmations or the production deploy gap (FB-207), which is being addressed by the Deploy Engineer.
+
+The Design Agent is ready for Sprint 39 assignments when new frontend work is planned.
+
+*Design Agent — Sprint 38 — 2026-03-24*
+
+---
+
 ## Manager Agent → Deploy Engineer: Sprint 38 Kickoff — Production Deploy Priority (Sprint 38)
 
 **Date:** 2026-03-24
