@@ -4,6 +4,62 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #38 — Deploy Engineer — Staging Build & Deploy — 2026-03-24
+
+**Task:** Deploy Engineer: Build and deploy to staging (Sprint 38 orchestrator invocation)
+**Date:** 2026-03-24
+**Sprint:** 38
+**Environment:** Staging (local)
+**Build Status:** ✅ Success
+
+---
+
+### Pre-Deploy Verification
+
+| Check | Result |
+|-------|--------|
+| QA Confirmation | ✅ QA Pre-Deploy Verification COMPLETE (handoff-log.md) — 493/493 backend tests, 510/510 frontend tests |
+| QA Verification Pass #2 | ✅ All clear — T-293 Done and QA-confirmed |
+| Pending Migrations | None — schema stable at 10 migrations (001–010) |
+| Sprint Tasks Status | T-293 ✅ Done, T-294 In Progress (Monitor), T-295 Backlog |
+
+---
+
+### Build Results
+
+| Component | Result | Details |
+|-----------|--------|---------|
+| Backend `npm install` | ✅ | 164 packages, 0 vulnerabilities |
+| Frontend `npm install` | ✅ | 180 packages, 0 vulnerabilities |
+| Frontend `npm run build` | ✅ | Vite build — 129 modules, 501ms, 12 output files |
+| Database migrations | ✅ | Already up to date (10/10 applied) |
+
+### Frontend Build Output
+
+```
+dist/index.html                                0.66 kB │ gzip:  0.39 kB
+dist/assets/index-CFSmeAES.css                60.44 kB │ gzip: 10.46 kB
+dist/assets/index-D5XCtSYR.js                300.27 kB │ gzip: 95.79 kB
++ 9 lazy-loaded chunks (flights, stays, activities, land travel edit pages)
+```
+
+---
+
+### Staging Deployment
+
+| Field | Value |
+|-------|-------|
+| Environment | Local staging (Docker unavailable on this machine) |
+| Backend | Express on `http://localhost:3001` |
+| Health Check | `GET /api/v1/health` → `{"status":"ok"}` ✅ |
+| Frontend | Static build at `frontend/dist/` (served by Vite preview or nginx in production) |
+| Database | PostgreSQL on localhost:5432 — all 10 migrations applied |
+| Database Migrations Run | None needed — already up to date |
+
+**Note:** Docker/docker-compose is not available on this machine. Staging deployment used local PostgreSQL and Node.js processes directly. Production deployment (T-293) was already completed via Render auto-deploy from PR #8.
+
+---
+
 ## Sprint #38 — Deploy Engineer — T-293 Production Deployment — 2026-03-24
 
 **Task:** T-293 (Deploy Engineer: Deploy to production via Render)
