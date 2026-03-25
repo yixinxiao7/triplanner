@@ -4,6 +4,94 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #37 — Monitor Agent — T-289 Staging Health Check — 2026-03-24
+
+**Task:** T-289 (Monitor Agent: Staging health check — full protocol)
+**Date:** 2026-03-24
+**Sprint:** 37
+**Environment:** Staging (Backend: https://localhost:3001, Frontend: https://localhost:4173)
+**Trigger:** Deploy Engineer T-288 staging deployment complete
+
+---
+
+### Test Type: Config Consistency
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 1 | Backend PORT matches Vite proxy default port | PORT=3000, Vite default=3000 | `.env` PORT=3000, Vite `backendPort = process.env.BACKEND_PORT \|\| '3000'` | ✅ PASS |
+| 2 | Protocol match (SSL config vs Vite proxy) | SSL commented out → HTTP; Vite defaults to http:// | `SSL_KEY_PATH` and `SSL_CERT_PATH` commented out in `.env`; Vite uses `backendSSL = process.env.BACKEND_SSL === 'true'` defaulting to http:// | ✅ PASS |
+| 3 | CORS_ORIGIN includes frontend dev server | Must include http://localhost:5173 | `CORS_ORIGIN=http://localhost:5173` | ✅ PASS |
+| 4 | Docker compose backend PORT matches .env | Both PORT=3000 | docker-compose.yml `PORT: 3000`, `.env` `PORT=3000` | ✅ PASS |
+| 5 | Docker compose backend healthcheck URL | Must use http://localhost:3000 | `wget --spider http://localhost:3000/api/v1/health` | ✅ PASS |
+
+**Config Consistency Result:** ✅ ALL PASS (5/5)
+
+---
+
+### Test Type: Post-Deploy Health Check
+
+**Token:** Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT /auth/register)
+
+| # | Check | Method | Expected | Actual | Result |
+|---|-------|--------|----------|--------|--------|
+| 1 | App responds | `GET /api/v1/health` | 200 `{"status":"ok"}` | 200 `{"status":"ok"}` | ✅ PASS |
+| 2 | Auth login works | `POST /api/v1/auth/login` | 200 with user + access_token | 200 with user object + JWT token | ✅ PASS |
+| 3 | Auth 401 on missing token | `GET /api/v1/trips` (no auth) | 401 `UNAUTHORIZED` | 401 `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS |
+| 4 | Trips list | `GET /api/v1/trips` (auth) | 200 with data array + pagination | 200 with data array + pagination object | ✅ PASS |
+| 5 | Trip details | `GET /api/v1/trips/:id` (auth) | 200 with trip object | 200 with full trip object | ✅ PASS |
+| 6 | Trip stays | `GET /api/v1/trips/:id/stays` (auth) | 200 with data array | 200 with stays array | ✅ PASS |
+| 7 | Trip activities | `GET /api/v1/trips/:id/activities` (auth) | 200 with data array | 200 with data array (empty) | ✅ PASS |
+| 8 | Refresh token (no cookie) | `POST /api/v1/auth/refresh` | 401 `INVALID_REFRESH_TOKEN` | 401 `{"error":{"message":"Invalid or expired refresh token","code":"INVALID_REFRESH_TOKEN"}}` | ✅ PASS |
+| 9 | Trip create | `POST /api/v1/trips` | 201 with trip object | 201 with new trip | ✅ PASS |
+| 10 | Trip delete | `DELETE /api/v1/trips/:id` | 204 | 204 | ✅ PASS |
+| 11 | Frontend accessible | `GET https://localhost:4173/` | 200 | 200 | ✅ PASS |
+| 12 | No 5xx errors | All requests | No 5xx status codes | Zero 5xx responses observed | ✅ PASS |
+| 13 | Database connected | Health endpoint + CRUD operations succeed | DB operational | All CRUD operations returned expected data | ✅ PASS |
+
+**Health Check Result:** ✅ ALL PASS (13/13)
+
+---
+
+### Test Type: Sprint 37 XSS Fix Verification (Staging)
+
+| # | Input | Expected Output | Actual Output | Result |
+|---|-------|----------------|---------------|--------|
+| 1 | `<<script>script>alert(1)<</script>/script>` | `alert(1)` (all tags stripped) | `alert(1)` | ✅ PASS |
+| 2 | `<<<<script>script>script>script>alert(1)` | `alert(1)` (deep nesting stripped) | `alert(1)` | ✅ PASS |
+| 3 | `5 < 10 and 20 > 15` | Preserved as-is | `5 < 10 and 20 > 15` | ✅ PASS |
+
+**XSS Fix Verification Result:** ✅ ALL PASS (3/3)
+
+---
+
+### Test Type: Playwright E2E Tests (Staging)
+
+**Command:** `npx playwright test --reporter=list`
+**Environment:** Chromium, baseURL: https://localhost:4173
+
+| # | Test | Duration | Result |
+|---|------|----------|--------|
+| 1 | register, create trip, view details, delete, logout | 1.2s | ✅ PASS |
+| 2 | create trip, add flight, add stay, verify on details page | 1.3s | ✅ PASS |
+| 3 | create trips, search, filter by status, sort by name, clear filters | 3.8s | ✅ PASS |
+| 4 | rapid wrong-password login triggers 429 banner and disables submit | 3.6s | ✅ PASS |
+
+**Playwright Result:** ✅ 4/4 PASS (11.1s total)
+
+---
+
+### Deploy Verified: ✅ Yes (Staging)
+
+All checks pass:
+- Config consistency: 5/5 PASS
+- Health checks: 13/13 PASS
+- Sprint 37 XSS fix verified on staging: 3/3 PASS
+- Playwright E2E: 4/4 PASS
+
+**Staging is verified and ready for production deployment (T-290).**
+
+---
+
 ## Sprint #37 — QA Engineer — T-287 Re-Verification Run — 2026-03-24
 
 **Task:** T-287 (QA Engineer: Re-verification of Sprint 37 — all tests + security)
