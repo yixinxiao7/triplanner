@@ -3164,7 +3164,7 @@ Findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-286 | Backend Engineer: Fix nested/obfuscated XSS bypass in sanitizer (FB-191). Run tag-stripping in a loop until output stabilizes, or use proper HTML parser. Add tests for nested patterns. | Bug Fix | Backend Engineer | In Review | P0 | S | 37 | — | FB-191. FIXED: `sanitizeHtml()` now runs iterative loop (max 10 passes) until output stabilizes. 22 new tests added in `sprint37.test.js`. Full suite: 493/493 pass, 0 regressions. Ready for QA (T-287). |
+| T-286 | Backend Engineer: Fix nested/obfuscated XSS bypass in sanitizer (FB-191). Run tag-stripping in a loop until output stabilizes, or use proper HTML parser. Add tests for nested patterns. | Bug Fix | Backend Engineer | Integration Check | P0 | S | 37 | — | FB-191. FIXED: `sanitizeHtml()` now runs iterative loop (max 10 passes) until output stabilizes. 22 new tests added in `sprint37.test.js`. Full suite: 493/493 pass, 0 regressions. **Manager Review APPROVED (2026-03-24):** Correctness ✓, Security ✓, Convention ✓, API contract ✓, Tests 22/22 ✓. Moved to Integration Check → T-287 unblocked. |
 
 ---
 
