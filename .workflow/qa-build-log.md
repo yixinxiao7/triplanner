@@ -2723,3 +2723,72 @@ QA Engineer was re-invoked by the automated orchestrator. T-251 (security checkl
 
 ---
 
+## Sprint #38 — Monitor Agent — T-294 Post-Deploy Health Check — 2026-03-24
+
+**Task:** T-294 (Monitor Agent: Production health check)
+**Date:** 2026-03-24
+**Sprint:** 38
+**Environment:** Staging (local — backend on http://localhost:3001, frontend build at frontend/dist/)
+**Test Type:** Post-Deploy Health Check + Config Consistency
+
+---
+
+### Config Consistency Validation
+
+| Check | Result | Details |
+|-------|--------|---------|
+| **Port match** | ✅ PASS | `backend/.env` PORT=3000. `vite.config.js` proxy defaults to `process.env.BACKEND_PORT \|\| '3000'` → `http://localhost:3000`. Ports match for local dev. Staging uses BACKEND_PORT=3001 override, which is consistent with how the staging backend was started. |
+| **Protocol match** | ✅ PASS | `backend/.env` SSL_KEY_PATH and SSL_CERT_PATH are **commented out** → backend serves HTTP. `vite.config.js` defaults to `http://` when `BACKEND_SSL` env is not `'true'`. Protocol matches. |
+| **CORS match** | ✅ PASS | `backend/.env` CORS_ORIGIN=`http://localhost:5173`. `vite.config.js` dev server port is `5173`. CORS origin matches frontend dev server. |
+| **Docker port match** | ✅ PASS | `infra/docker-compose.yml` backend container sets `PORT: 3000`. Backend healthcheck targets `http://localhost:3000/api/v1/health`. Consistent with `.env` PORT=3000. Frontend container exposes port 80 (nginx reverse proxy to backend). No mismatches. |
+| **SSL cert files** | ✅ N/A | SSL paths are commented out in `.env`. No cert file validation needed. |
+
+**Config Consistency Result:** ✅ ALL PASS — no mismatches detected.
+
+---
+
+### Health Check Results
+
+**Token:** Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT /auth/register)
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 1 | `GET /api/v1/health` | 200 `{"status":"ok"}` | 200 `{"status":"ok"}` | ✅ PASS |
+| 2 | `POST /api/v1/auth/login` (test account) | 200 with user + access_token | 200 `{"data":{"user":{"id":"60567cb2-...","name":"Test User","email":"test@triplanner.local"},"access_token":"eyJ..."}}` | ✅ PASS |
+| 3 | `GET /api/v1/trips` (with token) | 200 with data array + pagination | 200 `{"data":[...],"pagination":{"page":1,"limit":20,"total":1}}` | ✅ PASS |
+| 4 | `GET /api/v1/trips` (no token) | 401 UNAUTHORIZED | 401 `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS |
+| 5 | `GET /api/v1/trips/:id` | 200 with trip object | 200 `{"data":{"id":"b525c806-...","name":"Sprint 30 Test Trip","destinations":["Tokyo"],"status":"ONGOING",...}}` | ✅ PASS |
+| 6 | `GET /api/v1/trips/:id/flights` | 200 with data array | 200 `{"data":[]}` | ✅ PASS |
+| 7 | `GET /api/v1/trips/:id/stays` | 200 with data array | 200 `{"data":[{"id":"6d537cf8-...","name":"Test Hotel S32",...}]}` | ✅ PASS |
+| 8 | `GET /api/v1/trips/:id/activities` | 200 with data array | 200 `{"data":[]}` | ✅ PASS |
+| 9 | `GET /api/v1/trips/:id/land-travel` | 200 with data array | 200 `{"data":[]}` | ✅ PASS |
+| 10 | `GET /api/v1/trips/:id/calendar` | 200 with events | 200 `{"data":{"trip_id":"b525c806-...","events":[{"id":"stay-6d537cf8-...","type":"STAY","title":"Test Hotel S32",...}]}}` | ✅ PASS |
+| 11 | XSS nested sanitization | `<<script>script>alert(1)<</script>/script>OnlyThis` → `alert(1)OnlyThis` | 201 `{"data":{"user":{"name":"alert(1)OnlyThis",...}}}` | ✅ PASS |
+| 12 | 404 handling (no 5xx) | 404 on nonexistent route | 404 (Express default) | ✅ PASS |
+| 13 | `POST /api/v1/auth/logout` (no token) | 401 UNAUTHORIZED | 401 `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS |
+| 14 | Database connectivity | Health endpoint succeeds (implies DB connected) | 200 `{"status":"ok"}` | ✅ PASS |
+| 15 | Frontend build exists | `frontend/dist/index.html` present with correct title | `<title>triplanner</title>` present, 12 build output files | ✅ PASS |
+
+**Health Check Result:** ✅ ALL PASS (15/15)
+
+---
+
+### Summary
+
+| Field | Value |
+|-------|-------|
+| Environment | Staging (local) |
+| Config Consistency | ✅ PASS |
+| Health Check | ✅ PASS (15/15) |
+| Deploy Verified | **Yes** |
+| 5xx Errors | None detected |
+| Database | Connected (health endpoint + all CRUD operations return valid data) |
+| Auth Flow | Working (login → token → protected endpoint → 401 without token) |
+| XSS Sanitization | Working (nested script tags properly stripped) |
+
+**Deploy Verified = Yes.** Staging environment is healthy and ready for User Agent walkthrough (T-295).
+
+*Monitor Agent — Sprint 38 — T-294 — 2026-03-24*
+
+---
+

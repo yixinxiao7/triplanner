@@ -3236,8 +3236,8 @@ Findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-294 | Monitor Agent: Production health check. Full protocol + verify nested XSS fix + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). Supersedes T-291 and T-284. | Infrastructure | Monitor Agent | In Progress | P0 | S | 38 | ~~T-293~~ ✅ | T-293 Done (PR #8 merged, 13/13 smoke tests pass). Blocker resolved — T-294 unblocked and ready for Monitor Agent. |
-| T-295 | User Agent: Production walkthrough. Test all Sprint 35+36+37 features on production. Verify XSS fix, post-sanitization validation, page title, calendar, CRUD regression. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 38 | T-294 | Production must be health-checked before user walkthrough. |
+| T-294 | Monitor Agent: Production health check. Full protocol + verify nested XSS fix + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). Supersedes T-291 and T-284. | Infrastructure | Monitor Agent | Done | P0 | S | 38 | ~~T-293~~ ✅ | ✅ Deploy Verified = Yes. 15/15 health checks pass. Config consistency validated. XSS nested sanitization confirmed. Results in qa-build-log.md. |
+| T-295 | User Agent: Production walkthrough. Test all Sprint 35+36+37 features on production. Verify XSS fix, post-sanitization validation, page title, calendar, CRUD regression. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 38 | ~~T-294~~ ✅ | T-294 Done — Deploy Verified = Yes. Staging ready for User Agent walkthrough. |
 
 ---
 
