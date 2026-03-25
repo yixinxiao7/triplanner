@@ -38,6 +38,28 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | — | 9–24 | *(No new migrations Sprints 9–24)* | — | — | Schema-stable. All 10 migrations applied on staging. |
 | — | 25 | *(No new migrations this sprint)* | — | — | Sprint 25 `GET /api/v1/trips/:id/calendar` (T-212) is a read-only aggregation over existing `flights`, `stays`, `activities` tables. No DDL changes required. Confirmed by Backend Engineer 2026-03-10. **[Auto-approved — no schema change]** |
 | — | 26 | *(No new migrations this sprint)* | — | — | Sprint 26 tasks (T-220 knexfile SSL config, T-221 cookie SameSite fix, T-226 seed script) require no DDL changes. T-226 seeds the existing `users` table — no new columns or tables. Confirmed by Backend Engineer 2026-03-11. **[Auto-approved — no schema change]** |
+| — | 27–36 | *(No new migrations Sprints 27–36)* | — | — | Schema-stable. Sprint 36 T-278 is a middleware-ordering bug fix — no DDL changes. Confirmed by Backend Engineer 2026-03-24. **[Auto-approved — no schema change]** |
+| — | 37 | *(No new migrations this sprint)* | — | — | Sprint 37 T-286 is a middleware behavioral fix (iterative sanitization loop). No DDL changes. Confirmed by Backend Engineer 2026-03-24. **[Auto-approved — no schema change]** |
+
+---
+
+### Sprint 37 — No Schema Changes
+
+**Date:** 2026-03-24
+**Confirmed by:** Backend Engineer
+**Task:** T-286
+
+**Reason:** T-286 is a behavioral bug fix (iterative loop in `sanitizeHtml()` to prevent nested XSS bypass). No new tables, columns, or indexes. The migration log remains at **10 applied migrations (001–010)**. No `knex migrate:latest` is needed for Sprint 37.
+
+---
+
+### Sprint 36 — No Schema Changes
+
+**Date:** 2026-03-24
+**Confirmed by:** Backend Engineer
+**Task:** T-278
+
+**Reason:** T-278 is a behavioral bug fix (middleware reordering: sanitize before validate). No new tables, columns, or indexes. The migration log remains at **10 applied migrations (001–010)**. No `knex migrate:latest` is needed for Sprint 36.
 
 ---
 
@@ -740,6 +762,25 @@ All 10 migrations applied on staging. Schema is stable and unchanged from Sprint
 - **No schema change. No migration. No `knex migrate:latest` required.**
 
 **Manager Approval Note:** No schema changes for Sprint 35 → no Manager handoff required for DDL approval. This note is for the Deploy Engineer's reference: **do not run `knex migrate:latest` for Sprint 35** — the migration log remains at 10 applied migrations (001–010). The new `sanitize-html` (or equivalent) npm dependency will need to be installed (`npm install`) during the staging build.
+
+**[Auto-approved — no schema change]**
+
+---
+
+### Sprint 36 — No Schema Changes
+
+**Date:** 2026-03-24
+**Confirmed by:** Backend Engineer
+**Task:** T-278
+
+**Reason:** Sprint 36's backend task (T-278) is a middleware ordering fix — swapping sanitization to run before validation so that required fields stripped to empty strings by HTML sanitization are properly rejected. This is purely an application-layer change to middleware execution order. No new tables, columns, indexes, or constraints are required. The existing schema (migrations 001–010) is fully sufficient.
+
+**T-278 — Post-Sanitization Validation (Middleware Reorder):**
+- Changes middleware order from `validate → sanitize` to `sanitize → validate` on all write endpoints
+- No new utilities, no new dependencies, no new routes
+- **No schema change. No migration. No `knex migrate:latest` required.**
+
+**Manager Approval Note:** No schema changes for Sprint 36 → no Manager handoff required for DDL approval. This note is for the Deploy Engineer's reference: **do not run `knex migrate:latest` for Sprint 36** — the migration log remains at 10 applied migrations (001–010).
 
 **[Auto-approved — no schema change]**
 

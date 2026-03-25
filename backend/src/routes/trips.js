@@ -86,6 +86,7 @@ router.get('/', async (req, res, next) => {
 // ---- POST /api/v1/trips ----
 router.post(
   '/',
+  sanitizeFields({ name: 'string', destinations: 'array', notes: 'string' }),
   validate({
     name: {
       required: true,
@@ -142,7 +143,6 @@ router.post(
       },
     },
   }),
-  sanitizeFields({ name: 'string', destinations: 'array', notes: 'string' }),
   async (req, res, next) => {
     try {
       const { name, destinations, start_date, end_date } = req.body;
@@ -195,6 +195,7 @@ router.get('/:id', async (req, res, next) => {
 // ---- PATCH /api/v1/trips/:id ----
 router.patch(
   '/:id',
+  sanitizeFields({ name: 'string', destinations: 'array', notes: 'string' }),
   validate({
     name: {
       required: false,
@@ -247,7 +248,6 @@ router.patch(
       },
     },
   }),
-  sanitizeFields({ name: 'string', destinations: 'array', notes: 'string' }),
   async (req, res, next) => {
     try {
       const trip = await findTripById(req.params.id);

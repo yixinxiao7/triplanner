@@ -136,7 +136,7 @@ router.get('/', async (req, res, next) => {
 // ---- POST /api/v1/trips/:tripId/activities ----
 const activitySanitizeConfig = { name: 'string', location: 'string' };
 
-router.post('/', validate(activityValidationSchema), sanitizeFields(activitySanitizeConfig), validateLinkedTimes, async (req, res, next) => {
+router.post('/', sanitizeFields(activitySanitizeConfig), validate(activityValidationSchema), validateLinkedTimes, async (req, res, next) => {
   try {
     const trip = await requireTripOwnership(req, res);
     if (!trip) return;
@@ -187,7 +187,24 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     const UPDATABLE = ['name', 'location', 'activity_date', 'start_time', 'end_time'];
+
+    // T-278: Sanitize text fields BEFORE validation so all-HTML values become empty
+    const SANITIZE_FIELDS_PATCH = ['name', 'location'];
+    for (const field of SANITIZE_FIELDS_PATCH) {
+      if (req.body[field] !== undefined && typeof req.body[field] === 'string') {
+        req.body[field] = sanitizeHtml(req.body[field]);
+      }
+    }
+
     const errors = {};
+
+    // T-278: Reject empty name after sanitization (required field, minLength 1)
+    if (req.body.name !== undefined && typeof req.body.name === 'string') {
+      const trimmed = req.body.name.trim();
+      if (trimmed.length < 1) {
+        errors.name = 'Activity name is required';
+      }
+    }
 
     // Validate activity_date format if provided (and not null)
     if (req.body.activity_date !== undefined) {
@@ -237,15 +254,11 @@ router.patch('/:id', async (req, res, next) => {
       });
     }
 
+    // T-278: Sanitization already applied above (before validation). Just collect.
     const updates = {};
-    const SANITIZE_FIELDS = ['name', 'location'];
     for (const field of UPDATABLE) {
       if (req.body[field] !== undefined) {
-        let value = req.body[field];
-        if (SANITIZE_FIELDS.includes(field) && typeof value === 'string') {
-          value = sanitizeHtml(value);
-        }
-        updates[field] = value;
+        updates[field] = req.body[field];
       }
     }
 

@@ -158,7 +158,7 @@ router.get('/', async (req, res, next) => {
 // ---- POST /api/v1/trips/:tripId/land-travel ----
 const landTravelSanitizeConfig = { provider: 'string', from_location: 'string', to_location: 'string' };
 
-router.post('/', validate(createLandTravelSchema), sanitizeFields(landTravelSanitizeConfig), async (req, res, next) => {
+router.post('/', sanitizeFields(landTravelSanitizeConfig), validate(createLandTravelSchema), async (req, res, next) => {
   try {
     const trip = await requireTripOwnership(req, res);
     if (!trip) return;
@@ -237,6 +237,14 @@ router.patch('/:ltId', async (req, res, next) => {
       'notes',
     ];
 
+    // T-278: Sanitize text fields BEFORE validation so all-HTML values become empty
+    const SANITIZE_FIELDS_PATCH = ['provider', 'from_location', 'to_location'];
+    for (const field of SANITIZE_FIELDS_PATCH) {
+      if (req.body[field] !== undefined && typeof req.body[field] === 'string') {
+        req.body[field] = sanitizeHtml(req.body[field]);
+      }
+    }
+
     // Require at least one updatable field
     const hasUpdates = UPDATABLE.some((f) => req.body[f] !== undefined);
     if (!hasUpdates) {
@@ -249,6 +257,17 @@ router.patch('/:ltId', async (req, res, next) => {
     }
 
     const errors = {};
+
+    // T-278: Reject empty required text fields after sanitization (minLength 1)
+    const REQUIRED_TEXT_FIELDS = ['from_location', 'to_location'];
+    for (const field of REQUIRED_TEXT_FIELDS) {
+      if (req.body[field] !== undefined && typeof req.body[field] === 'string') {
+        const trimmed = req.body[field].trim();
+        if (trimmed.length < 1) {
+          errors[field] = createLandTravelSchema[field]?.messages?.required || `${field} is required`;
+        }
+      }
+    }
 
     // Validate mode if provided
     if (req.body.mode !== undefined) {
@@ -366,15 +385,11 @@ router.patch('/:ltId', async (req, res, next) => {
       });
     }
 
+    // T-278: Sanitization already applied above (before validation). Just collect.
     const updates = {};
-    const SANITIZE_FIELDS = ['provider', 'from_location', 'to_location'];
     for (const field of UPDATABLE) {
       if (req.body[field] !== undefined) {
-        let value = req.body[field];
-        if (SANITIZE_FIELDS.includes(field) && typeof value === 'string') {
-          value = sanitizeHtml(value);
-        }
-        updates[field] = value;
+        updates[field] = req.body[field];
       }
     }
 

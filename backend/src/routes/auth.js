@@ -76,6 +76,7 @@ function signAccessToken(user) {
 router.post(
   '/register',
   registerLimiter,
+  sanitizeFields({ name: 'string' }),
   validate({
     name: {
       required: true,
@@ -104,7 +105,6 @@ router.post(
       },
     },
   }),
-  sanitizeFields({ name: 'string' }),
   async (req, res, next) => {
     try {
       const { name, email, password } = req.body;

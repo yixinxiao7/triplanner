@@ -53,8 +53,13 @@ export function validate(schema) {
         }
       }
 
-      // Skip remaining checks if value is absent (optional field not provided)
-      if (value === undefined || value === null || value === '') {
+      // Skip remaining checks if value is absent (optional field not provided).
+      // T-278: For empty strings, only skip if no minLength constraint — otherwise let
+      // minLength catch fields that became empty after sanitization.
+      if (value === undefined || value === null) {
+        continue;
+      }
+      if (value === '' && !(rules.minLength > 0)) {
         continue;
       }
 

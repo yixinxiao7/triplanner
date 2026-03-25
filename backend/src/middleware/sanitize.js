@@ -6,18 +6,23 @@
  * special characters. Does NOT HTML-encode output — stored values remain
  * plain text.
  *
- * Usage:
+ * Usage (T-278: sanitize BEFORE validate so all-HTML required fields are rejected):
  *   import { sanitizeFields } from '../middleware/sanitize.js';
  *
  *   router.post('/',
- *     validate(schema),
  *     sanitizeFields({ name: 'string', destinations: 'array', notes: 'string' }),
+ *     validate(schema),
  *     handler
  *   );
  */
 
 /**
  * Strip HTML/XML tags from a string while preserving text content.
+ *
+ * Uses an iterative loop that runs the tag-stripping regex until the output
+ * stabilizes — preventing nested/obfuscated XSS bypasses where inner tags
+ * reassemble into valid HTML after a single pass (e.g., `<<script>script>`
+ * becoming `<script>`). Capped at 10 iterations as a safety limit.
  *
  * Uses a regex that matches tags starting with `<` followed by a letter or `/`,
  * which avoids stripping legitimate angle-bracket usage like `5 < 10`.
@@ -29,12 +34,24 @@
 export function sanitizeHtml(input) {
   if (typeof input !== 'string') return input;
 
-  return input
-    // Strip HTML comments
-    .replace(/<!--[\s\S]*?-->/g, '')
-    // Strip HTML/XML tags (opening, closing, self-closing)
-    // Matches <tag ...>, </tag>, <tag/>, <tag ... />, but NOT `< 10` or `5 > 3`
-    .replace(/<\/?[a-zA-Z][^>]*\/?>/g, '');
+  const MAX_ITERATIONS = 10;
+  let result = input;
+
+  for (let i = 0; i < MAX_ITERATIONS; i++) {
+    const previous = result;
+
+    result = result
+      // Strip HTML comments
+      .replace(/<!--[\s\S]*?-->/g, '')
+      // Strip HTML/XML tags (opening, closing, self-closing)
+      // Matches <tag ...>, </tag>, <tag/>, <tag ... />, but NOT `< 10` or `5 > 3`
+      .replace(/<\/?[a-zA-Z][^>]*\/?>/g, '');
+
+    // Output stabilized — no more tags to strip
+    if (result === previous) break;
+  }
+
+  return result;
 }
 
 /**

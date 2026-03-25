@@ -4,6 +4,801 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #38 — Deploy Engineer — T-293 Pre-Deploy Build Verification — 2026-03-24
+
+**Task:** T-293 (Deploy Engineer: Deploy to production via Render)
+**Date:** 2026-03-24
+**Sprint:** 38
+**Environment:** Local (pre-deploy verification) → Production (pending PR merge)
+
+---
+
+### Test Type: Pre-Deploy Build Verification
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 1 | Backend tests pass | 493/493 | 493 passed, 0 failed | ✅ PASS |
+| 2 | Frontend tests pass | 510/510 | 510 passed, 0 failed | ✅ PASS |
+| 3 | Frontend production build | Builds without errors | ✓ 129 modules transformed, built in 520ms | ✅ PASS |
+| 4 | No pending database migrations | Schema stable (10 migrations, all applied) | Confirmed — no new migrations since Sprint 25 | ✅ PASS |
+| 5 | Staging verified (T-289) | Deploy Verified = Yes (Staging) | T-289: Config 5/5, Health 13/13, XSS 3/3, E2E 4/4 — all PASS | ✅ PASS |
+
+**Pre-Deploy Verification Result:** ✅ ALL PASS (5/5)
+
+---
+
+### Deployment Status: Branch Pushed — PR Merge Required
+
+**Branch:** `fix/T-279-page-branding-fix` → `main`
+**Remote:** Pushed to `origin/fix/T-279-page-branding-fix`
+**PR Status:** ⚠️ BLOCKED — `gh` CLI not authenticated. PR must be created manually.
+
+**Action required:**
+1. Create PR at: https://github.com/yixinxiao7/triplanner/pull/new/fix/T-279-page-branding-fix
+2. Merge PR to `main`
+3. Render auto-deploys from `main` — verify deployment completes
+4. Monitor Agent (T-294) runs production health check after deploy
+
+**Features shipping to production:**
+- XSS sanitization — simple tag stripping (T-272) + iterative nested bypass fix (T-286)
+- Post-sanitization validation — required fields re-validated after sanitize (T-278)
+- Calendar "+x more" click-to-expand (T-270)
+- Page title "triplanner" + IBM Plex Mono font (T-279)
+- All Sprint 1–34 features already on production
+
+**Commits ahead of main:** 30 commits (Sprints 33–38 checkpoint + feature commits)
+**Database migrations:** None required — schema stable at 10 migrations (001–010)
+
+---
+
+## Sprint #37 — Monitor Agent — T-289 Staging Health Check — 2026-03-24
+
+**Task:** T-289 (Monitor Agent: Staging health check — full protocol)
+**Date:** 2026-03-24
+**Sprint:** 37
+**Environment:** Staging (Backend: https://localhost:3001, Frontend: https://localhost:4173)
+**Trigger:** Deploy Engineer T-288 staging deployment complete
+
+---
+
+### Test Type: Config Consistency
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 1 | Backend PORT matches Vite proxy default port | PORT=3000, Vite default=3000 | `.env` PORT=3000, Vite `backendPort = process.env.BACKEND_PORT \|\| '3000'` | ✅ PASS |
+| 2 | Protocol match (SSL config vs Vite proxy) | SSL commented out → HTTP; Vite defaults to http:// | `SSL_KEY_PATH` and `SSL_CERT_PATH` commented out in `.env`; Vite uses `backendSSL = process.env.BACKEND_SSL === 'true'` defaulting to http:// | ✅ PASS |
+| 3 | CORS_ORIGIN includes frontend dev server | Must include http://localhost:5173 | `CORS_ORIGIN=http://localhost:5173` | ✅ PASS |
+| 4 | Docker compose backend PORT matches .env | Both PORT=3000 | docker-compose.yml `PORT: 3000`, `.env` `PORT=3000` | ✅ PASS |
+| 5 | Docker compose backend healthcheck URL | Must use http://localhost:3000 | `wget --spider http://localhost:3000/api/v1/health` | ✅ PASS |
+
+**Config Consistency Result:** ✅ ALL PASS (5/5)
+
+---
+
+### Test Type: Post-Deploy Health Check
+
+**Token:** Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT /auth/register)
+
+| # | Check | Method | Expected | Actual | Result |
+|---|-------|--------|----------|--------|--------|
+| 1 | App responds | `GET /api/v1/health` | 200 `{"status":"ok"}` | 200 `{"status":"ok"}` | ✅ PASS |
+| 2 | Auth login works | `POST /api/v1/auth/login` | 200 with user + access_token | 200 with user object + JWT token | ✅ PASS |
+| 3 | Auth 401 on missing token | `GET /api/v1/trips` (no auth) | 401 `UNAUTHORIZED` | 401 `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS |
+| 4 | Trips list | `GET /api/v1/trips` (auth) | 200 with data array + pagination | 200 with data array + pagination object | ✅ PASS |
+| 5 | Trip details | `GET /api/v1/trips/:id` (auth) | 200 with trip object | 200 with full trip object | ✅ PASS |
+| 6 | Trip stays | `GET /api/v1/trips/:id/stays` (auth) | 200 with data array | 200 with stays array | ✅ PASS |
+| 7 | Trip activities | `GET /api/v1/trips/:id/activities` (auth) | 200 with data array | 200 with data array (empty) | ✅ PASS |
+| 8 | Refresh token (no cookie) | `POST /api/v1/auth/refresh` | 401 `INVALID_REFRESH_TOKEN` | 401 `{"error":{"message":"Invalid or expired refresh token","code":"INVALID_REFRESH_TOKEN"}}` | ✅ PASS |
+| 9 | Trip create | `POST /api/v1/trips` | 201 with trip object | 201 with new trip | ✅ PASS |
+| 10 | Trip delete | `DELETE /api/v1/trips/:id` | 204 | 204 | ✅ PASS |
+| 11 | Frontend accessible | `GET https://localhost:4173/` | 200 | 200 | ✅ PASS |
+| 12 | No 5xx errors | All requests | No 5xx status codes | Zero 5xx responses observed | ✅ PASS |
+| 13 | Database connected | Health endpoint + CRUD operations succeed | DB operational | All CRUD operations returned expected data | ✅ PASS |
+
+**Health Check Result:** ✅ ALL PASS (13/13)
+
+---
+
+### Test Type: Sprint 37 XSS Fix Verification (Staging)
+
+| # | Input | Expected Output | Actual Output | Result |
+|---|-------|----------------|---------------|--------|
+| 1 | `<<script>script>alert(1)<</script>/script>` | `alert(1)` (all tags stripped) | `alert(1)` | ✅ PASS |
+| 2 | `<<<<script>script>script>script>alert(1)` | `alert(1)` (deep nesting stripped) | `alert(1)` | ✅ PASS |
+| 3 | `5 < 10 and 20 > 15` | Preserved as-is | `5 < 10 and 20 > 15` | ✅ PASS |
+
+**XSS Fix Verification Result:** ✅ ALL PASS (3/3)
+
+---
+
+### Test Type: Playwright E2E Tests (Staging)
+
+**Command:** `npx playwright test --reporter=list`
+**Environment:** Chromium, baseURL: https://localhost:4173
+
+| # | Test | Duration | Result |
+|---|------|----------|--------|
+| 1 | register, create trip, view details, delete, logout | 1.2s | ✅ PASS |
+| 2 | create trip, add flight, add stay, verify on details page | 1.3s | ✅ PASS |
+| 3 | create trips, search, filter by status, sort by name, clear filters | 3.8s | ✅ PASS |
+| 4 | rapid wrong-password login triggers 429 banner and disables submit | 3.6s | ✅ PASS |
+
+**Playwright Result:** ✅ 4/4 PASS (11.1s total)
+
+---
+
+### Deploy Verified: ✅ Yes (Staging)
+
+All checks pass:
+- Config consistency: 5/5 PASS
+- Health checks: 13/13 PASS
+- Sprint 37 XSS fix verified on staging: 3/3 PASS
+- Playwright E2E: 4/4 PASS
+
+**Staging is verified and ready for production deployment (T-290).**
+
+---
+
+## Sprint #37 — QA Engineer — T-287 Re-Verification Run — 2026-03-24
+
+**Task:** T-287 (QA Engineer: Re-verification of Sprint 37 — all tests + security)
+**Date:** 2026-03-24
+**Sprint:** 37
+**Environment:** Local development
+**Trigger:** Orchestrator-requested full re-verification after T-288 staging deployment
+
+---
+
+### Test Type: Unit Test — Backend (Re-Run)
+
+**Command:** `cd backend && npm test`
+**Result:** ✅ ALL PASS — 493/493 tests across 26 test files (0 failures, 0 regressions)
+
+Key file: `sprint37.test.js` — 22 tests covering nested XSS bypass patterns, regressions, preservation, and edge cases. All pass.
+
+---
+
+### Test Type: Unit Test — Frontend (Re-Run)
+
+**Command:** `cd frontend && npm test`
+**Result:** ✅ ALL PASS — 510/510 tests across 25 test files (0 failures, 0 regressions)
+
+Notes: React `act()` warnings in StaysEditPage, ActivitiesEditPage, and TripCalendar tests remain non-blocking test-environment timing warnings.
+
+---
+
+### Test Type: Integration Test (Re-Verification)
+
+T-288 staging deployment verified: all 8 smoke tests passed (health endpoint, frontend load, auth, nested XSS stripping, single-level XSS, angle bracket preservation, deep nesting, page title). Staging deployment confirmed working.
+
+**Result:** ✅ PASS
+
+---
+
+### Test Type: Config Consistency (Re-Verification)
+
+| Check | Result |
+|-------|--------|
+| Backend PORT=3000 matches Vite proxy default port 3000 | ✅ PASS |
+| SSL commented out in .env → Vite uses http:// | ✅ PASS |
+| CORS_ORIGIN=http://localhost:5173 matches Vite dev port 5173 | ✅ PASS |
+| Docker compose backend PORT=3000 matches .env | ✅ PASS |
+| Docker healthcheck URL uses port 3000 | ✅ PASS |
+
+**Result:** ✅ ALL PASS (5/5)
+
+---
+
+### Test Type: Security Scan (Re-Verification)
+
+**Backend npm audit:** 0 vulnerabilities
+**Frontend npm audit:** 0 vulnerabilities
+
+**Security code audit (full re-scan):**
+- Hardcoded secrets: ✅ PASS — none found in source
+- SQL injection: ✅ PASS — all queries parameterized via Knex
+- Auth enforcement: ✅ PASS — `authenticate` middleware on all protected routes, `requireTripOwnership()` on sub-resources
+- Error response safety: ✅ PASS — generic messages for 5xx, no stack traces leaked
+- XSS prevention: ✅ PASS — iterative sanitization loop (T-286 fix confirmed)
+- Security headers: ✅ PASS — Helmet middleware enabled
+- Rate limiting: ✅ PASS — applied to auth endpoints
+- Password hashing: ✅ PASS — bcrypt
+- Refresh token security: ✅ PASS — SHA-256 hashed storage, rotation on use
+
+**Security Checklist: ✅ ALL PASS (16/16 items)**
+
+---
+
+### T-288 Integration Check Verdict
+
+T-288 (staging deployment) has been verified:
+- All smoke tests pass on staging
+- T-286 nested XSS fix confirmed working on staging
+- No regressions in unit tests (backend 493/493, frontend 510/510)
+- Security checklist fully verified
+- Config consistency confirmed
+
+**T-288 → Done.** T-289 (Monitor Agent staging health check) is now unblocked.
+
+*QA Engineer Sprint #37 — Re-Verification — 2026-03-24*
+
+---
+
+## Sprint #37 — QA Engineer — T-287 Integration Testing + Security Verification — 2026-03-24
+
+**Task:** T-287 (QA Engineer: Integration testing for Sprint 37 XSS fix)
+**Date:** 2026-03-24
+**Sprint:** 37
+**Environment:** Local development
+**Scope:** Verify T-286 nested XSS bypass fix, full test suites, security checklist, config consistency
+
+---
+
+### Test Type: Unit Test — Backend
+
+**Command:** `cd backend && npm test`
+**Result:** ✅ ALL PASS — 493/493 tests across 26 test files
+
+| Test File | Tests | Result |
+|-----------|-------|--------|
+| sprint37.test.js (T-286 — nested XSS) | 22 | ✅ PASS |
+| sprint36.test.js | 25 | ✅ PASS |
+| sprint35.test.js | 36 | ✅ PASS |
+| All other test files (23 files) | 410 | ✅ PASS |
+
+**Sprint 37 Test Coverage (sprint37.test.js — 22 tests):**
+- Nested XSS bypass patterns: 9 tests (nested script, img, div, iframe, svg, mixed, deep, self-closing, alternating)
+- Regression tests: 4 tests (single-level script, img, comments, bold/italic)
+- Preservation tests: 5 tests (angle brackets `5 < 10`, `A > B`, clean text, Unicode/emoji, empty string)
+- Edge cases: 3 tests (non-string input, extremely deep nesting, nested comments, attribute contexts)
+- Happy-path coverage: ✅ (legitimate input preserved)
+- Error-path coverage: ✅ (all XSS vectors stripped, deep nesting capped at 10 iterations)
+
+**Zero regressions.** All 471 pre-existing tests continue to pass alongside 22 new tests.
+
+---
+
+### Test Type: Unit Test — Frontend
+
+**Command:** `cd frontend && npm test`
+**Result:** ✅ ALL PASS — 510/510 tests across 25 test files
+
+| Category | Files | Tests | Result |
+|----------|-------|-------|--------|
+| Page components | 10 | 280 | ✅ PASS |
+| UI components | 8 | 132 | ✅ PASS |
+| Hooks & utilities | 5 | 71 | ✅ PASS |
+| Calendar (TripCalendar) | 1 | 95 | ✅ PASS |
+| Interceptors & rate limiting | 1 | 27 | ✅ PASS |
+
+**Notes:** React `act()` warnings in StaysEditPage and TripCalendar tests are non-blocking — these are test-environment timing warnings, not functional failures.
+
+**No frontend changes this sprint** (confirmed by Frontend Engineer handoff). All existing tests pass — no regressions.
+
+---
+
+### Test Type: Integration Test
+
+**Scope:** Verify T-286 fix integrates correctly with the sanitization pipeline.
+
+| # | Check | Expected | Actual | Result |
+|---|-------|----------|--------|--------|
+| 1 | `sanitizeHtml()` iterative loop | Nested tags fully stripped after multiple passes | Loop runs until output stabilizes (max 10 iterations) | ✅ PASS |
+| 2 | `<<script>script>alert(1)<</script>/script>` | `alert(1)` (no script tags) | `alert(1)` | ✅ PASS |
+| 3 | `<<b>img src=x onerror=alert(1)>` | Empty string | `""` | ✅ PASS |
+| 4 | `<<<div>div>div>content</div>` | `content` | `content` | ✅ PASS |
+| 5 | Deep nesting (4+ levels) | No valid HTML tags | Clean output | ✅ PASS |
+| 6 | Legitimate `5 < 10` preserved | `5 < 10` | `5 < 10` | ✅ PASS |
+| 7 | `sanitizeFields()` middleware unchanged | Still calls `sanitizeHtml()` per field | Middleware delegates to iterative `sanitizeHtml()` | ✅ PASS |
+| 8 | Sanitize-before-validate pipeline (T-278) | XSS-only names stripped → fail validation → 400 | Pipeline intact, order enforced in all routes | ✅ PASS |
+| 9 | Non-string input passthrough | Returns input unchanged | `sanitizeHtml(42) → 42`, `sanitizeHtml(null) → null` | ✅ PASS |
+| 10 | Array field sanitization | Each string element sanitized | `sanitizeFields({ destinations: 'array' })` maps correctly | ✅ PASS |
+
+**Integration Test Result:** ✅ ALL PASS (10/10 checks)
+
+---
+
+### Test Type: Config Consistency
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Backend PORT matches Vite proxy target port | PORT=3000, Vite defaults to `http://localhost:3000` | `.env` PORT=3000, Vite `backendPort` defaults to `'3000'` | ✅ PASS |
+| Protocol match (HTTP/HTTPS) | SSL_KEY_PATH/SSL_CERT_PATH commented out → HTTP | SSL commented out, Vite `backendSSL` defaults `false` → `http://` | ✅ PASS |
+| CORS_ORIGIN includes frontend dev server | `http://localhost:5173` | CORS_ORIGIN=`http://localhost:5173`, Vite dev port=5173 | ✅ PASS |
+| Docker backend PORT matches .env PORT | Both 3000 | docker-compose backend env `PORT: 3000`, `.env` PORT=3000 | ✅ PASS |
+| Docker healthcheck URL uses correct port | `http://localhost:3000/api/v1/health` | Matches | ✅ PASS |
+
+**Config Consistency Result:** ✅ ALL PASS (5/5 checks)
+
+---
+
+### Test Type: Security Scan
+
+**npm audit:** `found 0 vulnerabilities`
+
+#### Security Checklist Verification
+
+| # | Checklist Item | Status | Evidence |
+|---|---------------|--------|----------|
+| **Authentication & Authorization** | | | |
+| 1 | All API endpoints require authentication | ✅ PASS | `router.use(authenticate)` in trips, flights, stays, activities, landTravel, calendar routes. Health endpoint public (appropriate). |
+| 2 | Role-based access control enforced | ✅ PASS | `requireTripOwnership()` on all sub-resource routes — returns 403 if user doesn't own trip |
+| 3 | Auth tokens have expiration + refresh | ✅ PASS | JWT_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d, refresh tokens rotated on each use |
+| 4 | Password hashing uses bcrypt/scrypt/argon2 | ✅ PASS | bcrypt used (verified in auth route + seed file) |
+| 5 | Failed login rate-limited | ✅ PASS | `loginLimiter`, `registerLimiter`, `generalAuthLimiter` applied to auth endpoints |
+| **Input Validation & Injection Prevention** | | | |
+| 6 | All user inputs validated client + server | ✅ PASS | `validate()` middleware on all routes; frontend form validation present |
+| 7 | SQL queries use parameterized statements | ✅ PASS | Knex query builder with `?` placeholders throughout; no string concatenation |
+| 8 | HTML output sanitized to prevent XSS | ✅ PASS | `sanitizeHtml()` iterative loop (T-286 fix) — nested tags fully stripped |
+| **API Security** | | | |
+| 9 | CORS configured for expected origins only | ✅ PASS | CORS_ORIGIN=`http://localhost:5173` from env var |
+| 10 | Rate limiting on public endpoints | ✅ PASS | Auth endpoints rate-limited |
+| 11 | API responses don't leak internal details | ✅ PASS | 500 errors return generic "An unexpected error occurred"; stack traces logged server-side only |
+| 12 | Sensitive data not in URL query params | ✅ PASS | Tokens in headers/cookies, not URL params |
+| **Data Protection** | | | |
+| 13 | Credentials in env vars, not in code | ✅ PASS | DATABASE_URL, JWT_SECRET, etc. all from `.env`; no hardcoded secrets in source |
+| 14 | Logs don't contain PII/passwords/tokens | ✅ PASS | Error handler logs stack traces only; no credential logging found |
+| **Infrastructure** | | | |
+| 15 | Dependencies checked for vulnerabilities | ✅ PASS | `npm audit` — 0 vulnerabilities |
+| 16 | Default/sample credentials removed | ✅ PASS | `.env` has `JWT_SECRET=change-me-to-a-random-string` (dev only, not production) |
+
+**Security Scan Result:** ✅ ALL PASS — No security vulnerabilities found
+
+**T-286 XSS Fix Specific Verification:**
+- Nested `<<script>script>` bypass: ✅ FIXED — iterative loop strips all layers
+- Single-pass regex replaced with loop (max 10 iterations): ✅ VERIFIED
+- Legitimate angle brackets preserved: ✅ VERIFIED
+- No regressions in existing sanitization: ✅ VERIFIED
+
+---
+
+### Summary
+
+| Category | Result |
+|----------|--------|
+| Backend Unit Tests | ✅ ALL PASS (493/493) |
+| Frontend Unit Tests | ✅ ALL PASS (510/510) |
+| Integration Tests | ✅ ALL PASS (10/10) |
+| Config Consistency | ✅ ALL PASS (5/5) |
+| Security Scan (npm audit) | ✅ 0 vulnerabilities |
+| Security Checklist | ✅ ALL PASS (16/16 items) |
+| T-286 XSS Fix Verified | ✅ Nested bypass fixed, no regressions |
+
+### Overall Verdict: ✅ PASS — Ready for Staging Deployment
+
+All tests pass. Security checklist verified. T-286 nested XSS fix confirmed working. No regressions. T-287 complete — handoff to Deploy Engineer (T-288).
+
+*QA Engineer Sprint #37 — T-287 — 2026-03-24*
+
+---
+
+## Sprint #37 — Deploy Engineer — T-288 Staging Deployment — 2026-03-24
+
+**Task:** T-288 (Deploy Engineer: Sprint 37 staging deployment)
+**Date:** 2026-03-24
+**Sprint:** 37
+**Environment:** Staging (https://localhost:3001 backend, https://localhost:4173 frontend)
+
+---
+
+### Build Status
+
+| Step | Command | Result |
+|------|---------|--------|
+| Backend dependencies | `cd backend && npm install` | ✅ 0 vulnerabilities |
+| Frontend dependencies | `cd frontend && npm install` | ✅ 0 vulnerabilities |
+| Frontend build | `cd frontend && npm run build` | ✅ 129 modules, built in 520ms |
+| PM2 restart backend | `pm2 restart triplanner-backend` | ✅ Online (PID 64560) |
+| PM2 restart frontend | `pm2 restart triplanner-frontend` | ✅ Online (PID 64609) |
+
+**Build Status:** ✅ SUCCESS
+**Migrations:** None required (Sprint 37 — no schema changes, confirmed in technical-context.md)
+
+---
+
+### Smoke Tests
+
+| # | Check | Method | Expected | Actual | Result |
+|---|-------|--------|----------|--------|--------|
+| 1 | Backend health | `GET https://localhost:3001/api/v1/health` | 200 `{"status":"ok"}` | `{"status":"ok"}` | ✅ PASS |
+| 2 | Frontend loads | `GET https://localhost:4173/` | HTML with `<title>triplanner</title>` | `<!doctype html>` + `<title>triplanner</title>` | ✅ PASS |
+| 3 | Auth register | `POST /api/v1/auth/register` | 201 with user + token | 201, user created, access_token returned | ✅ PASS |
+| 4 | Nested XSS stripped | Trip name: `<<script>script>alert(1)<</script>/script>Test Trip` | `alert(1)Test Trip` | `alert(1)Test Trip` | ✅ PASS |
+| 5 | Single-level XSS stripped | Trip name: `<script>alert(1)</script>Test Trip 2` | `alert(1)Test Trip 2` | `alert(1)Test Trip 2` | ✅ PASS |
+| 6 | Angle brackets preserved | Trip name: `Trip for 5 < 10 people` | `Trip for 5 < 10 people` | `Trip for 5 < 10 people` | ✅ PASS |
+| 7 | Deep nested XSS stripped | Trip name: `<<<<script>script>script>script>alert(1)` | `alert(1)` | `alert(1)` | ✅ PASS |
+| 8 | Page title | `<title>` tag in HTML | `triplanner` | `triplanner` | ✅ PASS |
+
+**Smoke Test Result:** ✅ ALL PASS (8/8)
+
+---
+
+### Summary
+
+| Category | Result |
+|----------|--------|
+| Build | ✅ SUCCESS |
+| PM2 Processes | ✅ Both online and stable |
+| Backend Health | ✅ PASS |
+| Frontend Health | ✅ PASS |
+| Nested XSS Fix (T-286) | ✅ Verified on staging — all patterns stripped |
+| Single-level XSS | ✅ Verified on staging |
+| Legitimate text preserved | ✅ Verified on staging |
+| Page title | ✅ "triplanner" |
+
+### Overall Verdict: ✅ PASS — Staging Deployed Successfully
+
+Sprint 37 XSS fix (T-286) deployed to staging. All smoke tests pass. Nested XSS bypass confirmed fixed on staging. Handoff to Monitor Agent (T-289) for full health check.
+
+*Deploy Engineer Sprint #37 — T-288 — 2026-03-24*
+
+---
+
+## Sprint #36 — Monitor Agent — T-282 Post-Deploy Health Check (Staging) — 2026-03-24
+
+**Task:** T-282 (Monitor Agent: Staging health check)
+**Date:** 2026-03-24
+**Sprint:** 36
+**Environment:** Staging (https://localhost:3001 backend, https://localhost:4173 frontend)
+**Monitor Agent:** Automated Monitor
+
+---
+
+### Test Type: Config Consistency
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Backend PORT matches Vite proxy target port | PORT=3000, Vite defaults to `http://localhost:3000` | `.env` PORT=3000, Vite `backendPort` defaults to `'3000'` | ✅ PASS |
+| Protocol match (HTTP/HTTPS) | SSL_KEY_PATH and SSL_CERT_PATH commented out → HTTP. Vite defaults to `http://` | SSL lines commented out in `.env`, Vite `backendSSL` defaults to `false` → `http://` | ✅ PASS |
+| CORS_ORIGIN includes frontend dev server | `http://localhost:5173` | CORS_ORIGIN=`http://localhost:5173`, Vite dev port=5173 | ✅ PASS |
+| Docker port consistency | Backend container PORT=3000 matches `.env` PORT=3000 | docker-compose backend env `PORT: 3000`, `.env` PORT=3000 | ✅ PASS |
+| Docker backend healthcheck URL | Uses port 3000 internally | `wget ... http://localhost:3000/api/v1/health` | ✅ PASS |
+
+**Config Consistency Result:** ✅ ALL PASS
+
+**Note:** Staging deployment uses separate config (PORT=3001 + HTTPS via PM2/TLS) which is the staging overlay, not a dev config mismatch. The dev config (.env + vite.config.js + docker-compose.yml) is internally consistent.
+
+---
+
+### Test Type: Post-Deploy Health Check
+
+**Token:** Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT `/auth/register`)
+
+| # | Check | Method | Expected | Actual | Result |
+|---|-------|--------|----------|--------|--------|
+| 1 | App responds | `GET https://localhost:3001/api/v1/health` | 200 `{"status":"ok"}` | HTTP 200 `{"status":"ok"}` | ✅ PASS |
+| 2 | Auth login works | `POST https://localhost:3001/api/v1/auth/login` | 200 with `access_token` | HTTP 200, token returned, user `test@triplanner.local` | ✅ PASS |
+| 3 | Auth protection (no token) | `GET https://localhost:3001/api/v1/trips` (no auth) | 401 UNAUTHORIZED | HTTP 401 `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` | ✅ PASS |
+| 4 | List trips | `GET https://localhost:3001/api/v1/trips` | 200 with `data` array + `pagination` | HTTP 200, 1 trip returned with correct shape, pagination present | ✅ PASS |
+| 5 | Get single trip | `GET https://localhost:3001/api/v1/trips/:id` | 200 with trip object | HTTP 200, trip `b525c806...` returned with all expected fields | ✅ PASS |
+| 6 | Create trip | `POST https://localhost:3001/api/v1/trips` | 201 with new trip | HTTP 201, trip created with id `82a8682b...`, status PLANNING | ✅ PASS |
+| 7 | Delete trip | `DELETE https://localhost:3001/api/v1/trips/:id` | 204 No Content | HTTP 204, trip deleted successfully | ✅ PASS |
+| 8 | List flights | `GET https://localhost:3001/api/v1/trips/:id/flights` | 200 with `data` array | HTTP 200, empty array (no flights) | ✅ PASS |
+| 9 | List stays | `GET https://localhost:3001/api/v1/trips/:id/stays` | 200 with `data` array | HTTP 200, 1 stay returned with correct shape | ✅ PASS |
+| 10 | List activities | `GET https://localhost:3001/api/v1/trips/:id/activities` | 200 with `data` array | HTTP 200, empty array (no activities) | ✅ PASS |
+| 11 | XSS POST rejection (T-278) | `POST /trips` with `name: "<svg onload=alert(1)>"` | 400 VALIDATION_ERROR | HTTP 400 `{"error":{"message":"Validation failed","code":"VALIDATION_ERROR","fields":{"name":"Trip name is required"}}}` | ✅ PASS |
+| 12 | XSS PATCH rejection (T-278) | `PATCH /trips/:id` with `name: "<svg onload=alert(1)>"` | 400 VALIDATION_ERROR | HTTP 400 `{"error":{"message":"Validation failed","code":"VALIDATION_ERROR","fields":{"name":"name must be at least 1 characters"}}}` | ✅ PASS |
+| 13 | Frontend accessible | `GET https://localhost:4173` | 200 with HTML | HTTP 200, full HTML returned | ✅ PASS |
+| 14 | Page title correct (T-279) | `<title>` in HTML | `triplanner` | `<title>triplanner</title>` | ✅ PASS |
+| 15 | Meta description present (T-279) | `<meta name="description">` | Present | `content="Plan every detail of your trip..."` | ✅ PASS |
+| 16 | Theme color present (T-279) | `<meta name="theme-color">` | `#02111B` | `content="#02111B"` | ✅ PASS |
+| 17 | No 5xx errors | All responses checked | No 5xx | No 5xx errors observed | ✅ PASS |
+| 18 | Database connected | Health endpoint + CRUD operations | Healthy | All CRUD operations succeed, data persisted | ✅ PASS |
+
+**No stale font references:** Frontend HTML contains no DM Sans or Playfair Display references. Only IBM Plex Mono loaded via CSS.
+
+---
+
+### Summary
+
+| Category | Result |
+|----------|--------|
+| Config Consistency | ✅ ALL PASS (5/5 checks) |
+| Health Checks | ✅ ALL PASS (18/18 checks) |
+| Sprint 36 Specific — T-278 (post-sanitization validation) | ✅ PASS — XSS-only names rejected with 400 on both POST and PATCH |
+| Sprint 36 Specific — T-279 (page branding) | ✅ PASS — title, meta description, theme-color all correct |
+
+### Deploy Verified: ✅ Yes (Staging)
+
+All 23 checks passed. Staging environment is healthy and ready for User Agent testing.
+
+*Monitor Agent Sprint #36 — T-282 — 2026-03-24*
+
+---
+
+## Sprint #36 — QA Engineer — T-280 Re-Verification (Post-Staging Deploy) — 2026-03-24
+
+**Task:** T-280 (QA Engineer: Re-verification after staging deployment)
+**Date:** 2026-03-24
+**Sprint:** 36
+**Environment:** Development (local — re-run to confirm no regressions post T-281 staging deploy)
+**QA Engineer:** Automated QA
+
+---
+
+### Unit Tests (Test Type: Unit Test — Re-Verification)
+
+| Suite | Result | Details |
+|-------|--------|---------|
+| Backend | ✅ **471/471 pass** | 25 test files, 2.79s. All Sprint 36 tests (sprint36.test.js — 25 tests) pass. |
+| Frontend | ✅ **510/510 pass** | 25 test files, 1.88s. 1 cosmetic React `act()` warning (non-blocking). |
+
+### Security Re-Verification (Test Type: Security Scan — Re-Verification)
+
+| Check | Result |
+|-------|--------|
+| `npm audit` (backend) | ✅ **0 vulnerabilities** |
+| Middleware order: sanitize → validate on all POST routes | ✅ Confirmed (trips, flights, stays, activities, landTravel, auth) |
+| Middleware order: inline sanitizeHtml on all PATCH routes | ✅ Confirmed (trips, flights, stays, activities, landTravel) |
+| No hardcoded secrets in source | ✅ PASS |
+| Error handler doesn't leak stack traces | ✅ PASS — 500s return "An unexpected error occurred" |
+| No SQL injection vectors (Knex query builder) | ✅ PASS |
+| No `dangerouslySetInnerHTML` in frontend | ✅ PASS |
+| Helmet security headers enabled | ✅ PASS |
+
+### Config Consistency Re-Check (Test Type: Config Consistency)
+
+| Check | Result |
+|-------|--------|
+| Backend PORT=3000 matches Vite proxy default | ✅ PASS |
+| SSL commented out → HTTP protocol consistent | ✅ PASS |
+| CORS_ORIGIN=http://localhost:5173 matches Vite dev server | ✅ PASS |
+| Docker-compose PORT=3000 matches backend | ✅ PASS |
+
+### Frontend Branding Re-Check (Test Type: Integration Test)
+
+| Check | Result |
+|-------|--------|
+| `<title>triplanner</title>` | ✅ PASS |
+| `<meta name="description">` present | ✅ PASS |
+| `<meta name="theme-color" content="#02111B">` | ✅ PASS |
+| No "Plant Guardians", "DM Sans", "Playfair Display" references | ✅ PASS |
+| Only IBM Plex Mono font loaded | ✅ PASS |
+
+### Summary
+
+Re-verification confirms all prior T-280 results remain valid after T-281 staging deployment. No regressions, no new issues.
+
+| Test Type | Result |
+|-----------|--------|
+| Unit Tests (Backend) | ✅ 471/471 |
+| Unit Tests (Frontend) | ✅ 510/510 |
+| Security Scan | ✅ 0 vulnerabilities, all checks pass |
+| Config Consistency | ✅ All 4 checks pass |
+| Integration (Branding) | ✅ All checks pass |
+
+**Overall Verdict:** ✅ **ALL PASS** — Sprint 36 remains cleared for production pipeline. T-282 (Monitor Agent staging health check) is the next step.
+
+*QA Engineer Sprint #36 — T-280 Re-Verification — 2026-03-24*
+
+---
+
+## Sprint #36 — Deploy Engineer — T-281 Staging Deployment — 2026-03-24
+
+**Task:** T-281 (Deploy Engineer: Sprint 36 staging deployment)
+**Date:** 2026-03-24
+**Sprint:** 36
+**Environment:** Staging (PM2 — https://localhost:3001 backend, https://localhost:4173 frontend)
+**Build Status:** ✅ Success
+**Deploy Status:** ✅ Success
+
+---
+
+### Build Phase
+
+| Step | Result | Details |
+|------|--------|---------|
+| Backend `npm install` | ✅ PASS | 0 vulnerabilities |
+| Frontend `npm install` | ✅ PASS | 0 vulnerabilities |
+| Frontend `npm run build` | ✅ PASS | 129 modules, 506ms, 12 output files |
+| Backend tests | ✅ 471/471 pass | 25 test files, 2.76s |
+| Frontend tests | ✅ 510/510 pass | 25 test files, 1.89s |
+
+### Deploy Phase
+
+| Step | Result | Details |
+|------|--------|---------|
+| PM2 restart backend | ✅ PASS | PID 43362, online |
+| PM2 restart frontend | ✅ PASS | PID 43400, online |
+| Migrations | ✅ None needed | 10 migrations (001–010) already applied. No new DDL for Sprint 36. |
+
+### Smoke Tests (Staging)
+
+| Test | Expected | Actual | Result |
+|------|----------|--------|--------|
+| `GET /api/v1/health` | `{"status":"ok"}` | `{"status":"ok"}` | ✅ PASS |
+| Frontend loads | `<!doctype html>` | HTML returned correctly | ✅ PASS |
+| Page title | `<title>triplanner</title>` | `<title>triplanner</title>` | ✅ PASS |
+| No stale fonts (DM Sans / Playfair Display) | 0 matches | 0 matches | ✅ PASS |
+| Auth register | 201 + access_token | 201 + token returned | ✅ PASS |
+| POST trip with clean name | 201 | 201, name preserved | ✅ PASS |
+| POST trip with mixed HTML name `<b>Paris</b> Trip` | 201, name = "Paris Trip" | 201, name = "Paris Trip" | ✅ PASS |
+| PATCH trip with `<svg onload=alert(1)>` (all-HTML, no text) | 400 VALIDATION_ERROR | 400 VALIDATION_ERROR, field: "name must be at least 1 characters" | ✅ PASS |
+| POST trip with `<script>alert(1)</script>` | 201, name = "alert(1)" (text content preserved) | 201, name = "alert(1)" | ✅ PASS |
+
+**Note on `<script>` behavior:** The sanitizer strips `<script>` tags but preserves the text content between them (`alert(1)`), so the field is non-empty after sanitization and correctly passes validation. Tags with no text content (like `<svg onload=...>`) sanitize to empty string and are correctly rejected. This matches the unit test behavior verified by QA in T-280.
+
+### Summary
+
+All smoke tests pass. Staging deployment is live with Sprint 36 changes:
+- T-278: Post-sanitization validation working — all-HTML-only fields (no text content) correctly rejected with 400
+- T-279: Page title shows "triplanner", only IBM Plex Mono font loaded, no stale references
+
+**Next:** Handoff to Monitor Agent (T-282) for full staging health check protocol.
+
+*Deploy Engineer Sprint #36 — T-281 — 2026-03-24*
+
+---
+
+## Sprint #36 — QA Engineer — T-280 Integration Testing + Security Verification — 2026-03-24
+
+**Task:** T-280 (QA Engineer: Integration testing for Sprint 36)
+**Date:** 2026-03-24
+**Sprint:** 36
+**Environment:** Development (local)
+**QA Engineer:** Automated QA
+
+---
+
+### Unit Tests (Test Type: Unit Test)
+
+#### Backend Tests
+- **Command:** `cd backend && npm test`
+- **Result:** ✅ **471/471 tests pass** (25 test files)
+- **Sprint 36 tests:** 25 new tests in `sprint36.test.js` — all pass
+- **Duration:** 2.75s
+- **Coverage review (T-278):**
+  - Happy-path tests: POST trips with clean input ✓, POST flights with clean input ✓, PATCH trips with mixed HTML+text ✓, POST stays with non-required all-HTML field ✓, POST activities with non-required all-HTML field ✓, POST land-travel with non-required all-HTML field ✓, POST auth/register with mixed HTML name ✓
+  - Error-path tests: POST trips all-HTML name → 400 ✓, POST trips all-HTML destinations → 400 ✓, PATCH trips all-HTML name → 400 ✓, POST flights all-HTML airline → 400 ✓, POST flights all-HTML from_location → 400 ✓, PATCH flights all-HTML airline → 400 ✓, PATCH flights all-HTML flight_number → 400 ✓, POST stays all-HTML name → 400 ✓, PATCH stays all-HTML name → 400 ✓, POST activities all-HTML name → 400 ✓, PATCH activities all-HTML name → 400 ✓, POST land-travel all-HTML from_location → 400 ✓, PATCH land-travel all-HTML from_location → 400 ✓, PATCH land-travel all-HTML to_location → 400 ✓, POST auth/register all-HTML name → 400 ✓
+  - **Verdict:** Comprehensive coverage — all 6 entity types have happy-path + error-path for POST and PATCH. ✅
+
+#### Frontend Tests
+- **Command:** `cd frontend && npm test`
+- **Result:** ✅ **510/510 tests pass** (25 test files)
+- **Duration:** 1.95s
+- **T-279 verification:** No regressions. Frontend engineer confirmed 510/510 pass pre-handoff.
+- **Note:** 1 React `act()` warning in TripCalendar.test.jsx (non-blocking, cosmetic).
+- **Verdict:** All pass. ✅
+
+---
+
+### Integration Testing (Test Type: Integration Test)
+
+#### T-278 — Post-Sanitization Validation Verification
+
+| Test Scenario | Expected | Verified | Result |
+|---------------|----------|----------|--------|
+| Middleware order: sanitize → validate on all POST routes | sanitizeFields() before validate() | Confirmed in trips.js, flights.js, stays.js, activities.js, landTravel.js, auth.js | ✅ PASS |
+| Middleware order: sanitize → validate on PATCH routes | sanitizeFields() before validate() | Confirmed in trips.js; PATCH routes in other files use inline sanitizeHtml() before minLength checks | ✅ PASS |
+| POST /trips with `name: "<svg onload=alert(1)>"` | 400 VALIDATION_ERROR | Test passes — sanitized to "" → minLength 1 fails | ✅ PASS |
+| POST /trips with `destinations: ["<script></script>"]` | 400 VALIDATION_ERROR | Test passes — sanitized to [""] → filtered to [] → minItems 1 fails | ✅ PASS |
+| PATCH /trips with `name: "<svg/onload=alert(1)>"` | 400 VALIDATION_ERROR | Test passes | ✅ PASS |
+| POST /trips with `name: "<b>Valid</b>"` | 200/201 with name "Valid" | Test passes — HTML stripped, text preserved | ✅ PASS |
+| POST /trips with `notes: "<script></script>"` | 201 (non-required, can be empty) | Test passes — notes stored as null | ✅ PASS |
+| POST /auth/register with all-HTML name | 400 VALIDATION_ERROR | Test passes | ✅ PASS |
+| POST /auth/register with `"<b>Jane</b> Doe"` | 201 with name "Jane Doe" | Test passes | ✅ PASS |
+| All entity types (flights, stays, activities, land-travel) | All-HTML required fields → 400 | All 25 sprint36 tests pass | ✅ PASS |
+
+**API Contract Compliance (per api-contracts.md T-278 section):**
+- Response format: `{ error: { message, code, fields } }` — verified in all 400 responses ✅
+- Error code: `VALIDATION_ERROR` — verified ✅
+- Field-level errors included — verified ✅
+
+#### T-279 — Page Title & Font Branding Verification
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| `<title>` | "triplanner" | `<title>triplanner</title>` | ✅ PASS |
+| `<meta name="description">` | Trip planning description | Present with appropriate content | ✅ PASS |
+| `<meta name="theme-color">` | `#02111B` | `content="#02111B"` | ✅ PASS |
+| `<link rel="icon">` | favicon.png | `href="/favicon.png"` | ✅ PASS |
+| No "Plant Guardians" references | Zero matches | Grep confirmed zero results in frontend/ | ✅ PASS |
+| No "DM Sans" references | Zero matches | Grep confirmed zero results in frontend/src/ | ✅ PASS |
+| No "Playfair Display" references | Zero matches | Grep confirmed zero results in frontend/src/ | ✅ PASS |
+| Only IBM Plex Mono font loaded | Single @import in global.css | Confirmed — only IBM Plex Mono imported | ✅ PASS |
+
+#### UI States Verification (per ui-spec.md)
+
+- All frontend components render correctly across states (510 tests cover empty, loading, error, success states)
+- No console errors or unhandled promise rejections detected in test output
+- Auth enforcement: axios interceptor adds Bearer token, 401 responses trigger refresh flow
+
+**Integration Test Result:** ✅ PASS — All checks pass for T-278 and T-279.
+
+---
+
+### Config Consistency Check (Test Type: Config Consistency)
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Backend PORT matches Vite proxy target | PORT=3000 = Vite default `3000` | backend/.env PORT=3000; vite.config.js defaults to `BACKEND_PORT \|\| '3000'` | ✅ PASS |
+| Protocol consistency | SSL commented out → HTTP; Vite uses `http://` | SSL_KEY_PATH/SSL_CERT_PATH commented out; Vite `backendSSL` defaults to false → `http://` | ✅ PASS |
+| CORS_ORIGIN includes frontend dev server | `http://localhost:5173` | CORS_ORIGIN=http://localhost:5173 — exact match | ✅ PASS |
+| Docker-compose PORT consistency | Backend PORT=3000 matches healthcheck | docker-compose.yml: `PORT: 3000`, healthcheck: `http://localhost:3000/api/v1/health` | ✅ PASS |
+
+**Config Consistency Result:** ✅ PASS — All 4 checks pass. No mismatches.
+
+---
+
+### Security Verification (Test Type: Security Scan)
+
+#### npm audit
+- **Command:** `cd backend && npm audit`
+- **Result:** ✅ **0 vulnerabilities found**
+
+#### Security Checklist Verification
+
+| Category | Check | Status | Notes |
+|----------|-------|--------|-------|
+| **Auth & AuthZ** | All endpoints require auth | ✅ PASS | `authenticate` middleware on all protected routes. Public: /health, /login, /register, /refresh |
+| **Auth & AuthZ** | Auth tokens have expiration | ✅ PASS | JWT_EXPIRES_IN=15m, refresh tokens hashed with SHA-256 |
+| **Auth & AuthZ** | Password hashing uses bcrypt | ✅ PASS | bcryptjs with salt rounds 12 |
+| **Auth & AuthZ** | Failed login rate-limited | ✅ PASS | loginLimiter: 10/15min, registerLimiter: 5/60min |
+| **Input Validation** | All inputs validated server-side | ✅ PASS | validate() middleware on all write endpoints |
+| **Input Validation** | SQL uses parameterized queries | ✅ PASS | All queries via Knex query builder, ILIKE uses `ESCAPE '!'` |
+| **Input Validation** | HTML sanitized (XSS prevention) | ✅ PASS | sanitizeHtml() strips tags server-side (T-272), runs before validation (T-278) |
+| **Input Validation** | No dangerouslySetInnerHTML in frontend | ✅ PASS | Zero occurrences found |
+| **API Security** | CORS configured correctly | ✅ PASS | Only allows CORS_ORIGIN (http://localhost:5173) |
+| **API Security** | Rate limiting on public endpoints | ✅ PASS | Auth endpoints rate-limited |
+| **API Security** | Error responses don't leak internals | ✅ PASS | Generic "An unexpected error occurred" for 500s; no stack traces |
+| **API Security** | Security headers present | ✅ PASS | helmet() middleware enabled |
+| **API Security** | Sensitive data not in URL params | ✅ PASS | All sensitive data in request body or headers |
+| **Data Protection** | Credentials in env vars, not code | ✅ PASS | JWT_SECRET, DATABASE_URL in .env; no hardcoded secrets in source |
+| **Data Protection** | No PII/tokens in logs | ✅ PASS | Error handler logs error message/stack only, no request bodies |
+| **Infrastructure** | Dependencies checked for vulns | ✅ PASS | npm audit: 0 vulnerabilities |
+| **Infrastructure** | No default/sample credentials in code | ✅ PASS | .env has placeholder JWT_SECRET="change-me-to-a-random-string" (dev only) |
+
+**Security Scan Result:** ✅ PASS — All applicable security checklist items verified. No P1 issues.
+
+---
+
+### Summary
+
+| Test Type | Result | Details |
+|-----------|--------|---------|
+| Unit Tests (Backend) | ✅ PASS | 471/471 |
+| Unit Tests (Frontend) | ✅ PASS | 510/510 |
+| Integration Tests (T-278) | ✅ PASS | Post-sanitization validation verified across all 6 entity types |
+| Integration Tests (T-279) | ✅ PASS | Page title, fonts, meta tags all correct |
+| Config Consistency | ✅ PASS | Port, protocol, CORS, Docker all consistent |
+| Security Scan | ✅ PASS | 0 npm vulnerabilities, all checklist items verified |
+
+**Overall Verdict:** ✅ **ALL PASS** — Sprint 36 ready for staging deployment.
+
+*QA Engineer Sprint #36 — T-280 — 2026-03-24*
+
+---
+
+## Sprint #36 — Deploy Engineer — T-281 Pre-Deploy Check-In — 2026-03-24
+
+**Task:** T-281 (Deploy Engineer: Sprint 36 staging deployment)
+**Date:** 2026-03-24
+**Sprint:** 36
+**Environment:** Staging (pending)
+**Build Status:** ⏳ Awaiting upstream — T-280 (QA) not yet complete
+
+### Pre-Deploy Readiness Assessment
+
+| Item | Status | Notes |
+|------|--------|-------|
+| T-278 (Backend: post-sanitization validation) | ⏳ In Progress | Blocker for T-280 |
+| T-279 (Frontend: page title/font fix) | ⏳ Backlog | Blocker for T-280 |
+| T-280 (QA: integration testing) | ⏳ Backlog | Direct blocker for T-281 |
+| Pending migrations | ✅ None | 10 migrations applied (001–010). No new DDL for Sprint 36. |
+| New env vars | ✅ None | No new environment variables required. |
+| npm vulnerabilities | — | Will check at build time |
+
+**Deploy plan (once unblocked):**
+1. Rebuild frontend (`npm run build` in frontend/)
+2. Rebuild backend deps (`npm install` in backend/)
+3. Deploy to staging via PM2 (backend on :3001 HTTPS, frontend preview on :4173)
+4. Run smoke tests: health, auth, XSS sanitization, post-sanitization validation, page title
+5. Log results and hand off to Monitor Agent (T-282)
+
+*Deploy Engineer Sprint #36 — T-281 — 2026-03-24*
+
+---
+
 ## Sprint #35 — Monitor Agent — T-276 Post-Deploy Health Check — 2026-03-23
 
 **Task:** T-276 (Monitor Agent: Post-deploy health check + config consistency)
@@ -1579,222 +2374,4 @@ QA Engineer was re-invoked by the automated orchestrator. T-251 (security checkl
 **Note:** During this QA session, manual curl registration attempts exhausted the in-memory rate limit for 127.0.0.1 (registerLimiter: 5 per 60-min window). Backend was restarted (`pm2 restart triplanner-backend`) to reset rate limiter before Playwright run. Health confirmed `{"status":"ok"}` post-restart. This is expected behavior — the rate limiter is functioning correctly (Test 4 validates it).
 
 ---
-
-## Sprint 35 — T-274: QA Security Checklist + Integration Testing
-
-**Date:** 2026-03-23
-**QA Engineer:** QA Agent (T-274)
-**Sprint:** 35
-**Tasks Under Test:** T-272 (Backend XSS sanitization), T-273 (Frontend calendar "+x more" click-to-expand)
-
----
-
-### Test Run 1 — Unit Tests (Backend)
-
-| Field | Value |
-|-------|-------|
-| Test Type | Unit Test |
-| Scope | Backend — all test files |
-| Command | `cd backend && npm test` |
-| Result | ✅ PASS |
-| Total Tests | 446/446 |
-| Test Files | 24/24 |
-| Duration | 2.75s |
-| Regressions | 0 |
-
-**Sprint 35-specific tests (sprint35.test.js):** 36/36 PASS
-- 18 unit tests for `sanitizeHtml()` utility: script tags, img onerror, nested tags, svg/onload, iframe, style, bold/italic, anchor, self-closing, HTML comments, Unicode, emoji, special chars, non-tag angle brackets, empty string, non-string passthrough, no double-encoding, multiple mixed tags
-- 18 integration tests: POST/PATCH sanitization on trips (name, destinations[], notes), flights (flight_number, airline, from_location, to_location), stays (name, address), activities (name, location), land travel (provider, from_location, to_location), auth/register (name), plus edge cases (array sanitization, angle brackets, null fields, non-text field passthrough)
-
-**Coverage assessment:**
-- ✅ Happy-path tests for all 12 POST/PATCH endpoints
-- ✅ Error-path tests (XSS payloads stripped)
-- ✅ Edge cases (null, non-string, Unicode, emoji, special chars, non-tag angle brackets)
-- ✅ No regressions in pre-existing 410 tests
-
----
-
-### Test Run 2 — Unit Tests (Frontend)
-
-| Field | Value |
-|-------|-------|
-| Test Type | Unit Test |
-| Scope | Frontend — all test files |
-| Command | `cd frontend && npm test` |
-| Result | ✅ PASS |
-| Total Tests | 510/510 |
-| Test Files | 25/25 |
-| Duration | 1.91s |
-| Regressions | 0 |
-
-**Sprint 35-specific tests (TripCalendar.test.jsx — tests 29.A–29.K):** 9/9 PASS (within 95 total TripCalendar tests)
-- 29.A: Overflow trigger renders with correct aria attributes (aria-expanded, aria-haspopup="dialog", aria-label)
-- 29.B: Click opens popover with event count
-- 29.C: Click-outside dismisses popover
-- 29.D: Escape dismisses popover (with focus restoration)
-- 29.E: Month navigation dismisses popover
-- 29.F: No trigger when ≤3 events
-- 29.G: Pill click in popover scrolls to section
-- 29.I: Enter key opens popover
-- Additional existing tests: loading, error, empty, retry, event pills, scroll-to-section
-
-**Coverage assessment:**
-- ✅ Happy-path: popover opens on click, shows all events
-- ✅ Error-path: no trigger rendered when insufficient events
-- ✅ Dismiss behaviors: click-outside, Escape, month nav
-- ✅ Keyboard accessibility: Enter opens popover
-- ✅ No regressions in pre-existing 501 tests
-
-**Note:** Minor React `act()` warning on test 29.I (Enter key opens popover). This is a test-environment artifact, not a runtime issue. No user-facing impact.
-
----
-
-### Test Run 3 — Integration Test (T-272: Backend XSS Sanitization)
-
-| Field | Value |
-|-------|-------|
-| Test Type | Integration Test |
-| Scope | T-272 — Server-side input sanitization across all write endpoints |
-| Result | ✅ PASS |
-
-**Verification checklist:**
-
-| # | Check | Result | Detail |
-|---|-------|--------|--------|
-| 1 | sanitizeFields middleware applied to all POST routes | ✅ | Confirmed on: trips, flights, stays, activities, land-travel, auth/register (6 route files) |
-| 2 | sanitizeFields middleware applied to all PATCH routes | ✅ | PATCH routes use inline `sanitizeHtml()` calls in update handlers (flights, stays, activities, land-travel). Trips PATCH uses `sanitizeFields` middleware. |
-| 3 | Middleware ordering: validate → sanitize → handler | ✅ | Verified in all route files. Validation runs first, sanitization second. |
-| 4 | All 17 text fields covered | ✅ | auth(name), trips(name, destinations[], notes), flights(flight_number, airline, from_location, to_location), stays(name, address), activities(name, location), land-travel(provider, from_location, to_location) |
-| 5 | Non-text fields NOT sanitized | ✅ | Enums, dates, times, UUIDs, timezones pass through unchanged (verified in tests) |
-| 6 | XSS bypass vectors stripped | ✅ | `<script>`, `<img onerror>`, `<svg onload>`, nested tags, self-closing, HTML comments, style tags — all stripped |
-| 7 | Unicode/emoji preserved | ✅ | `東京旅行 🗼 café` stored unchanged |
-| 8 | Special characters preserved | ✅ | `Tom & Jerry's "Excellent" Trip` stored unchanged |
-| 9 | No double-encoding | ✅ | `&amp;` remains `&amp;`, not double-encoded to `&amp;amp;` |
-| 10 | No SQL injection vectors | ✅ | All queries use Knex parameterized queries. No string concatenation (`query(... +`) found. |
-| 11 | API contract compliance | ✅ | Response shapes unchanged. Sanitization is transparent — only stored values change. Sprint 35 contract in api-contracts.md matches implementation. |
-
----
-
-### Test Run 4 — Integration Test (T-273: Calendar "+x more" Click-to-Expand)
-
-| Field | Value |
-|-------|-------|
-| Test Type | Integration Test |
-| Scope | T-273 — Calendar overflow popover interaction |
-| Result | ✅ PASS |
-
-**Verification checklist:**
-
-| # | Check | Result | Detail |
-|---|-------|--------|--------|
-| 1 | "+x more" renders as semantic `<button>` | ✅ | Overflow indicator is `<button>` with proper aria attributes |
-| 2 | Popover opens on click with `role="dialog"` | ✅ | Dialog with `aria-label`, `aria-modal="false"` |
-| 3 | All events listed in popover | ✅ | Event count displayed, all pills rendered |
-| 4 | Dismiss: click-outside | ✅ | mousedown listener on document |
-| 5 | Dismiss: Escape key | ✅ | With focus restoration to trigger button |
-| 6 | Dismiss: month navigation | ✅ | Popover closes on prev/next month |
-| 7 | Dismiss: window resize | ✅ | Resize listener cleanup in useEffect |
-| 8 | Smart positioning (above/below) | ✅ | Last 2 grid rows position popover above |
-| 9 | Mobile responsive | ✅ | `min(280px, calc(100vw - 32px))` width. Mobile day list (<480px) shows all events inline — no overflow trigger needed. |
-| 10 | Animation | ✅ | 150ms ease — matches design system specification |
-| 11 | No XSS vectors | ✅ | No `dangerouslySetInnerHTML` used (only 1 mention in codebase — a comment in formatDate.js confirming it's NOT used). All dynamic content via JSX auto-escaping. |
-| 12 | Event listener cleanup | ✅ | useEffect return cleanup prevents memory leaks |
-| 13 | UI spec compliance (Spec 29) | ✅ | Matches ui-spec.md specification per Manager review |
-
-**UI States verified:**
-- ✅ Empty state: "Add flights, stays, or activities" message
-- ✅ Loading state: `aria-busy="true"` skeleton
-- ✅ Error state: alert role with "Calendar unavailable" message + retry button
-- ✅ Success state: calendar grid with events + overflow popover
-
----
-
-### Test Run 5 — Config Consistency Check
-
-| Field | Value |
-|-------|-------|
-| Test Type | Config Consistency |
-| Scope | backend/.env, frontend/vite.config.js, infra/docker-compose.yml |
-| Result | ✅ PASS |
-
-| # | Check | Result | Detail |
-|---|-------|--------|--------|
-| 1 | Backend PORT matches vite proxy target | ✅ | backend/.env `PORT=3000`, vite proxy default `backendPort = process.env.BACKEND_PORT \|\| '3000'` → `http://localhost:3000` |
-| 2 | SSL consistency | ✅ | backend/.env has SSL commented out. Vite uses `BACKEND_SSL` env var — defaults to `http://` when unset. Consistent. |
-| 3 | CORS_ORIGIN includes frontend dev origin | ✅ | backend/.env `CORS_ORIGIN=http://localhost:5173`, vite dev server `port: 5173`. Match. |
-| 4 | Docker Compose backend PORT | ✅ | `PORT: 3000` matches backend/.env default. No host port mapped — internal only, proxied through nginx. |
-| 5 | Docker Compose CORS_ORIGIN | ✅ | `CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}` — correct for Docker (nginx serves on localhost). |
-
-No config mismatches found.
-
----
-
-### Test Run 6 — Security Scan
-
-| Field | Value |
-|-------|-------|
-| Test Type | Security Scan |
-| Scope | Full security checklist verification for Sprint 35 |
-| Command | `cd backend && npm audit` |
-| npm audit Result | ✅ 0 vulnerabilities |
-
-**Security Checklist Results:**
-
-#### Authentication & Authorization
-| # | Item | Status | Evidence |
-|---|------|--------|----------|
-| 1 | All API endpoints require appropriate auth | ✅ PASS | All data endpoints require Bearer token. Auth endpoints (register, login) are public as expected. Calendar endpoint requires auth. |
-| 2 | Auth tokens have expiration and refresh | ✅ PASS | JWT 15m expiry, refresh token 7d. httpOnly cookie for refresh. |
-| 3 | Password hashing uses bcrypt | ✅ PASS | bcryptjs with 12 rounds. Timing-safe comparison with dummy hash for non-existent users. |
-| 4 | Failed login rate-limited | ✅ PASS | express-rate-limit on auth endpoints. Tests verify rate limiting. |
-
-#### Input Validation & Injection Prevention
-| # | Item | Status | Evidence |
-|---|------|--------|----------|
-| 5 | All user inputs validated server-side | ✅ PASS | Joi/custom validation on all endpoints. Client-side validation also present. |
-| 6 | SQL queries use parameterized statements | ✅ PASS | Knex query builder throughout. No string concatenation in queries (verified via grep). |
-| 7 | HTML output sanitized (XSS prevention) | ✅ PASS | **NEW in Sprint 35:** `sanitizeHtml()` strips HTML tags server-side on all 17 user text fields. React JSX auto-escaping on client. No `dangerouslySetInnerHTML`. |
-| 8 | File uploads validated | N/A | No file upload functionality in current scope. |
-
-#### API Security
-| # | Item | Status | Evidence |
-|---|------|--------|----------|
-| 9 | CORS configured for expected origins | ✅ PASS | `CORS_ORIGIN=http://localhost:5173` matches frontend dev server. |
-| 10 | Rate limiting on public endpoints | ✅ PASS | Rate limiters on register and login endpoints. |
-| 11 | API responses don't leak internals | ✅ PASS | Error handler logs stack server-side, returns only structured `{error: {message, code}}` to client. Never leaks stack traces. |
-| 12 | No sensitive data in URL params | ✅ PASS | Tokens in headers/cookies, not URL. |
-| 13 | Security headers (helmet) | ✅ PASS | `helmet()` middleware applied in app.js. Covers X-Content-Type-Options, X-Frame-Options, etc. |
-
-#### Data Protection
-| # | Item | Status | Evidence |
-|---|------|--------|----------|
-| 14 | DB credentials in env vars | ✅ PASS | `DATABASE_URL` from `.env`. Docker Compose uses `${DB_PASSWORD:?required}`. |
-| 15 | No hardcoded secrets in code | ✅ PASS | JWT_SECRET from `process.env.JWT_SECRET`. No hardcoded tokens found in source. |
-| 16 | Logs don't contain PII/tokens | ✅ PASS | Error handler logs error message/stack only, not request bodies or tokens. |
-
-#### Infrastructure
-| # | Item | Status | Evidence |
-|---|------|--------|----------|
-| 17 | Dependencies checked for vulnerabilities | ✅ PASS | `npm audit` returns 0 vulnerabilities. |
-| 18 | Default credentials removed | ✅ PASS | `.env` uses `change-me-to-a-random-string` as JWT_SECRET placeholder (development only). Docker requires `JWT_SECRET` and `DB_PASSWORD` via `?required`. |
-
-**Security Scan Verdict: ✅ PASS — No P1 security issues found.**
-
----
-
-### Sprint 35 QA Summary
-
-| Test Category | Result | Details |
-|---------------|--------|---------|
-| Backend Unit Tests | ✅ 446/446 PASS | 36 new Sprint 35 tests, 0 regressions |
-| Frontend Unit Tests | ✅ 510/510 PASS | 9 new Sprint 35 tests, 0 regressions |
-| Integration: T-272 (XSS sanitization) | ✅ PASS | All 17 fields sanitized, all 12 endpoints covered |
-| Integration: T-273 (calendar popover) | ✅ PASS | All interactions verified, UI states complete |
-| Config Consistency | ✅ PASS | No mismatches |
-| Security Scan | ✅ PASS | 0 npm vulnerabilities, full checklist verified |
-| **Overall** | **✅ PASS** | **Ready for staging deployment** |
-
-**Total test count:** 446 backend + 510 frontend = 956 (Playwright E2E deferred to staging — T-276)
-
-*QA Engineer — Sprint #35 T-274 — 2026-03-23*
 

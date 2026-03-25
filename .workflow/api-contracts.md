@@ -7756,3 +7756,296 @@ Tests must cover:
 ---
 
 *Sprint 35 contracts published by Backend Engineer 2026-03-23. No new endpoints. T-272 is a cross-cutting behavioral change: server-side HTML sanitization applied to 17 text fields across 12 write endpoints (POST/PATCH) on 6 models. No schema migrations. All 30 endpoints from Sprints 1–30 remain in force. Test baseline entering Sprint 35: 410/410 backend | 501/501 frontend | 4/4 Playwright.*
+
+---
+
+## Sprint 36 Contracts
+
+---
+
+## T-278 — Post-Sanitization Validation for Required Fields (Bug Fix)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 36 |
+| Task | T-278 |
+| Status | Proposed |
+| Type | Behavioral change (bug fix) — no new endpoints |
+| Feedback Source | FB-178 (Sprint 35) |
+
+### Summary
+
+**Problem:** Sprint 35 (T-272) introduced server-side HTML sanitization on all write endpoints. However, sanitization runs AFTER validation. This means a request like `PATCH /api/v1/trips/:id` with `name: "<svg onload=alert(1)>"` passes the "name is required" validation check (the string is non-empty before sanitization), then sanitization strips all tags to produce `""`, which gets stored as an empty string — violating the required-field constraint.
+
+**Fix:** Change middleware ordering so that **sanitization runs BEFORE validation** on all write endpoints (POST and PATCH). This way, the input is sanitized first, and then the existing validation rules (e.g., "min length 1 after trim") catch any fields that became empty after tag stripping.
+
+### Behavioral Change
+
+**Before (Sprint 35 — broken):**
+```
+Request → Validate → Sanitize → Store
+```
+
+**After (Sprint 36 — fixed):**
+```
+Request → Sanitize → Validate → Store
+```
+
+### Affected Endpoints
+
+All 12 write endpoints that have sanitization (from T-272) are affected by this middleware reordering. The behavioral change is only observable when a required text field contains **only** HTML tags with no text content.
+
+| Endpoint | Required Text Fields Affected |
+|----------|------------------------------|
+| `POST /api/v1/auth/register` | `name` |
+| `POST /api/v1/trips` | `name`, `destinations[]` |
+| `PATCH /api/v1/trips/:id` | `name` (when provided), `destinations[]` (when provided) |
+| `POST /api/v1/trips/:id/flights` | `airline`, `from_location`, `to_location` |
+| `PATCH /api/v1/trips/:id/flights/:fid` | `airline` (when provided), `from_location` (when provided), `to_location` (when provided) |
+| `POST /api/v1/trips/:id/stays` | `name` |
+| `PATCH /api/v1/trips/:id/stays/:sid` | `name` (when provided) |
+| `POST /api/v1/trips/:id/activities` | `name` |
+| `PATCH /api/v1/trips/:id/activities/:aid` | `name` (when provided) |
+| `POST /api/v1/trips/:id/land-travel` | `from_location`, `to_location` |
+| `PATCH /api/v1/trips/:id/land-travel/:lid` | `from_location` (when provided), `to_location` (when provided) |
+
+**Non-required text fields** (e.g., `notes`, `address`, `location`, `flight_number`, `provider`) are unaffected — they are allowed to be empty/null after sanitization, same as before.
+
+### New Error Case — All-HTML Required Field
+
+When a required field contains only HTML tags and sanitization strips them to an empty string, the existing validation will now catch it and return 400.
+
+**Example — PATCH trip with all-HTML name:**
+
+Request:
+```http
+PATCH /api/v1/trips/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "<svg onload=alert(1)>"
+}
+```
+
+Response (400 Bad Request):
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "name": "Trip name is required"
+    }
+  }
+}
+```
+
+**Example — POST trip with all-HTML name:**
+
+Request:
+```http
+POST /api/v1/trips
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "<script>alert(1)</script>",
+  "destinations": ["Tokyo"]
+}
+```
+
+Response (400 Bad Request):
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "name": "Trip name is required"
+    }
+  }
+}
+```
+
+**Example — POST trip with all-HTML destination:**
+
+Request:
+```http
+POST /api/v1/trips
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Valid Trip",
+  "destinations": ["<b></b>"]
+}
+```
+
+Response (400 Bad Request):
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "destinations": "At least one destination is required"
+    }
+  }
+}
+```
+
+### What Does NOT Change
+
+- **Response shapes** — All success and error responses remain identical to existing contracts.
+- **Error codes** — No new error codes. `VALIDATION_ERROR` is the existing code.
+- **Non-required fields** — Fields like `notes`, `address`, `location`, `flight_number`, `provider` can still be empty after sanitization. No change.
+- **Valid inputs** — Inputs that contain text content alongside HTML (e.g., `"<b>Tokyo</b>"` → `"Tokyo"`) continue to work as before — they pass both sanitization and validation.
+- **Schema** — No database changes. No migrations.
+
+### Correction to Sprint 35 Contract
+
+The Sprint 35 contract (T-272) stated:
+
+> `400 VALIDATION_ERROR` — still returned for missing/invalid fields (validation runs before sanitization)
+
+This line is now **superseded**. As of Sprint 36, sanitization runs BEFORE validation. The corrected behavior:
+
+> `400 VALIDATION_ERROR` — returned for missing/invalid fields. Sanitization runs before validation, so fields that become empty after HTML stripping are caught by existing required-field validation.
+
+### Test Plan (Backend)
+
+Tests must cover:
+1. **PATCH trip name with all-HTML input** → expect 400 `VALIDATION_ERROR` with `fields.name`
+2. **POST trip with all-HTML name** → expect 400 `VALIDATION_ERROR` with `fields.name`
+3. **POST trip with all-HTML destination** → expect 400 `VALIDATION_ERROR` with `fields.destinations`
+4. **POST flight with all-HTML airline** → expect 400 `VALIDATION_ERROR`
+5. **POST activity with all-HTML name** → expect 400 `VALIDATION_ERROR`
+6. **POST stay with all-HTML name** → expect 400 `VALIDATION_ERROR`
+7. **POST land-travel with all-HTML from_location** → expect 400 `VALIDATION_ERROR`
+8. **PATCH trip with mixed HTML + text name** (e.g., `"<b>Valid</b>"`) → expect 200 with `name: "Valid"` (sanitized but non-empty)
+9. **Non-required field all-HTML** (e.g., `notes: "<script></script>"`) → expect 200/201 with `notes: ""` (allowed to be empty)
+10. **No regressions** — All existing 446 backend tests must continue to pass
+
+---
+
+*Sprint 36 contracts published by Backend Engineer 2026-03-24. No new endpoints. T-278 is a behavioral bug fix: middleware reordering to sanitize before validate, so all-HTML required fields are properly rejected. No schema migrations. All 30 endpoints from Sprints 1–35 remain in force. Test baseline entering Sprint 36: 446/446 backend | 510/510 frontend | 4/4 Playwright.*
+
+---
+
+## Sprint 37 Contracts
+
+---
+
+## T-286 — Sanitization Middleware Behavioral Fix (Nested XSS Bypass)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 37 |
+| Task | T-286 |
+| Status | Agreed |
+| Type | Bug Fix — middleware behavioral change (no new endpoints) |
+
+### Summary
+
+No new endpoints this sprint. T-286 is a security fix to the existing `sanitizeHtml()` middleware in `backend/src/middleware/sanitize.js`. The fix changes internal sanitization behavior — **no changes to any request/response contracts**.
+
+### Problem
+
+The current single-pass regex sanitizer can be bypassed with nested/obfuscated HTML tags. For example:
+
+- Input: `<<script>script>alert(1)<</script>/script>`
+- After one strip pass: `<script>alert(1)</script>` ← **XSS payload reassembled**
+
+This violates the defense-in-depth sanitization contract established in Sprint 35 (T-272).
+
+### Behavioral Change
+
+**Before (Sprint 36):** `sanitizeHtml()` runs a single regex pass to strip HTML tags.
+
+**After (Sprint 37):** `sanitizeHtml()` runs the tag-stripping regex in an iterative loop until the output stabilizes (i.e., no more tags are found on a subsequent pass). This ensures nested/obfuscated patterns are fully collapsed.
+
+### Affected Endpoints
+
+All endpoints that accept user text input are affected (sanitization middleware runs globally). The list of 30 endpoints from Sprints 1–35 remains unchanged. No endpoint signatures, request bodies, response shapes, or status codes change.
+
+Key endpoints where sanitization is most security-relevant:
+- `POST /api/v1/trips` — trip name, destinations
+- `PATCH /api/v1/trips/:id` — trip name, destinations
+- `POST /api/v1/trips/:tripId/flights` — airline, flight_number, departure_airport, arrival_airport
+- `PATCH /api/v1/trips/:tripId/flights/:id` — same fields
+- `POST /api/v1/trips/:tripId/stays` — name, address
+- `PATCH /api/v1/trips/:tripId/stays/:id` — same fields
+- `POST /api/v1/trips/:tripId/activities` — name, location, notes
+- `PATCH /api/v1/trips/:tripId/activities/:id` — same fields
+- `POST /api/v1/trips/:tripId/land-travel` — from_location, to_location, carrier, notes
+- `PATCH /api/v1/trips/:tripId/land-travel/:id` — same fields
+
+### Contract Guarantees (Unchanged)
+
+1. **All stored string values are sanitized** — no valid HTML tags remain after sanitization
+2. **Post-sanitization validation** (Sprint 36, T-278) — if a required field becomes empty after sanitization, the endpoint returns `400 VALIDATION_ERROR`
+3. **Legitimate angle brackets preserved** — text like `"5 < 10"` or `"A > B"` that does not form valid HTML tags is not stripped
+
+### Schema Changes
+
+None. No new tables, columns, or migrations required.
+
+### Test Plan (Backend)
+
+Tests must cover:
+1. **Nested script tag** — `<<script>script>alert(1)<</script>/script>` → fully stripped to `alert(1)`
+2. **Nested img tag** — `<<b>img src=x onerror=alert(1)>` → fully stripped, no `<img>` remains
+3. **Triple-nested div** — `<<<div>div>div>content</div>` → fully stripped to `content`
+4. **Mixed nested patterns** — `<<script>script><<b>img src=x>` → all tags stripped
+5. **Already-clean input unchanged** — `"Hello world"` → `"Hello world"`
+6. **Legitimate angle brackets preserved** — `"5 < 10"`, `"A > B"` → preserved as-is
+7. **Single-level tags still stripped** — `<script>alert(1)</script>` → `alert(1)` (regression check)
+8. **Post-sanitization validation still works** — all-HTML required field after iterative stripping → `400 VALIDATION_ERROR`
+9. **Deep nesting (4+ levels)** — `<<<<script>script>script>script>x` → fully stripped
+10. **No regressions** — All existing 471+ backend tests must continue to pass
+
+---
+
+*Sprint 37 contracts published by Backend Engineer 2026-03-24. No new endpoints. T-286 is a middleware behavioral fix: iterative sanitization loop to prevent nested XSS bypass. No schema migrations. All 30 endpoints from Sprints 1–35 remain in force. Test baseline entering Sprint 37: 471+ backend | 510/510 frontend | 4/4 Playwright.*
+
+---
+
+## Sprint 38 Contracts
+
+---
+
+## Sprint 38 — No New Contracts (Deploy-Only Sprint)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 38 |
+| Tasks | T-293 (Deploy), T-294 (Monitor), T-295 (User Agent) |
+| Backend Engineer Tasks | None |
+| New Endpoints | None |
+| Changed Endpoints | None |
+| Schema Changes | None |
+
+### Summary
+
+Sprint 38 is a deploy-only sprint focused on shipping all Sprint 35+36+37 changes to production and verifying production health. There are no Backend Engineer tasks assigned. No new or changed API endpoints. No schema migrations.
+
+All 30 existing endpoint contracts from Sprints 1–37 remain unchanged and in force. The test baseline entering Sprint 38 is 493 backend tests, 510 frontend tests, and 4 Playwright E2E tests.
+
+### Active Contracts Summary (Sprints 1–37)
+
+All previously published contracts remain current:
+- **Auth:** 4 endpoints (register, login, refresh, logout)
+- **Trips:** 5 endpoints (CRUD + list)
+- **Flights:** 4 endpoints (CRUD scoped to trip)
+- **Stays:** 4 endpoints (CRUD scoped to trip)
+- **Activities:** 5 endpoints (CRUD + list scoped to trip)
+- **Land Travel:** 4 endpoints (CRUD scoped to trip)
+- **Calendar:** 1 endpoint (trip calendar view)
+- **Health:** 1 endpoint (server health check)
+- **Search/Filter/Sort:** Query parameters on list endpoints
+- **Middleware:** XSS sanitization (iterative, Sprint 37), post-sanitization validation (Sprint 36), rate limiting
+
+---
+
+*Sprint 38 contracts published by Backend Engineer 2026-03-24. Deploy-only sprint — no new endpoints, no code changes, no schema migrations. All 30 endpoints from Sprints 1–37 remain in force. Test baseline: 493 backend | 510 frontend | 4 Playwright.*

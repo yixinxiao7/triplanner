@@ -11679,3 +11679,79 @@ And:   The popover does not extend beyond the calendar panel
 ---
 
 *Sprint #35 design review complete. Published by Design Agent 2026-03-23.*
+
+---
+
+### Spec 30: Page Branding & Font Compliance (Bug Fix)
+
+**Sprint:** #36
+**Related Task:** T-279
+**Related Feedback:** FB-188
+**Status:** Approved
+
+**Description:**
+This is not a new screen spec — it is a branding compliance checklist for the existing `frontend/index.html` and global CSS. FB-188 reported that the page title showed "Plant Guardians" and the wrong fonts (DM Sans, Playfair Display) were loaded. The Frontend Engineer must verify and fix all branding references across the frontend entry point and global styles.
+
+---
+
+#### 30.1 Required State — `frontend/index.html`
+
+| Element | Required Value | Notes |
+|---------|---------------|-------|
+| `<title>` | `triplanner` | Lowercase, matching the brand identity (see Spec 1.1 brand text: `TRIPLANNER` uppercase is for display; the HTML title uses lowercase) |
+| `<meta name="description">` | `"Plan every detail of your trip — flights, stays, activities, and itinerary in one calm, focused workspace."` | If missing, add it. If it references "Plant Guardians" or any other project name, replace. |
+| `<meta name="theme-color">` | `#02111B` | If missing, add it. Matches `--bg-primary`. |
+| `<link rel="icon">` | Must point to a valid Triplanner favicon (e.g., `/favicon.png`). | Verify the file exists in `frontend/public/`. If it's a Plant Guardians favicon, replace or remove. |
+| Google Fonts `<link>` tags | **None in index.html.** Font loading is handled via CSS `@import` in `global.css`. | If any `<link>` tags for "DM Sans", "Playfair Display", or any font other than IBM Plex Mono exist, **remove them**. |
+| `<html lang="en">` | Must be present. | Already correct — verify it's not changed. |
+
+#### 30.2 Required State — `frontend/src/styles/global.css`
+
+| Element | Required Value |
+|---------|---------------|
+| Font import | `@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600&display=swap');` |
+| `--font-mono` | `'IBM Plex Mono', monospace` |
+| `body` font-family | Must use `var(--font-mono)` or `'IBM Plex Mono', monospace` |
+| No other `@import` for fonts | Verify no imports for DM Sans, Playfair Display, Inter, or any other typeface |
+
+#### 30.3 Required State — Manifest / PWA (if applicable)
+
+| Element | Required Value |
+|---------|---------------|
+| `manifest.json` or `site.webmanifest` | If present, `"name"` and `"short_name"` must be `"Triplanner"` / `"triplanner"`. `"theme_color"` must be `#02111B`. `"background_color"` must be `#02111B`. |
+
+If no manifest exists, this is not required for Sprint 36.
+
+#### 30.4 Verification Checklist
+
+The Frontend Engineer should run the following checks after making changes:
+
+1. **Text search:** `grep -ri "plant guardians" frontend/` → must return zero results
+2. **Text search:** `grep -ri "DM Sans" frontend/` → must return zero results
+3. **Text search:** `grep -ri "Playfair Display" frontend/` → must return zero results
+4. **Browser check:** Open the app and verify the browser tab shows "triplanner"
+5. **Font check:** Open DevTools → Elements → Computed styles on `<body>` → verify `font-family` resolves to `IBM Plex Mono`
+6. **Network check:** Open DevTools → Network → filter "font" → verify only IBM Plex Mono woff2 files are loaded
+7. **Existing tests:** Run `npm test` in `frontend/` → all 510 tests must pass with zero regressions
+
+#### 30.5 Accessibility
+
+- The `<title>` must accurately describe the application for screen readers and browser history
+- The `<meta name="description">` aids screen readers and SEO crawlers
+- The `<html lang="en">` attribute must be preserved for assistive technology language detection
+
+#### 30.6 States
+
+Not applicable — this is a static HTML/CSS fix, not an interactive component.
+
+#### 30.7 Responsive
+
+Not applicable — `<head>` metadata applies uniformly across all viewport sizes.
+
+---
+
+*Spec 30 (Sprint 36 — Page branding & font compliance, T-279, FB-188) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-24.*
+
+---
+
+*Sprint #36 design review complete. Published by Design Agent 2026-03-24.*
