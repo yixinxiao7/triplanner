@@ -4,6 +4,48 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Backend Engineer → Frontend Engineer: Sprint 37 API Contracts — No New Endpoints (T-286)
+
+**Date:** 2026-03-24
+**Sprint:** 37
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Status:** ✅ Complete — No frontend action required
+
+### Summary
+
+Sprint 37 has no new or changed API endpoints. T-286 is a backend-only middleware fix (iterative sanitization loop to prevent nested XSS bypass in `sanitizeHtml()`). All 30 existing endpoint contracts from Sprints 1–35 remain unchanged. No request/response shape changes.
+
+**Frontend impact:** None. The sanitization fix is transparent to the frontend — same inputs, same outputs, same error codes. No integration changes needed.
+
+Contract documented in `.workflow/api-contracts.md` under "Sprint 37 Contracts → T-286".
+
+---
+
+## Backend Engineer → QA Engineer: Sprint 37 API Contracts + Test Plan (T-286)
+
+**Date:** 2026-03-24
+**Sprint:** 37
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** ✅ Complete — Ready for QA reference
+
+### Summary
+
+T-286 fixes the nested XSS bypass in `sanitizeHtml()` middleware. The contract and test plan are documented in `.workflow/api-contracts.md` under "Sprint 37 Contracts → T-286".
+
+**Key testing scenarios for QA:**
+1. Nested script tags: `<<script>script>alert(1)<</script>/script>` → must be fully stripped
+2. Nested img tags: `<<b>img src=x onerror=alert(1)>` → no `<img>` in output
+3. Triple/deep nesting: `<<<div>div>div>content</div>` → stripped to `content`
+4. Legitimate angle brackets preserved: `"5 < 10"`, `"A > B"` → unchanged
+5. Post-sanitization validation still rejects all-HTML required fields with `400 VALIDATION_ERROR`
+6. No regressions in existing 471+ backend tests
+
+**Files to watch:** `backend/src/middleware/sanitize.js`, backend test files
+
+---
+
 ## Design Agent → Manager Agent: No Frontend Tasks in Sprint 37 — No Specs Required (Sprint 37)
 
 **Date:** 2026-03-24

@@ -7930,3 +7930,81 @@ Tests must cover:
 ---
 
 *Sprint 36 contracts published by Backend Engineer 2026-03-24. No new endpoints. T-278 is a behavioral bug fix: middleware reordering to sanitize before validate, so all-HTML required fields are properly rejected. No schema migrations. All 30 endpoints from Sprints 1–35 remain in force. Test baseline entering Sprint 36: 446/446 backend | 510/510 frontend | 4/4 Playwright.*
+
+---
+
+## Sprint 37 Contracts
+
+---
+
+## T-286 — Sanitization Middleware Behavioral Fix (Nested XSS Bypass)
+
+| Field | Value |
+|-------|-------|
+| Sprint | 37 |
+| Task | T-286 |
+| Status | Agreed |
+| Type | Bug Fix — middleware behavioral change (no new endpoints) |
+
+### Summary
+
+No new endpoints this sprint. T-286 is a security fix to the existing `sanitizeHtml()` middleware in `backend/src/middleware/sanitize.js`. The fix changes internal sanitization behavior — **no changes to any request/response contracts**.
+
+### Problem
+
+The current single-pass regex sanitizer can be bypassed with nested/obfuscated HTML tags. For example:
+
+- Input: `<<script>script>alert(1)<</script>/script>`
+- After one strip pass: `<script>alert(1)</script>` ← **XSS payload reassembled**
+
+This violates the defense-in-depth sanitization contract established in Sprint 35 (T-272).
+
+### Behavioral Change
+
+**Before (Sprint 36):** `sanitizeHtml()` runs a single regex pass to strip HTML tags.
+
+**After (Sprint 37):** `sanitizeHtml()` runs the tag-stripping regex in an iterative loop until the output stabilizes (i.e., no more tags are found on a subsequent pass). This ensures nested/obfuscated patterns are fully collapsed.
+
+### Affected Endpoints
+
+All endpoints that accept user text input are affected (sanitization middleware runs globally). The list of 30 endpoints from Sprints 1–35 remains unchanged. No endpoint signatures, request bodies, response shapes, or status codes change.
+
+Key endpoints where sanitization is most security-relevant:
+- `POST /api/v1/trips` — trip name, destinations
+- `PATCH /api/v1/trips/:id` — trip name, destinations
+- `POST /api/v1/trips/:tripId/flights` — airline, flight_number, departure_airport, arrival_airport
+- `PATCH /api/v1/trips/:tripId/flights/:id` — same fields
+- `POST /api/v1/trips/:tripId/stays` — name, address
+- `PATCH /api/v1/trips/:tripId/stays/:id` — same fields
+- `POST /api/v1/trips/:tripId/activities` — name, location, notes
+- `PATCH /api/v1/trips/:tripId/activities/:id` — same fields
+- `POST /api/v1/trips/:tripId/land-travel` — from_location, to_location, carrier, notes
+- `PATCH /api/v1/trips/:tripId/land-travel/:id` — same fields
+
+### Contract Guarantees (Unchanged)
+
+1. **All stored string values are sanitized** — no valid HTML tags remain after sanitization
+2. **Post-sanitization validation** (Sprint 36, T-278) — if a required field becomes empty after sanitization, the endpoint returns `400 VALIDATION_ERROR`
+3. **Legitimate angle brackets preserved** — text like `"5 < 10"` or `"A > B"` that does not form valid HTML tags is not stripped
+
+### Schema Changes
+
+None. No new tables, columns, or migrations required.
+
+### Test Plan (Backend)
+
+Tests must cover:
+1. **Nested script tag** — `<<script>script>alert(1)<</script>/script>` → fully stripped to `alert(1)`
+2. **Nested img tag** — `<<b>img src=x onerror=alert(1)>` → fully stripped, no `<img>` remains
+3. **Triple-nested div** — `<<<div>div>div>content</div>` → fully stripped to `content`
+4. **Mixed nested patterns** — `<<script>script><<b>img src=x>` → all tags stripped
+5. **Already-clean input unchanged** — `"Hello world"` → `"Hello world"`
+6. **Legitimate angle brackets preserved** — `"5 < 10"`, `"A > B"` → preserved as-is
+7. **Single-level tags still stripped** — `<script>alert(1)</script>` → `alert(1)` (regression check)
+8. **Post-sanitization validation still works** — all-HTML required field after iterative stripping → `400 VALIDATION_ERROR`
+9. **Deep nesting (4+ levels)** — `<<<<script>script>script>script>x` → fully stripped
+10. **No regressions** — All existing 471+ backend tests must continue to pass
+
+---
+
+*Sprint 37 contracts published by Backend Engineer 2026-03-24. No new endpoints. T-286 is a middleware behavioral fix: iterative sanitization loop to prevent nested XSS bypass. No schema migrations. All 30 endpoints from Sprints 1–35 remain in force. Test baseline entering Sprint 37: 471+ backend | 510/510 frontend | 4/4 Playwright.*
