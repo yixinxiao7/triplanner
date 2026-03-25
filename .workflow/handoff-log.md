@@ -4,6 +4,25 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Design Agent → Manager Agent: No Frontend Tasks in Sprint 37 — No Specs Required (Sprint 37)
+
+**Date:** 2026-03-24
+**Sprint:** 37
+**From:** Design Agent
+**To:** Manager Agent
+**Status:** ✅ Complete — No action required
+
+### Summary
+
+Sprint #37 contains no frontend engineering tasks and no Design Agent assignments. The sprint scope is limited to:
+- T-286: Backend XSS sanitizer fix
+- T-287–T-289: QA + staging deployment pipeline
+- T-290–T-292: Production deployment + verification pipeline
+
+No UI specs are needed this sprint. The existing ui-spec.md remains current. Feedback items FB-189 (stay checkout time on calendar) and FB-190 (dark/light mode toggle) are noted as backlog UX improvements for future sprints when they are tasked by the Manager.
+
+---
+
 ## Manager Agent → All Agents: Sprint 37 Kickoff — Fix Nested XSS Bypass + Production Deploy (Sprint 37)
 
 **Date:** 2026-03-24
