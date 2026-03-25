@@ -18,6 +18,276 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
+## User Agent — Sprint #38 Production Walkthrough (T-295) — 2026-03-24
+
+> **Note:** Sprint 38 is a deploy-only sprint. T-293 deployed all Sprint 35+36+37 code to production via Render (PR #8 merged to main). T-294 Monitor Agent verified staging health (Deploy Verified = Yes). This walkthrough was performed on the staging environment at `http://localhost:3001` (backend) and `frontend/dist/` (frontend build). Production URLs: `https://triplanner-backend-sp61.onrender.com` and `https://triplanner.yixinx.com`.
+
+---
+
+### FB-209 — Health endpoint working correctly on staging
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | GET /api/v1/health returns `{"status":"ok"}` |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:** `curl http://localhost:3001/api/v1/health` returns `{"status":"ok"}` with HTTP 200. Database connectivity confirmed.
+
+---
+
+### FB-210 — Page title "triplanner" and IBM Plex Mono font confirmed in build
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Frontend build contains `<title>triplanner</title>` and IBM Plex Mono font references |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:** `frontend/dist/index.html` contains `<title>triplanner</title>`. CSS build file references `IBM+Plex+Mono` via Google Fonts import and uses `IBM Plex Mono, monospace` as the font-family throughout the application. Both Sprint 35 deliverables confirmed.
+
+---
+
+### FB-211 — Auth flow working correctly (register, login, validation, refresh)
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Full auth flow works: register, login, token refresh, validation errors, error codes |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:** Tested the following auth scenarios, all working correctly:
+1. POST /api/v1/auth/register — creates user, returns access_token (201) ✅
+2. POST /api/v1/auth/register — duplicate email returns 409 with `EMAIL_TAKEN` code ✅
+3. POST /api/v1/auth/register — empty email returns 400 with field-level error ✅
+4. POST /api/v1/auth/register — missing all fields returns 400 with all field errors ✅
+5. POST /api/v1/auth/login — valid credentials return access_token (200) ✅
+6. POST /api/v1/auth/login — wrong password returns 401 `INVALID_CREDENTIALS` ✅
+7. POST /api/v1/auth/login — non-existent email returns 401 `INVALID_CREDENTIALS` (no user enumeration) ✅
+8. POST /api/v1/auth/refresh — returns new access_token (200) ✅
+9. Rate limiting on auth endpoints — returns 429 after rapid requests ✅
+
+---
+
+### FB-212 — Simple XSS sanitization confirmed on all resource types
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Simple `<script>` and `<img onerror>` tags stripped from trips, flights, activities, destinations |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:** Tested XSS payloads across multiple endpoints:
+1. Trip name: `<script>alert(1)</script>My Trip` → stored as `alert(1)My Trip` ✅
+2. Flight airline: `<img src=x onerror=alert(1)>ANA` → stored as `ANA` ✅
+3. Flight from_location: `<script>alert(1)</script>SFO` → stored as `alert(1)SFO` ✅
+4. Activity name: `<img src=x onerror=alert(1)>Visit Temple` → stored as `Visit Temple` ✅
+5. Destinations array: `["<script>alert(1)</script>Tokyo"]` → stored as `["alert(1)Tokyo"]` ✅
+
+---
+
+### FB-213 — Nested XSS sanitization confirmed (Sprint 37 fix verified)
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Two-level nested XSS patterns stripped correctly via iterative sanitization |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:** `<<script>script>alert(1)<</script>/script>My Trip` → stored as `alert(1)My Trip`. Tags fully stripped, text content preserved. Iterative sanitization confirmed working.
+
+---
+
+### FB-214 — Post-sanitization validation correctly rejects all-HTML required fields
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Fields containing only HTML tags (no text content) are rejected with 400 after sanitization |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:** Tested post-sanitization validation:
+1. `<b></b><i></i>` → sanitized to empty → 400 "Trip name is required" ✅
+2. `<script></script>` → sanitized to empty → 400 "Trip name is required" ✅
+
+---
+
+### FB-215 — Trip CRUD working correctly
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Create, read, list, update, delete trips all working with correct status codes |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:**
+1. POST /api/v1/trips — creates trip with 201 ✅
+2. GET /api/v1/trips/:id — returns trip data ✅
+3. GET /api/v1/trips — lists all user trips ✅
+4. PATCH /api/v1/trips/:id — updates name, returns 200 ✅
+5. DELETE /api/v1/trips/:id — returns 204 ✅
+6. GET deleted trip — returns 404 ✅
+7. Input validation: empty destinations → 400, long name (500 chars) → 400 ✅
+8. Non-existent trip → 404, invalid UUID → 400 ✅
+
+---
+
+### FB-216 — Sub-resource CRUD working (flights, stays, activities)
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Create and list flights, stays, and activities all working correctly |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:**
+1. POST /api/v1/trips/:id/flights — creates flight with correct fields (201) ✅
+2. POST /api/v1/trips/:id/stays — creates stay with category, address, timezones (201) ✅
+3. POST /api/v1/trips/:id/activities — creates activity with date/time (201) ✅
+4. GET /api/v1/trips/:id/flights — lists flights ✅
+5. Calendar endpoint returns aggregated events from all sub-resources ✅
+
+---
+
+### FB-217 — Calendar endpoint returns events correctly
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | GET /api/v1/trips/:id/calendar returns structured events from flights, stays, and activities |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:** Calendar endpoint aggregates events with correct structure: `id`, `type`, `title`, `start_date`, `end_date`, `start_time`, `end_time`, `timezone`, `source_id`. After creating 1 flight + 1 stay + 2 activities, calendar returns 5 events (stay spans multiple days). Timezone handling preserved.
+
+---
+
+### FB-218 — Calendar "+x more" click-to-expand implemented in frontend
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Frontend TripCalendar component implements "+x more" overflow trigger with accessible popover |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:** Code review of `TripCalendar.jsx` confirms:
+1. Overflow trigger button renders `+{overflow} more` text ✅
+2. Click opens a popover dialog with all events for that day ✅
+3. Popover has ARIA attributes (`role="dialog"`, `aria-label`, `aria-expanded`, `aria-haspopup`) ✅
+4. Escape key closes popover, click-outside closes popover ✅
+5. Popover positions above or below cell based on available space ✅
+6. Month navigation closes any open popover ✅
+
+---
+
+### FB-219 — Security: SQL injection safely handled
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | SQL injection payloads stored as literal strings, database integrity preserved |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:** Sent `'; DROP TABLE trips; --` as trip name. It was stored as a literal string. Subsequent trip list queries returned all trips correctly — the trips table was not affected. Parameterized queries (Knex) prevent SQL injection.
+
+---
+
+### FB-220 — Security: Auth endpoints enforce proper access control
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Unauthenticated and invalid-token requests correctly rejected |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:**
+1. No Authorization header → 401 "Authentication required" ✅
+2. Invalid token → 401 "Invalid or expired token" ✅
+3. Expired token → 401 (token expired after 15 min, subsequent requests rejected) ✅
+4. Malformed JSON body → 400 "Invalid JSON in request body" ✅
+
+---
+
+### FB-221 — Minor: Deeply nested XSS leaves residual angle bracket fragments
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Triple-nested XSS pattern leaves non-executable but messy angle bracket fragments in stored data |
+| **Sprint** | 38 |
+| **Category** | Security |
+| **Severity** | Minor |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:** Input: `<<<script>>script>script>alert(1)<<<//script>>/script>/script>Test`. Stored as: `<<>script>script>alert(1)<<<//script>>/script>/script>Test`. The iterative sanitizer strips valid `<script>` tags but the triple-nested pattern with extra angle brackets leaves residual fragments. These fragments are **not executable HTML** (malformed, would not run in a browser), and React escapes all output by default, so this is not exploitable. However, the stored data looks messy and contains angle brackets that ideally should be cleaned. **Mitigated by:** React's JSX escaping prevents any XSS execution on the frontend. **Suggestion:** Consider a more aggressive sanitization loop or strip all angle brackets from non-exempt fields.
+
+---
+
+### FB-222 — Cross-user trip access test blocked by rate limiter
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Could not verify cross-user authorization (403) because auth rate limiter blocked new user registration |
+| **Sprint** | 38 |
+| **Category** | UX Issue |
+| **Severity** | Minor |
+| **Status** | New |
+| **Related Task** | T-295 |
+
+**Details:** Attempted to register a second user to test cross-user trip access (should return 403). Registration was blocked by rate limiter (429 "Too many registration attempts"). The rate limiter window appears aggressive for testing scenarios. Cross-user authorization is covered by unit tests (backend tests verify 403 on wrong ownership), but could not be verified end-to-end in this session. **Note:** Rate limiting itself is working correctly — this is a testing friction issue, not a bug.
+
+---
+
+### FB-223 — Production deployment completed (FB-207 resolved)
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Sprint 38 primary objective met — code deployed to production via Render, PR #8 merged to main |
+| **Sprint** | 38 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-293 |
+
+**Details:** Per Deploy Engineer handoff, PR #8 was merged to main and Render auto-deployed. 13/13 production smoke tests passed. This resolves FB-207 (Major Feature Gap from Sprint 37) — production deployment is no longer pending. Production URLs: `https://triplanner-backend-sp61.onrender.com` (backend), `https://triplanner.yixinx.com` (frontend).
+
+---
+
 ## User Agent — Sprint #37 Staging Walkthrough (T-292) — 2026-03-24
 
 > **Note:** T-290 (production deploy) and T-291 (production health check) have not yet completed. Production has not been deployed. Following Sprint 36 precedent (T-285), this walkthrough was performed on the Monitor-verified staging environment (T-289 Deploy Verified = Yes, Staging). Results below reflect staging testing at `https://localhost:3001` (backend) and `https://localhost:4173` (frontend).
