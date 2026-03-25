@@ -11755,3 +11755,279 @@ Not applicable — `<head>` metadata applies uniformly across all viewport sizes
 ---
 
 *Sprint #36 design review complete. Published by Design Agent 2026-03-24.*
+
+---
+
+### Spec 31: Trip Notes Section (Trip Details Page)
+
+**Sprint:** #39
+**Related Task:** T-297 (Design), T-300 (Frontend Implementation)
+**Backlog Item:** B-030
+**Status:** Approved
+
+**Description:**
+The Trip Notes section adds a freeform text area to the Trip Details page (`/trips/:id`) where users can store miscellaneous notes about their trip — restaurant links, packing lists, travel tips, visa reminders, or anything that doesn't fit neatly into the structured flights/stays/activities sections. It uses inline editing: the notes display as rendered text by default, and clicking activates an editable text area. Auto-saves on blur or Ctrl+Enter / Cmd+Enter. Character limit: 5000 characters.
+
+---
+
+#### 31.1 Section Position
+
+The Trip Notes section appears on the Trip Details page **below the Calendar and above the Flights section**. This placement gives notes high visibility without displacing the structured data sections.
+
+**Updated page section order (Sprint 39):**
+
+| Position | Element | Margin Below |
+|----------|---------|-------------|
+| 1 | Trip Header (back link + title + destinations + date range + edit icon) | 8px |
+| 2 | Trip Date Range Section | 24px |
+| 3 | TripCalendar Component | 48px |
+| 4 | **Trip Notes Section** ← new | 48px |
+| 5 | Flights Section | 48px |
+| 6 | Stays Section | 48px |
+| 7 | Activities Section | 48px |
+| 8 | Land Travel Section | 64px |
+
+---
+
+#### 31.2 Section Header
+
+Follows the standard section header pattern used by all other sections (Flights, Stays, Activities, Land Travel):
+
+- **Layout:** `display: flex`, `align-items: center`, `gap: 16px`, margin-bottom: 16px
+- **Label:** `"notes"` — font-size 11px, font-weight 600, letter-spacing 0.12em, uppercase, color `--text-muted`
+- **Horizontal rule:** `flex: 1` div with `border-top: 1px solid var(--border-subtle)` extending to the right
+- **No "edit" link** on the right side (unlike other sections). Editing is done inline — clicking the notes content itself activates edit mode. This keeps the interaction direct and reduces visual clutter.
+
+---
+
+#### 31.3 View Mode (Default State — Notes Exist)
+
+When the trip has notes content (`notes` field is non-null and non-empty string):
+
+**Container:**
+- Background: `--surface` (`#30292F`)
+- Border: `1px solid var(--border-subtle)`
+- Border-radius: `var(--radius-md)` (4px)
+- Padding: 24px
+- `cursor: text` — indicates the area is clickable to edit
+- `transition: border-color 150ms ease`
+- On hover: border changes to `1px solid var(--accent)` (`#5D737E`)
+
+**Text Display:**
+- Font-size: 14px
+- Font-weight: 400
+- Font-family: `var(--font-mono)` (IBM Plex Mono)
+- Color: `--text-primary` (`#FCFCFC`)
+- Line-height: 1.7 (generous for readability of longer text blocks)
+- White-space: `pre-wrap` — preserves line breaks the user entered
+- Word-break: `break-word` — prevents long URLs from overflowing
+
+**Click hint:**
+- Bottom-right of the container, only visible on hover
+- Text: `"click to edit"` — font-size 11px, color `--text-muted`, font-weight 400
+- `opacity: 0` by default, `opacity: 1` on container hover
+- `transition: opacity 150ms ease`
+
+**Interaction:**
+- Clicking anywhere in the container transitions to Edit Mode (Section 31.4)
+
+---
+
+#### 31.4 Edit Mode (Active Editing)
+
+Activated when the user clicks the notes container (from either View Mode or Empty State).
+
+**Text Area:**
+- Replaces the view container in place (no modal, no page navigation)
+- Element: `<textarea>`
+- Background: `--surface-alt` (`#3F4045`)
+- Border: `1px solid var(--accent)` (`#5D737E`) — active/focus border
+- Border-radius: `var(--radius-md)` (4px)
+- Padding: 24px
+- Font-size: 14px
+- Font-weight: 400
+- Font-family: `var(--font-mono)` (IBM Plex Mono)
+- Color: `--text-primary` (`#FCFCFC`)
+- Line-height: 1.7
+- Min-height: 160px
+- Max-height: 480px
+- `resize: vertical` — user can drag to resize vertically only
+- `overflow-y: auto` — scrollbar appears when content exceeds max-height
+- Width: 100% of the section container
+- Placeholder text (when empty): `"Add notes — restaurant links, packing lists, travel tips..."` — color `--text-muted`
+- `maxlength="5000"` attribute on the textarea element
+- Autofocus: The textarea receives focus immediately when edit mode activates. If there is existing text, place the cursor at the end of the content.
+
+**Character Counter:**
+- Position: Below the textarea, right-aligned
+- Margin-top: 8px
+- Font-size: 11px
+- Font-weight: 400
+- Color: `--text-muted` when under 4500 characters
+- Color: `rgba(220, 170, 50, 0.9)` (warm warning) when 4500–4899 characters
+- Color: `rgba(220, 80, 80, 0.9)` (danger) when 4900–5000 characters
+- Format: `"{current} / 5000"` — e.g., `"342 / 5000"`
+- Letter-spacing: 0.04em
+
+**Action Hints:**
+- Position: Below the textarea, left-aligned (same row as character counter)
+- Text: `"esc to cancel · ⏎ to save"` on macOS, `"esc to cancel · ctrl+⏎ to save"` on other platforms
+- Font-size: 11px, color `--text-muted`, font-weight: 400
+- Note: Detecting platform for the hint text — use `navigator.platform` or `navigator.userAgent` to check for Mac. If Mac, show `"⌘+⏎"`. Otherwise show `"ctrl+⏎"`.
+
+**Save Behavior:**
+- **Auto-save on blur:** When the textarea loses focus (user clicks elsewhere), save automatically via `PATCH /trips/:id` with `{ notes: "<value>" }`. No confirmation dialog.
+- **Save on Cmd+Enter / Ctrl+Enter:** Keyboard shortcut to explicitly save and exit edit mode. On macOS: `Cmd+Enter`. On other platforms: `Ctrl+Enter`.
+- **Cancel on Escape:** Pressing `Escape` reverts to the last saved value and exits edit mode. No API call.
+- After successful save: transition back to View Mode with the updated text. Show a brief inline confirmation — the border flashes `rgba(100, 200, 100, 0.6)` for 1.5s then returns to `var(--border-subtle)`. No toast notification (too noisy for a simple save).
+- After save failure: show an inline error message below the character counter — `"Failed to save. Your changes are preserved — try again."` in 12px, `rgba(220, 80, 80, 0.9)`. The textarea remains in edit mode with the user's content intact (do not revert). The user can retry by pressing Cmd/Ctrl+Enter or clicking away again.
+
+---
+
+#### 31.5 Empty State (No Notes)
+
+When the trip has no notes (`notes` is null, undefined, or empty string `""`):
+
+**Container:**
+- Same dimensions and styling as the View Mode container (Section 31.3)
+- Background: `--surface` (`#30292F`)
+- Border: `1px dashed var(--border-subtle)` — dashed border (not solid) to signal "empty / add content here"
+- Border-radius: `var(--radius-md)` (4px)
+- Padding: 24px
+- `cursor: text`
+- On hover: border changes to `1px dashed var(--accent)`
+
+**Empty Content:**
+- Centered vertically and horizontally within the container (flexbox)
+- Min-height: 80px (smaller than edit mode since it's just a prompt)
+- Icon: None (keeping it minimal per Japandi aesthetic)
+- Text: `"no notes yet — click to add"` — font-size 13px, color `--text-muted`, font-weight: 400
+- On hover: text color transitions to `--text-primary`
+
+**Interaction:**
+- Clicking anywhere in the container transitions to Edit Mode (Section 31.4) with an empty textarea showing the placeholder text
+
+---
+
+#### 31.6 Loading State
+
+**Initial page load (trip data still loading):**
+- The notes section renders a skeleton shimmer block
+- Skeleton: same dimensions as the view container — full width, 80px height
+- Background: `--surface` with shimmer animation (same as other section skeletons)
+- Border-radius: 4px
+
+**Save in progress:**
+- The textarea becomes `readonly` (not disabled — keeps styling consistent)
+- Opacity: 0.7 on the textarea
+- Character counter text changes to `"saving..."` (replaces the count temporarily)
+- Duration: typically < 500ms, so no spinner needed. If the save takes > 1s, the "saving..." text is sufficient feedback.
+
+---
+
+#### 31.7 Error States
+
+**API error on load (trip fetch fails):**
+- The notes section is not rendered independently — it loads as part of the trip data. If the trip fetch fails, the entire Trip Details page shows its existing error state. No notes-specific error handling needed for load.
+
+**API error on save:**
+- Textarea remains in edit mode
+- User's typed content is preserved (never discarded on error)
+- Error message appears below the action hints row: `"Failed to save. Your changes are preserved — try again."` — font-size 12px, color `rgba(220, 80, 80, 0.9)`, margin-top 8px
+- The error message disappears when the user successfully saves or presses Escape
+
+**Character limit exceeded (client-side prevention):**
+- The `maxlength="5000"` attribute prevents typing beyond the limit
+- The character counter turns danger color (`rgba(220, 80, 80, 0.9)`) at 4900+ characters as a visual warning
+- No toast or modal — the counter is sufficient feedback
+
+**Network offline:**
+- Same as API error on save — the textarea stays open with the user's content, and the error message appears
+- If the browser fires an `online` event, do NOT auto-retry. Let the user explicitly trigger save (blur or Cmd/Ctrl+Enter).
+
+---
+
+#### 31.8 Responsive Behavior
+
+**Desktop (≥ 768px):**
+- Notes container spans full width of the content area (up to max 1120px)
+- Padding: 24px
+- Textarea min-height: 160px, max-height: 480px
+- Action hints and character counter on the same row below textarea (flexbox, `justify-content: space-between`)
+
+**Mobile (< 768px):**
+- Notes container spans full width minus page padding (16px each side on mobile)
+- Padding: 16px
+- Textarea min-height: 120px, max-height: 320px
+- Action hints and character counter stack vertically:
+  - Action hints on first row (left-aligned)
+  - Character counter on second row (left-aligned)
+  - Gap: 4px between rows
+- The "click to edit" hover hint in View Mode is always visible on mobile (since there's no hover) — show it at `opacity: 0.5` by default
+- Touch: tapping the container enters edit mode (same as click)
+
+---
+
+#### 31.9 Accessibility
+
+- **Container role:** The view-mode container should have `role="button"` and `tabindex="0"` so keyboard users can focus and activate it
+- **Keyboard activation:** Pressing `Enter` or `Space` on the focused view-mode container activates edit mode (same as click)
+- **aria-label on view container:** `"Trip notes. Click to edit."` when notes exist. `"No trip notes. Click to add."` when empty.
+- **Textarea label:** The section header `"notes"` serves as the visual label. Add a hidden `<label for="trip-notes-textarea">Trip notes</label>` or use `aria-label="Trip notes"` on the textarea.
+- **Character counter:** Use `aria-live="polite"` on the character counter element so screen readers announce count changes (debounced — update every 500ms of inactivity, not on every keystroke)
+- **Save confirmation:** The green border flash is visual-only. Add an `aria-live="polite"` region that announces `"Notes saved"` on successful save.
+- **Error announcement:** The error message container should have `role="alert"` so screen readers announce it immediately.
+- **Escape key:** Standard behavior — reverts and exits. Announced via the action hints text.
+- **Focus management:** When entering edit mode, focus moves to the textarea. When exiting edit mode (save or cancel), focus returns to the view-mode container.
+- **Color contrast:** All text meets WCAG AA. `#FCFCFC` on `#30292F` = ratio ~11:1. `#FCFCFC` on `#3F4045` = ratio ~8:1. Muted text `rgba(252,252,252,0.5)` on `#30292F` ≈ ratio ~5.5:1 (passes AA for large text; the 11px labels are small but at 0.5 opacity this is borderline — consistent with existing convention across all specs).
+
+---
+
+#### 31.10 Data Contract
+
+The notes field relies on the API contract being published by T-298. Expected shape:
+
+```
+GET /trips/:id → { ..., notes: string | null, ... }
+PATCH /trips/:id → { notes: string } → { ..., notes: string, ... }
+```
+
+- `notes` is a string, nullable, max 5000 characters
+- XSS sanitization is applied server-side (T-299)
+- The frontend should NOT apply any HTML sanitization — display the text as plain text via `pre-wrap` (no `dangerouslySetInnerHTML`, no markdown rendering)
+- Empty string `""` and `null` are both treated as "no notes" (show empty state)
+
+---
+
+#### 31.11 Component Structure (Suggested)
+
+```
+TripNotesSection/
+├── TripNotesSection.jsx    — Main component (handles view/edit toggle, API calls)
+├── TripNotesSection.css    — Styles
+└── TripNotesSection.test.jsx — Tests
+```
+
+**Props:**
+- `notes: string | null` — current notes value from trip data
+- `tripId: string` — trip ID for the PATCH call
+- `onNotesUpdated: (updatedNotes: string) => void` — callback to update parent state after successful save
+
+**Internal State:**
+- `isEditing: boolean` — toggles between view and edit mode
+- `draftText: string` — current textarea value (initialized from `notes` prop)
+- `isSaving: boolean` — true while PATCH is in flight
+- `saveError: string | null` — error message from failed save
+- `showSaveConfirmation: boolean` — triggers the green border flash
+
+---
+
+*Spec 31 (Sprint 39 — Trip Notes Section, T-297, B-030) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-25.*
+
+---
+
+**Design System Conventions:** Stable. No additions or modifications proposed. All tokens, spacing, and typography conventions from the table at the top of this document remain in effect.
+
+---
+
+*Sprint #39 design spec complete. Published by Design Agent 2026-03-25.*

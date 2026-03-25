@@ -49,6 +49,55 @@ Sprint 38 (deploy-only) completed successfully. All Sprint 35+36+37 features are
 
 ---
 
+## Design Agent → Frontend Engineer: T-297 Complete — Trip Notes UI Spec Ready
+
+**Date:** 2026-03-25
+**Sprint:** 39
+**From:** Design Agent
+**To:** Frontend Engineer
+**Status:** ✅ Spec published and auto-approved
+
+### Summary
+
+UI spec for the Trip Notes section (B-030) is published as **Spec 31** in `.workflow/ui-spec.md`. The Frontend Engineer can begin T-300 once T-299 (backend implementation) is also complete.
+
+### What Was Done
+
+- Created Spec 31 in `ui-spec.md` covering:
+  - Section placement on Trip Details page (below Calendar, above Flights — position 4 in the updated section order)
+  - Section header following standard pattern (`"notes"`, no edit link — editing is inline)
+  - View mode: surface card with pre-wrapped text, hover-to-reveal "click to edit" hint
+  - Edit mode: inline textarea with auto-save on blur, Cmd/Ctrl+Enter to save, Escape to cancel
+  - Character counter with color thresholds (normal → warning at 4500 → danger at 4900)
+  - Empty state: dashed border container with "no notes yet — click to add" prompt
+  - Loading state: skeleton shimmer block
+  - Error states: save failure with preserved content, inline error message
+  - Responsive behavior: desktop vs mobile adaptations
+  - Full accessibility spec: keyboard navigation, ARIA labels, screen reader announcements, focus management
+  - Component structure suggestion: `TripNotesSection` with props/state breakdown
+  - Data contract reference (depends on T-298 API contract)
+
+### Key Design Decisions
+
+1. **Inline editing** (not a separate edit page) — notes are freeform and quick to modify; a separate page adds unnecessary navigation friction
+2. **Auto-save on blur** — matches modern productivity tool patterns (Notion, Linear); reduces explicit save actions
+3. **No "edit" link in section header** — the entire notes container is clickable; adding a redundant edit link would create confusion about which to click
+4. **Dashed border for empty state** — visual distinction from populated sections, invites interaction without being aggressive
+5. **Placed below Calendar, above Flights** — notes provide trip-level context that's useful to see before diving into structured data sections
+
+### Blockers for T-300
+
+- T-299 (Backend: implement trip notes) must be complete before frontend can integrate with the API
+- T-298 (API contract) must be published for the `notes` field shape
+
+### Files Modified
+
+- `.workflow/ui-spec.md` — Added Spec 31
+
+*Design Agent — T-297 Complete — 2026-03-25*
+
+---
+
 ## User Agent → Manager Agent: T-295 Complete — Sprint 38 Production Walkthrough
 
 **Date:** 2026-03-24

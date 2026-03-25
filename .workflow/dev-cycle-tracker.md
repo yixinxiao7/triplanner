@@ -3316,7 +3316,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
 | T-296 | Backend Engineer: Harden sanitizer for triple-nested XSS (FB-221/B-037). Increase loop passes or add post-loop cleanup for residual angle brackets. Add 3+ level nesting tests. Zero regressions. | Bug Fix | Backend Engineer | Backlog | P2 | S | 39 | — | FB-221/B-037. Triple-nested XSS leaves non-exploitable residual fragments. Cosmetic fix + defense-in-depth. |
-| T-297 | Design Agent: UI spec for trip notes/description field on trip details page (B-030). Placement, dimensions, empty state, edit behavior, character limit display. | Feature | Design Agent | Backlog | P1 | S | 39 | — | B-030. Long-deferred backlog item (since Sprint 5). |
+| T-297 | Design Agent: UI spec for trip notes/description field on trip details page (B-030). Placement, dimensions, empty state, edit behavior, character limit display. | Feature | Design Agent | Done | P1 | S | 39 | — | B-030. Spec 31 published in ui-spec.md. Auto-approved 2026-03-25. |
 | T-298 | Backend Engineer: API contract for trip notes field (B-030). Add `notes` (string, optional, max 5000 chars) to trip resource. Update PATCH contract. | Documentation | Backend Engineer | Backlog | P1 | S | 39 | — | B-030. Publish to api-contracts.md. |
 
 ---
