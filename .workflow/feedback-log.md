@@ -18,6 +18,207 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
+## User Agent — Sprint #37 Staging Walkthrough (T-292) — 2026-03-24
+
+> **Note:** T-290 (production deploy) and T-291 (production health check) have not yet completed. Production has not been deployed. Following Sprint 36 precedent (T-285), this walkthrough was performed on the Monitor-verified staging environment (T-289 Deploy Verified = Yes, Staging). Results below reflect staging testing at `https://localhost:3001` (backend) and `https://localhost:4173` (frontend).
+
+---
+
+### FB-200 — Nested XSS bypass fully fixed on all endpoints (Sprint 37 primary deliverable)
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Nested/obfuscated XSS bypass (FB-191) is fully fixed across all models |
+| **Sprint** | 37 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-286 |
+
+**Details:** Tested the Sprint 37 primary fix (T-286) — iterative sanitization of nested HTML tags — across all resource types:
+
+1. **Trips:** `<<script>script>alert(1)<</script>/script>` → stored as `"alert(1)"` (tags fully stripped, text content preserved). ✅
+2. **Trips:** `<<<<script>script>script>script>evil` → stored as `"evil"` (4-level nesting fully stripped). ✅
+3. **Trips:** `<<img>img src=x onerror=alert(3)>` → sanitized to empty string → rejected by post-sanitization validation (400 VALIDATION_ERROR). ✅
+4. **Flights (PATCH):** `<<script>script>Evil Airlines<</script>/script>` → stored as `"Evil Airlines"`. ✅
+5. **Flights (PATCH):** `<<b>b>Bold<<br>br />Airlines</b>` → stored as `"BoldAirlines"`. ✅
+6. **Stays:** `<<script>script>Hacked Hotel<</script>/script>` → stored as `"Hacked Hotel"`. ✅
+7. **Activities:** `<<div>div>Hacked Activity</div>` in name + `<<a>a href=evil>Click Me</a>` in location → stored as `"Hacked Activity"` and `"Click Me"`. ✅
+8. **Land travel:** Nested XSS in `from_location`, `to_location`, `provider` — all fully stripped. ✅
+9. **Destinations array:** `["<<script>script>alert(1)<</script>/script>"]` → stored as `["alert(1)"]`. ✅
+
+**Expected:** Nested/obfuscated HTML tags fully stripped after iterative sanitization. No valid HTML tags remain in stored values.
+**Actual:** Matches expected. All nested patterns across all 5 models are fully sanitized. The iterative loop works correctly.
+
+---
+
+### FB-201 — Legitimate angle brackets and special characters preserved after sanitization
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Non-tag angle brackets, Unicode, emoji, and special characters all preserved correctly |
+| **Sprint** | 37 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-286 |
+
+**Details:** Verified that the iterative sanitizer does not over-strip legitimate content:
+
+1. `"Budget 5 < 10k USD"` → stored as `"Budget 5 < 10k USD"` ✅ (angle brackets in non-tag context preserved)
+2. `"東京旅行 🗼 café"` → stored as `"東京旅行 🗼 café"` ✅ (Unicode + emoji preserved)
+3. `"Tom & Jerry's \"Excellent\" Trip"` → stored as `"Tom & Jerry's \"Excellent\" Trip"` ✅ (ampersands, quotes preserved)
+4. Destinations array with Japanese characters: `["東京","大阪"]` → preserved ✅
+
+**Expected:** Legitimate text content with angle brackets, Unicode, emoji, and special characters preserved.
+**Actual:** Matches expected. No false positives from the sanitizer.
+
+---
+
+### FB-202 — Post-sanitization validation correctly rejects all-HTML required fields
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Post-sanitization validation (Sprint 36 T-278) still works correctly with Sprint 37 iterative sanitizer |
+| **Sprint** | 37 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-286, T-278 |
+
+**Details:** Tested that fields which become empty after sanitization are properly rejected:
+
+1. `name: "<<img>img src=x onerror=alert(3)>"` → sanitized to `""` → 400 VALIDATION_ERROR with `"Trip name is required"` ✅
+2. `name: ""` → 400 VALIDATION_ERROR ✅
+3. Missing required fields `{}` → 400 VALIDATION_ERROR with both `name` and `destinations` errors ✅
+
+**Expected:** All-HTML required fields rejected with 400 after sanitization strips them to empty.
+**Actual:** Matches expected. Post-sanitization validation (T-278) and iterative sanitization (T-286) work together correctly.
+
+---
+
+### FB-203 — CRUD flows working correctly across all resource types
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Full CRUD operations for trips, flights, stays, activities, and land travel all working correctly |
+| **Sprint** | 37 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-292 |
+
+**Details:** Regression test of core CRUD flows:
+
+1. **Trips:** POST (201), GET list, GET single, PATCH, DELETE (204) — all correct response shapes and status codes ✅
+2. **Flights:** POST with full fields (flight_number, airline, airports, datetimes, timezones), GET list — correct ✅
+3. **Stays:** POST with category/name/address/check-in-out — correct ✅
+4. **Activities:** POST with name/location/date/times — correct, times returned as HH:MM:SS format ✅
+5. **Land travel:** POST with mode/provider/locations/dates/times — correct ✅
+6. **Calendar aggregation:** GET `/trips/:id/calendar` returns events from flights, stays, activities with correct types and titles ✅
+7. **Search/filter:** `?search=Japan` returns only matching trips ✅
+8. **Delete:** Returns 204 with no body ✅
+
+---
+
+### FB-204 — Auth and authorization working correctly
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Authentication enforcement, token validation, and rate limiting all working correctly |
+| **Sprint** | 37 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-292 |
+
+**Details:**
+
+1. **Registration:** POST `/auth/register` creates user and returns access_token ✅
+2. **No auth token:** Protected endpoints return 401 `"Authentication required"` ✅
+3. **Invalid token:** `Bearer invalidtoken123` returns 401 `"Invalid or expired token"` ✅
+4. **Rate limiting (register):** 5 requests per 60 minutes — triggered correctly with `"Too many registration attempts"` ✅
+5. **Rate limiting (login):** 10 requests per 15 minutes — triggered correctly ✅
+6. **Invalid trip ID format:** Returns 400 `"Invalid ID format"` (not 500) ✅
+
+---
+
+### FB-205 — Input validation rejects long inputs and invalid enums
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Server-side validation correctly rejects oversized inputs and invalid enum values |
+| **Sprint** | 37 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-292 |
+
+**Details:**
+
+1. **Very long trip name (1000 chars):** Rejected with validation error ✅
+2. **Invalid status enum (`"ACTIVE"`):** Rejected with `"Status must be one of: PLANNING, ONGOING, COMPLETED"` ✅
+3. **SQL injection attempt (`"Robert'; DROP TABLE trips;--"`):** Stored as literal string — parameterized queries prevent injection ✅
+
+---
+
+### FB-206 — Page title and font branding confirmed on staging
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Frontend serves correct page title "triplanner" and includes IBM Plex Mono font |
+| **Sprint** | 37 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-292 |
+
+**Details:**
+
+1. `<title>triplanner</title>` present in served HTML ✅
+2. IBM Plex Mono font referenced in CSS bundle (`index-CFSmeAES.css`) ✅
+3. Frontend build output exists at `frontend/dist/` with all expected assets (JS, CSS, favicon) ✅
+4. Code-split chunks present: ActivitiesEditPage, FlightsEditPage, LandTravelEditPage, StaysEditPage ✅
+
+---
+
+### FB-207 — Production deployment not yet completed (T-290/T-291 still Backlog)
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | Production deployment has not been executed — T-290 and T-291 remain in Backlog status |
+| **Sprint** | 37 |
+| **Category** | Feature Gap |
+| **Severity** | Major |
+| **Status** | New |
+| **Related Task** | T-290, T-291 |
+
+**Details:** Sprint 37 scope includes production deployment (T-290) and production health check (T-291) as Phase 3. Both tasks remain in Backlog status in `dev-cycle-tracker.md`. T-289 (staging health check) completed successfully and unblocked T-290, but T-290 has not been executed.
+
+**Steps to reproduce:** Check `dev-cycle-tracker.md` — T-290 status is "Backlog", T-291 status is "Backlog".
+**Expected:** Production should be deployed and verified by this point in the sprint.
+**Actual:** Only staging has been deployed and verified. User Agent tested on staging per Sprint 36 precedent.
+
+**Impact:** Sprint 35+36+37 features are NOT live on production. The primary Sprint 37 goal of "deploy all Sprint 35+36 changes to production" is incomplete.
+
+---
+
+### FB-208 — Health endpoint confirms database connectivity
+
+| Field | Value |
+|-------|-------|
+| **Feedback** | GET /api/v1/health returns {"status":"ok"} immediately — fast response, database connected |
+| **Sprint** | 37 |
+| **Category** | Positive |
+| **Severity** | — |
+| **Status** | New |
+| **Related Task** | T-292 |
+
+**Details:** Health endpoint responds instantly with `{"status":"ok"}`. No delays, no errors. Confirms backend is running and database is connected on staging.
+
+---
+
+*User Agent Sprint #37 — T-292 — 2026-03-24*
 
 ---
 
