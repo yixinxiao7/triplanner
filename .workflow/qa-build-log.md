@@ -4,6 +4,230 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #41 — QA Engineer — Re-Verification Pass — 2026-03-30
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**Task:** T-316 (re-verification after T-317 staging deploy)
+**QA Engineer**
+
+### Re-Verification Results
+
+Orchestrator re-invoked QA after staging deploy. Full test suites re-run to confirm no regressions.
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Backend unit tests | ✅ 523/523 pass | 27 test files, 2.85s |
+| Frontend unit tests | ✅ 524/524 pass | 26 test files, 2.26s |
+| npm audit (backend) | ✅ 0 vulnerabilities | |
+| npm audit (frontend) | ✅ 0 vulnerabilities | |
+| Config consistency | ✅ PASS | PORT=3000, proxy=http://localhost:3000, CORS=http://localhost:5173 — all match |
+| Security (XSS) | ✅ PASS | No dangerouslySetInnerHTML (1 comment-only match in formatDate.js). No innerHTML, no eval(). |
+| Security (secrets) | ✅ PASS | No hardcoded secrets in JS/JSX/TS/TSX files |
+| Sprint 41 code review | ✅ PASS | PrintCalendarSummary is pure presentational, no API calls, no user input, React auto-escaping |
+| Print CSS | ✅ PASS | @media print rules hide interactive elements, white bg, IBM Plex Mono |
+| Test coverage (T-315) | ✅ PASS | 6 tests: happy path, empty state, sorting, date derivation, stay events, partial data |
+
+**Verdict:** ✅ All checks pass. T-316 re-confirmed. Pipeline remains ready for T-318 (Monitor Agent).
+
+**Warnings (pre-existing, non-blocking):**
+- `act(...)` warning in TripCalendar.test.jsx — React testing-library state update warning, pre-existing
+
+---
+
+## Sprint #41 — Deploy Engineer — T-317 Staging Deployment — 2026-03-30
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**Task:** T-317 — Staging Deployment
+**Deploy Engineer**
+
+---
+
+### Pre-Deploy Verification
+
+| Check | Result |
+|-------|--------|
+| QA handoff in handoff-log.md | ✅ T-316 complete — all tests pass, security clean |
+| Pending migrations (technical-context.md) | ✅ None — schema stable at 10 migrations (001–010) |
+| Backend test suite | ✅ 523/523 pass (27 test files, 2.74s) |
+| Frontend test suite | ✅ 524/524 pass (26 test files, 2.00s) |
+| Frontend build | ✅ 131 modules, 12 output files, built in 504ms |
+
+### Deployment
+
+| Field | Value |
+|-------|-------|
+| Environment | **Staging** |
+| Build Status | **✅ Success** |
+| Deploy Method | PM2 (ecosystem.config.cjs) |
+| Backend URL | https://localhost:3001 |
+| Frontend URL | https://localhost:4173 |
+| Backend PID | 61913 |
+| Frontend PID | 61914 |
+| Backend Status | online (0 restarts) |
+| Frontend Status | online (0 restarts) |
+| Migrations Run | None (no new migrations in Sprint 41) |
+| Deploy Timestamp | 2026-03-30 17:01 |
+
+### Staging Smoke Tests
+
+| Test | Result |
+|------|--------|
+| Health endpoint (`/api/v1/health`) | ✅ PASS — `{"status":"ok"}` |
+| Auth endpoint (401 for invalid creds) | ✅ PASS — 401 |
+| Trips endpoint (401 without auth) | ✅ PASS — 401 |
+| Frontend serves HTML | ✅ PASS — HTML document returned |
+
+**Smoke Tests: 4/4 passed, 0 failed**
+
+### Sprint 41 Changes Deployed
+
+- PrintCalendarSummary component (new)
+- Print CSS updates (rule set 15)
+- TripDetailsPage integration (import + render)
+- Frontend-only changes — no backend code changes
+
+### Next Step
+
+→ **T-318: Monitor Agent staging health check.** Handoff logged below.
+
+*Deploy Engineer — T-317 — Sprint 41 — 2026-03-30*
+
+---
+
+## Sprint #41 — QA Engineer — T-316 Integration Testing — 2026-03-30
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**Task:** T-316 — Integration Testing for Sprint 41 (Trip Export/Print Feature, B-032)
+**QA Engineer**
+
+---
+
+### 1. Unit Test Review (Test Type: Unit Test)
+
+**Backend Tests:**
+- **Result:** ✅ ALL PASS — 523 tests across 27 test files
+- **Duration:** 2.81s
+- **Regressions:** 0
+- **Notes:** No backend code changes in Sprint 41 (T-314 = N/A). Full backend suite ran clean. stderr output from sprint2 and sprint25 tests is expected (testing error handler behavior).
+
+**Frontend Tests:**
+- **Result:** ✅ ALL PASS — 524 tests across 26 test files
+- **Duration:** 2.10s
+- **Regressions:** 0
+- **New Tests (T-315):** 6 tests in `PrintCalendarSummary.test.jsx`
+  - Test 1: Renders with valid trip and flight data, wrapper has correct class ✅
+  - Test 2: Generates correct day rows for date range with mixed events ✅
+  - Test 3: Returns null for empty trip with no data ✅
+  - Test 4: Stay check-in and checkout appear on correct days ✅
+  - Test 5: Events are sorted by time within a day ✅
+  - Test 6: Date range derived from data when trip has no dates ✅
+- **Coverage Assessment:** 6 tests cover happy-path (render with data, sorting, date derivation), empty/null state (returns null), and edge cases (partial data, multi-day events). Meets the minimum of 1 happy-path + 1 error-path per component.
+- **Warnings:** `act(...)` warnings in StaysEditPage and TripCalendar tests — pre-existing, not related to Sprint 41 changes.
+
+---
+
+### 2. Integration Testing (Test Type: Integration Test)
+
+**Sprint 41 Scope:** Frontend-only feature. No new API endpoints. PrintCalendarSummary is a pure presentational component receiving props from TripDetailsPage.
+
+**API Contract Verification (T-313):**
+- ✅ No new endpoint required — confirmed in api-contracts.md
+- ✅ PrintCalendarSummary receives data as props (trip, flights, stays, activities, landTravel) — does NOT make its own API calls
+- ✅ Existing endpoints (`GET /api/v1/trips/:id`, `/flights`, `/stays`, `/activities`, `/land-travel`) already fetched by `useTripDetails` hook — no contract changes
+
+**UI Spec Verification (Spec 33, T-312):**
+- ✅ Component renders "itinerary overview" section header
+- ✅ Day-by-day table with `<thead>` (sr-only) and `<tbody>` rows per day
+- ✅ Events sorted by time within each day, then by type priority
+- ✅ Event type labels: FLT, FLT ARR, STAY IN, STAY OUT, ACT, LT, LT ARR — all implemented
+- ✅ No-event days show em-dash (—)
+- ✅ Empty trip (no dates, no data) returns null — component not rendered
+- ✅ Date range derivation from event dates when trip has no start_date/end_date
+- ✅ Hidden on screen (`display: none` in module CSS), visible in print (`@media print` in print.css)
+
+**TripDetailsPage Integration:**
+- ✅ `PrintCalendarSummary` imported and rendered in TripDetailsPage.jsx (line 13, line 800)
+- ✅ Placed between notes section and calendar wrapper per spec
+- ✅ Wrapped in `styles.printCalendarSummary` div for screen-hide class
+- ✅ Props passed correctly: trip, flights, stays, activities, landTravel
+
+**Print CSS (Rule Set 15):**
+- ✅ `@media print` rules show PrintCalendarSummary wrapper
+- ✅ Interactive elements hidden (navbar, print button, edit links, calendar)
+- ✅ White background, black text, IBM Plex Mono typography
+- ✅ `page-break-inside: avoid` on sections and cards
+- ✅ A4 portrait page setup with appropriate margins
+
+**State Coverage:**
+| State | Implemented | Verified |
+|-------|-------------|----------|
+| Empty (no data, no dates) | ✅ Returns null | ✅ Test 3 |
+| Success (full data) | ✅ Renders table | ✅ Tests 1, 2, 4, 5 |
+| Partial data | ✅ Shows available events | ✅ Tests 2, 6 |
+| No-event days | ✅ Shows em-dash | ✅ Test 2 |
+| Date derivation | ✅ From event dates | ✅ Test 6 |
+
+**Result:** ✅ PASS — Integration test verified.
+
+---
+
+### 3. Config Consistency Check (Test Type: Config Consistency)
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Backend PORT | 3000 | `PORT=3000` in backend/.env | ✅ Match |
+| Vite proxy target | `http://localhost:3000` | `${backendProtocol}://localhost:${backendPort}` where defaults are `http` and `3000` | ✅ Match |
+| SSL consistency | Backend SSL commented out → Vite uses http:// | `backendSSL` defaults to false → `http://` | ✅ Match |
+| CORS_ORIGIN | Includes `http://localhost:5173` | `CORS_ORIGIN=http://localhost:5173` | ✅ Match |
+| Docker backend PORT | 3000 | `PORT: 3000` in docker-compose.yml | ✅ Match |
+
+**Result:** ✅ PASS — No config mismatches.
+
+---
+
+### 4. Security Verification (Test Type: Security Scan)
+
+**npm audit (backend):** ✅ 0 vulnerabilities found
+
+**Security Checklist — Sprint 41 Applicable Items:**
+
+| Item | Applicable? | Result | Notes |
+|------|-------------|--------|-------|
+| Auth on endpoints | N/A | — | No new endpoints in Sprint 41 |
+| Input validation | N/A | — | No user input in PrintCalendarSummary (read-only display) |
+| SQL injection | N/A | — | No database queries in Sprint 41 code |
+| XSS prevention | ✅ Yes | ✅ PASS | Component uses React JSX (auto-escaped). No `dangerouslySetInnerHTML`, no `innerHTML`, no `eval()`. All text content rendered via React's safe text interpolation. |
+| Hardcoded secrets | ✅ Yes | ✅ PASS | No secrets, API keys, or tokens in any Sprint 41 files. |
+| Error response leakage | N/A | — | No API responses in Sprint 41 |
+| CORS config | ✅ Yes | ✅ PASS | CORS_ORIGIN correctly set to `http://localhost:5173` |
+| Security headers | N/A | — | No changes to middleware |
+| Dependencies | ✅ Yes | ✅ PASS | `npm audit` clean — 0 vulnerabilities |
+| Env vars not in code | ✅ Yes | ✅ PASS | backend/.env not committed (has .gitignore). JWT_SECRET in env only. |
+
+**Result:** ✅ PASS — No security issues found. No P1 bugs.
+
+---
+
+### 5. Final Verdict
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests | ✅ 523/523 pass |
+| Frontend unit tests | ✅ 524/524 pass |
+| Integration test | ✅ PASS |
+| Config consistency | ✅ PASS |
+| Security scan | ✅ PASS |
+| **Overall** | **✅ READY FOR DEPLOY** |
+
+**T-315 moved from Integration Check → Done.**
+**T-316 moved from Backlog → Done.**
+**T-317 unblocked — handoff to Deploy Engineer.**
+
+---
+
 ## Sprint #41 — Deploy Engineer — T-317 Status: BLOCKED — 2026-03-30
 
 **Date:** 2026-03-30

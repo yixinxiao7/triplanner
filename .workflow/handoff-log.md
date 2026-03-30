@@ -4,6 +4,118 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager Agent → Monitor Agent: Sprint 41 Code Review Complete — Pipeline Ready (2026-03-30)
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**From:** Manager Agent (CR-41 Pass #2)
+**To:** Monitor Agent (T-318)
+**Status:** ✅ No Action Required
+
+All Sprint 41 implementation tasks have been reviewed and approved. QA (T-316) passed. Deploy (T-317) complete. The pipeline is waiting on **T-318 (Monitor Agent: Staging health check)** to proceed.
+
+**Next step:** Monitor Agent should execute T-318 — staging health check for Sprint 41 (print view feature). See Deploy Engineer handoff below for verification checklist.
+
+---
+
+## Deploy Engineer → Monitor Agent: T-317 COMPLETE — Staging Deployed, Ready for Health Check (Sprint 41)
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**From:** Deploy Engineer (T-317)
+**To:** Monitor Agent (T-318)
+**Status:** ✅ Complete — Staging Deployed
+
+### Deployment Summary
+
+| Field | Value |
+|-------|-------|
+| Environment | Staging |
+| Build Status | ✅ Success |
+| Backend URL | https://localhost:3001 |
+| Frontend URL | https://localhost:4173 |
+| Backend Process | triplanner-backend (PM2, online, 0 restarts) |
+| Frontend Process | triplanner-frontend (PM2, online, 0 restarts) |
+| Migrations | None — schema stable at 10 migrations |
+| Smoke Tests | 4/4 pass (health, auth, trips, frontend HTML) |
+
+### What Monitor Agent Should Verify (T-318)
+
+1. **Health endpoint** — `GET https://localhost:3001/api/v1/health` returns `{"status":"ok"}`
+2. **Backend API responsiveness** — auth, trips, flights, stays, activities endpoints respond correctly
+3. **Frontend accessibility** — `https://localhost:4173` serves the SPA
+4. **Print feature accessible** — trip details page loads, print button present (CSS `@media print` feature)
+5. **PM2 process stability** — both processes online with 0 restarts after 5+ minutes
+6. **No error logs** — check `pm2 logs triplanner-backend --lines 50` and `pm2 logs triplanner-frontend --lines 50`
+7. **Memory/CPU** — `pm2 monit` shows healthy resource usage
+8. **Deploy Verified = Yes (Staging)** — confirm after all checks pass
+
+### Notes
+
+- No backend code changes in Sprint 41 — only frontend files changed
+- Print feature is CSS `@media print` based — no special runtime dependencies
+- Production processes (triplanner-prod-backend, triplanner-prod-frontend) are still running separately on ports 3002/4174
+
+*Deploy Engineer — T-317 — Sprint 41 — 2026-03-30*
+
+---
+
+## QA Engineer → Deploy Engineer: T-316 COMPLETE — All Tests Pass, Ready for Staging Deploy (Sprint 41)
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**From:** QA Engineer (T-316)
+**To:** Deploy Engineer (T-317)
+**Status:** ✅ Complete — Ready for Deploy
+
+### QA Results Summary
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests | ✅ 523/523 pass (27 test files) |
+| Frontend unit tests | ✅ 524/524 pass (26 test files) |
+| New PrintCalendarSummary tests | ✅ 6/6 pass |
+| Integration test (Spec 33 vs implementation) | ✅ PASS |
+| API contract verification (T-313) | ✅ PASS — no new endpoints, existing data reused |
+| Config consistency (ports, CORS, SSL) | ✅ PASS — no mismatches |
+| Security scan (npm audit) | ✅ 0 vulnerabilities |
+| Security checklist | ✅ PASS — no XSS, no secrets, no injection vectors |
+| Regressions | ✅ 0 regressions |
+
+### Sprint 41 Task Status
+
+| Task | Status |
+|------|--------|
+| T-312 — Design spec | ✅ Done |
+| T-313 — API contract | ✅ Done |
+| T-314 — Backend impl | ✅ Done (N/A) |
+| T-315 — Frontend print view | ✅ Done (QA approved) |
+| T-316 — QA integration | ✅ Done |
+| **T-317 — Staging deploy** | **🟢 UNBLOCKED — ready to execute** |
+
+### Notes for Deploy Engineer
+
+- No new migrations. Schema stable at 10 migrations (001–010).
+- No backend code changes in Sprint 41. Only frontend files changed.
+- Frontend build should be sufficient — no backend restart needed unless full redeploy is standard.
+- Print feature is CSS `@media print` based — no special runtime dependencies.
+
+### Files Changed in Sprint 41
+
+| File | Type |
+|------|------|
+| `frontend/src/components/PrintCalendarSummary.jsx` | New |
+| `frontend/src/components/PrintCalendarSummary.module.css` | New |
+| `frontend/src/__tests__/PrintCalendarSummary.test.jsx` | New |
+| `frontend/src/styles/print.css` | Modified (rule set 15) |
+| `frontend/src/pages/TripDetailsPage.jsx` | Modified (import + render) |
+| `frontend/src/pages/TripDetailsPage.module.css` | Modified (printCalendarSummary class) |
+| `frontend/src/__tests__/TripDetailsPage.test.jsx` | Modified (mock added) |
+
+*QA Engineer — T-316 — Sprint 41 — 2026-03-30*
+
+---
+
 ## Frontend Engineer → QA Engineer: T-315 COMPLETE — Print View Implementation Ready for QA (Sprint 41)
 
 **Date:** 2026-03-30
@@ -83,47 +195,12 @@ Acknowledged that existing endpoints (`GET /api/v1/trips/:id`, `GET /api/v1/trip
 
 ---
 
-## Deploy Engineer → Orchestrator: T-317 BLOCKED — Upstream Dependencies Not Ready (Sprint 41)
+## Deploy Engineer → Orchestrator: T-317 BLOCKED → RESOLVED (Sprint 41)
 
-**Date:** 2026-03-30
-**Sprint:** 41
-**From:** Deploy Engineer (T-317)
-**To:** Orchestrator / Manager Agent
-**Status:** ⏳ Blocked — awaiting upstream completion
+**Date:** 2026-03-30 (originally blocked, now resolved)
+**Status:** ✅ Resolved — T-317 completed, staging deployed.
 
-### Blocker Details
-
-T-317 (Staging deployment) is **blocked by T-316** (QA integration testing), which is itself **blocked by T-315** (Frontend: print view implementation, still in Backlog).
-
-**Dependency chain status:**
-| Task | Status | Notes |
-|------|--------|-------|
-| T-312 — Design spec | ✅ Done | Spec 33 published |
-| T-313 — API contract | ✅ Done | Existing endpoints sufficient |
-| T-314 — Backend impl | ✅ Done (N/A) | No new endpoint needed |
-| T-315 — Frontend print view | ❌ Backlog | Not yet started/completed |
-| T-316 — QA integration | ❌ Backlog | Blocked by T-315 |
-| **T-317 — Staging deploy** | **❌ Blocked** | **Blocked by T-316** |
-
-### What Deploy Engineer Needs Before Proceeding
-
-1. T-315 must be completed (Frontend Engineer implements print view)
-2. T-316 must be completed (QA Engineer runs integration tests, security checklist, confirms all tests pass)
-3. QA handoff entry in this log confirming test results
-
-### Pre-Deploy Checklist (Ready When Unblocked)
-
-When T-316 clears, Deploy Engineer will:
-1. Verify QA confirmation in handoff log
-2. Check technical-context.md for migrations (currently none — schema stable at 10 migrations)
-3. Rebuild frontend and backend
-4. Run full test suite
-5. Deploy to staging via PM2
-6. Run smoke tests
-7. Log results in qa-build-log.md
-8. Hand off to Monitor Agent (T-318) for health check
-
-*Deploy Engineer — T-317 — Sprint 41 — 2026-03-30*
+*See "Deploy Engineer → Monitor Agent" handoff above for deployment details.*
 
 ---
 
