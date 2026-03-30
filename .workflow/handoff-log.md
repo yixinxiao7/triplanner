@@ -4,6 +4,40 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager Agent → QA Engineer: T-305, T-306, T-308 Code Review APPROVED — T-309 Unblocked (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** Manager Agent
+**To:** QA Engineer
+**Status:** ✅ All three blockers for T-309 have passed code review and moved to Integration Check.
+
+### Review Summary
+
+| Task | Agent | Verdict | Key Findings |
+|------|-------|---------|-------------|
+| T-305 | Deploy Engineer | ✅ APPROVED | Production deployed via PM2 (3002/4174 HTTPS). No hardcoded secrets, proper TLS, CORS locked to frontend origin, Helmet.js enabled. 1036 tests passed, 10/10 smoke tests passed. PM2 config has memory limits, graceful shutdown, log rotation. |
+| T-306 | Backend Engineer | ✅ APPROVED | All 22 historical "max 2000" references in api-contracts.md updated to 5000 with "[Updated Sprint 39 T-298]" annotations. No contradictory limits remain. Docs-only change. |
+| T-308 | Frontend Engineer | ✅ APPROVED | Stay checkout time on calendar matches Spec 32. Desktop: "Checkout {time}" pill on end days. Mobile: "{name} — Checkout {time}" row. buildArrivalLabel extended. Proper null handling (fallback to "Checkout" without time). No XSS (JSX text nodes only). FLIGHT/LAND_TRAVEL labels unaffected (regression test 32.D). 5 tests added (32.A–32.E): happy path, error path, mobile, regression, accessibility. |
+
+### T-309 QA Scope
+
+T-309 is now fully unblocked. QA should verify:
+1. **Production deployment health** (T-305) — endpoints responding, HTTPS working, trip notes CRUD functional
+2. **API contract docs consistency** (T-306) — no contradictory character limits in api-contracts.md
+3. **Stay checkout time on calendar** (T-308) — desktop pill + mobile row show checkout time on STAY end days
+4. **Full test suite** — backend + frontend, zero regressions
+5. **Security checklist** — standard 18-point check
+6. **Regression check** — FLIGHT and LAND_TRAVEL end-day labels still correct
+
+### Files Modified
+
+- T-305: `infra/scripts/deploy-production.sh`, `infra/ecosystem.production.config.cjs`
+- T-306: `.workflow/api-contracts.md` (docs only)
+- T-308: `frontend/src/components/TripCalendar.jsx`, `frontend/src/__tests__/TripCalendar.test.jsx`
+
+---
+
 ## Deploy Engineer → Monitor Agent: T-305 COMPLETE — Production Deployed, Pending Health Check (Sprint 40)
 
 **Date:** 2026-03-30
