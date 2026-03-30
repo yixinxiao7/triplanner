@@ -18,6 +18,222 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
+## User Agent — Sprint #39 Staging Walkthrough (T-304) — 2026-03-30
+
+> **Scope:** Sprint 39 delivers trip notes/description field (B-030) and triple-nested XSS sanitizer hardening (B-037). Testing performed on staging environment at `https://localhost:3001` (backend) and `https://localhost:4173` (frontend). Monitor Agent confirmed Deploy Verified = Yes (T-303).
+
+---
+
+### FB-224 — Trip notes: create trip with notes works correctly
+
+| Field | Value |
+|-------|-------|
+| Feedback | POST /api/v1/trips with `notes` field creates trip and returns notes in response |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-299 |
+| Details | Created a trip with `{"name":"Tokyo Adventure","destinations":"Tokyo, Osaka","start_date":"2026-08-07","end_date":"2026-08-21","notes":"Pack light, remember passport. Book Narita Express."}`. Response: 201 with `notes` field correctly populated. The `notes` field is also correctly returned as `null` when omitted from POST body. |
+
+---
+
+### FB-225 — Trip notes: GET endpoints return notes field
+
+| Field | Value |
+|-------|-------|
+| Feedback | Both GET /api/v1/trips and GET /api/v1/trips/:id include `notes` field in response |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-299 |
+| Details | GET list endpoint returns `notes` in every trip object. GET detail endpoint returns `notes`. Trips without notes return `notes: null`. Consistent with API contract. |
+
+---
+
+### FB-226 — Trip notes: PATCH update and clear work correctly
+
+| Field | Value |
+|-------|-------|
+| Feedback | PATCH /api/v1/trips/:id correctly updates, clears (null), and normalizes (empty string → null) notes |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-299 |
+| Details | Tested: (1) PATCH with new notes text → 200 with updated notes, `updated_at` changed. (2) PATCH with `notes: null` → 200 with `notes: null`. (3) PATCH with `notes: ""` → 200 with `notes: null` (empty string normalized to null). All three behaviors match API contract. |
+
+---
+
+### FB-227 — XSS sanitization on notes field works correctly
+
+| Field | Value |
+|-------|-------|
+| Feedback | Script tags, event handlers, and HTML tags are properly stripped from notes |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-296, T-299 |
+| Details | Tested: (1) `<script>alert("xss")</script>normal text` → stored as `alert("xss")normal text` (tags stripped). (2) `<img src=x onerror=alert(1)>test` → stored as `test` (full tag removed). (3) SQL injection `Robert'); DROP TABLE trips;--` → stored verbatim (parameterized queries protect). All sanitization working as expected. |
+
+---
+
+### FB-228 — Triple-nested XSS fix verified (T-296)
+
+| Field | Value |
+|-------|-------|
+| Feedback | Triple-nested XSS patterns `<<<script>script>script>` produce clean output with no residual fragments |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-296 |
+| Details | Sent `<<<script>script>script>alert(1)<<<\/script>\/script>\/script>` via PATCH notes. Result: `alert(1)` — all nested script tags and residual angle bracket fragments completely stripped. This resolves the FB-221/B-037 issue from Sprint 38. |
+
+---
+
+### FB-229 — Legitimate angle brackets preserved in notes
+
+| Field | Value |
+|-------|-------|
+| Feedback | Math expressions and comparison operators with angle brackets are not stripped by sanitizer |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-296 |
+| Details | Sent `Budget should be < 5000 EUR and > 3000 EUR. Math: 3 < 5.` via PATCH notes. Result: exact same string returned — no false positives. Sanitizer correctly distinguishes HTML tags from legitimate angle bracket usage. |
+
+---
+
+### FB-230 — Notes character limit enforced at 5000 (backend + frontend consistent)
+
+| Field | Value |
+|-------|-------|
+| Feedback | Backend rejects notes > 5000 chars; frontend maxLength set to 5000; boundary values work correctly |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-298, T-299, T-300 |
+| Details | Tested boundary: 2000 chars ✅ accepted, 2001 chars ✅ accepted, 4999 chars ✅ accepted, 5000 chars ✅ accepted, 5001 chars ✅ rejected (400 VALIDATION_ERROR: "Notes must not exceed 5000 characters"). Frontend textarea has `maxLength={5000}` with char counter. Backend and frontend limits are consistent at 5000 per Sprint 39 T-298 contract update (increased from Sprint 7's 2000). |
+
+---
+
+### FB-231 — Notes type validation rejects non-string types
+
+| Field | Value |
+|-------|-------|
+| Feedback | Sending number, boolean, or array as notes returns proper 400 validation error |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-299 |
+| Details | Tested: `{"notes":12345}` → 400 "notes must be a string". `{"notes":true}` → 400 "notes must be a string". `{"notes":["a","b"]}` → 400 "notes must be a string". All return proper VALIDATION_ERROR with clear field-level messages. |
+
+---
+
+### FB-232 — Auth protection working on notes endpoint
+
+| Field | Value |
+|-------|-------|
+| Feedback | PATCH trips without token or with invalid token returns proper 401 |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-299 |
+| Details | No auth header → 401 "Authentication required". Invalid token → 401 "Invalid or expired token". Regression check: auth protection is intact. |
+
+---
+
+### FB-233 — Unicode, emoji, and multi-line notes preserved correctly
+
+| Field | Value |
+|-------|-------|
+| Feedback | Notes with international characters, emoji, and newlines stored and retrieved without data loss |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-299 |
+| Details | Tested: `Café ☕ résumé naïve 日本語 🇯🇵 中文 العربية` → returned exactly as sent. Multi-line notes with `\n` characters → preserved as-is. No encoding issues. |
+
+---
+
+### FB-234 — Frontend TripNotesSection component well-implemented
+
+| Field | Value |
+|-------|-------|
+| Feedback | Notes component implements all required states: view, edit, empty, loading, saving, error |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-300 |
+| Details | Code review of TripNotesSection.jsx confirms: (1) View mode shows notes text as clickable to edit, (2) Empty state shows italic placeholder "Add notes about this trip…", (3) Edit mode has textarea with char counter (current/5000), Save/Cancel buttons, (4) Keyboard: Escape cancels, Ctrl/Cmd+Enter saves, (5) Loading skeleton state, (6) "NOTES — SAVED" feedback shown for 1.5s after save, (7) Error state with role="alert", (8) Skip API call if notes unchanged (optimization), (9) Focus management: textarea auto-focuses on edit, focus returns to pencil on save/cancel. Well-architected. |
+
+---
+
+### FB-235 — Frontend notes styling follows Japandi design system
+
+| Field | Value |
+|-------|-------|
+| Feedback | CSS module uses correct design tokens, 150ms transitions, 2px/4px radius, responsive breakpoints |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-300 |
+| Details | TripNotesSection.module.css review: IBM Plex Mono font, var(--surface-alt) textarea background, 1px border-subtle borders, 150ms ease transitions, prefers-reduced-motion support, responsive breakpoints at 767px and 359px (stacks buttons vertically on very small screens). Focus-visible outlines with 2px accent border. Consistent with established design system. |
+
+---
+
+### FB-236 — Regression check: existing trip CRUD still works
+
+| Field | Value |
+|-------|-------|
+| Feedback | Trip create, read, update, delete all work correctly; notes field coexists without regressions |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-304 |
+| Details | Tested: (1) PATCH trip name and destinations → 200, fields updated, notes preserved. (2) GET trips list → pagination works, notes included. (3) DELETE trip → 204. (4) Health endpoint → 200 `{"status":"ok"}`. (5) Frontend serving at https://localhost:4173 → 200. No regressions detected. |
+
+---
+
+### FB-237 — API contract documentation inconsistency: old Sprint 7/8/20 sections still say max 2000
+
+| Field | Value |
+|-------|-------|
+| Feedback | Sprint 39 T-298 correctly documents the 2000→5000 increase, but earlier Sprint 7/8/20 contract sections still reference "max 2000" |
+| Sprint | 39 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | New |
+| Related Task | T-298 |
+| Details | The Sprint 39 contract section in api-contracts.md correctly documents the limit increase to 5000. However, the original Sprint 7 section still says "The API enforces a 2000-character maximum" and Sprint 8/20 sections reference "Max length 2000". While the Sprint 39 section takes precedence and the implementation is correct at 5000, anyone reading the older sections could be confused. Suggestion: add a deprecation note or update the older sections to reference the Sprint 39 change. Not blocking — the authoritative section is correct. |
+
+---
+
+### FB-238 — Notes section correctly placed in TripDetailsPage layout
+
+| Field | Value |
+|-------|-------|
+| Feedback | TripNotesSection is positioned after trip title/destinations and before calendar, matching UI spec |
+| Sprint | 39 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Related Task | T-300 |
+| Details | Code review of TripDetailsPage.jsx confirms TripNotesSection is rendered after the trip header (title, destinations, status, edit/delete controls) and before the calendar component, matching the ui-spec placement: "below the trip title and destinations row and above the calendar component." Props correctly passed: tripId, initialNotes from trip.notes, onSaveSuccess triggers full data reload, isLoading from parent loading state. |
+
+---
+
 ## User Agent — Sprint #38 Production Walkthrough (T-295) — 2026-03-24
 
 > **Note:** Sprint 38 is a deploy-only sprint. T-293 deployed all Sprint 35+36+37 code to production via Render (PR #8 merged to main). T-294 Monitor Agent verified staging health (Deploy Verified = Yes). This walkthrough was performed on the staging environment at `http://localhost:3001` (backend) and `frontend/dist/` (frontend build). Production URLs: `https://triplanner-backend-sp61.onrender.com` and `https://triplanner.yixinx.com`.
