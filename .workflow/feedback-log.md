@@ -18,6 +18,166 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
+## User Agent — Sprint #41 Staging Walkthrough (T-319) — 2026-03-30
+
+> **Scope:** Sprint 41 delivers the PrintCalendarSummary component (Spec 33, B-032) — a day-by-day itinerary overview table visible only in print. No backend changes. Testing performed on staging at `https://localhost:3001` (backend) and `https://localhost:4173` (frontend). Monitor Agent confirmed Deploy Verified = Yes (T-318).
+
+---
+
+### FB-252 — PrintCalendarSummary component created and integrated correctly
+
+| Field | Value |
+|-------|-------|
+| Feedback | `PrintCalendarSummary.jsx` component created per Spec 33; integrated into TripDetailsPage between notes section and calendar wrapper |
+| Sprint | 41 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Component file exists at `frontend/src/components/PrintCalendarSummary.jsx` with matching CSS module. It's imported and rendered in TripDetailsPage.jsx at line 800, wrapped in a `div.printCalendarSummary` that is `display: none` on screen. The component receives `trip`, `flights`, `stays`, `activities`, and `landTravel` props — correctly mapping `landTravels` from the hook to the expected `landTravel` prop name. |
+| Related Task | T-315 |
+
+---
+
+### FB-253 — Print CSS correctly shows PrintCalendarSummary in @media print
+
+| Field | Value |
+|-------|-------|
+| Feedback | print.css rule set 15 correctly targets both `[class*="PrintCalendarSummary_wrapper"]` and `[class*="printCalendarSummary"]` with `display: block !important` |
+| Sprint | 41 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | The dual selector approach (`PrintCalendarSummary_wrapper` for the component's internal wrapper, `printCalendarSummary` for the TripDetailsPage outer wrapper) ensures both nested `display: none` elements are overridden in print. All print-specific styles match Spec 33 requirements: 10pt/9pt font sizes, `#000` text color, 120pt date column width, em-dash for empty days, 1px solid #eee day separators, section header with `border-bottom: 1px solid #000`. |
+| Related Task | T-315 |
+
+---
+
+### FB-254 — All 6 PrintCalendarSummary unit tests pass
+
+| Field | Value |
+|-------|-------|
+| Feedback | 6/6 tests pass in `PrintCalendarSummary.test.jsx` — component rendering, day row generation, null for empty trip, stay check-in/checkout, time sorting, derived date range |
+| Sprint | 41 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Ran `npx vitest run src/__tests__/PrintCalendarSummary.test.jsx` from `frontend/` directory — all 6 tests pass in 48ms. Tests cover: (1) wrapper class present, (2) correct day rows for date range with mixed events, (3) null return for empty trip with no data, (4) STAY IN/OUT on correct days, (5) chronological sorting within a day, (6) date range derivation from data when trip has no dates. |
+| Related Task | T-315 |
+
+---
+
+### FB-255 — Full test suite passes with zero regressions (1047 tests)
+
+| Field | Value |
+|-------|-------|
+| Feedback | Backend 523/523 pass, Frontend 524/524 pass — zero regressions from Sprint 41 changes |
+| Sprint | 41 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Ran full backend test suite (`backend/` — 27 test files, 523 tests) and full frontend test suite (`frontend/` — 26 test files, 524 tests). All pass. TripDetailsPage tests (70 tests) pass with the new PrintCalendarSummary integration — no existing behavior broken. |
+| Related Task | T-319 |
+
+---
+
+### FB-256 — API endpoints return all data needed for print view
+
+| Field | Value |
+|-------|-------|
+| Feedback | GET /trips/:id, /trips/:id/flights, /trips/:id/stays, /trips/:id/activities all return correct data with proper structure for PrintCalendarSummary consumption |
+| Sprint | 41 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Created test trip with flights (DL006 JFK→NRT), stays (Hyatt Regency Tokyo), and activities (Senso-ji Temple, Shibuya Crossing). All sub-resource endpoints return properly structured data with required fields: `departure_at`/`departure_tz` for flights, `check_in_at`/`check_in_tz` for stays, `activity_date`/`start_time`/`end_time` for activities. T-313 correctly determined no new export endpoint was needed. |
+| Related Task | T-313 |
+
+---
+
+### FB-257 — Auth regression check: endpoints properly secured
+
+| Field | Value |
+|-------|-------|
+| Feedback | Unauthenticated and invalid-token requests correctly rejected with appropriate error codes |
+| Sprint | 41 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | GET /trips without Authorization header returns `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}`. GET /trips with invalid token returns `{"error":{"message":"Invalid or expired token","code":"UNAUTHORIZED"}}`. No regression in auth behavior. |
+| Related Task | T-319 |
+
+---
+
+### FB-258 — Frontend build includes print CSS and PrintCalendarSummary component
+
+| Field | Value |
+|-------|-------|
+| Feedback | Production build output (`frontend/dist/`) contains the print CSS rules for PrintCalendarSummary |
+| Sprint | 41 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Verified `frontend/dist/assets/index-DylJfwgT.css` contains `printCalendarSummary`, `summaryTable`, and `summaryDayRow` selectors. Frontend serves correctly at `https://localhost:4173` — HTML loads with proper `<script>` and `<link>` tags. |
+| Related Task | T-315 |
+
+---
+
+### FB-259 — Health endpoint and staging environment stable
+
+| Field | Value |
+|-------|-------|
+| Feedback | Backend health endpoint returns `{"status":"ok"}`, frontend serves SPA correctly |
+| Sprint | 41 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | `GET https://localhost:3001/api/v1/health` returns `{"status":"ok"}`. Frontend at `https://localhost:4173` returns complete HTML with correct title ("triplanner"), theme-color meta tag, and asset references. Staging environment is healthy and responsive. |
+| Related Task | T-318 |
+
+---
+
+### FB-260 — Event sorting logic correctly implements Spec 33 priority rules
+
+| Field | Value |
+|-------|-------|
+| Feedback | Component sorts events by time first, then by type priority (FLT > LT > STAY > ACT) — matching Spec 33 section 33.5 |
+| Sprint | 41 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Reviewed `TYPE_PRIORITY` constant in PrintCalendarSummary.jsx: FLT=0, FLT ARR=1, LT=2, LT ARR=3, STAY IN=4, STAY OUT=5, ACT=6. The `sortEvents` function sorts by `sortTime` first, then breaks ties using type priority. This matches the spec requirement: "If two events have the same time, the order is: Flights > Land Travel > Stays > Activities." Test 5 confirms the 9:00a activity appears before the 3:00p activity. |
+| Related Task | T-315 |
+
+---
+
+### FB-261 — Empty trip handling: component correctly returns null
+
+| Field | Value |
+|-------|-------|
+| Feedback | When trip has no date range and no event data, PrintCalendarSummary returns null — no empty table rendered |
+| Sprint | 41 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Code review confirms: line 326-328 checks `!hasAnyData && !trip?.start_date && !trip?.end_date` → returns null. Line 331 returns null if `getDateRange()` returns null (no dates derivable from data). Test 3 verifies this behavior. Matches Spec 33 section 33.13 empty state requirements. |
+| Related Task | T-315 |
+
+---
+
+### FB-262 — Semantic HTML: table structure with proper th/td for print accessibility
+
+| Field | Value |
+|-------|-------|
+| Feedback | Component uses `<table>` with `<thead>` (sr-only) containing `<th scope="col">` headers, and `<tbody>` with `<tr>`/`<td>` for data — matches Spec 33 section 33.16 |
+| Sprint | 41 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | The `<thead>` is visually hidden with `.srOnly` class (position: absolute, clip: rect(0,0,0,0)) but accessible to screen readers. Table has `role="table"`. Column headers "Date" and "Events" are in `<th scope="col">`. This is good practice for print accessibility — OCR/document readers can interpret the table structure. |
+| Related Task | T-315 |
+
+---
+
 ## User Agent — Sprint #40 Production Walkthrough (T-311) — 2026-03-30
 
 > **Scope:** Sprint 40 delivers production deployment of Sprint 39 code (trip notes, XSS fix), stay checkout time on calendar (T-308), and API contract docs fix (T-306). Testing performed on both staging (`https://localhost:3001`) and production (`https://localhost:3002`). Monitor Agent confirmed Deploy Verified = Yes (T-310).
