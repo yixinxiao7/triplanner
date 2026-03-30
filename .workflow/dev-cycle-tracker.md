@@ -3442,7 +3442,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-312 | Design Agent: UI spec for trip export/print feature (B-032). Print-optimized layout, print button, CSS print stylesheet approach. | Feature | Design Agent | Backlog | P1 | S | 41 | — | B-032. Print view for trip details page. |
+| T-312 | Design Agent: UI spec for trip export/print feature (B-032). Print-optimized layout, print button, CSS print stylesheet approach. | Feature | Design Agent | Done | P1 | S | 41 | — | B-032. Spec 33 published in ui-spec.md. Enhances existing Spec 15 with PrintCalendarSummary — a day-by-day itinerary overview table visible only in print. Covers component structure, event building logic, date range handling, empty states, page breaks, tests (6 test cases), file manifest. Auto-approved 2026-03-30. |
 | T-313 | Backend Engineer: API contract for trip export. Evaluate if existing GET /trips/:id is sufficient or new endpoint needed. | Feature | Backend Engineer | Backlog | P1 | S | 41 | — | B-032. API contract decision. |
 
 ---

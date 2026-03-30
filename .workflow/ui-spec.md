@@ -12356,3 +12356,537 @@ Then:  The pill has aria-label containing "checkout" and the stay name
 ---
 
 *Sprint #40 design spec complete. Published by Design Agent 2026-03-30.*
+
+---
+
+### Spec 33: Trip Print View Enhancement — Calendar Summary for Print (B-032)
+
+**Sprint:** #41
+**Related Task:** T-312 (Design), T-315 (Frontend Implementation)
+**Backlog Item:** B-032
+**Status:** Approved
+
+**Description:**
+Sprint 10's Spec 15 (T-121/T-122) delivered the initial trip print feature: a Print button, `@media print` CSS stylesheet, and `window.print()` integration. That implementation hides the interactive `TripCalendar` component entirely in print (`calendarWrapper { display: none }`), leaving a gap — the printed itinerary has no visual timeline overview.
+
+Spec 33 enhances the print view by adding a **PrintCalendarSummary** component: a static, text-based, day-by-day itinerary summary table that appears **only in print** (hidden on screen). It occupies the position where the interactive calendar would be, giving the printed document a compact chronological overview of the entire trip before the detailed section breakdowns.
+
+**What changes from Spec 15:**
+- The interactive calendar remains hidden in print (no change)
+- A new `PrintCalendarSummary` component is added to TripDetailsPage, rendered below the page header and above the first data section
+- The component is `display: none` on screen and `display: block` in `@media print`
+- Minor updates to `print.css` for the new component's print styles
+- The existing Print button, print stylesheet structure, and all other Spec 15 rules remain unchanged
+
+**Target User:** Detail-oriented travelers who print their itinerary for offline reference. The calendar summary gives them a single-page-glanceable timeline without needing the interactive calendar UI.
+
+---
+
+#### 33.1 Component: PrintCalendarSummary
+
+**Purpose:** Render a flat, day-by-day table summarizing all events (flights, land travel, stays, activities) across the trip date range. This is a read-only, print-optimized component — no interactivity, no hover states, no click handlers.
+
+**Visibility:**
+- **Screen:** `display: none` — completely hidden. The interactive `TripCalendar` handles the on-screen experience.
+- **Print:** `display: block` — visible, rendered between the page header (trip name, destinations, date range, notes) and the first data section (Flights).
+
+**Data Source:** The component receives props from the parent `TripDetailsPage`. It does NOT make its own API calls. It uses the same data already fetched by `useTripDetails` — `flights`, `stays`, `activities`, and `landTravel` arrays — plus the trip's `start_date` and `end_date` from the trip object.
+
+**Props:**
+```
+{
+  trip: { name, start_date, end_date, ... },
+  flights: Flight[],
+  stays: Stay[],
+  activities: Activity[],
+  landTravel: LandTravel[]
+}
+```
+
+---
+
+#### 33.2 Calendar Summary Layout — Print Rendering
+
+The summary renders as a vertical table with one row per day of the trip. Days with no events are still listed (to show gaps). The table is compact and fits well on A4 paper.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  ITINERARY OVERVIEW                                              │
+│  ────────────────────────────────────────────────────────────    │
+│                                                                  │
+│  DATE              EVENTS                                        │
+│  ─────────────     ──────────────────────────────────────────   │
+│  Thu, Aug 7        ✈ DL006 JFK → NRT  dep 11:00a EDT            │
+│                    🏨 Check-in: Hyatt Regency Tokyo  4:00p JST   │
+│                                                                  │
+│  Fri, Aug 8        🎯 Fisherman's Wharf  9:00a – 2:00p          │
+│                    🎯 Golden Gate Bridge  3:00p – 7:00p          │
+│                                                                  │
+│  Sat, Aug 9        🏨 Checkout: Hyatt Regency Tokyo  11:00a JST │
+│                    🎯 Dim sum in Chinatown  9:00a – 12:00p       │
+│                                                                  │
+│  Sun, Aug 10       — (no events)                                 │
+│                                                                  │
+│  Mon, Aug 11       🚄 Shinkansen Tokyo → Osaka  dep 8:30a       │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Important:** The emoji-like prefixes shown above (✈, 🏨, 🎯, 🚄) are used only to illustrate the concept. In the actual implementation, **do not use emoji**. Instead, use plain-text uppercase labels:
+
+| Event Type | Print Label Prefix |
+|------------|-------------------|
+| Flight (departure) | `FLT` |
+| Flight (arrival) | `FLT ARR` |
+| Stay (check-in) | `STAY IN` |
+| Stay (checkout) | `STAY OUT` |
+| Activity | `ACT` |
+| Land Travel (departure) | `LT` |
+| Land Travel (arrival) | `LT ARR` |
+
+**Example with actual labels:**
+```
+Thu, Aug 7        FLT  DL006 JFK → NRT  dep 11:00a EDT
+                  STAY IN  Hyatt Regency Tokyo  4:00p JST
+Fri, Aug 8        ACT  Fisherman's Wharf  9:00a – 2:00p
+                  ACT  Golden Gate Bridge  3:00p – 7:00p
+Sat, Aug 9        STAY OUT  Hyatt Regency Tokyo  11:00a JST
+                  ACT  Dim sum in Chinatown  9:00a – 12:00p
+```
+
+---
+
+#### 33.3 Section Header
+
+The calendar summary section uses a section header that matches the existing section header pattern, but with a distinct label:
+
+- **Label:** `"itinerary overview"` — font-size 9pt, font-weight 700, letter-spacing 0.12em, uppercase, color `#000` (in print)
+- **Horizontal rule:** `border-bottom: 1px solid #000` on the header row (same pattern as Flights/Stays/Activities section headers in print — see Spec 15 section 15.5 rule 7)
+- **Margin below header:** 12pt
+
+---
+
+#### 33.4 Day Row Structure
+
+Each day is a row in the summary. Structure:
+
+**Date Column (left):**
+- Width: ~120pt (fixed, to align all event descriptions)
+- Format: `ddd, MMM D` — e.g., `"Thu, Aug 7"` (abbreviated weekday, abbreviated month, day number, no year since the date range is shown in the page header)
+- Font-size: 10pt
+- Font-weight: 600
+- Color: `#000`
+- The date label appears only on the first event row for that day; subsequent events for the same day leave the date column blank (visual grouping by day)
+
+**Events Column (right):**
+- Each event is a single line of text
+- Font-size: 9pt
+- Font-weight: 400
+- Color: `#000`
+- Format: `[TYPE LABEL]  [title/name]  [time info]`
+- The type label is font-weight 600, letter-spacing 0.06em
+- Multiple events for the same day are stacked vertically with 4pt spacing between them
+
+**No-event days:**
+- Show the date in the date column
+- Events column shows: `"—"` (em-dash) in `#999` color, font-style: italic
+- This makes gaps visible so the traveler can see "free" days
+
+**Day separator:**
+- Between each day, a subtle horizontal line: `border-bottom: 1px solid #eee` with 6pt margin above and below
+- The last day has no trailing separator
+
+---
+
+#### 33.5 Event Ordering Within a Day
+
+Events within a single day are sorted chronologically by their start time, following these rules:
+
+1. **Flights (departure):** Sorted by `departure_at` time. Shown as: `FLT  [airline] [flight_number] [from] → [to]  dep [time] [tz]`
+2. **Flights (arrival):** If a flight arrives on a different day than it departs, show the arrival event on the arrival day. Shown as: `FLT ARR  [airline] [flight_number] [from] → [to]  arr [time] [tz]`
+3. **Land Travel (departure):** Sorted by `departure_at`. Shown as: `LT  [mode] [from] → [to]  dep [time]`
+4. **Land Travel (arrival):** If arrival is on a different day, show on arrival day. Shown as: `LT ARR  [mode] [from] → [to]  arr [time]`
+5. **Stay (check-in):** On the check-in date. Shown as: `STAY IN  [name]  [check_in_time] [tz]`
+6. **Stay (checkout):** On the checkout date. Shown as: `STAY OUT  [name]  [check_out_time] [tz]`
+7. **Activities:** Sorted by `start_time`. Shown as: `ACT  [name]  [start_time] – [end_time]`
+
+If two events have the same time, the order is: Flights > Land Travel > Stays > Activities (most constrained first).
+
+---
+
+#### 33.6 Date Range Handling
+
+**Trip has start_date and end_date:** Iterate from `start_date` to `end_date` inclusive, generating one row per day. Days with no events still appear.
+
+**Trip has no date range set:** Derive the range from the data:
+- Start: earliest date among all flights (departure), stays (check-in), activities (date), land travel (departure)
+- End: latest date among all flights (arrival), stays (checkout), activities (date), land travel (arrival)
+- If no data exists at all, the component renders nothing (returns `null`)
+
+**Single-day trip:** Show one row.
+
+**Long trips (>21 days):** Show all days. The component is text-based and compact; even a 30-day trip produces ~30 rows which fits on 1–2 printed pages. No truncation or pagination needed.
+
+---
+
+#### 33.7 CSS — Screen (Hidden)
+
+Add to `TripDetailsPage.module.css`:
+
+```css
+/* ── Print Calendar Summary (hidden on screen) ── */
+.printCalendarSummary {
+  display: none;
+}
+```
+
+This class wraps the entire `PrintCalendarSummary` component in TripDetailsPage.jsx.
+
+---
+
+#### 33.8 CSS — Print (Visible)
+
+Add to `frontend/src/styles/print.css` inside the existing `@media print { }` block:
+
+```css
+  /* ── 15. Print Calendar Summary (visible only in print) ── */
+  [class*="printCalendarSummary"] {
+    display: block !important;
+    margin-bottom: 24pt;
+    page-break-inside: avoid;
+  }
+
+  [class*="summaryTable"] {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  [class*="summaryDayRow"] {
+    border-bottom: 1px solid #eee !important;
+  }
+
+  [class*="summaryDayRow"]:last-child {
+    border-bottom: none !important;
+  }
+
+  [class*="summaryDateCell"] {
+    width: 120pt;
+    padding: 6pt 8pt 6pt 0;
+    font-size: 10pt;
+    font-weight: 600;
+    color: #000 !important;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+
+  [class*="summaryEventsCell"] {
+    padding: 6pt 0;
+    font-size: 9pt;
+    font-weight: 400;
+    color: #000 !important;
+    vertical-align: top;
+  }
+
+  [class*="summaryEventLine"] {
+    margin-bottom: 4pt;
+  }
+
+  [class*="summaryEventLine"]:last-child {
+    margin-bottom: 0;
+  }
+
+  [class*="summaryTypeLabel"] {
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    font-size: 8pt;
+    display: inline-block;
+    min-width: 55pt;
+  }
+
+  [class*="summaryNoEvents"] {
+    color: #999 !important;
+    font-style: italic;
+  }
+
+  /* Section header for the summary */
+  [class*="summarySectionHeader"] {
+    display: flex !important;
+    align-items: center;
+    margin-bottom: 12pt;
+    border-bottom: 1px solid #000 !important;
+    padding-bottom: 4pt;
+  }
+
+  [class*="summarySectionTitle"] {
+    font-size: 9pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+    color: #000 !important;
+  }
+```
+
+---
+
+#### 33.9 JSX Placement in TripDetailsPage.jsx
+
+The `PrintCalendarSummary` component is placed in TripDetailsPage's render output **between the page header and the TripCalendar wrapper**. The interactive calendar remains — it's hidden in print by the existing `calendarWrapper` rule. The print summary is hidden on screen by the `.printCalendarSummary` class.
+
+**Updated section order in TripDetailsPage render:**
+
+```
+[ Navbar ]
+[ Page Header: back link, trip name + print button, destinations, date range ]
+[ TripNotesSection ]
+[ PrintCalendarSummary ]    ← NEW (hidden on screen, visible in print)
+[ TripCalendar ]            ← existing (visible on screen, hidden in print)
+[ Flights Section ]
+[ Stays Section ]
+[ Activities Section ]
+[ Land Travel Section ]
+```
+
+**JSX insertion point:**
+
+```jsx
+{/* Print-only: calendar summary */}
+<div className={styles.printCalendarSummary}>
+  <PrintCalendarSummary
+    trip={trip}
+    flights={flights}
+    stays={stays}
+    activities={activities}
+    landTravel={landTravel}
+  />
+</div>
+
+{/* Screen-only: interactive calendar */}
+<div className={styles.calendarWrapper}>
+  <TripCalendar tripId={tripId} />
+</div>
+```
+
+---
+
+#### 33.10 Component File
+
+**New file:** `frontend/src/components/PrintCalendarSummary.jsx`
+
+This is a pure presentational component. It receives data props and renders the day-by-day table. It has no internal state, no side effects, no API calls.
+
+**Helper functions needed inside the component:**
+
+1. `getDateRange(trip, flights, stays, activities, landTravel)` — returns `{ startDate, endDate }` as Date objects. Uses trip dates if available, otherwise derives from data.
+
+2. `buildDayMap(flights, stays, activities, landTravel)` — returns a `Map<dateString, Event[]>` where `dateString` is `YYYY-MM-DD` and each Event is:
+   ```
+   { type: string, label: string, title: string, timeInfo: string, sortTime: string }
+   ```
+
+3. `formatDayLabel(date)` — returns `"Thu, Aug 7"` format using `Intl.DateTimeFormat`.
+
+4. `eachDayOfRange(startDate, endDate)` — returns an array of `YYYY-MM-DD` strings for each day in the range, inclusive.
+
+**Rendering logic:**
+```
+1. Compute date range
+2. Build day map from all event arrays
+3. Generate array of all days in range
+4. For each day:
+   a. Look up events in day map
+   b. Sort events by sortTime, then by type priority
+   c. Render day row with date label + event lines
+   d. If no events, render "—" placeholder
+```
+
+---
+
+#### 33.11 Event Building Logic — Detail
+
+**From `flights` array:**
+Each flight produces 1 or 2 events:
+- **Departure event:** date = departure date (from `departure_at`), sortTime = departure time, type = `"FLT"`, title = `"[airline] [flight_number] [from_location] → [to_location]"`, timeInfo = `"dep [formatted_time] [tz_abbr]"`
+- **Arrival event (if arrival date ≠ departure date):** date = arrival date (from `arrival_at`), sortTime = arrival time, type = `"FLT ARR"`, title = same as departure, timeInfo = `"arr [formatted_time] [tz_abbr]"`
+- If arrival date = departure date, only show the departure event (the arrival is implicit from the detailed Flights section below)
+
+**From `stays` array:**
+Each stay produces 2 events:
+- **Check-in event:** date = check-in date (from `check_in_at`), sortTime = check-in time, type = `"STAY IN"`, title = `"[name]"`, timeInfo = `"[formatted_time] [tz_abbr]"`
+- **Checkout event:** date = checkout date (from `check_out_at`), sortTime = checkout time, type = `"STAY OUT"`, title = `"[name]"`, timeInfo = `"[formatted_time] [tz_abbr]"`
+
+**From `activities` array:**
+Each activity produces 1 event:
+- **Activity event:** date = `activity_date`, sortTime = `start_time`, type = `"ACT"`, title = `"[name]"`, timeInfo = `"[formatted_start] – [formatted_end]"`
+- All-day activities (no start/end time): timeInfo = `"all day"`, sortTime = `"00:00"`
+
+**From `landTravel` array:**
+Each land travel produces 1 or 2 events:
+- **Departure event:** date = departure date, sortTime = departure time, type = `"LT"`, title = `"[mode] [from_location] → [to_location]"`, timeInfo = `"dep [formatted_time]"`
+- **Arrival event (if arrival date ≠ departure date):** date = arrival date, sortTime = arrival time, type = `"LT ARR"`, title = same, timeInfo = `"arr [formatted_time]"`
+
+---
+
+#### 33.12 Time Formatting in the Summary
+
+Use the same `formatTime` and `formatTimezoneAbbr` utilities already in `frontend/src/utils/formatDate.js`. Display times in 12-hour format with lowercase am/pm abbreviation (e.g., `"11:00a"`, `"4:30p"`). Include timezone abbreviation for flights and stays (since these cross timezones). Omit timezone for activities (they're implicitly local).
+
+---
+
+#### 33.13 Empty States
+
+| Condition | Behavior |
+|-----------|----------|
+| **Trip has data in all sections** | Full day-by-day summary rendered |
+| **Trip has data in some sections** | Summary shows events from populated sections; empty sections contribute no events. Days with no events from any section show "—" |
+| **Trip has no data at all (empty trip)** | Component returns `null` — no summary rendered. The printed page shows the trip header and empty section messages as before |
+| **Trip has no date range AND no data** | Component returns `null` |
+| **Trip has no date range BUT has data** | Date range derived from earliest/latest event dates |
+
+---
+
+#### 33.14 Page Break Behavior
+
+- The entire `printCalendarSummary` wrapper has `page-break-inside: avoid` — the browser will try to keep the summary on a single page
+- If the summary is too long for one page (>21 days likely), the browser will break at day row boundaries. Each `summaryDayRow` has `page-break-inside: avoid` to keep a single day's events together
+- The summary section header (`"ITINERARY OVERVIEW"`) should always appear on the same page as the first day row — use `page-break-after: avoid` on the header
+
+---
+
+#### 33.15 Responsive Behavior (Screen)
+
+The component is `display: none` on screen at all breakpoints. There is no screen rendering to consider. The print layout is fixed-width for A4 paper (portrait) — no responsive breakpoints apply.
+
+---
+
+#### 33.16 Accessibility Considerations
+
+| Concern | Implementation |
+|---------|---------------|
+| **Screen readers (screen)** | Component is `display: none` on screen — invisible to assistive technology. No aria attributes needed for the screen experience |
+| **Print accessibility** | Print is a visual medium; the day-by-day text format is inherently accessible when the printed page is later read by document OCR/screen readers (e.g., a scanned PDF). The structured table format with date labels helps document parsers |
+| **Semantic HTML** | Use a `<table>` element for the day grid with `<th>` for the date column header and `<td>` for data cells. This gives the best print rendering and document structure |
+| **No interactive elements** | The component has zero buttons, links, or focusable elements — it is pure static content |
+
+---
+
+#### 33.17 User Flow — Step by Step
+
+1. **User opens TripDetailsPage** — sees the normal dark-theme view with interactive calendar, all sections, and the Print button. The `PrintCalendarSummary` is in the DOM but hidden (`display: none`).
+2. **User clicks "Print"** — `window.print()` fires.
+3. **Print preview renders** — `@media print` CSS activates:
+   - Interactive calendar (`calendarWrapper`) is hidden
+   - `PrintCalendarSummary` (`printCalendarSummary`) becomes visible
+   - The printed page shows: trip header → **ITINERARY OVERVIEW** table → Flights → Land Travel → Stays → Activities
+4. **User sees the itinerary overview** — a compact, day-by-day list of everything happening on the trip, with type labels and times. Free days are visible as "—" rows.
+5. **User prints or saves as PDF** — the overview appears on the first page(s) of the printout, serving as a quick-reference schedule.
+6. **Dialog closes** — page returns to normal screen rendering. The print summary is hidden again.
+
+---
+
+#### 33.18 All States Summary
+
+| State | Screen Behavior | Print Behavior |
+|-------|----------------|----------------|
+| **Normal (trip with data)** | PrintCalendarSummary hidden | Summary table visible with day-by-day events |
+| **Empty trip** | PrintCalendarSummary hidden | Component returns null — not rendered |
+| **Partial data** | PrintCalendarSummary hidden | Summary shows available events; empty days show "—" |
+| **No date range, has data** | PrintCalendarSummary hidden | Range derived from data; summary visible |
+| **No date range, no data** | PrintCalendarSummary hidden | Component returns null |
+| **Loading state** | PrintCalendarSummary hidden | Skeleton elements hidden by existing print.css rule 13 |
+| **Error state** | PrintCalendarSummary not rendered (error branch) | Print button not rendered, so not reachable |
+
+---
+
+#### 33.19 Tests Required (T-315)
+
+Add to `frontend/src/__tests__/PrintCalendarSummary.test.jsx` (new file):
+
+**Test 1 — Component is hidden on screen:**
+```
+Given: PrintCalendarSummary rendered with valid trip and flight data
+When:  Component mounts
+Then:  The wrapper element has class containing "printCalendarSummary"
+  AND: The component renders content (not null) since data exists
+```
+
+**Test 2 — Day rows generated for date range:**
+```
+Given: Trip with start_date="2026-08-07", end_date="2026-08-09"
+  AND: One flight on Aug 7, one activity on Aug 8, nothing on Aug 9
+When:  Component renders
+Then:  3 day rows are present (Aug 7, Aug 8, Aug 9)
+  AND: Aug 7 row contains "FLT" label
+  AND: Aug 8 row contains "ACT" label
+  AND: Aug 9 row contains "—" (no events)
+```
+
+**Test 3 — Returns null for empty trip:**
+```
+Given: Trip with no date range AND empty arrays for flights, stays, activities, landTravel
+When:  Component renders
+Then:  Nothing is rendered (returns null)
+```
+
+**Test 4 — Stay check-in and checkout on different days:**
+```
+Given: Stay with check_in_at on Aug 7 and check_out_at on Aug 9
+When:  Component renders
+Then:  Aug 7 row contains "STAY IN" and the stay name
+  AND: Aug 9 row contains "STAY OUT" and the stay name
+```
+
+**Test 5 — Events sorted by time within a day:**
+```
+Given: Two activities on Aug 8: one at 3:00p, one at 9:00a
+When:  Component renders the Aug 8 row
+Then:  The 9:00a activity appears before the 3:00p activity
+```
+
+**Test 6 — Date range derived from data when trip has no dates:**
+```
+Given: Trip with no start_date/end_date
+  AND: One flight departing Aug 7, one activity on Aug 10
+When:  Component renders
+Then:  Day rows span from Aug 7 to Aug 10 (4 days)
+```
+
+All existing TripDetailsPage tests must continue to pass (no regressions).
+
+---
+
+#### 33.20 Files to Create / Modify (T-315 Summary)
+
+| File | Change Type | Description |
+|------|------------|-------------|
+| `frontend/src/components/PrintCalendarSummary.jsx` | **Create** | New component — day-by-day summary table for print |
+| `frontend/src/components/PrintCalendarSummary.module.css` | **Create** | Screen styles (primarily `display: none` wrapper) |
+| `frontend/src/styles/print.css` | **Modify** | Add rule set 15: print styles for `printCalendarSummary`, `summaryTable`, `summaryDayRow`, etc. |
+| `frontend/src/pages/TripDetailsPage.jsx` | **Modify** | Import and render `PrintCalendarSummary` between notes section and calendar wrapper |
+| `frontend/src/pages/TripDetailsPage.module.css` | **Modify** | Add `.printCalendarSummary` screen-hide class |
+| `frontend/src/__tests__/PrintCalendarSummary.test.jsx` | **Create** | 6 test cases for the new component |
+
+**No backend changes required.** The component uses data already fetched by `useTripDetails`.
+
+---
+
+#### 33.21 Relationship to Spec 15
+
+Spec 33 is an additive enhancement to Spec 15. It does not modify or supersede any Spec 15 rules. The full Spec 15 print stylesheet remains in effect. Spec 33 adds:
+- One new component (`PrintCalendarSummary`)
+- One new CSS rule set in `print.css` (rule 15)
+- One new CSS class in `TripDetailsPage.module.css`
+- One new render element in `TripDetailsPage.jsx`
+
+All existing print behavior (button, hidden UI, color overrides, typography, page setup) is unchanged.
+
+---
+
+*Spec 33 (Sprint 41 — Trip Print View Enhancement: Calendar Summary for Print, T-312, B-032) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-30.*
+
+---
+
+**Design System Conventions:** Stable. No additions or modifications proposed. All tokens, spacing, and typography conventions from the table at the top of this document remain in effect.
+
+---
+
+*Sprint #41 design spec complete. Published by Design Agent 2026-03-30.*

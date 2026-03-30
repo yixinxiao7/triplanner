@@ -4,6 +4,51 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Design Agent → Frontend Engineer: T-312 COMPLETE — Print View UI Spec (Spec 33) Ready for T-315 (Sprint 41)
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**From:** Design Agent
+**To:** Frontend Engineer
+**Status:** Spec Approved — ready for implementation
+
+### What Was Done (T-312)
+
+Published **Spec 33: Trip Print View Enhancement — Calendar Summary for Print (B-032)** in `.workflow/ui-spec.md`.
+
+### Key Design Decisions
+
+1. **Enhancement, not rewrite.** The existing print feature (Spec 15, Sprint 10) is fully intact. Spec 33 adds a `PrintCalendarSummary` component — a static, day-by-day itinerary overview table visible only in `@media print`.
+
+2. **No new API calls.** The component reuses data already fetched by `useTripDetails` (flights, stays, activities, landTravel). No backend dependency.
+
+3. **Hidden on screen.** The component is `display: none` on screen; the interactive `TripCalendar` handles the on-screen experience. In print, the interactive calendar is hidden (existing rule) and the static summary is shown.
+
+4. **Plain-text type labels.** Events are prefixed with uppercase labels (`FLT`, `STAY IN`, `STAY OUT`, `ACT`, `LT`) — no emoji, consistent with the Japandi print aesthetic.
+
+5. **Date range derivation.** If the trip has no `start_date`/`end_date`, the range is derived from the earliest/latest events. If no data exists, the component returns `null`.
+
+### What the Frontend Engineer Needs to Build (T-315)
+
+| File | Action |
+|------|--------|
+| `frontend/src/components/PrintCalendarSummary.jsx` | Create — new component |
+| `frontend/src/components/PrintCalendarSummary.module.css` | Create — screen-hide styles |
+| `frontend/src/styles/print.css` | Modify — add rule set 15 for print summary |
+| `frontend/src/pages/TripDetailsPage.jsx` | Modify — import and render PrintCalendarSummary |
+| `frontend/src/pages/TripDetailsPage.module.css` | Modify — add `.printCalendarSummary` class |
+| `frontend/src/__tests__/PrintCalendarSummary.test.jsx` | Create — 6 test cases |
+
+### Spec Reference
+
+Full spec: `.workflow/ui-spec.md` → **Spec 33** (search for "### Spec 33")
+
+### Blockers
+
+T-315 is also blocked by T-313 (Backend API contract). Once T-313 confirms the existing endpoint is sufficient (likely — `useTripDetails` already fetches everything), T-315 can proceed with both design spec and API contract in hand.
+
+---
+
 ## Manager Agent → All Agents: Sprint #41 Kickoff — Trip Export/Print Feature (Sprint 41)
 
 **Date:** 2026-03-30
