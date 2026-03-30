@@ -23,11 +23,11 @@
  *   - GET /trips/:id includes notes field (null when unset, string when set)
  *   - GET /trips list includes notes field on each trip object
  *   - PATCH /trips/:id accepts notes → updateTrip called with correct value
- *   - PATCH with notes > 2000 chars → 400 VALIDATION_ERROR
+ *   - PATCH with notes > 5000 chars → 400 VALIDATION_ERROR (T-298: limit increased from 2000)
  *   - PATCH with notes: null → clears the field
  *   - PATCH without notes → existing value unchanged (not in updates)
  *   - POST /trips with notes → createTrip called with notes
- *   - POST /trips with notes > 2000 chars → 400 VALIDATION_ERROR
+ *   - POST /trips with notes > 5000 chars → 400 VALIDATION_ERROR (T-298: limit increased from 2000)
  *   - POST /trips without notes → notes key not passed to createTrip
  */
 
@@ -407,8 +407,8 @@ describe('T-103 — PATCH /trips/:id notes field', () => {
     expect(res.body.data.notes).toBeNull();
   });
 
-  it('happy path: notes exactly 2000 chars is accepted', async () => {
-    const maxNotes = 'a'.repeat(2000);
+  it('happy path: notes exactly 5000 chars is accepted (T-298: limit increased from 2000)', async () => {
+    const maxNotes = 'a'.repeat(5000);
     tripModel.findTripById.mockResolvedValue(BASE_TRIP);
     tripModel.updateTrip.mockResolvedValue({ ...BASE_TRIP, notes: maxNotes });
 
@@ -422,9 +422,9 @@ describe('T-103 — PATCH /trips/:id notes field', () => {
     expect(res.body.data.notes).toBe(maxNotes);
   });
 
-  it('error path: notes > 2000 chars returns 400 VALIDATION_ERROR', async () => {
+  it('error path: notes > 5000 chars returns 400 VALIDATION_ERROR (T-298: limit increased from 2000)', async () => {
     tripModel.findTripById.mockResolvedValue(BASE_TRIP);
-    const tooLong = 'x'.repeat(2001);
+    const tooLong = 'x'.repeat(5001);
 
     const res = await request(
       buildTripsApp(), 'PATCH', `/api/v1/trips/${TRIP_UUID}`,
@@ -434,7 +434,7 @@ describe('T-103 — PATCH /trips/:id notes field', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
-    expect(res.body.error.fields.notes).toMatch(/2000/);
+    expect(res.body.error.fields.notes).toMatch(/5000/);
     // updateTrip must NOT be called — validation rejects before hitting the model
     expect(tripModel.updateTrip).not.toHaveBeenCalled();
   });
@@ -498,16 +498,16 @@ describe('T-103 — POST /trips notes field', () => {
     expect(res.body.data.notes).toBe(notes);
   });
 
-  it('error path: notes > 2000 chars on POST returns 400 VALIDATION_ERROR', async () => {
+  it('error path: notes > 5000 chars on POST returns 400 VALIDATION_ERROR (T-298: limit increased from 2000)', async () => {
     const res = await request(buildTripsApp(), 'POST', '/api/v1/trips', {
       name: 'Tokyo Trip',
       destinations: ['Tokyo'],
-      notes: 'y'.repeat(2001),
+      notes: 'y'.repeat(5001),
     }, AUTH);
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
-    expect(res.body.error.fields.notes).toMatch(/2000/);
+    expect(res.body.error.fields.notes).toMatch(/5000/);
     expect(tripModel.createTrip).not.toHaveBeenCalled();
   });
 

@@ -55,7 +55,7 @@ const TRIP_COLUMNS = [
   'name',
   'destinations',
   'status',
-  'notes',   // T-103 — nullable trip notes/description field (max 2000 chars)
+  'notes',   // T-103/T-298 — nullable trip notes/description field (max 5000 chars)
   db.raw(`
     TO_CHAR(
       COALESCE(

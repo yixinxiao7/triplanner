@@ -4,6 +4,249 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Backend Engineer → QA Engineer: T-296 + T-299 Implementation Complete (Sprint 39)
+
+**Date:** 2026-03-30
+**Sprint:** 39
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** ✅ Ready for QA
+
+### T-296 — Sanitizer Hardening (Post-Loop Cleanup)
+
+**What changed:**
+- `backend/src/middleware/sanitize.js`: Added post-loop cleanup to `sanitizeHtml()` that strips:
+  - Orphan `<` followed by a letter or `/` (incomplete tag starts, e.g., `<script` without closing `>`)
+  - Empty angle bracket pairs `<>` (from fully-consumed nested tags)
+  - Trailing `<` at end of string (from nested tag remnants)
+- Preserves legitimate uses: `5 < 10`, `A > B`, Unicode, emoji
+
+**What to test:**
+- Triple-nested XSS patterns no longer leave residual `<` fragments in stored data
+- `<<<b>b>` → empty string (was: `<`)
+- `<<<b>b>hello` → `hello` (was: `<hello`)
+- `<<div>>` → empty string (was: `<>`)
+- Regression: single/double nesting still stripped, clean text preserved, `5 < 10` preserved
+- All 20 new tests in `backend/src/__tests__/sprint39.test.js` (T-296 section)
+
+### T-299 — Trip Notes Max Length 2000 → 5000
+
+**What changed:**
+- `backend/src/routes/trips.js`: Updated `notes` validation `maxLength` from 2000 to 5000 on both POST and PATCH
+- Error message updated: `"Notes must not exceed 5000 characters"` (was: `"Notes must be at most 2000 characters"`)
+- `backend/src/models/tripModel.js`: Updated comment only (no logic change — DB column is TEXT NULL)
+- Updated existing tests in `sprint7.test.js` and `sprint20.test.js` to use 5000-char limit
+
+**What to test:**
+- `POST /api/v1/trips` with `notes` at 5000 chars → 201 (accepted)
+- `POST /api/v1/trips` with `notes` at 5001 chars → 400 `VALIDATION_ERROR`, message matches `"Notes must not exceed 5000 characters"`
+- `PATCH /api/v1/trips/:id` with `notes` at 5000 chars → 200 (accepted)
+- `PATCH /api/v1/trips/:id` with `notes` at 5001 chars → 400 `VALIDATION_ERROR`
+- Notes between 2001–5000 chars now accepted (previously rejected)
+- `notes: null` still clears, empty string still normalizes to null
+- XSS sanitization still applied to notes (T-296 cleanup active)
+- All 10 new tests in `backend/src/__tests__/sprint39.test.js` (T-299 section)
+
+**Test suite:** 523/523 backend tests pass. Zero regressions.
+
+**Files modified:**
+- `backend/src/middleware/sanitize.js`
+- `backend/src/routes/trips.js`
+- `backend/src/models/tripModel.js` (comment only)
+- `backend/src/__tests__/sprint39.test.js` (new — 30 tests)
+- `backend/src/__tests__/sprint7.test.js` (updated limits)
+- `backend/src/__tests__/sprint20.test.js` (updated limits)
+
+---
+
+## Backend Engineer → Frontend Engineer: T-299 Notes API Ready (Sprint 39)
+
+**Date:** 2026-03-30
+**Sprint:** 39
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Status:** ✅ API Ready
+
+T-299 implementation complete. The `notes` field on trip endpoints now accepts up to **5000 characters** (was 2000). Error message is: `"Notes must not exceed 5000 characters"`. All other behavior unchanged (null clears, empty string → null, XSS sanitization applied). See API contract T-298 in `api-contracts.md`.
+
+---
+
+## Backend Engineer → Deploy Engineer: T-296 + T-299 — No Migrations (Sprint 39)
+
+**Date:** 2026-03-30
+**Sprint:** 39
+**From:** Backend Engineer
+**To:** Deploy Engineer
+**Status:** ✅ Info Only
+
+Confirming: **No database migrations** for T-296 or T-299. Both are code-only changes (middleware behavior + validation layer). Do not run `knex migrate:latest` for Sprint 39. Migration log remains at 10 applied migrations (001–010).
+
+---
+
+## Deploy Engineer → Manager Agent + QA Engineer: T-302 Blocked — Security Patch Applied, Awaiting QA (Sprint 39)
+
+**Date:** 2026-03-30
+**Sprint:** 39
+**From:** Deploy Engineer
+**To:** Manager Agent, QA Engineer, Backend Engineer
+**Status:** ⏳ Blocked (awaiting T-301)
+
+### T-302 — Staging Deployment: Security Patch + Status Update
+
+T-302 remains blocked by T-301 (QA integration testing). Upstream blockers unchanged:
+- **T-296** (Backend: sanitizer hardening) — **Backlog** (not started) ← critical blocker
+- **T-300** (Frontend: trip notes UI) — **In Review**
+
+### Security Patch Applied (2026-03-30)
+
+Fixed 2 **high-severity** dependency vulnerabilities discovered during routine pre-deploy audit:
+
+| Package | Severity | Vulnerability |
+|---------|----------|---------------|
+| `path-to-regexp` (backend) | High | ReDoS via multiple route parameters (GHSA-37ch-88jc-xwx2) |
+| `picomatch` (backend + frontend) | High | Method injection + ReDoS (GHSA-3v7f-55p6-f55p, GHSA-c2c7-rcm5-vvqj) |
+
+Both fixed via `npm audit fix`. Post-fix: 0 vulnerabilities in both backend and frontend.
+
+### Post-Patch Verification
+
+| Check | Result |
+|-------|--------|
+| Backend tests | ✅ 493/493 passed |
+| Frontend tests | ✅ 513/513 passed |
+| Frontend build | ✅ 129 modules, 506ms |
+| Backend `npm audit` | ✅ 0 vulnerabilities |
+| Frontend `npm audit` | ✅ 0 vulnerabilities |
+| Infrastructure configs | ✅ All verified current |
+
+### Action Items
+
+1. **Backend Engineer / Manager:** T-296 (sanitizer hardening) is the critical path blocker — still in Backlog after 5 days. Entire deploy pipeline (T-301→T-302→T-303→T-304) is stalled. Please prioritize.
+2. **QA Engineer:** Once T-296 completes and T-300 is reviewed, please run T-301 integration testing. Deploy Engineer will execute staging deployment immediately upon QA pass.
+3. **QA Engineer:** Security patch (path-to-regexp, picomatch) should be included in your security checklist verification — both now at 0 vulnerabilities.
+
+**Deployment plan unchanged** from previous handoff entry. Ready to execute immediately upon T-301 pass.
+
+*Deploy Engineer — Sprint 39 T-302 — 2026-03-30*
+
+---
+
+## Deploy Engineer → Manager Agent: T-302 Blocked — Build Validated, Awaiting QA (Sprint 39)
+
+**Date:** 2026-03-25
+**Sprint:** 39
+**From:** Deploy Engineer
+**To:** Manager Agent, QA Engineer
+**Status:** ⏳ Blocked (awaiting T-301)
+
+### T-302 — Staging Deployment: Status Update
+
+T-302 remains blocked by T-301 (QA integration testing). Upstream blockers:
+- **T-296** (Backend: sanitizer hardening) — **Backlog** (not started)
+- **T-300** (Frontend: trip notes UI) — **In Review** (complete, awaiting review)
+
+### Build Validation Completed
+
+While blocked, completed a full build validation to ensure deployment can proceed immediately once T-301 passes:
+
+| Check | Result |
+|-------|--------|
+| Backend dependencies | ✅ Up to date, 0 vulnerabilities |
+| Frontend dependencies | ✅ Up to date, 0 vulnerabilities |
+| Frontend build (`npm run build`) | ✅ 129 modules, 543ms, 12 output files |
+| Backend `npm audit` | ✅ 0 vulnerabilities |
+| Frontend `npm audit` | ✅ 0 vulnerabilities |
+| PM2 ecosystem config | ✅ Verified current |
+| Docker Compose | ✅ Verified current |
+| Rollback playbook | ✅ Reviewed |
+| Pending migrations | None — schema stable at 10/10 |
+
+### Critical Path Blocker
+
+**T-296 is still in Backlog.** This is the critical blocker for the entire deploy pipeline. T-301 (QA) cannot start until T-296 is complete. Recommend Manager Agent prioritize T-296 completion.
+
+**Deployment plan unchanged** (documented in previous handoff entry below). Ready to execute immediately upon T-301 pass.
+
+*Deploy Engineer — Sprint 39 T-302 — 2026-03-25*
+
+---
+
+## Frontend Engineer → QA Engineer: T-300 Complete — Trip Notes Character Limit Update (Sprint 39)
+
+**Date:** 2026-03-25
+**Sprint:** 39
+**From:** Frontend Engineer
+**To:** QA Engineer
+**Status:** ✅ Implementation complete, ready for QA
+
+### API Contract Acknowledgment (T-298)
+
+Acknowledged the Sprint 39 API contract update for T-298 (trip notes character limit increase 2000 → 5000). No new endpoints, no response shape changes. Only the `notes` max length validation changed.
+
+### T-300 — Changes Made
+
+1. **`TripNotesSection.jsx`** — Updated `NOTES_MAX` from 2000 → 5000, `NOTES_WARN` from 1800 → 4500. Character count display now uses `toLocaleString()` for comma-formatted numbers (e.g., `"142 / 5,000"`).
+2. **`TripNotesSection.test.jsx`** — Updated char count assertion from `11 / 2000` to `11 / 5,000`. Added 3 new tests: maxLength attribute check (5000), comma-formatted display, and warning color behavior at 4500+ chars. Total: 16 tests passing.
+3. **`TripDetailsPage.test.jsx`** — Updated char count warning test from 1850/2000 threshold to 4550/5000 threshold with comma formatting.
+
+**No other files changed.** TripCard notes preview (100-char truncation) is unaffected.
+
+### What to Test
+
+- Enter edit mode → character count shows `0 / 5,000`
+- Type 4,500+ chars → warning color appears
+- Type 5,000 chars → error color appears, textarea enforces maxLength
+- Type 2,001–5,000 chars → save succeeds (previously would have been rejected at 2000)
+- All existing notes functionality (save, cancel, escape, empty state, error state) unchanged
+
+### Known Limitations
+
+- T-299 (backend implementation) is still in Backlog — backend may still enforce the old 2000-char limit until that task is completed. Frontend is ready for the 5000 limit.
+
+**Test results:** 513/513 frontend tests passing, zero regressions.
+
+*Frontend Engineer — Sprint 39 T-300 — 2026-03-25*
+
+---
+
+## Deploy Engineer → QA Engineer: T-302 Blocked — Pre-Deploy Verification Complete (Sprint 39)
+
+**Date:** 2026-03-25
+**Sprint:** 39
+**From:** Deploy Engineer
+**To:** QA Engineer, Manager Agent
+**Status:** ⏳ Blocked (awaiting T-301)
+
+### T-302 — Staging Deployment: Pre-Deploy Verification
+
+T-302 is blocked by T-301 (QA integration testing), which is itself blocked by T-296 (sanitizer hardening, Backlog) and T-300 (frontend trip notes UI, Backlog). Cannot proceed with deployment until QA confirms all tests pass.
+
+**Pre-deploy checks completed while waiting:**
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Pending Migrations | ✅ None | Sprint 39 is validation-layer only (Joi 2000→5000). DB column `trips.notes` is `TEXT NULL` (migration 010). No `knex migrate:latest` needed. Confirmed in `technical-context.md`. |
+| PM2 Ecosystem Config | ✅ Verified | `infra/ecosystem.config.cjs` — backend on port 3001, frontend preview, staging env vars set |
+| Docker Compose | ✅ Verified | `infra/docker-compose.yml` — postgres + migrate + backend + frontend services configured |
+| Deployment Runbook | ✅ Reviewed | `infra/DEPLOY.md` — staging redeployment steps current and accurate |
+| Rollback Playbook | ✅ Reviewed | `.workflow/rollback-playbook.md` — rollback steps documented |
+| Security Checklist | ✅ Reviewed | No new infra security concerns for Sprint 39 (no new env vars, no new ports, no new services) |
+
+**Deployment plan (once T-301 passes):**
+1. `cd backend && npm install` — install any new/updated dependencies
+2. `cd frontend && npm install && npm run build` — rebuild frontend with trip notes UI
+3. Verify migrations are up to date (expect: already at 10/10, no new migrations)
+4. `pm2 restart triplanner-backend` — restart backend with sanitizer + validation changes
+5. Smoke test: `GET /api/v1/health`, trip notes CRUD, XSS sanitization
+6. Log deployment in `qa-build-log.md`
+7. Handoff to Monitor Agent (T-303) for staging health check
+
+**Action needed:** QA Engineer — once T-296 and T-300 are complete, run integration testing (T-301) and log confirmation in handoff-log.md. Deploy Engineer will proceed immediately upon QA pass.
+
+*Deploy Engineer — Sprint 39 Pre-Deploy Verification — 2026-03-25*
+
+---
+
 ## Backend Engineer → Frontend Engineer: Sprint 39 API Contracts Ready (T-298)
 
 **Date:** 2026-03-25

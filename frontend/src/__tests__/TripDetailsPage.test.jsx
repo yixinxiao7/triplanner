@@ -895,13 +895,13 @@ describe('TripDetailsPage', () => {
     // Enter edit mode
     fireEvent.click(screen.getByRole('button', { name: /edit trip notes/i }));
 
-    // Type 1850 characters (>= 1800 threshold)
-    const longText = 'a'.repeat(1850);
+    // Type 4550 characters (>= 4500 threshold)
+    const longText = 'a'.repeat(4550);
     const textarea = screen.getByRole('textbox', { name: /trip notes/i });
     fireEvent.change(textarea, { target: { value: longText } });
 
-    // Char count warning should appear
-    expect(screen.getByText(/1850 \/ 2000/)).toBeDefined();
+    // Char count warning should appear (comma-formatted per Sprint 39)
+    expect(screen.getByText(/4,550 \/ 5,000/)).toBeDefined();
   });
 
   it('[T-104] Save button calls api.trips.update with correct notes payload', async () => {

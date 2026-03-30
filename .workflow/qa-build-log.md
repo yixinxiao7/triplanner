@@ -4,6 +4,112 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #39 — Deploy Engineer — T-302 Security Patch + Build Validation #2 — 2026-03-30
+
+**Task:** T-302 (Deploy Engineer: Staging deployment)
+**Date:** 2026-03-30
+**Sprint:** 39
+**Environment:** Staging (pending)
+**Build Status:** ⏳ Blocked — awaiting T-301 (QA integration testing)
+
+---
+
+### Security Vulnerability Fix
+
+Found and patched 2 high-severity dependency vulnerabilities:
+
+| Package | Severity | Issue | Advisory | Fix |
+|---------|----------|-------|----------|-----|
+| `path-to-regexp` (backend) | High | ReDoS via multiple route parameters | GHSA-37ch-88jc-xwx2 | `npm audit fix` → updated to ≥0.1.13 |
+| `picomatch` (backend + frontend) | High | Method injection in POSIX classes + ReDoS via extglob quantifiers | GHSA-3v7f-55p6-f55p, GHSA-c2c7-rcm5-vvqj | `npm audit fix` → updated to ≥4.0.4 |
+
+**Post-fix verification:**
+- Backend: `npm audit` → 0 vulnerabilities
+- Frontend: `npm audit` → 0 vulnerabilities
+
+### Build Validation #2 (post-security-patch, 2026-03-30)
+
+| Component | Result | Details |
+|-----------|--------|---------|
+| Backend `npm audit fix` | ✅ | 2 packages updated, 0 vulnerabilities |
+| Frontend `npm audit fix` | ✅ | 1 package updated, 0 vulnerabilities |
+| Backend tests (`npm test`) | ✅ | 493/493 passed (26 test files) |
+| Frontend tests (`npx vitest run`) | ✅ | 513/513 passed (25 test files) |
+| Frontend build (`npm run build`) | ✅ | 129 modules, 506ms, 12 output files |
+
+### Frontend Build Output (post-patch)
+
+```
+dist/index.html                                0.66 kB │ gzip:  0.39 kB
+dist/assets/index-CFSmeAES.css                60.44 kB │ gzip: 10.46 kB
+dist/assets/index-zNPA6mOW.js                300.30 kB │ gzip: 95.80 kB
++ 9 lazy-loaded chunks (flights, stays, activities, land travel edit pages)
+```
+
+### Infrastructure Verification
+
+| Check | Result |
+|-------|--------|
+| QA Confirmation (T-301) | ❌ Not yet — T-301 in Backlog (blocked by T-296 Backlog + T-300 In Review) |
+| Pending Migrations | None — Sprint 39 is validation-layer only. Schema stable at 10 migrations (001–010). |
+| PM2 ecosystem config | ✅ Verified current |
+| Docker Compose | ✅ Verified current |
+| Dockerfiles | ✅ Backend + Frontend Dockerfiles present |
+| nginx.conf | ✅ Present |
+| Rollback Playbook | ✅ Reviewed |
+| Security Checklist (infra items) | ✅ Dependencies now 0 vulnerabilities (was 2 high) |
+
+**Next step:** Deploy will proceed once T-301 (QA) confirms all tests pass. Critical blocker: T-296 (Backend sanitizer hardening) still in Backlog.
+
+---
+
+## Sprint #39 — Deploy Engineer — T-302 Pre-Deploy Verification + Build Validation — 2026-03-25
+
+**Task:** T-302 (Deploy Engineer: Staging deployment)
+**Date:** 2026-03-25
+**Sprint:** 39
+**Environment:** Staging (pending)
+**Build Status:** ⏳ Blocked — awaiting T-301 (QA integration testing)
+
+---
+
+### Pre-Deploy Verification
+
+| Check | Result |
+|-------|--------|
+| QA Confirmation (T-301) | ❌ Not yet — T-301 in Backlog (blocked by T-296 + T-300) |
+| Pending Migrations | None — Sprint 39 is validation-layer only. Schema stable at 10 migrations (001–010). |
+| Infrastructure Configs | ✅ Verified — PM2 ecosystem, Docker Compose, deployment runbook all current |
+| Rollback Playbook | ✅ Reviewed — no new rollback concerns for Sprint 39 |
+
+**Sprint 39 changes (code only, no DDL):**
+- T-296: Sanitizer hardening (middleware behavioral fix — increased loop passes for triple-nested XSS)
+- T-298/T-299: Trip notes validation limit 2000→5000 chars (Joi schema change, no DB migration)
+- T-300: Frontend trip notes UI (new component, build required)
+
+### Build Validation (pre-flight, 2026-03-25)
+
+| Component | Result | Details |
+|-----------|--------|---------|
+| Backend `npm install` | ✅ | Up to date, 0 vulnerabilities |
+| Frontend `npm install` | ✅ | Up to date, 0 vulnerabilities |
+| Frontend `npm run build` | ✅ | Vite build — 129 modules, 543ms, 12 output files |
+| Backend `npm audit` | ✅ | 0 vulnerabilities |
+| Frontend `npm audit` | ✅ | 0 vulnerabilities |
+
+### Frontend Build Output (pre-flight)
+
+```
+dist/index.html                                0.66 kB │ gzip:  0.39 kB
+dist/assets/index-CFSmeAES.css                60.44 kB │ gzip: 10.46 kB
+dist/assets/index-zNPA6mOW.js                300.30 kB │ gzip: 95.80 kB
++ 9 lazy-loaded chunks (flights, stays, activities, land travel edit pages)
+```
+
+**Next step:** Deploy will proceed once T-301 (QA) confirms all tests pass. Deployment plan documented in handoff-log.md.
+
+---
+
 ## Sprint #38 — Deploy Engineer — Staging Build & Deploy — 2026-03-24
 
 **Task:** Deploy Engineer: Build and deploy to staging (Sprint 38 orchestrator invocation)
