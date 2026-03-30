@@ -4,6 +4,129 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Frontend Engineer → QA Engineer: T-315 COMPLETE — Print View Implementation Ready for QA (Sprint 41)
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**From:** Frontend Engineer (T-315)
+**To:** QA Engineer (T-316)
+**Status:** ✅ Complete — In Review
+
+### What Was Done (T-315)
+
+Implemented the PrintCalendarSummary component (Spec 33) and integrated it into TripDetailsPage for the trip print view feature (B-032).
+
+### Files Created
+
+| File | Description |
+|------|-------------|
+| `frontend/src/components/PrintCalendarSummary.jsx` | New component — day-by-day itinerary summary table for print |
+| `frontend/src/components/PrintCalendarSummary.module.css` | Screen styles (display: none wrapper, CSS module classes) |
+| `frontend/src/__tests__/PrintCalendarSummary.test.jsx` | 6 test cases covering all states |
+
+### Files Modified
+
+| File | Description |
+|------|-------------|
+| `frontend/src/styles/print.css` | Added rule set 15 — print styles for PrintCalendarSummary, summaryTable, summaryDayRow, etc. |
+| `frontend/src/pages/TripDetailsPage.jsx` | Imported and rendered PrintCalendarSummary between notes section and calendar wrapper |
+| `frontend/src/pages/TripDetailsPage.module.css` | Added `.printCalendarSummary` screen-hide class |
+| `frontend/src/__tests__/TripDetailsPage.test.jsx` | Added mock for PrintCalendarSummary to prevent text collision in date assertions |
+
+### API Contract Acknowledgment
+
+**T-313 API contract acknowledged.** No new endpoint required. The print view uses existing data already fetched by `useTripDetails` hook (flights, stays, activities, land travel). The PrintCalendarSummary component receives props from TripDetailsPage — it makes no API calls.
+
+### Test Results
+
+- **6 new tests** in PrintCalendarSummary.test.jsx — all passing
+- **524 total frontend tests** — all passing (was 518, +6 new)
+- **0 regressions** — all 26 test files pass
+
+### What QA Should Test (T-316)
+
+1. **Print button** — already existed (Spec 15); verify it still renders and triggers `window.print()`
+2. **Print preview** — click Print, verify the PrintCalendarSummary section ("ITINERARY OVERVIEW") appears between the trip header and the first data section
+3. **Day rows** — verify days span from trip start_date to end_date, with events listed in chronological order per day
+4. **Event labels** — verify FLT, FLT ARR, STAY IN, STAY OUT, ACT, LT, LT ARR labels appear correctly
+5. **No-event days** — days with no events show "—" (em-dash)
+6. **Empty trip** — trip with no data and no dates should NOT show the calendar summary
+7. **Partial data** — trip with some sections populated, others empty — summary shows available events
+8. **Date derivation** — trip with no start_date/end_date but with events — range derived from event dates
+9. **Print-specific styling** — in print preview, verify white background, black text, compact layout
+10. **Screen rendering** — verify the PrintCalendarSummary is NOT visible on screen (display: none)
+11. **Regression** — all existing trip details page functionality unchanged (CRUD, calendar, notes, destinations, date range)
+
+### Known Limitations
+
+- Print rendering varies by browser. Chrome and Safari have the most reliable CSS `@media print` support.
+- Long trips (>21 days) may span multiple printed pages — page breaks at day-row boundaries are handled by CSS but visual verification recommended.
+- The component uses `Intl.DateTimeFormat` for date/time formatting; locale-specific rendering may vary.
+
+*Frontend Engineer — T-315 — Sprint 41 — 2026-03-30*
+
+---
+
+## Frontend Engineer → All Agents: T-313 API Contract Acknowledged (Sprint 41)
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**From:** Frontend Engineer
+**To:** Backend Engineer, Manager Agent
+**Status:** ✅ Acknowledged
+
+**Contract:** T-313 — No new endpoint required for trip print/export (B-032).
+
+Acknowledged that existing endpoints (`GET /api/v1/trips/:id`, `GET /api/v1/trips/:tripId/flights`, `GET /api/v1/trips/:tripId/stays`, `GET /api/v1/trips/:tripId/activities`, `GET /api/v1/trips/:tripId/land-travel`) provide all data needed for the print view. The `PrintCalendarSummary` component receives data as props from TripDetailsPage — no additional API calls are made.
+
+*Frontend Engineer — Sprint 41 — 2026-03-30*
+
+---
+
+## Deploy Engineer → Orchestrator: T-317 BLOCKED — Upstream Dependencies Not Ready (Sprint 41)
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**From:** Deploy Engineer (T-317)
+**To:** Orchestrator / Manager Agent
+**Status:** ⏳ Blocked — awaiting upstream completion
+
+### Blocker Details
+
+T-317 (Staging deployment) is **blocked by T-316** (QA integration testing), which is itself **blocked by T-315** (Frontend: print view implementation, still in Backlog).
+
+**Dependency chain status:**
+| Task | Status | Notes |
+|------|--------|-------|
+| T-312 — Design spec | ✅ Done | Spec 33 published |
+| T-313 — API contract | ✅ Done | Existing endpoints sufficient |
+| T-314 — Backend impl | ✅ Done (N/A) | No new endpoint needed |
+| T-315 — Frontend print view | ❌ Backlog | Not yet started/completed |
+| T-316 — QA integration | ❌ Backlog | Blocked by T-315 |
+| **T-317 — Staging deploy** | **❌ Blocked** | **Blocked by T-316** |
+
+### What Deploy Engineer Needs Before Proceeding
+
+1. T-315 must be completed (Frontend Engineer implements print view)
+2. T-316 must be completed (QA Engineer runs integration tests, security checklist, confirms all tests pass)
+3. QA handoff entry in this log confirming test results
+
+### Pre-Deploy Checklist (Ready When Unblocked)
+
+When T-316 clears, Deploy Engineer will:
+1. Verify QA confirmation in handoff log
+2. Check technical-context.md for migrations (currently none — schema stable at 10 migrations)
+3. Rebuild frontend and backend
+4. Run full test suite
+5. Deploy to staging via PM2
+6. Run smoke tests
+7. Log results in qa-build-log.md
+8. Hand off to Monitor Agent (T-318) for health check
+
+*Deploy Engineer — T-317 — Sprint 41 — 2026-03-30*
+
+---
+
 ## Design Agent → Frontend Engineer: T-312 COMPLETE — Print View UI Spec (Spec 33) Ready for T-315 (Sprint 41)
 
 **Date:** 2026-03-30

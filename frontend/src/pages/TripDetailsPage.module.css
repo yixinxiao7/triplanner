@@ -385,6 +385,11 @@
   text-decoration: underline;
 }
 
+/* ── Print Calendar Summary (hidden on screen — Spec 33, T-315) ── */
+.printCalendarSummary {
+  display: none;
+}
+
 /* ── Calendar Wrapper ── */
 .calendarWrapper {
   margin-bottom: 48px;

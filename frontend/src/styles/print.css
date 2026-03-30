@@ -253,4 +253,82 @@
     display: none !important;
   }
 
+  /* ── 15. Print Calendar Summary (visible only in print — Spec 33, T-315) ── */
+  [class*="PrintCalendarSummary_wrapper"],
+  [class*="printCalendarSummary"] {
+    display: block !important;
+    margin-bottom: 24pt;
+    page-break-inside: avoid;
+  }
+
+  [class*="PrintCalendarSummary_sectionHeader"],
+  [class*="summarySectionHeader"] {
+    display: flex !important;
+    align-items: center;
+    margin-bottom: 12pt;
+    border-bottom: 1px solid #000 !important;
+    padding-bottom: 4pt;
+  }
+
+  [class*="PrintCalendarSummary_sectionTitle"],
+  [class*="summarySectionTitle"] {
+    font-size: 9pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+    color: #000 !important;
+  }
+
+  [class*="summaryTable"] {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  [class*="summaryDayRow"] {
+    border-bottom: 1px solid #eee !important;
+  }
+
+  [class*="summaryDayRowLast"] {
+    border-bottom: none !important;
+  }
+
+  [class*="summaryDateCell"] {
+    width: 120pt;
+    padding: 6pt 8pt 6pt 0;
+    font-size: 10pt;
+    font-weight: 600;
+    color: #000 !important;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+
+  [class*="summaryEventsCell"] {
+    padding: 6pt 0;
+    font-size: 9pt;
+    font-weight: 400;
+    color: #000 !important;
+    vertical-align: top;
+  }
+
+  [class*="summaryEventLine"] {
+    margin-bottom: 4pt;
+  }
+
+  [class*="summaryEventLine"]:last-child {
+    margin-bottom: 0;
+  }
+
+  [class*="summaryTypeLabel"] {
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    font-size: 8pt;
+    display: inline-block;
+    min-width: 55pt;
+  }
+
+  [class*="summaryNoEvents"] {
+    color: #999 !important;
+    font-style: italic;
+  }
+
 }

@@ -10,6 +10,7 @@ import styles from './TripDetailsPage.module.css';
 import '../styles/print.css';
 import TripNotesSection from '../components/TripNotesSection';
 import TripStatusSelector from '../components/TripStatusSelector';
+import PrintCalendarSummary from '../components/PrintCalendarSummary';
 
 // ── Small Calendar Icon ───────────────────────────────────────
 function CalendarIconSmall() {
@@ -793,6 +794,17 @@ export default function TripDetailsPage() {
               )}
             </div>
           )}
+
+          {/* ── Print-only: Calendar Summary (Spec 33, T-315) ── */}
+          <div className={styles.printCalendarSummary}>
+            <PrintCalendarSummary
+              trip={trip}
+              flights={flights}
+              stays={stays}
+              activities={activities}
+              landTravel={landTravels}
+            />
+          </div>
 
           {/* ── Calendar ── */}
           <div className={styles.calendarWrapper}>

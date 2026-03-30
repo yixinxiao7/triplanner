@@ -10,6 +10,11 @@ vi.mock('../components/TripCalendar', () => ({
   default: () => <div data-testid="trip-calendar" />,
 }));
 
+// ── Mock PrintCalendarSummary (avoid day-row text colliding with date assertions) ──
+vi.mock('../components/PrintCalendarSummary', () => ({
+  default: () => <div data-testid="print-calendar-summary" />,
+}));
+
 // ── Mock the api module ──────────────────────────────────────────────────────
 vi.mock('../utils/api', () => ({
   api: {

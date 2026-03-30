@@ -4,6 +4,22 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #41 — Deploy Engineer — T-317 Status: BLOCKED — 2026-03-30
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**Task:** T-317 — Staging Deployment
+**Status:** ⏳ Blocked
+**Blocked By:** T-316 (QA) ← T-315 (Frontend, Backlog)
+
+**Pre-Deploy Notes:**
+- No new migrations required (schema stable at 10 migrations, 001–010)
+- T-314 marked N/A — existing endpoints sufficient for print view
+- Awaiting T-315 (Frontend print view implementation) and T-316 (QA integration testing) to complete
+- Deploy Engineer is ready to execute immediately once T-316 clears with QA confirmation
+
+---
+
 ## Sprint #40 — Monitor Agent — Post-Deploy Health Check (Staging + Production) — 2026-03-30
 
 **Date:** 2026-03-30
