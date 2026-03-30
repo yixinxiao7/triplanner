@@ -4,6 +4,104 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #39 — Monitor Agent — Post-Deploy Health Check — T-303 — 2026-03-30
+
+**Task:** T-303 (Monitor Agent: Staging health check)
+**Date:** 2026-03-30
+**Sprint:** 39
+**Environment:** Staging
+**Timestamp:** 2026-03-30T13:32:00Z
+**Token:** Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT /auth/register)
+**Overall Result:** ✅ PASS — Deploy Verified = Yes
+
+---
+
+### Config Consistency Validation
+
+**Test Type:** Config Consistency
+**Result:** ✅ PASS
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Port match | Backend `PORT` (3000) = Vite proxy target port (default 3000) | `.env` PORT=3000, `vite.config.js` defaults to port 3000 via `BACKEND_PORT \|\| '3000'` | ✅ Match |
+| Protocol match | SSL_KEY_PATH + SSL_CERT_PATH both commented out → HTTP. Vite proxy uses `http://` by default | SSL vars commented out in `.env`, Vite uses `backendSSL = process.env.BACKEND_SSL === 'true'` (defaults false → `http://`) | ✅ Match |
+| CORS match | `CORS_ORIGIN` includes `http://localhost:5173` | `CORS_ORIGIN=http://localhost:5173` in `.env`, Vite dev server runs on port 5173 | ✅ Match |
+| Docker port match | docker-compose backend PORT = `.env` PORT | docker-compose sets `PORT: 3000`, `.env` sets `PORT=3000` | ✅ Match |
+
+**Notes:** Staging environment runs on PORT 3001 with HTTPS (per Deploy Engineer T-302 handoff), which uses a separate staging `.env` configuration. The development `.env` checked into the repo is internally consistent. Docker healthcheck targets `http://localhost:3000` which matches the container-internal PORT. No mismatches detected.
+
+---
+
+### Health Check: Application Responds
+
+**Test Type:** Post-Deploy Health Check
+**Result:** ✅ PASS
+
+| Check | Endpoint | Expected | Actual | Result |
+|-------|----------|----------|--------|--------|
+| Health endpoint | `GET https://localhost:3001/api/v1/health` | HTTP 200, `{"status":"ok"}` | HTTP 200, `{"status":"ok"}` | ✅ Pass |
+| Frontend serving | `GET https://localhost:4173/` | HTTP 200 | HTTP 200 | ✅ Pass |
+| Database connected | (covered by health endpoint) | 200 OK | 200 OK | ✅ Pass |
+
+---
+
+### Health Check: Auth Flow
+
+**Test Type:** Post-Deploy Health Check
+**Result:** ✅ PASS
+
+| Check | Endpoint | Expected | Actual | Result |
+|-------|----------|----------|--------|--------|
+| Login | `POST /api/v1/auth/login` (test@triplanner.local) | 200 with `access_token` | 200, token returned, user object correct | ✅ Pass |
+
+---
+
+### Health Check: Key API Endpoints
+
+**Test Type:** Post-Deploy Health Check
+**Result:** ✅ PASS
+
+| Endpoint | Method | Status | Response Shape | Result |
+|----------|--------|--------|----------------|--------|
+| `/api/v1/trips` | GET | 200 | `{ data: [...], pagination: { page, limit, total } }` | ✅ Pass |
+| `/api/v1/trips` | POST | 201 | `{ data: { id, name, destinations, status, notes, ... } }` | ✅ Pass |
+| `/api/v1/trips/:id` | GET | 200 | `{ data: { id, name, destinations, status, notes, ... } }` | ✅ Pass |
+| `/api/v1/trips/:id` | PATCH | 200 | `{ data: { ... updated fields } }` — notes updated correctly | ✅ Pass |
+| `/api/v1/trips/:id` | PATCH (clear notes) | 200 | `{ data: { notes: null } }` — notes cleared to null | ✅ Pass |
+| `/api/v1/trips/:id` | DELETE | 204 | No body | ✅ Pass |
+| `/api/v1/trips/:id/calendar` | GET | 200 | `{ data: { trip_id, events: [...] } }` | ✅ Pass |
+| `/api/v1/trips/:tripId/activities` | GET | 200 | `{ data: [] }` | ✅ Pass |
+| `/api/v1/trips/:tripId/land-travel` | GET | 200 | `{ data: [] }` | ✅ Pass |
+
+**No 5xx errors detected.**
+
+---
+
+### Sprint 39 Specific Checks
+
+**Test Type:** Post-Deploy Health Check (Sprint 39 Feature Verification)
+**Result:** ✅ PASS
+
+| Check | Details | Result |
+|-------|---------|--------|
+| Trip notes in API responses | `GET /api/v1/trips/:id` returns `notes` field | ✅ Pass — field present |
+| Trip notes CRUD | Create with notes → notes saved. PATCH notes → updated. PATCH notes="" → cleared to null | ✅ Pass |
+| Triple-nested XSS fix (T-296) | Input: `<<<script>script>script>alert(1)</script></script></script>` | ✅ Pass — output: `alert(1)` (all script tags stripped, no residual angle brackets) |
+| XSS sanitization on notes | HTML tags stripped from notes field | ✅ Pass |
+| Regression: existing endpoints | Auth, trips CRUD, calendar, activities, land-travel all respond correctly | ✅ Pass |
+
+---
+
+### Deploy Verified
+
+**Deploy Verified: ✅ Yes**
+**Environment:** Staging
+**Sprint:** 39
+
+All checks passed including config consistency. Staging environment is verified and ready for User Agent testing (T-304).
+
+---
+
 ## Sprint #39 — QA Engineer — Post-Deploy Re-Verification — 2026-03-30
 
 **Task:** T-301 (QA Engineer: Post-deploy re-verification for Sprint 39)
