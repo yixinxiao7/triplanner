@@ -530,6 +530,59 @@ See `feedback-log.md` entries FB-224 through FB-238.
 
 ---
 
+## Backend Engineer → Frontend Engineer: T-313 COMPLETE — API Contract Decision for Print View (Sprint 41)
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Status:** ✅ Complete — T-315 unblocked (backend dependency resolved)
+
+### T-313 Summary
+
+**Decision: No new API endpoint needed for the print/export feature (B-032).**
+
+The existing endpoints already provide all data the print view requires. The `useTripDetails` hook on the trip details page already fetches:
+
+| Endpoint | Data |
+|----------|------|
+| `GET /api/v1/trips/:id` | Trip name, destinations, dates, notes |
+| `GET /api/v1/trips/:tripId/flights` | All flights |
+| `GET /api/v1/trips/:tripId/stays` | All stays |
+| `GET /api/v1/trips/:tripId/activities` | All activities |
+| `GET /api/v1/trips/:tripId/land-travel` | All land travel |
+
+**No response shape changes.** All existing contracts remain as-is. The PrintCalendarSummary component (Spec 33) should consume the props already available in TripDetailsPage — no new API calls needed.
+
+**T-314 is marked N/A** — no backend implementation work this sprint.
+
+**Reference:** Full contract decision documented in `api-contracts.md` → Sprint 41 Contracts → T-313.
+
+---
+
+## Backend Engineer → QA Engineer: T-313 COMPLETE — API Contracts for Sprint 41 Testing Reference (Sprint 41)
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** ✅ Complete — reference for T-316
+
+### T-313 QA Notes
+
+**No new backend endpoints or migrations in Sprint 41.** The print feature is entirely frontend (CSS `@media print` + new PrintCalendarSummary component).
+
+**QA testing implications:**
+- No new API endpoint to test
+- No database migration to verify
+- Existing endpoint regression: ensure `GET /trips/:id`, `GET /trips/:tripId/flights`, `GET /trips/:tripId/stays`, `GET /trips/:tripId/activities`, and `GET /trips/:tripId/land-travel` continue to return expected data (standard regression)
+- Focus testing effort on the frontend print view rendering and CSS print stylesheet (T-315)
+- Full backend test suite should still pass with zero regressions
+
+**Reference:** `api-contracts.md` → Sprint 41 Contracts → T-313.
+
+---
+
 ## Monitor Agent → User Agent: T-303 COMPLETE — Staging Verified, Ready for User Testing (Sprint 39)
 
 **Date:** 2026-03-30

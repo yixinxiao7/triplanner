@@ -3443,7 +3443,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
 | T-312 | Design Agent: UI spec for trip export/print feature (B-032). Print-optimized layout, print button, CSS print stylesheet approach. | Feature | Design Agent | Done | P1 | S | 41 | — | B-032. Spec 33 published in ui-spec.md. Enhances existing Spec 15 with PrintCalendarSummary — a day-by-day itinerary overview table visible only in print. Covers component structure, event building logic, date range handling, empty states, page breaks, tests (6 test cases), file manifest. Auto-approved 2026-03-30. |
-| T-313 | Backend Engineer: API contract for trip export. Evaluate if existing GET /trips/:id is sufficient or new endpoint needed. | Feature | Backend Engineer | Backlog | P1 | S | 41 | — | B-032. API contract decision. |
+| T-313 | Backend Engineer: API contract for trip export. Evaluate if existing GET /trips/:id is sufficient or new endpoint needed. | Feature | Backend Engineer | Done | P1 | S | 41 | — | B-032. Decision: existing endpoints sufficient. No new endpoint needed. Frontend already fetches trip + flights + stays + activities + land-travel on trip details page. Print view reuses existing data. Contract published in api-contracts.md 2026-03-30. |
 
 ---
 
@@ -3451,7 +3451,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-314 | Backend Engineer: Implement export endpoint if needed. If existing endpoint sufficient, mark N/A. | Feature | Backend Engineer | Backlog | P2 | S | 41 | T-313 | B-032. May be N/A if GET /trips/:id already returns all sub-resources. |
+| T-314 | Backend Engineer: Implement export endpoint if needed. If existing endpoint sufficient, mark N/A. | Feature | Backend Engineer | Done | P2 | S | 41 | T-313 | B-032. **N/A** — T-313 determined existing endpoints are sufficient. No backend code changes required. Marked Done (N/A) 2026-03-30. |
 | T-315 | Frontend Engineer: Implement trip print view. Print button, CSS @media print stylesheet, all trip sections, tests. | Feature | Frontend Engineer | Backlog | P1 | M | 41 | T-312, T-313 | B-032. Core deliverable of Sprint 41. |
 
 ---

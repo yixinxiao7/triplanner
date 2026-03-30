@@ -8301,3 +8301,108 @@ All previously published contracts remain current with the T-298 update:
 ---
 
 *Sprint 39 contracts published by Backend Engineer 2026-03-25. T-298: notes max length increased from 2000 to 5000 characters (validation-layer change only, no schema migration). T-296: sanitizer hardening — no contract change, implementation only. All 30 endpoints from Sprints 1–38 remain in force with T-298 update applied.*
+
+---
+
+## Sprint 41 Contracts
+
+**Sprint 41 — 2026-03-30**
+**Sprint Goal:** Trip export/print feature (B-032) — printable itinerary view
+
+---
+
+### T-313 — API Contract for Trip Export/Print (B-032)
+
+**Sprint:** 41
+**Task:** T-313
+**Status:** Agreed
+**Type:** Contract Decision — No New Endpoint Required
+
+#### Decision: Existing Endpoints Are Sufficient
+
+After reviewing the current API surface and the UI spec (Spec 33 — PrintCalendarSummary), **no new endpoint is needed** for the trip print/export feature. The rationale:
+
+1. **The frontend already fetches all required data on the trip details page.** The `useTripDetails` hook loads the trip object plus all four sub-resource collections (flights, stays, activities, land travel) via existing endpoints.
+
+2. **The print view is purely a CSS/component concern.** The UI spec explicitly states: *"The component receives props from the parent TripDetailsPage. It does NOT make its own API calls. It uses the same data already fetched by `useTripDetails`."*
+
+3. **No server-side rendering or PDF generation is in scope.** The feature uses `window.print()` to invoke the browser's native print dialog. All formatting is handled by `@media print` CSS rules.
+
+#### Existing Endpoints Used by the Print View
+
+The following existing endpoints provide all data needed for the print view. No changes to their request/response shapes are required.
+
+| Endpoint | Data for Print View | Contract Reference |
+|----------|--------------------|--------------------|
+| `GET /api/v1/trips/:id` | Trip name, destinations, status, start_date, end_date, notes | Sprint 1 T-005, Sprint 2 T-029, Sprint 7 T-103 |
+| `GET /api/v1/trips/:tripId/flights` | All flights (flight_number, airline, from/to, departure/arrival times + timezones) | Sprint 1 T-006 |
+| `GET /api/v1/trips/:tripId/stays` | All stays (category, name, address, check-in/check-out times + timezones) | Sprint 1 T-006 |
+| `GET /api/v1/trips/:tripId/activities` | All activities (name, location, activity_date, start_time, end_time) | Sprint 1 T-006 |
+| `GET /api/v1/trips/:tripId/land-travel` | All land travel entries (mode, from/to, departure/arrival dates and times, carrier, notes) | Sprint 6 T-086 |
+
+#### Response Shapes (Recap for Frontend Reference)
+
+All response shapes are unchanged from their original contracts. For convenience, the data fields consumed by the PrintCalendarSummary component (Spec 33):
+
+**Trip object fields used in print header:**
+- `name` — trip title (24pt bold header)
+- `destinations` — array of strings (comma-separated subtitle)
+- `start_date` / `end_date` — date range display and calendar summary day generation
+- `notes` — included in print header if present
+
+**Flight fields used in print:**
+- `flight_number`, `airline`, `from_location`, `to_location`
+- `departure_at`, `departure_tz`, `arrival_at`, `arrival_tz`
+
+**Stay fields used in print:**
+- `category`, `name`, `address`
+- `check_in_at`, `check_in_tz`, `check_out_at`, `check_out_tz`
+
+**Activity fields used in print:**
+- `name`, `location`, `activity_date`, `start_time`, `end_time`
+
+**Land Travel fields used in print:**
+- `mode`, `from_location`, `to_location`, `carrier`
+- `departure_date`, `departure_time`, `arrival_date`, `arrival_time`
+
+#### Impact on T-314 (Implementation)
+
+Since no new endpoint is needed, **T-314 should be marked N/A**. No backend code changes are required for Sprint 41.
+
+#### Schema Changes
+
+**None.** No new tables, columns, or migrations are required.
+
+---
+
+### Sprint 41 — No Backend Contract Changes Required for Other Tasks
+
+| Task | Reason |
+|------|--------|
+| T-312 (Design: Print View Spec) | Design spec only. No backend changes. |
+| T-314 (Backend: Implement export endpoint) | **N/A** — T-313 determined existing endpoints are sufficient. No new endpoint needed. |
+| T-315 (FE: Trip Print View) | Frontend-only. Uses existing API endpoints. |
+| T-316 (QA: Integration Testing) | QA testing only. |
+| T-317 (Deploy: Staging Deployment) | Deploy scope. |
+| T-318 (Monitor: Health Check) | Monitor scope. |
+| T-319 (User Agent: Walkthrough) | User testing only. |
+
+---
+
+### Active Contracts Summary (Sprints 1–41)
+
+All previously published contracts remain current. No new endpoints or changes in Sprint 41:
+- **Auth:** 4 endpoints (register, login, refresh, logout)
+- **Trips:** 5 endpoints (CRUD + list) — `notes` max length 5000 chars
+- **Flights:** 4 endpoints (CRUD scoped to trip)
+- **Stays:** 4 endpoints (CRUD scoped to trip)
+- **Activities:** 5 endpoints (CRUD + list scoped to trip)
+- **Land Travel:** 4 endpoints (CRUD scoped to trip)
+- **Calendar:** 1 endpoint (trip calendar view)
+- **Health:** 1 endpoint (server health check)
+- **Search/Filter/Sort:** Query parameters on list endpoints
+- **Middleware:** XSS sanitization (iterative), post-sanitization validation, rate limiting
+
+---
+
+*Sprint 41 contracts published by Backend Engineer 2026-03-30. T-313: No new endpoint required — existing GET /trips/:id + sub-resource list endpoints provide all data needed for the print view feature (B-032). T-314 marked N/A. All 30 endpoints from Sprints 1–39 remain in force unchanged.*
