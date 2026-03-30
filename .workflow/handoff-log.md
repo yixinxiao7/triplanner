@@ -1095,3 +1095,37 @@ The Design Agent is ready for Sprint 39 assignments when new frontend work is pl
 **To:** Deploy Engineer (T-293), Monitor Agent (T-294), User Agent (T-295)
 **Status:** Sprint 38 planned — production deploy is the sole focus
 
+---
+
+## Design Agent → Frontend Engineer: Stay Checkout Time Spec Ready (Sprint 40, T-307 → T-308)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** Design Agent
+**To:** Frontend Engineer
+**Status:** ✅ Spec Approved — T-308 unblocked
+
+### Summary
+
+Spec 32 has been published in `.workflow/ui-spec.md` — **Stay Checkout Time on Calendar End Days (FB-189/B-040)**.
+
+**What to implement (T-308):**
+
+1. **Desktop (`renderEventPill`):** Add a STAY end-day branch so that `_dayType === 'end'` pills show `"Checkout {time}"` instead of empty. Extend `buildArrivalLabel()` to handle `ev.type === 'STAY'` or add a parallel branch. Time source: `event.end_time`, formatted with existing `formatTime()`.
+
+2. **Mobile (`MobileDayList`):** Add a STAY end-day branch so checkout day rows show `"{name} — Checkout {time}"` (e.g., `"Hyatt Regency SF — Checkout 11a"`). Match the FLIGHT `"— Arrives"` and LAND_TRAVEL `"— Arrives/Drop-off"` patterns already in place.
+
+3. **Fallback:** If `end_time` is null, show `"Checkout"` without time.
+
+4. **Tests:** 5 test cases defined in Spec 32.10 (Tests 32.A–32.E).
+
+**Key details:**
+- Label format: `"Checkout"` (capital C, one word — matches `"Arrives"` and `"Drop-off"` capitalization)
+- No new CSS tokens or classes needed
+- No API or backend changes
+- Existing FLIGHT and LAND_TRAVEL end-day labels must remain unaffected
+
+**Spec reference:** `.workflow/ui-spec.md` → Spec 32 (search for "### Spec 32")
+
+*Design Agent — Sprint 40 — 2026-03-30*
+

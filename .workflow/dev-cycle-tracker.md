@@ -3384,7 +3384,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
 | T-305 | Deploy Engineer: Production deployment of Sprint 39 code. Rebuild, deploy to PM2, smoke test trip notes + sanitizer. No new migrations. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 40 | — | Sprint 39 staging verified (T-303). Push to production. |
 | T-306 | Backend Engineer: Fix API contract docs drift (FB-237/B-039). Update all historical notes "max 2000" references to 5000 in api-contracts.md. | Documentation | Backend Engineer | Backlog | P2 | S | 40 | — | FB-237/B-039. Docs-only fix. |
-| T-307 | Design Agent: UI spec for stay checkout time on calendar end days (FB-189/B-040). Label format, desktop + mobile. | Feature | Design Agent | Backlog | P2 | S | 40 | — | FB-189/B-040. Calendar UX enhancement. |
+| T-307 | Design Agent: UI spec for stay checkout time on calendar end days (FB-189/B-040). Label format, desktop + mobile. | Feature | Design Agent | Done | P2 | S | 40 | — | FB-189/B-040. Calendar UX enhancement. Spec 32 published in ui-spec.md. |
 
 ---
 

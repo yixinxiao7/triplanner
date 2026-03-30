@@ -12026,8 +12026,333 @@ TripNotesSection/
 
 ---
 
+---
+
+## Sprint #40 Design Agent Review — 2026-03-30
+
+**Design Agent Status:** One targeted spec addendum for T-307 — stay checkout time display on calendar end days (FB-189/B-040). This is a small enhancement to the existing calendar chip rendering, consistent with the FLIGHT "Arrives" and LAND_TRAVEL "Arrives/Drop-off" end-day label patterns already implemented in Sprint 33 (Spec 28).
+
+**Sprint #40 scope review:**
+
+| Task | Description | Design Impact |
+|------|-------------|---------------|
+| T-305 | Deploy Engineer: Production deployment | None — infrastructure only |
+| T-306 | Backend Engineer: API contract docs fix | None — documentation only |
+| T-307 | Design Agent: UI spec for stay checkout time on calendar | **See Spec 32 below** |
+| T-308 | Frontend Engineer: Implement stay checkout time | Blocked by T-307 spec |
+| T-309 | QA Engineer: Integration testing | None — testing only |
+| T-310 | Monitor Agent: Production health check | None — monitoring only |
+| T-311 | User Agent: Production walkthrough | None — verification only |
+
+**Design System Conventions:** Stable. No additions or modifications proposed.
+
+---
+
+### Spec 32: Stay Checkout Time on Calendar End Days (FB-189/B-040)
+
+**Sprint:** #40
+**Related Task:** T-307 (Design), T-308 (Frontend Implementation)
+**Feedback Source:** FB-189 (Sprint 35 — "Stay events on the calendar should display the checkout time on the end date")
+**Status:** Approved
+
+**Description:**
+Multi-day STAY events on the TripCalendar currently display check-in time on the first day (e.g., `"4p"`) but show no text on the last day (checkout day) — just an empty continuation pill. This is inconsistent with FLIGHT events (which show `"Arrives {time}"` on the arrival day) and LAND_TRAVEL events (which show `"Arrives {time}"` or `"Drop-off {time}"` on the arrival day). Both of these end-day labels were implemented in Sprint 33 (Spec 28, T-264).
+
+This spec adds a `"Checkout {time}"` label on STAY end-day chips on both the desktop calendar grid and the mobile `MobileDayList`, following the same pattern established for FLIGHT and LAND_TRAVEL.
+
+**No new components, no new CSS tokens, no API changes, no backend changes.**
+
+---
+
+#### 32.1 Overview — What Changes
+
+| View | Current Behavior (STAY end day) | New Behavior (STAY end day) |
+|------|--------------------------------|----------------------------|
+| Desktop calendar grid (`renderEventPill`) | Empty continuation pill — no text, no time | Pill shows `"Checkout {time}"` label (e.g., `"Checkout 11a"`) |
+| Mobile day list (`MobileDayList`) | Row shows stay name with `"(cont.)"` or no special end-day treatment | Row shows `"{name} — Checkout {time}"` (e.g., `"Hyatt Regency SF — Checkout 11a"`) |
+
+**Consistent pattern across all multi-day event types on end day:**
+
+| Event Type | End-Day Label (Desktop Pill) | End-Day Label (Mobile Row) |
+|------------|-----------------------------|-----------------------------|
+| FLIGHT | `"Arrives 3:45p"` | `"DL1234 — Arrives 3:45p"` |
+| LAND_TRAVEL | `"Arrives 10:30a"` or `"Drop-off 2p"` | `"Train — Arrives 10:30a"` or `"Rental Car — Drop-off 2p"` |
+| **STAY (NEW)** | **`"Checkout 11a"`** | **`"Hyatt Regency SF — Checkout 11a"`** |
+
+---
+
+#### 32.2 Time Source
+
+| Field | Source | Timezone Handling |
+|-------|--------|------------------|
+| Checkout time | `end_time` field from the calendar API response | Already in local time format (the calendar API returns pre-formatted times). Pass to `formatCalendarTime()` / `formatTime()` — the same helper already used by FLIGHT and LAND_TRAVEL end-day labels. |
+
+**Fallback:** If `end_time` is `null` or `undefined`, display `"Checkout"` without a time (matches the FLIGHT/LAND_TRAVEL pattern where missing arrival time shows `"Arrives"` alone).
+
+---
+
+#### 32.3 Desktop Calendar Grid — `renderEventPill` Changes
+
+##### 32.3.1 Current Code Path
+
+In `renderEventPill()`, the STAY end-day chip currently falls through to:
+```javascript
+const showText = event.type !== 'STAY' || event._isFirst || event._dayType === 'single';
+displayText = showText ? (timeStr ? `${timeStr} ${event.title}` : event.title) : null;
+```
+
+Since `event._isFirst` is `false` and `event._dayType` is `'end'` (not `'single'`), `showText` evaluates to `false`, and `displayText` is `null`. The pill renders as an empty colored bar.
+
+##### 32.3.2 Updated Logic
+
+Add a STAY end-day branch before the existing STAY fallthrough, mirroring the FLIGHT end-day branch:
+
+```javascript
+// Existing FLIGHT end-day branch (T-264):
+if (event.type === 'FLIGHT' && event._dayType === 'end') {
+  displayText = buildArrivalLabel(event);
+  ariaLabel = `Flight: ${event.title}, ${displayText.toLowerCase()}`;
+}
+
+// NEW — STAY end-day branch (T-308):
+else if (event.type === 'STAY' && event._dayType === 'end') {
+  const checkoutTime = formatTime(event.end_time);
+  displayText = checkoutTime ? `Checkout ${checkoutTime}` : 'Checkout';
+  ariaLabel = `Stay: ${event.title}, checkout ${checkoutTime || ''}`.trim();
+}
+```
+
+**Alternatively**, extend `buildArrivalLabel()` to handle STAY:
+```javascript
+function buildArrivalLabel(ev) {
+  const arrTime = formatTime(ev.end_time);
+  if (ev.type === 'FLIGHT') {
+    return arrTime ? `Arrives ${arrTime}` : 'Arrives';
+  }
+  if (ev.type === 'LAND_TRAVEL') {
+    const rawMode = ev.title ? ev.title.split(' — ')[0] : '';
+    const isRentalCar = rawMode.toUpperCase() === 'RENTAL_CAR';
+    const prefix = isRentalCar ? 'Drop-off' : 'Arrives';
+    return arrTime ? `${prefix} ${arrTime}` : prefix;
+  }
+  if (ev.type === 'STAY') {
+    return arrTime ? `Checkout ${arrTime}` : 'Checkout';
+  }
+  return '';
+}
+```
+
+The Frontend Engineer may choose either approach. The key requirement: **STAY end-day pills must display text, not be empty.**
+
+##### 32.3.3 Visual Treatment — Desktop Pill
+
+The STAY end-day pill retains its existing span styling (border-radius `0 var(--radius-sm) var(--radius-sm) 0`, no left border). The only change is that it now contains text:
+
+```
+┌─────────────────────────┐     ┌─────────────────────────┐
+│ Hyatt Regency SF        │     │                         │     ← BEFORE (end day: empty)
+│ 4p                      │ ... │                         │
+└─────────────────────────┘     └─────────────────────────┘
+  check-in day                    checkout day
+
+┌─────────────────────────┐     ┌─────────────────────────┐
+│ Hyatt Regency SF        │     │ Checkout 11a            │     ← AFTER (end day: has label)
+│ 4p                      │ ... │                         │
+└─────────────────────────┘     └─────────────────────────┘
+  check-in day                    checkout day
+```
+
+- **Text:** `"Checkout {time}"` — e.g., `"Checkout 11a"` or `"Checkout"` (no time)
+- **Font:** IBM Plex Mono 10px, `var(--event-stay-text)`, same as the start-day pill text
+- **Truncation:** `text-overflow: ellipsis; white-space: nowrap; overflow: hidden` — same as all other pills
+- **No separate `.eventTime` sub-element needed.** The entire string `"Checkout 11a"` is the pill's display text, rendered the same way `"Arrives 3:45p"` is rendered for FLIGHT end days — as a single text node.
+
+---
+
+#### 32.4 Mobile Day List — `MobileDayList` Changes
+
+##### 32.4.1 Current Mobile STAY End-Day Rendering
+
+In `MobileDayList`, STAY events on their end day currently render the same as middle days — either with a `"(cont.)"` suffix or with the stay name only. There is no checkout time displayed.
+
+##### 32.4.2 Updated Mobile STAY End-Day Rendering
+
+On the end day (`_dayType === 'end'`), the STAY row should display:
+
+```
+{name} — Checkout {time}
+```
+
+Examples:
+- `"Hyatt Regency SF — Checkout 11a"`
+- `"Airbnb Downtown — Checkout 10a"`
+- `"Hyatt Regency SF — Checkout"` (if no checkout time available)
+
+This follows the established FLIGHT and LAND_TRAVEL mobile end-day pattern:
+- FLIGHT end day: `"DL1234 — Arrives 3:45p"`
+- LAND_TRAVEL end day: `"Train — Arrives 10:30a"`
+- **STAY end day (NEW):** `"Hyatt Regency SF — Checkout 11a"`
+
+##### 32.4.3 Implementation in MobileDayList
+
+Locate the STAY rendering branch in `MobileDayList`. Add an end-day check:
+
+```javascript
+// Inside the STAY branch of MobileDayList event rendering:
+if (ev.type === 'STAY') {
+  const mdt = ev._dayType;
+  if (mdt === 'start' || mdt === 'single') {
+    // Existing: show stay name with check-in time
+    displayTitle = ev.title;
+    timeStr = formatTime(ev.start_time);
+  } else if (mdt === 'end') {
+    // NEW (T-308): show stay name with checkout time
+    const checkoutTime = formatTime(ev.end_time);
+    timeStr = null; // time is embedded in the display title
+    displayTitle = checkoutTime
+      ? `${ev.title} — Checkout ${checkoutTime}`
+      : `${ev.title} — Checkout`;
+  } else {
+    // Middle day: continuation
+    displayTitle = `${ev.title} (cont.)`;
+    timeStr = null;
+    rowStyle = { opacity: 0.6 };
+  }
+}
+```
+
+- **Color:** Use `var(--event-stay-text)` via the existing `.mobileEventStay` CSS class — no change
+- **Row styling:** End-day rows render at full opacity (same as start-day rows). Only middle-day rows use `opacity: 0.6`.
+
+---
+
+#### 32.5 Single-Day Stay (start_date === end_date)
+
+When a stay has the same check-in and check-out date (`_dayType === 'single'`), there is only one chip/row. This spec does NOT change single-day stay behavior:
+
+- **Desktop:** Single pill with stay name + check-in time (existing behavior)
+- **Mobile:** Single row with stay name + check-in time (existing behavior)
+
+**Rationale:** The CAL-3.5 spec (Sprint 7, Spec 13) already defines single-day stay behavior with both check-in and check-out times shown inline as `"4p → check-out 11a"`. If that pattern is already implemented, leave it as-is. If it was never implemented, the Frontend Engineer may optionally add it as part of T-308 — but it is **not required** for this sprint. The primary deliverable is the multi-day end-day label.
+
+---
+
+#### 32.6 Edge Cases
+
+| Case | Expected Behavior |
+|------|-------------------|
+| STAY end day with `end_time` = null | Desktop pill: `"Checkout"` (no time). Mobile row: `"{name} — Checkout"`. |
+| STAY end day with `end_time` = `"00:00"` | Desktop pill: `"Checkout 12a"`. Mobile row: `"{name} — Checkout 12a"`. Midnight checkout is unusual but should render correctly. |
+| STAY spanning 2 days (check-in today, checkout tomorrow) | Start day: name + check-in time. End day: `"Checkout {time}"`. No middle days. |
+| STAY spanning many days (e.g., 7-night hotel) | Start day: name + check-in time. Middle days (5): continuation (no text on desktop, `"(cont.)"` on mobile). End day: `"Checkout {time}"`. |
+| STAY checkout day has other events (flight, activity) | Both render in the same cell. STAY checkout pill + other event pill(s), stacked per priority order (Spec 28.6). No conflict. |
+| Multiple stays checking out on the same day | Each stay renders its own `"Checkout {time}"` pill/row. They stack normally. |
+| STAY end day extends beyond displayed month | The portion within the displayed month renders. If the end day is in the next month, it appears in the out-of-month cells per existing behavior, or not at all — consistent with FLIGHT/LAND_TRAVEL month-boundary handling. |
+
+---
+
+#### 32.7 Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Desktop pill `aria-label` | `"Stay: {name}, checkout {time}"` — e.g., `aria-label="Stay: Hyatt Regency SF, checkout 11:00 AM"`. Use full time format in aria-label for clarity. |
+| Desktop pill `aria-label` (no time) | `"Stay: {name}, checkout"` — e.g., `aria-label="Stay: Hyatt Regency SF, checkout"` |
+| Mobile row | Inherits the existing mobile row accessibility pattern. The display text itself (`"{name} — Checkout {time}"`) serves as the accessible label. |
+| Keyboard | No change — pills are already focusable with `tabIndex={0}` and `role="button"`. |
+| Screen reader | End-day labels provide additional context that was previously missing. Users now know which day is checkout without inspecting the stays section. |
+
+---
+
+#### 32.8 Responsive Summary
+
+| Breakpoint | STAY End-Day Behavior |
+|------------|----------------------|
+| Desktop (≥768px) | Pill with `"Checkout {time}"` text, STAY color, end-span border-radius |
+| Tablet (640–767px) | Same as desktop |
+| Mobile list (<640px) | Row with `"{name} — Checkout {time}"`, STAY color accent |
+| Mobile dot (<640px grid) | Colored dot on checkout day (already present — no change) |
+
+---
+
+#### 32.9 Files to Modify (T-308)
+
+| File | Change |
+|------|--------|
+| `frontend/src/components/TripCalendar.jsx` | Add STAY end-day branch in `renderEventPill()` to display `"Checkout {time}"`. Optionally extend `buildArrivalLabel()` to handle STAY type. Update `MobileDayList` STAY rendering to show `"{name} — Checkout {time}"` on end days. |
+| `frontend/src/__tests__/TripCalendar.test.jsx` | Add tests per 32.10 below. |
+
+**No CSS changes. No new CSS tokens. No API changes. No backend changes. No new components.**
+
+---
+
+#### 32.10 Test Plan (T-308)
+
+**Test 32.A — STAY end-day pill shows checkout time on desktop**
+```
+Given: GET /calendar returns a STAY event with title "Hyatt Regency SF",
+       start_date="2026-08-07", end_date="2026-08-09",
+       start_time="16:00", end_time="11:00"
+When:  TripCalendar renders August 2026 at desktop width (≥768px)
+Then:  August 7 pill shows "Hyatt Regency SF" with check-in time
+And:   August 9 pill shows "Checkout 11a"
+And:   August 8 pill shows no text (middle day continuation)
+```
+
+**Test 32.B — STAY end-day pill with no checkout time**
+```
+Given: GET /calendar returns a STAY event with title "Airbnb Downtown",
+       start_date="2026-08-10", end_date="2026-08-12",
+       start_time="15:00", end_time=null
+When:  TripCalendar renders August 2026 at desktop width
+Then:  August 12 pill shows "Checkout" (no time)
+```
+
+**Test 32.C — STAY end-day in MobileDayList shows checkout time**
+```
+Given: GET /calendar returns a STAY event with title "Hyatt Regency SF",
+       start_date="2026-08-07", end_date="2026-08-09",
+       start_time="16:00", end_time="11:00"
+When:  TripCalendar renders at mobile width (<640px, MobileDayList mode)
+Then:  August 9 row shows "Hyatt Regency SF — Checkout 11a"
+And:   August 8 row shows "Hyatt Regency SF (cont.)" at reduced opacity
+```
+
+**Test 32.D — Existing FLIGHT and LAND_TRAVEL end-day labels unaffected**
+```
+Given: GET /calendar returns a FLIGHT event (start_date="2026-08-07", end_date="2026-08-08",
+       end_time="15:45") and a LAND_TRAVEL event (start_date="2026-08-10", end_date="2026-08-11",
+       end_time="10:30", title="Train — NYC → Boston")
+When:  TripCalendar renders August 2026
+Then:  August 8 FLIGHT pill shows "Arrives 3:45p"
+And:   August 11 LAND_TRAVEL pill shows "Arrives 10:30a"
+And:   No regression in existing end-day label behavior
+```
+
+**Test 32.E — STAY end-day pill has correct aria-label**
+```
+Given: A STAY event with title "Hyatt Regency SF", end_time="11:00" on checkout day
+When:  The checkout-day pill renders
+Then:  The pill has aria-label containing "checkout" and the stay name
+```
+
+---
+
+#### 32.11 Design Rationale
+
+1. **"Checkout" not "Check-out":** The label uses `"Checkout"` (one word, capital C) rather than `"check-out"` (hyphenated, lowercase) from the earlier CAL-3.2 spec (Sprint 7). This aligns with the capitalized labels used by FLIGHT (`"Arrives"`) and LAND_TRAVEL (`"Arrives"` / `"Drop-off"`). Consistency across event types is more important than matching the Sprint 7 spec verbatim.
+
+2. **Same rendering pattern as FLIGHT/LAND_TRAVEL:** Rather than using a separate `.eventTime` sub-element (as CAL-3.2 originally proposed), the checkout label is rendered as the pill's primary display text — identical to how `"Arrives 3:45p"` is rendered for FLIGHT end days. This keeps the implementation simple and consistent.
+
+3. **No single-day stay changes:** The single-day stay case (CAL-3.5) is left as-is. If the combined `"4p → check-out 11a"` format from Spec 13 is already implemented, it will continue to work. If not, it's out of scope for this sprint — the primary UX gap is multi-day stays.
+
+---
+
+*Spec 32 (Sprint 40 — Stay Checkout Time on Calendar End Days, T-307, FB-189/B-040) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-30.*
+
+---
+
 **Design System Conventions:** Stable. No additions or modifications proposed. All tokens, spacing, and typography conventions from the table at the top of this document remain in effect.
 
 ---
 
-*Sprint #39 design spec complete. Published by Design Agent 2026-03-25.*
+*Sprint #40 design spec complete. Published by Design Agent 2026-03-30.*
