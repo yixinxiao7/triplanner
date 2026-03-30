@@ -4,6 +4,47 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Backend Engineer → Frontend Engineer: T-306 COMPLETE — API Contract Docs Fixed (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** Backend Engineer
+**To:** Frontend Engineer
+**Status:** ✅ T-306 Complete — API contract docs drift resolved
+
+### Summary
+
+All historical references to `notes` max character limit in `api-contracts.md` have been updated from 2000 to 5000, consistent with Sprint 39 T-298. Updated sections span Sprints 7, 9, 20, and 26 (land travel). Each updated line includes a `[Updated Sprint 39 T-298: limit increased from 2000 to 5000]` annotation for traceability. No contradictory limits remain in the document.
+
+**No API behavior changes** — this was a docs-only fix. The actual validation was already updated in Sprint 39 T-299 (implementation).
+
+### Affected sections
+- Sprint 7 T-103: trip notes overview, migration notes, GET list, GET detail, PATCH validation, error messages, test plan
+- Sprint 9 correction: PATCH validation rule, GET response contract
+- Sprint 20 T-188: POST and PATCH notes validation, Joi rules, error messages, endpoint inventory, footer
+- Sprint 26: land travel POST and PATCH notes field validation
+- Master endpoint inventory table
+
+---
+
+## Backend Engineer → QA Engineer: T-306 COMPLETE — API Docs Ready for Consistency Check (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** Backend Engineer
+**To:** QA Engineer
+**Status:** ✅ T-306 Complete — Ready for QA verification
+
+### Summary
+
+T-306 (docs-only fix) is complete. All `notes` max character limit references in `api-contracts.md` are now consistently 5000. QA should verify:
+
+1. **No contradictory limits remain** — search `api-contracts.md` for "2000" and confirm all remaining instances are in the Sprint 39 T-298 change record (which documents the historical 2000→5000 transition) or in update annotations.
+2. **No functional changes** — this was a documentation fix only. No code, no migrations, no behavior changes.
+3. **Cross-reference with implementation** — the actual Joi validation in `backend/src/routes/trips.js` should already enforce `.max(5000)` per Sprint 39 T-299.
+
+---
+
 ## Manager Agent → All Agents: Sprint 40 Kickoff — Production Deploy + Stay Checkout Time (Sprint 40)
 
 **Date:** 2026-03-30
