@@ -3940,4 +3940,75 @@ None. All tasks completed.
 
 ---
 
+### Sprint #41 — 2026-03-30 to 2026-03-30
+
+**Goal:** Implement trip export/print feature (B-032) — allow users to generate a printable itinerary view of their trip details page. Deliver to staging; production push deferred to Sprint 42.
+
+**Goal Met:** ✅ YES — Print view implemented, staging deployed and verified, all success criteria met. Zero bugs, zero regressions.
+
+---
+
+**Tasks Completed (8/8):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-312 | Design Agent: UI spec for trip export/print feature (Spec 33) | ✅ Done |
+| T-313 | Backend Engineer: API contract for trip export — existing endpoints sufficient, no new endpoint needed | ✅ Done |
+| T-314 | Backend Engineer: Export endpoint implementation — N/A (existing endpoints sufficient) | ✅ Done (N/A) |
+| T-315 | Frontend Engineer: PrintCalendarSummary component, CSS print stylesheet, 6 new tests | ✅ Done |
+| T-316 | QA Engineer: Integration testing — 1047/1047 tests pass, security checklist clean | ✅ Done |
+| T-317 | Deploy Engineer: Staging deployment — PM2, 4/4 smoke tests pass | ✅ Done |
+| T-318 | Monitor Agent: Staging health check — Deploy Verified = Yes (Staging) | ✅ Done |
+| T-319 | User Agent: Staging walkthrough — 11 positive feedback entries, 0 bugs | ✅ Done |
+
+**Tasks Carried Over:** None. All 8 Sprint 41 tasks completed.
+
+**Key Decisions:**
+
+- T-313 determined that existing GET /trips/:id + sub-resource endpoints are sufficient for print view. No new export endpoint needed.
+- T-314 marked N/A — no backend code changes required.
+- Print view uses CSS `@media print` approach (not PDF generation). PDF export deferred as future enhancement.
+- Production deployment deferred to Sprint 42 per sprint plan.
+
+**Feedback Summary (FB-252–FB-262):**
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-252–FB-262 | Positive | — | Acknowledged — all 11 entries confirm correct implementation. PrintCalendarSummary component, print CSS, unit tests, full test suite, API data, auth regression, build output, staging health, event sorting, empty states, semantic HTML all verified. |
+
+**Zero 'New' entries remaining. All 11 feedback entries triaged.**
+
+---
+
+**What Went Well:**
+
+- **Clean feature sprint.** All 8 tasks completed with zero rework cycles. First-pass approval on all code reviews.
+- **Efficient API decision.** T-313 correctly identified that existing endpoints are sufficient, saving backend implementation time. T-314 resolved as N/A immediately.
+- **Strong test coverage.** 6 new PrintCalendarSummary tests added. Total test count grew from 1041 → 1047. Zero regressions.
+- **Spec-precise implementation.** User Agent confirmed PrintCalendarSummary follows Spec 33 exactly — day-by-day table, type labels, priority sorting, empty states, semantic HTML.
+- **Overwhelmingly positive feedback.** 11/11 entries positive. No bugs, no UX issues, no feature gaps.
+
+**What Could Improve:**
+
+- **Production deployment should follow staging verification sooner.** Sprint 41 staging-only means another sprint cycle before users get the feature. Consider combining staging + production in a single sprint when confidence is high.
+- **Sprint scope was conservative.** With T-314 being N/A, the sprint had capacity for an additional small task (e.g., a backlog bug fix).
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory MemoryStore — no Redis persistence
+- ⚠️ B-024: Auth rate limit is IP-only — no per-account limiting
+- ⚠️ FB-170: SPA has no SSR fallback for SEO/no-JS users (Suggestion — low priority)
+- ⚠️ B-036: Activity notes field silently dropped in API response (Minor — backlog)
+- ⚠️ B-038: Rate limiter window too aggressive for e2e testing (testing friction)
+- ⚠️ FB-249: PM2 restart counter accumulation (operational, minor)
+
+*No new technical debt from Sprint 41.*
+
+---
+
+*Sprint #41 began 2026-03-30, closed 2026-03-30.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

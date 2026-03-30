@@ -3490,3 +3490,44 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 ---
 
+## Sprint #42 — Production Deployment + Activity Location Links (B-031)
+
+**Sprint Goal:** Promote Sprint 41 print feature to production and implement clickable activity location links (B-031).
+
+### Phase 1 — Production Deployment (start immediately)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-320 | Deploy Engineer: Production deployment of Sprint 41 code (print feature). Rebuild, test, deploy PM2, smoke tests. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 42 | — | Promote Sprint 41 staging code to production. |
+| T-321 | Monitor Agent: Production health check. Verify print feature on production. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 42 | T-320 | Full production health check protocol. |
+
+---
+
+### Phase 2 — Design + API Contract for Activity Location Links (parallel with Phase 1)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-322 | Design Agent: UI spec for activity location links (B-031). URL detection, link rendering, print behavior, mixed content handling. | Feature | Design Agent | Backlog | P1 | S | 42 | — | B-031. Detect URLs in activity locations, render as clickable links. |
+| T-323 | Backend Engineer: API contract review for activity location links. Confirm no backend changes needed — URL detection is frontend-only. | Feature | Backend Engineer | Backlog | P1 | S | 42 | — | B-031. Expected outcome: no backend changes. |
+
+---
+
+### Phase 3 — Implementation
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-324 | Frontend Engineer: Implement activity location links. LinkifyText component, new tab links, print view handling, security (block javascript:/data: URLs), tests. | Feature | Frontend Engineer | Backlog | P1 | M | 42 | T-322, T-323 | B-031. |
+
+---
+
+### Phase 4 — QA + Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-325 | QA Engineer: Integration testing for Sprint 42. Location links, production health, full test suite, security checklist (XSS via URL), regression. | Code Review | QA Engineer | Backlog | P1 | M | 42 | T-324 | Security focus: ensure javascript: and data: URLs are blocked. |
+| T-326 | Deploy Engineer: Staging deployment of Sprint 42 code (location links). | Infrastructure | Deploy Engineer | Backlog | P1 | S | 42 | T-325 | |
+| T-327 | Monitor Agent: Staging health check. Verify location links feature. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 42 | T-326 | |
+| T-328 | User Agent: Staging walkthrough. Test location links, production print feature, regression check, submit feedback. | Documentation | User Agent | Backlog | P1 | M | 42 | T-327 | |
+
+---
+
