@@ -18,6 +18,194 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
+## User Agent — Sprint #40 Production Walkthrough (T-311) — 2026-03-30
+
+> **Scope:** Sprint 40 delivers production deployment of Sprint 39 code (trip notes, XSS fix), stay checkout time on calendar (T-308), and API contract docs fix (T-306). Testing performed on both staging (`https://localhost:3001`) and production (`https://localhost:3002`). Monitor Agent confirmed Deploy Verified = Yes (T-310).
+
+---
+
+### FB-239 — Trip notes CRUD works correctly on production
+
+| Field | Value |
+|-------|-------|
+| Feedback | Trip notes create, read, update, and clear all work on production |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Created trip with notes on production (POST /trips with notes field). Retrieved trip and notes were returned correctly (GET /trips/:id). Updated notes via PATCH — updated_at timestamp changed, notes reflected new value. Cleared notes by setting to empty string — stored as null (correct normalization). Set notes to null explicitly — also stored as null. All operations returned correct HTTP status codes (201, 200). Trip list endpoint also returns notes field. |
+| Related Task | T-305 |
+
+---
+
+### FB-240 — XSS sanitization verified on production
+
+| Field | Value |
+|-------|-------|
+| Feedback | XSS sanitization strips script tags and event handlers on production |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Tested on production: `<script>alert(1)</script><img src=x onerror=alert(1)> Clean text` was sanitized to `alert(1) Clean text`. All HTML tags and event handlers stripped. Triple-nested XSS pattern (`<scr<scr<script>ipt>ipt>alert(1)...`) also sanitized correctly — recursive stripping works. SQL injection attempt (`Robert'); DROP TABLE trips;--`) stored safely as literal text (parameterized queries working). |
+| Related Task | T-305 |
+
+---
+
+### FB-241 — Notes character limit enforced at 5000
+
+| Field | Value |
+|-------|-------|
+| Feedback | Notes max length validation works correctly at 5000 characters |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | PATCH with exactly 5000 characters → 200 (accepted). PATCH with 5001 characters → 400 with `{"fields":{"notes":"Notes must not exceed 5000 characters"}}`. Boundary validation is precise. |
+| Related Task | T-306 |
+
+---
+
+### FB-242 — API contract docs consistency verified
+
+| Field | Value |
+|-------|-------|
+| Feedback | All notes character limit references in api-contracts.md are consistent at 5000 |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Searched api-contracts.md for all references to notes character limits. Every instance now says "max 5000" with "[Updated Sprint 39 T-298: limit increased from 2000 to 5000]" annotations. No contradictory "max 2000" references remain. The historical context is preserved while the current limit is clear. T-306 docs fix is complete and accurate. |
+| Related Task | T-306 |
+
+---
+
+### FB-243 — Stay checkout time on calendar (desktop) works correctly
+
+| Field | Value |
+|-------|-------|
+| Feedback | STAY end-day events show "Checkout {time}" on desktop calendar pills |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Verified in TripCalendar.jsx: `renderEventPill` has a STAY end-day branch that calls `buildArrivalLabel(event)` which returns `"Checkout {time}"` for STAY type events. When `end_time` is null, returns `"Checkout"` without time. The `aria-label` includes `"Stay: {name}, checkout {time}"` for accessibility. Calendar API endpoint returns `end_time: "11:00"` for a stay with checkout at 11am local time. Test 32.A confirms "Checkout 11a" renders on desktop. All 5 new tests (32.A–32.E) pass. |
+| Related Task | T-308 |
+
+---
+
+### FB-244 — Stay checkout time on calendar (mobile) works correctly
+
+| Field | Value |
+|-------|-------|
+| Feedback | STAY end-day rows in MobileDayList show "{name} — Checkout {time}" |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Verified in TripCalendar.jsx: MobileDayList handles STAY end-day events with `"{name} — Checkout {time}"` format, matching the FLIGHT "— Arrives" and LAND_TRAVEL "— Arrives/Drop-off" patterns. Middle-day STAY rows show "(cont.)" at 0.6 opacity. Test 32.C confirms the mobile format. |
+| Related Task | T-308 |
+
+---
+
+### FB-245 — FLIGHT and LAND_TRAVEL end-day labels unaffected by T-308
+
+| Field | Value |
+|-------|-------|
+| Feedback | Existing end-day labels for flights and land travel are unchanged |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Test 32.D explicitly verifies that FLIGHT end-day labels still show "Arrives {time}" and LAND_TRAVEL end-day labels still show "Arrives/Drop-off {time}" after T-308 changes. The `buildArrivalLabel()` function cleanly branches by event type. No regressions. |
+| Related Task | T-308 |
+
+---
+
+### FB-246 — Auth flow works correctly on both environments
+
+| Field | Value |
+|-------|-------|
+| Feedback | Registration, login, invalid credentials, and token validation all work |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Tested on both staging and production: (1) Registration returns 201 with user object and access_token. (2) Login returns 200 with matching user. (3) Wrong password returns 401 with "Incorrect email or password" (no information leakage). (4) Empty fields return 400 with specific field-level validation errors. (5) Invalid/expired tokens return 401. (6) Unauthenticated requests to protected endpoints return 401. |
+| Related Task | T-305 |
+
+---
+
+### FB-247 — Full test suites pass with zero regressions
+
+| Field | Value |
+|-------|-------|
+| Feedback | All 1041 tests pass (523 backend + 518 frontend) |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Backend: 523 tests across 27 files, all passing in 2.78s. Frontend: 518 tests across 25 files, all passing in 2.08s. Total: 1041 tests. No failures, no skipped tests. The 5 new calendar checkout tests (32.A–32.E) are included in the frontend count. |
+| Related Task | T-309 |
+
+---
+
+### FB-248 — Production deployment stable and healthy
+
+| Field | Value |
+|-------|-------|
+| Feedback | Production environment is healthy with feature parity to staging |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Production backend (port 3002) returns `{"status":"ok"}` on health check. PM2 shows 0 restarts and 18min+ uptime for production processes. Trip notes CRUD, XSS sanitization, calendar with checkout time, and auth flow all verified on production. Feature parity with staging confirmed. |
+| Related Task | T-305, T-310 |
+
+---
+
+### FB-249 — Staging backend restart count is high (4299 restarts)
+
+| Field | Value |
+|-------|-------|
+| Feedback | Staging backend has accumulated 4299 PM2 restarts |
+| Sprint | 40 |
+| Category | UX Issue |
+| Severity | Minor |
+| Status | New |
+| Details | PM2 shows 4299 restarts for `triplanner-backend` (staging). However, `unstable restarts: 0` indicates these are all deliberate restarts from deployments across 40 sprints, not crash loops. Currently stable with 7min uptime. The frontend has 16 restarts. Not a functional issue but the accumulated count may mask future crash restarts. Consider resetting PM2 restart counters after each successful deploy verification. |
+| Related Task | T-305 |
+
+---
+
+### FB-250 — Calendar checkout time correctly handles timezone conversion
+
+| Field | Value |
+|-------|-------|
+| Feedback | Checkout time timezone conversion works correctly on production |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Created a stay on production with check_out_at=2026-05-04T09:00:00Z and check_out_tz=Europe/Paris. Calendar API returned end_time="11:00" (correctly converted from UTC to Europe/Paris, +2h for CEST). The frontend formatTime would render this as "11a" on the checkout day pill. Timezone handling is robust. |
+| Related Task | T-308 |
+
+---
+
+### FB-251 — Rapid concurrent requests handled without errors
+
+| Field | Value |
+|-------|-------|
+| Feedback | 5 concurrent requests to trip list endpoint all return 200 |
+| Sprint | 40 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Sent 5 simultaneous GET /trips requests. All returned HTTP 200 without errors, race conditions, or degraded responses. Server handles concurrent load gracefully. |
+| Related Task | — |
+
+---
+
 ## User Agent — Sprint #39 Staging Walkthrough (T-304) — 2026-03-30
 
 > **Scope:** Sprint 39 delivers trip notes/description field (B-030) and triple-nested XSS sanitizer hardening (B-037). Testing performed on staging environment at `https://localhost:3001` (backend) and `https://localhost:4173` (frontend). Monitor Agent confirmed Deploy Verified = Yes (T-303).

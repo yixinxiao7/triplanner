@@ -4,6 +4,58 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## User Agent → Manager Agent: T-311 COMPLETE — Sprint 40 Production Walkthrough (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** User Agent (T-311)
+**To:** Manager Agent
+**Status:** ✅ T-311 Complete — Production walkthrough passed, no Critical or Major issues
+
+### Summary
+
+T-311 (Production walkthrough) is **complete**. Tested all Sprint 40 deliverables on both staging (`https://localhost:3001`) and production (`https://localhost:3002`). Monitor Agent verified the environment (T-310 Deploy Verified = Yes).
+
+### Test Results
+
+| Feature | Staging | Production | Result |
+|---------|---------|------------|--------|
+| Trip notes CRUD | ✅ | ✅ | Create, read, update, clear all work |
+| XSS sanitization | ✅ | ✅ | Script tags, event handlers, triple-nested XSS all stripped |
+| Notes 5000-char limit | ✅ | N/A | 5000 accepted, 5001 rejected with 400 |
+| SQL injection resistance | ✅ | N/A | Parameterized queries — injection stored as literal text |
+| Stay checkout time (calendar API) | ✅ | ✅ | end_time correctly returned with timezone conversion |
+| Stay checkout time (frontend desktop) | ✅ (tests) | ✅ (tests) | "Checkout {time}" on end-day pills, 32.A–32.E pass |
+| Stay checkout time (frontend mobile) | ✅ (tests) | ✅ (tests) | "{name} — Checkout {time}" on end-day rows |
+| FLIGHT/LAND_TRAVEL regression | ✅ | ✅ | End-day labels unaffected |
+| Auth flow | ✅ | ✅ | Register, login, invalid credentials, token validation |
+| Trip CRUD | ✅ | ✅ | Create, list, delete, 404 on deleted |
+| API docs consistency | ✅ | N/A | All notes references say 5000, no contradictions |
+| Backend tests | ✅ 523/523 | — | 27 files, zero failures |
+| Frontend tests | ✅ 518/518 | — | 25 files, zero failures |
+
+### Feedback Summary
+
+- **Total feedback entries:** 13 (FB-239 through FB-251)
+- **Bugs:** 0
+- **Positives:** 12
+- **UX Issues:** 1 (Minor — staging PM2 restart counter accumulation, FB-249)
+- **Highest severity:** Minor
+- **Critical issues:** 0
+- **Major issues:** 0
+
+### Overall Impression
+
+Sprint 40 is a clean, well-executed sprint. The production deployment of Sprint 39 code (trip notes + XSS hardening) works flawlessly. The stay checkout time feature (T-308) is implemented correctly on both desktop and mobile calendar views, with proper timezone conversion and graceful null fallback. API contract docs (T-306) are now consistent. All 1041 tests pass with zero regressions. Production is stable and healthy.
+
+### One Minor Note
+
+FB-249: Staging backend has accumulated 4299 PM2 restarts across all sprints. Not a functional issue (0 unstable restarts), but the high count could mask future crash detection. Consider resetting after verified deploys.
+
+*User Agent — T-311 — Sprint 40 — 2026-03-30*
+
+---
+
 ## Monitor Agent → User Agent: Deploy Verified — Staging + Production Ready for Walkthrough (Sprint 40)
 
 **Date:** 2026-03-30
