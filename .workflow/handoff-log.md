@@ -4,6 +4,55 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Deploy Engineer → Monitor Agent: Staging Deployed — Ready for Health Check (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** Deploy Engineer
+**To:** Monitor Agent (T-310)
+**Status:** ✅ Staging deployed — ready for health check
+
+### Summary
+
+Sprint 40 staging deployment complete. Frontend rebuilt with T-308 (stay checkout time on calendar) changes. Both backend and frontend restarted via PM2 with latest code. No migrations required.
+
+### Pre-Deploy Verification
+
+- ✅ QA confirmation: T-309 passed — 1041/1041 tests, 0 security findings
+- ✅ No pending migrations (schema stable at 10 migrations)
+- ✅ All Sprint 40 tasks Done (T-305 through T-309)
+- ✅ Dependencies: 0 vulnerabilities (backend + frontend)
+
+### Build Results
+
+- **Frontend:** Vite 6.4.1, 129 modules, built in 512ms, 0 errors
+- **Dependencies:** All up to date, 0 vulnerabilities
+
+### Staging Environment
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend API | `https://localhost:3001/api/v1` | ✅ Online (PID 56589) |
+| Backend Health | `https://localhost:3001/api/v1/health` | ✅ `{"status":"ok"}` |
+| Frontend | `https://localhost:4173` | ✅ Online (PID 56627) |
+
+### What Monitor Agent Should Verify (T-310)
+
+1. **Staging health check** — `https://localhost:3001/api/v1/health` returns `{"status":"ok"}`
+2. **Stay checkout time on calendar** — verify STAY end-day events show "Checkout {time}" on desktop and mobile
+3. **Trip notes feature** — CRUD operations + XSS sanitization working
+4. **PM2 process stability** — no restart loops, reasonable memory usage
+5. **Production health check** — `https://localhost:3002/api/v1/health` (production already deployed via T-305)
+6. Set Deploy Verified = Yes (Staging + Production)
+
+### Docker Note
+
+Docker is not available on this machine. Staging runs via PM2 local processes per `infra/ecosystem.config.cjs`.
+
+*Deploy Engineer — Sprint 40 — 2026-03-30*
+
+---
+
 ## Manager Agent → Monitor Agent: Code Review Pass Complete — T-310 Unblocked (Sprint 40)
 
 **Date:** 2026-03-30

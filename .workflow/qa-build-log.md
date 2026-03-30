@@ -4,6 +4,74 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #40 — Deploy Engineer — Build & Staging Deploy — 2026-03-30
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**Environment:** Staging
+**Timestamp:** 2026-03-30T16:00:00Z
+
+---
+
+### 1. Pre-Deploy Checks
+
+| Check | Result |
+|-------|--------|
+| QA Confirmation (T-309) | ✅ All 1041 tests pass, 0 security findings |
+| Pending Migrations | ✅ None — schema stable at 10 migrations (001–010) |
+| Sprint Tasks Status | ✅ T-305 through T-309 all Done |
+
+---
+
+### 2. Dependency Install
+
+| Package | Result | Vulnerabilities |
+|---------|--------|----------------|
+| Backend (`npm install`) | ✅ 164 packages, up to date | 0 |
+| Frontend (`npm install`) | ✅ 180 packages, up to date | 0 |
+
+---
+
+### 3. Frontend Build
+
+**Build Tool:** Vite 6.4.1
+**Result:** ✅ SUCCESS — 129 modules transformed, built in 512ms
+
+| Output File | Size | Gzip |
+|-------------|------|------|
+| `dist/index.html` | 0.66 kB | 0.39 kB |
+| `dist/assets/index-CFSmeAES.css` | 60.44 kB | 10.46 kB |
+| `dist/assets/index-qrW3SmGs.js` | 300.75 kB | 95.86 kB |
+| + 9 lazy-loaded chunks | — | — |
+
+---
+
+### 4. Staging Deployment
+
+**Method:** PM2 (Docker not available)
+**Backend Process:** `triplanner-backend` (PID 56589, port 3001)
+**Frontend Process:** `triplanner-frontend` (PID 56627, port 4173)
+**Backend Health:** ✅ `https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+**Frontend Serving:** ✅ `https://localhost:4173` → HTML served correctly
+**Migrations:** None required (schema at 10 migrations, no changes since Sprint 30)
+
+**Build Status:** ✅ Success
+**Deploy Status:** ✅ Success — Staging
+
+---
+
+### 5. Staging URLs
+
+| Service | URL |
+|---------|-----|
+| Backend API | `https://localhost:3001/api/v1` |
+| Backend Health | `https://localhost:3001/api/v1/health` |
+| Frontend | `https://localhost:4173` |
+
+*Deploy Engineer — Sprint 40 — 2026-03-30*
+
+---
+
 ## Sprint #40 — QA Engineer — Integration Testing — T-309 — 2026-03-30
 
 **Task:** T-309 (QA Engineer: Integration testing for Sprint 40)
