@@ -3462,7 +3462,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
 | T-316 | QA Engineer: Integration testing for Sprint 41. Print view, full test suite, security checklist, regression check. | Code Review | QA Engineer | Done | P1 | M | 41 | T-314, T-315 | **QA COMPLETE 2026-03-30:** Backend 523/523 pass, Frontend 524/524 pass, integration verified, config consistency clean, security scan clean (0 vulnerabilities). All checks pass. T-315 → Done. T-317 unblocked. |
 | T-317 | Deploy Engineer: Staging deployment of Sprint 41 code. | Infrastructure | Deploy Engineer | Done | P1 | S | 41 | T-316 | **DEPLOYED 2026-03-30:** Backend 523/523 pass, Frontend 524/524 pass, frontend build OK (131 modules), PM2 staging deploy success (backend+frontend online, 0 restarts), smoke tests 4/4 pass. No migrations needed. Handoff to Monitor Agent (T-318). |
-| T-318 | Monitor Agent: Staging health check. Verify print feature accessible. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 41 | T-317 | **UNBLOCKED 2026-03-30:** T-317 (Deploy) complete — staging deployed, smoke tests pass. Ready for health check. |
+| T-318 | Monitor Agent: Staging health check. Verify print feature accessible. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Done | P1 | S | 41 | T-317 | **DONE 2026-03-30:** All health checks pass. Config consistency verified. Deploy Verified = Yes (Staging). Health endpoint 200, auth 200, all API endpoints respond correctly, frontend serves SPA, PM2 stable (0 restarts), no 5xx errors. Handoff to User Agent (T-319). |
 | T-319 | User Agent: Staging walkthrough. Test print view with populated/empty/partial trips, regression check, submit feedback. | Documentation | User Agent | Backlog | P1 | M | 41 | T-318 | Standard user verification. |
 
 ---
@@ -3483,8 +3483,8 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 - T-315 (Frontend: PrintCalendarSummary): ✅ Done — Manager APPROVED, QA APPROVED (524/524 frontend, 523/523 backend)
 - T-316 (QA integration): ✅ Done — All tests pass, security clean
 - T-317 (Deploy: staging): ✅ Done — PM2 online, 4/4 smoke tests pass
-- T-318 (Monitor: staging health check): Backlog — Unblocked, awaiting Monitor Agent
-- T-319 (User Agent: walkthrough): Backlog — Blocked by T-318
+- T-318 (Monitor: staging health check): ✅ Done — All checks pass, Deploy Verified = Yes
+- T-319 (User Agent: walkthrough): Backlog — Unblocked, awaiting User Agent
 
 **No action required.** All implementation code has been reviewed and approved. Pipeline is in the verify phase (Monitor Agent T-318 → User Agent T-319).
 

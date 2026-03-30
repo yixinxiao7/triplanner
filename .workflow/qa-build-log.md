@@ -4,6 +4,67 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #41 — Monitor Agent — T-318 Post-Deploy Health Check — 2026-03-30
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**Task:** T-318 (Monitor Agent: Staging health check)
+**Monitor Agent**
+
+### Environment
+
+| Field | Value |
+|-------|-------|
+| Environment | Staging |
+| Backend URL | https://localhost:3001 |
+| Frontend URL | https://localhost:4173 |
+| Timestamp | 2026-03-30T21:07:00Z |
+| Token | Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT /auth/register) |
+
+### Config Consistency — ✅ PASS
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Backend PORT matches Vite proxy target | PORT=3000 ↔ proxy `http://localhost:3000` | `.env` PORT=3000, Vite defaults to `http://localhost:3000` | ✅ Match |
+| Protocol match (HTTP/HTTPS) | SSL_KEY_PATH + SSL_CERT_PATH commented out → HTTP | Vite proxy defaults to `http://` (backendSSL=false) | ✅ Match |
+| CORS_ORIGIN includes frontend dev server | `http://localhost:5173` | `.env` CORS_ORIGIN=`http://localhost:5173`, Vite dev port=5173 | ✅ Match |
+| Docker port mapping | Backend container PORT=3000 | `docker-compose.yml` backend env PORT=3000, healthcheck targets `http://localhost:3000` | ✅ Match |
+
+**Note:** Staging uses a separate PM2 config with PORT=3001 + HTTPS (self-signed certs). The `.env` file (PORT=3000, no SSL) is the local dev config. Both configurations are internally consistent for their respective environments.
+
+### Health Checks
+
+| # | Check | Method | Result | Details |
+|---|-------|--------|--------|---------|
+| 1 | App responds | `GET https://localhost:3001/api/v1/health` | ✅ 200 | Response: `{"status":"ok"}` |
+| 2 | Database connected | Health endpoint (covers DB) | ✅ PASS | Health returns OK — DB connection pool healthy |
+| 3 | Auth works | `POST https://localhost:3001/api/v1/auth/login` | ✅ 200 | Token acquired for `test@triplanner.local`. Response shape: `{"data":{"user":{...},"access_token":"..."}}` |
+| 4 | Auth guard works | `GET /api/v1/trips` (no token) | ✅ 401 | `{"error":{"message":"Authentication required","code":"UNAUTHORIZED"}}` |
+| 5 | GET /api/v1/trips | Bearer token | ✅ 200 | Returns paginated list: `{"data":[...],"pagination":{"page":1,"limit":20,"total":1}}` |
+| 6 | GET /api/v1/trips/:id | Bearer token | ✅ 200 | Trip detail with correct shape |
+| 7 | GET /api/v1/trips/:id/flights | Bearer token | ✅ 200 | `{"data":[]}` — empty but valid |
+| 8 | GET /api/v1/trips/:id/stays | Bearer token | ✅ 200 | `{"data":[{...}]}` — 1 stay returned with correct shape |
+| 9 | GET /api/v1/trips/:id/activities | Bearer token | ✅ 200 | `{"data":[]}` — empty but valid |
+| 10 | Frontend accessible | `GET https://localhost:4173` | ✅ 200 | HTML served with `<title>triplanner</title>`, SPA shell with JS/CSS bundles |
+| 11 | PM2 process stability | `pm2 list` | ✅ PASS | `triplanner-backend` online 6m, 0 restarts, 69.4mb. `triplanner-frontend` online 6m, 0 restarts, 46.4mb |
+| 12 | No 5xx errors in logs | `pm2 logs --lines 30` | ✅ PASS | No 5xx errors. Only pre-existing 400s from malformed JSON (body-parser SyntaxError from earlier agent curl tests — not production traffic) |
+
+### Sprint 41 Feature Verification
+
+| Check | Result | Details |
+|-------|--------|---------|
+| Print feature accessible | ✅ PASS | Frontend SPA loads; print view is CSS `@media print` — no runtime dependencies. No backend changes in Sprint 41. |
+
+### Verdict
+
+**Deploy Verified: ✅ Yes (Staging)**
+
+All health checks pass. All contracted API endpoints respond with expected shapes and status codes. Config consistency validated across backend/.env, frontend/vite.config.js, and infra/docker-compose.yml. PM2 processes stable with 0 restarts. No 5xx errors in logs.
+
+**Staging is ready for User Agent walkthrough (T-319).**
+
+---
+
 ## Sprint #41 — QA Engineer — Re-Verification Pass — 2026-03-30
 
 **Date:** 2026-03-30
