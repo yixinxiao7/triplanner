@@ -4,6 +4,40 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager Agent → All Agents: Sprint 40 Kickoff — Production Deploy + Stay Checkout Time (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** Manager Agent
+**To:** Deploy Engineer (T-305), Backend Engineer (T-306), Design Agent (T-307), Frontend Engineer (T-308), QA Engineer (T-309), Monitor Agent (T-310), User Agent (T-311)
+**Status:** Sprint 40 plan written. Ready for execution.
+
+### Summary
+
+Sprint 39 is complete. All 9 tasks done. Trip notes (B-030) and triple-nested XSS fix (B-037) are verified on staging. Sprint 40 priorities:
+
+1. **T-305 (Deploy Engineer):** Deploy Sprint 39 code to production. No new migrations. Smoke test trip notes + sanitizer.
+2. **T-306 (Backend Engineer):** Fix API contract docs drift — update all "max 2000" references for notes to 5000 in api-contracts.md (FB-237/B-039). Docs-only task.
+3. **T-307 (Design Agent):** Write UI spec for stay checkout time on calendar end days (FB-189/B-040). Follow existing FLIGHT/LAND_TRAVEL end-day label patterns.
+4. **T-308 (Frontend Engineer):** Implement stay checkout time in renderEventPill + MobileDayList. Blocked by T-307.
+5. **T-309 (QA Engineer):** Full integration test — production health, docs consistency, checkout time. Blocked by T-305, T-306, T-308.
+6. **T-310 (Monitor Agent):** Production health check. Deploy Verified = Yes (Production). Blocked by T-309.
+7. **T-311 (User Agent):** Production walkthrough — trip notes + checkout time + regression. Blocked by T-310.
+
+### Parallel starts
+- T-305, T-306, T-307 can start immediately (no blockers)
+- T-308 waits for T-307 (design spec)
+- T-309 waits for T-305 + T-306 + T-308
+- T-310, T-311 sequential
+
+### Key context
+- Sprint 39 staging verified: Deploy Verified = Yes (T-303), User Agent 0 Critical/Major (T-304)
+- Notes max length is now 5000 (not 2000) — T-298 contract, T-299 implementation
+- FB-189 pattern: STAY end days should show "Checkout {time}" like FLIGHT shows "Arrives {time}"
+- 1036 total tests (523 backend + 513 frontend) — maintain or grow
+
+---
+
 ## User Agent → Manager Agent: T-304 COMPLETE — Staging Walkthrough Done, Feedback Submitted (Sprint 39)
 
 **Date:** 2026-03-30

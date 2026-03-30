@@ -4,83 +4,64 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #39 — 2026-03-24
+## Sprint #40 — 2026-03-30
 
-**Sprint Goal:** Add trip notes/description field (B-030) and improve sanitizer robustness for deeply nested XSS (B-037). Production is stable — Sprint 39 returns to feature development with one targeted security hardening task.
+**Sprint Goal:** Deploy Sprint 39 trip notes feature to production, fix API contract docs drift (B-039/FB-237), and implement stay checkout time display on calendar (FB-189/B-040). Sprint 40 is a production deploy + one targeted UX enhancement.
 
-**Context:** Sprint 38 successfully deployed all Sprint 35+36+37 code to production. Production is verified healthy (Deploy Verified = Yes). No Critical or Major bugs. Two minor backlog items created (B-037 triple-nested XSS residual, B-038 rate limiter testing friction). Sprint 39 delivers the next MVP enhancement: trip notes/description field (B-030, long-deferred backlog item from Sprint 5). This is a vertical slice — design spec → API contract → backend → frontend → QA → deploy → monitor → user walkthrough.
+**Context:** Sprint 39 successfully delivered trip notes (B-030) and triple-nested XSS fix (B-037) to staging. Deploy Verified = Yes (Staging). Zero Critical/Major issues. Sprint 40 promotes this to production, fixes the API docs inconsistency flagged in FB-237, and adds the calendar checkout time display (FB-189) — a long-standing Minor UX improvement from Sprint 35 that improves calendar information density.
 
-**Feedback Triage (Sprint 38 → Sprint 39):**
+**Feedback Triage (Sprint 39 → Sprint 40):**
 
 | Entry | Category | Severity | Disposition |
 |-------|----------|----------|-------------|
-| FB-209–FB-220, FB-223 | Positive | — | **Acknowledged** — all confirmations, no action needed |
-| FB-221 | Security | Minor | **Acknowledged** → B-037 (backlog, bundled into T-296 this sprint for hardening) |
-| FB-222 | UX Issue | Minor | **Acknowledged** → B-038 (backlog, not this sprint) |
+| FB-224–FB-236, FB-238 | Positive | — | **Acknowledged** — all confirmations, no action needed |
+| FB-237 | UX Issue | Minor | **Acknowledged** → B-039 (docs fix, bundled into T-306 this sprint) |
+| FB-189 | UX Issue | Minor | **Acknowledged** → B-040 (calendar enhancement, tasked as T-307–T-310) |
+| FB-190 | Feature Gap | Suggestion | **Acknowledged** — dark/light mode toggle, backlog for future sprint |
 
-**No Critical or Major bugs. Sprint 39 is feature-driven.**
+**No Critical or Major bugs. Sprint 40 combines production deploy with one UX enhancement.**
 
 ---
 
 ## In Scope
 
-### Phase 1 — Design Spec + API Contract (start immediately, in parallel)
+### Phase 1 — Production Deploy + Verify (start immediately)
 
-- [ ] **T-296** — Backend Engineer: Harden sanitizer for triple-nested XSS (FB-221/B-037)
+- [ ] **T-305** — Deploy Engineer: Production deployment of Sprint 39 code
 
-  **Context:** FB-221 reported that triple-level nested XSS (`<<<script>script>script>`) leaves residual angle bracket fragments in stored data. Not exploitable (React escapes output), but stored data looks messy. Current iterative sanitizer handles double-nesting but residual fragments appear at 3+ levels.
+  **Context:** Sprint 39 staging is verified (T-303 Deploy Verified = Yes). Push to production.
 
   **Execute:**
-  1. Increase sanitization loop max passes or add post-loop cleanup for residual angle brackets
-  2. Add test cases for 3-level and 4-level nested XSS patterns
-  3. Ensure no false positives on legitimate content with angle brackets (math expressions like `3 < 5`)
-  4. Run full backend test suite — zero regressions
+  1. Rebuild backend and frontend from current branch
+  2. Run full test suite (1036+ tests) — zero regressions required
+  3. Deploy to production (PM2)
+  4. No new migrations needed (notes column exists since Sprint 7)
+  5. Run production smoke tests: trip notes CRUD, sanitizer, auth, existing features
 
   **Acceptance criteria:**
-  - Triple-nested XSS patterns produce clean output (no residual fragments)
-  - Legitimate angle bracket content preserved
-  - All existing sanitizer tests still pass
-  - New test cases added for 3+ level nesting
+  - Production deployed with Sprint 39 code
+  - All smoke tests pass
+  - Trip notes CRUD works on production
+  - Triple-nested XSS fix verified on production
 
   **Blocked By:** None
 
-  **Files:** `backend/src/middleware/`, `backend/src/__tests__/`, `dev-cycle-tracker.md`
+  **Files:** `.workflow/qa-build-log.md`
 
 ---
 
-- [ ] **T-297** — Design Agent: Design spec for trip notes/description field (B-030)
+- [ ] **T-306** — Backend Engineer: Fix API contract docs drift (FB-237/B-039)
 
-  **Context:** B-030 has been in the backlog since Sprint 5. Users want to store freeform notes (restaurant links, packing lists, travel tips) alongside trip details. This needs a UI spec before implementation.
-
-  **Execute:**
-  1. Add trip notes section to trip details page spec in `ui-spec.md`
-  2. Define: placement on trip details page (below calendar, above flights), text area dimensions, character limit, empty state, edit inline vs. separate page
-  3. Follow existing design conventions: Japandi aesthetic, IBM Plex Mono, dark mode palette, 4px grid
-
-  **Acceptance criteria:**
-  - UI spec for trip notes section published in `ui-spec.md`
-  - Covers: layout, typography, empty state, edit behavior, character limit display
-  - Reviewed by Manager
-
-  **Blocked By:** None
-
-  **Files:** `.workflow/ui-spec.md`
-
----
-
-- [ ] **T-298** — Backend Engineer: API contract for trip notes field (B-030)
-
-  **Context:** Add a `notes` field to the trip resource. Freeform text, optional, with a reasonable character limit.
+  **Context:** FB-237 flagged that Sprint 7/8/20 contract sections in api-contracts.md still reference "max 2000" for notes when Sprint 39 T-298 updated the limit to 5000. Fix all historical references.
 
   **Execute:**
-  1. Update API contract in `api-contracts.md`: add `notes` (string, optional, max 5000 chars) to trip resource shape
-  2. Update PATCH /trips/:id to accept `notes` field
-  3. Define validation rules (max length, sanitization applies)
+  1. Search api-contracts.md for all references to notes "max 2000" or "2000 characters"
+  2. Update to "max 5000" or add "[Updated Sprint 39: limit increased to 5000]" annotations
+  3. Ensure no contradictory limits remain in the document
 
   **Acceptance criteria:**
-  - API contract updated with `notes` field on trip resource
-  - PATCH endpoint contract includes `notes` as updatable field
-  - Max length and validation rules documented
+  - All notes character limit references in api-contracts.md are consistent (5000)
+  - No contradictory documentation remains
   - Reviewed by Manager
 
   **Blocked By:** None
@@ -89,128 +70,105 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-### Phase 2 — Implementation (after specs approved)
+### Phase 2 — Calendar Enhancement: Stay Checkout Time (after Phase 1 starts)
 
-- [ ] **T-299** — Backend Engineer: Implement trip notes field ← Blocked by T-298
+- [ ] **T-307** — Design Agent: UI spec for stay checkout time on calendar (FB-189/B-040)
+
+  **Context:** FB-189 requests that stay events on the calendar display checkout time on the end date, matching how flights show "Arrives {time}" and land travel shows "Arrives/Drop-off {time}". Needs a spec update.
 
   **Execute:**
-  1. Create migration to add `notes` column (text, nullable) to trips table
-  2. Update trip model to include `notes` in create/update/get operations
-  3. Add validation (max 5000 chars, sanitize HTML)
-  4. Update trip CRUD tests
-  5. Run full test suite — zero regressions
+  1. Update calendar spec in ui-spec.md to add checkout time display for STAY end days
+  2. Define label format (e.g., "Checkout 11:00a") consistent with existing FLIGHT and LAND_TRAVEL patterns
+  3. Cover both desktop calendar grid and mobile day list
 
   **Acceptance criteria:**
-  - Migration adds `notes` column
-  - GET /trips/:id returns `notes` field
-  - PATCH /trips/:id accepts and persists `notes`
-  - POST /trips creates trip with optional `notes`
-  - XSS sanitization applies to `notes`
-  - All tests pass
+  - UI spec updated with stay checkout time display on calendar end days
+  - Label format consistent with existing event type patterns
+  - Both desktop and mobile views covered
 
-  **Blocked By:** T-298
+  **Blocked By:** None
 
-  **Files:** `backend/src/`, `backend/migrations/`
+  **Files:** `.workflow/ui-spec.md`
 
 ---
 
-- [ ] **T-300** — Frontend Engineer: Implement trip notes UI ← Blocked by T-297, T-299
+- [ ] **T-308** — Frontend Engineer: Implement stay checkout time on calendar ← Blocked by T-307
 
   **Execute:**
-  1. Add notes section to trip details page per UI spec (T-297)
-  2. Inline editing: click to edit, auto-save on blur or Ctrl+Enter
-  3. Character count display (current / 5000 max)
-  4. Empty state with placeholder text
-  5. Add tests for notes section
+  1. Update `renderEventPill` (desktop calendar grid) to show checkout time on STAY end days
+  2. Update `MobileDayList` to show checkout time on STAY end days
+  3. Follow the existing pattern used for FLIGHT ("Arrives {time}") and LAND_TRAVEL ("Arrives/Drop-off {time}")
+  4. Add tests for the new checkout time display
 
   **Acceptance criteria:**
-  - Notes section renders on trip details page
-  - Inline edit with save/cancel
-  - Character limit enforced client-side
-  - Empty state shown when no notes
+  - STAY end days show "Checkout {time}" on desktop calendar
+  - STAY end days show "Checkout {time}" on mobile day list
+  - Existing FLIGHT and LAND_TRAVEL end-day labels unaffected
   - Tests added and passing
 
-  **Blocked By:** T-297, T-299
+  **Blocked By:** T-307
 
   **Files:** `frontend/src/`
 
 ---
 
-### Phase 3 — QA + Deploy + Verify (sequential)
+### Phase 3 — QA + Production Verify (sequential)
 
-- [ ] **T-301** — QA Engineer: Integration testing for Sprint 39 ← Blocked by T-296, T-300
+- [ ] **T-309** — QA Engineer: Integration testing for Sprint 40 ← Blocked by T-305, T-306, T-308
 
   **Scope:**
-  - Verify trip notes CRUD (create, read, update, clear)
-  - Verify XSS sanitization on notes field
-  - Verify triple-nested XSS fix (T-296)
+  - Verify production deployment health (T-305)
+  - Verify API contract docs consistency (T-306)
+  - Verify stay checkout time on calendar — desktop and mobile (T-308)
   - Full test suite pass (backend + frontend)
   - Security checklist
-  - Config consistency check
+  - Regression check on existing calendar event types
 
   **Acceptance criteria:**
   - All tests pass
   - Security checklist pass
-  - Trip notes integration verified
-  - Triple-nested XSS residual fragments eliminated
+  - Stay checkout time verified on calendar
+  - No regressions on FLIGHT or LAND_TRAVEL end-day labels
 
-  **Blocked By:** T-296, T-300
-
-  **Files:** `.workflow/qa-build-log.md`
-
----
-
-- [ ] **T-302** — Deploy Engineer: Staging deployment ← Blocked by T-301
-
-  **Scope:**
-  - Rebuild backend and frontend
-  - Run migrations (add notes column)
-  - Deploy to staging (PM2)
-  - Smoke test trip notes + sanitizer fix
-
-  **Acceptance criteria:**
-  - Staging deployed with migration applied
-  - Trip notes CRUD works on staging
-  - Sanitizer fix verified on staging
-
-  **Blocked By:** T-301
+  **Blocked By:** T-305, T-306, T-308
 
   **Files:** `.workflow/qa-build-log.md`
 
 ---
 
-- [ ] **T-303** — Monitor Agent: Staging health check ← Blocked by T-302
+- [ ] **T-310** — Monitor Agent: Production health check ← Blocked by T-309
 
   **Scope:**
-  - Full staging health check protocol
-  - Verify trip notes field in API responses
-  - Verify triple-nested XSS fix
-  - Deploy Verified = Yes (Staging)
+  - Full production health check protocol
+  - Verify trip notes feature on production (Sprint 39 code)
+  - Verify stay checkout time on calendar
+  - Deploy Verified = Yes (Production)
 
   **Acceptance criteria:**
   - All health checks pass
-  - Deploy Verified = Yes (Staging)
+  - Deploy Verified = Yes (Production)
 
-  **Blocked By:** T-302
+  **Blocked By:** T-309
 
   **Files:** `.workflow/qa-build-log.md`
 
 ---
 
-- [ ] **T-304** — User Agent: Staging walkthrough ← Blocked by T-303
+- [ ] **T-311** — User Agent: Production walkthrough ← Blocked by T-310
 
   **Scope:**
-  - Test trip notes: add, edit, clear, character limit
-  - Test XSS sanitization on notes
+  - Test trip notes on production: add, edit, clear, character limit
+  - Test stay checkout time on calendar (desktop + mobile)
   - Regression check: existing CRUD, calendar, auth
   - Submit feedback to feedback-log.md
 
   **Acceptance criteria:**
-  - Trip notes feature verified
+  - Trip notes feature verified on production
+  - Stay checkout time verified on calendar
   - No Critical or Major regressions
   - Feedback submitted
 
-  **Blocked By:** T-303
+  **Blocked By:** T-310
 
   **Files:** `.workflow/feedback-log.md`
 
@@ -218,11 +176,11 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ## Out of Scope
 
-- **Production deployment** — Sprint 39 delivers to staging only. Production deploy in Sprint 40 after staging verification.
+- **FB-190 (dark/light mode toggle)** — Suggestion; requires theme system architecture. Backlog for a future sprint.
 - **B-020 (Redis rate limiter)** — Backlog; in-memory store sufficient for current scale.
-- **B-024 (per-account rate limiting)** — Backlog.
+- **B-024 (per-account rate limiting)** — Backlog; depends on B-020.
 - **B-032 (trip export/print)** — Deferred.
-- **B-036 (activity notes field)** — Backlog; minor, not blocking.
+- **B-036 (activity notes field)** — Backlog; minor.
 - **B-038 (rate limiter testing friction)** — Backlog; not a bug.
 - **FB-170 (SSR for landing pages)** — Suggestion; low priority.
 
@@ -232,71 +190,67 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Design Agent | Trip notes UI spec | T-297 |
-| Backend Engineer | Sanitizer hardening + trip notes API + implementation | T-296, T-298, T-299 |
-| Frontend Engineer | Trip notes UI | T-300 |
-| QA Engineer | Integration testing | T-301 |
-| Deploy Engineer | Staging deployment | T-302 |
-| Monitor Agent | Staging health check | T-303 |
-| User Agent | Staging walkthrough | T-304 |
-| Manager | Code review, triage T-304 feedback, Sprint 40 plan | Reviews |
+| Design Agent | Stay checkout time spec | T-307 |
+| Backend Engineer | API contract docs fix | T-306 |
+| Frontend Engineer | Stay checkout time UI | T-308 |
+| QA Engineer | Integration testing | T-309 |
+| Deploy Engineer | Production deployment | T-305 |
+| Monitor Agent | Production health check | T-310 |
+| User Agent | Production walkthrough | T-311 |
+| Manager | Code review, triage T-311 feedback, Sprint 41 plan | Reviews |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-T-296 (Backend: sanitizer hardening) ──────────────────────────────────────┐
-T-297 (Design: trip notes spec) ─────────────────────────────────────┐     │
-T-298 (Backend: trip notes API contract) → T-299 (Backend: impl) ──┤     │
-                                                                     ├─→ T-301 (QA) → T-302 (Deploy) → T-303 (Monitor) → T-304 (User)
-                                                  T-300 (Frontend) ──┘
-                                                  ↑ Blocked by T-297 + T-299
+T-305 (Deploy: production) ──────────────────────────────────────────┐
+T-306 (Backend: API docs fix) ───────────────────────────────────────┤
+T-307 (Design: checkout time spec) → T-308 (Frontend: checkout UI) ──┤
+                                                                      ├─→ T-309 (QA) → T-310 (Monitor) → T-311 (User)
 ```
 
-**Critical path:** T-298 → T-299 → T-300 → T-301 → T-302 → T-303 → T-304
+**Critical path:** T-307 → T-308 → T-309 → T-310 → T-311
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #39 is complete?*
+*How do we know Sprint #40 is complete?*
 
-- [ ] T-296: Triple-nested XSS residual fragments eliminated, tests added
-- [ ] T-297: Trip notes UI spec published in ui-spec.md
-- [ ] T-298: Trip notes API contract published in api-contracts.md
-- [ ] T-299: Trip notes backend implemented with migration, tests pass
-- [ ] T-300: Trip notes frontend implemented per UI spec, tests pass
-- [ ] T-301: QA integration check pass, security checklist pass
-- [ ] T-302: Staging deployed with trip notes migration
-- [ ] T-303: Monitor staging health check — Deploy Verified = Yes (Staging)
-- [ ] T-304: User Agent staging walkthrough — no Critical or Major regressions; feedback submitted
-- [ ] T-304 feedback triaged by Manager (all entries Acknowledged or Tasked)
-- [ ] Sprint 39 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 40 plan written in `.workflow/active-sprint.md`
+- [ ] T-305: Production deployed with Sprint 39 code, smoke tests pass
+- [ ] T-306: API contract docs consistent (all notes references say max 5000)
+- [ ] T-307: Stay checkout time spec published in ui-spec.md
+- [ ] T-308: Stay checkout time implemented on desktop + mobile calendar, tests pass
+- [ ] T-309: QA integration check pass, security checklist pass
+- [ ] T-310: Monitor production health check — Deploy Verified = Yes (Production)
+- [ ] T-311: User Agent production walkthrough — no Critical or Major regressions; feedback submitted
+- [ ] T-311 feedback triaged by Manager (all entries Acknowledged or Tasked)
+- [ ] Sprint 40 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 41 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #39)
+## Success Criteria (Sprint #40)
 
-By end of Sprint #39, the following must be verifiable:
+By end of Sprint #40, the following must be verifiable:
 
-- [ ] **Trip notes feature working on staging** — users can add, edit, and clear freeform notes on any trip
-- [ ] **Triple-nested XSS fix verified** — no residual angle bracket fragments in stored data
-- [ ] **Staging verified** — Deploy Verified = Yes (Staging) confirmed by Monitor Agent
-- [ ] **User Agent verified on staging** — no Critical or Major issues
+- [ ] **Trip notes live on production** — Sprint 39 code deployed and verified
+- [ ] **Stay checkout time on calendar** — end-day STAY events show checkout time
+- [ ] **API docs consistent** — no contradictory character limits in api-contracts.md
+- [ ] **Production verified** — Deploy Verified = Yes (Production) confirmed by Monitor Agent
+- [ ] **User Agent verified on production** — no Critical or Major issues
 - [ ] **Test baseline maintained or grown** — zero regressions
 
 ---
 
 ## Blockers
 
-- **No blockers on T-296, T-297, T-298.** All three can start immediately in parallel.
-- **T-299 blocked by T-298.** Backend implementation needs API contract approved first.
-- **T-300 blocked by T-297 + T-299.** Frontend needs both UI spec and backend API ready.
-- **T-301 blocked by T-296 + T-300.** QA needs both the sanitizer fix and notes feature complete.
-- **T-302–T-304 sequential** as per standard pipeline.
+- **No blockers on T-305, T-306, T-307.** All three can start immediately in parallel.
+- **T-308 blocked by T-307.** Frontend needs checkout time spec first.
+- **T-309 blocked by T-305 + T-306 + T-308.** QA needs production deployed and calendar feature complete.
+- **T-310–T-311 sequential** as per standard pipeline.
 
 ---
 
-*Sprint #38 archived to `.workflow/sprint-log.md` on 2026-03-24. Sprint #39 plan written by Manager Agent 2026-03-24.*
+*Sprint #39 archived to `.workflow/sprint-log.md` on 2026-03-30. Sprint #40 plan written by Manager Agent 2026-03-30.*

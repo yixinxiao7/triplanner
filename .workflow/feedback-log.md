@@ -32,7 +32,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-299 |
 | Details | Created a trip with `{"name":"Tokyo Adventure","destinations":"Tokyo, Osaka","start_date":"2026-08-07","end_date":"2026-08-21","notes":"Pack light, remember passport. Book Narita Express."}`. Response: 201 with `notes` field correctly populated. The `notes` field is also correctly returned as `null` when omitted from POST body. |
 
@@ -46,7 +46,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-299 |
 | Details | GET list endpoint returns `notes` in every trip object. GET detail endpoint returns `notes`. Trips without notes return `notes: null`. Consistent with API contract. |
 
@@ -60,7 +60,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-299 |
 | Details | Tested: (1) PATCH with new notes text → 200 with updated notes, `updated_at` changed. (2) PATCH with `notes: null` → 200 with `notes: null`. (3) PATCH with `notes: ""` → 200 with `notes: null` (empty string normalized to null). All three behaviors match API contract. |
 
@@ -74,7 +74,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-296, T-299 |
 | Details | Tested: (1) `<script>alert("xss")</script>normal text` → stored as `alert("xss")normal text` (tags stripped). (2) `<img src=x onerror=alert(1)>test` → stored as `test` (full tag removed). (3) SQL injection `Robert'); DROP TABLE trips;--` → stored verbatim (parameterized queries protect). All sanitization working as expected. |
 
@@ -88,7 +88,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-296 |
 | Details | Sent `<<<script>script>script>alert(1)<<<\/script>\/script>\/script>` via PATCH notes. Result: `alert(1)` — all nested script tags and residual angle bracket fragments completely stripped. This resolves the FB-221/B-037 issue from Sprint 38. |
 
@@ -102,7 +102,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-296 |
 | Details | Sent `Budget should be < 5000 EUR and > 3000 EUR. Math: 3 < 5.` via PATCH notes. Result: exact same string returned — no false positives. Sanitizer correctly distinguishes HTML tags from legitimate angle bracket usage. |
 
@@ -116,7 +116,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-298, T-299, T-300 |
 | Details | Tested boundary: 2000 chars ✅ accepted, 2001 chars ✅ accepted, 4999 chars ✅ accepted, 5000 chars ✅ accepted, 5001 chars ✅ rejected (400 VALIDATION_ERROR: "Notes must not exceed 5000 characters"). Frontend textarea has `maxLength={5000}` with char counter. Backend and frontend limits are consistent at 5000 per Sprint 39 T-298 contract update (increased from Sprint 7's 2000). |
 
@@ -130,7 +130,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-299 |
 | Details | Tested: `{"notes":12345}` → 400 "notes must be a string". `{"notes":true}` → 400 "notes must be a string". `{"notes":["a","b"]}` → 400 "notes must be a string". All return proper VALIDATION_ERROR with clear field-level messages. |
 
@@ -144,7 +144,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-299 |
 | Details | No auth header → 401 "Authentication required". Invalid token → 401 "Invalid or expired token". Regression check: auth protection is intact. |
 
@@ -158,7 +158,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-299 |
 | Details | Tested: `Café ☕ résumé naïve 日本語 🇯🇵 中文 العربية` → returned exactly as sent. Multi-line notes with `\n` characters → preserved as-is. No encoding issues. |
 
@@ -172,7 +172,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-300 |
 | Details | Code review of TripNotesSection.jsx confirms: (1) View mode shows notes text as clickable to edit, (2) Empty state shows italic placeholder "Add notes about this trip…", (3) Edit mode has textarea with char counter (current/5000), Save/Cancel buttons, (4) Keyboard: Escape cancels, Ctrl/Cmd+Enter saves, (5) Loading skeleton state, (6) "NOTES — SAVED" feedback shown for 1.5s after save, (7) Error state with role="alert", (8) Skip API call if notes unchanged (optimization), (9) Focus management: textarea auto-focuses on edit, focus returns to pencil on save/cancel. Well-architected. |
 
@@ -186,7 +186,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-300 |
 | Details | TripNotesSection.module.css review: IBM Plex Mono font, var(--surface-alt) textarea background, 1px border-subtle borders, 150ms ease transitions, prefers-reduced-motion support, responsive breakpoints at 767px and 359px (stacks buttons vertically on very small screens). Focus-visible outlines with 2px accent border. Consistent with established design system. |
 
@@ -200,7 +200,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-304 |
 | Details | Tested: (1) PATCH trip name and destinations → 200, fields updated, notes preserved. (2) GET trips list → pagination works, notes included. (3) DELETE trip → 204. (4) Health endpoint → 200 `{"status":"ok"}`. (5) Frontend serving at https://localhost:4173 → 200. No regressions detected. |
 
@@ -214,7 +214,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-298 |
 | Details | The Sprint 39 contract section in api-contracts.md correctly documents the limit increase to 5000. However, the original Sprint 7 section still says "The API enforces a 2000-character maximum" and Sprint 8/20 sections reference "Max length 2000". While the Sprint 39 section takes precedence and the implementation is correct at 5000, anyone reading the older sections could be confused. Suggestion: add a deprecation note or update the older sections to reference the Sprint 39 change. Not blocking — the authoritative section is correct. |
 
@@ -228,7 +228,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 39 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | T-300 |
 | Details | Code review of TripDetailsPage.jsx confirms TripNotesSection is rendered after the trip header (title, destinations, status, edit/delete controls) and before the calendar component, matching the ui-spec placement: "below the trip title and destinations row and above the calendar component." Props correctly passed: tripId, initialNotes from trip.notes, onSaveSuccess triggers full data reload, isLoading from parent loading state. |
 
@@ -915,7 +915,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -929,7 +929,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -943,7 +943,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -957,7 +957,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -971,7 +971,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -985,7 +985,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -999,7 +999,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1013,7 +1013,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1028,7 +1028,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1042,7 +1042,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1056,7 +1056,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1070,7 +1070,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1084,7 +1084,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1098,7 +1098,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1112,7 +1112,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1126,7 +1126,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1141,7 +1141,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1155,7 +1155,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1169,7 +1169,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1183,7 +1183,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1197,7 +1197,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1211,7 +1211,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1225,7 +1225,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1239,7 +1239,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1253,7 +1253,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1267,7 +1267,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1281,7 +1281,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1295,7 +1295,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1309,7 +1309,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1323,7 +1323,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1337,7 +1337,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1351,7 +1351,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1366,7 +1366,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1380,7 +1380,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1394,7 +1394,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1408,7 +1408,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1422,7 +1422,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1436,7 +1436,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1450,7 +1450,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1464,7 +1464,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1478,7 +1478,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1492,7 +1492,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1506,7 +1506,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1520,7 +1520,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1534,7 +1534,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1548,7 +1548,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1562,7 +1562,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1576,7 +1576,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1590,7 +1590,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1604,7 +1604,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1618,7 +1618,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1632,7 +1632,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1646,7 +1646,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1660,7 +1660,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1674,7 +1674,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1688,7 +1688,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1702,7 +1702,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1716,7 +1716,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1730,7 +1730,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1744,7 +1744,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1758,7 +1758,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1772,7 +1772,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1786,7 +1786,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1800,7 +1800,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1815,7 +1815,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1829,7 +1829,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1843,7 +1843,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1857,7 +1857,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1871,7 +1871,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1885,7 +1885,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1899,7 +1899,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1913,7 +1913,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1927,7 +1927,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1941,7 +1941,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1955,7 +1955,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1969,7 +1969,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -1983,7 +1983,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -1997,7 +1997,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2011,7 +2011,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2025,7 +2025,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2039,7 +2039,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2053,7 +2053,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2067,7 +2067,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2081,7 +2081,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2095,7 +2095,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2109,7 +2109,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2123,7 +2123,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2137,7 +2137,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2151,7 +2151,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2165,7 +2165,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2179,7 +2179,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2193,7 +2193,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2207,7 +2207,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2221,7 +2221,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2235,7 +2235,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2249,7 +2249,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2263,7 +2263,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2277,7 +2277,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2291,7 +2291,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2305,7 +2305,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2319,7 +2319,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2333,7 +2333,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2347,7 +2347,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2361,7 +2361,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2375,7 +2375,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2389,7 +2389,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2403,7 +2403,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2417,7 +2417,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2431,7 +2431,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2445,7 +2445,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2459,7 +2459,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2473,7 +2473,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2487,7 +2487,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2501,7 +2501,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2515,7 +2515,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2529,7 +2529,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2543,7 +2543,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2557,7 +2557,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2571,7 +2571,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2585,7 +2585,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2599,7 +2599,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2613,7 +2613,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2627,7 +2627,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2641,7 +2641,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2655,7 +2655,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2669,7 +2669,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2683,7 +2683,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2697,7 +2697,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2712,7 +2712,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2726,7 +2726,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2740,7 +2740,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2754,7 +2754,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2768,7 +2768,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2782,7 +2782,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2796,7 +2796,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2810,7 +2810,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2824,7 +2824,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2838,7 +2838,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2852,7 +2852,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2866,7 +2866,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2880,7 +2880,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2894,7 +2894,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2908,7 +2908,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2922,7 +2922,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2936,7 +2936,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2950,7 +2950,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2964,7 +2964,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -2978,7 +2978,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -2992,7 +2992,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3006,7 +3006,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3020,7 +3020,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3034,7 +3034,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3048,7 +3048,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3062,7 +3062,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3076,7 +3076,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3090,7 +3090,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3104,7 +3104,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3118,7 +3118,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3132,7 +3132,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3146,7 +3146,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3160,7 +3160,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3174,7 +3174,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3188,7 +3188,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3202,7 +3202,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3216,7 +3216,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3230,7 +3230,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3244,7 +3244,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3258,7 +3258,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3272,7 +3272,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3286,7 +3286,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3300,7 +3300,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3314,7 +3314,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3328,7 +3328,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3342,7 +3342,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3356,7 +3356,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3370,7 +3370,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3384,7 +3384,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3398,7 +3398,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3412,7 +3412,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3426,7 +3426,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3440,7 +3440,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3454,7 +3454,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3468,7 +3468,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3482,7 +3482,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3496,7 +3496,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3510,7 +3510,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3524,7 +3524,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3538,7 +3538,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3552,7 +3552,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3566,7 +3566,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3580,7 +3580,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3594,7 +3594,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3608,7 +3608,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3622,7 +3622,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3636,7 +3636,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3650,7 +3650,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3664,7 +3664,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3678,7 +3678,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3692,7 +3692,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3706,7 +3706,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3720,7 +3720,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3734,7 +3734,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3748,7 +3748,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3762,7 +3762,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3776,7 +3776,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3790,7 +3790,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3804,7 +3804,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3818,7 +3818,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3832,7 +3832,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3846,7 +3846,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3860,7 +3860,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3874,7 +3874,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3888,7 +3888,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3902,7 +3902,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3916,7 +3916,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3930,7 +3930,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3944,7 +3944,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3958,7 +3958,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -3972,7 +3972,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -3986,7 +3986,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4000,7 +4000,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4014,7 +4014,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4028,7 +4028,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4042,7 +4042,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4056,7 +4056,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4070,7 +4070,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4084,7 +4084,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4098,7 +4098,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4112,7 +4112,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4126,7 +4126,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4140,7 +4140,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4154,7 +4154,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4168,7 +4168,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4182,7 +4182,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4196,7 +4196,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4210,7 +4210,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4224,7 +4224,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4238,7 +4238,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4252,7 +4252,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4266,7 +4266,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4280,7 +4280,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4294,7 +4294,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4308,7 +4308,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4322,7 +4322,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4336,7 +4336,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4350,7 +4350,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4364,7 +4364,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4378,7 +4378,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4392,7 +4392,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4406,7 +4406,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4420,7 +4420,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4434,7 +4434,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4448,7 +4448,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4462,7 +4462,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4476,7 +4476,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4490,7 +4490,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4505,7 +4505,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4519,7 +4519,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4533,7 +4533,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4547,7 +4547,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4561,7 +4561,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4575,7 +4575,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4589,7 +4589,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4603,7 +4603,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4617,7 +4617,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4631,7 +4631,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4645,7 +4645,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4659,7 +4659,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4673,7 +4673,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4687,7 +4687,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4701,7 +4701,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4715,7 +4715,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4729,7 +4729,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4743,7 +4743,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4757,7 +4757,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4771,7 +4771,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4785,7 +4785,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4799,7 +4799,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4813,7 +4813,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4827,7 +4827,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4841,7 +4841,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4855,7 +4855,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4869,7 +4869,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4883,7 +4883,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4897,7 +4897,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4911,7 +4911,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4925,7 +4925,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4939,7 +4939,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4953,7 +4953,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4967,7 +4967,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -4981,7 +4981,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -4995,7 +4995,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5009,7 +5009,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5023,7 +5023,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5037,7 +5037,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5051,7 +5051,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5065,7 +5065,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5079,7 +5079,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5093,7 +5093,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5107,7 +5107,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5121,7 +5121,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5135,7 +5135,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5149,7 +5149,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5163,7 +5163,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5177,7 +5177,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5191,7 +5191,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5205,7 +5205,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5219,7 +5219,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5233,7 +5233,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5247,7 +5247,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5261,7 +5261,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5275,7 +5275,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5289,7 +5289,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5303,7 +5303,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5317,7 +5317,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5331,7 +5331,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5345,7 +5345,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5359,7 +5359,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5373,7 +5373,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5387,7 +5387,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5401,7 +5401,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5415,7 +5415,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5429,7 +5429,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5443,7 +5443,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5457,7 +5457,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5471,7 +5471,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5485,7 +5485,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5499,7 +5499,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5513,7 +5513,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5527,7 +5527,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5541,7 +5541,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5555,7 +5555,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5569,7 +5569,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5583,7 +5583,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5597,7 +5597,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5611,7 +5611,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5625,7 +5625,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5639,7 +5639,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5653,7 +5653,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5667,7 +5667,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5681,7 +5681,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5695,7 +5695,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5709,7 +5709,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5723,7 +5723,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5737,7 +5737,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5751,7 +5751,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5765,7 +5765,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5779,7 +5779,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5793,7 +5793,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5807,7 +5807,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5821,7 +5821,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5835,7 +5835,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5849,7 +5849,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5863,7 +5863,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5877,7 +5877,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5891,7 +5891,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5905,7 +5905,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5919,7 +5919,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5933,7 +5933,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5947,7 +5947,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5961,7 +5961,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -5975,7 +5975,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -5989,7 +5989,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6003,7 +6003,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6017,7 +6017,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6031,7 +6031,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6045,7 +6045,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6059,7 +6059,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6073,7 +6073,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6087,7 +6087,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6101,7 +6101,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6115,7 +6115,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6129,7 +6129,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6143,7 +6143,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6157,7 +6157,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6171,7 +6171,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6185,7 +6185,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6199,7 +6199,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6213,7 +6213,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6227,7 +6227,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6241,7 +6241,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6255,7 +6255,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6269,7 +6269,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6283,7 +6283,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6297,7 +6297,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6311,7 +6311,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6325,7 +6325,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6339,7 +6339,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6353,7 +6353,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6367,7 +6367,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6381,7 +6381,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6395,7 +6395,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6409,7 +6409,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6423,7 +6423,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6437,7 +6437,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6451,7 +6451,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6465,7 +6465,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6479,7 +6479,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6493,7 +6493,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6507,7 +6507,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6521,7 +6521,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6535,7 +6535,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6549,7 +6549,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6563,7 +6563,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6577,7 +6577,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6591,7 +6591,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6605,7 +6605,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6619,7 +6619,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6633,7 +6633,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6647,7 +6647,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6661,7 +6661,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6675,7 +6675,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6689,7 +6689,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6703,7 +6703,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6717,7 +6717,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6731,7 +6731,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6745,7 +6745,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6759,7 +6759,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6773,7 +6773,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6787,7 +6787,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6801,7 +6801,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6815,7 +6815,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6829,7 +6829,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6843,7 +6843,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6857,7 +6857,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6871,7 +6871,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6885,7 +6885,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6899,7 +6899,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6913,7 +6913,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6927,7 +6927,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6941,7 +6941,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6955,7 +6955,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6969,7 +6969,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -6983,7 +6983,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -6997,7 +6997,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7011,7 +7011,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7025,7 +7025,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7039,7 +7039,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7053,7 +7053,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7067,7 +7067,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7081,7 +7081,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7095,7 +7095,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7109,7 +7109,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7123,7 +7123,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7137,7 +7137,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7151,7 +7151,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7165,7 +7165,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7179,7 +7179,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7193,7 +7193,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7207,7 +7207,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7221,7 +7221,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7235,7 +7235,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7249,7 +7249,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7263,7 +7263,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7277,7 +7277,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7291,7 +7291,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7305,7 +7305,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7319,7 +7319,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7333,7 +7333,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7347,7 +7347,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7361,7 +7361,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7375,7 +7375,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7389,7 +7389,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7403,7 +7403,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7417,7 +7417,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7431,7 +7431,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7445,7 +7445,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7459,7 +7459,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7473,7 +7473,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7487,7 +7487,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7501,7 +7501,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7515,7 +7515,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7529,7 +7529,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7543,7 +7543,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7557,7 +7557,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7571,7 +7571,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7585,7 +7585,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7599,7 +7599,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7613,7 +7613,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7627,7 +7627,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7641,7 +7641,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7655,7 +7655,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7669,7 +7669,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7683,7 +7683,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7697,7 +7697,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7711,7 +7711,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7725,7 +7725,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7739,7 +7739,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7753,7 +7753,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7767,7 +7767,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7781,7 +7781,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7795,7 +7795,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7809,7 +7809,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7823,7 +7823,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7837,7 +7837,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7851,7 +7851,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7865,7 +7865,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7879,7 +7879,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7893,7 +7893,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7907,7 +7907,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7921,7 +7921,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7935,7 +7935,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7949,7 +7949,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7963,7 +7963,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -7977,7 +7977,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -7991,7 +7991,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -8005,7 +8005,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -8019,7 +8019,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -8033,7 +8033,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -8047,7 +8047,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
@@ -8061,7 +8061,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Currently, stay events on the calendar view span from check-in to check-out date but do not display the checkout time on the final day. Similar to how FLIGHT end days show "Arrives {time}" and LAND_TRAVEL end days show "Arrives/Drop-off {time}", the STAY end day should display the checkout time (e.g., "Checkout 11:00a"). This gives users a clear view of when they need to leave their accommodation without having to click into the stay details. The implementation should follow the existing pattern used for FLIGHT and LAND_TRAVEL end-day labels in both the desktop calendar grid (`renderEventPill`) and the mobile day list (`MobileDayList`).
@@ -8075,7 +8075,7 @@ button: "please wait…" [disabled]
 | Sprint | 35 |
 | Category | Feature Gap |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.

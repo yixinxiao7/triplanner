@@ -3374,3 +3374,44 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 ---
 
+## Sprint 40 Tasks
+
+**Sprint Goal:** Deploy Sprint 39 to production, fix API contract docs drift (B-039/FB-237), implement stay checkout time on calendar (FB-189/B-040).
+
+### Phase 1 — Production Deploy + Docs Fix + Design Spec (start immediately, in parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-305 | Deploy Engineer: Production deployment of Sprint 39 code. Rebuild, deploy to PM2, smoke test trip notes + sanitizer. No new migrations. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 40 | — | Sprint 39 staging verified (T-303). Push to production. |
+| T-306 | Backend Engineer: Fix API contract docs drift (FB-237/B-039). Update all historical notes "max 2000" references to 5000 in api-contracts.md. | Documentation | Backend Engineer | Backlog | P2 | S | 40 | — | FB-237/B-039. Docs-only fix. |
+| T-307 | Design Agent: UI spec for stay checkout time on calendar end days (FB-189/B-040). Label format, desktop + mobile. | Feature | Design Agent | Backlog | P2 | S | 40 | — | FB-189/B-040. Calendar UX enhancement. |
+
+---
+
+### Phase 2 — Frontend Implementation
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-308 | Frontend Engineer: Implement stay checkout time on calendar. Update renderEventPill + MobileDayList. Tests. | Feature | Frontend Engineer | Backlog | P2 | S | 40 | T-307 | FB-189/B-040. Follow existing FLIGHT/LAND_TRAVEL end-day label pattern. |
+
+---
+
+### Phase 3 — QA + Production Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-309 | QA Engineer: Integration testing for Sprint 40. Production deploy health, API docs consistency, stay checkout time, full test suite, security checklist. | Code Review | QA Engineer | Backlog | P1 | M | 40 | T-305, T-306, T-308 | Full QA pass. |
+| T-310 | Monitor Agent: Production health check. Full protocol, verify trip notes on production, verify checkout time on calendar. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 40 | T-309 | Production verification. |
+| T-311 | User Agent: Production walkthrough. Test trip notes on production, stay checkout time on calendar, regression check, submit feedback. | Documentation | User Agent | Backlog | P1 | M | 40 | T-310 | Production walkthrough. |
+
+---
+
+### Backlog Items (created/updated Sprint 39)
+
+| ID | Description | Type | Priority | Complexity | Notes |
+|----|-------------|------|----------|------------|-------|
+| B-039 | API contract docs inconsistency — old Sprint 7/8/20 sections reference notes max 2000 (now 5000) | Documentation | P2 | S | FB-237 (Sprint 39). Promoted to T-306 (Sprint 40). |
+| B-040 | Stay checkout time not displayed on calendar end days | UX Issue | P2 | S | FB-189 (Sprint 35). Promoted to T-307/T-308 (Sprint 40). |
+
+---
+
