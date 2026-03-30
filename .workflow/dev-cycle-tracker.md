@@ -3452,7 +3452,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
 | T-314 | Backend Engineer: Implement export endpoint if needed. If existing endpoint sufficient, mark N/A. | Feature | Backend Engineer | Done | P2 | S | 41 | T-313 | B-032. **N/A** — T-313 determined existing endpoints are sufficient. No backend code changes required. Marked Done (N/A) 2026-03-30. |
-| T-315 | Frontend Engineer: Implement trip print view. Print button, CSS @media print stylesheet, all trip sections, tests. | Feature | Frontend Engineer | In Review | P1 | M | 41 | T-312, T-313 | B-032. Implemented PrintCalendarSummary component (Spec 33), added print.css rule set 15, integrated into TripDetailsPage. 6 new tests added (524 total frontend tests, 0 regressions). Moved to In Review 2026-03-30. |
+| T-315 | Frontend Engineer: Implement trip print view. Print button, CSS @media print stylesheet, all trip sections, tests. | Feature | Frontend Engineer | Integration Check | P1 | M | 41 | T-312, T-313 | B-032. Implemented PrintCalendarSummary component (Spec 33), added print.css rule set 15, integrated into TripDetailsPage. 6 new tests added (524 total frontend tests, 0 regressions). **Manager Review APPROVED 2026-03-30:** Code matches Spec 33 exactly. Pure presentational component, no security concerns, semantic HTML, all 6 tests pass. Handoff to QA (T-316). |
 
 ---
 
@@ -3460,10 +3460,18 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-316 | QA Engineer: Integration testing for Sprint 41. Print view, full test suite, security checklist, regression check. | Code Review | QA Engineer | Backlog | P1 | M | 41 | T-314, T-315 | Standard QA gate. |
+| T-316 | QA Engineer: Integration testing for Sprint 41. Print view, full test suite, security checklist, regression check. | Code Review | QA Engineer | Backlog | P1 | M | 41 | T-314, T-315 | Standard QA gate. T-314 Done (N/A), T-315 Manager-approved → Integration Check. QA is unblocked. |
 | T-317 | Deploy Engineer: Staging deployment of Sprint 41 code. | Infrastructure | Deploy Engineer | Blocked | P1 | S | 41 | T-316 | Blocked — T-316 (QA) not yet started; T-315 (Frontend) still in Backlog. No migrations needed. Ready to execute when T-316 clears. Logged 2026-03-30. |
 | T-318 | Monitor Agent: Staging health check. Verify print feature accessible. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 41 | T-317 | Standard health check. |
 | T-319 | User Agent: Staging walkthrough. Test print view with populated/empty/partial trips, regression check, submit feedback. | Documentation | User Agent | Backlog | P1 | M | 41 | T-318 | Standard user verification. |
+
+---
+
+### Sprint 41 — Manager Agent: Code Review Pass (2026-03-30)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-315 | Frontend: PrintCalendarSummary (Spec 33) | Feature | Frontend Engineer | ✅ APPROVED → Integration Check | P1 | M | 41 | T-312, T-313 | Code review passed. Component matches Spec 33 exactly. Pure presentational, no API calls, no security concerns. Semantic `<table>`, sr-only headers. 6/6 tests pass, 524 total frontend tests, 0 regressions. Print.css rule set 15 matches spec CSS. TripDetailsPage integration correct (placement, props). Handoff to QA Engineer (T-316). |
 
 ---
 

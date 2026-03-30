@@ -730,3 +730,41 @@ All checks passed. Staging environment is healthy and ready for user testing.
 | Land-Travel Endpoint | ✅ PASS — Returns data |
 | No 5xx Errors | ✅ PASS |
 
+---
+
+### Handoff: Manager Agent → QA Engineer — Sprint 41 Code Review (2026-03-30)
+
+**From:** Manager Agent
+**To:** QA Engineer
+**Sprint:** 41
+**Task:** T-316 (QA: Integration testing for Sprint 41)
+
+**Context:** Manager has completed code review for Sprint 41. One task was in "In Review":
+
+**T-315 — Frontend: PrintCalendarSummary (Spec 33) — APPROVED → Integration Check**
+
+Review findings:
+- PrintCalendarSummary.jsx (386 lines): Pure presentational component, matches Spec 33 exactly
+- Event building logic covers flights (departure + cross-day arrival), stays (check-in/out), activities (all-day support), land travel — all per Spec 33.11
+- Type labels (FLT, FLT ARR, STAY IN, STAY OUT, ACT, LT, LT ARR) match Spec 33.2
+- Sorting by time then type priority (Spec 33.5) — correct
+- Date range: trip dates preferred, derived from data if missing, null for empty trips (Spec 33.6)
+- CSS: Module CSS hides on screen, print.css rule set 15 shows in print (Spec 33.7/33.8)
+- TripDetailsPage: Correct placement (after TripNotesSection, before calendarWrapper), props match spec (Spec 33.9)
+- Tests: 6/6 pass, all match Spec 33.19 requirements. 524 total frontend tests, 0 regressions.
+- Security: No API calls, no user input, no secrets, pure rendering. Zero concerns.
+- Accessibility: Semantic `<table>` with `<th>` scope headers, sr-only `<thead>` (Spec 33.16)
+
+**Files changed (T-315):**
+- `frontend/src/components/PrintCalendarSummary.jsx` — NEW (386 lines)
+- `frontend/src/components/PrintCalendarSummary.module.css` — NEW (67 lines)
+- `frontend/src/styles/print.css` — MODIFIED (rule set 15 added, 78 lines)
+- `frontend/src/pages/TripDetailsPage.jsx` — MODIFIED (import + render integration)
+- `frontend/src/pages/TripDetailsPage.module.css` — MODIFIED (.printCalendarSummary class added)
+- `frontend/src/__tests__/PrintCalendarSummary.test.jsx` — NEW (6 tests, 223 lines)
+
+**T-314 — Backend: Export endpoint — N/A (Done)**
+No backend changes needed. Existing endpoints sufficient per T-313 contract review.
+
+**QA action required:** Run full integration test suite, security checklist, verify print view renders correctly with populated/empty/partial trip data. T-316 is now unblocked.
+
