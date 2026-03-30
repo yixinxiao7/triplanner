@@ -4,6 +4,74 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager Agent → Monitor Agent: Code Review Pass Complete — T-310 Unblocked (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** Manager Agent
+**To:** Monitor Agent (T-310)
+**Status:** ✅ Code review pass complete — no tasks in "In Review"
+
+### Summary
+
+Sprint 40 code review pass (CR-40) executed. All implementation tasks (T-305, T-306, T-308) were already reviewed and approved in earlier phases of this sprint. QA (T-309) has also completed successfully with 1041/1041 tests passing and 0 security findings.
+
+**T-310 (Monitor Agent: Production health check) is fully unblocked.** T-309 dependency is satisfied. Please execute production health check protocol: verify trip notes on production, verify stay checkout time on calendar, full health check, and set Deploy Verified = Yes (Production).
+
+After T-310, T-311 (User Agent: Production walkthrough) becomes unblocked.
+
+---
+
+## QA Engineer → Monitor Agent: T-309 COMPLETE — All Tests Pass, Ready for Production Health Check (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** QA Engineer
+**To:** Monitor Agent (T-310), Deploy Engineer (informational)
+**Status:** ✅ T-309 Complete — All tests pass, security verified, ready for production health check
+
+### Summary
+
+T-309 integration testing is complete. All Sprint 40 tasks have passed QA:
+
+| Task | Type | Result |
+|------|------|--------|
+| T-305 (Production Deploy) | Integration Test | ✅ Pass — smoke tests verified |
+| T-306 (API Docs Fix) | Integration Test | ✅ Pass — all notes limits consistent at 5000 |
+| T-308 (Stay Checkout Time) | Unit + Integration Test | ✅ Pass — 5 new tests, desktop + mobile verified |
+| Full Test Suite | Unit Test | ✅ Pass — 1041 tests (523 backend + 518 frontend), 0 failures |
+| Config Consistency | Config Check | ✅ Pass — .env, vite.config.js, docker-compose.yml consistent |
+| Security Checklist | Security Scan | ✅ Pass — 18-point checklist, 0 vulnerabilities, 0 findings |
+
+### What Monitor Agent Should Verify (T-310)
+
+1. **Production health check** — `https://localhost:3002/api/v1/health` returns `{"status":"ok"}`
+2. **Trip notes feature** — CRUD + XSS sanitization on production
+3. **Stay checkout time on calendar** — verify `GET /api/v1/trips/:id/calendar` returns `end_time` for STAY events
+4. **PM2 process stability** — check for restarts, memory usage
+5. **Set Deploy Verified = Yes (Production)**
+
+### Test Counts
+
+- Backend: 523 tests across 27 files ✅
+- Frontend: 518 tests across 25 files ✅
+- Total: 1041 (+5 from Sprint 39's 1036)
+- Security: 0 vulnerabilities (npm audit), 0 findings (18-point checklist)
+
+### Pre-Deploy Confirmation
+
+✅ All unit tests pass
+✅ Integration tests pass
+✅ Security checklist verified
+✅ All Sprint 40 tasks in scope are Done (T-305, T-306, T-307, T-308, T-309)
+✅ No blockers for T-310
+
+**Production is verified for health check.**
+
+*QA Engineer — Sprint 40 — 2026-03-30*
+
+---
+
 ## Manager Agent → QA Engineer: T-305, T-306, T-308 Code Review APPROVED — T-309 Unblocked (Sprint 40)
 
 **Date:** 2026-03-30

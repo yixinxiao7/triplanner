@@ -4,6 +4,183 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #40 — QA Engineer — Integration Testing — T-309 — 2026-03-30
+
+**Task:** T-309 (QA Engineer: Integration testing for Sprint 40)
+**Date:** 2026-03-30
+**Sprint:** 40
+**Environment:** Development + Production
+**Timestamp:** 2026-03-30T15:45:00Z
+**Overall Result:** ✅ PASS — All tests pass, security checklist verified, ready for deploy
+
+---
+
+### 1. Unit Tests
+
+**Test Type:** Unit Test
+**Result:** ✅ PASS — 1041 tests (523 backend + 518 frontend), zero failures
+
+| Suite | Test Files | Tests | Failures | Duration |
+|-------|-----------|-------|----------|----------|
+| Backend | 27 | 523 | 0 | 2.74s |
+| Frontend | 25 | 518 | 0 | 1.91s |
+| **Total** | **52** | **1041** | **0** | **4.65s** |
+
+**Note:** Test count grew from 1036 (Sprint 39) to 1041 (+5 new tests from T-308: 32.A–32.E for stay checkout time).
+
+**Test coverage review for T-308 (Stay Checkout Time):**
+- 32.A — STAY end-day pill shows "Checkout 11a" on desktop ✅ (happy path)
+- 32.B — STAY end-day pill shows "Checkout" when end_time is null ✅ (error/null path)
+- 32.C — STAY end-day in MobileDayList shows "{name} — Checkout {time}" ✅ (mobile happy path)
+- 32.D — FLIGHT and LAND_TRAVEL end-day labels unaffected ✅ (regression)
+- 32.E — STAY end-day pill has correct aria-label ✅ (accessibility)
+
+**Coverage assessment:** ✅ Satisfactory — happy path, error path, regression, mobile, and a11y all covered.
+
+**Minor observation:** One `act(...)` React warning in test 29.I (pre-existing since Sprint 29, not related to Sprint 40 changes). Non-blocking.
+
+---
+
+### 2. Integration Test — T-308: Stay Checkout Time on Calendar
+
+**Test Type:** Integration Test
+**Result:** ✅ PASS
+
+**Code review of `frontend/src/components/TripCalendar.jsx` (T-308 changes):**
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| Desktop: `renderEventPill` STAY end-day branch | ✅ Pass | Lines 708–713: `event.type === 'STAY' && event._dayType === 'end'` → calls `buildArrivalLabel(event)` which returns `"Checkout {time}"` |
+| Desktop: `buildArrivalLabel` STAY case | ✅ Pass | Lines 648–650: Returns `"Checkout {time}"` or `"Checkout"` (null fallback) |
+| Mobile: `MobileDayList` STAY end-day branch | ✅ Pass | Lines 275–284: End-day shows `"{name} — Checkout {time}"` or `"{name} — Checkout"` |
+| Mobile: STAY middle-day branch | ✅ Pass | Lines 285–289: Shows `"{name} (cont.)"` at 0.6 opacity |
+| Null `end_time` fallback | ✅ Pass | Both desktop and mobile gracefully handle null end_time |
+| No XSS vectors | ✅ Pass | All user data rendered via JSX text nodes, no `dangerouslySetInnerHTML` |
+| FLIGHT end-day labels unaffected | ✅ Pass | Lines 701–703 unchanged, separate branch |
+| LAND_TRAVEL end-day labels unaffected | ✅ Pass | Lines 654–696 unchanged, separate branch |
+| Accessibility: aria-label on STAY end-day pills | ✅ Pass | `Stay: {name}, checkout {time}` (lines 711–713) |
+| Spec 32 conformance | ✅ Pass | Label format matches spec: "Checkout" (capital C, one word) |
+
+**API Contract Verification:**
+- No new API endpoints for T-308 — uses existing `GET /api/v1/trips/:id/calendar`
+- `end_time` field already present in calendar response (verified in api-contracts.md Sprint 25)
+- No backend changes needed or made ✅
+
+---
+
+### 3. Integration Test — T-306: API Contract Docs Consistency
+
+**Test Type:** Integration Test
+**Result:** ✅ PASS
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| All historical "2000" references updated | ✅ Pass | All remaining "2000" instances are inside `[Updated Sprint 39 T-298: limit increased from 2000 to 5000]` annotations or in the Sprint 39 T-298 change record documenting the transition |
+| No contradictory limits in api-contracts.md | ✅ Pass | All active limit references say 5000 |
+| Backend Joi validation matches docs | ✅ Pass | `backend/src/routes/trips.js` lines 140 and 245: `maxLength: 5000` |
+| Docs-only change — no code changes | ✅ Pass | T-306 modified only `.workflow/api-contracts.md` |
+
+---
+
+### 4. Integration Test — T-305: Production Deployment Health
+
+**Test Type:** Integration Test
+**Result:** ✅ PASS (verified via Deploy Engineer smoke tests)
+
+Deploy Engineer reported 10/10 smoke tests passed on production:
+- Health endpoint, frontend HTML, auth rejection, trip notes CRUD, XSS sanitizer, calendar — all operational
+- Backend: `https://localhost:3002` ✅
+- Frontend: `https://localhost:4174` ✅
+- 1036 pre-deploy tests passed (note: this was before T-308 added 5 tests)
+
+---
+
+### 5. Config Consistency Check
+
+**Test Type:** Config Consistency
+**Result:** ✅ PASS — No mismatches found
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| Backend PORT (`.env`) | 3000 | `PORT=3000` | ✅ |
+| Vite proxy target port | 3000 | `process.env.BACKEND_PORT \|\| '3000'` → defaults to 3000 | ✅ |
+| Vite proxy protocol | http (dev) / https (when BACKEND_SSL=true) | Conditional: `backendSSL ? 'https' : 'http'` | ✅ |
+| Backend SSL in dev | Disabled (commented out in .env) | SSL_KEY_PATH/SSL_CERT_PATH commented out | ✅ |
+| CORS_ORIGIN includes frontend dev server | `http://localhost:5173` | `CORS_ORIGIN=http://localhost:5173` | ✅ |
+| Docker compose backend PORT | 3000 | `PORT: 3000` | ✅ |
+| Docker CORS_ORIGIN | Configurable | `${CORS_ORIGIN:-http://localhost}` | ✅ |
+
+**Production config (PM2):**
+- Backend port 3002 with HTTPS ✅
+- Frontend port 4174 with HTTPS ✅
+- These use separate production config, not dev .env — consistent ✅
+
+---
+
+### 6. Security Scan
+
+**Test Type:** Security Scan
+**Result:** ✅ PASS — All checklist items verified
+
+#### Authentication & Authorization
+| Item | Result | Evidence |
+|------|--------|----------|
+| All API endpoints require auth | ✅ Pass | Auth middleware on all `/trips`, `/flights`, `/stays`, `/activities`, `/land-travel`, `/calendar` routes. Smoke test #3–4 confirmed 401 on unauthenticated requests. |
+| Auth tokens have expiration | ✅ Pass | `JWT_EXPIRES_IN=15m`, `JWT_REFRESH_EXPIRES_IN=7d` in .env |
+| Password hashing uses bcrypt | ✅ Pass | `backend/src/seeds/test_user.js` uses `bcrypt.hash()` with configurable rounds |
+| Rate limiting on auth endpoints | ✅ Pass | `loginLimiter`, `registerLimiter`, `generalAuthLimiter` in `middleware/rateLimiter.js` |
+
+#### Input Validation & Injection Prevention
+| Item | Result | Evidence |
+|------|--------|----------|
+| SQL queries use parameterized statements | ✅ Pass | Knex query builder used throughout (`tripModel.js`, `calendarModel.js`). `db.raw()` calls use safe patterns (e.g., `searchTerm` passed as parameterized value via `.whereRaw('... ILIKE ?', [searchTerm])`). |
+| HTML output sanitized (XSS) | ✅ Pass | XSS sanitizer middleware active. Triple-nested XSS fix verified (T-296). No `dangerouslySetInnerHTML` in frontend except one documented comment in `formatDate.js` (not actually used). |
+| Input validation on all endpoints | ✅ Pass | Joi/custom validation on all write endpoints. Notes max 5000 chars enforced. |
+
+#### API Security
+| Item | Result | Evidence |
+|------|--------|----------|
+| CORS configured correctly | ✅ Pass | `CORS_ORIGIN=http://localhost:5173` (dev). Production locked to frontend origin per Manager review. |
+| Rate limiting on public endpoints | ✅ Pass | Auth routes rate-limited. |
+| API responses don't leak internals | ✅ Pass | Structured error JSON with message + status code. No stack traces. |
+| Security headers (Helmet.js) | ✅ Pass | `helmet()` applied in `app.js` line 23. Adds X-Content-Type-Options, X-Frame-Options, etc. |
+
+#### Data Protection
+| Item | Result | Evidence |
+|------|--------|----------|
+| Credentials in env vars, not code | ✅ Pass | `JWT_SECRET`, `DATABASE_URL` in .env. Docker uses `${JWT_SECRET:?}` required vars. No hardcoded secrets in source code. |
+| No secrets in committed files | ✅ Pass | `.env` is gitignored. JWT_SECRET in .env is placeholder `change-me-to-a-random-string`. |
+| Logs don't contain PII | ✅ Pass | No token/password logging in source code. |
+
+#### Infrastructure
+| Item | Result | Evidence |
+|------|--------|----------|
+| HTTPS enforced on staging/production | ✅ Pass | PM2 production config uses HTTPS on ports 3002/4174. TLS certs configured. |
+| Dependencies checked for vulnerabilities | ✅ Pass | `npm audit` → 0 vulnerabilities |
+| Default credentials removed | ✅ Pass | Test user seed uses bcrypt hashed password, not production credentials. JWT_SECRET is placeholder. |
+
+**Security scan: 0 findings. No P1 issues.**
+
+---
+
+### Summary
+
+| Task | Test Type | Result | Notes |
+|------|-----------|--------|-------|
+| T-305 | Integration Test | ✅ Pass | Production deployment verified via smoke tests |
+| T-306 | Integration Test | ✅ Pass | API docs consistent — all notes limits say 5000 |
+| T-308 | Unit Test | ✅ Pass | 5 new tests (32.A–32.E) all passing |
+| T-308 | Integration Test | ✅ Pass | Desktop + mobile checkout time matches Spec 32 |
+| All | Unit Test | ✅ Pass | 1041 total (523 backend + 518 frontend), 0 failures |
+| All | Config Consistency | ✅ Pass | No mismatches between .env, vite.config.js, docker-compose.yml |
+| All | Security Scan | ✅ Pass | 18-point checklist verified, 0 vulnerabilities, 0 findings |
+
+**Verdict: All tasks pass. T-309 complete. Ready for Monitor Agent (T-310).**
+
+*QA Engineer — Sprint 40 — 2026-03-30*
+
+---
+
 ## Sprint #40 — Deploy Engineer — Production Deployment — T-305 — 2026-03-30
 
 **Task:** T-305 (Deploy Engineer: Production deployment of Sprint 39 code)

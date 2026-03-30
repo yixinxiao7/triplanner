@@ -3382,8 +3382,8 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-305 | Deploy Engineer: Production deployment of Sprint 39 code. Rebuild, deploy to PM2, smoke test trip notes + sanitizer. No new migrations. | Infrastructure | Deploy Engineer | Integration Check | P1 | S | 40 | — | ✅ Production deployed via PM2 (port 3002/4174 HTTPS). 1036 tests passed, 10/10 smoke tests passed. Trip notes CRUD + XSS sanitizer verified. Created ecosystem.production.config.cjs + deploy-production.sh. **Manager Review APPROVED (2026-03-30):** No hardcoded secrets, proper HTTPS/TLS, CORS correct, PM2 config sound, smoke tests meaningful. Ready for QA. |
-| T-306 | Backend Engineer: Fix API contract docs drift (FB-237/B-039). Update all historical notes "max 2000" references to 5000 in api-contracts.md. | Documentation | Backend Engineer | Integration Check | P2 | S | 40 | — | FB-237/B-039. Docs-only fix. All 22 historical "max 2000" references updated to 5000 with "[Updated Sprint 39 T-298]" annotations. No contradictory limits remain. **Manager Review APPROVED (2026-03-30):** All references consistent, no contradictions found. Ready for QA. |
+| T-305 | Deploy Engineer: Production deployment of Sprint 39 code. Rebuild, deploy to PM2, smoke test trip notes + sanitizer. No new migrations. | Infrastructure | Deploy Engineer | Done | P1 | S | 40 | — | ✅ Production deployed via PM2 (port 3002/4174 HTTPS). 1036 tests passed, 10/10 smoke tests passed. Trip notes CRUD + XSS sanitizer verified. Created ecosystem.production.config.cjs + deploy-production.sh. **Manager Review APPROVED (2026-03-30).** **QA PASSED (T-309, 2026-03-30):** Integration test + security scan pass. |
+| T-306 | Backend Engineer: Fix API contract docs drift (FB-237/B-039). Update all historical notes "max 2000" references to 5000 in api-contracts.md. | Documentation | Backend Engineer | Done | P2 | S | 40 | — | FB-237/B-039. Docs-only fix. All 22 historical "max 2000" references updated to 5000 with "[Updated Sprint 39 T-298]" annotations. No contradictory limits remain. **Manager Review APPROVED (2026-03-30).** **QA PASSED (T-309, 2026-03-30):** All notes limits consistent at 5000. |
 | T-307 | Design Agent: UI spec for stay checkout time on calendar end days (FB-189/B-040). Label format, desktop + mobile. | Feature | Design Agent | Done | P2 | S | 40 | — | FB-189/B-040. Calendar UX enhancement. Spec 32 published in ui-spec.md. |
 
 ---
@@ -3392,7 +3392,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-308 | Frontend Engineer: Implement stay checkout time on calendar. Update renderEventPill + MobileDayList. Tests. | Feature | Frontend Engineer | Integration Check | P2 | S | 40 | T-307 | FB-189/B-040. Implemented: STAY end-day pill shows "Checkout {time}" on desktop, "{name} — Checkout {time}" on mobile. buildArrivalLabel extended for STAY. 5 tests added (32.A–32.E), all passing. **Manager Review APPROVED (2026-03-30):** Matches Spec 32, proper null handling, no XSS, no regressions on FLIGHT/LAND_TRAVEL labels, 5 tests (happy + error + regression + a11y). Ready for QA. |
+| T-308 | Frontend Engineer: Implement stay checkout time on calendar. Update renderEventPill + MobileDayList. Tests. | Feature | Frontend Engineer | Done | P2 | S | 40 | T-307 | FB-189/B-040. Implemented: STAY end-day pill shows "Checkout {time}" on desktop, "{name} — Checkout {time}" on mobile. buildArrivalLabel extended for STAY. 5 tests added (32.A–32.E), all passing. **Manager Review APPROVED (2026-03-30).** **QA PASSED (T-309, 2026-03-30):** Integration test pass — desktop, mobile, null fallback, regression, a11y, Spec 32 conformance all verified. |
 
 ---
 
@@ -3400,9 +3400,28 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-309 | QA Engineer: Integration testing for Sprint 40. Production deploy health, API docs consistency, stay checkout time, full test suite, security checklist. | Code Review | QA Engineer | Backlog | P1 | M | 40 | T-305, T-306, T-308 | Full QA pass. |
+| T-309 | QA Engineer: Integration testing for Sprint 40. Production deploy health, API docs consistency, stay checkout time, full test suite, security checklist. | Code Review | QA Engineer | Done | P1 | M | 40 | T-305, T-306, T-308 | ✅ All tests pass. 1041 tests (523 backend + 518 frontend), 0 failures. Integration tests pass for T-305, T-306, T-308. Security checklist verified (0 findings). Config consistency verified. Ready for Monitor Agent (T-310). |
 | T-310 | Monitor Agent: Production health check. Full protocol, verify trip notes on production, verify checkout time on calendar. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 40 | T-309 | Production verification. |
 | T-311 | User Agent: Production walkthrough. Test trip notes on production, stay checkout time on calendar, regression check, submit feedback. | Documentation | User Agent | Backlog | P1 | M | 40 | T-310 | Production walkthrough. |
+
+---
+
+### Sprint 40 — Manager Agent: Code Review Pass (2026-03-30)
+
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation.
+
+**Result: No tasks were in "In Review" status.** Full grep scan of dev-cycle-tracker.md confirmed zero task rows matching `| In Review |`. Sprint 40 task statuses:
+
+- T-305 (Deploy Engineer): ✅ Done — Manager Review APPROVED, QA PASSED
+- T-306 (Backend Engineer): ✅ Done — Manager Review APPROVED, QA PASSED
+- T-307 (Design Agent): ✅ Done — Spec 32 published
+- T-308 (Frontend Engineer): ✅ Done — Manager Review APPROVED, QA PASSED
+- T-309 (QA Engineer): ✅ Done — 1041/1041 tests pass, security verified
+- T-310 (Monitor Agent): Backlog — blocked by T-309 (now Done, ready to execute)
+- T-311 (User Agent): Backlog — blocked by T-310
+
+**Next action:** T-310 (Monitor Agent) is unblocked and should execute production health check.
 
 ---
 
