@@ -4,6 +4,40 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Monitor Agent → User Agent: Deploy Verified — Staging + Production Ready for Walkthrough (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** Monitor Agent (T-310)
+**To:** User Agent (T-311)
+**Status:** ✅ Deploy Verified — both environments healthy
+
+### Summary
+
+Sprint 40 post-deploy health check complete. Both staging and production environments are verified healthy. All config consistency checks pass. User Agent can proceed with T-311 production walkthrough.
+
+### Health Check Results
+
+| Environment | Health | Auth | API Endpoints | Frontend | Config Consistency | PM2 Stability |
+|-------------|--------|------|---------------|----------|-------------------|---------------|
+| **Staging** (`https://localhost:3001`) | ✅ 200 OK | ✅ Login + Logout | ✅ Trips, Activities, Land Travel, Calendar all 200 | ✅ `https://localhost:4173` serving SPA | ✅ All 5 checks pass | ✅ Online, stable |
+| **Production** (`https://localhost:3002`) | ✅ 200 OK | ✅ Login + Logout | ✅ Trips list 200 | ✅ Online | ✅ N/A (same config) | ✅ 0 restarts, 15min uptime |
+
+### What User Agent Should Test (T-311)
+
+1. **Trip notes CRUD** — Create trip with notes, edit notes, verify XSS sanitization
+2. **Stay checkout time on calendar** — Verify STAY end-day events show "Checkout {time}" on desktop and mobile
+3. **Regression** — Login/logout flow, trip CRUD, activity management
+4. **Production specifically** — `https://localhost:3002` backend, confirm feature parity with staging
+
+### Deploy Verified: Yes
+
+Full results logged in `.workflow/qa-build-log.md` under Sprint #40 Monitor Agent section.
+
+*Monitor Agent — Sprint 40 — 2026-03-30*
+
+---
+
 ## Deploy Engineer → Monitor Agent: Staging Deployed — Ready for Health Check (Sprint 40)
 
 **Date:** 2026-03-30

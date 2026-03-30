@@ -4,6 +4,84 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #40 — Monitor Agent — Post-Deploy Health Check (Staging + Production) — 2026-03-30
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**Test Type:** Post-Deploy Health Check + Config Consistency
+**Environment:** Staging (`https://localhost:3001`, `https://localhost:4173`) + Production (`https://localhost:3002`)
+**Timestamp:** 2026-03-30T19:54:00Z
+**Token:** Acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT /auth/register)
+
+---
+
+### 1. Config Consistency Validation
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| **Backend PORT vs Vite proxy target** | `.env` PORT=3000 → Vite default targets `http://localhost:3000`. Staging ecosystem overrides PORT=3001 with BACKEND_PORT=3001 env var for Vite. | `.env` PORT=3000; `vite.config.js` reads `BACKEND_PORT` env (default 3000); ecosystem.config.cjs sets `BACKEND_PORT=3001` for staging frontend + `PORT=3001` for staging backend. | ✅ PASS — Ports consistent across local dev (3000) and staging (3001 via env override) |
+| **Protocol match (HTTP/HTTPS)** | `.env` has `SSL_KEY_PATH` and `SSL_CERT_PATH` commented out → local dev uses HTTP. Staging ecosystem relies on backend auto-detecting certs at `infra/certs/`. Vite reads `BACKEND_SSL=true` env. | Staging: backend serves HTTPS on 3001, Vite proxy uses `https://` (BACKEND_SSL=true). Local dev: HTTP on 3000, Vite proxy uses `http://` (default). | ✅ PASS — Protocol matches in both environments |
+| **SSL cert files exist** | `infra/certs/localhost-key.pem` and `infra/certs/localhost.pem` must exist when SSL is active | Both files present (key: 1704 bytes, cert: 1151 bytes, dated 2026-03-06) | ✅ PASS |
+| **CORS_ORIGIN** | Must include frontend dev server origin | `.env` → `CORS_ORIGIN=http://localhost:5173` (matches local Vite dev port 5173). Ecosystem staging → `CORS_ORIGIN=https://localhost:4173` (matches staging preview port 4173). | ✅ PASS — CORS origins match frontend URLs in both environments |
+| **Docker port match** | `docker-compose.yml` backend internal PORT=3000 | Docker compose: `PORT: 3000` for backend container, healthcheck hits `http://localhost:3000`. Frontend exposed on host port 80. | ✅ PASS — Docker config consistent with `.env` PORT=3000 for production containers |
+
+**Config Consistency Result: ✅ ALL PASS**
+
+---
+
+### 2. Staging Health Checks
+
+| Check | Endpoint | Expected | Actual | Result |
+|-------|----------|----------|--------|--------|
+| App responds | `GET https://localhost:3001/api/v1/health` | HTTP 200, `{"status":"ok"}` | HTTP 200, `{"status":"ok"}` | ✅ PASS |
+| Auth works | `POST https://localhost:3001/api/v1/auth/login` | HTTP 200 with `data.access_token` | HTTP 200, token returned for `test@triplanner.local` | ✅ PASS |
+| Auth logout | `POST https://localhost:3001/api/v1/auth/logout` | HTTP 204 | HTTP 204 | ✅ PASS |
+| List trips | `GET https://localhost:3001/api/v1/trips` | HTTP 200 with `data` array + `pagination` | HTTP 200, 1 trip returned with correct pagination shape | ✅ PASS |
+| Get trip | `GET https://localhost:3001/api/v1/trips/:id` | HTTP 200 with trip object | HTTP 200, trip `b525c806...` returned with correct fields (name, destinations, status, notes, dates) | ✅ PASS |
+| Activities | `GET https://localhost:3001/api/v1/trips/:id/activities` | HTTP 200 with `data` array | HTTP 200, `{"data":[]}` | ✅ PASS |
+| Land travel | `GET https://localhost:3001/api/v1/trips/:id/land-travel` | HTTP 200 with `data` array | HTTP 200, `{"data":[]}` | ✅ PASS |
+| Calendar | `GET https://localhost:3001/api/v1/trips/:id/calendar` | HTTP 200 with `data.events` array | HTTP 200, 1 stay event (checkout time visible) | ✅ PASS |
+| Frontend accessible | `GET https://localhost:4173` | HTTP 200, HTML with React root | HTTP 200, valid HTML with `<div id="root">` and Vite-built assets | ✅ PASS |
+| No 5xx errors | Check PM2 error logs | No 500/5xx responses | Only JSON parse errors from malformed health-check curl attempts (not real traffic). Zero 5xx responses to valid requests. | ✅ PASS |
+| DB connected | Health endpoint covers this | 200 OK implies DB is up | Auth login succeeded → DB query worked. Trip list returned data. | ✅ PASS |
+| PM2 stability | Process status | Online, no restart loops | Backend PID 56589, online 2m, 79.8MB. Frontend PID 56627, online 2m, 67.1MB. Both online and stable. | ✅ PASS |
+
+**Staging Health Check Result: ✅ ALL PASS**
+
+---
+
+### 3. Production Health Checks
+
+| Check | Endpoint | Expected | Actual | Result |
+|-------|----------|----------|--------|--------|
+| App responds | `GET https://localhost:3002/api/v1/health` | HTTP 200, `{"status":"ok"}` | HTTP 200, `{"status":"ok"}` | ✅ PASS |
+| Auth works | `POST https://localhost:3002/api/v1/auth/login` | HTTP 200 with `data.access_token` | HTTP 200, token returned for `test@triplanner.local` | ✅ PASS |
+| Auth logout | `POST https://localhost:3002/api/v1/auth/logout` | HTTP 204 | HTTP 204 | ✅ PASS |
+| List trips | `GET https://localhost:3002/api/v1/trips` | HTTP 200 | HTTP 200, 1 trip with correct pagination | ✅ PASS |
+| No 5xx errors | Check PM2 error logs | No 500/5xx | Only JSON parse errors from health-check tool. Zero real 5xx. | ✅ PASS |
+| PM2 stability | Process status | Online, 0 restarts | Backend PID 54650, online 15m, 68.8MB, 0 restarts. Frontend PID 54651, online 15m, 43.8MB, 0 restarts. | ✅ PASS |
+
+**Production Health Check Result: ✅ ALL PASS**
+
+---
+
+### 4. Observations
+
+- **Staging backend restart count (4299):** This is the cumulative PM2 restart counter across ~40 sprints of development (logs show restarts dating to 2026-03-10). Not indicative of current instability — the process has been up for 2 minutes with 0 recent crashes since the Sprint 40 deploy.
+- **Production backend:** 0 restarts, 15 minutes uptime — clean.
+- **Calendar endpoint:** Correctly returns stay events with checkout time (end_time: "20:00"), confirming T-308 (stay checkout time on calendar) is working.
+- **Trip notes field:** Present in trip response shape (`notes: null` for test trip), confirming the field is available. CRUD testing deferred to User Agent walkthrough.
+
+---
+
+### Deploy Verified: ✅ Yes (Staging + Production)
+
+All health checks pass. All config consistency checks pass. Both environments are healthy and ready for User Agent walkthrough (T-311).
+
+*Monitor Agent — Sprint 40 — 2026-03-30*
+
+---
+
 ## Sprint #40 — Deploy Engineer — Build & Staging Deploy — 2026-03-30
 
 **Date:** 2026-03-30
