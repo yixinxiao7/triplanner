@@ -3870,4 +3870,74 @@ None. All tasks completed.
 
 ---
 
+### Sprint #40 — 2026-03-30 to 2026-03-30
+
+**Goal:** Deploy Sprint 39 trip notes feature to production, fix API contract docs drift (B-039/FB-237), and implement stay checkout time display on calendar (FB-189/B-040).
+
+**Goal Met:** ✅ YES — All 7 sprint tasks completed. Production deployment verified. Stay checkout time implemented on desktop and mobile calendar. API docs consistent. Zero Critical or Major issues.
+
+---
+
+**Tasks Completed (7/7):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-305 | Deploy Engineer: Production deployment of Sprint 39 code | ✅ Done |
+| T-306 | Backend Engineer: Fix API contract docs drift — all 22 "max 2000" references updated to 5000 | ✅ Done |
+| T-307 | Design Agent: UI spec for stay checkout time on calendar end days (Spec 32) | ✅ Done |
+| T-308 | Frontend Engineer: Implement stay checkout time on desktop + mobile calendar | ✅ Done |
+| T-309 | QA Engineer: Integration testing — 1041/1041 tests, security checklist pass | ✅ Done |
+| T-310 | Monitor Agent: Production health check — Deploy Verified = Yes (Staging + Production) | ✅ Done |
+| T-311 | User Agent: Production walkthrough — 13 feedback entries, 0 Critical/Major | ✅ Done |
+
+**Tasks Carried Over:** None. All 7 Sprint 40 tasks completed.
+
+**Key Decisions:**
+
+- Manager code review approved T-305, T-306, T-308 on first pass. No rework cycles.
+- PM2 used for production deployment (Docker alternative, consistent with prior sprints).
+- Stay checkout time label format "Checkout {time}" chosen to be consistent with FLIGHT "Arrives {time}" and LAND_TRAVEL "Arrives/Drop-off {time}" patterns.
+
+**Feedback Summary (FB-239–FB-251):**
+
+| Entry | Category | Severity | Disposition |
+|-------|----------|----------|-------------|
+| FB-239–FB-248, FB-250–FB-251 | Positive | — | Acknowledged — trip notes CRUD, XSS sanitization, character limits, API docs, checkout time (desktop + mobile + timezone), auth, tests, production health, concurrent requests all confirmed |
+| FB-249 | UX Issue | Minor | Acknowledged — staging PM2 restart counter high (4299, all deliberate restarts). Backlog: consider resetting counters after verified deploys. |
+
+**Zero 'New' entries remaining. All 13 feedback entries triaged.**
+
+---
+
+**What Went Well:**
+
+- **Clean production deployment.** Sprint 39 code (trip notes + XSS fix) promoted to production with zero issues. Full feature parity with staging verified.
+- **Stay checkout time delivered end-to-end in one sprint.** Design spec → frontend implementation → QA → monitor → user walkthrough. 5 new tests (32.A–32.E) added. Desktop and mobile views both correct.
+- **API docs consistency restored.** T-306 updated all 22 historical "max 2000" references to 5000 with clear "[Updated Sprint 39 T-298]" annotations.
+- **Test baseline grew.** 1041 tests (523 backend + 518 frontend), up from 1036. Zero regressions.
+- **Overwhelmingly positive feedback.** 12/13 entries are positive confirmations. 1 Minor UX note (operational, not user-facing).
+- **No blockers during sprint.** All dependencies resolved on schedule, pipeline flowed smoothly.
+
+**What Could Improve:**
+
+- **FB-249 (PM2 restart counter accumulation)** — 4299 restarts across 40 sprints of deployments. Not a functional issue, but masks future crash detection. Consider adding a PM2 counter reset to the deploy verification step.
+- **No new engineering features this sprint** — production deploy + one small UX enhancement. This was appropriate given the pending production push, but Sprint 41 has capacity for a larger feature.
+
+**Technical Debt Noted:**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory MemoryStore — no Redis persistence
+- ⚠️ B-024: Auth rate limit is IP-only — no per-account limiting
+- ⚠️ FB-170: SPA has no SSR fallback for SEO/no-JS users (Suggestion — low priority)
+- ⚠️ B-036: Activity notes field silently dropped in API response (Minor — backlog)
+- ⚠️ B-038: Rate limiter window too aggressive for e2e testing (testing friction)
+
+*No new technical debt from Sprint 40.*
+
+---
+
+*Sprint #40 began 2026-03-30, closed 2026-03-30.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

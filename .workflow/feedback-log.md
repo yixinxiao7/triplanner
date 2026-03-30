@@ -32,7 +32,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Created trip with notes on production (POST /trips with notes field). Retrieved trip and notes were returned correctly (GET /trips/:id). Updated notes via PATCH — updated_at timestamp changed, notes reflected new value. Cleared notes by setting to empty string — stored as null (correct normalization). Set notes to null explicitly — also stored as null. All operations returned correct HTTP status codes (201, 200). Trip list endpoint also returns notes field. |
 | Related Task | T-305 |
 
@@ -46,7 +46,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Tested on production: `<script>alert(1)</script><img src=x onerror=alert(1)> Clean text` was sanitized to `alert(1) Clean text`. All HTML tags and event handlers stripped. Triple-nested XSS pattern (`<scr<scr<script>ipt>ipt>alert(1)...`) also sanitized correctly — recursive stripping works. SQL injection attempt (`Robert'); DROP TABLE trips;--`) stored safely as literal text (parameterized queries working). |
 | Related Task | T-305 |
 
@@ -60,7 +60,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | PATCH with exactly 5000 characters → 200 (accepted). PATCH with 5001 characters → 400 with `{"fields":{"notes":"Notes must not exceed 5000 characters"}}`. Boundary validation is precise. |
 | Related Task | T-306 |
 
@@ -74,7 +74,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Searched api-contracts.md for all references to notes character limits. Every instance now says "max 5000" with "[Updated Sprint 39 T-298: limit increased from 2000 to 5000]" annotations. No contradictory "max 2000" references remain. The historical context is preserved while the current limit is clear. T-306 docs fix is complete and accurate. |
 | Related Task | T-306 |
 
@@ -88,7 +88,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Verified in TripCalendar.jsx: `renderEventPill` has a STAY end-day branch that calls `buildArrivalLabel(event)` which returns `"Checkout {time}"` for STAY type events. When `end_time` is null, returns `"Checkout"` without time. The `aria-label` includes `"Stay: {name}, checkout {time}"` for accessibility. Calendar API endpoint returns `end_time: "11:00"` for a stay with checkout at 11am local time. Test 32.A confirms "Checkout 11a" renders on desktop. All 5 new tests (32.A–32.E) pass. |
 | Related Task | T-308 |
 
@@ -102,7 +102,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Verified in TripCalendar.jsx: MobileDayList handles STAY end-day events with `"{name} — Checkout {time}"` format, matching the FLIGHT "— Arrives" and LAND_TRAVEL "— Arrives/Drop-off" patterns. Middle-day STAY rows show "(cont.)" at 0.6 opacity. Test 32.C confirms the mobile format. |
 | Related Task | T-308 |
 
@@ -116,7 +116,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Test 32.D explicitly verifies that FLIGHT end-day labels still show "Arrives {time}" and LAND_TRAVEL end-day labels still show "Arrives/Drop-off {time}" after T-308 changes. The `buildArrivalLabel()` function cleanly branches by event type. No regressions. |
 | Related Task | T-308 |
 
@@ -130,7 +130,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Tested on both staging and production: (1) Registration returns 201 with user object and access_token. (2) Login returns 200 with matching user. (3) Wrong password returns 401 with "Incorrect email or password" (no information leakage). (4) Empty fields return 400 with specific field-level validation errors. (5) Invalid/expired tokens return 401. (6) Unauthenticated requests to protected endpoints return 401. |
 | Related Task | T-305 |
 
@@ -144,7 +144,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Backend: 523 tests across 27 files, all passing in 2.78s. Frontend: 518 tests across 25 files, all passing in 2.08s. Total: 1041 tests. No failures, no skipped tests. The 5 new calendar checkout tests (32.A–32.E) are included in the frontend count. |
 | Related Task | T-309 |
 
@@ -158,7 +158,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Production backend (port 3002) returns `{"status":"ok"}` on health check. PM2 shows 0 restarts and 18min+ uptime for production processes. Trip notes CRUD, XSS sanitization, calendar with checkout time, and auth flow all verified on production. Feature parity with staging confirmed. |
 | Related Task | T-305, T-310 |
 
@@ -172,7 +172,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | UX Issue |
 | Severity | Minor |
-| Status | New |
+| Status | Acknowledged |
 | Details | PM2 shows 4299 restarts for `triplanner-backend` (staging). However, `unstable restarts: 0` indicates these are all deliberate restarts from deployments across 40 sprints, not crash loops. Currently stable with 7min uptime. The frontend has 16 restarts. Not a functional issue but the accumulated count may mask future crash restarts. Consider resetting PM2 restart counters after each successful deploy verification. |
 | Related Task | T-305 |
 
@@ -186,7 +186,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Created a stay on production with check_out_at=2026-05-04T09:00:00Z and check_out_tz=Europe/Paris. Calendar API returned end_time="11:00" (correctly converted from UTC to Europe/Paris, +2h for CEST). The frontend formatTime would render this as "11a" on the checkout day pill. Timezone handling is robust. |
 | Related Task | T-308 |
 
@@ -200,7 +200,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 40 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Sent 5 simultaneous GET /trips requests. All returned HTTP 200 without errors, race conditions, or degraded responses. Server handles concurrent load gracefully. |
 | Related Task | — |
 

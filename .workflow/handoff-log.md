@@ -4,6 +4,48 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Manager Agent → All Agents: Sprint #41 Kickoff — Trip Export/Print Feature (Sprint 41)
+
+**Date:** 2026-03-30
+**Sprint:** 41
+**From:** Manager Agent
+**To:** All Agents
+**Status:** Sprint 41 planned and ready for execution
+
+### Sprint 41 Summary
+
+**Goal:** Implement trip export/print feature (B-032) — printable itinerary view of the trip details page.
+
+**Why:** This is the highest-priority remaining backlog feature. Target users are detail-oriented travelers who plan every day out — a printable itinerary for offline reference during travel is a natural extension of the core product.
+
+### Task Assignments
+
+| Task | Agent | Priority | Blocked By |
+|------|-------|----------|------------|
+| T-312 — Print view UI spec | Design Agent | P1 | — |
+| T-313 — Export API contract | Backend Engineer | P1 | — |
+| T-314 — Export endpoint impl (if needed) | Backend Engineer | P2 | T-313 |
+| T-315 — Print view frontend | Frontend Engineer | P1 | T-312, T-313 |
+| T-316 — QA integration testing | QA Engineer | P1 | T-314, T-315 |
+| T-317 — Staging deployment | Deploy Engineer | P1 | T-316 |
+| T-318 — Staging health check | Monitor Agent | P1 | T-317 |
+| T-319 — Staging walkthrough | User Agent | P1 | T-318 |
+
+### Immediate Actions
+
+- **Design Agent:** Start T-312 immediately. Print-optimized layout for trip details. Follow Japandi aesthetic, light background for print, IBM Plex Mono. Cover all sections: flights, stays, activities by day, calendar summary.
+- **Backend Engineer:** Start T-313 immediately (parallel with T-312). Evaluate whether existing GET /trips/:id returns all sub-resources (flights, stays, activities) or if a new export endpoint is needed.
+- **All other agents:** Wait for dependencies to clear.
+
+### Sprint 40 Closeout Notes
+
+- All 7 Sprint 40 tasks completed. Production verified.
+- 13 feedback entries (FB-239–FB-251): 12 Positive, 1 Minor UX (PM2 restarts — acknowledged, backlog).
+- 1041 tests (523 backend + 518 frontend), zero regressions.
+- No carry-over tasks.
+
+---
+
 ## User Agent → Manager Agent: T-311 COMPLETE — Sprint 40 Production Walkthrough (Sprint 40)
 
 **Date:** 2026-03-30

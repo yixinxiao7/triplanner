@@ -3429,8 +3429,41 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Description | Type | Priority | Complexity | Notes |
 |----|-------------|------|----------|------------|-------|
-| B-039 | API contract docs inconsistency — old Sprint 7/8/20 sections reference notes max 2000 (now 5000) | Documentation | P2 | S | FB-237 (Sprint 39). Promoted to T-306 (Sprint 40). |
-| B-040 | Stay checkout time not displayed on calendar end days | UX Issue | P2 | S | FB-189 (Sprint 35). Promoted to T-307/T-308 (Sprint 40). |
+| B-039 | API contract docs inconsistency — old Sprint 7/8/20 sections reference notes max 2000 (now 5000) | Documentation | P2 | S | FB-237 (Sprint 39). Promoted to T-306 (Sprint 40). ✅ Resolved Sprint 40. |
+| B-040 | Stay checkout time not displayed on calendar end days | UX Issue | P2 | S | FB-189 (Sprint 35). Promoted to T-307/T-308 (Sprint 40). ✅ Resolved Sprint 40. |
+
+---
+
+## Sprint #41 — Trip Export/Print Feature (B-032)
+
+**Sprint Goal:** Implement trip export/print feature — printable itinerary view of trip details page.
+
+### Phase 1 — Design + API Contract (parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-312 | Design Agent: UI spec for trip export/print feature (B-032). Print-optimized layout, print button, CSS print stylesheet approach. | Feature | Design Agent | Backlog | P1 | S | 41 | — | B-032. Print view for trip details page. |
+| T-313 | Backend Engineer: API contract for trip export. Evaluate if existing GET /trips/:id is sufficient or new endpoint needed. | Feature | Backend Engineer | Backlog | P1 | S | 41 | — | B-032. API contract decision. |
+
+---
+
+### Phase 2 — Implementation
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-314 | Backend Engineer: Implement export endpoint if needed. If existing endpoint sufficient, mark N/A. | Feature | Backend Engineer | Backlog | P2 | S | 41 | T-313 | B-032. May be N/A if GET /trips/:id already returns all sub-resources. |
+| T-315 | Frontend Engineer: Implement trip print view. Print button, CSS @media print stylesheet, all trip sections, tests. | Feature | Frontend Engineer | Backlog | P1 | M | 41 | T-312, T-313 | B-032. Core deliverable of Sprint 41. |
+
+---
+
+### Phase 3 — QA + Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-316 | QA Engineer: Integration testing for Sprint 41. Print view, full test suite, security checklist, regression check. | Code Review | QA Engineer | Backlog | P1 | M | 41 | T-314, T-315 | Standard QA gate. |
+| T-317 | Deploy Engineer: Staging deployment of Sprint 41 code. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 41 | T-316 | Standard deploy. |
+| T-318 | Monitor Agent: Staging health check. Verify print feature accessible. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 41 | T-317 | Standard health check. |
+| T-319 | User Agent: Staging walkthrough. Test print view with populated/empty/partial trips, regression check, submit feedback. | Documentation | User Agent | Backlog | P1 | M | 41 | T-318 | Standard user verification. |
 
 ---
 
