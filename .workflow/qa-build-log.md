@@ -4,6 +4,285 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #39 — QA Engineer — Post-Deploy Re-Verification — 2026-03-30
+
+**Task:** T-301 (QA Engineer: Post-deploy re-verification for Sprint 39)
+**Date:** 2026-03-30
+**Sprint:** 39
+**Overall Result:** ✅ PASS — All tests still pass after T-302 staging deployment. No regressions.
+
+---
+
+### Re-Verification: Unit Tests — Backend
+
+**Test Type:** Unit Test
+**Result:** ✅ PASS
+**Details:**
+- **523/523 tests passed** across 27 test files
+- Sprint 39 specific: `sprint39.test.js` — 30/30 tests passed
+- Zero regressions. Duration: 2.86s.
+- Minor stderr noise: ErrorHandler test in sprint25 logs expected error (not a failure)
+
+### Re-Verification: Unit Tests — Frontend
+
+**Test Type:** Unit Test
+**Result:** ✅ PASS
+**Details:**
+- **513/513 tests passed** across 25 test files
+- Sprint 39 specific: `TripNotesSection.test.jsx` — 16/16 passed
+- Minor stderr: React `act()` warning in TripCalendar test — cosmetic
+- Zero regressions. Duration: 2.02s.
+
+### Re-Verification: Dependency Audit
+
+**Test Type:** Security Scan
+**Result:** ✅ PASS
+- Backend `npm audit`: 0 vulnerabilities
+- Frontend `npm audit`: 0 vulnerabilities
+
+### Re-Verification: Config Consistency
+
+**Test Type:** Config Consistency
+**Result:** ✅ PASS
+- Backend PORT=3000 matches Vite proxy target (default 3000) ✅
+- Backend SSL commented out → Vite proxy uses http:// ✅
+- CORS_ORIGIN=http://localhost:5173 includes frontend dev origin ✅
+- Docker compose backend PORT=3000 matches ✅
+
+### Re-Verification: Security Checklist
+
+**Test Type:** Security Scan
+**Result:** ✅ PASS — 19/19 items verified (same as initial T-301 pass)
+- All endpoints require auth ✅
+- Parameterized queries (Knex) ✅
+- XSS sanitization (sanitizeHtml + React escaping) ✅
+- T-296 post-loop cleanup for triple-nested XSS ✅
+- Error handler hides internal details ✅
+- Helmet security headers ✅
+- No hardcoded secrets ✅
+- No dangerouslySetInnerHTML / eval ✅
+- 0 npm vulnerabilities ✅
+
+### Summary
+
+Post-deploy re-verification confirms all Sprint 39 QA results hold after T-302 staging deployment. 1036/1036 total tests pass, 0 vulnerabilities, security checklist 19/19. Pipeline is in verify phase — T-303 (Monitor Agent health check) and T-304 (User Agent walkthrough) are next.
+
+---
+
+*QA Engineer — Sprint 39 Post-Deploy Re-Verification — 2026-03-30*
+
+---
+
+## Sprint #39 — Deploy Engineer — T-302 Staging Deployment — 2026-03-30
+
+**Task:** T-302 (Deploy Engineer: Staging deployment)
+**Date:** 2026-03-30
+**Sprint:** 39
+**Environment:** Staging
+**Build Status:** ✅ SUCCESS
+**Deploy Status:** ✅ SUCCESS
+
+---
+
+### Pre-Deploy Checks
+
+| Check | Result | Details |
+|-------|--------|---------|
+| QA Handoff (T-301) | ✅ Confirmed | All tests pass, security verified, config consistent |
+| Pending Migrations | ✅ None | Sprint 39 is validation-layer only. DB schema unchanged (10 migrations applied). |
+| New Env Vars | ✅ None | No config changes needed |
+| npm audit (backend) | ✅ 0 vulnerabilities | Clean |
+| npm audit (frontend) | ✅ 0 vulnerabilities | Clean |
+
+### Build Results
+
+| Component | Result | Details |
+|-----------|--------|---------|
+| Backend deps install | ✅ | 0 vulnerabilities |
+| Frontend deps install | ✅ | 0 vulnerabilities |
+| Frontend build (Vite) | ✅ | 129 modules, 535ms. Main bundle: 300.30 kB (95.80 kB gzip) |
+| Backend tests | ✅ 523/523 | 27 test files, 0 failures, 2.83s |
+| Frontend tests | ✅ 513/513 | 25 test files, 0 failures, 2.02s |
+
+### Staging Deployment
+
+| Step | Result | Details |
+|------|--------|---------|
+| PM2 restart backend | ✅ | PID 43228, status: online |
+| PM2 restart frontend | ✅ | PID 43277, status: online |
+| Migrations | ⏭️ Skipped | No new migrations for Sprint 39 |
+| Backend health check | ✅ | `GET /api/v1/health` → `{"status":"ok"}` |
+| Frontend health check | ✅ | `GET https://localhost:4173/` → HTML served |
+
+### Smoke Tests — Trip Notes (Sprint 39 Feature)
+
+| Test | Result | Details |
+|------|--------|---------|
+| Create trip with notes | ✅ | `notes: "Pack sunscreen. Check visa requirements."` stored correctly |
+| Create trip without notes | ✅ | `notes: null` |
+| PATCH trip to add notes | ✅ | Notes updated via PATCH |
+| Triple-nested XSS in notes | ✅ | `<<<script>script>script>alert(1)` → sanitized to `alert(1)` (no residual fragments) |
+| Clear notes (set to null) | ✅ | Notes cleared successfully |
+
+### Summary
+
+Sprint 39 staging deployment complete. Both backend and frontend rebuilt, tested (1036/1036 total tests), and deployed to PM2 staging. No migrations needed. Trip notes CRUD verified. Triple-nested XSS sanitizer hardening verified — no residual angle bracket fragments. 0 npm vulnerabilities on both packages.
+
+**Next:** T-303 — Monitor Agent staging health check.
+
+*Deploy Engineer — Sprint 39 T-302 — 2026-03-30*
+
+---
+
+## Sprint #39 — QA Engineer — T-301 Full QA Pass — 2026-03-30
+
+**Task:** T-301 (QA Engineer: Integration testing for Sprint 39)
+**Date:** 2026-03-30
+**Sprint:** 39
+**Overall Result:** ✅ PASS — All tests pass, security verified, config consistent. Ready for deploy.
+
+---
+
+### Test Run 1: Unit Tests — Backend
+
+**Test Type:** Unit Test
+**Result:** ✅ PASS
+**Details:**
+- **523/523 tests passed** across 27 test files
+- Sprint 39 specific: `sprint39.test.js` — 30/30 tests passed (20 sanitizer + 10 notes validation)
+- Zero regressions across all existing test suites
+- Minor stderr noise: ErrorHandler test in sprint25 logs expected error to stderr (not a failure)
+- Slow tests: sprint26 (bcrypt-heavy, 2.5s) — expected behavior
+
+### Test Run 2: Unit Tests — Frontend
+
+**Test Type:** Unit Test
+**Result:** ✅ PASS
+**Details:**
+- **513/513 tests passed** across 25 test files
+- Sprint 39 specific: `TripNotesSection.test.jsx` — 16/16 tests passed
+- Coverage: empty state, view mode, edit mode, save, cancel, error handling, char count, maxLength=5000, warning color, keyboard shortcuts (Esc, Ctrl+Enter), loading skeleton
+- Minor stderr: React `act()` warning in TripCalendar test — cosmetic, not a failure
+- Zero regressions
+
+### Test Run 3: Integration Test — Contract Adherence
+
+**Test Type:** Integration Test
+**Result:** ✅ PASS
+
+**API Contract Verification (T-298 — Trip Notes):**
+
+| Check | Expected | Actual | Status |
+|-------|----------|--------|--------|
+| `notes` field in POST /trips | Optional, string, max 5000 chars | `maxLength: 5000` in POST validation (trips.js:140) | ✅ |
+| `notes` field in PATCH /trips/:id | Optional, string\|null, max 5000 chars | `maxLength: 5000` in PATCH validation (trips.js:245) | ✅ |
+| Error message for >5000 chars | `"Notes must not exceed 5000 characters"` | Matches (trips.js:142, :247) | ✅ |
+| Empty string → null normalization | Empty string stored as null | Confirmed in tripModel.js (insertData.notes = data.notes ?? null) | ✅ |
+| Sanitization applied before validation | sanitizeFields({ notes: 'string' }) before validate() | Confirmed on POST (line 88) and PATCH (line 198) | ✅ |
+| Auth required on all trip endpoints | `router.use(authenticate)` at top | Confirmed (trips.js:20) | ✅ |
+| Ownership check on PATCH | 403 if trip.user_id !== req.user.id | Confirmed in route handler | ✅ |
+
+**Frontend ↔ Backend Contract Match (T-300):**
+
+| Check | Status |
+|-------|--------|
+| NOTES_MAX matches backend max (5000) | ✅ TripNotesSection.jsx:5 `NOTES_MAX = 5000` |
+| NOTES_WARN at 4500 (90% of max) | ✅ TripNotesSection.jsx:6 `NOTES_WARN = 4500` |
+| Frontend sends `{ notes: string\|null }` via PATCH | ✅ handleSave sends `api.trips.update(tripId, { notes: payload })` |
+| Empty/whitespace → null before send | ✅ `const payload = trimmed \|\| null` (line 83) |
+| Textarea maxLength enforced client-side | ✅ `maxLength={NOTES_MAX}` on textarea |
+| Char count comma-formatted | ✅ `editNotes.length.toLocaleString()` |
+
+**Sanitizer Hardening (T-296):**
+
+| Check | Status |
+|-------|--------|
+| Triple-nested `<<<b>b>` → empty string | ✅ Verified in sprint39.test.js |
+| `<<<b>b>hello` → `hello` | ✅ |
+| `<<div>>` → empty string | ✅ |
+| Legitimate `5 < 10` preserved | ✅ |
+| Post-loop cleanup strips orphan `<` + letter | ✅ regex: `/<(?=[a-zA-Z/])/g` |
+| Post-loop strips empty `<>` | ✅ regex: `/<>/g` |
+| Post-loop strips trailing `<` | ✅ regex: `/<$/g` |
+| Iterative loop capped at 10 iterations | ✅ |
+
+**UI States (TripNotesSection):**
+
+| State | Implemented | Status |
+|-------|------------|--------|
+| Empty (no notes) | Placeholder: "Add notes about this trip…" | ✅ |
+| View mode (has notes) | Displays note text, clickable to edit | ✅ |
+| Edit mode | Textarea with Save/Cancel buttons | ✅ |
+| Loading | Skeleton bars | ✅ |
+| Error (save failure) | Alert: "Failed to save notes. Please try again." | ✅ |
+| Success feedback | "NOTES — SAVED" header label, 1.5s | ✅ |
+| Warning (near limit) | Char count color change at 4500+ | ✅ |
+
+### Test Run 4: Config Consistency Check
+
+**Test Type:** Config Consistency
+**Result:** ✅ PASS
+
+| Check | Expected | Actual | Status |
+|-------|----------|--------|--------|
+| Backend PORT | 3000 | `backend/.env` PORT=3000 | ✅ |
+| Vite proxy target port | 3000 | `vite.config.js` defaults to port 3000 (`process.env.BACKEND_PORT \|\| '3000'`) | ✅ Match |
+| Vite proxy protocol | http:// (SSL not enabled) | `backendSSL = process.env.BACKEND_SSL === 'true'` → false → `http://` | ✅ Match |
+| CORS_ORIGIN includes frontend dev | http://localhost:5173 | `backend/.env` CORS_ORIGIN=http://localhost:5173 | ✅ Match |
+| Docker backend PORT | 3000 | `docker-compose.yml` backend PORT=3000 | ✅ Match |
+| Docker CORS_ORIGIN | configurable | `${CORS_ORIGIN:-http://localhost}` (Docker default differs — expected for containerized setup) | ✅ OK |
+
+### Test Run 5: Security Scan
+
+**Test Type:** Security Scan
+**Result:** ✅ PASS — No P1 issues found
+
+**Dependency Audit:**
+
+| Package Manager | Result |
+|-----------------|--------|
+| Backend `npm audit` | 0 vulnerabilities |
+| Frontend `npm audit` | 0 vulnerabilities |
+
+**Security Checklist Verification:**
+
+| # | Item | Status | Evidence |
+|---|------|--------|----------|
+| 1 | All API endpoints require authentication | ✅ | `router.use(authenticate)` in trips.js:20 |
+| 2 | Auth tokens have expiration | ✅ | JWT_EXPIRES_IN=15m, JWT_REFRESH_EXPIRES_IN=7d |
+| 3 | Password hashing uses bcrypt | ✅ | bcrypt 12 rounds in auth.js |
+| 4 | All inputs validated server-side | ✅ | Joi validation on POST/PATCH, maxLength 5000 |
+| 5 | SQL queries use parameterized statements | ✅ | Knex query builder throughout |
+| 6 | HTML output sanitized (XSS prevention) | ✅ | sanitizeHtml() with iterative loop + T-296 post-cleanup |
+| 7 | CORS configured for expected origins | ✅ | CORS_ORIGIN=http://localhost:5173 |
+| 8 | API responses don't leak internal details | ✅ | errorHandler returns generic "An unexpected error occurred" for 500s |
+| 9 | Sensitive data not in URL params | ✅ | Auth via Bearer header, notes via request body |
+| 10 | Security headers present | ✅ | Helmet.js applied globally |
+| 11 | DB credentials in env vars, not code | ✅ | DATABASE_URL from process.env |
+| 12 | .env not committed | ✅ | In .gitignore, not in git ls-files |
+| 13 | Dependencies checked for vulns | ✅ | npm audit 0 vulns (both) |
+| 14 | No dangerouslySetInnerHTML | ✅ | Grep found 0 instances in codebase |
+| 15 | No eval() or Function() | ✅ | Grep found 0 instances in source |
+| 16 | No hardcoded secrets in source | ✅ | JWT_SECRET from env var only |
+| 17 | Rate limiting on auth endpoints | ✅ | loginLimiter + registerLimiter applied |
+| 18 | Failed login rate-limited | ✅ | Same rate limiter |
+| 19 | UUID validation on route params | ✅ | uuidParamHandler middleware |
+
+**Known Accepted Risks (unchanged from prior sprints):**
+- Rate limiting not applied to trip CRUD endpoints (auth-only endpoints are rate-limited)
+- HTTPS not enforced in local development (expected; staging/production use TLS)
+
+**Sprint 39-Specific Security Notes:**
+- T-296 post-loop cleanup is defense-in-depth — even if XSS bypasses the iterative loop, the post-cleanup strips residual fragments
+- Notes field has dual sanitization: backend sanitizeHtml() + React auto-escaping on frontend
+- Deploy Engineer's security patch (path-to-regexp ReDoS, picomatch injection) verified — 0 vulns post-fix
+
+---
+
+*QA Engineer — Sprint 39 T-301 — 2026-03-30*
+
+---
+
 ## Sprint #39 — Deploy Engineer — T-302 Security Patch + Build Validation #2 — 2026-03-30
 
 **Task:** T-302 (Deploy Engineer: Staging deployment)
