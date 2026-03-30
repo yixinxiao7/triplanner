@@ -271,6 +271,23 @@ function MobileDayList({ events, displayedMonth }) {
                   timeStr = formatTime(ev.start_time);
                   displayTitle = ev.title;
                 }
+              // T-308: STAY events — handle start/middle/end day types
+              } else if (ev.type === 'STAY') {
+                if (mdt === 'start' || mdt === 'single') {
+                  timeStr = formatTime(ev.start_time);
+                  displayTitle = ev.title;
+                } else if (mdt === 'end') {
+                  const checkoutTime = formatTime(ev.end_time);
+                  timeStr = null;
+                  displayTitle = checkoutTime
+                    ? `${ev.title} — Checkout ${checkoutTime}`
+                    : `${ev.title} — Checkout`;
+                } else {
+                  // middle day
+                  timeStr = null;
+                  displayTitle = `${ev.title} (cont.)`;
+                  rowStyle = { opacity: 0.6 };
+                }
               } else {
                 timeStr = formatTime(ev.start_time);
                 displayTitle = ev.title;
@@ -627,6 +644,10 @@ export default function TripCalendar({ tripId }) {
         const prefix = isRentalCar ? 'Drop-off' : 'Arrives';
         return arrTime ? `${prefix} ${arrTime}` : prefix;
       }
+      // T-308: STAY end-day checkout label
+      if (ev.type === 'STAY') {
+        return arrTime ? `Checkout ${arrTime}` : 'Checkout';
+      }
       return '';
     }
 
@@ -683,6 +704,13 @@ export default function TripCalendar({ tripId }) {
     } else if (event.type === 'FLIGHT' && event._dayType === 'middle') {
       displayText = null;
       ariaLabel = `Flight: ${event.title} (cont.)`;
+    // T-308: STAY end-day branch — show checkout time
+    } else if (event.type === 'STAY' && event._dayType === 'end') {
+      displayText = buildArrivalLabel(event);
+      const checkoutTime = formatTime(event.end_time);
+      ariaLabel = checkoutTime
+        ? `Stay: ${event.title}, checkout ${checkoutTime}`
+        : `Stay: ${event.title}, checkout`;
     } else {
       // For STAY: only show text on first/single day
       const showText = event.type !== 'STAY' || event._isFirst || event._dayType === 'single';

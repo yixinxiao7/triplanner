@@ -122,6 +122,47 @@ curl -sk https://localhost:4173/
 
 ---
 
+## Production Deployment (PM2)
+
+Production can also run via PM2 with HTTPS, using a separate ecosystem config on different ports from staging.
+
+### Quick Deploy
+
+```bash
+# One-command production deploy (installs deps, builds, starts PM2, runs smoke tests)
+./infra/scripts/deploy-production.sh
+```
+
+### Manual Deploy
+
+```bash
+# 1. Install dependencies
+cd backend && npm install && cd ../frontend && npm install && cd ..
+
+# 2. Build frontend
+cd frontend && npm run build && cd ..
+
+# 3. Stop existing production processes
+pm2 delete triplanner-prod-backend triplanner-prod-frontend 2>/dev/null || true
+
+# 4. Start production via PM2
+pm2 start infra/ecosystem.production.config.cjs
+
+# 5. Verify health
+curl -sk https://localhost:3002/api/v1/health
+curl -sk https://localhost:4174/
+```
+
+### Production URLs (PM2)
+
+| Service  | URL                            |
+|----------|--------------------------------|
+| Backend  | https://localhost:3002         |
+| Frontend | https://localhost:4174         |
+| Health   | https://localhost:3002/api/v1/health |
+
+---
+
 ## Production Deployment (Docker)
 
 Production uses Docker Compose to run the full stack: PostgreSQL + backend + nginx (frontend).

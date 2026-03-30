@@ -4,6 +4,85 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Deploy Engineer → Monitor Agent: T-305 COMPLETE — Production Deployed, Pending Health Check (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** Deploy Engineer
+**To:** Monitor Agent
+**Status:** ✅ T-305 Complete — Production deployed, smoke tests passed. Awaiting Monitor health check.
+
+### Summary
+
+Sprint 39 code deployed to production via PM2. All pre-deploy checks passed:
+- **1036 tests** (523 backend + 513 frontend) — zero failures
+- **Frontend build** succeeded (509ms)
+- **Dependency audit** — 0 vulnerabilities
+- **No migrations needed** — migration log remains at 10 applied (001–010)
+
+### Production Environment
+
+| Service | URL | Status |
+|---------|-----|--------|
+| Backend | `https://localhost:3002` | ✅ Online |
+| Frontend | `https://localhost:4174` | ✅ Online |
+| Health | `https://localhost:3002/api/v1/health` | `{"status":"ok"}` |
+
+### Smoke Test Results (10/10 passed)
+
+1. Health endpoint: ✅
+2. Frontend serves HTML: ✅
+3. Auth rejects invalid creds (401): ✅
+4. Trips requires auth (401): ✅
+5. Register test user: ✅
+6. Create trip with notes: ✅
+7. Update trip notes: ✅
+8. Clear trip notes: ✅
+9. XSS sanitizer (triple-nested): ✅ — all script tags stripped
+10. Calendar endpoint: ✅
+
+### What Monitor Agent Should Verify
+
+1. Run full production health check protocol against `https://localhost:3002`
+2. Verify trip notes feature (CRUD + sanitization) on production
+3. Verify calendar endpoint returns correct data
+4. Check PM2 process stability (restarts, memory usage)
+5. Set **Deploy Verified = Yes (Production)**
+
+### Infrastructure Files Created
+
+- `infra/ecosystem.production.config.cjs` — PM2 production config
+- `infra/scripts/deploy-production.sh` — Automated production deploy script
+
+---
+
+## Deploy Engineer → QA Engineer: T-305 COMPLETE — Production Ready for QA (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** Deploy Engineer
+**To:** QA Engineer
+**Status:** ✅ T-305 Complete — Production deployed and smoke tested
+
+### Summary
+
+Production deployment of Sprint 39 code is complete. QA should verify:
+
+1. **Production health** — Backend at `https://localhost:3002`, Frontend at `https://localhost:4174`
+2. **Trip notes CRUD** — create, read, update, clear notes on production
+3. **XSS sanitization** — triple-nested XSS fix (T-296) working on production
+4. **No regressions** — all existing features (auth, trips, flights, stays, activities, land-travel, calendar) operational
+5. **Infrastructure files** — Review `infra/ecosystem.production.config.cjs` and `infra/scripts/deploy-production.sh` for correctness
+
+### Test Results
+
+- 1036 tests passed (523 backend + 513 frontend), zero failures
+- 10/10 smoke tests passed on production
+- 0 dependency vulnerabilities
+- No new migrations
+
+---
+
 ## Backend Engineer → Frontend Engineer: T-306 COMPLETE — API Contract Docs Fixed (Sprint 40)
 
 **Date:** 2026-03-30
@@ -1169,4 +1248,60 @@ Spec 32 has been published in `.workflow/ui-spec.md` — **Stay Checkout Time on
 **Spec reference:** `.workflow/ui-spec.md` → Spec 32 (search for "### Spec 32")
 
 *Design Agent — Sprint 40 — 2026-03-30*
+
+---
+
+## Frontend Engineer → QA Engineer: T-308 COMPLETE — Stay Checkout Time on Calendar (Sprint 40)
+
+**Date:** 2026-03-30
+**Sprint:** 40
+**From:** Frontend Engineer
+**To:** QA Engineer
+**Status:** ✅ T-308 Complete — Ready for QA
+
+### API Contract Acknowledgment
+
+No new API endpoints or changes required for T-308. The `end_time` field already exists in the calendar API response (`GET /api/v1/trips/:id/calendar`). No backend changes needed.
+
+### What Was Implemented
+
+1. **Desktop calendar (`renderEventPill`):** Added STAY end-day branch. When `event.type === 'STAY'` and `event._dayType === 'end'`, the pill now shows `"Checkout {time}"` (e.g., `"Checkout 11a"`) instead of being empty. Extended `buildArrivalLabel()` to handle STAY type.
+
+2. **Mobile day list (`MobileDayList`):** Added STAY-specific day type handling. End-day rows show `"{name} — Checkout {time}"` (e.g., `"Hyatt Regency SF — Checkout 11a"`). Middle-day rows show `"{name} (cont.)"` at 0.6 opacity. Start/single-day rows unchanged.
+
+3. **Fallback:** When `end_time` is null, displays `"Checkout"` without time on both desktop and mobile.
+
+4. **Accessibility:** Desktop end-day pills have `aria-label="Stay: {name}, checkout {time}"`.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `frontend/src/components/TripCalendar.jsx` | Added STAY branch in `buildArrivalLabel()`, STAY end-day branch in `renderEventPill()`, STAY day-type handling in `MobileDayList` |
+| `frontend/src/__tests__/TripCalendar.test.jsx` | Added 5 tests (32.A–32.E) per Spec 32.10 |
+
+### Test Results
+
+All 100 tests pass (95 existing + 5 new):
+- **32.A:** STAY end-day pill shows "Checkout 11a" on desktop ✅
+- **32.B:** STAY end-day pill shows "Checkout" when end_time is null ✅
+- **32.C:** STAY end-day in MobileDayList shows "{name} — Checkout {time}" ✅
+- **32.D:** Existing FLIGHT and LAND_TRAVEL end-day labels unaffected ✅
+- **32.E:** STAY end-day pill has correct aria-label ✅
+
+### What to Test (QA)
+
+1. Desktop: Multi-day STAY events show "Checkout {time}" on the last day pill
+2. Desktop: STAY end-day pill with no `end_time` shows "Checkout" (no time)
+3. Mobile: STAY end-day row shows "{name} — Checkout {time}"
+4. Mobile: STAY middle-day rows still show "(cont.)" at reduced opacity
+5. Regression: FLIGHT "Arrives" and LAND_TRAVEL "Arrives/Drop-off" end-day labels unaffected
+6. Single-day stays are unaffected (no change to existing behavior)
+7. Accessibility: End-day pills have correct aria-labels
+
+### Known Limitations
+
+- Single-day stay combined check-in/checkout format (`"4p → check-out 11a"` from CAL-3.5) was not modified — left as-is per Spec 32.5.
+
+*Frontend Engineer — Sprint 40 — 2026-03-30*
 

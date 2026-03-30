@@ -3382,7 +3382,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-305 | Deploy Engineer: Production deployment of Sprint 39 code. Rebuild, deploy to PM2, smoke test trip notes + sanitizer. No new migrations. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 40 | — | Sprint 39 staging verified (T-303). Push to production. |
+| T-305 | Deploy Engineer: Production deployment of Sprint 39 code. Rebuild, deploy to PM2, smoke test trip notes + sanitizer. No new migrations. | Infrastructure | Deploy Engineer | In Review | P1 | S | 40 | — | ✅ Production deployed via PM2 (port 3002/4174 HTTPS). 1036 tests passed, 10/10 smoke tests passed. Trip notes CRUD + XSS sanitizer verified. Created ecosystem.production.config.cjs + deploy-production.sh. Awaiting QA (T-309) + Monitor (T-310) verification. |
 | T-306 | Backend Engineer: Fix API contract docs drift (FB-237/B-039). Update all historical notes "max 2000" references to 5000 in api-contracts.md. | Documentation | Backend Engineer | In Review | P2 | S | 40 | — | FB-237/B-039. Docs-only fix. All 22 historical "max 2000" references updated to 5000 with "[Updated Sprint 39 T-298]" annotations. No contradictory limits remain. |
 | T-307 | Design Agent: UI spec for stay checkout time on calendar end days (FB-189/B-040). Label format, desktop + mobile. | Feature | Design Agent | Done | P2 | S | 40 | — | FB-189/B-040. Calendar UX enhancement. Spec 32 published in ui-spec.md. |
 
@@ -3392,7 +3392,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-308 | Frontend Engineer: Implement stay checkout time on calendar. Update renderEventPill + MobileDayList. Tests. | Feature | Frontend Engineer | Backlog | P2 | S | 40 | T-307 | FB-189/B-040. Follow existing FLIGHT/LAND_TRAVEL end-day label pattern. |
+| T-308 | Frontend Engineer: Implement stay checkout time on calendar. Update renderEventPill + MobileDayList. Tests. | Feature | Frontend Engineer | In Review | P2 | S | 40 | T-307 | FB-189/B-040. Implemented: STAY end-day pill shows "Checkout {time}" on desktop, "{name} — Checkout {time}" on mobile. buildArrivalLabel extended for STAY. 5 tests added (32.A–32.E), all passing. |
 
 ---
 
