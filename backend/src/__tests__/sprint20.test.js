@@ -450,18 +450,19 @@ describe('T-188 (J) — POST /api/v1/trips without notes field returns notes: nu
 });
 
 // ============================================================================
-// T-188 (K) — POST /trips with notes > 2000 chars → 400 VALIDATION_ERROR
+// T-188 (K) — POST /trips with notes > 5000 chars → 400 VALIDATION_ERROR
+// (T-298 Sprint 39: limit increased from 2000 to 5000)
 // ============================================================================
 
-describe('T-188 (K) — POST /api/v1/trips with notes > 2000 chars returns 400', () => {
+describe('T-188 (K) — POST /api/v1/trips with notes > 5000 chars returns 400', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it('returns 400 VALIDATION_ERROR with notes field error when notes exceeds 2000 chars', async () => {
+  it('returns 400 VALIDATION_ERROR with notes field error when notes exceeds 5000 chars', async () => {
     const app = buildApp();
     const res = await request(app, 'POST', '/api/v1/trips', {
       name: 'Over-limit notes trip',
       destinations: ['Tokyo'],
-      notes: 'N'.repeat(2001),
+      notes: 'N'.repeat(5001),
     }, AUTH);
 
     expect(res.status).toBe(400);
@@ -471,8 +472,8 @@ describe('T-188 (K) — POST /api/v1/trips with notes > 2000 chars returns 400',
     expect(tripModel.createTrip).not.toHaveBeenCalled();
   });
 
-  it('accepts notes of exactly 2000 characters (boundary)', async () => {
-    const longNote = 'X'.repeat(2000);
+  it('accepts notes of exactly 5000 characters (boundary)', async () => {
+    const longNote = 'X'.repeat(5000);
     tripModel.createTrip.mockResolvedValue({ ...BASE_TRIP, notes: longNote });
 
     const app = buildApp();

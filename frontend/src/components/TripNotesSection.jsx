@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../utils/api';
 import styles from './TripNotesSection.module.css';
 
-const NOTES_MAX = 2000;
-const NOTES_WARN = 1800;
+const NOTES_MAX = 5000;
+const NOTES_WARN = 4500;
 
 // ── Pencil Icon ────────────────────────────────────────────────
 function PencilIcon() {
@@ -218,7 +218,7 @@ export default function TripNotesSection({ tripId, initialNotes, onSaveSuccess, 
             aria-atomic="true"
             style={charCountColor(editNotes.length) ? { color: charCountColor(editNotes.length) } : undefined}
           >
-            {editNotes.length} / {NOTES_MAX}
+            {editNotes.length.toLocaleString()} / {NOTES_MAX.toLocaleString()}
           </div>
 
           <div className={styles.buttonRow}>

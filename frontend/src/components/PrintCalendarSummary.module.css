@@ -1,0 +1,66 @@
+/* PrintCalendarSummary — hidden on screen, visible in @media print */
+/* Print styles are in frontend/src/styles/print.css (rule set 15) */
+
+.wrapper {
+  display: none; /* Hidden on screen — visible only in print */
+}
+
+.sectionHeader {
+  display: none;
+}
+
+.sectionTitle {
+  font-size: 9pt;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.summaryTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.summaryDayRow {
+  /* styling handled in print.css */
+}
+
+.summaryDayRowLast {
+  /* no bottom border — handled in print.css */
+}
+
+.summaryDateCell {
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.summaryEventsCell {
+  vertical-align: top;
+}
+
+.summaryEventLine {
+  /* event line in the events cell */
+}
+
+.summaryTypeLabel {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  display: inline-block;
+}
+
+.summaryNoEvents {
+  font-style: italic;
+}
+
+/* Screen reader only — visually hidden but accessible */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

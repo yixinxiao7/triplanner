@@ -11755,3 +11755,1138 @@ Not applicable — `<head>` metadata applies uniformly across all viewport sizes
 ---
 
 *Sprint #36 design review complete. Published by Design Agent 2026-03-24.*
+
+---
+
+### Spec 31: Trip Notes Section (Trip Details Page)
+
+**Sprint:** #39
+**Related Task:** T-297 (Design), T-300 (Frontend Implementation)
+**Backlog Item:** B-030
+**Status:** Approved
+
+**Description:**
+The Trip Notes section adds a freeform text area to the Trip Details page (`/trips/:id`) where users can store miscellaneous notes about their trip — restaurant links, packing lists, travel tips, visa reminders, or anything that doesn't fit neatly into the structured flights/stays/activities sections. It uses inline editing: the notes display as rendered text by default, and clicking activates an editable text area. Auto-saves on blur or Ctrl+Enter / Cmd+Enter. Character limit: 5000 characters.
+
+---
+
+#### 31.1 Section Position
+
+The Trip Notes section appears on the Trip Details page **below the Calendar and above the Flights section**. This placement gives notes high visibility without displacing the structured data sections.
+
+**Updated page section order (Sprint 39):**
+
+| Position | Element | Margin Below |
+|----------|---------|-------------|
+| 1 | Trip Header (back link + title + destinations + date range + edit icon) | 8px |
+| 2 | Trip Date Range Section | 24px |
+| 3 | TripCalendar Component | 48px |
+| 4 | **Trip Notes Section** ← new | 48px |
+| 5 | Flights Section | 48px |
+| 6 | Stays Section | 48px |
+| 7 | Activities Section | 48px |
+| 8 | Land Travel Section | 64px |
+
+---
+
+#### 31.2 Section Header
+
+Follows the standard section header pattern used by all other sections (Flights, Stays, Activities, Land Travel):
+
+- **Layout:** `display: flex`, `align-items: center`, `gap: 16px`, margin-bottom: 16px
+- **Label:** `"notes"` — font-size 11px, font-weight 600, letter-spacing 0.12em, uppercase, color `--text-muted`
+- **Horizontal rule:** `flex: 1` div with `border-top: 1px solid var(--border-subtle)` extending to the right
+- **No "edit" link** on the right side (unlike other sections). Editing is done inline — clicking the notes content itself activates edit mode. This keeps the interaction direct and reduces visual clutter.
+
+---
+
+#### 31.3 View Mode (Default State — Notes Exist)
+
+When the trip has notes content (`notes` field is non-null and non-empty string):
+
+**Container:**
+- Background: `--surface` (`#30292F`)
+- Border: `1px solid var(--border-subtle)`
+- Border-radius: `var(--radius-md)` (4px)
+- Padding: 24px
+- `cursor: text` — indicates the area is clickable to edit
+- `transition: border-color 150ms ease`
+- On hover: border changes to `1px solid var(--accent)` (`#5D737E`)
+
+**Text Display:**
+- Font-size: 14px
+- Font-weight: 400
+- Font-family: `var(--font-mono)` (IBM Plex Mono)
+- Color: `--text-primary` (`#FCFCFC`)
+- Line-height: 1.7 (generous for readability of longer text blocks)
+- White-space: `pre-wrap` — preserves line breaks the user entered
+- Word-break: `break-word` — prevents long URLs from overflowing
+
+**Click hint:**
+- Bottom-right of the container, only visible on hover
+- Text: `"click to edit"` — font-size 11px, color `--text-muted`, font-weight 400
+- `opacity: 0` by default, `opacity: 1` on container hover
+- `transition: opacity 150ms ease`
+
+**Interaction:**
+- Clicking anywhere in the container transitions to Edit Mode (Section 31.4)
+
+---
+
+#### 31.4 Edit Mode (Active Editing)
+
+Activated when the user clicks the notes container (from either View Mode or Empty State).
+
+**Text Area:**
+- Replaces the view container in place (no modal, no page navigation)
+- Element: `<textarea>`
+- Background: `--surface-alt` (`#3F4045`)
+- Border: `1px solid var(--accent)` (`#5D737E`) — active/focus border
+- Border-radius: `var(--radius-md)` (4px)
+- Padding: 24px
+- Font-size: 14px
+- Font-weight: 400
+- Font-family: `var(--font-mono)` (IBM Plex Mono)
+- Color: `--text-primary` (`#FCFCFC`)
+- Line-height: 1.7
+- Min-height: 160px
+- Max-height: 480px
+- `resize: vertical` — user can drag to resize vertically only
+- `overflow-y: auto` — scrollbar appears when content exceeds max-height
+- Width: 100% of the section container
+- Placeholder text (when empty): `"Add notes — restaurant links, packing lists, travel tips..."` — color `--text-muted`
+- `maxlength="5000"` attribute on the textarea element
+- Autofocus: The textarea receives focus immediately when edit mode activates. If there is existing text, place the cursor at the end of the content.
+
+**Character Counter:**
+- Position: Below the textarea, right-aligned
+- Margin-top: 8px
+- Font-size: 11px
+- Font-weight: 400
+- Color: `--text-muted` when under 4500 characters
+- Color: `rgba(220, 170, 50, 0.9)` (warm warning) when 4500–4899 characters
+- Color: `rgba(220, 80, 80, 0.9)` (danger) when 4900–5000 characters
+- Format: `"{current} / 5000"` — e.g., `"342 / 5000"`
+- Letter-spacing: 0.04em
+
+**Action Hints:**
+- Position: Below the textarea, left-aligned (same row as character counter)
+- Text: `"esc to cancel · ⏎ to save"` on macOS, `"esc to cancel · ctrl+⏎ to save"` on other platforms
+- Font-size: 11px, color `--text-muted`, font-weight: 400
+- Note: Detecting platform for the hint text — use `navigator.platform` or `navigator.userAgent` to check for Mac. If Mac, show `"⌘+⏎"`. Otherwise show `"ctrl+⏎"`.
+
+**Save Behavior:**
+- **Auto-save on blur:** When the textarea loses focus (user clicks elsewhere), save automatically via `PATCH /trips/:id` with `{ notes: "<value>" }`. No confirmation dialog.
+- **Save on Cmd+Enter / Ctrl+Enter:** Keyboard shortcut to explicitly save and exit edit mode. On macOS: `Cmd+Enter`. On other platforms: `Ctrl+Enter`.
+- **Cancel on Escape:** Pressing `Escape` reverts to the last saved value and exits edit mode. No API call.
+- After successful save: transition back to View Mode with the updated text. Show a brief inline confirmation — the border flashes `rgba(100, 200, 100, 0.6)` for 1.5s then returns to `var(--border-subtle)`. No toast notification (too noisy for a simple save).
+- After save failure: show an inline error message below the character counter — `"Failed to save. Your changes are preserved — try again."` in 12px, `rgba(220, 80, 80, 0.9)`. The textarea remains in edit mode with the user's content intact (do not revert). The user can retry by pressing Cmd/Ctrl+Enter or clicking away again.
+
+---
+
+#### 31.5 Empty State (No Notes)
+
+When the trip has no notes (`notes` is null, undefined, or empty string `""`):
+
+**Container:**
+- Same dimensions and styling as the View Mode container (Section 31.3)
+- Background: `--surface` (`#30292F`)
+- Border: `1px dashed var(--border-subtle)` — dashed border (not solid) to signal "empty / add content here"
+- Border-radius: `var(--radius-md)` (4px)
+- Padding: 24px
+- `cursor: text`
+- On hover: border changes to `1px dashed var(--accent)`
+
+**Empty Content:**
+- Centered vertically and horizontally within the container (flexbox)
+- Min-height: 80px (smaller than edit mode since it's just a prompt)
+- Icon: None (keeping it minimal per Japandi aesthetic)
+- Text: `"no notes yet — click to add"` — font-size 13px, color `--text-muted`, font-weight: 400
+- On hover: text color transitions to `--text-primary`
+
+**Interaction:**
+- Clicking anywhere in the container transitions to Edit Mode (Section 31.4) with an empty textarea showing the placeholder text
+
+---
+
+#### 31.6 Loading State
+
+**Initial page load (trip data still loading):**
+- The notes section renders a skeleton shimmer block
+- Skeleton: same dimensions as the view container — full width, 80px height
+- Background: `--surface` with shimmer animation (same as other section skeletons)
+- Border-radius: 4px
+
+**Save in progress:**
+- The textarea becomes `readonly` (not disabled — keeps styling consistent)
+- Opacity: 0.7 on the textarea
+- Character counter text changes to `"saving..."` (replaces the count temporarily)
+- Duration: typically < 500ms, so no spinner needed. If the save takes > 1s, the "saving..." text is sufficient feedback.
+
+---
+
+#### 31.7 Error States
+
+**API error on load (trip fetch fails):**
+- The notes section is not rendered independently — it loads as part of the trip data. If the trip fetch fails, the entire Trip Details page shows its existing error state. No notes-specific error handling needed for load.
+
+**API error on save:**
+- Textarea remains in edit mode
+- User's typed content is preserved (never discarded on error)
+- Error message appears below the action hints row: `"Failed to save. Your changes are preserved — try again."` — font-size 12px, color `rgba(220, 80, 80, 0.9)`, margin-top 8px
+- The error message disappears when the user successfully saves or presses Escape
+
+**Character limit exceeded (client-side prevention):**
+- The `maxlength="5000"` attribute prevents typing beyond the limit
+- The character counter turns danger color (`rgba(220, 80, 80, 0.9)`) at 4900+ characters as a visual warning
+- No toast or modal — the counter is sufficient feedback
+
+**Network offline:**
+- Same as API error on save — the textarea stays open with the user's content, and the error message appears
+- If the browser fires an `online` event, do NOT auto-retry. Let the user explicitly trigger save (blur or Cmd/Ctrl+Enter).
+
+---
+
+#### 31.8 Responsive Behavior
+
+**Desktop (≥ 768px):**
+- Notes container spans full width of the content area (up to max 1120px)
+- Padding: 24px
+- Textarea min-height: 160px, max-height: 480px
+- Action hints and character counter on the same row below textarea (flexbox, `justify-content: space-between`)
+
+**Mobile (< 768px):**
+- Notes container spans full width minus page padding (16px each side on mobile)
+- Padding: 16px
+- Textarea min-height: 120px, max-height: 320px
+- Action hints and character counter stack vertically:
+  - Action hints on first row (left-aligned)
+  - Character counter on second row (left-aligned)
+  - Gap: 4px between rows
+- The "click to edit" hover hint in View Mode is always visible on mobile (since there's no hover) — show it at `opacity: 0.5` by default
+- Touch: tapping the container enters edit mode (same as click)
+
+---
+
+#### 31.9 Accessibility
+
+- **Container role:** The view-mode container should have `role="button"` and `tabindex="0"` so keyboard users can focus and activate it
+- **Keyboard activation:** Pressing `Enter` or `Space` on the focused view-mode container activates edit mode (same as click)
+- **aria-label on view container:** `"Trip notes. Click to edit."` when notes exist. `"No trip notes. Click to add."` when empty.
+- **Textarea label:** The section header `"notes"` serves as the visual label. Add a hidden `<label for="trip-notes-textarea">Trip notes</label>` or use `aria-label="Trip notes"` on the textarea.
+- **Character counter:** Use `aria-live="polite"` on the character counter element so screen readers announce count changes (debounced — update every 500ms of inactivity, not on every keystroke)
+- **Save confirmation:** The green border flash is visual-only. Add an `aria-live="polite"` region that announces `"Notes saved"` on successful save.
+- **Error announcement:** The error message container should have `role="alert"` so screen readers announce it immediately.
+- **Escape key:** Standard behavior — reverts and exits. Announced via the action hints text.
+- **Focus management:** When entering edit mode, focus moves to the textarea. When exiting edit mode (save or cancel), focus returns to the view-mode container.
+- **Color contrast:** All text meets WCAG AA. `#FCFCFC` on `#30292F` = ratio ~11:1. `#FCFCFC` on `#3F4045` = ratio ~8:1. Muted text `rgba(252,252,252,0.5)` on `#30292F` ≈ ratio ~5.5:1 (passes AA for large text; the 11px labels are small but at 0.5 opacity this is borderline — consistent with existing convention across all specs).
+
+---
+
+#### 31.10 Data Contract
+
+The notes field relies on the API contract being published by T-298. Expected shape:
+
+```
+GET /trips/:id → { ..., notes: string | null, ... }
+PATCH /trips/:id → { notes: string } → { ..., notes: string, ... }
+```
+
+- `notes` is a string, nullable, max 5000 characters
+- XSS sanitization is applied server-side (T-299)
+- The frontend should NOT apply any HTML sanitization — display the text as plain text via `pre-wrap` (no `dangerouslySetInnerHTML`, no markdown rendering)
+- Empty string `""` and `null` are both treated as "no notes" (show empty state)
+
+---
+
+#### 31.11 Component Structure (Suggested)
+
+```
+TripNotesSection/
+├── TripNotesSection.jsx    — Main component (handles view/edit toggle, API calls)
+├── TripNotesSection.css    — Styles
+└── TripNotesSection.test.jsx — Tests
+```
+
+**Props:**
+- `notes: string | null` — current notes value from trip data
+- `tripId: string` — trip ID for the PATCH call
+- `onNotesUpdated: (updatedNotes: string) => void` — callback to update parent state after successful save
+
+**Internal State:**
+- `isEditing: boolean` — toggles between view and edit mode
+- `draftText: string` — current textarea value (initialized from `notes` prop)
+- `isSaving: boolean` — true while PATCH is in flight
+- `saveError: string | null` — error message from failed save
+- `showSaveConfirmation: boolean` — triggers the green border flash
+
+---
+
+*Spec 31 (Sprint 39 — Trip Notes Section, T-297, B-030) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-25.*
+
+---
+
+---
+
+## Sprint #40 Design Agent Review — 2026-03-30
+
+**Design Agent Status:** One targeted spec addendum for T-307 — stay checkout time display on calendar end days (FB-189/B-040). This is a small enhancement to the existing calendar chip rendering, consistent with the FLIGHT "Arrives" and LAND_TRAVEL "Arrives/Drop-off" end-day label patterns already implemented in Sprint 33 (Spec 28).
+
+**Sprint #40 scope review:**
+
+| Task | Description | Design Impact |
+|------|-------------|---------------|
+| T-305 | Deploy Engineer: Production deployment | None — infrastructure only |
+| T-306 | Backend Engineer: API contract docs fix | None — documentation only |
+| T-307 | Design Agent: UI spec for stay checkout time on calendar | **See Spec 32 below** |
+| T-308 | Frontend Engineer: Implement stay checkout time | Blocked by T-307 spec |
+| T-309 | QA Engineer: Integration testing | None — testing only |
+| T-310 | Monitor Agent: Production health check | None — monitoring only |
+| T-311 | User Agent: Production walkthrough | None — verification only |
+
+**Design System Conventions:** Stable. No additions or modifications proposed.
+
+---
+
+### Spec 32: Stay Checkout Time on Calendar End Days (FB-189/B-040)
+
+**Sprint:** #40
+**Related Task:** T-307 (Design), T-308 (Frontend Implementation)
+**Feedback Source:** FB-189 (Sprint 35 — "Stay events on the calendar should display the checkout time on the end date")
+**Status:** Approved
+
+**Description:**
+Multi-day STAY events on the TripCalendar currently display check-in time on the first day (e.g., `"4p"`) but show no text on the last day (checkout day) — just an empty continuation pill. This is inconsistent with FLIGHT events (which show `"Arrives {time}"` on the arrival day) and LAND_TRAVEL events (which show `"Arrives {time}"` or `"Drop-off {time}"` on the arrival day). Both of these end-day labels were implemented in Sprint 33 (Spec 28, T-264).
+
+This spec adds a `"Checkout {time}"` label on STAY end-day chips on both the desktop calendar grid and the mobile `MobileDayList`, following the same pattern established for FLIGHT and LAND_TRAVEL.
+
+**No new components, no new CSS tokens, no API changes, no backend changes.**
+
+---
+
+#### 32.1 Overview — What Changes
+
+| View | Current Behavior (STAY end day) | New Behavior (STAY end day) |
+|------|--------------------------------|----------------------------|
+| Desktop calendar grid (`renderEventPill`) | Empty continuation pill — no text, no time | Pill shows `"Checkout {time}"` label (e.g., `"Checkout 11a"`) |
+| Mobile day list (`MobileDayList`) | Row shows stay name with `"(cont.)"` or no special end-day treatment | Row shows `"{name} — Checkout {time}"` (e.g., `"Hyatt Regency SF — Checkout 11a"`) |
+
+**Consistent pattern across all multi-day event types on end day:**
+
+| Event Type | End-Day Label (Desktop Pill) | End-Day Label (Mobile Row) |
+|------------|-----------------------------|-----------------------------|
+| FLIGHT | `"Arrives 3:45p"` | `"DL1234 — Arrives 3:45p"` |
+| LAND_TRAVEL | `"Arrives 10:30a"` or `"Drop-off 2p"` | `"Train — Arrives 10:30a"` or `"Rental Car — Drop-off 2p"` |
+| **STAY (NEW)** | **`"Checkout 11a"`** | **`"Hyatt Regency SF — Checkout 11a"`** |
+
+---
+
+#### 32.2 Time Source
+
+| Field | Source | Timezone Handling |
+|-------|--------|------------------|
+| Checkout time | `end_time` field from the calendar API response | Already in local time format (the calendar API returns pre-formatted times). Pass to `formatCalendarTime()` / `formatTime()` — the same helper already used by FLIGHT and LAND_TRAVEL end-day labels. |
+
+**Fallback:** If `end_time` is `null` or `undefined`, display `"Checkout"` without a time (matches the FLIGHT/LAND_TRAVEL pattern where missing arrival time shows `"Arrives"` alone).
+
+---
+
+#### 32.3 Desktop Calendar Grid — `renderEventPill` Changes
+
+##### 32.3.1 Current Code Path
+
+In `renderEventPill()`, the STAY end-day chip currently falls through to:
+```javascript
+const showText = event.type !== 'STAY' || event._isFirst || event._dayType === 'single';
+displayText = showText ? (timeStr ? `${timeStr} ${event.title}` : event.title) : null;
+```
+
+Since `event._isFirst` is `false` and `event._dayType` is `'end'` (not `'single'`), `showText` evaluates to `false`, and `displayText` is `null`. The pill renders as an empty colored bar.
+
+##### 32.3.2 Updated Logic
+
+Add a STAY end-day branch before the existing STAY fallthrough, mirroring the FLIGHT end-day branch:
+
+```javascript
+// Existing FLIGHT end-day branch (T-264):
+if (event.type === 'FLIGHT' && event._dayType === 'end') {
+  displayText = buildArrivalLabel(event);
+  ariaLabel = `Flight: ${event.title}, ${displayText.toLowerCase()}`;
+}
+
+// NEW — STAY end-day branch (T-308):
+else if (event.type === 'STAY' && event._dayType === 'end') {
+  const checkoutTime = formatTime(event.end_time);
+  displayText = checkoutTime ? `Checkout ${checkoutTime}` : 'Checkout';
+  ariaLabel = `Stay: ${event.title}, checkout ${checkoutTime || ''}`.trim();
+}
+```
+
+**Alternatively**, extend `buildArrivalLabel()` to handle STAY:
+```javascript
+function buildArrivalLabel(ev) {
+  const arrTime = formatTime(ev.end_time);
+  if (ev.type === 'FLIGHT') {
+    return arrTime ? `Arrives ${arrTime}` : 'Arrives';
+  }
+  if (ev.type === 'LAND_TRAVEL') {
+    const rawMode = ev.title ? ev.title.split(' — ')[0] : '';
+    const isRentalCar = rawMode.toUpperCase() === 'RENTAL_CAR';
+    const prefix = isRentalCar ? 'Drop-off' : 'Arrives';
+    return arrTime ? `${prefix} ${arrTime}` : prefix;
+  }
+  if (ev.type === 'STAY') {
+    return arrTime ? `Checkout ${arrTime}` : 'Checkout';
+  }
+  return '';
+}
+```
+
+The Frontend Engineer may choose either approach. The key requirement: **STAY end-day pills must display text, not be empty.**
+
+##### 32.3.3 Visual Treatment — Desktop Pill
+
+The STAY end-day pill retains its existing span styling (border-radius `0 var(--radius-sm) var(--radius-sm) 0`, no left border). The only change is that it now contains text:
+
+```
+┌─────────────────────────┐     ┌─────────────────────────┐
+│ Hyatt Regency SF        │     │                         │     ← BEFORE (end day: empty)
+│ 4p                      │ ... │                         │
+└─────────────────────────┘     └─────────────────────────┘
+  check-in day                    checkout day
+
+┌─────────────────────────┐     ┌─────────────────────────┐
+│ Hyatt Regency SF        │     │ Checkout 11a            │     ← AFTER (end day: has label)
+│ 4p                      │ ... │                         │
+└─────────────────────────┘     └─────────────────────────┘
+  check-in day                    checkout day
+```
+
+- **Text:** `"Checkout {time}"` — e.g., `"Checkout 11a"` or `"Checkout"` (no time)
+- **Font:** IBM Plex Mono 10px, `var(--event-stay-text)`, same as the start-day pill text
+- **Truncation:** `text-overflow: ellipsis; white-space: nowrap; overflow: hidden` — same as all other pills
+- **No separate `.eventTime` sub-element needed.** The entire string `"Checkout 11a"` is the pill's display text, rendered the same way `"Arrives 3:45p"` is rendered for FLIGHT end days — as a single text node.
+
+---
+
+#### 32.4 Mobile Day List — `MobileDayList` Changes
+
+##### 32.4.1 Current Mobile STAY End-Day Rendering
+
+In `MobileDayList`, STAY events on their end day currently render the same as middle days — either with a `"(cont.)"` suffix or with the stay name only. There is no checkout time displayed.
+
+##### 32.4.2 Updated Mobile STAY End-Day Rendering
+
+On the end day (`_dayType === 'end'`), the STAY row should display:
+
+```
+{name} — Checkout {time}
+```
+
+Examples:
+- `"Hyatt Regency SF — Checkout 11a"`
+- `"Airbnb Downtown — Checkout 10a"`
+- `"Hyatt Regency SF — Checkout"` (if no checkout time available)
+
+This follows the established FLIGHT and LAND_TRAVEL mobile end-day pattern:
+- FLIGHT end day: `"DL1234 — Arrives 3:45p"`
+- LAND_TRAVEL end day: `"Train — Arrives 10:30a"`
+- **STAY end day (NEW):** `"Hyatt Regency SF — Checkout 11a"`
+
+##### 32.4.3 Implementation in MobileDayList
+
+Locate the STAY rendering branch in `MobileDayList`. Add an end-day check:
+
+```javascript
+// Inside the STAY branch of MobileDayList event rendering:
+if (ev.type === 'STAY') {
+  const mdt = ev._dayType;
+  if (mdt === 'start' || mdt === 'single') {
+    // Existing: show stay name with check-in time
+    displayTitle = ev.title;
+    timeStr = formatTime(ev.start_time);
+  } else if (mdt === 'end') {
+    // NEW (T-308): show stay name with checkout time
+    const checkoutTime = formatTime(ev.end_time);
+    timeStr = null; // time is embedded in the display title
+    displayTitle = checkoutTime
+      ? `${ev.title} — Checkout ${checkoutTime}`
+      : `${ev.title} — Checkout`;
+  } else {
+    // Middle day: continuation
+    displayTitle = `${ev.title} (cont.)`;
+    timeStr = null;
+    rowStyle = { opacity: 0.6 };
+  }
+}
+```
+
+- **Color:** Use `var(--event-stay-text)` via the existing `.mobileEventStay` CSS class — no change
+- **Row styling:** End-day rows render at full opacity (same as start-day rows). Only middle-day rows use `opacity: 0.6`.
+
+---
+
+#### 32.5 Single-Day Stay (start_date === end_date)
+
+When a stay has the same check-in and check-out date (`_dayType === 'single'`), there is only one chip/row. This spec does NOT change single-day stay behavior:
+
+- **Desktop:** Single pill with stay name + check-in time (existing behavior)
+- **Mobile:** Single row with stay name + check-in time (existing behavior)
+
+**Rationale:** The CAL-3.5 spec (Sprint 7, Spec 13) already defines single-day stay behavior with both check-in and check-out times shown inline as `"4p → check-out 11a"`. If that pattern is already implemented, leave it as-is. If it was never implemented, the Frontend Engineer may optionally add it as part of T-308 — but it is **not required** for this sprint. The primary deliverable is the multi-day end-day label.
+
+---
+
+#### 32.6 Edge Cases
+
+| Case | Expected Behavior |
+|------|-------------------|
+| STAY end day with `end_time` = null | Desktop pill: `"Checkout"` (no time). Mobile row: `"{name} — Checkout"`. |
+| STAY end day with `end_time` = `"00:00"` | Desktop pill: `"Checkout 12a"`. Mobile row: `"{name} — Checkout 12a"`. Midnight checkout is unusual but should render correctly. |
+| STAY spanning 2 days (check-in today, checkout tomorrow) | Start day: name + check-in time. End day: `"Checkout {time}"`. No middle days. |
+| STAY spanning many days (e.g., 7-night hotel) | Start day: name + check-in time. Middle days (5): continuation (no text on desktop, `"(cont.)"` on mobile). End day: `"Checkout {time}"`. |
+| STAY checkout day has other events (flight, activity) | Both render in the same cell. STAY checkout pill + other event pill(s), stacked per priority order (Spec 28.6). No conflict. |
+| Multiple stays checking out on the same day | Each stay renders its own `"Checkout {time}"` pill/row. They stack normally. |
+| STAY end day extends beyond displayed month | The portion within the displayed month renders. If the end day is in the next month, it appears in the out-of-month cells per existing behavior, or not at all — consistent with FLIGHT/LAND_TRAVEL month-boundary handling. |
+
+---
+
+#### 32.7 Accessibility
+
+| Requirement | Implementation |
+|-------------|---------------|
+| Desktop pill `aria-label` | `"Stay: {name}, checkout {time}"` — e.g., `aria-label="Stay: Hyatt Regency SF, checkout 11:00 AM"`. Use full time format in aria-label for clarity. |
+| Desktop pill `aria-label` (no time) | `"Stay: {name}, checkout"` — e.g., `aria-label="Stay: Hyatt Regency SF, checkout"` |
+| Mobile row | Inherits the existing mobile row accessibility pattern. The display text itself (`"{name} — Checkout {time}"`) serves as the accessible label. |
+| Keyboard | No change — pills are already focusable with `tabIndex={0}` and `role="button"`. |
+| Screen reader | End-day labels provide additional context that was previously missing. Users now know which day is checkout without inspecting the stays section. |
+
+---
+
+#### 32.8 Responsive Summary
+
+| Breakpoint | STAY End-Day Behavior |
+|------------|----------------------|
+| Desktop (≥768px) | Pill with `"Checkout {time}"` text, STAY color, end-span border-radius |
+| Tablet (640–767px) | Same as desktop |
+| Mobile list (<640px) | Row with `"{name} — Checkout {time}"`, STAY color accent |
+| Mobile dot (<640px grid) | Colored dot on checkout day (already present — no change) |
+
+---
+
+#### 32.9 Files to Modify (T-308)
+
+| File | Change |
+|------|--------|
+| `frontend/src/components/TripCalendar.jsx` | Add STAY end-day branch in `renderEventPill()` to display `"Checkout {time}"`. Optionally extend `buildArrivalLabel()` to handle STAY type. Update `MobileDayList` STAY rendering to show `"{name} — Checkout {time}"` on end days. |
+| `frontend/src/__tests__/TripCalendar.test.jsx` | Add tests per 32.10 below. |
+
+**No CSS changes. No new CSS tokens. No API changes. No backend changes. No new components.**
+
+---
+
+#### 32.10 Test Plan (T-308)
+
+**Test 32.A — STAY end-day pill shows checkout time on desktop**
+```
+Given: GET /calendar returns a STAY event with title "Hyatt Regency SF",
+       start_date="2026-08-07", end_date="2026-08-09",
+       start_time="16:00", end_time="11:00"
+When:  TripCalendar renders August 2026 at desktop width (≥768px)
+Then:  August 7 pill shows "Hyatt Regency SF" with check-in time
+And:   August 9 pill shows "Checkout 11a"
+And:   August 8 pill shows no text (middle day continuation)
+```
+
+**Test 32.B — STAY end-day pill with no checkout time**
+```
+Given: GET /calendar returns a STAY event with title "Airbnb Downtown",
+       start_date="2026-08-10", end_date="2026-08-12",
+       start_time="15:00", end_time=null
+When:  TripCalendar renders August 2026 at desktop width
+Then:  August 12 pill shows "Checkout" (no time)
+```
+
+**Test 32.C — STAY end-day in MobileDayList shows checkout time**
+```
+Given: GET /calendar returns a STAY event with title "Hyatt Regency SF",
+       start_date="2026-08-07", end_date="2026-08-09",
+       start_time="16:00", end_time="11:00"
+When:  TripCalendar renders at mobile width (<640px, MobileDayList mode)
+Then:  August 9 row shows "Hyatt Regency SF — Checkout 11a"
+And:   August 8 row shows "Hyatt Regency SF (cont.)" at reduced opacity
+```
+
+**Test 32.D — Existing FLIGHT and LAND_TRAVEL end-day labels unaffected**
+```
+Given: GET /calendar returns a FLIGHT event (start_date="2026-08-07", end_date="2026-08-08",
+       end_time="15:45") and a LAND_TRAVEL event (start_date="2026-08-10", end_date="2026-08-11",
+       end_time="10:30", title="Train — NYC → Boston")
+When:  TripCalendar renders August 2026
+Then:  August 8 FLIGHT pill shows "Arrives 3:45p"
+And:   August 11 LAND_TRAVEL pill shows "Arrives 10:30a"
+And:   No regression in existing end-day label behavior
+```
+
+**Test 32.E — STAY end-day pill has correct aria-label**
+```
+Given: A STAY event with title "Hyatt Regency SF", end_time="11:00" on checkout day
+When:  The checkout-day pill renders
+Then:  The pill has aria-label containing "checkout" and the stay name
+```
+
+---
+
+#### 32.11 Design Rationale
+
+1. **"Checkout" not "Check-out":** The label uses `"Checkout"` (one word, capital C) rather than `"check-out"` (hyphenated, lowercase) from the earlier CAL-3.2 spec (Sprint 7). This aligns with the capitalized labels used by FLIGHT (`"Arrives"`) and LAND_TRAVEL (`"Arrives"` / `"Drop-off"`). Consistency across event types is more important than matching the Sprint 7 spec verbatim.
+
+2. **Same rendering pattern as FLIGHT/LAND_TRAVEL:** Rather than using a separate `.eventTime` sub-element (as CAL-3.2 originally proposed), the checkout label is rendered as the pill's primary display text — identical to how `"Arrives 3:45p"` is rendered for FLIGHT end days. This keeps the implementation simple and consistent.
+
+3. **No single-day stay changes:** The single-day stay case (CAL-3.5) is left as-is. If the combined `"4p → check-out 11a"` format from Spec 13 is already implemented, it will continue to work. If not, it's out of scope for this sprint — the primary UX gap is multi-day stays.
+
+---
+
+*Spec 32 (Sprint 40 — Stay Checkout Time on Calendar End Days, T-307, FB-189/B-040) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-30.*
+
+---
+
+**Design System Conventions:** Stable. No additions or modifications proposed. All tokens, spacing, and typography conventions from the table at the top of this document remain in effect.
+
+---
+
+*Sprint #40 design spec complete. Published by Design Agent 2026-03-30.*
+
+---
+
+### Spec 33: Trip Print View Enhancement — Calendar Summary for Print (B-032)
+
+**Sprint:** #41
+**Related Task:** T-312 (Design), T-315 (Frontend Implementation)
+**Backlog Item:** B-032
+**Status:** Approved
+
+**Description:**
+Sprint 10's Spec 15 (T-121/T-122) delivered the initial trip print feature: a Print button, `@media print` CSS stylesheet, and `window.print()` integration. That implementation hides the interactive `TripCalendar` component entirely in print (`calendarWrapper { display: none }`), leaving a gap — the printed itinerary has no visual timeline overview.
+
+Spec 33 enhances the print view by adding a **PrintCalendarSummary** component: a static, text-based, day-by-day itinerary summary table that appears **only in print** (hidden on screen). It occupies the position where the interactive calendar would be, giving the printed document a compact chronological overview of the entire trip before the detailed section breakdowns.
+
+**What changes from Spec 15:**
+- The interactive calendar remains hidden in print (no change)
+- A new `PrintCalendarSummary` component is added to TripDetailsPage, rendered below the page header and above the first data section
+- The component is `display: none` on screen and `display: block` in `@media print`
+- Minor updates to `print.css` for the new component's print styles
+- The existing Print button, print stylesheet structure, and all other Spec 15 rules remain unchanged
+
+**Target User:** Detail-oriented travelers who print their itinerary for offline reference. The calendar summary gives them a single-page-glanceable timeline without needing the interactive calendar UI.
+
+---
+
+#### 33.1 Component: PrintCalendarSummary
+
+**Purpose:** Render a flat, day-by-day table summarizing all events (flights, land travel, stays, activities) across the trip date range. This is a read-only, print-optimized component — no interactivity, no hover states, no click handlers.
+
+**Visibility:**
+- **Screen:** `display: none` — completely hidden. The interactive `TripCalendar` handles the on-screen experience.
+- **Print:** `display: block` — visible, rendered between the page header (trip name, destinations, date range, notes) and the first data section (Flights).
+
+**Data Source:** The component receives props from the parent `TripDetailsPage`. It does NOT make its own API calls. It uses the same data already fetched by `useTripDetails` — `flights`, `stays`, `activities`, and `landTravel` arrays — plus the trip's `start_date` and `end_date` from the trip object.
+
+**Props:**
+```
+{
+  trip: { name, start_date, end_date, ... },
+  flights: Flight[],
+  stays: Stay[],
+  activities: Activity[],
+  landTravel: LandTravel[]
+}
+```
+
+---
+
+#### 33.2 Calendar Summary Layout — Print Rendering
+
+The summary renders as a vertical table with one row per day of the trip. Days with no events are still listed (to show gaps). The table is compact and fits well on A4 paper.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  ITINERARY OVERVIEW                                              │
+│  ────────────────────────────────────────────────────────────    │
+│                                                                  │
+│  DATE              EVENTS                                        │
+│  ─────────────     ──────────────────────────────────────────   │
+│  Thu, Aug 7        ✈ DL006 JFK → NRT  dep 11:00a EDT            │
+│                    🏨 Check-in: Hyatt Regency Tokyo  4:00p JST   │
+│                                                                  │
+│  Fri, Aug 8        🎯 Fisherman's Wharf  9:00a – 2:00p          │
+│                    🎯 Golden Gate Bridge  3:00p – 7:00p          │
+│                                                                  │
+│  Sat, Aug 9        🏨 Checkout: Hyatt Regency Tokyo  11:00a JST │
+│                    🎯 Dim sum in Chinatown  9:00a – 12:00p       │
+│                                                                  │
+│  Sun, Aug 10       — (no events)                                 │
+│                                                                  │
+│  Mon, Aug 11       🚄 Shinkansen Tokyo → Osaka  dep 8:30a       │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Important:** The emoji-like prefixes shown above (✈, 🏨, 🎯, 🚄) are used only to illustrate the concept. In the actual implementation, **do not use emoji**. Instead, use plain-text uppercase labels:
+
+| Event Type | Print Label Prefix |
+|------------|-------------------|
+| Flight (departure) | `FLT` |
+| Flight (arrival) | `FLT ARR` |
+| Stay (check-in) | `STAY IN` |
+| Stay (checkout) | `STAY OUT` |
+| Activity | `ACT` |
+| Land Travel (departure) | `LT` |
+| Land Travel (arrival) | `LT ARR` |
+
+**Example with actual labels:**
+```
+Thu, Aug 7        FLT  DL006 JFK → NRT  dep 11:00a EDT
+                  STAY IN  Hyatt Regency Tokyo  4:00p JST
+Fri, Aug 8        ACT  Fisherman's Wharf  9:00a – 2:00p
+                  ACT  Golden Gate Bridge  3:00p – 7:00p
+Sat, Aug 9        STAY OUT  Hyatt Regency Tokyo  11:00a JST
+                  ACT  Dim sum in Chinatown  9:00a – 12:00p
+```
+
+---
+
+#### 33.3 Section Header
+
+The calendar summary section uses a section header that matches the existing section header pattern, but with a distinct label:
+
+- **Label:** `"itinerary overview"` — font-size 9pt, font-weight 700, letter-spacing 0.12em, uppercase, color `#000` (in print)
+- **Horizontal rule:** `border-bottom: 1px solid #000` on the header row (same pattern as Flights/Stays/Activities section headers in print — see Spec 15 section 15.5 rule 7)
+- **Margin below header:** 12pt
+
+---
+
+#### 33.4 Day Row Structure
+
+Each day is a row in the summary. Structure:
+
+**Date Column (left):**
+- Width: ~120pt (fixed, to align all event descriptions)
+- Format: `ddd, MMM D` — e.g., `"Thu, Aug 7"` (abbreviated weekday, abbreviated month, day number, no year since the date range is shown in the page header)
+- Font-size: 10pt
+- Font-weight: 600
+- Color: `#000`
+- The date label appears only on the first event row for that day; subsequent events for the same day leave the date column blank (visual grouping by day)
+
+**Events Column (right):**
+- Each event is a single line of text
+- Font-size: 9pt
+- Font-weight: 400
+- Color: `#000`
+- Format: `[TYPE LABEL]  [title/name]  [time info]`
+- The type label is font-weight 600, letter-spacing 0.06em
+- Multiple events for the same day are stacked vertically with 4pt spacing between them
+
+**No-event days:**
+- Show the date in the date column
+- Events column shows: `"—"` (em-dash) in `#999` color, font-style: italic
+- This makes gaps visible so the traveler can see "free" days
+
+**Day separator:**
+- Between each day, a subtle horizontal line: `border-bottom: 1px solid #eee` with 6pt margin above and below
+- The last day has no trailing separator
+
+---
+
+#### 33.5 Event Ordering Within a Day
+
+Events within a single day are sorted chronologically by their start time, following these rules:
+
+1. **Flights (departure):** Sorted by `departure_at` time. Shown as: `FLT  [airline] [flight_number] [from] → [to]  dep [time] [tz]`
+2. **Flights (arrival):** If a flight arrives on a different day than it departs, show the arrival event on the arrival day. Shown as: `FLT ARR  [airline] [flight_number] [from] → [to]  arr [time] [tz]`
+3. **Land Travel (departure):** Sorted by `departure_at`. Shown as: `LT  [mode] [from] → [to]  dep [time]`
+4. **Land Travel (arrival):** If arrival is on a different day, show on arrival day. Shown as: `LT ARR  [mode] [from] → [to]  arr [time]`
+5. **Stay (check-in):** On the check-in date. Shown as: `STAY IN  [name]  [check_in_time] [tz]`
+6. **Stay (checkout):** On the checkout date. Shown as: `STAY OUT  [name]  [check_out_time] [tz]`
+7. **Activities:** Sorted by `start_time`. Shown as: `ACT  [name]  [start_time] – [end_time]`
+
+If two events have the same time, the order is: Flights > Land Travel > Stays > Activities (most constrained first).
+
+---
+
+#### 33.6 Date Range Handling
+
+**Trip has start_date and end_date:** Iterate from `start_date` to `end_date` inclusive, generating one row per day. Days with no events still appear.
+
+**Trip has no date range set:** Derive the range from the data:
+- Start: earliest date among all flights (departure), stays (check-in), activities (date), land travel (departure)
+- End: latest date among all flights (arrival), stays (checkout), activities (date), land travel (arrival)
+- If no data exists at all, the component renders nothing (returns `null`)
+
+**Single-day trip:** Show one row.
+
+**Long trips (>21 days):** Show all days. The component is text-based and compact; even a 30-day trip produces ~30 rows which fits on 1–2 printed pages. No truncation or pagination needed.
+
+---
+
+#### 33.7 CSS — Screen (Hidden)
+
+Add to `TripDetailsPage.module.css`:
+
+```css
+/* ── Print Calendar Summary (hidden on screen) ── */
+.printCalendarSummary {
+  display: none;
+}
+```
+
+This class wraps the entire `PrintCalendarSummary` component in TripDetailsPage.jsx.
+
+---
+
+#### 33.8 CSS — Print (Visible)
+
+Add to `frontend/src/styles/print.css` inside the existing `@media print { }` block:
+
+```css
+  /* ── 15. Print Calendar Summary (visible only in print) ── */
+  [class*="printCalendarSummary"] {
+    display: block !important;
+    margin-bottom: 24pt;
+    page-break-inside: avoid;
+  }
+
+  [class*="summaryTable"] {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  [class*="summaryDayRow"] {
+    border-bottom: 1px solid #eee !important;
+  }
+
+  [class*="summaryDayRow"]:last-child {
+    border-bottom: none !important;
+  }
+
+  [class*="summaryDateCell"] {
+    width: 120pt;
+    padding: 6pt 8pt 6pt 0;
+    font-size: 10pt;
+    font-weight: 600;
+    color: #000 !important;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+
+  [class*="summaryEventsCell"] {
+    padding: 6pt 0;
+    font-size: 9pt;
+    font-weight: 400;
+    color: #000 !important;
+    vertical-align: top;
+  }
+
+  [class*="summaryEventLine"] {
+    margin-bottom: 4pt;
+  }
+
+  [class*="summaryEventLine"]:last-child {
+    margin-bottom: 0;
+  }
+
+  [class*="summaryTypeLabel"] {
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    font-size: 8pt;
+    display: inline-block;
+    min-width: 55pt;
+  }
+
+  [class*="summaryNoEvents"] {
+    color: #999 !important;
+    font-style: italic;
+  }
+
+  /* Section header for the summary */
+  [class*="summarySectionHeader"] {
+    display: flex !important;
+    align-items: center;
+    margin-bottom: 12pt;
+    border-bottom: 1px solid #000 !important;
+    padding-bottom: 4pt;
+  }
+
+  [class*="summarySectionTitle"] {
+    font-size: 9pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+    color: #000 !important;
+  }
+```
+
+---
+
+#### 33.9 JSX Placement in TripDetailsPage.jsx
+
+The `PrintCalendarSummary` component is placed in TripDetailsPage's render output **between the page header and the TripCalendar wrapper**. The interactive calendar remains — it's hidden in print by the existing `calendarWrapper` rule. The print summary is hidden on screen by the `.printCalendarSummary` class.
+
+**Updated section order in TripDetailsPage render:**
+
+```
+[ Navbar ]
+[ Page Header: back link, trip name + print button, destinations, date range ]
+[ TripNotesSection ]
+[ PrintCalendarSummary ]    ← NEW (hidden on screen, visible in print)
+[ TripCalendar ]            ← existing (visible on screen, hidden in print)
+[ Flights Section ]
+[ Stays Section ]
+[ Activities Section ]
+[ Land Travel Section ]
+```
+
+**JSX insertion point:**
+
+```jsx
+{/* Print-only: calendar summary */}
+<div className={styles.printCalendarSummary}>
+  <PrintCalendarSummary
+    trip={trip}
+    flights={flights}
+    stays={stays}
+    activities={activities}
+    landTravel={landTravel}
+  />
+</div>
+
+{/* Screen-only: interactive calendar */}
+<div className={styles.calendarWrapper}>
+  <TripCalendar tripId={tripId} />
+</div>
+```
+
+---
+
+#### 33.10 Component File
+
+**New file:** `frontend/src/components/PrintCalendarSummary.jsx`
+
+This is a pure presentational component. It receives data props and renders the day-by-day table. It has no internal state, no side effects, no API calls.
+
+**Helper functions needed inside the component:**
+
+1. `getDateRange(trip, flights, stays, activities, landTravel)` — returns `{ startDate, endDate }` as Date objects. Uses trip dates if available, otherwise derives from data.
+
+2. `buildDayMap(flights, stays, activities, landTravel)` — returns a `Map<dateString, Event[]>` where `dateString` is `YYYY-MM-DD` and each Event is:
+   ```
+   { type: string, label: string, title: string, timeInfo: string, sortTime: string }
+   ```
+
+3. `formatDayLabel(date)` — returns `"Thu, Aug 7"` format using `Intl.DateTimeFormat`.
+
+4. `eachDayOfRange(startDate, endDate)` — returns an array of `YYYY-MM-DD` strings for each day in the range, inclusive.
+
+**Rendering logic:**
+```
+1. Compute date range
+2. Build day map from all event arrays
+3. Generate array of all days in range
+4. For each day:
+   a. Look up events in day map
+   b. Sort events by sortTime, then by type priority
+   c. Render day row with date label + event lines
+   d. If no events, render "—" placeholder
+```
+
+---
+
+#### 33.11 Event Building Logic — Detail
+
+**From `flights` array:**
+Each flight produces 1 or 2 events:
+- **Departure event:** date = departure date (from `departure_at`), sortTime = departure time, type = `"FLT"`, title = `"[airline] [flight_number] [from_location] → [to_location]"`, timeInfo = `"dep [formatted_time] [tz_abbr]"`
+- **Arrival event (if arrival date ≠ departure date):** date = arrival date (from `arrival_at`), sortTime = arrival time, type = `"FLT ARR"`, title = same as departure, timeInfo = `"arr [formatted_time] [tz_abbr]"`
+- If arrival date = departure date, only show the departure event (the arrival is implicit from the detailed Flights section below)
+
+**From `stays` array:**
+Each stay produces 2 events:
+- **Check-in event:** date = check-in date (from `check_in_at`), sortTime = check-in time, type = `"STAY IN"`, title = `"[name]"`, timeInfo = `"[formatted_time] [tz_abbr]"`
+- **Checkout event:** date = checkout date (from `check_out_at`), sortTime = checkout time, type = `"STAY OUT"`, title = `"[name]"`, timeInfo = `"[formatted_time] [tz_abbr]"`
+
+**From `activities` array:**
+Each activity produces 1 event:
+- **Activity event:** date = `activity_date`, sortTime = `start_time`, type = `"ACT"`, title = `"[name]"`, timeInfo = `"[formatted_start] – [formatted_end]"`
+- All-day activities (no start/end time): timeInfo = `"all day"`, sortTime = `"00:00"`
+
+**From `landTravel` array:**
+Each land travel produces 1 or 2 events:
+- **Departure event:** date = departure date, sortTime = departure time, type = `"LT"`, title = `"[mode] [from_location] → [to_location]"`, timeInfo = `"dep [formatted_time]"`
+- **Arrival event (if arrival date ≠ departure date):** date = arrival date, sortTime = arrival time, type = `"LT ARR"`, title = same, timeInfo = `"arr [formatted_time]"`
+
+---
+
+#### 33.12 Time Formatting in the Summary
+
+Use the same `formatTime` and `formatTimezoneAbbr` utilities already in `frontend/src/utils/formatDate.js`. Display times in 12-hour format with lowercase am/pm abbreviation (e.g., `"11:00a"`, `"4:30p"`). Include timezone abbreviation for flights and stays (since these cross timezones). Omit timezone for activities (they're implicitly local).
+
+---
+
+#### 33.13 Empty States
+
+| Condition | Behavior |
+|-----------|----------|
+| **Trip has data in all sections** | Full day-by-day summary rendered |
+| **Trip has data in some sections** | Summary shows events from populated sections; empty sections contribute no events. Days with no events from any section show "—" |
+| **Trip has no data at all (empty trip)** | Component returns `null` — no summary rendered. The printed page shows the trip header and empty section messages as before |
+| **Trip has no date range AND no data** | Component returns `null` |
+| **Trip has no date range BUT has data** | Date range derived from earliest/latest event dates |
+
+---
+
+#### 33.14 Page Break Behavior
+
+- The entire `printCalendarSummary` wrapper has `page-break-inside: avoid` — the browser will try to keep the summary on a single page
+- If the summary is too long for one page (>21 days likely), the browser will break at day row boundaries. Each `summaryDayRow` has `page-break-inside: avoid` to keep a single day's events together
+- The summary section header (`"ITINERARY OVERVIEW"`) should always appear on the same page as the first day row — use `page-break-after: avoid` on the header
+
+---
+
+#### 33.15 Responsive Behavior (Screen)
+
+The component is `display: none` on screen at all breakpoints. There is no screen rendering to consider. The print layout is fixed-width for A4 paper (portrait) — no responsive breakpoints apply.
+
+---
+
+#### 33.16 Accessibility Considerations
+
+| Concern | Implementation |
+|---------|---------------|
+| **Screen readers (screen)** | Component is `display: none` on screen — invisible to assistive technology. No aria attributes needed for the screen experience |
+| **Print accessibility** | Print is a visual medium; the day-by-day text format is inherently accessible when the printed page is later read by document OCR/screen readers (e.g., a scanned PDF). The structured table format with date labels helps document parsers |
+| **Semantic HTML** | Use a `<table>` element for the day grid with `<th>` for the date column header and `<td>` for data cells. This gives the best print rendering and document structure |
+| **No interactive elements** | The component has zero buttons, links, or focusable elements — it is pure static content |
+
+---
+
+#### 33.17 User Flow — Step by Step
+
+1. **User opens TripDetailsPage** — sees the normal dark-theme view with interactive calendar, all sections, and the Print button. The `PrintCalendarSummary` is in the DOM but hidden (`display: none`).
+2. **User clicks "Print"** — `window.print()` fires.
+3. **Print preview renders** — `@media print` CSS activates:
+   - Interactive calendar (`calendarWrapper`) is hidden
+   - `PrintCalendarSummary` (`printCalendarSummary`) becomes visible
+   - The printed page shows: trip header → **ITINERARY OVERVIEW** table → Flights → Land Travel → Stays → Activities
+4. **User sees the itinerary overview** — a compact, day-by-day list of everything happening on the trip, with type labels and times. Free days are visible as "—" rows.
+5. **User prints or saves as PDF** — the overview appears on the first page(s) of the printout, serving as a quick-reference schedule.
+6. **Dialog closes** — page returns to normal screen rendering. The print summary is hidden again.
+
+---
+
+#### 33.18 All States Summary
+
+| State | Screen Behavior | Print Behavior |
+|-------|----------------|----------------|
+| **Normal (trip with data)** | PrintCalendarSummary hidden | Summary table visible with day-by-day events |
+| **Empty trip** | PrintCalendarSummary hidden | Component returns null — not rendered |
+| **Partial data** | PrintCalendarSummary hidden | Summary shows available events; empty days show "—" |
+| **No date range, has data** | PrintCalendarSummary hidden | Range derived from data; summary visible |
+| **No date range, no data** | PrintCalendarSummary hidden | Component returns null |
+| **Loading state** | PrintCalendarSummary hidden | Skeleton elements hidden by existing print.css rule 13 |
+| **Error state** | PrintCalendarSummary not rendered (error branch) | Print button not rendered, so not reachable |
+
+---
+
+#### 33.19 Tests Required (T-315)
+
+Add to `frontend/src/__tests__/PrintCalendarSummary.test.jsx` (new file):
+
+**Test 1 — Component is hidden on screen:**
+```
+Given: PrintCalendarSummary rendered with valid trip and flight data
+When:  Component mounts
+Then:  The wrapper element has class containing "printCalendarSummary"
+  AND: The component renders content (not null) since data exists
+```
+
+**Test 2 — Day rows generated for date range:**
+```
+Given: Trip with start_date="2026-08-07", end_date="2026-08-09"
+  AND: One flight on Aug 7, one activity on Aug 8, nothing on Aug 9
+When:  Component renders
+Then:  3 day rows are present (Aug 7, Aug 8, Aug 9)
+  AND: Aug 7 row contains "FLT" label
+  AND: Aug 8 row contains "ACT" label
+  AND: Aug 9 row contains "—" (no events)
+```
+
+**Test 3 — Returns null for empty trip:**
+```
+Given: Trip with no date range AND empty arrays for flights, stays, activities, landTravel
+When:  Component renders
+Then:  Nothing is rendered (returns null)
+```
+
+**Test 4 — Stay check-in and checkout on different days:**
+```
+Given: Stay with check_in_at on Aug 7 and check_out_at on Aug 9
+When:  Component renders
+Then:  Aug 7 row contains "STAY IN" and the stay name
+  AND: Aug 9 row contains "STAY OUT" and the stay name
+```
+
+**Test 5 — Events sorted by time within a day:**
+```
+Given: Two activities on Aug 8: one at 3:00p, one at 9:00a
+When:  Component renders the Aug 8 row
+Then:  The 9:00a activity appears before the 3:00p activity
+```
+
+**Test 6 — Date range derived from data when trip has no dates:**
+```
+Given: Trip with no start_date/end_date
+  AND: One flight departing Aug 7, one activity on Aug 10
+When:  Component renders
+Then:  Day rows span from Aug 7 to Aug 10 (4 days)
+```
+
+All existing TripDetailsPage tests must continue to pass (no regressions).
+
+---
+
+#### 33.20 Files to Create / Modify (T-315 Summary)
+
+| File | Change Type | Description |
+|------|------------|-------------|
+| `frontend/src/components/PrintCalendarSummary.jsx` | **Create** | New component — day-by-day summary table for print |
+| `frontend/src/components/PrintCalendarSummary.module.css` | **Create** | Screen styles (primarily `display: none` wrapper) |
+| `frontend/src/styles/print.css` | **Modify** | Add rule set 15: print styles for `printCalendarSummary`, `summaryTable`, `summaryDayRow`, etc. |
+| `frontend/src/pages/TripDetailsPage.jsx` | **Modify** | Import and render `PrintCalendarSummary` between notes section and calendar wrapper |
+| `frontend/src/pages/TripDetailsPage.module.css` | **Modify** | Add `.printCalendarSummary` screen-hide class |
+| `frontend/src/__tests__/PrintCalendarSummary.test.jsx` | **Create** | 6 test cases for the new component |
+
+**No backend changes required.** The component uses data already fetched by `useTripDetails`.
+
+---
+
+#### 33.21 Relationship to Spec 15
+
+Spec 33 is an additive enhancement to Spec 15. It does not modify or supersede any Spec 15 rules. The full Spec 15 print stylesheet remains in effect. Spec 33 adds:
+- One new component (`PrintCalendarSummary`)
+- One new CSS rule set in `print.css` (rule 15)
+- One new CSS class in `TripDetailsPage.module.css`
+- One new render element in `TripDetailsPage.jsx`
+
+All existing print behavior (button, hidden UI, color overrides, typography, page setup) is unchanged.
+
+---
+
+*Spec 33 (Sprint 41 — Trip Print View Enhancement: Calendar Summary for Print, T-312, B-032) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-03-30.*
+
+---
+
+**Design System Conventions:** Stable. No additions or modifications proposed. All tokens, spacing, and typography conventions from the table at the top of this document remain in effect.
+
+---
+
+*Sprint #41 design spec complete. Published by Design Agent 2026-03-30.*

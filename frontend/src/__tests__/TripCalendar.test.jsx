@@ -1489,4 +1489,160 @@ describe('TripCalendar — Sprint 25 (T-213)', () => {
       expect(document.querySelector('[role="dialog"]')).not.toBeNull();
     });
   });
+
+  // ── Sprint 40 T-308: Stay Checkout Time on Calendar End Days ──
+
+  // Test 32.A — STAY end-day pill shows checkout time on desktop
+  it('32.A — STAY end-day pill shows "Checkout 11a" on desktop', async () => {
+    const stayEvent = {
+      id: 'stay-checkout-1',
+      type: 'STAY',
+      title: 'Hyatt Regency SF',
+      start_date: '2026-08-07',
+      end_date: '2026-08-09',
+      start_time: '16:00',
+      end_time: '11:00',
+      timezone: 'America/Los_Angeles',
+      source_id: 'stay-co-001',
+    };
+    mockSuccess([stayEvent]);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      const stayPills = document.querySelectorAll('[class*="eventPillStay"]');
+      // 3 days: Aug 7 (start), Aug 8 (middle), Aug 9 (end)
+      expect(stayPills.length).toBe(3);
+      // End-day pill (last one) should show "Checkout 11a"
+      const endPill = stayPills[2];
+      expect(endPill.textContent).toMatch(/Checkout/);
+      expect(endPill.textContent).toMatch(/11a/);
+      // Middle-day pill should have no text
+      expect(stayPills[1].textContent).toBe('');
+      // Start-day pill should show the stay name
+      expect(stayPills[0].textContent).toMatch(/Hyatt Regency SF/);
+    });
+  });
+
+  // Test 32.B — STAY end-day pill with no checkout time
+  it('32.B — STAY end-day pill shows "Checkout" when end_time is null', async () => {
+    const stayNoTime = {
+      id: 'stay-checkout-2',
+      type: 'STAY',
+      title: 'Airbnb Downtown',
+      start_date: '2026-08-10',
+      end_date: '2026-08-12',
+      start_time: '15:00',
+      end_time: null,
+      timezone: 'America/Los_Angeles',
+      source_id: 'stay-co-002',
+    };
+    mockSuccess([stayNoTime]);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      const stayPills = document.querySelectorAll('[class*="eventPillStay"]');
+      expect(stayPills.length).toBe(3);
+      // End-day pill should show "Checkout" with no time
+      const endPill = stayPills[2];
+      expect(endPill.textContent).toBe('Checkout');
+    });
+  });
+
+  // Test 32.C — STAY end-day in MobileDayList shows checkout time
+  it('32.C — STAY end-day in MobileDayList shows "{name} — Checkout {time}"', async () => {
+    // Force mobile width
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 400 });
+    window.dispatchEvent(new Event('resize'));
+    const stayEvent = {
+      id: 'stay-checkout-3',
+      type: 'STAY',
+      title: 'Hyatt Regency SF',
+      start_date: '2026-08-07',
+      end_date: '2026-08-09',
+      start_time: '16:00',
+      end_time: '11:00',
+      timezone: 'America/Los_Angeles',
+      source_id: 'stay-co-003',
+    };
+    mockSuccess([stayEvent]);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      const mobileRows = document.querySelectorAll('[class*="mobileEventStay"]');
+      expect(mobileRows.length).toBeGreaterThanOrEqual(3);
+      // Find the end-day row with checkout text
+      const endDayRow = Array.from(mobileRows).find(r => r.textContent.includes('Checkout'));
+      expect(endDayRow).not.toBeNull();
+      expect(endDayRow.textContent).toMatch(/Hyatt Regency SF/);
+      expect(endDayRow.textContent).toMatch(/Checkout 11a/);
+      // Find the middle-day row with (cont.)
+      const middleRow = Array.from(mobileRows).find(r => r.textContent.includes('(cont.)'));
+      expect(middleRow).not.toBeNull();
+    });
+    // Reset width
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1024 });
+    window.dispatchEvent(new Event('resize'));
+  });
+
+  // Test 32.D — Existing FLIGHT and LAND_TRAVEL end-day labels unaffected
+  it('32.D — FLIGHT and LAND_TRAVEL end-day labels still render correctly after T-308', async () => {
+    const flightEvent = {
+      id: 'flight-reg-1',
+      type: 'FLIGHT',
+      title: 'DL1234 — SFO → JFK',
+      start_date: '2026-08-07',
+      end_date: '2026-08-08',
+      start_time: '22:00',
+      end_time: '15:45',
+      timezone: 'America/Los_Angeles',
+      source_id: 'flight-reg-001',
+    };
+    const ltEvent = {
+      id: 'lt-reg-1',
+      type: 'LAND_TRAVEL',
+      title: 'TRAIN — NYC → Boston',
+      start_date: '2026-08-10',
+      end_date: '2026-08-11',
+      start_time: '08:00',
+      end_time: '10:30',
+      timezone: 'America/New_York',
+      source_id: 'lt-reg-001',
+    };
+    mockSuccess([flightEvent, ltEvent]);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      // FLIGHT end-day pill shows "Arrives 3:45p"
+      const flightPills = document.querySelectorAll('[class*="eventPillFlight"]');
+      expect(flightPills.length).toBe(2);
+      expect(flightPills[1].textContent).toMatch(/Arrives/);
+      expect(flightPills[1].textContent).toMatch(/3:45p/);
+      // LAND_TRAVEL end-day pill shows "Arrives 10:30a"
+      const ltPills = document.querySelectorAll('[class*="eventPillLandTravel"]');
+      expect(ltPills.length).toBe(2);
+      expect(ltPills[1].textContent).toMatch(/Arrives/);
+      expect(ltPills[1].textContent).toMatch(/10:30a/);
+    });
+  });
+
+  // Test 32.E — STAY end-day pill has correct aria-label
+  it('32.E — STAY end-day pill has aria-label containing "checkout" and stay name', async () => {
+    const stayEvent = {
+      id: 'stay-checkout-5',
+      type: 'STAY',
+      title: 'Hyatt Regency SF',
+      start_date: '2026-08-07',
+      end_date: '2026-08-09',
+      start_time: '16:00',
+      end_time: '11:00',
+      timezone: 'America/Los_Angeles',
+      source_id: 'stay-co-005',
+    };
+    mockSuccess([stayEvent]);
+    render(<TripCalendar tripId="trip-001" />);
+    await waitFor(() => {
+      const stayPills = document.querySelectorAll('[class*="eventPillStay"]');
+      expect(stayPills.length).toBe(3);
+      const endPill = stayPills[2];
+      const ariaLabel = endPill.getAttribute('aria-label');
+      expect(ariaLabel).toMatch(/checkout/i);
+      expect(ariaLabel).toMatch(/Hyatt Regency SF/);
+    });
+  });
 });

@@ -3228,7 +3228,7 @@ Findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-293 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Supersedes T-290 and T-283. | Infrastructure | Deploy Engineer | In Progress | P0 | M | 38 | — | FB-207 (Major). Pre-deploy verification PASS (backend 493/493, frontend 510/510, build ✅). Branch pushed to origin. **BLOCKED:** `gh` CLI not authenticated — PR must be created manually at https://github.com/yixinxiao7/triplanner/pull/new/fix/T-279-page-branding-fix. Once PR merged → Render auto-deploys → T-294 can proceed. |
+| T-293 | Deploy Engineer: Deploy to production (Render). Merge feature branch to main via PR, Render auto-deploy, smoke test production. Supersedes T-290 and T-283. | Infrastructure | Deploy Engineer | ✅ Done | P0 | M | 38 | — | FB-207 (Major). PR #8 merged to main 2026-03-25T01:44:03Z. Render auto-deployed. Production smoke tests 13/13 PASS: health ✅, frontend ✅, page title "triplanner" ✅, auth ✅, XSS simple ✅, XSS nested ✅, post-sanitization validation ✅, CRUD ✅, calendar ✅, no 5xx ✅. T-294 unblocked. |
 
 ---
 
@@ -3236,8 +3236,298 @@ Findings:
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-294 | Monitor Agent: Production health check. Full protocol + verify nested XSS fix + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). Supersedes T-291 and T-284. | Infrastructure | Monitor Agent | Backlog | P0 | S | 38 | T-293 | Production must be deployed before health check. |
-| T-295 | User Agent: Production walkthrough. Test all Sprint 35+36+37 features on production. Verify XSS fix, post-sanitization validation, page title, calendar, CRUD regression. Submit feedback to feedback-log.md. | Documentation | User Agent | Backlog | P1 | M | 38 | T-294 | Production must be health-checked before user walkthrough. |
+| T-294 | Monitor Agent: Production health check. Full protocol + verify nested XSS fix + post-sanitization validation + page title on production. Deploy Verified = Yes (Production). Supersedes T-291 and T-284. | Infrastructure | Monitor Agent | Done | P0 | S | 38 | ~~T-293~~ ✅ | ✅ Deploy Verified = Yes. 15/15 health checks pass. Config consistency validated. XSS nested sanitization confirmed. Results in qa-build-log.md. |
+| T-295 | User Agent: Production walkthrough. Test all Sprint 35+36+37 features on production. Verify XSS fix, post-sanitization validation, page title, calendar, CRUD regression. Submit feedback to feedback-log.md. | Documentation | User Agent | Done | P1 | M | 38 | ~~T-294~~ ✅ | ✅ Complete. 15 feedback entries (FB-209–FB-223). 13 Positive, 2 Minor. No Critical or Major regressions. All Sprint 35+36+37 features verified. FB-207 resolved. |
+
+---
+
+### Manager Code Reviews — Sprint 38
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-38 | Manager: Sprint 38 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 38 | — | **No tasks in "In Review" status.** Sprint 38 is a deploy-only sprint (T-293, T-294, T-295) — no new code was written. T-293 is In Progress but blocked by `gh` CLI authentication (cannot create PR programmatically). T-294 and T-295 remain Backlog, blocked by T-293. No code to review. |
+| CR-38c | Manager: Sprint 38 code review pass #3 | Review | Manager Agent | ✅ Done | P1 | S | 38 | — | **No tasks in "In Review" status.** T-293 Done, T-294 In Progress (Monitor Agent), T-295 Backlog (blocked by T-294). No new code written — deploy-only sprint. No code review needed. |
+
+**CR-38 — Manager Code Review Pass (Sprint 38)**
+
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-24).
+
+**Result: No tasks were in "In Review" status.** Sprint 38 is a deploy-only sprint with three tasks:
+
+- **T-293 (Deploy Engineer):** In Progress — but blocked by `gh` CLI not being authenticated. Pre-deploy verification is complete (493/493 backend tests, 510/510 frontend tests, build success). The feature branch `fix/T-279-page-branding-fix` has been pushed to origin, but the PR cannot be created programmatically. This requires manual intervention: either run `gh auth login` or manually create the PR at GitHub.
+- **T-294 (Monitor Agent):** Backlog — blocked by T-293.
+- **T-295 (User Agent):** Backlog — blocked by T-294.
+
+No new code was written this sprint. No code review is needed. The sole blocker is the `gh` CLI authentication issue preventing T-293 from completing.
+
+**Action required from project owner:** Authenticate `gh` CLI (`gh auth login`) or manually create and merge the PR to unblock the entire sprint.
+
+---
+
+**CR-38b — Manager Code Review Pass #2 (Sprint 38)**
+
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-24, second pass).
+
+**Result: No tasks were in "In Review" status.** Sprint state has advanced since CR-38:
+
+- **T-293 (Deploy Engineer):** ✅ Done — PR #8 merged to main (2026-03-25T01:44:03Z). Render auto-deployed. 13/13 production smoke tests pass. The `gh` CLI blocker from CR-38 was resolved.
+- **T-294 (Monitor Agent):** Moved from Backlog → In Progress — T-293 blocker resolved. Awaiting Monitor Agent execution.
+- **T-295 (User Agent):** Backlog — still blocked by T-294.
+
+No new code was written this sprint. No code review is needed. The deploy-only sprint is proceeding as planned. T-294 is unblocked and ready for the Monitor Agent.
+
+---
+
+**CR-38c — Manager Code Review Pass #3 (Sprint 38)**
+
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-24, third pass).
+
+**Result: No tasks were in "In Review" status.** Sprint state unchanged since CR-38b:
+
+- **T-293 (Deploy Engineer):** ✅ Done — PR #8 merged, 13/13 production smoke tests pass.
+- **T-294 (Monitor Agent):** In Progress — awaiting Monitor Agent execution of production health check.
+- **T-295 (User Agent):** Backlog — blocked by T-294.
+
+No new code was written this sprint. No code review is needed. Sprint 38 pipeline is waiting on Monitor Agent (T-294) to complete the production health check, after which User Agent (T-295) can proceed with the production walkthrough.
+
+---
+
+### CR-38d — Manager: Sprint 38 Code Review Pass #4 (2026-03-24)
+
+**Result: No tasks in "In Review" status.** Full grep scan of dev-cycle-tracker.md confirmed zero task rows matching `| In Review |`. Sprint 38 task statuses:
+
+- **T-293 (Deploy Engineer):** ✅ Done — PR #8 merged, 13/13 production smoke tests pass.
+- **T-294 (Monitor Agent):** In Progress — awaiting Monitor Agent execution of production health check.
+- **T-295 (User Agent):** Backlog — blocked by T-294.
+
+No new code was written this sprint. No code review is needed. Sprint 38 is a deploy-only sprint. The pipeline is blocked on Monitor Agent (T-294) completing the production health check, after which User Agent (T-295) can proceed.
+
+---
+
+## Sprint 39 Tasks
+
+**Sprint Goal:** Add trip notes/description field (B-030) and harden sanitizer for triple-nested XSS (B-037/FB-221). First feature sprint after production deployment.
+
+### Phase 1 — Design Spec + API Contract + Sanitizer Hardening (start immediately, in parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-296 | Backend Engineer: Harden sanitizer for triple-nested XSS (FB-221/B-037). Increase loop passes or add post-loop cleanup for residual angle brackets. Add 3+ level nesting tests. Zero regressions. | Bug Fix | Backend Engineer | Done | P2 | S | 39 | — | FB-221/B-037. Added post-loop cleanup to `sanitizeHtml()`: strips orphan `<` followed by letter/slash, empty `<>` pairs, and trailing `<`. 20 new unit tests in sprint39.test.js. 523/523 backend tests pass. Zero regressions. **Manager review APPROVED 2026-03-30:** Post-loop cleanup is clean, targeted, and safe. Preserves legitimate angle brackets. Test coverage comprehensive (3-level, 4-level nesting, edge cases). No security concerns. |
+| T-297 | Design Agent: UI spec for trip notes/description field on trip details page (B-030). Placement, dimensions, empty state, edit behavior, character limit display. | Feature | Design Agent | Done | P1 | S | 39 | — | B-030. Spec 31 published in ui-spec.md. Auto-approved 2026-03-25. |
+| T-298 | Backend Engineer: API contract for trip notes field (B-030). Add `notes` (string, optional, max 5000 chars) to trip resource. Update PATCH contract. | Documentation | Backend Engineer | Done | P1 | S | 39 | — | B-030. Published to api-contracts.md 2026-03-25. Notes max length 2000→5000 (validation-layer only, no schema migration). Handoffs logged to Frontend + QA. **Manager review APPROVED 2026-03-30:** Contract is clear, complete, and follows API conventions. Minor note: contract states empty string stored as-is but implementation normalizes to null — implementation behavior is preferred; contract should be updated to match (non-blocking). |
+
+---
+
+### Phase 2 — Implementation (after specs approved)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-299 | Backend Engineer: Implement trip notes field. Migration (add `notes` column), model update, validation (max 5000 chars), XSS sanitization, tests. | Feature | Backend Engineer | Done | P1 | M | 39 | T-298 | B-030. No migration needed (column exists from Sprint 7 migration 010). Updated validation maxLength 2000→5000 on POST+PATCH in trips.js. Updated error messages. Updated sprint7/sprint20 tests. 10 new route-level tests in sprint39.test.js. 523/523 backend tests pass. **Manager review APPROVED 2026-03-30:** Validation, sanitization, and null normalization are correct. Parameterized queries via Knex ✓. Error responses follow convention ✓. Auth required ✓. Boundary tests (5000 accept, 5001 reject) ✓. XSS integration tests ✓. No security issues. |
+| T-300 | Frontend Engineer: Implement trip notes UI per spec (T-297). Inline edit, auto-save, character count, empty state. Tests. | Feature | Frontend Engineer | Done | P1 | M | 39 | T-297, T-299 | B-030. Updated NOTES_MAX 2000→5000, NOTES_WARN 1800→4500, comma-formatted char count. 3 new tests added (16 total). 513/513 frontend tests pass. **Manager review APPROVED 2026-03-30:** Component well-structured with inline edit, keyboard shortcuts (Esc/Ctrl+Enter), comma-formatted char count, loading skeleton, error handling, ARIA accessibility. 16 unit + 7 integration tests. No XSS risk (React escapes output). Minor spec deviation: uses explicit Save/Cancel buttons vs auto-save-on-blur — acceptable UX improvement (prevents accidental saves of incomplete edits). |
+
+---
+
+### Phase 3 — QA + Deploy + Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-301 | QA Engineer: Integration testing for Sprint 39. Trip notes CRUD, XSS on notes, triple-nested XSS fix (T-296), full test suite, security checklist, config consistency. | Code Review | QA Engineer | Done | P1 | M | 39 | T-296 ✅, T-300 ✅ | Full QA pass. **COMPLETED 2026-03-30:** Backend 523/523 ✅, Frontend 513/513 ✅, npm audit 0 vulns ✅, security checklist 19/19 ✅, config consistency ✅, integration contracts verified ✅. All Sprint 39 tasks (T-296, T-298, T-299, T-300) moved to Done. T-302 unblocked. |
+| T-302 | Deploy Engineer: Staging deployment. Rebuild, deploy to PM2, smoke test. No migrations needed (Sprint 39 is validation-layer only). | Infrastructure | Deploy Engineer | Done | P1 | S | 39 | T-301 ✅ | **COMPLETED 2026-03-30:** Backend + frontend rebuilt, 1036/1036 tests pass, 0 vulns, PM2 restarted. Smoke tests pass: trip notes CRUD ✅, triple-nested XSS sanitized ✅, health check ✅. No migrations needed. Handoff to Monitor Agent logged. |
+| T-303 | Monitor Agent: Staging health check. Full protocol, verify trip notes in API, verify triple-nested XSS fix. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Done | P1 | S | 39 | T-302 ✅ | **COMPLETED 2026-03-30:** All checks passed. Config consistency ✅, health endpoint ✅, auth flow ✅, trips CRUD ✅, calendar ✅, activities ✅, land-travel ✅, no 5xx errors. Sprint 39 features verified: trip notes CRUD ✅, triple-nested XSS sanitized ✅. Deploy Verified = Yes. Handoff to User Agent logged. |
+| T-304 | User Agent: Staging walkthrough. Test trip notes (add, edit, clear, char limit), XSS on notes, regression check, submit feedback. | Documentation | User Agent | ✅ Done | P1 | M | 39 | T-303 ✅ | **COMPLETED 2026-03-30:** 29 tests executed, 15 feedback entries (FB-224–FB-238). 0 Critical/Major issues. 14 Positive, 1 Minor UX Issue (API contract docs inconsistency FB-237). Trip notes feature verified end-to-end. XSS hardening verified. No regressions. Handoff to Manager logged. |
+
+---
+
+### Backlog Items (created/updated Sprint 38)
+
+| ID | Description | Type | Priority | Complexity | Notes |
+|----|-------------|------|----------|------------|-------|
+| B-037 | Triple-nested XSS leaves residual angle bracket fragments in stored data (non-exploitable, cosmetic) | Bug Fix | P2 | S | FB-221 (Sprint 38). Promoted to T-296 (Sprint 39). |
+| B-038 | Rate limiter window too aggressive for e2e cross-user testing — blocks registration during test sessions | UX Issue | P3 | S | FB-222 (Sprint 38). Testing friction, not a user-facing bug. Consider test-mode bypass or wider window. |
+
+---
+
+### Sprint 39 — Manager Agent: Code Review Pass (2026-03-30)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| CR-39 | Manager: Sprint 39 code review pass | Review | Manager Agent | ✅ Done | P1 | S | 39 | — | **No tasks in "In Review" status.** All Sprint 39 implementation tasks (T-296, T-298, T-299, T-300) were reviewed and approved in prior Manager passes during this sprint. T-301 QA passed (523/523 backend, 513/513 frontend, 19/19 security). T-302 Deploy complete. T-303 (Monitor) and T-304 (User Agent) remain Backlog — no code to review. |
+
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation (2026-03-30).
+
+**Result: No tasks were in "In Review" status.** Full grep scan of dev-cycle-tracker.md confirmed zero task rows matching `| In Review |`. Sprint 39 task statuses:
+- T-296 (Sanitizer hardening): ✅ Done — Manager APPROVED (post-loop cleanup, 20 new tests, 523/523 pass)
+- T-297 (Design spec: trip notes): ✅ Done — Auto-approved
+- T-298 (API contract: trip notes): ✅ Done — Manager APPROVED (contract clear, follows conventions)
+- T-299 (Backend: trip notes impl): ✅ Done — Manager APPROVED (validation, sanitization, parameterized queries, auth, boundary tests)
+- T-300 (Frontend: trip notes UI): ✅ Done — Manager APPROVED (inline edit, keyboard shortcuts, char count, 16 tests, no XSS risk)
+- T-301 (QA integration): ✅ Done — 1036/1036 tests, 19/19 security, 0 vulns
+- T-302 (Deploy): ✅ Done — PM2 online, smoke tests pass
+- T-303 (Monitor): ✅ Done — Deploy Verified = Yes, all checks passed
+- T-304 (User Agent): Backlog — blocked by T-303
+
+**No action required.** All code has been reviewed and approved. Pipeline is in the verify phase (Monitor → User Agent).
+
+---
+
+## Sprint 40 Tasks
+
+**Sprint Goal:** Deploy Sprint 39 to production, fix API contract docs drift (B-039/FB-237), implement stay checkout time on calendar (FB-189/B-040).
+
+### Phase 1 — Production Deploy + Docs Fix + Design Spec (start immediately, in parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-305 | Deploy Engineer: Production deployment of Sprint 39 code. Rebuild, deploy to PM2, smoke test trip notes + sanitizer. No new migrations. | Infrastructure | Deploy Engineer | Done | P1 | S | 40 | — | ✅ Production deployed via PM2 (port 3002/4174 HTTPS). 1036 tests passed, 10/10 smoke tests passed. Trip notes CRUD + XSS sanitizer verified. Created ecosystem.production.config.cjs + deploy-production.sh. **Manager Review APPROVED (2026-03-30).** **QA PASSED (T-309, 2026-03-30):** Integration test + security scan pass. |
+| T-306 | Backend Engineer: Fix API contract docs drift (FB-237/B-039). Update all historical notes "max 2000" references to 5000 in api-contracts.md. | Documentation | Backend Engineer | Done | P2 | S | 40 | — | FB-237/B-039. Docs-only fix. All 22 historical "max 2000" references updated to 5000 with "[Updated Sprint 39 T-298]" annotations. No contradictory limits remain. **Manager Review APPROVED (2026-03-30).** **QA PASSED (T-309, 2026-03-30):** All notes limits consistent at 5000. |
+| T-307 | Design Agent: UI spec for stay checkout time on calendar end days (FB-189/B-040). Label format, desktop + mobile. | Feature | Design Agent | Done | P2 | S | 40 | — | FB-189/B-040. Calendar UX enhancement. Spec 32 published in ui-spec.md. |
+
+---
+
+### Phase 2 — Frontend Implementation
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-308 | Frontend Engineer: Implement stay checkout time on calendar. Update renderEventPill + MobileDayList. Tests. | Feature | Frontend Engineer | Done | P2 | S | 40 | T-307 | FB-189/B-040. Implemented: STAY end-day pill shows "Checkout {time}" on desktop, "{name} — Checkout {time}" on mobile. buildArrivalLabel extended for STAY. 5 tests added (32.A–32.E), all passing. **Manager Review APPROVED (2026-03-30).** **QA PASSED (T-309, 2026-03-30):** Integration test pass — desktop, mobile, null fallback, regression, a11y, Spec 32 conformance all verified. |
+
+---
+
+### Phase 3 — QA + Production Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-309 | QA Engineer: Integration testing for Sprint 40. Production deploy health, API docs consistency, stay checkout time, full test suite, security checklist. | Code Review | QA Engineer | Done | P1 | M | 40 | T-305, T-306, T-308 | ✅ All tests pass. 1041 tests (523 backend + 518 frontend), 0 failures. Integration tests pass for T-305, T-306, T-308. Security checklist verified (0 findings). Config consistency verified. Ready for Monitor Agent (T-310). |
+| T-310 | Monitor Agent: Production health check. Full protocol, verify trip notes on production, verify checkout time on calendar. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Done | P1 | S | 40 | T-309 | ✅ Deploy Verified = Yes (Staging + Production). Health checks: all endpoints 200, auth works, config consistency all pass, PM2 stable (prod: 0 restarts). Results in qa-build-log.md. Handoff to User Agent (T-311). |
+| T-311 | User Agent: Production walkthrough. Test trip notes on production, stay checkout time on calendar, regression check, submit feedback. | Documentation | User Agent | Done | P1 | M | 40 | T-310 | ✅ Production walkthrough complete. 13 feedback entries (FB-239–FB-251): 12 Positive, 1 Minor UX Issue. 0 Critical/Major bugs. All features verified on both staging and production. 1041 tests pass (523 backend + 518 frontend). |
+
+---
+
+### Sprint 40 — Manager Agent: Code Review Pass (2026-03-30)
+
+**Status:** ✅ Complete — No tasks in "In Review" status
+**Review scope:** All tasks in "In Review" status at time of invocation.
+
+**Result: No tasks were in "In Review" status.** Full grep scan of dev-cycle-tracker.md confirmed zero task rows matching `| In Review |`. Sprint 40 task statuses:
+
+- T-305 (Deploy Engineer): ✅ Done — Manager Review APPROVED, QA PASSED
+- T-306 (Backend Engineer): ✅ Done — Manager Review APPROVED, QA PASSED
+- T-307 (Design Agent): ✅ Done — Spec 32 published
+- T-308 (Frontend Engineer): ✅ Done — Manager Review APPROVED, QA PASSED
+- T-309 (QA Engineer): ✅ Done — 1041/1041 tests pass, security verified
+- T-310 (Monitor Agent): Backlog — blocked by T-309 (now Done, ready to execute)
+- T-311 (User Agent): Done — 13 feedback entries, 0 Critical/Major
+
+**Next action:** T-310 (Monitor Agent) is unblocked and should execute production health check.
+
+---
+
+### Backlog Items (created/updated Sprint 39)
+
+| ID | Description | Type | Priority | Complexity | Notes |
+|----|-------------|------|----------|------------|-------|
+| B-039 | API contract docs inconsistency — old Sprint 7/8/20 sections reference notes max 2000 (now 5000) | Documentation | P2 | S | FB-237 (Sprint 39). Promoted to T-306 (Sprint 40). ✅ Resolved Sprint 40. |
+| B-040 | Stay checkout time not displayed on calendar end days | UX Issue | P2 | S | FB-189 (Sprint 35). Promoted to T-307/T-308 (Sprint 40). ✅ Resolved Sprint 40. |
+
+---
+
+## Sprint #41 — Trip Export/Print Feature (B-032)
+
+**Sprint Goal:** Implement trip export/print feature — printable itinerary view of trip details page.
+
+### Phase 1 — Design + API Contract (parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-312 | Design Agent: UI spec for trip export/print feature (B-032). Print-optimized layout, print button, CSS print stylesheet approach. | Feature | Design Agent | Done | P1 | S | 41 | — | B-032. Spec 33 published in ui-spec.md. Enhances existing Spec 15 with PrintCalendarSummary — a day-by-day itinerary overview table visible only in print. Covers component structure, event building logic, date range handling, empty states, page breaks, tests (6 test cases), file manifest. Auto-approved 2026-03-30. |
+| T-313 | Backend Engineer: API contract for trip export. Evaluate if existing GET /trips/:id is sufficient or new endpoint needed. | Feature | Backend Engineer | Done | P1 | S | 41 | — | B-032. Decision: existing endpoints sufficient. No new endpoint needed. Frontend already fetches trip + flights + stays + activities + land-travel on trip details page. Print view reuses existing data. Contract published in api-contracts.md 2026-03-30. |
+
+---
+
+### Phase 2 — Implementation
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-314 | Backend Engineer: Implement export endpoint if needed. If existing endpoint sufficient, mark N/A. | Feature | Backend Engineer | Done | P2 | S | 41 | T-313 | B-032. **N/A** — T-313 determined existing endpoints are sufficient. No backend code changes required. Marked Done (N/A) 2026-03-30. |
+| T-315 | Frontend Engineer: Implement trip print view. Print button, CSS @media print stylesheet, all trip sections, tests. | Feature | Frontend Engineer | Done | P1 | M | 41 | T-312, T-313 | B-032. Implemented PrintCalendarSummary component (Spec 33), added print.css rule set 15, integrated into TripDetailsPage. 6 new tests added (524 total frontend tests, 0 regressions). **Manager Review APPROVED 2026-03-30.** **QA APPROVED 2026-03-30:** All unit tests pass (524/524), integration verified, security scan clean. Moved to Done. |
+
+---
+
+### Phase 3 — QA + Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-316 | QA Engineer: Integration testing for Sprint 41. Print view, full test suite, security checklist, regression check. | Code Review | QA Engineer | Done | P1 | M | 41 | T-314, T-315 | **QA COMPLETE 2026-03-30:** Backend 523/523 pass, Frontend 524/524 pass, integration verified, config consistency clean, security scan clean (0 vulnerabilities). All checks pass. T-315 → Done. T-317 unblocked. |
+| T-317 | Deploy Engineer: Staging deployment of Sprint 41 code. | Infrastructure | Deploy Engineer | Done | P1 | S | 41 | T-316 | **DEPLOYED 2026-03-30:** Backend 523/523 pass, Frontend 524/524 pass, frontend build OK (131 modules), PM2 staging deploy success (backend+frontend online, 0 restarts), smoke tests 4/4 pass. No migrations needed. Handoff to Monitor Agent (T-318). |
+| T-318 | Monitor Agent: Staging health check. Verify print feature accessible. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Done | P1 | S | 41 | T-317 | **DONE 2026-03-30:** All health checks pass. Config consistency verified. Deploy Verified = Yes (Staging). Health endpoint 200, auth 200, all API endpoints respond correctly, frontend serves SPA, PM2 stable (0 restarts), no 5xx errors. Handoff to User Agent (T-319). |
+| T-319 | User Agent: Staging walkthrough. Test print view with populated/empty/partial trips, regression check, submit feedback. | Documentation | User Agent | Done | P1 | M | 41 | T-318 | **DONE 2026-03-30:** 11 feedback entries (FB-252–FB-262), all Positive. 0 bugs, 0 UX issues, 0 feature gaps. Full test suite 1047/1047 pass. API endpoints verified. Auth regression check passed. Print CSS in build output. Staging healthy. No rework needed. |
+
+---
+
+### Sprint 41 — Manager Agent: Code Review Pass (2026-03-30)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-315 | Frontend: PrintCalendarSummary (Spec 33) | Feature | Frontend Engineer | ✅ APPROVED → Done | P1 | M | 41 | T-312, T-313 | Code review passed. QA integration testing passed (T-316). All 524 frontend tests pass, 523 backend tests pass. Security scan clean. Moved to Done 2026-03-30. |
+
+**Status:** ✅ Complete — No tasks in "In Review" status (Sprint 41, Pass #2, 2026-03-30)
+**Review scope:** All tasks in "In Review" status at time of invocation.
+
+**Result: No tasks were in "In Review" status.** Full grep scan of dev-cycle-tracker.md confirmed zero task rows matching `| In Review |`. Sprint 41 task statuses:
+- T-312 (Design spec: print view): ✅ Done — Spec 33 published, auto-approved
+- T-313 (API contract: export): ✅ Done — Existing endpoints sufficient, no new endpoint
+- T-314 (Backend: export endpoint): ✅ Done (N/A) — No backend changes needed
+- T-315 (Frontend: PrintCalendarSummary): ✅ Done — Manager APPROVED, QA APPROVED (524/524 frontend, 523/523 backend)
+- T-316 (QA integration): ✅ Done — All tests pass, security clean
+- T-317 (Deploy: staging): ✅ Done — PM2 online, 4/4 smoke tests pass
+- T-318 (Monitor: staging health check): ✅ Done — All checks pass, Deploy Verified = Yes
+- T-319 (User Agent: walkthrough): ✅ Done — 11 feedback entries (FB-252–FB-262), all Positive. 0 bugs. Sprint 41 complete.
+
+**No action required.** All implementation code has been reviewed and approved. Pipeline is in the verify phase (Monitor Agent T-318 → User Agent T-319).
+
+---
+
+## Sprint #42 — Production Deployment + Activity Location Links (B-031)
+
+**Sprint Goal:** Promote Sprint 41 print feature to production and implement clickable activity location links (B-031).
+
+### Phase 1 — Production Deployment (start immediately)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-320 | Deploy Engineer: Production deployment of Sprint 41 code (print feature). Rebuild, test, deploy PM2, smoke tests. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 42 | — | Promote Sprint 41 staging code to production. |
+| T-321 | Monitor Agent: Production health check. Verify print feature on production. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 42 | T-320 | Full production health check protocol. |
+
+---
+
+### Phase 2 — Design + API Contract for Activity Location Links (parallel with Phase 1)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-322 | Design Agent: UI spec for activity location links (B-031). URL detection, link rendering, print behavior, mixed content handling. | Feature | Design Agent | Backlog | P1 | S | 42 | — | B-031. Detect URLs in activity locations, render as clickable links. |
+| T-323 | Backend Engineer: API contract review for activity location links. Confirm no backend changes needed — URL detection is frontend-only. | Feature | Backend Engineer | Backlog | P1 | S | 42 | — | B-031. Expected outcome: no backend changes. |
+
+---
+
+### Phase 3 — Implementation
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-324 | Frontend Engineer: Implement activity location links. LinkifyText component, new tab links, print view handling, security (block javascript:/data: URLs), tests. | Feature | Frontend Engineer | Backlog | P1 | M | 42 | T-322, T-323 | B-031. |
+
+---
+
+### Phase 4 — QA + Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-325 | QA Engineer: Integration testing for Sprint 42. Location links, production health, full test suite, security checklist (XSS via URL), regression. | Code Review | QA Engineer | Backlog | P1 | M | 42 | T-324 | Security focus: ensure javascript: and data: URLs are blocked. |
+| T-326 | Deploy Engineer: Staging deployment of Sprint 42 code (location links). | Infrastructure | Deploy Engineer | Backlog | P1 | S | 42 | T-325 | |
+| T-327 | Monitor Agent: Staging health check. Verify location links feature. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 42 | T-326 | |
+| T-328 | User Agent: Staging walkthrough. Test location links, production print feature, regression check, submit feedback. | Documentation | User Agent | Backlog | P1 | M | 42 | T-327 | |
 
 ---
 

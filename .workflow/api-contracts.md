@@ -2990,7 +2990,7 @@ The canonical land travel resource object returned in all success responses:
 | `arrival_date` | No | string \| null | Optional. If provided: must be a valid `YYYY-MM-DD` date >= `departure_date`. Send `null` or omit to leave empty. |
 | `arrival_time` | No | string \| null | Optional. If provided: `arrival_date` must also be provided. Must match `HH:MM` or `HH:MM:SS`. If `arrival_date` == `departure_date`, `arrival_time` must be > `departure_time` (when both are provided). |
 | `confirmation_number` | No | string \| null | Optional. Trimmed. Max length 255. |
-| `notes` | No | string \| null | Optional. Max length 2000. |
+| `notes` | No | string \| null | Optional. Max length 5000. [Updated Sprint 39 T-298: limit increased from 2000 to 5000] |
 
 **Cross-field validation rules:**
 1. If `arrival_time` is provided, `arrival_date` must also be provided. (400 error: "arrival_date is required when arrival_time is provided")
@@ -3100,7 +3100,7 @@ The canonical land travel resource object returned in all success responses:
 | `arrival_date` | If provided: valid `YYYY-MM-DD` >= merged departure_date, or `null`. Setting to `null` also clears `arrival_time`. |
 | `arrival_time` | If provided: valid `HH:MM` or `HH:MM:SS`, or `null`. Merged `arrival_date` must exist. |
 | `confirmation_number` | If provided: string or `null`. Trimmed, max 255. |
-| `notes` | If provided: string or `null`. Max 2000. |
+| `notes` | If provided: string or `null`. Max 5000. [Updated Sprint 39 T-298: limit increased from 2000 to 5000] |
 
 **Cross-field validation (using merged existing + incoming values):**
 1. If merged `arrival_time` is non-null, merged `arrival_date` must be non-null.
@@ -3383,7 +3383,7 @@ If the frontend was previously relying on the incorrectly-serialized local times
 
 #### Overview
 
-The `notes` field is a freeform text field on the trip resource. It is stored as `TEXT NULL` in the database (nullable, no DB-level length cap). The API enforces a 2000-character maximum. All existing trip endpoints (`GET /trips`, `GET /trips/:id`, `PATCH /trips/:id`) are updated to include the `notes` field.
+The `notes` field is a freeform text field on the trip resource. It is stored as `TEXT NULL` in the database (nullable, no DB-level length cap). The API enforces a 5000-character maximum. [Updated Sprint 39 T-298: limit increased from 2000 to 5000] All existing trip endpoints (`GET /trips`, `GET /trips/:id`, `PATCH /trips/:id`) are updated to include the `notes` field.
 
 No new endpoints are introduced.
 
@@ -3405,7 +3405,7 @@ ALTER TABLE trips DROP COLUMN IF EXISTS notes;
 
 **Notes:**
 - Nullable addition — fully backward-compatible. Existing trips get `notes = NULL` automatically.
-- No DB-level length constraint — max length enforced at the API validation layer (2000 chars).
+- No DB-level length constraint — max length enforced at the API validation layer (5000 chars). [Updated Sprint 39 T-298: limit increased from 2000 to 5000]
 - `updated_at` is NOT touched by this migration — the column already exists and is managed by the application layer.
 
 ---
@@ -3449,7 +3449,7 @@ ALTER TABLE trips DROP COLUMN IF EXISTS notes;
 **`notes` field:**
 - Type: `string | null`
 - `null` when no notes have been set
-- Non-null string (up to 2000 chars) when notes exist
+- Non-null string (up to 5000 chars) when notes exist [Updated Sprint 39 T-298: limit increased from 2000 to 5000]
 - Empty string `""` is treated as `null` at the display layer (frontend) — the API may return `""` or `null` when notes are cleared; frontend treats both as "no notes"
 
 **All error responses are unchanged from Sprint 1.**
@@ -3493,7 +3493,7 @@ ALTER TABLE trips DROP COLUMN IF EXISTS notes;
 **`notes` field:**
 - Type: `string | null`
 - `null` when no notes exist
-- Non-null string (up to 2000 chars) when notes have been saved
+- Non-null string (up to 5000 chars) when notes have been saved [Updated Sprint 39 T-298: limit increased from 2000 to 5000]
 
 **All error responses are unchanged from Sprint 1 (401, 403, 404).**
 
@@ -3531,7 +3531,7 @@ ALTER TABLE trips DROP COLUMN IF EXISTS notes;
 | `name` | String. Trimmed. Min length 1 after trim. Max length 255. |
 | `destinations` | Array of strings. Min 1 element. Each element: non-empty string after trim. |
 | `status` | Must be one of: `"PLANNING"`, `"ONGOING"`, `"COMPLETED"`. |
-| `notes` | String or null. If string: max length 2000 characters (after no trimming — whitespace is preserved). If null: clears the notes field. Empty string `""` is accepted and stored as-is (equivalent to null at the display layer). |
+| `notes` | String or null. If string: max length 5000 characters (after no trimming — whitespace is preserved). If null: clears the notes field. Empty string `""` is accepted and stored as-is (equivalent to null at the display layer). [Updated Sprint 39 T-298: limit increased from 2000 to 5000] |
 
 **Response (Success — 200 OK):**
 ```json
@@ -3558,7 +3558,7 @@ ALTER TABLE trips DROP COLUMN IF EXISTS notes;
     "message": "Validation failed",
     "code": "VALIDATION_ERROR",
     "fields": {
-      "notes": "Notes must not exceed 2000 characters"
+      "notes": "Notes must not exceed 5000 characters"
     }
   }
 }
@@ -3597,12 +3597,12 @@ ALTER TABLE trips DROP COLUMN IF EXISTS notes;
 - `PATCH /trips/:id` with `{ "notes": "My Tokyo trip notes" }` → 200, response includes `"notes": "My Tokyo trip notes"`
 - `PATCH /trips/:id` with `{ "notes": null }` → 200, response includes `"notes": null`
 - `PATCH /trips/:id` with `{ "notes": "" }` → 200, response includes `"notes": ""`
-- `PATCH /trips/:id` with exactly 2000 characters → 200 (boundary: accepted)
+- `PATCH /trips/:id` with exactly 5000 characters → 200 (boundary: accepted) [Updated Sprint 39 T-298: limit increased from 2000 to 5000]
 - `PATCH /trips/:id` with `notes` as only field → 200 (not a NO_UPDATABLE_FIELDS error)
 - `PATCH /trips/:id` combining `notes` with `name` → 200, both fields updated
 
 **Error paths:**
-- `PATCH /trips/:id` with notes > 2000 characters → 400 `VALIDATION_ERROR`, `fields.notes` present
+- `PATCH /trips/:id` with notes > 5000 characters → 400 `VALIDATION_ERROR`, `fields.notes` present [Updated Sprint 39 T-298: limit increased from 2000 to 5000]
 - `PATCH /trips/:id` with `{ "notes": 12345 }` (number, not string/null) → 400 `VALIDATION_ERROR`
 - `PATCH /trips/:id` with `{ "notes": ["array"] }` → 400 `VALIDATION_ERROR`
 - `PATCH /trips/:id` with notes field without auth → 401 `UNAUTHORIZED`
@@ -3633,7 +3633,7 @@ The following Sprint 7 tasks require **no new or changed API contracts** from th
 
 ---
 
-*Sprint 7 contracts above are Agreed and pre-approved for implementation. Two backend changes this sprint: (1) T-098 fixes the UTC timestamp serialization bug in stays endpoints — no API signature change, implementation-only fix at the pg driver level. (2) T-103 adds the `notes` field to all three trips endpoints (GET list, GET single, PATCH) backed by migration 010 (pre-approved by Manager). The `notes` field is nullable, max 2000 chars, and follows PATCH semantics (optional field). Frontend Engineer and QA Engineer should reference this contract for integration and testing.*
+*Sprint 7 contracts above are Agreed and pre-approved for implementation. Two backend changes this sprint: (1) T-098 fixes the UTC timestamp serialization bug in stays endpoints — no API signature change, implementation-only fix at the pg driver level. (2) T-103 adds the `notes` field to all three trips endpoints (GET list, GET single, PATCH) backed by migration 010 (pre-approved by Manager). The `notes` field is nullable, max 5000 chars [Updated Sprint 39 T-298: limit increased from 2000 to 5000], and follows PATCH semantics (optional field). Frontend Engineer and QA Engineer should reference this contract for integration and testing.*
 
 ---
 
@@ -3855,7 +3855,7 @@ The Sprint 7 T-103 contract contained three documentation statements that incorr
 
 | Field | Rules |
 |-------|-------|
-| `notes` | String or null. If string: max length 2000 characters (whitespace preserved — no trimming). If string is empty (`""`): **normalized to `null` at the API layer — stored as NULL in the database**. If null: clears the notes field (sets DB column to NULL). |
+| `notes` | String or null. If string: max length 5000 characters (whitespace preserved — no trimming). If string is empty (`""`): **normalized to `null` at the API layer — stored as NULL in the database**. If null: clears the notes field (sets DB column to NULL). [Updated Sprint 39 T-298: limit increased from 2000 to 5000] |
 
 **Corrected behavior table:**
 
@@ -3882,7 +3882,7 @@ The Sprint 7 T-103 contract contained three documentation statements that incorr
 **`notes` field (all GET trip endpoints):**
 - Type: `string | null`
 - `null` when no notes have been set, or when notes were cleared (including via `""` input)
-- Non-null, non-empty string (1–2000 chars) when notes exist
+- Non-null, non-empty string (1–5000 chars) when notes exist [Updated Sprint 39 T-298: limit increased from 2000 to 5000]
 - The API **never** returns `""` for the `notes` field — only `null` or a non-empty string
 
 **Frontend integration note:** Frontend components rendering `notes` should check `if (notes)` (falsy check) — both `null` and an empty string (which the API now guarantees won't appear) are handled correctly this way. No special `notes === ""` branch is needed.
@@ -5275,7 +5275,7 @@ destinations:
 
 ### T-188 — Trip Notes Field Contract (Formalized)
 
-**Summary:** The `notes TEXT NULL` column on the `trips` table was added in Sprint 7 (migration 010, applied on staging). Sprint 20 formalizes: (1) explicit max-2000-character Joi validation on POST and PATCH, (2) `notes` is confirmed as part of all trip response shapes (POST 201, GET list, GET detail), (3) empty string normalization to `null`.
+**Summary:** The `notes TEXT NULL` column on the `trips` table was added in Sprint 7 (migration 010, applied on staging). Sprint 20 formalizes: (1) explicit max-5000-character Joi validation on POST and PATCH [Updated Sprint 39 T-298: limit increased from 2000 to 5000], (2) `notes` is confirmed as part of all trip response shapes (POST 201, GET list, GET detail), (3) empty string normalization to `null`.
 
 **Schema status:** No new migration required. Column `notes TEXT NULL` already exists (migration 010, applied Sprint 7).
 
@@ -5299,7 +5299,7 @@ destinations:
   "status": "PLANNING | ONGOING | COMPLETED (optional, defaults to PLANNING)",
   "start_date": "ISO 8601 date string YYYY-MM-DD (optional, nullable)",
   "end_date": "ISO 8601 date string YYYY-MM-DD (optional, nullable)",
-  "notes": "string | null (optional, max 2000 chars, '' normalized to null)"
+  "notes": "string | null (optional, max 5000 chars, '' normalized to null)"
 }
 ```
 
@@ -5307,7 +5307,7 @@ destinations:
 ```
 notes:
   Joi.string()
-    .max(2000)
+    .max(5000)
     .allow(null, '')
     .optional()
     .default(null)
@@ -5335,7 +5335,7 @@ notes:
 ```json
 {
   "error": {
-    "message": "\"notes\" length must be less than or equal to 2000 characters long",
+    "message": "\"notes\" length must be less than or equal to 5000 characters long",
     "code": "VALIDATION_ERROR"
   }
 }
@@ -5354,15 +5354,15 @@ notes:
 | Status | Agreed |
 | Auth Required | Yes — Bearer token |
 
-**notes validation rule (updated — max 2000 now explicitly enforced):**
+**notes validation rule (updated — max 5000 now explicitly enforced):**
 ```
 notes:
   Joi.string()
-    .max(2000)
+    .max(5000)
     .allow(null, '')
     .optional()
 ```
-*Previously: no explicit max. Sprint 20 adds `.max(2000)` to enforce the 2000-char limit at the API layer.*
+*Previously: no explicit max. Sprint 20 added `.max(2000)`, Sprint 39 T-298 increased to `.max(5000)`.* [Updated Sprint 39 T-298: limit increased from 2000 to 5000]
 *`""` is normalized to `null` before storage (behavior from Sprint 9, unchanged).*
 
 **Request Body (any combination of fields, all optional):**
@@ -5373,7 +5373,7 @@ notes:
   "status": "PLANNING | ONGOING | COMPLETED (optional)",
   "start_date": "YYYY-MM-DD | null (optional)",
   "end_date": "YYYY-MM-DD | null (optional)",
-  "notes": "string | null (optional, max 2000 chars, '' normalized to null)"
+  "notes": "string | null (optional, max 5000 chars, '' normalized to null)"
 }
 ```
 
@@ -5398,7 +5398,7 @@ notes:
 ```json
 {
   "error": {
-    "message": "\"notes\" length must be less than or equal to 2000 characters long",
+    "message": "\"notes\" length must be less than or equal to 5000 characters long",
     "code": "VALIDATION_ERROR"
   }
 }
@@ -5525,8 +5525,8 @@ All Sprint 1–19 contracts remain in force unchanged, with the following Sprint
 
 | Sprint | Endpoint | Sprint 20 Change |
 |--------|----------|-----------------|
-| 1 (updated 20) | `POST /api/v1/trips` | destinations `.max(100)` per item (T-186); notes `.max(2000)` validation + explicitly in response (T-188) |
-| 1 (updated 20) | `PATCH /api/v1/trips/:id` | destinations `.max(100)` per item + friendly empty-array message (T-186); notes `.max(2000)` validation + explicitly in response (T-188) |
+| 1 (updated 20, 39) | `POST /api/v1/trips` | destinations `.max(100)` per item (T-186); notes `.max(5000)` validation + explicitly in response (T-188, updated T-298 Sprint 39) |
+| 1 (updated 20, 39) | `PATCH /api/v1/trips/:id` | destinations `.max(100)` per item + friendly empty-array message (T-186); notes `.max(5000)` validation + explicitly in response (T-188, updated T-298 Sprint 39) |
 | 1 (updated 20) | `GET /api/v1/trips` | notes field explicitly documented in response (T-188) |
 | 1 (updated 20) | `GET /api/v1/trips/:id` | notes field explicitly documented in response (T-188) |
 
@@ -5534,7 +5534,7 @@ All other endpoints unchanged.
 
 ---
 
-*Sprint 20 contracts published by Backend Engineer 2026-03-10. T-186: validation-layer-only changes to destinations (max 100 chars per item, friendly PATCH empty-array message). T-188: formalized notes field contract — no new migration (column exists since Sprint 7), adds max-2000 Joi validation and confirms notes inclusion in all trip response shapes. Frontend Engineer may proceed with T-189 (TripNotesSection) using PATCH /api/v1/trips/:id contract above. QA test matrix: 287+ base + T-186 tests (5 cases) + T-188 tests (9 cases) = 301+ total.*
+*Sprint 20 contracts published by Backend Engineer 2026-03-10. T-186: validation-layer-only changes to destinations (max 100 chars per item, friendly PATCH empty-array message). T-188: formalized notes field contract — no new migration (column exists since Sprint 7), adds max-5000 Joi validation [Updated Sprint 39 T-298: limit increased from 2000 to 5000] and confirms notes inclusion in all trip response shapes. Frontend Engineer may proceed with T-189 (TripNotesSection) using PATCH /api/v1/trips/:id contract above. QA test matrix: 287+ base + T-186 tests (5 cases) + T-188 tests (9 cases) = 301+ total.*
 
 ---
 
@@ -5756,7 +5756,7 @@ All contracts from Sprints 1–20 remain in force unchanged. The complete author
 | 1 | `POST /api/v1/auth/refresh` | ✅ Agreed, Applied on Staging | — |
 | 1 | `POST /api/v1/auth/logout` | ✅ Agreed, Applied on Staging | — |
 | 1 (updated 20) | `GET /api/v1/trips` | ✅ Agreed, Applied on Staging | Search/filter/sort added Sprint 5. `notes` field added Sprint 7. `notes` is always `null \| non-empty string` (Sprint 9 correction). `status` filter by computed status (Sprint 5). |
-| 1 (updated 20) | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | `destinations` item max 100 chars (T-186 Sprint 20). `notes` max 2000 chars (T-188 Sprint 20). |
+| 1 (updated 20, 39) | `POST /api/v1/trips` | ✅ Agreed, Applied on Staging | `destinations` item max 100 chars (T-186 Sprint 20). `notes` max 5000 chars (T-188 Sprint 20, updated T-298 Sprint 39). |
 | 1 (updated 20) | `GET /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | `notes` field present; returns `null` if unset. |
 | 1 (updated 20) | `PATCH /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | **`status` accepts `PLANNING \| ONGOING \| COMPLETED` (Sprint 1, unchanged).** `notes` updatable (Sprint 7); `""` → `null` (Sprint 9). `destinations` item max 100 chars + friendly empty-array message (Sprint 20). |
 | 1 | `DELETE /api/v1/trips/:id` | ✅ Agreed, Applied on Staging | — |
@@ -8049,3 +8049,360 @@ All previously published contracts remain current:
 ---
 
 *Sprint 38 contracts published by Backend Engineer 2026-03-24. Deploy-only sprint — no new endpoints, no code changes, no schema migrations. All 30 endpoints from Sprints 1–37 remain in force. Test baseline: 493 backend | 510 frontend | 4 Playwright.*
+
+---
+
+## Sprint 39 Contracts
+
+**Sprint 39 — 2026-03-25**
+**Sprint Goal:** Add trip notes/description field (B-030) and harden sanitizer for triple-nested XSS (B-037).
+
+### Contract Changes Summary
+
+| Task | Type | Description |
+|------|------|-------------|
+| T-298 | Contract Update | Increase `notes` max character limit from 2000 → 5000 on all trip endpoints (POST, GET, PATCH). No schema migration — DB column is `TEXT NULL` (no DB-level length cap). Validation-layer change only. |
+| T-296 | Implementation Only | Harden sanitizer for triple-nested XSS. No API signature changes — existing sanitization middleware behavior is improved. No contract update needed. |
+
+---
+
+### T-298 — Trip Notes Character Limit Increase (2000 → 5000)
+
+**Sprint:** 39
+**Task:** T-298
+**Status:** Agreed
+**Auth Required:** Bearer token (all endpoints below)
+**Schema Change:** None — `trips.notes` column is `TEXT NULL` (migration 010, Sprint 7). No DB-level length constraint exists. This is a validation-layer-only change.
+
+#### Overview
+
+The existing `notes` field on the trip resource (added Sprint 7 T-103, formalized in Sprint 20 T-188) has its API-enforced maximum length increased from **2000 to 5000 characters**. This allows users to store richer freeform notes (restaurant links, packing lists, travel tips) alongside trip details.
+
+No new endpoints are introduced. No schema migration is required. All changes are in the Joi validation layer.
+
+**What changes:**
+- `notes` max length validation: 2000 → 5000 (on both POST and PATCH)
+- Validation error messages updated to reference 5000
+- XSS sanitization continues to apply to `notes` (existing middleware, enhanced by T-296)
+
+**What does NOT change:**
+- Field name, type, nullability (still `string | null`)
+- All other trip fields and validation rules
+- All error response shapes and codes
+- Endpoint paths and HTTP methods
+- Auth requirements
+- Pagination behavior
+
+---
+
+#### Updated: POST /api/v1/trips — notes max length increased
+
+| Field | Value |
+|-------|-------|
+| Sprint | 39 (updates Sprint 20 T-188) |
+| Task | T-298 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change | `notes` max length 2000 → 5000 |
+
+**Request Body (unchanged shape):**
+```json
+{
+  "name": "string",
+  "destinations": ["string"],
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD",
+  "notes": "string"
+}
+```
+
+**Field Validation Rules (T-298 change only):**
+| Field | Rules |
+|-------|-------|
+| `notes` | Optional. String. Max length **5000 characters** (was 2000). Empty string `""` normalized to `null`. XSS sanitization applied via middleware. |
+
+All other field validation rules are unchanged.
+
+**Response (Success — 201 Created):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-14",
+    "notes": "Day 1: Arrive at Narita, take Narita Express to Shinjuku...",
+    "created_at": "2026-03-25T12:00:00.000Z",
+    "updated_at": "2026-03-25T12:00:00.000Z"
+  }
+}
+```
+
+**Response (Error — 400 Bad Request — notes exceeds max length):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "notes": "Notes must not exceed 5000 characters"
+    }
+  }
+}
+```
+
+**All other error responses unchanged.**
+
+---
+
+#### Updated: GET /api/v1/trips — notes field (no contract change)
+
+No change to the GET list endpoint. The `notes` field continues to be returned as `string | null`. The max length increase only affects write validation (POST/PATCH). Existing notes under 2000 chars are unaffected. New notes up to 5000 chars will be returned as-is.
+
+---
+
+#### Updated: GET /api/v1/trips/:id — notes field (no contract change)
+
+No change to the GET detail endpoint. The `notes` field continues to be returned as `string | null` with no truncation.
+
+---
+
+#### Updated: PATCH /api/v1/trips/:id — notes max length increased
+
+| Field | Value |
+|-------|-------|
+| Sprint | 39 (updates Sprint 7 T-103) |
+| Task | T-298 |
+| Status | Agreed |
+| Auth Required | Yes (Bearer token) |
+| Change | `notes` max length 2000 → 5000 |
+
+**Request Body (all fields optional — PATCH semantics, unchanged shape):**
+```json
+{
+  "name": "string",
+  "destinations": ["string"],
+  "status": "PLANNING | ONGOING | COMPLETED",
+  "start_date": "YYYY-MM-DD | null",
+  "end_date": "YYYY-MM-DD | null",
+  "notes": "string | null"
+}
+```
+
+**Field Validation Rules (T-298 change only):**
+| Field | Rules |
+|-------|-------|
+| `notes` | Optional. String or `null`. If string: max length **5000 characters** (was 2000). Whitespace is preserved (no trimming). If `null`: clears the notes field. Empty string `""` accepted and stored as-is. XSS sanitization applied via middleware. |
+
+All other field validation rules are unchanged.
+
+**Response (Success — 200 OK):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Japan 2026",
+    "destinations": ["Tokyo", "Osaka", "Kyoto"],
+    "status": "PLANNING",
+    "start_date": "2026-08-07",
+    "end_date": "2026-08-14",
+    "notes": "Day 1: Arrive at Narita. Restaurants: Ichiran Ramen (Shibuya), Tsukiji Outer Market. Packing: JR Pass, portable WiFi, umbrella for rainy season...",
+    "created_at": "2026-03-25T12:00:00.000Z",
+    "updated_at": "2026-03-25T14:00:00.000Z"
+  }
+}
+```
+
+**Response (Error — 400 Bad Request — notes exceeds max length):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "notes": "Notes must not exceed 5000 characters"
+    }
+  }
+}
+```
+
+**All other error responses unchanged (400 NO_UPDATABLE_FIELDS, 401, 403, 404).**
+
+**Notes:**
+- Sending `{ "notes": null }` explicitly clears the notes field (unchanged behavior).
+- Sending `{ "notes": "" }` stores an empty string (unchanged behavior).
+- `notes` is sanitized by the XSS middleware before validation (sanitize → validate order, established Sprint 36 T-278).
+- The character count is checked post-sanitization — if sanitization strips malicious content, the resulting shorter string is what gets validated against the 5000-char limit.
+
+---
+
+#### Test Plan — T-298
+
+**Happy paths:**
+- `POST /trips` with `notes` at exactly 5000 characters → 201 (boundary: accepted)
+- `POST /trips` with `notes` at 2001 characters → 201 (previously rejected, now accepted)
+- `PATCH /trips/:id` with `notes` at exactly 5000 characters → 200 (boundary: accepted)
+- `PATCH /trips/:id` with `notes` at 2001 characters → 200 (previously rejected, now accepted)
+- `PATCH /trips/:id` with `notes` containing legitimate angle brackets (e.g., `"3 < 5"`) → 200, content preserved
+- `GET /trips/:id` after saving 5000-char notes → full notes returned, no truncation
+- `GET /trips` list → notes field present on each trip object (up to 5000 chars)
+
+**Error paths:**
+- `POST /trips` with `notes` at 5001 characters → 400 `VALIDATION_ERROR`, `fields.notes: "Notes must not exceed 5000 characters"`
+- `PATCH /trips/:id` with `notes` at 5001 characters → 400 `VALIDATION_ERROR`
+- `PATCH /trips/:id` with `notes` containing XSS (`<script>alert(1)</script>`) → 200, script tags sanitized
+- `PATCH /trips/:id` with `notes` containing triple-nested XSS (`<<<script>script>script>alert(1)<<<\/script>\/script>\/script>`) → 200, fully sanitized with no residual fragments (verified by T-296)
+
+**Regression paths (must still pass):**
+- All existing T-103 (Sprint 7) and T-188 (Sprint 20) notes test cases
+- `PATCH /trips/:id` with `{ "notes": null }` → 200, notes cleared
+- `PATCH /trips/:id` with `{ "notes": "" }` → 200, empty string stored
+- `PATCH /trips/:id` with `{ "notes": 12345 }` → 400 (type validation still enforced)
+
+---
+
+### T-296 — Sanitizer Hardening for Triple-Nested XSS (No Contract Change)
+
+**Sprint:** 39
+**Task:** T-296
+**Status:** No contract change required
+
+T-296 is a behavioral improvement to the existing XSS sanitization middleware (`backend/src/middleware/`). The iterative sanitization loop (introduced Sprint 37 T-286) is enhanced to handle 3+ levels of nested XSS patterns and clean up residual angle bracket fragments.
+
+**No API signature, endpoint, or response shape changes.** The middleware runs transparently on all write endpoints. Existing sanitization contracts (Sprint 35 T-272, Sprint 36 T-278, Sprint 37 T-286) remain in force.
+
+**What changes (implementation only):**
+- Sanitization loop max passes increased or post-loop cleanup added
+- Residual angle bracket fragments eliminated from stored data
+- New test cases for 3-level and 4-level nested XSS patterns
+
+**Frontend impact:** None. The sanitizer is transparent middleware — the frontend sends data as-is, and the backend sanitizes before storage.
+
+---
+
+### Active Contracts Summary (Sprints 1–39)
+
+All previously published contracts remain current with the T-298 update:
+- **Auth:** 4 endpoints (register, login, refresh, logout)
+- **Trips:** 5 endpoints (CRUD + list) — `notes` max length now 5000 chars
+- **Flights:** 4 endpoints (CRUD scoped to trip)
+- **Stays:** 4 endpoints (CRUD scoped to trip)
+- **Activities:** 5 endpoints (CRUD + list scoped to trip)
+- **Land Travel:** 4 endpoints (CRUD scoped to trip)
+- **Calendar:** 1 endpoint (trip calendar view)
+- **Health:** 1 endpoint (server health check)
+- **Search/Filter/Sort:** Query parameters on list endpoints
+- **Middleware:** XSS sanitization (iterative, enhanced Sprint 39 T-296), post-sanitization validation (Sprint 36), rate limiting
+
+---
+
+*Sprint 39 contracts published by Backend Engineer 2026-03-25. T-298: notes max length increased from 2000 to 5000 characters (validation-layer change only, no schema migration). T-296: sanitizer hardening — no contract change, implementation only. All 30 endpoints from Sprints 1–38 remain in force with T-298 update applied.*
+
+---
+
+## Sprint 41 Contracts
+
+**Sprint 41 — 2026-03-30**
+**Sprint Goal:** Trip export/print feature (B-032) — printable itinerary view
+
+---
+
+### T-313 — API Contract for Trip Export/Print (B-032)
+
+**Sprint:** 41
+**Task:** T-313
+**Status:** Agreed
+**Type:** Contract Decision — No New Endpoint Required
+
+#### Decision: Existing Endpoints Are Sufficient
+
+After reviewing the current API surface and the UI spec (Spec 33 — PrintCalendarSummary), **no new endpoint is needed** for the trip print/export feature. The rationale:
+
+1. **The frontend already fetches all required data on the trip details page.** The `useTripDetails` hook loads the trip object plus all four sub-resource collections (flights, stays, activities, land travel) via existing endpoints.
+
+2. **The print view is purely a CSS/component concern.** The UI spec explicitly states: *"The component receives props from the parent TripDetailsPage. It does NOT make its own API calls. It uses the same data already fetched by `useTripDetails`."*
+
+3. **No server-side rendering or PDF generation is in scope.** The feature uses `window.print()` to invoke the browser's native print dialog. All formatting is handled by `@media print` CSS rules.
+
+#### Existing Endpoints Used by the Print View
+
+The following existing endpoints provide all data needed for the print view. No changes to their request/response shapes are required.
+
+| Endpoint | Data for Print View | Contract Reference |
+|----------|--------------------|--------------------|
+| `GET /api/v1/trips/:id` | Trip name, destinations, status, start_date, end_date, notes | Sprint 1 T-005, Sprint 2 T-029, Sprint 7 T-103 |
+| `GET /api/v1/trips/:tripId/flights` | All flights (flight_number, airline, from/to, departure/arrival times + timezones) | Sprint 1 T-006 |
+| `GET /api/v1/trips/:tripId/stays` | All stays (category, name, address, check-in/check-out times + timezones) | Sprint 1 T-006 |
+| `GET /api/v1/trips/:tripId/activities` | All activities (name, location, activity_date, start_time, end_time) | Sprint 1 T-006 |
+| `GET /api/v1/trips/:tripId/land-travel` | All land travel entries (mode, from/to, departure/arrival dates and times, carrier, notes) | Sprint 6 T-086 |
+
+#### Response Shapes (Recap for Frontend Reference)
+
+All response shapes are unchanged from their original contracts. For convenience, the data fields consumed by the PrintCalendarSummary component (Spec 33):
+
+**Trip object fields used in print header:**
+- `name` — trip title (24pt bold header)
+- `destinations` — array of strings (comma-separated subtitle)
+- `start_date` / `end_date` — date range display and calendar summary day generation
+- `notes` — included in print header if present
+
+**Flight fields used in print:**
+- `flight_number`, `airline`, `from_location`, `to_location`
+- `departure_at`, `departure_tz`, `arrival_at`, `arrival_tz`
+
+**Stay fields used in print:**
+- `category`, `name`, `address`
+- `check_in_at`, `check_in_tz`, `check_out_at`, `check_out_tz`
+
+**Activity fields used in print:**
+- `name`, `location`, `activity_date`, `start_time`, `end_time`
+
+**Land Travel fields used in print:**
+- `mode`, `from_location`, `to_location`, `carrier`
+- `departure_date`, `departure_time`, `arrival_date`, `arrival_time`
+
+#### Impact on T-314 (Implementation)
+
+Since no new endpoint is needed, **T-314 should be marked N/A**. No backend code changes are required for Sprint 41.
+
+#### Schema Changes
+
+**None.** No new tables, columns, or migrations are required.
+
+---
+
+### Sprint 41 — No Backend Contract Changes Required for Other Tasks
+
+| Task | Reason |
+|------|--------|
+| T-312 (Design: Print View Spec) | Design spec only. No backend changes. |
+| T-314 (Backend: Implement export endpoint) | **N/A** — T-313 determined existing endpoints are sufficient. No new endpoint needed. |
+| T-315 (FE: Trip Print View) | Frontend-only. Uses existing API endpoints. |
+| T-316 (QA: Integration Testing) | QA testing only. |
+| T-317 (Deploy: Staging Deployment) | Deploy scope. |
+| T-318 (Monitor: Health Check) | Monitor scope. |
+| T-319 (User Agent: Walkthrough) | User testing only. |
+
+---
+
+### Active Contracts Summary (Sprints 1–41)
+
+All previously published contracts remain current. No new endpoints or changes in Sprint 41:
+- **Auth:** 4 endpoints (register, login, refresh, logout)
+- **Trips:** 5 endpoints (CRUD + list) — `notes` max length 5000 chars
+- **Flights:** 4 endpoints (CRUD scoped to trip)
+- **Stays:** 4 endpoints (CRUD scoped to trip)
+- **Activities:** 5 endpoints (CRUD + list scoped to trip)
+- **Land Travel:** 4 endpoints (CRUD scoped to trip)
+- **Calendar:** 1 endpoint (trip calendar view)
+- **Health:** 1 endpoint (server health check)
+- **Search/Filter/Sort:** Query parameters on list endpoints
+- **Middleware:** XSS sanitization (iterative), post-sanitization validation, rate limiting
+
+---
+
+*Sprint 41 contracts published by Backend Engineer 2026-03-30. T-313: No new endpoint required — existing GET /trips/:id + sub-resource list endpoints provide all data needed for the print view feature (B-032). T-314 marked N/A. All 30 endpoints from Sprints 1–39 remain in force unchanged.*

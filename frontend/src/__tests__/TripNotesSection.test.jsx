@@ -65,7 +65,7 @@ describe('TripNotesSection', () => {
     fireEvent.click(screen.getByRole('button', { name: /edit trip notes/i }));
     const textarea = screen.getByRole('textbox', { name: /trip notes/i });
     fireEvent.change(textarea, { target: { value: 'Hello world' } });
-    expect(screen.getByText('11 / 2000')).toBeInTheDocument();
+    expect(screen.getByText('11 / 5,000')).toBeInTheDocument();
   });
 
   // F. Save button calls api.trips.update with correct notes value
@@ -155,5 +155,31 @@ describe('TripNotesSection', () => {
   it('renders NOTES section header label', () => {
     renderNotes();
     expect(screen.getByText('NOTES')).toBeInTheDocument();
+  });
+
+  // N. Textarea enforces 5000 char max (Sprint 39 T-300)
+  it('textarea has maxLength of 5000 (Sprint 39 limit increase)', () => {
+    renderNotes({ initialNotes: null });
+    fireEvent.click(screen.getByRole('button', { name: /edit trip notes/i }));
+    const textarea = screen.getByRole('textbox', { name: /trip notes/i });
+    expect(textarea.getAttribute('maxLength')).toBe('5000');
+  });
+
+  // O. Character count shows comma-formatted numbers
+  it('character count shows comma-formatted max (5,000)', () => {
+    renderNotes({ initialNotes: null });
+    fireEvent.click(screen.getByRole('button', { name: /edit trip notes/i }));
+    expect(screen.getByText('0 / 5,000')).toBeInTheDocument();
+  });
+
+  // P. Warning color applied near limit (4500+ chars)
+  it('applies warning color when text is 4500+ characters', () => {
+    renderNotes({ initialNotes: null });
+    fireEvent.click(screen.getByRole('button', { name: /edit trip notes/i }));
+    const textarea = screen.getByRole('textbox', { name: /trip notes/i });
+    const longText = 'a'.repeat(4500);
+    fireEvent.change(textarea, { target: { value: longText } });
+    const charCount = screen.getByRole('status');
+    expect(charCount.style.color).toBeTruthy();
   });
 });

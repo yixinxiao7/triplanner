@@ -6,6 +6,13 @@
  * special characters. Does NOT HTML-encode output — stored values remain
  * plain text.
  *
+ * T-296 (Sprint 39): Added post-loop cleanup to strip residual angle bracket
+ * fragments left behind by triple-nested (3+ level) XSS patterns. After the
+ * iterative tag-stripping loop stabilizes, orphan `<` characters that look
+ * like incomplete tag starts (e.g., `<script` without closing `>`) and empty
+ * angle bracket pairs (`<>`) are removed. Legitimate uses like `5 < 10` are
+ * preserved (the `<` is followed by a space, not a letter/slash).
+ *
  * Usage (T-278: sanitize BEFORE validate so all-HTML required fields are rejected):
  *   import { sanitizeFields } from '../middleware/sanitize.js';
  *
@@ -27,6 +34,11 @@
  * Uses a regex that matches tags starting with `<` followed by a letter or `/`,
  * which avoids stripping legitimate angle-bracket usage like `5 < 10`.
  * Also strips HTML comments (`<!-- ... -->`).
+ *
+ * T-296 (Sprint 39): After the iterative loop, a post-loop cleanup pass strips
+ * residual angle bracket fragments that the tag regex cannot match because they
+ * are incomplete (no closing `>`). This handles triple-nested (3+ level) patterns
+ * like `<<<b>b>` which leave orphan `<` characters after the loop stabilizes.
  *
  * @param {string} input - The raw user input string
  * @returns {string} The sanitized string with HTML tags removed
@@ -50,6 +62,18 @@ export function sanitizeHtml(input) {
     // Output stabilized — no more tags to strip
     if (result === previous) break;
   }
+
+  // T-296: Post-loop cleanup — strip residual angle bracket fragments.
+  // After the iterative loop, the only `<` characters remaining are either:
+  //   (a) Legitimate: `5 < 10` (space after `<`, not a letter/slash)
+  //   (b) Fragments:  `<script` or `<b` (incomplete tag start, no closing `>`)
+  //   (c) Trailing:   lone `<` at end of string (from fully-consumed nested tags)
+  // We strip (b) by removing `<` when followed by a letter or `/`,
+  // (c) by removing trailing `<`, and empty `<>` pairs from fully-consumed tags.
+  result = result
+    .replace(/<(?=[a-zA-Z/])/g, '')
+    .replace(/<>/g, '')
+    .replace(/<$/g, '');
 
   return result;
 }

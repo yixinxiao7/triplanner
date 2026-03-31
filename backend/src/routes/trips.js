@@ -130,16 +130,16 @@ router.post(
         return null;
       },
     },
-    // notes: optional freeform trip description/notes (T-103).
-    // Max 2000 chars (enforced here; TEXT column has no DB-level limit).
+    // notes: optional freeform trip description/notes (T-103, T-298 Sprint 39).
+    // Max 5000 chars (enforced here; TEXT column has no DB-level limit).
     // Send null to explicitly clear. Empty string is normalized to null.
     notes: {
       required: false,
       nullable: true,
       type: 'string',
-      maxLength: 2000,
+      maxLength: 5000,
       messages: {
-        maxLength: 'Notes must be at most 2000 characters',
+        maxLength: 'Notes must not exceed 5000 characters',
       },
     },
   }),
@@ -236,15 +236,15 @@ router.patch(
         type: 'End date must be a valid date in YYYY-MM-DD format',
       },
     },
-    // notes: optional freeform trip description/notes (T-103).
-    // Max 2000 chars. Send null to clear. Omit to leave unchanged.
+    // notes: optional freeform trip description/notes (T-103, T-298 Sprint 39).
+    // Max 5000 chars. Send null to clear. Omit to leave unchanged.
     notes: {
       required: false,
       nullable: true,
       type: 'string',
-      maxLength: 2000,
+      maxLength: 5000,
       messages: {
-        maxLength: 'Notes must be at most 2000 characters',
+        maxLength: 'Notes must not exceed 5000 characters',
       },
     },
   }),
