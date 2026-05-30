@@ -4,81 +4,74 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #42 — 2026-03-30
+## Sprint #43 — 2026-05-30
 
-**Sprint Goal:** Promote Sprint 41 print feature to production and implement activity location links (B-031) — detect URLs in activity locations and render them as clickable links for improved usability.
+**Sprint Goal:** Pay down long-pending security debt and ship a high-value feature for the core persona. Two tracks:
+1. **Dependency security hardening** — resolve the production-runtime npm audit advisories on the `express`/`body-parser`/`qs` chain (plus the `vite`/`ws` dev-tooling advisories). QA has flagged these for several sprints as needing a dedicated maintenance task.
+2. **Activity notes (B-036)** — add a `notes` field to activities so detail-oriented travelers can attach reservation numbers, confirmation codes, dress codes, and context to each activity. The field is currently silently dropped — there is no `notes` column on the `activities` table, so a client-sent `notes` value never persists or returns.
 
-**Context:** Sprint 41 closed cleanly with all 8 tasks Done, staging verified, and zero bugs. The print feature (PrintCalendarSummary, Spec 33) is ready for production deployment. Sprint 42 combines the production push with a small but high-value UX enhancement: clickable activity location links (B-031, P3, S complexity). This serves the target user persona who frequently pastes Google Maps links or addresses into activity locations.
+**Context:** Sprint 42 closed cleanly — all 9 tasks Done, 1059/1059 tests, the print feature live on production, activity location links shipped and secured. Of 13 feedback entries (FB-263–FB-275), zero were Critical/Major bugs or feature gaps — all triaged to Acknowledged. With no critical feedback to address, Sprint 43 is driven by the two pieces of concrete technical debt above. Staging-only this sprint: Track 2 introduces a schema migration, so production promotion is deferred to Sprint 44 after staging verification.
 
-**Feedback Triage (Sprint 41 → Sprint 42):**
+**Feedback Triage (Sprint 42 → Sprint 43):**
 
 | Entry | Category | Severity | Disposition |
 |-------|----------|----------|-------------|
-| FB-252–FB-262 | Positive | — | **Acknowledged** — all 11 entries confirm print feature implementation. No action needed. |
+| FB-263, FB-264, FB-268, FB-272, FB-273, FB-274 | Positive | — | **Acknowledged** — confirm correct B-031 implementation, validation, rate-limiting, a11y, print. |
+| FB-265, FB-266, FB-267, FB-269, FB-270, FB-271 | Security | — | **Acknowledged** — all confirm defenses hold. |
+| FB-275 | UX Issue | Suggestion | **Acknowledged** — trailing-punctuation-in-href; documented §34.2 tradeoff. Backlog for a future polish sprint. |
 
-**No Critical or Major bugs. Sprint 42 combines production deployment + small feature.**
+**No Critical or Major bugs or feature gaps from Sprint 42. Sprint 43 = security debt + B-036.**
+
+**Manager schema approval:** Migration 011 (add nullable `notes` text column, max 2000 chars, to `activities`) is **pre-approved** in this plan. Backend Engineer must record it as an ADR in-task (rules.md #4).
 
 ---
 
 ## In Scope
 
-### Phase 1 — Production Deployment of Sprint 41 (start immediately)
+### Phase 1 — Dependency Security Hardening (independent track, start immediately)
 
-- [ ] **T-320** — Deploy Engineer: Production deployment of Sprint 41 code
+- [ ] **T-329** — Backend Engineer: Resolve production-runtime npm audit advisories
 
-  **Context:** Sprint 41 print feature was staged and verified. Promote to production.
+  **Context:** QA has flagged for several sprints that the `express`/`body-parser`/`qs` chain (production runtime) carries npm audit advisories (BE 6, FE 5 incl. `vite`/`ws` dev-tooling). This is the dedicated maintenance task to clear them.
 
   **Execute:**
-  1. Rebuild frontend and backend from current branch
-  2. Run full test suite — zero regressions required (1047+ tests)
-  3. Deploy to production (PM2)
-  4. Run production smoke tests
+  1. Run `npm audit` in `backend/` and `frontend/`; document the current advisories.
+  2. Run `npm audit fix`; bump `express` (and its transitive `body-parser`/`qs`) to a patched version.
+  3. Run the full test suite — zero regressions required.
+  4. Verify the express bump does not break auth, CORS, rate-limiting, or error-handler middleware.
+  5. Record the dependency bump as an ADR in `architecture-decisions.md`.
 
   **Acceptance criteria:**
-  - Production deployed with Sprint 41 + any Sprint 42 code
-  - All smoke tests pass
-  - Frontend and backend online
+  - Production-runtime advisories resolved (or explicitly documented as unfixable without a breaking change).
+  - Full suite green (1059+ tests, 0 regressions).
+  - Express bump verified against auth/CORS/rate-limit/error middleware.
+  - ADR recorded.
+
+  **Do NOT** bump a major version that breaks the API surface without flagging to Manager first.
 
   **Blocked By:** None
 
-  **Files:** `.workflow/qa-build-log.md`
+  **Files:** `backend/package.json`, `backend/package-lock.json`, `frontend/package.json`, `frontend/package-lock.json`, `.workflow/architecture-decisions.md`, `.workflow/qa-build-log.md`
 
 ---
 
-- [ ] **T-321** — Monitor Agent: Production health check
+### Phase 2 — Design + Backend for Activity Notes (B-036, parallel with Phase 1)
 
-  **Scope:**
-  - Full production health check protocol
-  - Verify print feature accessible on production
-  - Deploy Verified = Yes (Production)
+- [ ] **T-330** — Design Agent: UI spec for activity notes field (B-036)
 
-  **Acceptance criteria:**
-  - All health checks pass
-  - Deploy Verified = Yes (Production)
-
-  **Blocked By:** T-320
-
-  **Files:** `.workflow/qa-build-log.md`
-
----
-
-### Phase 2 — Design + API Contract for Activity Location Links (parallel with Phase 1)
-
-- [ ] **T-322** — Design Agent: UI spec for activity location links (B-031)
-
-  **Context:** Users paste Google Maps links or addresses into activity locations. Design how URLs in activity location fields should be detected and rendered as clickable links on the trip details page and print view.
+  **Context:** Detail-oriented travelers want to attach context to activities (reservation #, confirmation code, dress code, "bring passport"). Design how a notes field appears in the activity edit form and on the Trip Details page + print view.
 
   **Execute:**
-  1. Define URL detection pattern (http/https URLs in location text)
-  2. Specify how links render in the activity location field on trip details page (inline clickable link, opens in new tab)
-  3. Specify how links render in print view (show URL text, not clickable)
-  4. Define styling: link color (#5D737E accent), underline on hover, truncation for long URLs
-  5. Handle mixed text + URL (e.g., "Senso-ji Temple https://maps.google.com/...")
+  1. Specify a multi-line notes textarea in the activity edit form (placeholder, max 2000 chars, optional char counter).
+  2. Specify notes display under each activity on the Trip Details page (only when present).
+  3. Specify print-view rendering (readable plain text).
+  4. Apply Japandi conventions: 11px uppercase label, 2px radius, muted accent, generous spacing.
+  5. Handle empty state and long-text overflow.
 
   **Acceptance criteria:**
-  - UI spec published in ui-spec.md
-  - Link detection, rendering, print behavior, and styling defined
-  - Mixed content (text + URL) handling specified
+  - UI spec published in `ui-spec.md`.
+  - Edit-form input, Trip Details display, print behavior, and styling defined.
+  - Empty + long-text handling specified.
 
   **Blocked By:** None
 
@@ -86,46 +79,48 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-- [ ] **T-323** — Backend Engineer: API contract review for activity location links (B-031)
+- [ ] **T-331** — Backend Engineer: Activity notes — schema + API + implementation (B-036)
 
-  **Context:** Activity locations are stored as plain text. Verify no backend changes are needed — URL detection and rendering is a frontend-only concern. Document the decision in api-contracts.md.
+  **Context:** The `activities` table has no `notes` column; a client-sent `notes` value is silently dropped. Add the column and wire it through the API.
 
   **Execute:**
-  1. Confirm activity location field is plain text (no HTML, no special processing needed)
-  2. Confirm no backend changes needed — URL detection is purely frontend
-  3. Document decision in api-contracts.md
+  1. Create migration 011 — add nullable `notes` text column (max 2000 chars) to `activities`, with up/down.
+  2. Add `notes` to `activityValidationSchema` (nullable string, maxLength 2000).
+  3. Add `notes` to `activitySanitizeConfig` and the PATCH sanitize fields (`sanitizeHtml` strips tags on write).
+  4. Add `notes` to the POST insert, the `UPDATABLE` array, and the returned activity shape.
+  5. Update `api-contracts.md` (T-006 activities section).
+  6. Record the schema change as an ADR (rules.md #4) — Manager pre-approved in the plan.
+  7. Add backend tests (round-trip, sanitize, max-length, null/omitted).
 
   **Acceptance criteria:**
-  - API contract documented: no backend changes needed for B-031
-  - Decision recorded in api-contracts.md
+  - `notes` round-trips through POST/PATCH/GET.
+  - HTML stripped on write; `> 2000` chars → 400; null/omitted handled gracefully.
+  - Migration 011 applies and rolls back cleanly.
+  - API contract + ADR updated; backend tests added and passing.
 
   **Blocked By:** None
 
-  **Files:** `.workflow/api-contracts.md`
+  **Files:** `backend/src/migrations/`, `backend/src/routes/activities.js`, `backend/src/middleware/sanitize.js` (if needed), backend tests, `.workflow/api-contracts.md`, `.workflow/architecture-decisions.md`
 
 ---
 
-### Phase 3 — Implementation (after Phase 2)
+### Phase 3 — Frontend Implementation (after Phase 2)
 
-- [ ] **T-324** — Frontend Engineer: Implement activity location links ← Blocked by T-322, T-323
+- [ ] **T-332** — Frontend Engineer: Implement activity notes UI (B-036) ← Blocked by T-330, T-331
 
   **Execute:**
-  1. Create a LinkifyText utility component that detects URLs in plain text and renders them as `<a>` tags
-  2. Apply LinkifyText to activity location display on trip details page
-  3. Links open in new tab (`target="_blank" rel="noopener noreferrer"`)
-  4. Style links per UI spec (accent color, hover underline)
-  5. In print view: show URL as text (no interactive link styling)
-  6. Handle edge cases: multiple URLs, URL at start/end, no URLs (passthrough)
-  7. Add tests for LinkifyText component and integration
+  1. Add a notes textarea to the activity edit form; include `notes` in the save payload.
+  2. Render notes under each activity on the Trip Details page, only when non-empty.
+  3. Render notes in the print view as readable text.
+  4. Render notes as escaped text — no `dangerouslySetInnerHTML` (defense-in-depth alongside backend strip).
+  5. Add unit/render tests (notes present/absent, long text, HTML payload renders inert).
 
   **Acceptance criteria:**
-  - URLs in activity locations are clickable on trip details page
-  - Links open in new tab with security attributes
-  - Print view shows URL text without interactive styling
-  - Mixed text + URL renders correctly
-  - Tests added and passing
+  - Notes persist via the edit form and display correctly on Trip Details + print.
+  - HTML/script payload renders inert (no XSS).
+  - Full FE suite green.
 
-  **Blocked By:** T-322, T-323
+  **Blocked By:** T-330, T-331
 
   **Files:** `frontend/src/`
 
@@ -133,81 +128,62 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ### Phase 4 — QA + Verify (sequential)
 
-- [ ] **T-325** — QA Engineer: Integration testing for Sprint 42 ← Blocked by T-324
+- [ ] **T-333** — QA Engineer: Integration testing + security checklist ← Blocked by T-329, T-331, T-332
 
   **Scope:**
-  - Verify activity location links render correctly on trip details page
-  - Verify links open in new tab with proper security attributes
-  - Verify print view shows URL text without interactive styling
-  - Verify production deployment health (print feature + location links)
-  - Full test suite pass (backend + frontend)
-  - Security checklist (XSS prevention in URL rendering — no javascript: or data: URLs)
-  - Regression check on existing activity CRUD and trip details page
+  - T-329: confirm production-runtime advisories resolved; `npm audit` re-scan; 0 regressions.
+  - B-036: notes round-trip end-to-end; HTML-sanitized on write, rendered inert on read; `> 2000` chars → 400.
+  - Migration 011 applies and rolls back cleanly on a test DB.
+  - Full test suite (backend + frontend), config consistency, security checklist.
+  - Regression on activity CRUD + calendar.
 
-  **Acceptance criteria:**
-  - All tests pass
-  - Security checklist pass
-  - Location links verified
-  - No regressions
+  **Acceptance criteria:** All tests pass; security checklist pass; notes verified; advisories cleared; no regressions.
 
-  **Blocked By:** T-324
+  **Blocked By:** T-329, T-331, T-332
 
   **Files:** `.workflow/qa-build-log.md`
 
 ---
 
-- [ ] **T-326** — Deploy Engineer: Staging deployment ← Blocked by T-325
+- [ ] **T-334** — Deploy Engineer: Staging deployment incl. migration 011 ← Blocked by T-333
 
   **Execute:**
-  1. Rebuild frontend and backend from current branch
-  2. Run full test suite — zero regressions required
-  3. Deploy to staging (PM2)
-  4. Run staging smoke tests
+  1. Rebuild frontend and backend; run full suite (0 regressions).
+  2. **Run migration 011 on the staging DB** (`npm run migrate`).
+  3. Deploy to staging via PM2 (HTTPS be:3001 / fe:4173).
+  4. Run smoke tests incl. notes round-trip.
 
-  **Acceptance criteria:**
-  - Staging deployed with Sprint 42 code (location links)
-  - All smoke tests pass
+  **Acceptance criteria:** Staging deployed with Sprint 43 code; migration 011 applied; all smoke tests pass; production untouched. Any infra/config change includes an ADR in-task.
 
-  **Blocked By:** T-325
+  **Blocked By:** T-333
 
   **Files:** `.workflow/qa-build-log.md`
 
 ---
 
-- [ ] **T-327** — Monitor Agent: Staging health check ← Blocked by T-326
+- [ ] **T-335** — Monitor Agent: Staging health check ← Blocked by T-334
 
-  **Scope:**
-  - Full staging health check protocol
-  - Verify location links feature accessible on staging
-  - Deploy Verified = Yes (Staging)
+  **Scope:** Full staging health protocol; confirm migration 011 applied (`migrate:status` 11/11, 0 pending); verify notes round-trips on staging; record **Deploy Verified = Yes (Staging)**.
 
-  **Acceptance criteria:**
-  - All health checks pass
-  - Deploy Verified = Yes (Staging)
+  **Acceptance criteria:** All health checks pass; migration confirmed; Deploy Verified = Yes (Staging).
 
-  **Blocked By:** T-326
+  **Blocked By:** T-334
 
   **Files:** `.workflow/qa-build-log.md`
 
 ---
 
-- [ ] **T-328** — User Agent: Staging walkthrough ← Blocked by T-327
+- [ ] **T-336** — User Agent: Staging walkthrough ← Blocked by T-335
 
   **Scope:**
-  - Test activity location links with various URL formats (Google Maps, plain https, no URL)
-  - Test mixed content (text + URL)
-  - Test print view shows URL text correctly
-  - Verify production print feature works end-to-end
-  - Regression check: existing CRUD, calendar, auth, print
-  - Submit feedback to feedback-log.md
+  - Test activity notes via the edit form (add/edit/clear), long notes, HTML/script payload (must render inert).
+  - Test print view shows notes correctly.
+  - Regression: activity CRUD, calendar, auth.
+  - Submit feedback to `feedback-log.md`.
 
-  **Acceptance criteria:**
-  - Location links feature verified on staging
-  - Production print feature verified
-  - No Critical or Major regressions
-  - Feedback submitted
+  **Acceptance criteria:** Notes feature verified on staging; no Critical or Major regressions; feedback submitted.
 
-  **Blocked By:** T-327
+  **Blocked By:** T-335
 
   **Files:** `.workflow/feedback-log.md`
 
@@ -215,13 +191,14 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ## Out of Scope
 
-- **PDF export** — Print via browser print dialog only. Native PDF generation is a future enhancement.
-- **B-020 (Redis rate limiter)** — Backlog; in-memory store sufficient for current scale.
-- **B-024 (per-account rate limiting)** — Backlog; depends on B-020.
-- **B-036 (activity notes field)** — Backlog; minor.
+- **Production deployment of Sprint 43** — staging-only this sprint because Track 2 ships a schema migration; promote to production in Sprint 44 after staging verification.
+- **Notes on flights / stays** — activities only this sprint.
+- **B-020 (Redis rate limiter)** — backlog; in-memory store sufficient for current scale.
+- **B-024 (per-account rate limiting)** — backlog; depends on B-020.
+- **B-033 (ILIKE wildcard escaping)** — backlog; P3, no security impact (user-scoped).
+- **FB-275 (trailing-punctuation trim on URLs)** — backlog; documented §34.2 tradeoff.
 - **FB-190 (dark/light mode toggle)** — Suggestion; requires theme system architecture.
 - **FB-170 (SSR for landing pages)** — Suggestion; low priority.
-- **B-033 (ILIKE wildcard escaping)** — Backlog; P3, no security impact (user-scoped).
 
 ---
 
@@ -229,58 +206,57 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Design Agent | Location links UI spec | T-322 |
-| Backend Engineer | API contract review (location links) | T-323 |
-| Frontend Engineer | Location links implementation | T-324 |
-| QA Engineer | Integration testing | T-325 |
-| Deploy Engineer | Production deployment + staging deployment | T-320, T-326 |
-| Monitor Agent | Production + staging health checks | T-321, T-327 |
-| User Agent | Staging walkthrough | T-328 |
-| Manager | Code review, triage T-328 feedback, Sprint 43 plan | Reviews |
+| Backend Engineer | Dependency hardening + activity notes schema/API | T-329, T-331 |
+| Design Agent | Activity notes UI spec | T-330 |
+| Frontend Engineer | Activity notes UI | T-332 |
+| QA Engineer | Integration testing + security checklist | T-333 |
+| Deploy Engineer | Staging deployment (incl. migration 011) | T-334 |
+| Monitor Agent | Staging health check | T-335 |
+| User Agent | Staging walkthrough | T-336 |
+| Manager | Code review, schema/ADR approval, triage T-336 feedback, Sprint 44 plan | Reviews |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-T-320 (Deploy: production) → T-321 (Monitor: production health) ─────────────────┐
-T-322 (Design: location links spec) ─────────────────────────────────────────────┐ │
-T-323 (Backend: API contract review) ────────────────────────────────────────────┤ │
-                                                                                  ├─→ T-324 (Frontend: location links) → T-325 (QA) → T-326 (Deploy: staging) → T-327 (Monitor: staging) → T-328 (User)
+T-329 (Backend: dependency hardening) ──────────────────────────────────┐
+T-330 (Design: notes spec) ──┐                                          │
+T-331 (Backend: notes schema/API) ──┴─→ T-332 (Frontend: notes UI) ─────┴─→ T-333 (QA) → T-334 (Deploy: staging + migration 011) → T-335 (Monitor) → T-336 (User)
 ```
 
-**Critical path:** T-322 + T-323 → T-324 → T-325 → T-326 → T-327 → T-328
-**Parallel track:** T-320 → T-321 (production deployment runs independently)
+**Critical path:** (T-330 + T-331) → T-332 → T-333 → T-334 → T-335 → T-336
+**Parallel track:** T-329 runs independently and must complete before T-333 (QA verifies the advisory fix alongside B-036).
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #42 is complete?*
+*How do we know Sprint #43 is complete?*
 
-- [ ] T-320: Production deployed with Sprint 41 print feature
-- [ ] T-321: Monitor production health check — Deploy Verified = Yes (Production)
-- [ ] T-322: Location links spec published in ui-spec.md
-- [ ] T-323: API contract decision documented in api-contracts.md
-- [ ] T-324: Location links implemented with tests passing
-- [ ] T-325: QA integration check pass, security checklist pass
-- [ ] T-326: Staging deployed with Sprint 42 code
-- [ ] T-327: Monitor staging health check — Deploy Verified = Yes (Staging)
-- [ ] T-328: User Agent staging walkthrough — no Critical or Major regressions; feedback submitted
-- [ ] T-328 feedback triaged by Manager (all entries Acknowledged or Tasked)
-- [ ] Sprint 42 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 43 plan written in `.workflow/active-sprint.md`
+- [ ] T-329: Production-runtime npm audit advisories resolved (or documented), ADR recorded, 0 regressions
+- [ ] T-330: Activity notes spec published in `ui-spec.md`
+- [ ] T-331: Migration 011 created; notes wired through API; contract + ADR updated; backend tests pass
+- [ ] T-332: Notes UI implemented (edit form + Trip Details + print) with tests passing
+- [ ] T-333: QA integration check pass; security checklist pass; advisories verified cleared
+- [ ] T-334: Staging deployed; migration 011 applied; smoke tests pass
+- [ ] T-335: Monitor staging health check — Deploy Verified = Yes (Staging); migration confirmed
+- [ ] T-336: User Agent staging walkthrough — no Critical/Major regressions; feedback submitted
+- [ ] T-336 feedback triaged by Manager (all entries Acknowledged or Tasked)
+- [ ] Sprint 43 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 44 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #42)
+## Success Criteria (Sprint #43)
 
-By end of Sprint #42, the following must be verifiable:
+By end of Sprint #43, the following must be verifiable:
 
-- [ ] **Print feature live on production** — Deploy Verified = Yes (Production)
-- [ ] **Activity location links clickable** — URLs in activity locations open in new tab
-- [ ] **Print view handles links correctly** — URL text shown, not interactive
-- [ ] **Security: no XSS via URL injection** — javascript: and data: URLs blocked
+- [ ] **Dependency advisories cleared** — production-runtime `express`/`body-parser`/`qs` advisories resolved; `npm audit` re-scan confirms
+- [ ] **Activity notes persist** — a note added in the edit form round-trips through POST/PATCH/GET and displays on Trip Details
+- [ ] **Notes are safe** — HTML/script in a note is stripped on write and rendered inert; no XSS
+- [ ] **Notes validation** — `> 2000` chars rejected with 400
+- [ ] **Migration 011 clean** — applies and rolls back without data loss
 - [ ] **Staging verified** — Deploy Verified = Yes (Staging) confirmed by Monitor Agent
 - [ ] **User Agent verified on staging** — no Critical or Major issues
 - [ ] **Test baseline maintained or grown** — zero regressions
@@ -289,11 +265,11 @@ By end of Sprint #42, the following must be verifiable:
 
 ## Blockers
 
-- **No blockers on T-320, T-322, T-323.** All can start immediately in parallel.
-- **T-321 blocked by T-320.** Production health check depends on production deployment.
-- **T-324 blocked by T-322 + T-323.** Frontend needs both design spec and API contract.
-- **T-325–T-328 sequential** as per standard pipeline.
+- **No blockers on T-329, T-330, T-331.** All can start immediately in parallel.
+- **T-332 blocked by T-330 + T-331.** Frontend needs both the notes spec and the API contract.
+- **T-333 blocked by T-329, T-331, T-332.** QA verifies the dependency fix and the full notes feature together.
+- **T-334–T-336 sequential** per the standard pipeline.
 
 ---
 
-*Sprint #41 archived to `.workflow/sprint-log.md` on 2026-03-30. Sprint #42 plan written by Manager Agent 2026-03-30.*
+*Sprint #42 archived to `.workflow/sprint-log.md` on 2026-05-30. Sprint #43 plan written by Manager Agent 2026-05-30.*

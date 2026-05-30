@@ -34,7 +34,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `POST /api/v1/trips/:id/activities` with `location: "Senso-ji Temple https://maps.google.com/?q=sensoji"` → `201`, location returned byte-for-byte unchanged. Multiple-URL string `"https://a.com and https://b.com"` also preserved exactly. This is the input the frontend `parseLocationWithLinks` consumes — the data contract holds end-to-end. |
 | Related Task | T-328 |
 
@@ -48,7 +48,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `frontend/src/utils/formatDate.js:170` uses regex `/(https?:\/\/[^\s]+)/g` plus a per-segment `^https?:\/\/` guard (defense-in-depth). `TripDetailsPage.jsx:217-231` renders `link` segments as `<a href={segment.content} target="_blank" rel="noopener noreferrer" className={styles.locationLink}>` and `text` segments as `<span>`, guarded by `activity.location &&`. No deviation from spec. |
 | Related Task | T-328 |
 
@@ -62,7 +62,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Security |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Sprint 42 primary security criterion. Verified at two levels: (1) the detection regex requires `http(s)://`, so `javascript:alert(1)`, `data:text/html,...`, `vbscript:`, `file:///etc/passwd` fall through to `{type:'text'}`; (2) targeted DOM render tests (`TripDetailsPage.test.jsx`) assert these strings produce a `<span>`, never an `<a>` and never a real `<h1>`. Confirmed in deployed bundle. Positive security finding — XSS-via-URL is blocked. |
 | Related Task | T-328 |
 
@@ -76,7 +76,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Security |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Source (`TripDetailsPage.jsx:222-223`) and the **deployed** staging + production JS bundles both contain `noopener noreferrer`. `href` is set only via JSX `href={...}` (React auto-escapes); no `dangerouslySetInnerHTML` exists anywhere in `frontend/src/` (grep clean — only a comment noting its absence). |
 | Related Task | T-328 |
 
@@ -90,7 +90,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Security |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `location: "<script>alert(1)</script><img src=x onerror=alert(2)> Cafe https://yelp.com/biz/x"` → stored as `"alert(1) Cafe https://yelp.com/biz/x"` (tags removed, text + URL kept). `data:text/html,<h1>hi</h1>` → stored as `data:text/html,hi`. No stored markup can reach the DOM; the URL still survives for client-side linkification. Existing two-layer defense intact. |
 | Related Task | T-328 |
 
@@ -104,7 +104,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Empty `name` → `400 {name:"Activity name is required"}`; missing `name` → `400`; `location` > 500 chars → `400 {location:"location must be at most 500 characters"}`; `location` as a number → `400 {location:"location must be a string"}`; bad date `08/02/2026` → `400` with format message. Empty-string location is accepted (nullable) and `201` — frontend `activity.location &&` guard prevents an empty render. No 5xx on any malformed input. |
 | Related Task | T-328 |
 
@@ -118,7 +118,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Security |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `location: "https://x.com/'; DROP TABLE activities;--"` → `201`, stored verbatim as text. Immediately re-listing activities succeeded (table not dropped). Parameterized queries confirmed effective. |
 | Related Task | T-328 |
 
@@ -132,7 +132,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Security |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | No token → `401 UNAUTHORIZED`; garbage token → `401 Invalid or expired token`; valid token + appended char (tampered signature) → `401`; `Authorization` header without `Bearer ` prefix → `401 Authentication required`. Clean, consistent rejection. |
 | Related Task | T-328 |
 
@@ -146,7 +146,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Security |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `GET /trips/<random-valid-uuid>/activities` with a valid token → `404 NOT_FOUND` (no rows leaked). A malformed UUID (`0000…`) is rejected earlier with `400 Invalid ID format`. Ownership scoping is enforced. |
 | Related Task | T-328 |
 
@@ -160,7 +160,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Brute-force protection on `POST /auth/login` is active: `200 200 200 200 200 429 429 …`. Meanwhile 20 rapid `GET /health` calls all returned `200` with no degradation — read path is stable under rapid fire. |
 | Related Task | T-328 |
 
@@ -174,7 +174,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `TripDetailsPage.module.css:765-781`: `.locationLink` now has `text-underline-offset: 2px` and `transition: color 150ms ease`; `.locationLink:focus-visible` adds `outline: 2px solid var(--border-accent); outline-offset: 2px; border-radius: 2px`. This closes the prior gap where keyboard users had no visible focus indicator on location links. Matches Spec 34 §34.5–34.6 exactly and reuses existing design tokens (no new colors). |
 | Related Task | T-328 |
 
@@ -188,7 +188,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | In `@media print`, generic `a` → black, no underline; the exception `[class*="locationLink"]` → black + `text-decoration: underline !important`, so a reader holding the printout can read/type the URL. Matches Spec 34 §34.7 and is consistent with Spec 15/33 print rules — no conflict. |
 | Related Task | T-328 |
 
@@ -202,7 +202,7 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 | Sprint | 42 |
 | Category | UX Issue |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Details | Per Spec 34 §34.2 the `[^\s]+` match greedily consumes trailing punctuation, so `"Lunch at https://yelp.com/biz/x, 1pm"` linkifies `https://yelp.com/biz/x,` (comma included). This is an explicit, documented design decision — splitting on punctuation risks breaking valid URLs that legitimately contain `,`/`.`/`)`. Most target links (Google Maps share URLs) end in query strings without trailing prose, so real-world impact is low. **Suggestion only**, not a bug: if a future polish sprint wants it, a conservative trailing-punctuation trim (strip a single trailing `.,;:!?)` when not balanced) would tidy the rare mixed-prose case. Flagging so the team is aware of the tradeoff; no action required for Sprint 42. |
 | Related Task | T-328 |
 

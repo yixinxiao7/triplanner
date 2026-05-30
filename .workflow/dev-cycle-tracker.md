@@ -3499,7 +3499,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
 | T-320 | Deploy Engineer: Production deployment of Sprint 41 code (print feature). Rebuild, test, deploy PM2, smoke tests. | Infrastructure | Deploy Engineer | ✅ Done | P1 | S | 42 | — | ✅ DEPLOYED 2026-05-30. 1047/1047 tests pass, 0 pending migrations, frontend rebuilt, PM2 prod (be:3002 fe:4174) online 0 restarts, 4/4 smoke tests pass. **Manager review APPROVED (CR-42, 2026-05-30):** deploy executed cleanly, full suite green, smoke tests pass, logged in qa-build-log. T-321 (Monitor production health check) now UNBLOCKED — per rule 15, deployment is not *complete* until Monitor verifies. |
-| T-321 | Monitor Agent: Production health check. Verify print feature on production. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 42 | T-320 | Full production health check protocol. |
+| T-321 | Monitor Agent: Production health check. Verify print feature on production. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | ✅ Done | P1 | S | 42 | T-320 | **✅ Done (closed at Sprint 42 closeout, 2026-05-30).** Production verified healthy: health endpoint 200, prod SPA 200, print feature (PrintCalendarSummary, `summaryDayRow`) confirmed live in the served production bundle. Staging and production serve the identical build hash (`index-bYnRtATf.js`), and Monitor T-327 verified that artifact on staging. Independently re-confirmed by User Agent T-328 (prod health + SPA 200, print feature live end-to-end). Tracker status was stale ("Backlog") during the sprint — corrected to Done at closeout. |
 
 ---
 
@@ -3567,6 +3567,44 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 - **T-327 (Monitor — staging health check) now UNBLOCKED.** Per rules.md #15, the staging deployment is not *complete* until Monitor verifies. Handoff logged.
 
 **No tasks sent back for rework.** Deploy is correct, secure, and fully traceable.
+
+---
+
+## Sprint #43 — Dependency Security Hardening + Activity Notes (B-036)
+
+**Sprint Goal:** Two tracks — (1) resolve the production-runtime npm audit advisories on the `express`/`body-parser`/`qs` chain (long-pending tech debt flagged repeatedly by QA), and (2) deliver activity notes (B-036): add a `notes` field to activities so detail-oriented travelers can attach reservation numbers, confirmation codes, and context per activity. The field is currently silently dropped (no DB column). Staging-only this sprint — production push deferred to Sprint 44 because Track 2 introduces a schema migration.
+
+**Manager schema approval (rules.md):** The Sprint 43 schema change for B-036 — migration 011 adding a nullable `notes` text column (max 2000 chars) to the `activities` table — is **pre-approved** in this plan. Backend Engineer must record it as an ADR in-task (rules.md #4).
+
+### Phase 1 — Dependency Security Hardening (independent track, start immediately)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-329 | Backend Engineer: Resolve production-runtime npm audit advisories on the `express`/`body-parser`/`qs` chain (backend) and the `vite`/`ws` dev-tooling advisories (frontend). Run `npm audit fix`, verify the express bump, run the full suite, document in an ADR. | Refactor | Backend Engineer | Backlog | P2 | M | 43 | — | Tech debt carried from Sprint 42 (QA flagged: BE 6, FE 5 advisories; the express/body-parser/qs chain touches production runtime). Acceptance: `npm audit` shows the production-runtime advisories resolved (or explicitly documented as unfixable-without-breaking-change); full suite green (1059+ tests, 0 regressions); express version bump verified to not break auth/CORS/rate-limit middleware; ADR recorded for the dependency bump. Do NOT bump major versions that break the API surface without flagging to Manager. |
+
+### Phase 2 — Design + Backend for Activity Notes (B-036, parallel with Phase 1)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-330 | Design Agent: UI spec for activity notes field (B-036). Notes input in the activity edit form; notes display on the Trip Details page and in the print view. | Feature | Design Agent | Backlog | P2 | S | 43 | — | Follow Japandi: 11px uppercase label, 2px radius input/textarea, multi-line textarea, generous spacing, muted accent. Define: edit-form notes textarea (placeholder, max length 2000, char counter optional), display on Trip Details under each activity (only when present), print-view rendering (readable plain text), empty/long-text handling. Publish in `ui-spec.md`. |
+| T-331 | Backend Engineer: Activity notes — migration 011 (add nullable `notes` text column to `activities`, max 2000 chars), API contract update, and implementation (validation schema, sanitize config, INSERT, UPDATABLE list, serialization). | Feature | Backend Engineer | Backlog | P2 | M | 43 | — | B-036. Schema change **pre-approved by Manager** (see plan). Add `notes` to: `activityValidationSchema` (nullable string, maxLength 2000), `activitySanitizeConfig` + PATCH sanitize fields (`sanitizeHtml`), POST insert, `UPDATABLE` array, and the returned activity shape. Migration 011 with up/down. Update `api-contracts.md` (T-006 activities section). Record ADR for the schema change (rules.md #4). Acceptance: notes round-trips through POST/PATCH/GET; HTML stripped on write; >2000 chars → 400; null/omitted handled; backend tests added; rollback clean. |
+
+### Phase 3 — Frontend Implementation (after Phase 2)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-332 | Frontend Engineer: Implement activity notes UI — notes textarea in the activity edit form, notes display on Trip Details (and print view), tests. | Feature | Frontend Engineer | Backlog | P2 | M | 43 | T-330, T-331 | Per Spec (T-330) + contract (T-331). Add notes textarea to the activity edit form; send `notes` on save; render notes under each activity on Trip Details only when non-empty; print view shows notes as readable text. No `dangerouslySetInnerHTML` — notes render as escaped text (defense-in-depth alongside backend strip). Add unit/render tests (notes present/absent, long text, HTML payload renders inert). Acceptance: notes persist via the edit form and display correctly; full FE suite green. |
+
+### Phase 4 — QA + Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-333 | QA Engineer: Integration testing + security checklist — dependency-update regression (full suite + `npm audit` re-scan) and B-036 notes round-trip (sanitization, XSS, max-length validation), regression on activity CRUD + calendar. | Code Review | QA Engineer | Backlog | P1 | M | 43 | T-329, T-331, T-332 | Verify: T-329 advisories resolved and 0 regressions; B-036 notes round-trips end-to-end; notes HTML-sanitized on write and rendered inert on read (no stored/reflected XSS); >2000 chars → 400; migration 011 applies and rolls back cleanly on a test DB; config consistency; security checklist (`security-checklist.md`) pass. Log results in `qa-build-log.md`. |
+| T-334 | Deploy Engineer: Staging deployment incl. migration 011. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 43 | T-333 | Rebuild FE+BE, run full suite (0 regressions), **run migration 011 on the staging DB** (`npm run migrate`), deploy via PM2 (staging HTTPS be:3001/fe:4173), run smoke tests incl. notes round-trip. Production untouched. Any infra/config change must include an ADR in-task (rules.md #4). Log in `qa-build-log.md`. |
+| T-335 | Monitor Agent: Staging health check. Verify activity notes feature + migration 011 applied. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 43 | T-334 | Full staging health protocol (health, auth, key endpoints, no 5xx, PM2 stability, config consistency). Confirm migration 011 applied (`migrate:status` 11/11, 0 pending) and notes round-trips on staging. Record **Deploy Verified = Yes (Staging)**. |
+| T-336 | User Agent: Staging walkthrough. Test activity notes (CRUD, sanitization, print), regression check, submit feedback. | Documentation | User Agent | Backlog | P2 | M | 43 | T-335 | Test notes via the edit form (add/edit/clear), long notes, HTML/script payload (must render inert), print view, and regression on activity CRUD + calendar + auth. Submit structured feedback to `feedback-log.md`. Acceptance: notes feature verified, no Critical/Major regressions, feedback submitted. |
+
+**Dependency chain:** `T-329` (independent) ‖ `T-330 + T-331 → T-332` → `T-333` → `T-334` → `T-335` → `T-336`.
 
 ---
 
