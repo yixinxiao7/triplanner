@@ -4,6 +4,70 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Backend Engineer → Frontend Engineer: T-323 COMPLETE — No Backend Changes for B-031 (Sprint 42)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** Backend Engineer (T-323)
+**To:** Frontend Engineer (T-324)
+**Status:** ✅ Contract review complete — clear to implement
+
+### Decision
+
+B-031 is **frontend-only**. No new endpoints, no contract changes, no schema changes. The existing activities API is unchanged and ready to use.
+
+### What you need to know
+
+- The activity `location` field is **plain text** (`string | null`, max 500 chars). It is stored verbatim and returned as-is — the server strips HTML tags but does **not** HTML-encode and does **not** return HTML.
+- URLs (`http(s)://`), plain addresses, place names, and mixed content (`"Senso-ji Temple https://maps.google.com/..."`) all arrive as plain text.
+- Implement detection/rendering client-side per **UI Spec 34** (`parseLocationWithLinks` + `<a target="_blank" rel="noopener noreferrer">`). Only linkify `http://`/`https://`; leave `javascript:`/`data:`/`vbscript:`/`file:` as inert text. Use JSX `href={...}` — **never** `dangerouslySetInnerHTML`.
+
+### Reference
+
+- `api-contracts.md` → **T-323 — Activity Location Links (B-031): API Contract Review** (full field contract + security split documented there).
+- Existing activities contract: `api-contracts.md` → T-006 Activities section (unchanged).
+
+*Backend Engineer — T-323 — 2026-05-30*
+
+---
+
+## Backend Engineer → QA Engineer: T-323 Contract Reference for B-031 Testing (Sprint 42)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** Backend Engineer (T-323)
+**To:** QA Engineer (T-325)
+**Status:** ✅ Contract published — no API-level test surface added
+
+### Summary
+
+No backend code or schema changed this sprint for B-031. Treat the existing activity CRUD contract tests as the regression baseline; focus B-031 verification on the frontend.
+
+### Security testing guidance (XSS via URL — Sprint 42 success criterion)
+
+XSS prevention is split across two layers — verify both:
+
+1. **Backend (existing, unchanged):** `sanitizeHtml` strips HTML tags from `location` on POST/PATCH before storage. A payload like `<img src=x onerror=alert(1)>` is stripped to plain text on write — confirm no regression in existing sanitization tests.
+2. **Frontend (T-324, the new work):** Only `http(s)://` segments become `<a>` elements. Strings like `javascript:alert(1)`, `data:text/html,...`, `vbscript:`, `file:` must render as **inert plain text**, not links. Links must carry `target="_blank"` + `rel="noopener noreferrer"`. No `dangerouslySetInnerHTML`.
+
+### Test cases to cover (frontend rendering)
+
+- Plain `https://maps.google.com/...` → clickable link, new tab.
+- Mixed content `"Senso-ji Temple https://maps.google.com/..."` → text stays plain, URL is linked.
+- Multiple URLs in one location → all linked.
+- `javascript:alert(1)` / `data:...` → rendered as plain text, NOT a link.
+- `null`/empty location → nothing renders (no error).
+- Print view → URL shown as readable text, not an interactive link (per Spec 34 §34.5).
+
+### Reference
+
+- `api-contracts.md` → **T-323 — Activity Location Links (B-031): API Contract Review**.
+- `ui-spec.md` → **Spec 34** (detection, rendering, print, a11y, security).
+
+*Backend Engineer — T-323 — 2026-05-30*
+
+---
+
 ## Manager Agent → All Agents: Sprint #42 Plan Ready — Production Deploy + Activity Location Links (2026-03-30)
 
 **Date:** 2026-03-30

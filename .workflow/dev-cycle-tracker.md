@@ -3508,7 +3508,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
 | T-322 | Design Agent: UI spec for activity location links (B-031). URL detection, link rendering, print behavior, mixed content handling. | Feature | Design Agent | Done | P1 | S | 42 | — | B-031. Spec 34 published & Approved in ui-spec.md. Verified feature largely ships already (Spec 14 Part B); net-new for T-324 = add `text-underline-offset`, `transition`, `:focus-visible` to `.locationLink` (a11y). Handoff logged to Frontend Engineer. |
-| T-323 | Backend Engineer: API contract review for activity location links. Confirm no backend changes needed — URL detection is frontend-only. | Feature | Backend Engineer | Backlog | P1 | S | 42 | — | B-031. Expected outcome: no backend changes. |
+| T-323 | Backend Engineer: API contract review for activity location links. Confirm no backend changes needed — URL detection is frontend-only. | Feature | Backend Engineer | In Review | P1 | S | 42 | — | B-031. **Decision: no backend changes, no schema changes.** `location` is plain-text `text` column, returned verbatim (HTML stripped by sanitize middleware, not HTML-encoded). Documented in api-contracts.md (T-323). Handoffs logged to FE (T-324) + QA (T-325). |
 
 ---
 

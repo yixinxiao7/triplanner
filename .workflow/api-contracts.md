@@ -8389,9 +8389,65 @@ Since no new endpoint is needed, **T-314 should be marked N/A**. No backend code
 
 ---
 
-### Active Contracts Summary (Sprints 1–41)
+## Sprint 42 Contracts
 
-All previously published contracts remain current. No new endpoints or changes in Sprint 41:
+---
+
+## T-323 — Activity Location Links (B-031): API Contract Review
+
+| Field | Value |
+|-------|-------|
+| Sprint | 42 |
+| Task | T-323 |
+| Status | Agreed — **No backend changes required** |
+| Auth Required | N/A (no endpoint changes) |
+
+**Decision:** B-031 (clickable activity location links) is a **frontend-only** concern. URL detection and link rendering happen entirely in the client. **No new endpoints, no contract changes, and no schema changes are required for Sprint 42.**
+
+### Why no backend change is needed
+
+The activity `location` field is already stored and returned as **plain text**. URL detection (`parseLocationWithLinks`) and link rendering (`<a target="_blank" rel="noopener noreferrer">`) are implemented in the frontend per UI Spec 34 (T-322). The API contract for activities is unchanged.
+
+**Verified against the existing implementation:**
+
+| Concern | Finding | Source |
+|---------|---------|--------|
+| Storage type | `text` column, nullable — no length limit at DB level | `backend/src/migrations/20260224_006_create_activities.js` (`table.text('location').nullable()`) |
+| Validation | Optional, nullable, `type: 'string'`, `maxLength: 500` | `backend/src/routes/activities.js` (`activityValidationSchema.location`) |
+| Read/write | Stored verbatim (`location: data.location ?? null`); returned as-is in list/get | `backend/src/models/activityModel.js` |
+| Sanitization | HTML tags stripped via `sanitizeFields({ ..., location: 'string' })` on POST/PATCH; output is **plain text, NOT HTML-encoded** | `backend/src/middleware/sanitize.js`, `backend/src/routes/activities.js` |
+
+### Contract for the `location` field (unchanged — re-stated for FE/QA reference)
+
+- **Type:** `string | null`
+- **Format:** Plain UTF-8 text. May contain URLs (`http://`/`https://`), plain place names, addresses, or mixed content (e.g., `"Senso-ji Temple https://maps.google.com/?q=..."`).
+- **Max length:** 500 characters (validation), stored in an unbounded `text` column.
+- **Server-side sanitization:** HTML/XML tags are stripped before storage (defense-in-depth against stored XSS). The server does **not** HTML-encode the value, and does **not** return HTML — the value is always returned as plain text.
+- **What the server does NOT do:** It does not parse, validate, or alter URLs in any way. It does not detect, linkify, or strip `http(s)://`, `javascript:`, `data:`, `vbscript:`, or `file:` schemes — these pass through as plain text (HTML tags excepted). A bare `https://maps.google.com/...` is preserved intact because it contains no HTML tags.
+
+### Security note for QA (T-325)
+
+XSS prevention for B-031 is split across two layers:
+
+1. **Backend (existing):** `sanitizeHtml` strips HTML tags from `location` on write, so no `<script>`/`<img onerror=...>` payload is ever stored or returned.
+2. **Frontend (T-324, the new work):** Only `http://`/`https://` segments are turned into `<a>` elements; `javascript:`, `data:`, `vbscript:`, and `file:` strings remain inert plain text. Links use JSX `href={...}` (React auto-escapes) — **never** `dangerouslySetInnerHTML`.
+
+There is **no API-level test surface** for B-031 since no endpoint behavior changes. QA should treat the existing activity CRUD contract tests as the regression baseline and focus B-031 verification on frontend rendering.
+
+### Schema Changes
+
+**None.** No new tables, columns, or migrations. No `technical-context.md` migration-log entry and no Manager schema approval are required for Sprint 42.
+
+### Impact on downstream tasks
+
+- **T-324 (Frontend):** Proceed using the existing activities contract. The `location` field is plain text — apply `parseLocationWithLinks` client-side per Spec 34.
+- **T-326 (Deploy):** No new migration to run for Sprint 42. (T-320 production deploy carries Sprint 41 code only; no backend code change from this sprint.)
+
+---
+
+### Active Contracts Summary (Sprints 1–42)
+
+All previously published contracts remain current. No new endpoints or changes in Sprint 42 (B-031 is frontend-only — see T-323 above):
 - **Auth:** 4 endpoints (register, login, refresh, logout)
 - **Trips:** 5 endpoints (CRUD + list) — `notes` max length 5000 chars
 - **Flights:** 4 endpoints (CRUD scoped to trip)
