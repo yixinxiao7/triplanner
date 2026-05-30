@@ -411,3 +411,55 @@ T-315 is also blocked by T-313 (Backend API contract). Once T-313 confirms the e
 - **Backend Engineer:** Start T-313 immediately (parallel with T-312). Evaluate whether existing GET /trips/:id returns all sub-resources (flights, stays, activities) or if a new export endpoint is needed.
 - **All other agents:** Wait for dependencies to clear.
 
+
+---
+
+## Design Agent → Frontend Engineer: Activity Location Links Spec Ready (T-322 → T-324)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** Design Agent
+**To:** Frontend Engineer
+**Status:** Spec Approved — T-324 unblocked (Design side). Also requires T-323 (Backend API contract) before starting build.
+
+### What's ready
+
+**Spec 34: Activity Location Links — Clickable URL Detection** is published and Approved in `.workflow/ui-spec.md` (B-031, T-322).
+
+### Key finding — most of this already ships
+
+While speccing, I verified the codebase. The activity location URL feature is **already implemented**:
+- `parseLocationWithLinks()` exists in `frontend/src/utils/formatDate.js` (Sprint 8, T-114) — correct as specced.
+- `ActivityEntry` in `TripDetailsPage.jsx` already renders links with `target="_blank" rel="noopener noreferrer"` and `className={styles.locationLink}`.
+- Print handling already exists in `frontend/src/styles/print.css`: generic `a` → black, no underline; `[class*="locationLink"]` → black, underline kept (URL stays readable on paper).
+- Security (regex blocks `javascript:`/`data:`/`vbscript:`/`file:`) is in place.
+
+### The actual delta for T-324 (small)
+
+The ONLY net-new work is bringing `.locationLink` in `TripDetailsPage.module.css` fully in line with the design system + accessibility rules (Spec 34 §34.5–34.6):
+
+1. Add `text-underline-offset: 2px;`
+2. Add `transition: color 150ms ease;`
+3. Add a `.locationLink:focus-visible` rule:
+   ```css
+   .locationLink:focus-visible {
+     outline: 2px solid var(--border-accent);
+     outline-offset: 2px;
+     border-radius: 2px;
+   }
+   ```
+   This is a **hard accessibility requirement** — keyboard users currently have no visible focus indicator on these links.
+
+Everything else (utility, JSX render, print rules) should be **verified to match the spec** but is expected to need no change.
+
+### Tests (Spec 34 §34.12, min 6)
+Plain text → no `<a>`; single URL → correct attrs; mixed text+URL; multiple URLs; `javascript:` → plain text; `data:` → plain text. Confirm/extend existing coverage in `TripDetailsPage.test.jsx`.
+
+### References
+- Spec: `.workflow/ui-spec.md` → **Spec 34** (Sprint #42 Specs)
+- Prior art: Spec 14 Part B (Sprint 8). Spec 34 is now the canonical source of truth.
+- Print context: Spec 15 + Spec 33.
+
+### Blockers
+- T-324 also blocked by **T-323** (Backend confirms activity location is plain text, no backend change). Per the spec this is a frontend-only feature — expect T-323 to confirm "no backend changes needed."
+

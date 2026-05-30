@@ -12890,3 +12890,322 @@ All existing print behavior (button, hidden UI, color overrides, typography, pag
 ---
 
 *Sprint #41 design spec complete. Published by Design Agent 2026-03-30.*
+
+---
+
+## Sprint #42 Specs
+
+---
+
+### Spec 34: Activity Location Links — Clickable URL Detection (Sprint 42 — T-322 / B-031)
+
+**Status:** Approved (auto-approved per automated sprint cycle)
+**Task:** T-322
+**Sprint:** 42
+**Published:** 2026-05-30
+**Implemented by:** T-324 (Frontend Engineer)
+**Supersedes/extends:** Spec 14 Part B (Sprint 8, T-114). This spec is the **canonical, current source of truth** for activity location link behavior. It re-documents the established design, reconciles it with the print view added in Sprints 10/41 (Spec 15 + Spec 33), and specifies a small set of accessibility refinements (§34.6).
+
+---
+
+#### 34.0 Overview
+
+Detail-oriented travelers frequently paste a Google Maps link or a venue URL into an activity's **location** field (e.g., `"Senso-ji Temple https://maps.google.com/?q=..."`). Today that text is rendered, but this spec defines the complete, authoritative behavior for how URLs inside an activity location are:
+
+1. **Detected** — `http://` / `https://` URLs are recognized inside an otherwise-plain-text location string.
+2. **Rendered on screen** — each detected URL becomes a clickable `<a>` that opens in a new tab; surrounding text stays plain.
+3. **Rendered in print** — the URL is shown as readable text (underlined, black ink, **not** an interactive blue link) so a reader holding a printed itinerary can type it.
+4. **Secured** — only `http://`/`https://` are ever linkified; dangerous schemes (`javascript:`, `data:`, `vbscript:`, `file:`, etc.) remain inert plain text. No `dangerouslySetInnerHTML`.
+
+This is a **frontend-only** concern. Activity locations are stored and returned as plain text by the API — no backend changes are required (confirmed in T-323 / `api-contracts.md`).
+
+**Scope boundary:** This spec applies ONLY to the activity location field as rendered on the **Trip Details page** (`ActivityEntry` in `TripDetailsPage.jsx`) and its print view. It does NOT change the activity **edit** form (locations are still entered/edited as plain text), and it does NOT linkify any other field (trip notes, stay addresses, flight fields).
+
+---
+
+#### 34.1 Where This Appears
+
+| Surface | Component | Behavior |
+|---------|-----------|----------|
+| Trip Details page — Activities section | `ActivityEntry` → `.activityLocation` | URLs render as interactive links (new tab) |
+| Print view (browser print dialog) | Same DOM, `print.css` `@media print` | URLs render as underlined black text, not interactive |
+| Activity edit page | `ActivityEditPage` location input | **No change** — raw plain-text entry, no linkification |
+| Trip notes, stay address, flight fields | — | **No change** — not in scope |
+
+---
+
+#### 34.2 URL Detection Algorithm
+
+**Regex:** `/(https?:\/\/[^\s]+)/g`
+
+- Matches any token beginning with `http://` or `https://`, consuming characters up to the next whitespace.
+- The `g` flag finds every URL in the string.
+- The capturing group means `String.prototype.split` returns the matched URLs interleaved with the surrounding text segments.
+- Any non-`http(s)` content — including `javascript:`, `data:`, `vbscript:`, `file:`, bare addresses, and plain place names — does not match and is treated as plain text.
+
+**Trailing punctuation:** `[^\s]+` greedily includes trailing punctuation glued to a URL (e.g., a sentence-final period in `"...example.com."`). This is accepted, standard behavior and is NOT special-cased — splitting on punctuation risks breaking legitimate URLs that contain it.
+
+---
+
+#### 34.3 Utility Function — `parseLocationWithLinks`
+
+**Location:** `frontend/src/utils/formatDate.js` (already present — this is the established home for the utility).
+
+```js
+/**
+ * Parse a location string, detecting HTTP/HTTPS URLs and splitting the text
+ * into typed segments: 'text' (plain) or 'link' (URL).
+ *
+ * Only http:// and https:// schemes create links. All other content,
+ * including javascript:, data:, and vbscript: URIs, is returned as 'text'.
+ *
+ * @param {string|null|undefined} text - The location string to parse
+ * @returns {Array<{type: 'text'|'link', content: string}>}
+ */
+export function parseLocationWithLinks(text) {
+  if (!text) return [];
+  const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(URL_REGEX);
+  return parts
+    .filter((part) => part.length > 0)
+    .map((part) => ({
+      type: /^https?:\/\//.test(part) ? 'link' : 'text',
+      content: part,
+    }));
+}
+```
+
+- The secondary `.test(/^https?:\/\//)` on each segment is a defense-in-depth guard: only a segment that genuinely begins with `http://`/`https://` becomes a `'link'`.
+- Returns `[]` for `null`/`undefined`/empty — callers guard with `activity.location &&` so nothing renders.
+- No `eval`, no `new Function`, no dynamic property access — only `split`, `filter`, `map`, `RegExp.test`.
+
+---
+
+#### 34.4 Rendering — `ActivityEntry` (Trip Details page)
+
+**File:** `frontend/src/pages/TripDetailsPage.jsx` → `ActivityEntry`
+
+The location row renders the decorative pin icon followed by the parsed segments. Each `'link'` segment is an `<a>`; each `'text'` segment is a `<span>`:
+
+```jsx
+{activity.location && (
+  <div className={styles.activityLocation}>
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+      <path d="…" stroke="currentColor" strokeWidth="1" />
+      <circle cx="5" cy="3.75" r=".833" fill="currentColor" />
+    </svg>
+    {parseLocationWithLinks(activity.location).map((segment, idx) =>
+      segment.type === 'link' ? (
+        <a
+          key={idx}
+          href={segment.content}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.locationLink}
+        >
+          {segment.content}
+        </a>
+      ) : (
+        <span key={idx}>{segment.content}</span>
+      )
+    )}
+  </div>
+)}
+```
+
+**Hard requirements:**
+- Every generated link MUST carry `target="_blank"` **and** `rel="noopener noreferrer"` (prevents tab-napping + referrer leakage).
+- `href` is set via the JSX `href={segment.content}` attribute only. NEVER use `dangerouslySetInnerHTML`.
+- Link text is the URL itself, rendered as JSX children (React auto-escapes).
+- `key={idx}` is acceptable here: segments are deterministically derived from a stable string and never reorder.
+
+---
+
+#### 34.5 Visual Specification & Styling
+
+**On-screen link** — accent-colored, underlined, lightens on hover, with a visible keyboard-focus ring. Long URLs wrap inside the activity card rather than overflowing.
+
+**File:** `frontend/src/pages/TripDetailsPage.module.css`
+
+```css
+.locationLink {
+  color: var(--accent);                /* #5D737E — the established interactive color */
+  text-decoration: underline;
+  text-underline-offset: 2px;          /* refinement — breathing room under text */
+  word-break: break-all;               /* long query-string URLs never overflow */
+  transition: color 150ms ease;        /* refinement — matches the 150ms motion convention */
+}
+
+.locationLink:hover {
+  color: var(--text-primary);          /* #FCFCFC — quiet, confident hover */
+}
+
+.locationLink:focus-visible {          /* refinement — keyboard accessibility */
+  outline: 2px solid var(--border-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+```
+
+**Design rationale (Japandi alignment):**
+- `var(--accent)` (`#5D737E`) signals "interactive" using an existing token — no new color introduced.
+- Underline is the universal, colorblind-safe hyperlink cue (we don't rely on color alone).
+- Hover lightens to text-primary — understated feedback, no decoration.
+- `150ms ease` transition matches Design Principle #2 (quiet confidence, subtle transitions).
+- `word-break: break-all` upholds Principle #3 (structure over decoration) by keeping the card layout intact.
+
+---
+
+#### 34.6 Accessibility Refinements (delta vs. current implementation)
+
+The current `.locationLink` rule is missing three properties that this spec requires. These are the only *new* work items beyond what already ships:
+
+| Property | Current | Required | Why |
+|----------|---------|----------|-----|
+| `text-underline-offset: 2px` | absent | **add** | Legibility of underlined monospace URLs |
+| `transition: color 150ms ease` | absent | **add** | Consistency with the 150ms motion convention |
+| `:focus-visible` outline | absent | **add** | **Accessibility — keyboard users must see which link is focused.** Hard rule. |
+
+Additional accessibility notes:
+- The pin `<svg>` stays `aria-hidden="true"` (decorative).
+- Link text is the full URL, which screen readers announce verbatim — adequate context for "open link."
+- No change to the `ActivityEntry` `<article>` `aria-label` (location remains secondary metadata; name + time carry the label).
+
+---
+
+#### 34.7 Print View Behavior
+
+In print, the itinerary is read on paper — an interactive accent-blue link is meaningless, but the URL **text** is valuable (the reader may type it). The print stylesheet therefore neutralizes interactivity while preserving the readable, underlined URL string.
+
+**File:** `frontend/src/styles/print.css` (inside the existing `@media print` block)
+
+```css
+/* ── Links — show as text, not interactive ── */
+a {
+  color: #000 !important;
+  text-decoration: none !important;
+}
+
+/* Exception: activity location URLs — keep the URL legible & underlined so
+   a reader holding the printout can read/type the address. */
+[class*="locationLink"] {
+  color: #000 !important;
+  text-decoration: underline !important;  /* underline signals "this was a link" */
+}
+```
+
+**Print rules:**
+- All links collapse to black ink. Generic links lose their underline; the **activity location** link keeps its underline to communicate "this is a URL."
+- The link is non-interactive on paper by nature; no `href` removal needed.
+- This is consistent with Spec 15 (print color overrides) and Spec 33 (print calendar summary) — no conflict.
+
+---
+
+#### 34.8 Mixed Content Handling (text + URL)
+
+The core requirement from B-031. The parser splits a location into ordered segments, preserving the author's text exactly:
+
+| Input (`activity.location`) | Rendered segments (screen) |
+|-----------------------------|----------------------------|
+| `"Senso-ji Temple https://maps.google.com/?q=senso-ji"` | `<span>Senso-ji Temple </span>` + `<a>https://maps.google.com/?q=senso-ji</a>` |
+| `"https://maps.google.com — main gate"` | `<a>https://maps.google.com</a>` + `<span> — main gate</span>` |
+| `"Lunch at https://yelp.com/biz/xyz, 1pm"` | `<span>Lunch at </span>` + `<a>https://yelp.com/biz/xyz,</a>` + `<span> 1pm</span>` (trailing comma stays on the URL — accepted) |
+| `"https://a.com and https://b.com"` | `<a>https://a.com</a>` + `<span> and </span>` + `<a>https://b.com</a>` |
+
+Leading/trailing/interior whitespace between text and URL is preserved inside the `'text'` segments so spacing reads naturally.
+
+---
+
+#### 34.9 All States
+
+| State | Input example | Expected render |
+|-------|---------------|-----------------|
+| **No location** | `null` / `undefined` | Location `<div>` not rendered (`activity.location &&` guard) |
+| **Empty string** | `""` | `parseLocationWithLinks` → `[]`; guard prevents render |
+| **Plain text, no URL** | `"Golden Gate Park"` | Single `<span>Golden Gate Park</span>` — no `<a>` |
+| **URL only** | `"https://maps.google.com/place/XYZ"` | One `<a target="_blank" rel="noopener noreferrer">` |
+| **Text before URL** | `"Meet at https://maps.google.com"` | `<span>Meet at </span>` + `<a>` |
+| **URL before text** | `"https://maps.google.com main gate"` | `<a>` + `<span> main gate</span>` |
+| **Text + URL + text** | `"Lunch at https://yelp.com/biz/x done 2pm"` | `<span>` + `<a>` + `<span>` |
+| **Multiple URLs** | `"https://a.com and https://b.com"` | `<a>` + `<span> and </span>` + `<a>` |
+| **Dangerous — javascript:** | `"javascript:alert(1)"` | Plain `<span>` — NO `<a>` |
+| **Dangerous — data:** | `"data:text/html,<h1>hi</h1>"` | Plain, React-escaped `<span>` — NO `<a>` |
+| **Dangerous — file:/vbscript:** | `"file:///etc/passwd"` | Plain `<span>` — NO `<a>` |
+| **Print — any URL** | any of the above with a URL | URL shown as underlined black text, non-interactive |
+| **Loading** | — | Inherited from `TripDetailsPage` skeleton/spinner; `ActivityEntry` not rendered until data resolves |
+| **Error** | — | Inherited from `TripDetailsPage` error state; activities section not rendered |
+
+There is no link-specific empty/loading/error state — these are inherited from the parent Trip Details page lifecycle.
+
+---
+
+#### 34.10 Security Requirements
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Only `http://` / `https://` linkified | Regex `/(https?:\/\/[^\s]+)/g` + per-segment `.test(/^https?:\/\//)` guard |
+| `javascript:` → inert text | Does not match regex → `{type:'text'}` |
+| `data:` / `vbscript:` / `file:` → inert text | Do not match regex → `{type:'text'}` |
+| No HTML injection | No `dangerouslySetInnerHTML`; `href` + children set via JSX (React escapes) |
+| Tab-napping / referrer leak prevention | Every `<a target="_blank">` MUST have `rel="noopener noreferrer"` |
+| No code execution on user input | Utility uses only `split` / `filter` / `map` / `RegExp.test` |
+
+QA (T-325) must explicitly verify that `javascript:` and `data:` location strings render as plain text with no `<a>` element.
+
+---
+
+#### 34.11 Responsive Behavior
+
+| Breakpoint | Behavior |
+|-----------|----------|
+| **Desktop (≥ 1024px)** | Location wraps within the `activityDetails` panel; long URLs contained by `word-break: break-all`. |
+| **Tablet (640–1023px)** | Same; no breakpoint-specific link logic. |
+| **Mobile (< 640px)** | Activity card stacks (time / divider / details vertically). The location link wraps within the details column; `word-break: break-all` prevents horizontal overflow and keeps tap targets within the card. |
+
+The link inherits the font size of `.activityLocation`; no per-breakpoint sizing is required. Tap target on mobile is the full underlined URL run — adequate for touch.
+
+---
+
+#### 34.12 Implementation Summary — What the Frontend Engineer Must Build (T-324)
+
+The detection, on-screen rendering, security, and print handling **already ship** (Spec 14 Part B + Spec 15/33). The remaining work for Sprint 42 is to bring `.locationLink` fully in line with this spec and add coverage:
+
+| File | Change |
+|------|--------|
+| `frontend/src/utils/formatDate.js` | **No change** — `parseLocationWithLinks` already correct. Verify it remains as in §34.3. |
+| `frontend/src/pages/TripDetailsPage.jsx` → `ActivityEntry` | **No change** — render already matches §34.4. Verify `target`/`rel` present. |
+| `frontend/src/pages/TripDetailsPage.module.css` → `.locationLink` | **Modify** — add `text-underline-offset: 2px`, `transition: color 150ms ease`, and a `.locationLink:focus-visible` rule (§34.5–34.6). |
+| `frontend/src/styles/print.css` | **No change** — link print rules already match §34.7. Verify `[class*="locationLink"]` keeps underline + black ink. |
+| Tests | **Add/confirm** the cases below. |
+
+**Tests required (minimum 6):**
+1. Plain-text location (no URL) → no `<a>` in the document.
+2. Single URL → `<a>` with correct `href`, `target="_blank"`, `rel="noopener noreferrer"`, `className` includes `locationLink`.
+3. Mixed text + URL → text as `<span>`, URL as `<a>`, original order preserved.
+4. Multiple URLs in one string → two separate `<a>` elements with intervening `<span>`.
+5. `javascript:alert(1)` → renders entirely as plain text, NO `<a>`.
+6. `data:text/html,...` → renders as plain (escaped) text, NO `<a>`.
+
+---
+
+#### 34.13 Design System Conventions
+
+No new tokens or conventions. This spec reuses existing tokens only:
+- `var(--accent)` (`#5D737E`) — link color
+- `var(--text-primary)` (`#FCFCFC`) — hover color
+- `var(--border-accent)` — focus outline
+- `150ms ease` — transition timing (existing motion convention)
+
+The `:focus-visible` outline pattern (`2px solid var(--border-accent)`, `outline-offset: 2px`, `border-radius: 2px`) matches the focus treatment used elsewhere in the app and is hereby reaffirmed as the standard focus ring for inline text links.
+
+---
+
+*Spec 34 (Sprint 42 — Activity Location Links, T-322, B-031) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-05-30.*
+
+---
+
+**Design System Conventions:** Stable. No additions or modifications proposed; Spec 34 reuses existing tokens and reaffirms the standard inline-link focus ring. All conventions from the table at the top of this document remain in effect.
+
+---
+
+*Sprint #42 design spec complete. Published by Design Agent 2026-05-30.*
