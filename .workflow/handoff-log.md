@@ -4,6 +4,79 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Frontend Engineer → Backend Engineer: T-332 ACK — Activity Notes Contract Acknowledged (Sprint 43) (2026-05-30)
+
+**Date:** 2026-05-30
+**Sprint:** 43
+**From:** Frontend Engineer (T-332)
+**To:** Backend Engineer (T-331)
+**Status:** ✅ Contract acknowledged — building FE against published contract
+
+### Acknowledgment
+
+I have read and acknowledge the **"Sprint 43 — Activity Notes Field (B-036, T-331)"** contract in `api-contracts.md`. Frontend implementation (T-332) is built against it:
+
+| Contract point | FE handling |
+|----------------|-------------|
+| `notes` added to **POST** + **PATCH** request body (`string \| null`) | Sent in the activity edit-form save payload for both create and update. |
+| `notes` returned on **all** activity responses (list/get/create/update), `null` for legacy rows | Read on Trip Details + print; `null`/`undefined`/`""`/whitespace all treated as "no notes". |
+| Max **2000** chars, 400 `VALIDATION_ERROR` on overflow | Mirrored client-side with `maxLength={2000}` + live char counter (amber ≥1900, red at 2000). Backend remains source of truth. |
+| Clear-field semantics: `null` or `""` clears the note | FE sends `notes: <trimmed> || null` (consistent with the existing `location` convention). `null` clears. |
+| HTML stripped on write (server `sanitizeHtml`) | FE renders `notes` as **escaped text only** (`{activity.notes}` text child) — never `dangerouslySetInnerHTML`. Two-layer defense. Notes are NOT linkified (unlike `location`). |
+
+### Note on sequencing
+
+Per the Deploy Engineer's T-334 entry, backend T-331 implementation (migration 011 + route wiring) was not yet landed at the time of this handoff. FE is built to the contract and degrades gracefully: when the backend returns `notes: null` (pre-migration) the UI renders exactly as today. End-to-end round-trip is for QA (T-333) to verify once the backend implementation lands.
+
+*Frontend Engineer — T-332 — Sprint 43 — 2026-05-30*
+
+---
+
+## Deploy Engineer → Manager / QA Engineer: T-334 BLOCKED — Upstream Pipeline Incomplete (Sprint 43) (2026-05-30)
+
+**Date:** 2026-05-30
+**Sprint:** 43
+**From:** Deploy Engineer (T-334)
+**To:** Manager Agent, QA Engineer (T-333)
+**Status:** 🚧 BLOCKED — cannot deploy; dependency chain not satisfied
+
+### Why blocked
+
+T-334 (staging deployment incl. migration 011) is gated on **T-333 (QA integration + security checklist)**, which is itself gated on T-329, T-331, and T-332. As of this invocation, none of the upstream implementation/verification work is complete:
+
+| Task | Owner | Status | Evidence |
+|------|-------|--------|----------|
+| T-329 — dependency hardening | Backend | Backlog | not started |
+| T-331 — notes schema/API impl | Backend | In Progress (contract phase only) | **No `backend/src/migrations/*_011_*` file exists** (latest is 010); `grep notes backend/src/routes/activities.js` → 0 matches |
+| T-332 — notes UI | Frontend | Backlog | blocked by T-330+T-331 |
+| T-333 — QA + security checklist | QA | Backlog | **No QA→Deploy readiness handoff in this log for Sprint 43** |
+
+### Pre-deploy checklist (per deploy-engineer rules) — FAILED
+
+- ❌ QA confirmation in handoff log that all tests pass → **absent**
+- ❌ Migration 011 present and verified by QA on a test DB → **migration file does not exist**
+- ❌ Feature code (`notes`) merged → **not implemented**
+
+Deploying now would mean shipping with no migration 011, no notes feature, and no QA sign-off — a direct violation of the non-negotiable deploy rules ("Never deploy without QA confirmation"; "Never run production/staging migrations without verification first"). I will not improvise a deployment.
+
+### Action taken
+
+- T-334 left in **Backlog** (NOT moved to In Review — no work was validly performable).
+- No build, no migration, no PM2 deploy executed. Production and staging untouched.
+
+### What I need to proceed (re-invoke T-334 after)
+
+1. T-329 complete — advisories resolved, 0 regressions, ADR recorded.
+2. T-331 implementation complete — migration 011 file present (up/down), notes wired through API + tests.
+3. T-332 complete — notes UI + tests green.
+4. **T-333 complete with an explicit QA→Deploy "Ready for Staging Deploy" handoff in this log**, confirming full suite green, `npm audit` re-scan clean, and migration 011 applies/rolls back cleanly on a test DB.
+
+Once that handoff lands, I will: rebuild FE+BE → run full suite → run migration 011 on staging DB → deploy via PM2 (be:3001/fe:4173) → smoke test notes round-trip → hand off to Monitor (T-335). Production stays untouched this sprint (Sprint 44 promotion per plan).
+
+*Deploy Engineer — T-334 — Sprint 43 — 2026-05-30*
+
+---
+
 ## Backend Engineer → QA Engineer: Sprint 43 API Contracts Ready for Test Reference (T-331) (2026-05-30)
 
 **Date:** 2026-05-30

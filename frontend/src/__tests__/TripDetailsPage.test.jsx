@@ -1392,4 +1392,80 @@ describe('TripDetailsPage', () => {
     // Error message is visible instead
     expect(screen.getByText('trip not found.')).toBeDefined();
   });
+
+  // ── Activity Notes display (Sprint 43 — Spec 35 §35.3 / T-332) ─────────────
+  describe('Activity notes display', () => {
+    it('renders the notes block with the correct text when an activity has notes', () => {
+      useTripDetails.mockReturnValue({
+        ...defaultHookValue,
+        activities: [{
+          ...mockActivities[0],
+          notes: 'Reservation #FW-22841. Bring printed ticket.',
+        }],
+      });
+
+      renderTripDetailsPage();
+
+      expect(screen.getByText('Reservation #FW-22841. Bring printed ticket.')).toBeDefined();
+    });
+
+    it('does NOT render a notes block when notes is null', () => {
+      useTripDetails.mockReturnValue({
+        ...defaultHookValue,
+        activities: [{ ...mockActivities[0], notes: null }],
+      });
+
+      const { container } = renderTripDetailsPage();
+      expect(container.querySelector('[class*="activityNotes"]')).toBeNull();
+    });
+
+    it('does NOT render a notes block when notes is empty string', () => {
+      useTripDetails.mockReturnValue({
+        ...defaultHookValue,
+        activities: [{ ...mockActivities[0], notes: '' }],
+      });
+
+      const { container } = renderTripDetailsPage();
+      expect(container.querySelector('[class*="activityNotes"]')).toBeNull();
+    });
+
+    it('does NOT render a notes block when notes is whitespace-only', () => {
+      useTripDetails.mockReturnValue({
+        ...defaultHookValue,
+        activities: [{ ...mockActivities[0], notes: '   \n  ' }],
+      });
+
+      const { container } = renderTripDetailsPage();
+      expect(container.querySelector('[class*="activityNotes"]')).toBeNull();
+    });
+
+    it('renders a very long note in full (no truncation)', () => {
+      const longNote = 'A'.repeat(1500);
+      useTripDetails.mockReturnValue({
+        ...defaultHookValue,
+        activities: [{ ...mockActivities[0], notes: longNote }],
+      });
+
+      renderTripDetailsPage();
+      expect(screen.getByText(longNote)).toBeDefined();
+    });
+
+    it('renders HTML/script payload as inert escaped text (no live element, no dangerouslySetInnerHTML)', () => {
+      const payload = '<script>alert(1)</script><img src=x onerror=alert(2)>';
+      useTripDetails.mockReturnValue({
+        ...defaultHookValue,
+        activities: [{ ...mockActivities[0], notes: payload }],
+      });
+
+      const { container } = renderTripDetailsPage();
+
+      // The payload renders as literal visible text...
+      expect(screen.getByText(payload)).toBeDefined();
+      // ...and NO live <script> or <img> element is created from it.
+      const notesBlock = container.querySelector('[class*="activityNotesText"]');
+      expect(notesBlock).not.toBeNull();
+      expect(notesBlock.querySelector('script')).toBeNull();
+      expect(notesBlock.querySelector('img')).toBeNull();
+    });
+  });
 });

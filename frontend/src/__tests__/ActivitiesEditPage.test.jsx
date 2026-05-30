@@ -313,6 +313,66 @@ describe('ActivitiesEditPage', () => {
     expect(api.activities.create).not.toHaveBeenCalled();
   });
 
+  // ── Activity Notes (Sprint 43 — Spec 35 §35.2 / T-332) ─────────────────────
+  it('typing in the notes textarea updates its value, caps at maxLength 2000, and shows the live counter', async () => {
+    api.activities.list.mockResolvedValue({ data: { data: [] } });
+    renderPage();
+    await screen.findByText(/no activities planned/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /add activity/i }));
+
+    const notes = screen.getByLabelText(/notes for/i);
+    expect(notes.tagName).toBe('TEXTAREA');
+    expect(notes.getAttribute('maxlength')).toBe('2000');
+
+    fireEvent.change(notes, { target: { value: 'Reservation #123' } });
+    expect(notes.value).toBe('Reservation #123');
+    // Counter reflects the current length (16 chars)
+    expect(screen.getByText('16 / 2000')).toBeDefined();
+  });
+
+  it('includes notes in the create payload on Save all', async () => {
+    api.activities.list.mockResolvedValue({ data: { data: [] } });
+    api.activities.create.mockResolvedValue({ data: { data: { id: 'new-1' } } });
+
+    renderPage();
+    await screen.findByText(/no activities planned/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /add activity/i }));
+    fireEvent.change(screen.getByLabelText(/activity name/i), { target: { value: 'Visit Museum' } });
+    fireEvent.change(screen.getByLabelText(/activity date/i), { target: { value: '2026-08-09' } });
+    fireEvent.change(screen.getByLabelText(/notes for/i), { target: { value: 'Bring passport' } });
+
+    fireEvent.click(screen.getAllByRole('button', { name: /save all/i })[0]);
+
+    await waitFor(() => {
+      expect(api.activities.create).toHaveBeenCalledWith('trip-001', expect.objectContaining({
+        notes: 'Bring passport',
+      }));
+    });
+  });
+
+  it('sends notes: null when an existing note is cleared on Save all', async () => {
+    const withNotes = [{ ...mockActivities[0], notes: 'old note' }];
+    api.activities.list.mockResolvedValue({ data: { data: withNotes } });
+    api.activities.update.mockResolvedValue({ data: { data: {} } });
+
+    renderPage();
+    await screen.findByDisplayValue('Tokyo Skytree');
+
+    const notes = screen.getByLabelText(/notes for tokyo skytree/i);
+    expect(notes.value).toBe('old note');
+
+    fireEvent.change(notes, { target: { value: '' } });
+    fireEvent.click(screen.getAllByRole('button', { name: /save all/i })[0]);
+
+    await waitFor(() => {
+      expect(api.activities.update).toHaveBeenCalledWith('trip-001', 'act-001', expect.objectContaining({
+        notes: null,
+      }));
+    });
+  });
+
   it('does not call API when cancel is clicked', async () => {
     api.activities.list.mockResolvedValue({ data: { data: mockActivities } });
     renderPage();

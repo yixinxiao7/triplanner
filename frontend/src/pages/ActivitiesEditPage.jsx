@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../utils/api';
@@ -26,12 +26,25 @@ function ColumnHeaders() {
 }
 
 // ── Activity Row ─────────────────────────────────────────────
+const NOTES_MAX = 2000;
+const NOTES_WARN = 1900;
+
 function ActivityRow({ row, onChange, onDelete, rowIndex, showErrors }) {
   const isNew = row._tempId && !row.id;
   const dateRef = useRef(null);
   const startTimeRef = useRef(null);
+  const notesId = useId();
+  const counterId = useId();
+  const [notesFocused, setNotesFocused] = useState(false);
 
   const isAllDay = Boolean(row._allDay);
+
+  const notesValue = row.notes || '';
+  const notesCount = notesValue.length;
+  // Counter is only shown once the user focuses the textarea or there is existing content (§35.2.2)
+  const showCounter = notesFocused || notesCount > 0;
+  const notesAtLimit = notesCount >= NOTES_MAX;
+  const notesNearLimit = notesCount >= NOTES_WARN && !notesAtLimit;
 
   // Expose focus method for new rows
   useEffect(() => {
@@ -79,6 +92,7 @@ function ActivityRow({ row, onChange, onDelete, rowIndex, showErrors }) {
       role="group"
       aria-label={row.name ? `Activity: ${row.name}` : `Activity row ${rowIndex + 1}`}
     >
+      <div className={styles.rowColumns}>
       {/* Date */}
       <div className={styles.colDate}>
         <input
@@ -189,6 +203,37 @@ function ActivityRow({ row, onChange, onDelete, rowIndex, showErrors }) {
           </svg>
         </button>
       </div>
+      </div>
+
+      {/* Notes — full-width textarea on its own line beneath the column inputs (§35.2) */}
+      <div className={styles.rowNotes}>
+        <label htmlFor={notesId} className={styles.notesLabel}>
+          NOTES
+        </label>
+        <textarea
+          id={notesId}
+          className={styles.notesTextarea}
+          value={notesValue}
+          onChange={handleFieldChange('notes')}
+          onFocus={() => setNotesFocused(true)}
+          onBlur={() => setNotesFocused(false)}
+          placeholder="reservation #, confirmation code, dress code, things to bring…"
+          maxLength={NOTES_MAX}
+          rows={2}
+          wrap="soft"
+          aria-label={row.name ? `Notes for ${row.name}` : 'Notes for this activity'}
+          aria-describedby={counterId}
+        />
+        {showCounter && (
+          <div
+            id={counterId}
+            className={`${styles.notesCounter} ${notesNearLimit ? styles.notesCounterWarn : ''} ${notesAtLimit ? styles.notesCounterError : ''}`}
+            aria-live={notesNearLimit || notesAtLimit ? 'polite' : 'off'}
+          >
+            {notesCount} / {NOTES_MAX}{notesAtLimit ? ' — max reached' : ''}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -233,6 +278,7 @@ export default function ActivitiesEditPage() {
         location: a.location || '',
         start_time: a.start_time || '',
         end_time: a.end_time || '',
+        notes: a.notes || '',
         _allDay: !a.start_time && !a.end_time,
       })));
     } catch {
@@ -278,6 +324,7 @@ export default function ActivitiesEditPage() {
         location: '',
         start_time: '',
         end_time: '',
+        notes: '',
         _allDay: false,
         _focusOnMount: true,
       },
@@ -331,7 +378,8 @@ export default function ActivitiesEditPage() {
         r.name !== (orig.name || '') ||
         r.location !== (orig.location || '') ||
         r.start_time !== (orig.start_time || '') ||
-        r.end_time !== (orig.end_time || '')
+        r.end_time !== (orig.end_time || '') ||
+        r.notes !== (orig.notes || '')
       );
     });
     const toDelete = deletedIds;
@@ -342,6 +390,7 @@ export default function ActivitiesEditPage() {
       location: row.location.trim() || null,
       start_time: row._allDay ? null : (row.start_time || null),
       end_time: row._allDay ? null : (row.end_time || null),
+      notes: (row.notes || '').trim() || null,
     });
 
     const promises = [

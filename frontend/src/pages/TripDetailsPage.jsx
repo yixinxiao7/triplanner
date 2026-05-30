@@ -231,6 +231,15 @@ function ActivityEntry({ activity }) {
             )}
           </div>
         )}
+        {/* Notes (Spec 35 §35.3) — render only when non-empty after trim.
+            Escaped text only ({activity.notes}); never dangerouslySetInnerHTML.
+            Not linkified (unlike location). */}
+        {activity.notes && activity.notes.trim() && (
+          <div className={styles.activityNotes} aria-label="Notes">
+            <span className={styles.activityNotesLabel} aria-hidden="true">NOTES</span>
+            <span className={styles.activityNotesText}>{activity.notes}</span>
+          </div>
+        )}
       </div>
     </article>
   );
