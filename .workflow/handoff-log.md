@@ -4,6 +4,102 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Frontend Engineer → QA Engineer: T-332 COMPLETE — Activity Notes UI Ready for Integration Testing (Sprint 43) (2026-05-30)
+
+**Date:** 2026-05-30
+**Sprint:** 43
+**From:** Frontend Engineer (T-332)
+**To:** QA Engineer (T-333)
+**Status:** ✅ Complete — moved to **In Review**. Branch `feature/T-332-activity-notes` (commit 33a06f7), pushed.
+
+Activity notes UI is implemented per **Spec 35** and the **Sprint 43 — Activity Notes Field** contract. With the backend T-331 implementation now landed (migration 011 + route wiring + sanitize), the feature is testable **end-to-end**.
+
+### What was built
+
+| Surface | Implementation |
+|---------|----------------|
+| **Edit form** (`ActivitiesEditPage.jsx`) | Full-width `notes` textarea per activity row beneath the column inputs. `aria-label="Notes for {name}"`, visible `NOTES` label, placeholder, `maxLength={2000}`, `rows={2}` desktop / taller on mobile, vertical-only resize. Live char counter (hidden until focus or content; amber ≥1900; red + "— max reached" at 2000, `aria-live` polite only at thresholds). `notes` wired into row state, change-detection (notes-only edit → PATCH), and the POST/PATCH payload (`notes: trimmed || null`). Empty notes never blocks "Save all". |
+| **Trip Details** (`TripDetailsPage.jsx` → `ActivityEntry`) | Notes block in the details column below location, rendered **only when non-empty after trim**. Plain **escaped text** (`{activity.notes}`) — `white-space: pre-wrap`, `overflow-wrap: anywhere`. Optional `NOTES` micro-label + left-accent border. **No `dangerouslySetInnerHTML`.** Not linkified. |
+| **Print** (`print.css`) | `Notes:` line in the activity card (10pt `#333`, `pre-wrap`, `page-break-inside: avoid`); screen `NOTES` micro-label hidden in print, `Notes:` bold prefix via `::before`. **Not** added to PrintCalendarSummary (per §35.4). Component omits the element entirely when empty. |
+
+### What to verify (T-333)
+
+1. **Round-trip:** add/edit notes via the edit form → persists (POST/PATCH) → displays on Trip Details and print. Notes-only edit triggers a PATCH.
+2. **Clear:** delete all note text + save → sends `notes: null` → display block disappears.
+3. **Empty states:** `null`/`""`/whitespace → no Trip Details block, no print line, no leftover whitespace; activity looks exactly as today.
+4. **XSS (two-layer):** `<script>`/`<img onerror>` payload → backend strips on write (T-331) **and** FE renders inert escaped text. Confirm no live element / no script execution on Trip Details and print.
+5. **Max-length:** `maxLength={2000}` caps input; counter turns amber ≥1900, red at 2000. (Backend 400 on >2000 is the server-side guard.)
+6. **Long / multi-line notes:** wrap fully, no horizontal overflow, no truncation; line breaks preserved in edit / display / print.
+7. **Regression:** activity CRUD, all-day handling, calendar, and location links unaffected.
+
+### Tests & verification
+
+- **9 new FE tests:** 3 edit-form (`ActivitiesEditPage.test.jsx` — typing/counter/`maxLength`, notes in create payload, clear→`null`), 6 display (`TripDetailsPage.test.jsx` — present, null/empty/whitespace absent, long note, HTML payload inert).
+- **Full FE suite green: 545/545 (26 files).** `npm run build` succeeds.
+
+### Deliberate deferrals (out of scope, per Spec 35)
+
+- No "show more/less" clamp on long notes (§35.3.3) — full note always shown.
+- Notes on flights/stays/land-travel — activities only this sprint.
+
+*Frontend Engineer — T-332 — Sprint 43 — 2026-05-30*
+
+---
+
+## Backend Engineer → QA Engineer: T-329 + T-331 IMPLEMENTED — Ready for Integration Testing (Sprint 43) (2026-05-30)
+
+**Date:** 2026-05-30
+**Sprint:** 43
+**From:** Backend Engineer (T-329, T-331)
+**To:** QA Engineer (T-333)
+**Status:** ✅ Both backend tasks implemented and self-verified — ready for QA
+
+Both Sprint 43 backend tasks are complete and moved to **In Review**. Full backend suite **531/531** (523 baseline + 8 new notes tests); frontend suite **536/536** after the dependency bumps. Combined **1067** passing (the 1059 baseline + 8 new). Zero regressions.
+
+---
+
+### T-329 — Dependency Security Hardening — what to test
+
+**What changed:** Ran `npm audit fix` (no `--force`) in `backend/` and `frontend/`. In-range patch bumps only — no major versions, no API-surface changes. Lockfiles updated.
+
+| App | Key bumps | `npm audit` result |
+|-----|-----------|--------------------|
+| backend | express 4.22.1→4.22.2, body-parser 1.20.4→1.20.5, qs 6.14.2→6.15.2 | **0 vulnerabilities** |
+| frontend | axios 1.13.5→1.16.1, vite 6.4.1→6.4.2, ws→8.21.0, postcss→8.5.15, follow-redirects→1.16.0 | **0 vulnerabilities** |
+
+**QA checklist:**
+1. Re-run `npm audit` in both apps → confirm **0** (or only un-fixable-without-breaking, of which there are none).
+2. Full suite both apps → confirm 0 regressions (BE 523, FE 536).
+3. Spot-check the express bump did not break auth (login/refresh), CORS, rate-limiting, and the JSON error handler. (I verified these green via the suite — `auth.test.js`, `cors.test.js`, `sprint26.test.js` all pass.)
+4. ADR-008 recorded in `architecture-decisions.md`.
+
+---
+
+### T-331 — Activity Notes (B-036) — what to test
+
+**What changed:** Added a nullable `notes` field to the **activities** resource end-to-end. ADR-007 recorded. Implementation matches the published "Sprint 43 — Activity Notes Field" contract in `api-contracts.md` exactly.
+
+- **Migration 011** (`backend/src/migrations/20260530_011_add_activity_notes.js`): `up` adds `text('notes').nullable()`; `down` drops it. **Verified on dev DB:** `npm run migrate` applies (Batch 3), `npm run migrate:rollback` drops cleanly, re-apply succeeds. Column confirmed `text`, `is_nullable=YES`.
+- **Validation:** `activityValidationSchema.notes` — nullable string, **maxLength 2000** → `> 2000` chars returns **400 VALIDATION_ERROR** with `fields.notes`. (POST via `validate`; PATCH via inline length check.)
+- **Sanitize:** `notes` added to POST `sanitizeFields` config and the PATCH pre-validate `sanitizeHtml` strip list — HTML tags stripped on write (e.g. `Bring <script>alert(1)</script>passport` → `Bring alert(1)passport`; no markup survives). All-HTML notes that strip to empty normalize to **null**.
+- **Persistence/serialization:** `notes` in the model `SELECT`, the POST insert (empty→null), and the PATCH `UPDATABLE` set (empty/`''`→null; explicit `null` clears).
+
+**QA checklist (B-036):**
+1. **Round-trip:** POST an activity with `notes` → 201 returns it; GET list + GET:id return it; PATCH updates it; PATCH `notes:null` clears it.
+2. **Sanitize/XSS:** POST/PATCH `notes` with `<script>`/HTML → stored stripped, rendered inert (FE renders escaped text — T-332). No stored/reflected XSS.
+3. **Max-length:** `notes` > 2000 chars → **400** on both POST and PATCH; `updateActivity`/`createActivity` not called.
+4. **Null/omitted:** omit `notes` → stored `null`, returned `null`. Legacy rows (pre-migration) return `null`.
+5. **Migration:** apply + roll back migration 011 cleanly on a test DB (I verified on dev; please re-verify on the QA/test DB).
+6. **Regression:** activity CRUD + calendar aggregation unaffected (`notes` is additive to the SELECT).
+
+**Files touched (T-331):** `backend/src/migrations/20260530_011_add_activity_notes.js` (new), `backend/src/models/activityModel.js`, `backend/src/routes/activities.js`, `backend/src/__tests__/activities.test.js`, `.workflow/api-contracts.md`, `.workflow/architecture-decisions.md` (ADR-007), `.workflow/technical-context.md`.
+
+**Note for Deploy (T-334):** Migration 011 must run on the **staging** DB (`npm run migrate`) → `migrate:status` should read **11/11**. **Staging-only this sprint** — do NOT run on production (deferred to Sprint 44 per the plan).
+
+*Backend Engineer — T-329 + T-331 — Sprint 43 — 2026-05-30*
+
+---
+
 ## Frontend Engineer → Backend Engineer: T-332 ACK — Activity Notes Contract Acknowledged (Sprint 43) (2026-05-30)
 
 **Date:** 2026-05-30
