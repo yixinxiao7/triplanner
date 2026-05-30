@@ -1059,6 +1059,7 @@ All sub-resource endpoints follow the same ownership rules:
       "activity_date": "2026-08-08",
       "start_time": "09:00:00",
       "end_time": "14:00:00",
+      "notes": "Reservation #ABC123. Smart casual dress code.",
       "created_at": "2026-02-24T12:00:00.000Z",
       "updated_at": "2026-02-24T12:00:00.000Z"
     }
@@ -1070,6 +1071,7 @@ All sub-resource endpoints follow the same ownership rules:
 - `location` is nullable — will be `null` if not provided.
 - `activity_date` is returned as an ISO 8601 date string (`YYYY-MM-DD`).
 - `start_time` and `end_time` are returned as 24-hour `HH:MM:SS` strings. Frontend formats these for display.
+- `notes` (Sprint 43, B-036/T-331) is nullable freeform text — `null` if not provided. HTML tags are stripped on write. See the Sprint 43 change-log entry below.
 - No timezone fields — activities are local-time entries per ADR-005.
 - The frontend groups activities by `activity_date` for display and sorts by `start_time` within each group.
 
@@ -1093,7 +1095,8 @@ All sub-resource endpoints follow the same ownership rules:
   "location": "string | null",
   "activity_date": "YYYY-MM-DD",
   "start_time": "HH:MM",
-  "end_time": "HH:MM"
+  "end_time": "HH:MM",
+  "notes": "string | null"
 }
 ```
 
@@ -1105,6 +1108,7 @@ All sub-resource endpoints follow the same ownership rules:
 | `activity_date` | Required. String in `YYYY-MM-DD` format. Must be a valid calendar date. |
 | `start_time` | Required. String in `HH:MM` or `HH:MM:SS` format (24-hour). |
 | `end_time` | Required. String in `HH:MM` or `HH:MM:SS` format (24-hour). Must be after `start_time`. |
+| `notes` | Optional (Sprint 43, B-036/T-331). String or null. Max 2000 chars. HTML tags stripped on write. Empty string normalized to `null`. |
 
 **Response (Success — 201 Created):**
 ```json
@@ -1117,6 +1121,7 @@ All sub-resource endpoints follow the same ownership rules:
     "activity_date": "2026-08-08",
     "start_time": "09:00:00",
     "end_time": "14:00:00",
+    "notes": "Reservation #ABC123. Smart casual dress code.",
     "created_at": "2026-02-24T12:00:00.000Z",
     "updated_at": "2026-02-24T12:00:00.000Z"
   }
@@ -1184,9 +1189,12 @@ All sub-resource endpoints follow the same ownership rules:
   "location": "string | null",
   "activity_date": "YYYY-MM-DD",
   "start_time": "HH:MM",
-  "end_time": "HH:MM"
+  "end_time": "HH:MM",
+  "notes": "string | null"
 }
 ```
+
+**Notes (Sprint 43, B-036/T-331):** `notes` follows the same rules as POST — max 2000 chars, HTML stripped on write. Send `null` (or an empty string, which is normalized to `null`) to clear it. Omit to leave unchanged. `> 2000` chars → 400.
 
 **Response (Success — 200 OK):** Full updated activity object.
 
@@ -1250,7 +1258,7 @@ All sub-resource endpoints follow the same ownership rules:
 | `trips` | UUID | user_id → users | name, destinations (TEXT[]), status |
 | `flights` | UUID | trip_id → trips | flight_number, airline, from_location, to_location, departure_at+tz, arrival_at+tz |
 | `stays` | UUID | trip_id → trips | category, name, address (nullable), check_in_at+tz, check_out_at+tz |
-| `activities` | UUID | trip_id → trips | name, location (nullable), activity_date (DATE), start_time (TIME), end_time (TIME) |
+| `activities` | UUID | trip_id → trips | name, location (nullable), activity_date (DATE), start_time (TIME), end_time (TIME), notes (TEXT, nullable — Sprint 43) |
 
 ### Foreign Key Cascade Rules
 
@@ -8594,3 +8602,5 @@ All previously published contracts remain current. Sprint 43 change:
 ---
 
 *Sprint 43 contracts published by Backend Engineer 2026-05-30. T-329 (dependency hardening): no contract impact — patch-version bumps only. T-331 (B-036): activity `notes` field added to the existing T-006 activities CRUD contract via migration 011 (Manager pre-approved). Contract is published ahead of implementation per rules.md — implementation lands in the T-331 implementation phase.*
+
+*Update 2026-05-30 — **T-331 IMPLEMENTED.** Migration 011 created and verified (applies + rolls back cleanly on dev DB); `notes` wired through POST insert, PATCH UPDATABLE, model SELECT/insert, validation (max 2000), and sanitize (POST sanitizeFields + PATCH pre-validate strip). 8 new backend tests added (round-trip, sanitize, max-length 400, null/omitted, PATCH clear). Backend suite 531/531 green. Inline T-006 activities contract above (GET/POST/PATCH) updated to match. The implemented behavior matches this published contract exactly.*

@@ -18,6 +18,7 @@ function activityQuery() {
     db.raw("TO_CHAR(activity_date, 'YYYY-MM-DD') AS activity_date"),
     'start_time',
     'end_time',
+    'notes',
     'created_at',
     'updated_at',
   );
@@ -66,6 +67,7 @@ export async function createActivity(data) {
       activity_date: data.activity_date,
       start_time: data.start_time ?? null,
       end_time: data.end_time ?? null,
+      notes: data.notes ?? null,
     })
     .returning('id');
 
