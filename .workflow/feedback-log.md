@@ -18,6 +18,196 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
+## User Agent — Sprint #42 Staging Walkthrough (T-328) — 2026-05-30
+
+> **Scope:** Sprint 42 delivers activity location links (B-031, Spec 34) — URLs inside an activity `location` render as clickable links on the Trip Details page; dangerous schemes stay inert; print shows URL as readable black underlined text. Also promotes the Sprint 41 print feature to production (T-320/T-321). B-031 is frontend-only — no API surface change. Tested on staging backend `https://localhost:3001` + frontend `https://localhost:4173` (HTTPS, self-signed), production `https://localhost:3002`/`4174`. Monitor Agent confirmed Deploy Verified = Yes (Staging, T-327). Test account `test@triplanner.local`. Verification combined live API calls, deployed-bundle inspection, component/source review against Spec 34, and targeted DOM render tests (browser GUI not available in this environment).
+>
+> **Result: 13 entries (FB-263–FB-275). 0 Bugs, 0 Critical, 0 Major. 1 Suggestion (Minor). All else Positive.**
+
+---
+
+### FB-263 — Activity location URL round-trips cleanly through the API (happy path)
+
+| Field | Value |
+|-------|-------|
+| Feedback | POST activity with mixed text + Google Maps URL location is stored and returned verbatim |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | `POST /api/v1/trips/:id/activities` with `location: "Senso-ji Temple https://maps.google.com/?q=sensoji"` → `201`, location returned byte-for-byte unchanged. Multiple-URL string `"https://a.com and https://b.com"` also preserved exactly. This is the input the frontend `parseLocationWithLinks` consumes — the data contract holds end-to-end. |
+| Related Task | T-328 |
+
+---
+
+### FB-264 — Frontend implementation matches Spec 34 exactly (utility + render)
+
+| Field | Value |
+|-------|-------|
+| Feedback | `parseLocationWithLinks` and `ActivityEntry` render match Spec 34 §34.3/§34.4 verbatim |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | `frontend/src/utils/formatDate.js:170` uses regex `/(https?:\/\/[^\s]+)/g` plus a per-segment `^https?:\/\/` guard (defense-in-depth). `TripDetailsPage.jsx:217-231` renders `link` segments as `<a href={segment.content} target="_blank" rel="noopener noreferrer" className={styles.locationLink}>` and `text` segments as `<span>`, guarded by `activity.location &&`. No deviation from spec. |
+| Related Task | T-328 |
+
+---
+
+### FB-265 — Security: `javascript:`, `data:`, `vbscript:`, `file:` schemes never linkified
+
+| Field | Value |
+|-------|-------|
+| Feedback | Dangerous URL schemes render as inert plain text — no `<a>` element produced |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | New |
+| Details | Sprint 42 primary security criterion. Verified at two levels: (1) the detection regex requires `http(s)://`, so `javascript:alert(1)`, `data:text/html,...`, `vbscript:`, `file:///etc/passwd` fall through to `{type:'text'}`; (2) targeted DOM render tests (`TripDetailsPage.test.jsx`) assert these strings produce a `<span>`, never an `<a>` and never a real `<h1>`. Confirmed in deployed bundle. Positive security finding — XSS-via-URL is blocked. |
+| Related Task | T-328 |
+
+---
+
+### FB-266 — Security: every generated link carries `rel="noopener noreferrer"` + `target="_blank"`
+
+| Field | Value |
+|-------|-------|
+| Feedback | Tab-napping and referrer-leak protection present on all location links |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | New |
+| Details | Source (`TripDetailsPage.jsx:222-223`) and the **deployed** staging + production JS bundles both contain `noopener noreferrer`. `href` is set only via JSX `href={...}` (React auto-escapes); no `dangerouslySetInnerHTML` exists anywhere in `frontend/src/` (grep clean — only a comment noting its absence). |
+| Related Task | T-328 |
+
+---
+
+### FB-267 — Backend strips HTML tags from location (defense-in-depth, no regression)
+
+| Field | Value |
+|-------|-------|
+| Feedback | `sanitizeHtml` strips tags from `location` on write while preserving URLs |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | New |
+| Details | `location: "<script>alert(1)</script><img src=x onerror=alert(2)> Cafe https://yelp.com/biz/x"` → stored as `"alert(1) Cafe https://yelp.com/biz/x"` (tags removed, text + URL kept). `data:text/html,<h1>hi</h1>` → stored as `data:text/html,hi`. No stored markup can reach the DOM; the URL still survives for client-side linkification. Existing two-layer defense intact. |
+| Related Task | T-328 |
+
+---
+
+### FB-268 — Input validation on activities is correct and returns 400 (not 500)
+
+| Field | Value |
+|-------|-------|
+| Feedback | Empty/missing name, over-length location, and wrong types all return structured 400s |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Empty `name` → `400 {name:"Activity name is required"}`; missing `name` → `400`; `location` > 500 chars → `400 {location:"location must be at most 500 characters"}`; `location` as a number → `400 {location:"location must be a string"}`; bad date `08/02/2026` → `400` with format message. Empty-string location is accepted (nullable) and `201` — frontend `activity.location &&` guard prevents an empty render. No 5xx on any malformed input. |
+| Related Task | T-328 |
+
+---
+
+### FB-269 — SQL injection in location is stored as literal text (parameterized queries)
+
+| Field | Value |
+|-------|-------|
+| Feedback | `'; DROP TABLE activities;--` payload stored as inert text; table intact |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | New |
+| Details | `location: "https://x.com/'; DROP TABLE activities;--"` → `201`, stored verbatim as text. Immediately re-listing activities succeeded (table not dropped). Parameterized queries confirmed effective. |
+| Related Task | T-328 |
+
+---
+
+### FB-270 — Auth guard and session handling reject all invalid tokens
+
+| Field | Value |
+|-------|-------|
+| Feedback | Garbage, tampered, and malformed-header tokens all rejected with 401 |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | New |
+| Details | No token → `401 UNAUTHORIZED`; garbage token → `401 Invalid or expired token`; valid token + appended char (tampered signature) → `401`; `Authorization` header without `Bearer ` prefix → `401 Authentication required`. Clean, consistent rejection. |
+| Related Task | T-328 |
+
+---
+
+### FB-271 — Cross-tenant isolation: foreign trip ID returns 404, no data leak
+
+| Field | Value |
+|-------|-------|
+| Feedback | Requesting activities for a trip not owned by the user returns 404 Trip not found |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | New |
+| Details | `GET /trips/<random-valid-uuid>/activities` with a valid token → `404 NOT_FOUND` (no rows leaked). A malformed UUID (`0000…`) is rejected earlier with `400 Invalid ID format`. Ownership scoping is enforced. |
+| Related Task | T-328 |
+
+---
+
+### FB-272 — Auth login rate-limiting trips at the 6th rapid attempt (429)
+
+| Field | Value |
+|-------|-------|
+| Feedback | 15 rapid login calls → first 5 succeed (200), remainder throttled (429) |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | Brute-force protection on `POST /auth/login` is active: `200 200 200 200 200 429 429 …`. Meanwhile 20 rapid `GET /health` calls all returned `200` with no degradation — read path is stable under rapid fire. |
+| Related Task | T-328 |
+
+---
+
+### FB-273 — Accessibility refinements (§34.6) shipped: focus-visible ring + 150ms transition
+
+| Field | Value |
+|-------|-------|
+| Feedback | The net-new Sprint 42 work — `.locationLink` a11y/motion polish — is present and correct |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | `TripDetailsPage.module.css:765-781`: `.locationLink` now has `text-underline-offset: 2px` and `transition: color 150ms ease`; `.locationLink:focus-visible` adds `outline: 2px solid var(--border-accent); outline-offset: 2px; border-radius: 2px`. This closes the prior gap where keyboard users had no visible focus indicator on location links. Matches Spec 34 §34.5–34.6 exactly and reuses existing design tokens (no new colors). |
+| Related Task | T-328 |
+
+---
+
+### FB-274 — Print view keeps location URLs as readable black underlined text
+
+| Field | Value |
+|-------|-------|
+| Feedback | `print.css` neutralizes link interactivity but preserves the URL string legibly |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | New |
+| Details | In `@media print`, generic `a` → black, no underline; the exception `[class*="locationLink"]` → black + `text-decoration: underline !important`, so a reader holding the printout can read/type the URL. Matches Spec 34 §34.7 and is consistent with Spec 15/33 print rules — no conflict. |
+| Related Task | T-328 |
+
+---
+
+### FB-275 — Trailing punctuation glued to a URL stays inside the link (minor, by design)
+
+| Field | Value |
+|-------|-------|
+| Feedback | A URL immediately followed by punctuation (e.g. `https://yelp.com/biz/x,`) includes the comma in the href |
+| Sprint | 42 |
+| Category | UX Issue |
+| Severity | Suggestion |
+| Status | New |
+| Details | Per Spec 34 §34.2 the `[^\s]+` match greedily consumes trailing punctuation, so `"Lunch at https://yelp.com/biz/x, 1pm"` linkifies `https://yelp.com/biz/x,` (comma included). This is an explicit, documented design decision — splitting on punctuation risks breaking valid URLs that legitimately contain `,`/`.`/`)`. Most target links (Google Maps share URLs) end in query strings without trailing prose, so real-world impact is low. **Suggestion only**, not a bug: if a future polish sprint wants it, a conservative trailing-punctuation trim (strip a single trailing `.,;:!?)` when not balanced) would tidy the rare mixed-prose case. Flagging so the team is aware of the tradeoff; no action required for Sprint 42. |
+| Related Task | T-328 |
+
+---
+
 ## User Agent — Sprint #41 Staging Walkthrough (T-319) — 2026-03-30
 
 > **Scope:** Sprint 41 delivers the PrintCalendarSummary component (Spec 33, B-032) — a day-by-day itinerary overview table visible only in print. No backend changes. Testing performed on staging at `https://localhost:3001` (backend) and `https://localhost:4173` (frontend). Monitor Agent confirmed Deploy Verified = Yes (T-318).

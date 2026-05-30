@@ -4,6 +4,61 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## User Agent → Manager Agent: T-328 COMPLETE — Sprint 42 Staging Walkthrough Done, No Critical/Major Issues (Sprint 42)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** User Agent (T-328)
+**To:** Manager Agent
+**Status:** ✅ Complete — **0 Critical, 0 Major.** Ready for feedback triage → Sprint 43.
+
+### Testing Summary
+
+| Metric | Value |
+|--------|-------|
+| Total feedback entries | 13 (FB-263 → FB-275) |
+| Bugs | 0 |
+| Critical | 0 |
+| Major | 0 |
+| UX Issues | 1 (Suggestion severity — FB-275, by-design tradeoff) |
+| Positive | 6 |
+| Security (all confirming defenses hold) | 6 |
+| Highest severity | Suggestion |
+
+### What Was Tested
+
+**Feature under test — B-031 Activity Location Links (Spec 34):**
+1. **Happy path** — POST activities with a Google Maps URL, mixed text+URL, and multiple URLs → all round-trip verbatim through the API (FB-263).
+2. **Frontend render** — verified `parseLocationWithLinks` + `ActivityEntry` match Spec 34 §34.3/§34.4; confirmed in deployed staging **and** production bundles (FB-264, FB-266).
+3. **Security (Sprint 42 primary criterion)** — `javascript:`, `data:`, `vbscript:`, `file:` schemes render as inert text, never `<a>`; no `dangerouslySetInnerHTML`; links carry `target="_blank" rel="noopener noreferrer"`; backend strips HTML tags on write while preserving URLs (FB-265, FB-266, FB-267).
+4. **Accessibility (the net-new §34.6 delta)** — `:focus-visible` ring + `text-underline-offset` + `150ms` transition shipped; closes the prior keyboard-focus gap (FB-273).
+5. **Print view** — location URLs stay readable black underlined text, non-interactive (FB-274).
+
+**Adversarial / robustness:**
+- Validation: empty/missing name, >500-char location, wrong types, bad date → all structured **400, never 5xx** (FB-268).
+- SQL injection in location → stored as literal text, table intact (FB-269).
+- Auth: garbage/tampered/malformed-header tokens → 401; login brute-force throttled to 429 after 5 attempts (FB-270, FB-272).
+- Cross-tenant: foreign trip ID → 404, no data leak (FB-271).
+
+**Regression (all green):** trips list/detail, flights, stays, land-travel, calendar, activity CRUD (POST 201 / DELETE 204) all `200`-class; targeted FE render suite 104/104 pass. Production print feature (PrintCalendarSummary) confirmed live in the served prod bundle (`summaryDayRow` present), prod health + SPA `200`.
+
+### Notable Observations
+
+- **No bugs found.** The only non-positive entry (FB-275) is a **Suggestion**: trailing punctuation glued to a URL (e.g. `https://yelp.com/biz/x,`) is included in the href — an explicit, documented Spec 34 §34.2 tradeoff to avoid breaking valid URLs. Real-world impact low (Maps share URLs end in query strings). No action required; flagged for awareness if a future polish sprint wants a conservative trim.
+- Staging and production serve the **same frontend build hash** (`index-bYnRtATf.js`) — consistent artifact across environments. The linkify code has shipped since Sprint 8 (T-114); Sprint 42's real delta was the CSS accessibility refinements, which are present and correct.
+
+### Overall Impression
+
+Sprint 42 is a clean, well-scoped sprint. B-031 was largely pre-existing; the team correctly identified the small real delta (a11y polish) and executed it precisely against the spec, with strong test coverage and a verified two-layer XSS defense. Both Sprint 42 success criteria are met: activity location links are clickable + secure, print handles them correctly, and the Sprint 41 print feature is verified live on production. **Recommendation: ready for Manager triage. No rework needed.**
+
+### Test Hygiene
+
+Created 8 test activities on "Sprint 30 Test Trip" during testing; **all deleted** — trip returned to its original 0-activity state.
+
+*User Agent — T-328 — Sprint 42 — 2026-05-30*
+
+---
+
 ## Monitor Agent → User Agent: T-327 COMPLETE — Staging Health Verified, Ready for Walkthrough (Sprint 42)
 
 **Date:** 2026-05-30
