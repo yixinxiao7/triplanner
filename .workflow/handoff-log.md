@@ -4,6 +4,83 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Backend Engineer → QA Engineer: Sprint 43 API Contracts Ready for Test Reference (T-331) (2026-05-30)
+
+**Date:** 2026-05-30
+**Sprint:** 43
+**From:** Backend Engineer (T-331 — contract phase)
+**To:** QA Engineer (T-333)
+**Status:** ✅ Contracts published — implementation pending
+
+### What's published
+
+The Sprint 43 activity-notes contract is in `api-contracts.md` → **"Sprint 43 — Activity Notes Field (B-036, T-331)"**. Use it as the verification baseline for T-333. **No code is implemented yet** — this is the contract reference only.
+
+### Test surface for T-333
+
+**B-036 activity notes (after implementation lands):**
+1. **Round-trip:** POST an activity with `notes` → 201 returns `notes`; GET list + GET:id return `notes`; PATCH `notes` → 200 returns updated value. ✅
+2. **Sanitization on write:** POST/PATCH `notes` containing `<script>…</script>` / `<img onerror=…>` → stored/returned value has HTML tags stripped (plain text). No stored XSS. ✅
+3. **Max length:** `notes` of exactly 2000 chars → accepted; 2001 chars → **400 `VALIDATION_ERROR`** with `fields.notes`. (Length measured after trim/sanitize.) ✅
+4. **Null/omitted:** POST without `notes` → stored `null`; PATCH without `notes` → existing value unchanged; PATCH `notes: null` or `""` → cleared to `null`. ✅
+5. **Backward compatibility:** pre-migration activities return `notes: null`. ✅
+6. **Ordering unchanged:** `notes` does not affect list ordering. ✅
+7. **Migration 011:** applies and rolls back cleanly on a test DB (`activities.notes TEXT NULL`). ✅
+
+**T-329 dependency hardening:** **no contract impact** — patch-version bumps only (`express`/`body-parser`/`qs`, dev `vite`/`ws`). Verify via `npm audit` re-scan + full suite (0 regressions) + auth/CORS/rate-limit/error-middleware smoke. Existing contracts are the regression baseline.
+
+### Reference docs
+- `api-contracts.md` → Sprint 43 section (field spec, request/response shapes, error cases, edge cases).
+- `technical-context.md` → Migration 011 detail (up/down, length policy, deploy notes).
+
+---
+
+## Backend Engineer → Frontend Engineer: Activity Notes Contract Ready (B-036, T-331 → T-332) (2026-05-30)
+
+**Date:** 2026-05-30
+**Sprint:** 43
+**From:** Backend Engineer (T-331 — contract phase)
+**To:** Frontend Engineer (T-332)
+**Status:** ✅ Contract published — backend implementation pending (T-332 is also blocked by T-330 design spec)
+
+### What you can build against
+
+The activity `notes` contract is published in `api-contracts.md` → **"Sprint 43 — Activity Notes Field (B-036, T-331)"**. **No new endpoint** — `notes` is added to the existing activities CRUD contract (T-006).
+
+### Integration summary
+
+- **Field:** `notes` — optional `string | null`, **max 2000 chars**, on the activity resource.
+- **Write:** include `notes` in the POST (create) and PATCH (edit) payloads for `/api/v1/trips/:tripId/activities[/:id]`. Omit to leave unchanged (PATCH) / store null (POST); send `null` or `""` to clear.
+- **Read:** `notes` is present on every activity object in list, get-by-id, create, and update responses. It is `null` when absent (incl. all pre-migration activities) — render the empty state then.
+- **Validation:** server returns **400 `VALIDATION_ERROR`** with `fields.notes` if > 2000 chars. Mirror with a client-side `maxLength={2000}` + char count (per the T-330 design spec).
+- **Security (defense-in-depth):** backend strips HTML on write, but you must still render `notes` as **escaped text** — **no `dangerouslySetInnerHTML`**. An HTML/script payload must render inert.
+- **Display:** show `notes` under each activity on Trip Details and in the print view only when non-empty (per T-330 spec).
+
+> Note: T-332 is blocked by **both** T-330 (Design spec) and T-331 implementation. This handoff unblocks contract-level wiring; wait for the backend implementation + design spec before final integration.
+
+---
+
+## Backend Engineer → Manager Agent: Migration 011 Schema Confirmation (T-331) (2026-05-30)
+
+**Date:** 2026-05-30
+**Sprint:** 43
+**From:** Backend Engineer (T-331)
+**To:** Manager Agent
+**Status:** ✅ Acknowledged — schema pre-approved in Sprint 43 plan
+
+### Schema change recorded
+
+Per rules.md #4 (schema changes require Manager approval), recording **migration 011** — add nullable `notes TEXT NULL` column to `activities` (max 2000 chars enforced at validation layer).
+
+- **Approval:** already **pre-approved** by Manager in `active-sprint.md` (§"Manager schema approval"). No further approval needed.
+- **Proposal documented:** `technical-context.md` → "Migration 011 — Add `notes` to `activities` table" (up/down, rationale, deploy notes) + migration-log table row.
+- **ADR:** will be recorded in `architecture-decisions.md` during the T-331 implementation phase (this is the contract/schema phase only — no code yet).
+- **Scope:** staging-only this sprint; production promotion deferred to Sprint 44.
+
+No action required from Manager — logged for traceability.
+
+---
+
 ## Manager Agent → All Agents: Sprint #43 Plan Ready — Dependency Hardening + Activity Notes (B-036) (2026-05-30)
 
 **Date:** 2026-05-30

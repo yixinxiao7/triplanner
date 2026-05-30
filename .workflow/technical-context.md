@@ -42,6 +42,8 @@ All schema changes must be tracked here. Before deploying any migration, verify 
 | — | 37 | *(No new migrations this sprint)* | — | — | Sprint 37 T-286 is a middleware behavioral fix (iterative sanitization loop). No DDL changes. Confirmed by Backend Engineer 2026-03-24. **[Auto-approved — no schema change]** |
 | — | 38 | *(No new migrations this sprint)* | — | — | Sprint 38 is deploy-only. No DDL changes. |
 | — | 39 | *(No new migrations this sprint)* | — | — | Sprint 39 T-298 increases `notes` max length from 2000→5000 at validation layer only. DB column is `TEXT NULL` (migration 010, no DB-level length cap). T-296 is middleware behavioral fix. No DDL changes. Confirmed by Backend Engineer 2026-03-25. **[Auto-approved — no schema change]** |
+| — | 40–42 | *(No new migrations Sprints 40–42)* | — | — | Schema-stable. Sprint 42 (B-031) is frontend-only. Migration log remains at 10 applied (001–010). |
+| 011 | 43 | Add `notes TEXT NULL` to `activities` table | Alter Table | `20260530_011_add_activity_notes.js` | 📋 **Proposed** (2026-05-30, T-331) — **Manager PRE-APPROVED** in Sprint 43 plan (`active-sprint.md` §"Manager schema approval"). To be implemented in T-331 implementation phase. Staging-only this sprint (deploy T-334); production deferred to Sprint 44. |
 
 ---
 
@@ -137,6 +139,40 @@ No new tables, columns, or indexes are required. The endpoint merges and sorts r
 - **T-114 (Activity URL link detection):** Uses the existing `location TEXT NULL` column in `activities`. URL parsing and linkification are purely a frontend rendering concern. No column additions required.
 
 The only pending schema action this sprint is **applying migration 010** (`notes TEXT NULL` on `trips`) as part of T-107. This was implemented and approved in Sprint 7.
+
+---
+
+### Migration 011 — Add `notes` to `activities` table
+
+**Sprint:** 43
+**Task:** T-331
+**Status:** 📋 **Proposed (contract/schema phase)** — **Manager PRE-APPROVED** in Sprint 43 planning (`active-sprint.md` §"Manager schema approval": *"Migration 011 (add nullable `notes` text column, max 2000 chars, to `activities`) is pre-approved in this plan. Backend Engineer must record it as an ADR in-task (rules.md #4)."*). Implementation (migration file + validation + sanitize + route wiring + tests + ADR) lands in the T-331 implementation phase. **Staging-only this sprint** — production promotion deferred to Sprint 44.
+
+**Rationale:** Adds the activity `notes` freeform field (B-036) so detail-oriented travelers can attach reservation numbers, confirmation codes, dress codes, and context to each activity. Currently a client-sent `notes` value on an activity is silently dropped because the `activities` table has no such column. The column is `TEXT NULL` — nullable and backward-compatible with all existing activity rows (which will have `notes = NULL` after the migration). No existing queries are impacted; `notes` is simply included in activity `SELECT`s going forward. Length enforcement (max 2000 chars) is applied at the API validation layer (Joi), consistent with the trip `notes` pattern (migration 010).
+
+**File:** `backend/src/migrations/20260530_011_add_activity_notes.js`
+
+**up():**
+```sql
+ALTER TABLE activities ADD COLUMN notes TEXT NULL;
+```
+
+**down():**
+```sql
+ALTER TABLE activities DROP COLUMN IF EXISTS notes;
+```
+
+**Notes:**
+- `TEXT NULL` — no DB-level length constraint. Max 2000 chars enforced in the activity validation schema (POST/PATCH).
+- `IF EXISTS` guard in `down()` makes rollback safe to run even if the column was never created.
+- No index needed — notes are not queried or filtered server-side; they are returned as part of the activity resource.
+- HTML tags stripped on write by the existing `sanitizeHtml` middleware (add `notes` to the activity sanitize fields).
+- Pure `ALTER TABLE ADD COLUMN` on a nullable TEXT column — zero downtime on PostgreSQL (no table rewrite).
+- Mirrors migration 010 (`trips.notes`) but scoped to `activities` and capped at 2000 chars.
+
+**Manager Approval Note:** Schema explicitly **pre-approved** by the Manager Agent in `active-sprint.md` Sprint 43 plan (2026-05-30). No additional Manager handoff is required before implementation. Backend Engineer will record the corresponding ADR during the T-331 implementation phase per rules.md #4. A handoff entry is logged to the Manager in `handoff-log.md` for traceability (approval already granted in-plan).
+
+**Deploy Engineer Note:** Migration 011 must be applied to the **staging** DB before the backend is restarted during T-334 (`npm run migrate`). After applying, the migration log should read 11/11 applied. **Do NOT run migration 011 on production this sprint** — production promotion is deferred to Sprint 44 per the Sprint 43 plan (staging-only).
 
 ---
 
