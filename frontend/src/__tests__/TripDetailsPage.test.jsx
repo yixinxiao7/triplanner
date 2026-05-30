@@ -1276,6 +1276,70 @@ describe('TripDetailsPage', () => {
     expect(activityLocation).toBeNull();
   });
 
+  it('[T-324] multiple URLs render as two separate links with intervening text', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      activities: [
+        {
+          id: 'act-multi',
+          trip_id: 'trip-001',
+          name: 'Two Spots',
+          location: 'https://a.com and https://b.com',
+          activity_date: '2026-08-08',
+          start_time: '10:00:00',
+          end_time: '11:00:00',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    const { container } = renderTripDetailsPage();
+
+    const activityLocation = container.querySelector('[class*="activityLocation"]');
+    const links = activityLocation.querySelectorAll('a');
+    expect(links.length).toBe(2);
+    expect(links[0].getAttribute('href')).toBe('https://a.com');
+    expect(links[1].getAttribute('href')).toBe('https://b.com');
+    // Each link carries the security attributes and the locationLink class
+    links.forEach((link) => {
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+      expect(link.className).toMatch(/locationLink/);
+    });
+    // Intervening plain text preserved
+    expect(activityLocation.textContent).toContain(' and ');
+  });
+
+  it('[T-324] data: URI in location renders as plain text (NOT a link)', () => {
+    useTripDetails.mockReturnValue({
+      ...defaultHookValue,
+      activities: [
+        {
+          id: 'act-data-uri',
+          trip_id: 'trip-001',
+          name: 'Data URI Test',
+          location: 'data:text/html,<h1>hi</h1>',
+          activity_date: '2026-08-08',
+          start_time: '10:00:00',
+          end_time: '11:00:00',
+          created_at: '2026-02-24T12:00:00.000Z',
+          updated_at: '2026-02-24T12:00:00.000Z',
+        },
+      ],
+    });
+
+    const { container } = renderTripDetailsPage();
+
+    // No link should be rendered for a data: URI
+    const activityLocation = container.querySelector('[class*="activityLocation"]');
+    const links = activityLocation ? activityLocation.querySelectorAll('a') : [];
+    expect(links.length).toBe(0);
+    // The raw string is rendered as React-escaped plain text (no <h1> element)
+    expect(activityLocation.querySelector('h1')).toBeNull();
+    expect(activityLocation.textContent).toContain('data:text/html,<h1>hi</h1>');
+  });
+
   // ── 19. T-122 / T-172: Trip Print / Export ────────────────────────────────
 
   it('[T-172-A] renders "Print itinerary" button on TripDetailsPage', () => {

@@ -6,6 +6,7 @@ import {
   formatTime,
   formatDateRange,
   formatTimezoneAbbr,
+  parseLocationWithLinks,
 } from '../utils/formatDate';
 
 describe('formatTime', () => {
@@ -165,5 +166,77 @@ describe('formatTimezoneAbbr', () => {
     expect(typeof result).toBe('string');
     // Should not throw; should return a non-empty fallback
     expect(result.length).toBeGreaterThan(0);
+  });
+});
+
+// ── T-324 / Spec 34: parseLocationWithLinks (Activity Location Links, B-031) ──
+describe('parseLocationWithLinks', () => {
+  it('returns [] for null/undefined/empty', () => {
+    expect(parseLocationWithLinks(null)).toEqual([]);
+    expect(parseLocationWithLinks(undefined)).toEqual([]);
+    expect(parseLocationWithLinks('')).toEqual([]);
+  });
+
+  it('returns a single text segment for plain text (no URL)', () => {
+    expect(parseLocationWithLinks('Golden Gate Park')).toEqual([
+      { type: 'text', content: 'Golden Gate Park' },
+    ]);
+  });
+
+  it('detects a single https URL as a link segment', () => {
+    expect(parseLocationWithLinks('https://maps.google.com/place/XYZ')).toEqual([
+      { type: 'link', content: 'https://maps.google.com/place/XYZ' },
+    ]);
+  });
+
+  it('detects an http URL as a link segment', () => {
+    expect(parseLocationWithLinks('http://example.com')).toEqual([
+      { type: 'link', content: 'http://example.com' },
+    ]);
+  });
+
+  it('splits mixed text + URL preserving order and whitespace', () => {
+    expect(parseLocationWithLinks('Meet at https://maps.google.com done')).toEqual([
+      { type: 'text', content: 'Meet at ' },
+      { type: 'link', content: 'https://maps.google.com' },
+      { type: 'text', content: ' done' },
+    ]);
+  });
+
+  it('detects multiple URLs as separate link segments', () => {
+    expect(parseLocationWithLinks('https://a.com and https://b.com')).toEqual([
+      { type: 'link', content: 'https://a.com' },
+      { type: 'text', content: ' and ' },
+      { type: 'link', content: 'https://b.com' },
+    ]);
+  });
+
+  it('keeps trailing punctuation glued to the URL (accepted behavior)', () => {
+    expect(parseLocationWithLinks('Lunch at https://yelp.com/biz/xyz, 1pm')).toEqual([
+      { type: 'text', content: 'Lunch at ' },
+      { type: 'link', content: 'https://yelp.com/biz/xyz,' },
+      { type: 'text', content: ' 1pm' },
+    ]);
+  });
+
+  it('treats javascript: as inert plain text (security)', () => {
+    expect(parseLocationWithLinks('javascript:alert(1)')).toEqual([
+      { type: 'text', content: 'javascript:alert(1)' },
+    ]);
+  });
+
+  it('treats data: URIs as inert plain text (security)', () => {
+    expect(parseLocationWithLinks('data:text/html,<h1>hi</h1>')).toEqual([
+      { type: 'text', content: 'data:text/html,<h1>hi</h1>' },
+    ]);
+  });
+
+  it('treats vbscript: and file: as inert plain text (security)', () => {
+    expect(parseLocationWithLinks('file:///etc/passwd')).toEqual([
+      { type: 'text', content: 'file:///etc/passwd' },
+    ]);
+    expect(parseLocationWithLinks('vbscript:msgbox(1)')).toEqual([
+      { type: 'text', content: 'vbscript:msgbox(1)' },
+    ]);
   });
 });

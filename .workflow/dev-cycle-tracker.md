@@ -3498,7 +3498,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-320 | Deploy Engineer: Production deployment of Sprint 41 code (print feature). Rebuild, test, deploy PM2, smoke tests. | Infrastructure | Deploy Engineer | Backlog | P1 | S | 42 | — | Promote Sprint 41 staging code to production. |
+| T-320 | Deploy Engineer: Production deployment of Sprint 41 code (print feature). Rebuild, test, deploy PM2, smoke tests. | Infrastructure | Deploy Engineer | In Review | P1 | S | 42 | — | ✅ DEPLOYED 2026-05-30. 1047/1047 tests pass, 0 pending migrations, frontend rebuilt, PM2 prod (be:3002 fe:4174) online 0 restarts, 4/4 smoke tests pass. Handoff to Monitor (T-321). See qa-build-log.md. |
 | T-321 | Monitor Agent: Production health check. Verify print feature on production. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 42 | T-320 | Full production health check protocol. |
 
 ---
@@ -3516,7 +3516,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-324 | Frontend Engineer: Implement activity location links. LinkifyText component, new tab links, print view handling, security (block javascript:/data: URLs), tests. | Feature | Frontend Engineer | Backlog | P1 | M | 42 | T-322, T-323 | B-031. |
+| T-324 | Frontend Engineer: Implement activity location links. LinkifyText component, new tab links, print view handling, security (block javascript:/data: URLs), tests. | Feature | Frontend Engineer | In Review | P1 | M | 42 | T-322, T-323 | B-031. **Done.** Net-new per Spec §34.6: added `text-underline-offset: 2px`, `transition: color 150ms ease`, `:focus-visible` ring to `.locationLink` (TripDetailsPage.module.css). Verified `parseLocationWithLinks` (§34.3), `ActivityEntry` render (§34.4), and print.css (§34.7) already match spec — no change needed. Tests: +10 unit tests for `parseLocationWithLinks` (formatDate.test.js) + 2 render tests (multiple URLs, data: URI) in TripDetailsPage.test.jsx. Full suite: 536/536 pass. |
 
 ---
 

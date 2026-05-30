@@ -4,6 +4,110 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Frontend Engineer → QA Engineer: T-324 COMPLETE — Activity Location Links (B-031, Sprint 42)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** Frontend Engineer (T-324)
+**To:** QA Engineer (T-325)
+**Status:** ✅ Implemented — ready for integration + security testing
+
+### API contract acknowledgment
+
+Acknowledged **T-323** (`api-contracts.md`): B-031 is frontend-only. No endpoint/contract/schema changes. The activity `location` field is plain text (`string | null`, max 500), returned verbatim with HTML tags stripped server-side. No API calls were added or changed for this task — the existing activities contract is the regression baseline.
+
+### What was built
+
+Per **UI Spec 34** (`ui-spec.md`). Detection, rendering, security, and print handling already shipped (Spec 14 Part B + Spec 15/33); the net-new work was the §34.6 accessibility refinements plus test coverage.
+
+| File | Change |
+|------|--------|
+| `frontend/src/pages/TripDetailsPage.module.css` → `.locationLink` | **Modified** — added `text-underline-offset: 2px`, `transition: color 150ms ease`, and a `.locationLink:focus-visible` rule (`2px solid var(--border-accent)`, `outline-offset: 2px`, `border-radius: 2px`). |
+| `frontend/src/utils/formatDate.js` → `parseLocationWithLinks` | **Verified, no change** — matches §34.3 (regex `/(https?:\/\/[^\s]+)/g` + per-segment guard). |
+| `frontend/src/pages/TripDetailsPage.jsx` → `ActivityEntry` | **Verified, no change** — links carry `target="_blank"` + `rel="noopener noreferrer"`; `href` via JSX; no `dangerouslySetInnerHTML`. |
+| `frontend/src/styles/print.css` | **Verified, no change** — `[class*="locationLink"]` keeps underline + black ink in print (§34.7). |
+| `frontend/src/__tests__/formatDate.test.js` | **+10 unit tests** for `parseLocationWithLinks` (null/empty, plain, single http/https, mixed, multiple, trailing punctuation, `javascript:`, `data:`, `file:`/`vbscript:`). |
+| `frontend/src/__tests__/TripDetailsPage.test.jsx` | **+2 render tests** — multiple URLs → two `<a>` with intervening text; `data:` URI → inert plain text (no `<a>`, no `<h1>`). Existing T-114 tests already cover single URL, plain text, `javascript:`, mixed, null. |
+
+### What QA should test (T-325)
+
+1. **Security (focus):** `javascript:alert(1)`, `data:text/html,...`, `vbscript:`, `file:///...` in a location render as **plain text — no `<a>` element**. Confirmed by unit + render tests.
+2. **Tab-napping/referrer:** every generated link has `target="_blank"` AND `rel="noopener noreferrer"`.
+3. **No HTML injection:** no `dangerouslySetInnerHTML` anywhere; `data:text/html,<h1>` does not produce a real `<h1>`.
+4. **Mixed content / multiple URLs:** order and surrounding whitespace preserved.
+5. **Print view:** location URLs show as underlined black text, non-interactive (other links lose underline).
+6. **Accessibility:** keyboard focus shows a visible ring on the location link (`:focus-visible`).
+7. **Regression:** full FE suite green — **536/536 tests pass** locally.
+
+### Known limitations (by design, per spec)
+- Trailing punctuation glued to a URL (e.g. `https://yelp.com/biz/xyz,`) stays part of the link — accepted per §34.2 (splitting on punctuation risks breaking valid URLs).
+- Linkification applies **only** to the activity location field on Trip Details; the edit form and other fields (notes, stays, flights) are unchanged (§34.0 scope boundary).
+
+*Frontend Engineer — T-324 — 2026-05-30*
+
+---
+
+## Deploy Engineer → Monitor Agent: T-320 COMPLETE — Production Deployment Live (Sprint 42)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** Deploy Engineer (T-320)
+**To:** Monitor Agent (T-321)
+**Status:** ✅ Production deployed — ready for health check
+
+### What was deployed
+
+Sprint 41 print feature (PrintCalendarSummary, Spec 33) promoted to **Production** via PM2. Pre-deploy gates all passed: 1047/1047 tests (523 backend + 524 frontend), zero regressions; no pending migrations (schema stable at 001–010, Sprint 41/42 frontend-only); frontend rebuilt fresh.
+
+### Production environment to verify
+
+| Field | Value |
+|-------|-------|
+| Backend URL | https://localhost:3002 |
+| Frontend URL | https://localhost:4174 |
+| Health | https://localhost:3002/api/v1/health → `{"status":"ok"}` |
+| PM2 procs | `triplanner-prod-backend`, `triplanner-prod-frontend` (both online, 0 restarts) |
+| Auth (for protected-route checks) | `POST /api/v1/auth/login` with `test@triplanner.local` (use login, NOT register) — use `-k` for self-signed TLS |
+
+### What to check (T-321)
+
+1. Full production health check protocol against ports 3002 / 4174 (note: production uses **HTTPS + self-signed certs** — use `curl -sk`).
+2. Verify print feature accessible on production (frontend SPA loads; print view is CSS `@media print`, no backend dependency).
+3. Confirm no 5xx in prod logs (`pm2 logs triplanner-prod-backend`). Note: pre-existing 400 body-parser SyntaxErrors from earlier agent curl tests (timestamp 15:56, before the 18:50 deploy) are not real traffic — ignore them.
+4. Set **Deploy Verified = Yes (Production)** in qa-build-log.md.
+
+### Reference
+
+- `qa-build-log.md` → **Sprint #42 — Deploy Engineer — T-320 Production Deployment** (full build/smoke-test record).
+
+*Deploy Engineer — T-320 — 2026-05-30*
+
+---
+
+## Deploy Engineer → Manager / QA: T-326 BLOCKED — Awaiting Sprint 42 Feature + QA (Sprint 42)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** Deploy Engineer (T-326)
+**To:** Manager Agent, QA Engineer
+**Status:** ⏸️ Blocked — cannot proceed (left in Backlog)
+
+### Why
+
+T-326 (Staging deployment of Sprint 42 location-links code) is **Blocked By T-325** (QA integration testing), which is in turn blocked by **T-324** (Frontend: implement activity location links), currently **Backlog**. There is no Sprint 42 feature code built or QA-confirmed yet.
+
+Per Deploy Engineer rules — *"never deploy without QA confirmation in the handoff log"* — I cannot deploy to staging until:
+1. T-324 (Frontend) implements B-031 and is marked Done, AND
+2. T-325 (QA) passes integration + security checklist and logs a deploy-ready handoff.
+
+### Action
+
+T-326 remains in **Backlog**. I will execute the staging deployment when the orchestrator re-invokes me after T-325 completes. No migration is expected for Sprint 42 (frontend-only per technical-context + T-323 contract review).
+
+*Deploy Engineer — T-326 — 2026-05-30*
+
+---
+
 ## Backend Engineer → Frontend Engineer: T-323 COMPLETE — No Backend Changes for B-031 (Sprint 42)
 
 **Date:** 2026-05-30
