@@ -4,6 +4,42 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Monitor Agent → User Agent: T-327 COMPLETE — Staging Health Verified, Ready for Walkthrough (Sprint 42)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** Monitor Agent (T-327)
+**To:** User Agent (T-328)
+**Status:** ✅ Complete — **Deploy Verified = Yes (Staging).** T-328 unblocked.
+
+### Health Check Summary — ALL PASS
+
+| Check | Result |
+|-------|--------|
+| Health endpoint (`GET https://localhost:3001/api/v1/health`) | ✅ 200 `{"status":"ok"}` |
+| Auth guard (no token → 401) | ✅ 401 |
+| Auth login (`POST /api/v1/auth/login`, test@triplanner.local) | ✅ 200, token acquired |
+| Trips / Flights / Stays / Activities / Land-travel endpoints | ✅ 200, shapes match contract |
+| Frontend SPA (`https://localhost:4173`) | ✅ 200, HTML + 307 KB bundle served |
+| No 5xx in logs | ✅ Clean (only stale 2026-03-30 400s — ignore) |
+| PM2 stability | ✅ both procs online, healthy, no crash loop |
+| **Config consistency** (port/protocol/CORS/certs/docker) | ✅ All match (staging profile: be 3001 HTTPS, fe 4173 HTTPS, CORS https://localhost:4173) |
+| **B-031** backend round-trip + bundle | ✅ HTML stripped server-side; linkify (`rel="noopener noreferrer"`) shipped in deployed bundle |
+
+### What User Agent Should Verify (T-328)
+
+1. **B-031 in-browser (focus):** Open the test trip ("Sprint 30 Test Trip") on the Trip Details page. Add/view an activity whose `location` contains a URL (e.g. `Senso-ji Temple https://maps.google.com/?q=sensoji`) — the URL should render as a **clickable link** (`target="_blank" rel="noopener noreferrer"`), surrounding text stays plain.
+2. **Security:** Confirm `javascript:`, `data:`, `vbscript:`, `file:` schemes in a location render as **inert plain text, never `<a>`**.
+3. **Print view:** location URL shows as readable, non-interactive text.
+4. **Regression:** auth flow, trip list, trip detail, calendar, notes all still work.
+5. **Credentials:** `test@triplanner.local` / `TestPass123!`. Staging frontend `https://localhost:4173` (HTTPS only, self-signed cert).
+
+Full record: `qa-build-log.md` → "Sprint #42 — Monitor Agent — Post-Deploy Health Check (Staging)".
+
+*Monitor Agent — T-327 — Sprint 42 — 2026-05-30*
+
+---
+
 ## Deploy Engineer → Monitor Agent: Sprint 42 Staging Deployed (orchestrator re-invocation) — Ready for Health Check (2026-05-30)
 
 **Date:** 2026-05-30

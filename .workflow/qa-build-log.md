@@ -4,6 +4,70 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #42 — Monitor Agent — Post-Deploy Health Check (Staging) — 2026-05-30
+
+**Date:** 2026-05-30 (23:28 UTC)
+**Sprint:** 42
+**Task:** T-327 (Monitor: staging health check — B-031 Activity Location Links)
+**Test Type:** Post-Deploy Health Check + Config Consistency
+**Environment:** Staging (local, PM2 — backend `https://localhost:3001`, frontend `https://localhost:4173`)
+**Token:** acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT /auth/register, per T-226)
+**Result:** ✅ **PASS**
+**Deploy Verified: YES (Staging)**
+
+### Config Consistency (run first) — ✅ PASS
+
+Validated against the **active staging profile** (`backend/.env.staging` + `infra/ecosystem.config.cjs`), which is what is deployed. (The local `backend/.env` — PORT=3000, HTTP, CORS `http://localhost:5173` — is the separate local-dev profile and is internally consistent.)
+
+| Check | Expected | Actual | Result |
+|-------|----------|--------|--------|
+| **Port match** | Backend PORT == Vite proxy target port | `.env.staging` PORT=3001 + ecosystem `BACKEND_PORT=3001` → Vite proxy target `https://localhost:3001` | ✅ 3001 == 3001 |
+| **Protocol match** | SSL_KEY_PATH+SSL_CERT_PATH set → HTTPS → Vite proxy must use `https://` | `.env.staging` has both SSL paths; ecosystem `BACKEND_SSL=true` → `backendProtocol=https` | ✅ both HTTPS |
+| **Cert files exist** | Cert paths in `.env.staging` resolve to real files | `infra/certs/localhost-key.pem` (1704 B) + `localhost.pem` (1151 B) both present | ✅ exist |
+| **CORS match** | CORS_ORIGIN includes frontend origin | `CORS_ORIGIN=https://localhost:4173`; frontend preview serves on `https://localhost:4173` | ✅ match |
+| **Docker port match** | docker-compose mappings consistent | `infra/docker-compose.yml` exists (backend internal 3000, nginx frontend 80) — **internally consistent but unused**: Docker is not installed on host; staging runs via PM2. Not the active mechanism. | ✅ N/A (consistent) |
+
+No mismatches. No handoff to Frontend/Backend/Deploy required.
+
+### Health Checks — ✅ PASS
+
+| Check | Endpoint / Method | Result |
+|-------|-------------------|--------|
+| App responds | `GET https://localhost:3001/api/v1/health` | ✅ **200** `{"status":"ok"}` |
+| Auth guard (no token) | `GET /api/v1/trips` (no auth) | ✅ **401** (correctly rejected) |
+| Auth login | `POST /api/v1/auth/login` (test@triplanner.local) | ✅ **200**, access_token returned (len 255) |
+| Trips (protected) | `GET /api/v1/trips` (Bearer) | ✅ **200**, `{data:[1 trip], pagination}` — shape matches contract |
+| Flights | `GET /trips/:id/flights` | ✅ **200** `{data:[]}` |
+| Stays | `GET /trips/:id/stays` | ✅ **200** `{data:[1 stay]}` — shape matches |
+| Activities | `GET /trips/:id/activities` | ✅ **200** `{data:[]}` |
+| Land travel | `GET /trips/:id/land-travel` | ✅ **200** `{data:[]}` |
+| Frontend SPA | `GET https://localhost:4173/` | ✅ **200**, `<title>triplanner</title>`, serves `/assets/index-bYnRtATf.js` (307 KB) |
+| No 5xx in logs | `pm2 logs triplanner-backend` | ✅ No 5xx. Only stale **400** JSON-parse SyntaxErrors dated **2026-03-30 17:xx** (old malformed-curl tests, pre-deploy) — not real traffic, not 5xx. |
+| Database connectivity | via health + live CRUD reads/writes | ✅ Connected (live reads + write/delete succeeded) |
+| PM2 stability | `pm2 list` | ✅ `triplanner-backend` (id 8) & `triplanner-frontend` (id 10) **online**, 10m uptime, healthy mem (80MB / 68MB), 0% CPU |
+
+### B-031 Feature Verification (Activity Location Links)
+
+**Build shipped:** The deployed bundle served live at `https://localhost:4173/assets/index-bYnRtATf.js` contains the `target="_blank" rel="noopener noreferrer"` link-rendering logic — B-031 linkification is present in the deployed build.
+
+**Backend defense-in-depth (live round-trip, with cleanup):**
+- `POST /trips/:id/activities` with `location = "Senso-ji Temple https://maps.google.com/?q=sensoji <img src=x onerror=alert(1)>"` → **201**. Stored location: `"Senso-ji Temple https://maps.google.com/?q=sensoji"` — **HTML/`<img onerror>` payload stripped server-side**, URL + plain text preserved. ✅
+- `DELETE` the test activity → **204**; `GET activities` → `{data:[]}` — **test data cleaned up**. ✅
+
+Frontend rendering (clickable `https?://` only; `javascript:`/`data:`/`vbscript:`/`file:` → inert text; print = readable non-interactive text) is covered by QA's 538 FE render/unit tests (T-325) and confirmed shipped in the served bundle. No browser-driver available in this headless environment for live DOM assertion; backend round-trip + bundle inspection + QA test coverage together confirm the feature.
+
+### Observations (non-blocking)
+
+- **Frontend restart history:** `pm2` shows ↺=1 for both staging procs. Frontend logs show it initially bound `https://localhost:4176` at 19:01 (plant_guardians orphan squatting 4173/4175, per Deploy handoff), then correctly rebound to `https://localhost:4173` at 19:02 and 19:16. Now **stable on 4173** (10m uptime, no crash loop). Deploy handoff stated "0 restarts"; actual is 1 each from the port reclamation — cosmetic discrepancy, current state healthy. CORS origin matches the correct 4173 binding.
+
+### Conclusion
+
+All health checks and config-consistency checks pass. **Deploy Verified = Yes (Staging).** Staging is healthy and ready for User Agent walkthrough (T-328).
+
+*Monitor Agent — T-327 — Sprint 42 — 2026-05-30*
+
+---
+
 ## Sprint #42 — Deploy Engineer — Staging Deployment (orchestrator re-invocation) — 2026-05-30
 
 **Date:** 2026-05-30
