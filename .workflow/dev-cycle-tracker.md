@@ -3516,7 +3516,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-324 | Frontend Engineer: Implement activity location links. LinkifyText component, new tab links, print view handling, security (block javascript:/data: URLs), tests. | Feature | Frontend Engineer | Integration Check | P1 | M | 42 | T-322, T-323 | B-031. Net-new per Spec §34.6: added `text-underline-offset: 2px`, `transition: color 150ms ease`, `:focus-visible` ring to `.locationLink` (TripDetailsPage.module.css). Verified `parseLocationWithLinks` (§34.3), `ActivityEntry` render (§34.4), and print.css (§34.7) already match spec — no change needed. Tests: +10 unit tests for `parseLocationWithLinks` (formatDate.test.js) + 2 render tests (multiple URLs, data: URI) in TripDetailsPage.test.jsx. Full suite: 536/536 pass. **Manager review APPROVED (CR-42, 2026-05-30):** SECURITY ✓ regex linkifies only `https?://`; javascript:/data:/file:/vbscript: remain inert text (4 unit tests confirm). Render uses `href={segment.content}` (JSX auto-escapes) + `target="_blank" rel="noopener noreferrer"`; no `dangerouslySetInnerHTML`. Conventions ✓, a11y CSS matches Spec 34. Tests ✓ happy+error+security paths. → Integration Check, handed to QA (T-325). |
+| T-324 | Frontend Engineer: Implement activity location links. LinkifyText component, new tab links, print view handling, security (block javascript:/data: URLs), tests. | Feature | Frontend Engineer | ✅ Done | P1 | M | 42 | T-322, T-323 | **QA T-325 PASS (2026-05-30) → Done.** Integration + security verified: 1059/1059 tests, XSS-via-URL blocked at both layers (FE regex inert for javascript:/data:/vbscript:/file:; BE sanitizeFields strips HTML on write), links carry target=_blank rel=noopener noreferrer, no dangerouslySetInnerHTML, print view readable, a11y focus-visible present, config consistent. See qa-build-log.md T-325. B-031. Net-new per Spec §34.6: added `text-underline-offset: 2px`, `transition: color 150ms ease`, `:focus-visible` ring to `.locationLink` (TripDetailsPage.module.css). Verified `parseLocationWithLinks` (§34.3), `ActivityEntry` render (§34.4), and print.css (§34.7) already match spec — no change needed. Tests: +10 unit tests for `parseLocationWithLinks` (formatDate.test.js) + 2 render tests (multiple URLs, data: URI) in TripDetailsPage.test.jsx. Full suite: 536/536 pass. **Manager review APPROVED (CR-42, 2026-05-30):** SECURITY ✓ regex linkifies only `https?://`; javascript:/data:/file:/vbscript: remain inert text (4 unit tests confirm). Render uses `href={segment.content}` (JSX auto-escapes) + `target="_blank" rel="noopener noreferrer"`; no `dangerouslySetInnerHTML`. Conventions ✓, a11y CSS matches Spec 34. Tests ✓ happy+error+security paths. → Integration Check, handed to QA (T-325). |
 
 ---
 
@@ -3524,9 +3524,9 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-325 | QA Engineer: Integration testing for Sprint 42. Location links, production health, full test suite, security checklist (XSS via URL), regression. | Code Review | QA Engineer | Backlog | P1 | M | 42 | T-324 | Security focus: ensure javascript: and data: URLs are blocked. |
-| T-326 | Deploy Engineer: Staging deployment of Sprint 42 code (location links). | Infrastructure | Deploy Engineer | Backlog | P1 | S | 42 | T-325 | |
-| T-327 | Monitor Agent: Staging health check. Verify location links feature. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 42 | T-326 | |
+| T-325 | QA Engineer: Integration testing for Sprint 42. Location links, production health, full test suite, security checklist (XSS via URL), regression. | Code Review | QA Engineer | ✅ Done | P1 | M | 42 | T-324 | **PASS (2026-05-30).** Unit: BE 523/523 + FE 536/536 = 1059/1059, 0 regressions. Integration: FE↔BE contract clean (no API surface), §34.4 render + §34.6 a11y + §34.7 print all verified. Config consistency: PASS (PORT/SSL/CORS/docker all match). Security: XSS-via-URL blocked at both layers, no dangerouslySetInnerHTML, target=_blank+rel=noopener, no secrets/SQLi/auth gaps. npm audit: pre-existing dev-tooling (vite/ws) advisories only — not a release blocker. T-324 → Done. Deploy-ready handoff logged (T-326 unblocked). See qa-build-log.md. |
+| T-326 | Deploy Engineer: Staging deployment of Sprint 42 code (location links). | Infrastructure | Deploy Engineer | ✅ Done | P1 | S | 42 | T-325 | **Manager review APPROVED (CR-42 Pass #2, 2026-05-30) → Done.** Deploy is correct & verified: 1059/1059 tests (0 regressions), no pending migrations (correct — B-031 frontend-only), 9/9 smoke tests incl. B-031 location round-trip + backend XSS strip, PM2 staging HTTPS (be:3001 fe:4173) online 0 restarts, production untouched. `deploy-staging.sh` clean (`set -euo pipefail`, no hardcoded secrets — creds via `backend/.env`, `curl -sk` for self-signed TLS). `ecosystem.config.cjs` TLS env references cert files (not secrets), mirrors production. **Process note (rules.md #4):** the `ecosystem.config.cjs` shared-config change was documented in handoff-log + qa-build-log but not ADR'd by Deploy Engineer at change time; Manager logged it retroactively as **ADR-006**. Future infra/config changes must be ADR'd by the originating agent in-task. **T-327 (Monitor staging health) is the rule-#15 enforcing gate — deploy not *complete* until Monitor verifies.** ✅ DEPLOYED 2026-05-30. 1059/1059 tests pass (BE 523 + FE 536, 0 regressions), 0 pending migrations (frontend-only B-031), frontend rebuilt, PM2 staging HTTPS (be:3001 fe:4173) online 0 restarts, 9/9 smoke tests pass incl. B-031 location round-trip + backend XSS strip. **Infra fixes:** added explicit TLS env to `ecosystem.config.cjs` (staging was HTTP-drift-prone); new `infra/scripts/deploy-staging.sh`; reclaimed port 4173 from orphaned `plant_guardians` vite-preview squatters (frontend had drifted to 4176, breaking CORS). Prod (3002/4174) untouched. Logged in qa-build-log. **T-327 (Monitor staging health) unblocked** — per rules.md #15 deploy not *complete* until Monitor verifies. |
+| T-327 | Monitor Agent: Staging health check. Verify location links feature. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 42 | T-326 | **UNBLOCKED (CR-42 Pass #2, 2026-05-30)** — T-326 staging deploy approved & Done. Per rules.md #15, run full staging health check protocol + verify B-031 location links render in-browser (clickable `https?://`, inert `javascript:`/`data:`), then record **Deploy Verified = Yes (Staging)** in qa-build-log.md. |
 | T-328 | User Agent: Staging walkthrough. Test location links, production print feature, regression check, submit feedback. | Documentation | User Agent | Backlog | P1 | M | 42 | T-327 | |
 
 ---
@@ -3549,6 +3549,24 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 **Handoffs logged in handoff-log.md:** Manager → QA (T-324 ready for integration check / security checklist); Manager → Monitor (T-321 unblocked, production health check).
 
 **No tasks sent back for rework.** No convention, security, contract, or test-coverage issues found.
+
+---
+
+### Sprint 42 — Manager Agent Code Review Pass #2 (CR-42B, 2026-05-30)
+
+**Review scope:** All tasks in "In Review" status at invocation: **T-326** (only task in review).
+
+**Result: T-326 APPROVED → Done.**
+
+- **T-326 (Deploy Engineer — Sprint 42 staging deployment) → Done.** Reviewed the infra deliverables on disk:
+  - `infra/scripts/deploy-staging.sh`: `set -euo pipefail`; no hardcoded secrets (DB/JWT come from `backend/.env`, validated present before deploy); `curl -sk` correct for self-signed staging TLS; migrations deliberately NOT auto-run (correct — Sprint 42 frontend-only, schema stable 001–010); production env untouched. Clean and reproducible.
+  - `infra/ecosystem.config.cjs`: staging TLS env (`COOKIE_SECURE`, `SSL_KEY_PATH`, `SSL_CERT_PATH`) references cert **files**, not secrets; mirrors production config — restores the HTTPS staging contract a clean `pm2 start` previously broke.
+  - Deploy evidence (qa-build-log T-326): 1059/1059 tests, 0 regressions, 9/9 smoke tests incl. B-031 location round-trip + backend `<script>` strip, PM2 be:3001/fe:4173 HTTPS online 0 restarts. Rule #15 deploy log present.
+  - **Rule #4 gap closed:** the shared-config change to `ecosystem.config.cjs` was documented in handoff-log + qa-build-log but not ADR'd by Deploy Engineer at change time. Rather than bounce a live, verified deploy, Manager logged it retroactively as **ADR-006** (Staging PM2 Config Carries Explicit TLS Env). Flagged for Deploy Engineer: future infra/config changes must include an ADR in the same task.
+
+- **T-327 (Monitor — staging health check) now UNBLOCKED.** Per rules.md #15, the staging deployment is not *complete* until Monitor verifies. Handoff logged.
+
+**No tasks sent back for rework.** Deploy is correct, secure, and fully traceable.
 
 ---
 

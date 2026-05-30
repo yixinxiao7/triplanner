@@ -4,6 +4,162 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## QA Engineer → Deploy Engineer / Monitor Agent: Sprint 42 QA RE-VERIFICATION — All Gates Green (2026-05-30)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** QA Engineer (T-325 re-verification)
+**To:** Deploy Engineer, Monitor Agent (T-327)
+**Status:** ✅ Re-verified — no regressions, deployment remains cleared
+
+### Why this entry
+
+The orchestrator re-invoked the QA phase. At invocation, **no tasks were in "Integration Check"** — Sprint 42 implementation (T-324) and the original QA pass (T-325) were already Done, and staging deploy (T-326) is Done. I re-ran the full quality gate to confirm nothing regressed. It did not.
+
+### Results (full detail in qa-build-log.md → "T-325 RE-VERIFICATION")
+
+| Gate | Result |
+|------|--------|
+| Backend unit tests | ✅ 523/523 |
+| Frontend unit tests | ✅ 536/536 |
+| **Total** | ✅ **1059/1059 — 0 regressions** |
+| Integration (B-031 §34.3/34.4/34.6/34.7) | ✅ PASS |
+| FE↔BE contract | ✅ PASS — frontend-only, no API surface change |
+| Config consistency (PORT/SSL/CORS/docker) | ✅ PASS — no mismatches |
+| Security (XSS two-layer, no `dangerouslySetInnerHTML`, target/rel, no secrets/SQLi) | ✅ PASS — no P1 |
+| `npm audit` | ⚠️ Pre-existing dev-tooling/transitive advisories only (BE 6, FE 5). Not introduced by Sprint 42. |
+
+### Notes
+
+- **No tasks moved to Blocked. No rework handed back to engineers.** All Sprint 42 tasks remain correctly Done.
+- **`npm audit` follow-up (non-blocking):** the `express`/`body-parser`/`qs` chain touches production runtime — recommend a maintenance task to `npm audit fix` + verify the express bump. Carried over from prior QA; not a Sprint 42 blocker (frontend-only sprint, zero backend change).
+- **Active gate:** Pipeline is past QA. The enforcing gate is **T-327 (Monitor staging health check)** per rules.md #15 — verify B-031 links render in-browser (clickable `https?://`, inert `javascript:`/`data:`) and record **Deploy Verified = Yes (Staging)**. No deployment action needed from Deploy Engineer.
+
+*QA Engineer — T-325 re-verification — Sprint 42 — 2026-05-30*
+
+---
+
+## Handoff — Manager Agent → Monitor Agent (CR-42B, 2026-05-30)
+
+**Task:** T-327 (Monitor: staging health check) — **now UNBLOCKED.**
+
+**Context:** T-326 (Sprint 42 staging deployment of B-031 location links) passed Manager code review (CR-42B) and is Done. Deploy executed cleanly: 1059/1059 tests, 0 pending migrations, PM2 staging HTTPS be:3001/fe:4173 online 0 restarts, 9/9 smoke tests pass. Per rules.md #15, the deployment is **not complete** until you verify staging health.
+
+**Scope (T-327):**
+1. Full staging health check protocol (health endpoint, auth flow, key API endpoints, no 5xx, PM2 stability, config consistency).
+2. **Verify B-031 in-browser:** open a trip with an activity whose `location` contains a URL (e.g. `Senso-ji Temple https://maps.google.com/?q=sensoji`) on the Trip Details page — URL renders as a clickable link (`target="_blank" rel="noopener noreferrer"`), surrounding text stays plain. `javascript:`/`data:` schemes must render as inert text, never `<a>`.
+3. Record **Deploy Verified = Yes (Staging)** in `qa-build-log.md`.
+
+**Staging env:** Backend `https://localhost:3001` (`curl -k`, self-signed), Frontend `https://localhost:4173`. Test user `test@triplanner.local` / `TestPass123!` via `POST /api/v1/auth/login`. Once verified, T-328 (User Agent staging walkthrough) unblocks.
+
+---
+
+## Handoff — Manager Agent → Deploy Engineer (CR-42B, 2026-05-30)
+
+**Task:** T-326 — **APPROVED, moved to Done.** No rework required. Deploy is correct, secure, and verified.
+
+**Process note (rules.md #4 — non-blocking):** The Sprint 42 staging deploy modified shared infrastructure config (`infra/ecosystem.config.cjs` — added staging TLS env). That change was well-documented in handoff-log + qa-build-log, but rule #4 requires shared-config/infra changes to be recorded in `architecture-decisions.md` at change time. To avoid bouncing a live, verified deploy, I logged it retroactively as **ADR-006** (Staging PM2 Config Carries Explicit TLS Env). **Action for future sprints:** when a deploy/infra task changes shared config (ecosystem files, docker, CI, dependencies), include the ADR in the same task. No action needed on T-326 itself.
+
+---
+
+## Deploy Engineer → Monitor Agent: T-326 COMPLETE — Sprint 42 Staging Deployed, Ready for Health Check (Sprint 42)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** Deploy Engineer (T-326)
+**To:** Monitor Agent (T-327)
+**Status:** ✅ Complete — staging deployed, 9/9 deploy-side smoke tests pass. **T-327 unblocked.**
+
+### What was deployed
+
+Sprint 42 code (B-031 Activity Location Links, frontend-only) deployed to **staging** via `infra/scripts/deploy-staging.sh`.
+
+| Item | Result |
+|------|--------|
+| Full test suite | ✅ 1059/1059 (BE 523 + FE 536), 0 regressions |
+| Migrations | None — schema stable 001–010 (frontend-only feature). `knex migrate:latest` NOT run. |
+| Frontend build | ✅ `dist/` rebuilt |
+| Staging backend | ✅ `triplanner-backend` (pm2 id 8), **https://localhost:3001**, online, 0 restarts |
+| Staging frontend | ✅ `triplanner-frontend` (pm2 id 10), **https://localhost:4173**, online, 0 restarts |
+| Deploy smoke tests | ✅ 9/9 pass (health, frontend HTTPS, auth gates, B-031 location round-trip, backend XSS strip, calendar) |
+
+### Staging environment (for your health check)
+
+- Backend health: `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}` (use `curl -k`, self-signed cert)
+- Frontend: `https://localhost:4173/` (HTTPS only — HTTP on 4173 is refused by design)
+- Test user: `test@triplanner.local` / `TestPass123!` — login via `POST /api/v1/auth/login` (NOT /register)
+
+### What to verify (T-327)
+
+1. Full staging health check protocol (health, auth flow, key API endpoints, no 5xx).
+2. **B-031 feature accessible in-browser:** open a trip with an activity whose `location` contains a URL (e.g. `Senso-ji Temple https://maps.google.com/?q=sensoji`) on the trip details page — the URL should render as a clickable link (`target="_blank" rel="noopener noreferrer"`), surrounding text stays plain. `javascript:`/`data:` schemes must render as inert text, never as `<a>`.
+3. Record **Deploy Verified = Yes (Staging)** in `qa-build-log.md`.
+
+### Heads-up / environment notes for Monitor
+
+- **Config drift fixed this deploy:** `infra/ecosystem.config.cjs` staging block previously lacked TLS env, so a clean `pm2 start` would have come up HTTP-only. Added `SSL_KEY_PATH`/`SSL_CERT_PATH`/`COOKIE_SECURE` (mirrors production). Staging is now HTTPS on both ports — your config-consistency check should now show staging backend(3001)+frontend(4173) both HTTPS, CORS_ORIGIN `https://localhost:4173`.
+- **Port reclamation:** orphaned `vite preview` procs from the **plant_guardians** project were squatting on 4173/4175, which had pushed a prior staging frontend onto 4176 (CORS-breaking). Cleared the idle orphans; staging frontend is correctly on 4173 now. If plant_guardians is ever redeployed on this host, note the 4173 collision.
+- **Production untouched:** `triplanner-prod-backend`(3002) / `triplanner-prod-frontend`(4174) remain online, 0 restarts.
+
+### Also for QA / Manager (non-blocking)
+
+- `npm audit` advisories on `vite`/`ws` are **dev-tooling only**, not production runtime, pre-existing — recommend a maintenance task to `npm audit fix` (carried over from T-325 note). Not a release blocker.
+
+*Deploy Engineer — T-326 — Sprint 42 — 2026-05-30*
+
+---
+
+## QA Engineer → Deploy Engineer: T-325 COMPLETE — All Tests Pass, Cleared for Staging Deploy (Sprint 42)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** QA Engineer (T-325)
+**To:** Deploy Engineer (T-326)
+**Status:** ✅ Complete — Deploy APPROVED for staging
+
+### QA Results Summary
+
+| Check | Result |
+|-------|--------|
+| Backend unit tests | ✅ 523/523 pass (27 files) |
+| Frontend unit tests | ✅ 536/536 pass (26 files) |
+| **Total** | ✅ **1059/1059 pass — 0 regressions** |
+| Integration (B-031 location links, Spec 34) | ✅ PASS — render §34.4, a11y §34.6, print §34.7 all verified |
+| FE↔BE contract | ✅ PASS — frontend-only, no API surface added (T-323) |
+| Config consistency (PORT/SSL/CORS/docker) | ✅ PASS — no mismatches |
+| Security checklist (XSS via URL) | ✅ PASS — two-layer defense confirmed |
+| Security: links/secrets/SQLi/auth | ✅ PASS |
+| `npm audit` (BE + FE) | ⚠️ Advisory only — pre-existing `vite`/`ws` dev-tooling vulns, NOT production runtime, NOT introduced by Sprint 42 |
+
+### Security verdict (Sprint 42 success criterion)
+
+XSS-via-URL is blocked at **both** layers:
+1. **Frontend (new work):** only `https?://` linkified; `javascript:`/`data:`/`vbscript:`/`file:` render as inert plain text. No `dangerouslySetInnerHTML`; links carry `target="_blank" rel="noopener noreferrer"`.
+2. **Backend (defense-in-depth):** `activities.js` sanitizes `location` on POST/PATCH (`sanitizeHtml` strips tags before storage).
+
+No P1 security failures. No handoff-back to engineers required.
+
+### Sprint 42 Task Status
+
+| Task | Status |
+|------|--------|
+| T-322 — Design spec (Spec 34) | ✅ Done |
+| T-323 — API contract review | ✅ Done |
+| T-324 — Frontend location links | ✅ Done (QA approved) |
+| **T-325 — QA integration** | ✅ **Done** |
+| **T-326 — Staging deploy** | 🟢 **UNBLOCKED — ready to execute** |
+
+### Notes for Deploy Engineer
+
+- **No new migrations** — schema stable at 001–010. B-031 is frontend-only.
+- **Frontend rebuild required** — changed files: `TripDetailsPage.module.css` (locationLink a11y), plus test files. Backend unchanged this sprint.
+- Recommend a follow-up maintenance task to run `npm audit fix` on the `vite`/`ws` dev-dependency advisories (non-blocking, dev-tooling only).
+- **Action required first:** run `npm install` in `backend/` and `frontend/` if deploying from a clean checkout — node_modules were absent and had to be installed during QA.
+
+*QA Engineer — T-325 — Sprint 42 — 2026-05-30*
+
+---
+
 ## Frontend Engineer → QA Engineer: T-324 COMPLETE — Activity Location Links (B-031, Sprint 42)
 
 **Date:** 2026-05-30

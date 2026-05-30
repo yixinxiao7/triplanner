@@ -36,6 +36,31 @@ Use the ADR (Architecture Decision Record) template below. Number decisions sequ
 
 ---
 
+### ADR-006: Staging PM2 Config Carries Explicit TLS Env (HTTPS Reproducibility)
+
+**Date:** 2026-05-30
+**Sprint:** #42
+**Status:** Accepted
+**Decided By:** Deploy Engineer (T-326)
+**Approved By:** Manager Agent (CR-42 Pass #2)
+
+**Context:** During the Sprint 42 staging deploy (T-326), the Deploy Engineer found that the staging block of `infra/ecosystem.config.cjs` omitted TLS environment variables. The running staging backend only served HTTPS because SSL config had been injected out-of-band on a prior manual start; a clean `pm2 start infra/ecosystem.config.cjs` would have brought the backend up **HTTP-only**, silently violating the "HTTPS enforced on all environments" item in `security-checklist.md` and breaking the `CORS_ORIGIN=https://localhost:4173` contract. This is a shared-infrastructure config change and per rules.md #4 must be recorded as an ADR (logged retroactively by Manager at review time — see process note below).
+
+**Decision:** The staging backend block in `infra/ecosystem.config.cjs` now carries explicit TLS env, mirroring `ecosystem.production.config.cjs`:
+- `COOKIE_SECURE: 'true'`
+- `SSL_KEY_PATH: '../infra/certs/localhost-key.pem'`
+- `SSL_CERT_PATH: '../infra/certs/localhost.pem'`
+
+A clean `pm2 start` now reproduces the HTTPS staging contract deterministically. Staging deploys are driven by the new `infra/scripts/deploy-staging.sh` (parallels `deploy-production.sh`; ports 3001/4173, HTTPS smoke tests). These paths reference cert **files** on disk — no secrets are embedded in the config; application secrets (DB URL, JWT) remain in `backend/.env`.
+
+**Alternatives Considered:**
+1. **Leave staging HTTP-only, terminate TLS at a proxy** — diverges from production (which terminates TLS in-process), reducing prod/staging parity and weakening the value of staging as a pre-prod mirror. Rejected.
+2. **Keep injecting SSL out-of-band per deploy** — non-reproducible; the exact drift that caused this. Any clean restart would regress to HTTP. Rejected.
+
+**Consequences:** Staging and production now share the same in-process TLS model and config shape. Self-signed certs must exist at `infra/certs/` (the deploy script generates them if missing). Any future change to environment TLS handling must update both ecosystem configs together. **Process note:** this ADR was logged by the Manager during code review because the Deploy Engineer made the config change without an accompanying ADR (rules.md #4 requires the changing agent to log shared-config/infra changes at change time). Future infra/config changes must be ADR'd by the originating agent in the same task, not retroactively.
+
+---
+
 ### ADR-005: Core Data Model — Entity Definitions and Field Decisions
 
 **Date:** 2026-02-24
