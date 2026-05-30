@@ -3498,7 +3498,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-320 | Deploy Engineer: Production deployment of Sprint 41 code (print feature). Rebuild, test, deploy PM2, smoke tests. | Infrastructure | Deploy Engineer | In Review | P1 | S | 42 | — | ✅ DEPLOYED 2026-05-30. 1047/1047 tests pass, 0 pending migrations, frontend rebuilt, PM2 prod (be:3002 fe:4174) online 0 restarts, 4/4 smoke tests pass. Handoff to Monitor (T-321). See qa-build-log.md. |
+| T-320 | Deploy Engineer: Production deployment of Sprint 41 code (print feature). Rebuild, test, deploy PM2, smoke tests. | Infrastructure | Deploy Engineer | ✅ Done | P1 | S | 42 | — | ✅ DEPLOYED 2026-05-30. 1047/1047 tests pass, 0 pending migrations, frontend rebuilt, PM2 prod (be:3002 fe:4174) online 0 restarts, 4/4 smoke tests pass. **Manager review APPROVED (CR-42, 2026-05-30):** deploy executed cleanly, full suite green, smoke tests pass, logged in qa-build-log. T-321 (Monitor production health check) now UNBLOCKED — per rule 15, deployment is not *complete* until Monitor verifies. |
 | T-321 | Monitor Agent: Production health check. Verify print feature on production. Deploy Verified = Yes (Production). | Infrastructure | Monitor Agent | Backlog | P1 | S | 42 | T-320 | Full production health check protocol. |
 
 ---
@@ -3508,7 +3508,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
 | T-322 | Design Agent: UI spec for activity location links (B-031). URL detection, link rendering, print behavior, mixed content handling. | Feature | Design Agent | Done | P1 | S | 42 | — | B-031. Spec 34 published & Approved in ui-spec.md. Verified feature largely ships already (Spec 14 Part B); net-new for T-324 = add `text-underline-offset`, `transition`, `:focus-visible` to `.locationLink` (a11y). Handoff logged to Frontend Engineer. |
-| T-323 | Backend Engineer: API contract review for activity location links. Confirm no backend changes needed — URL detection is frontend-only. | Feature | Backend Engineer | In Review | P1 | S | 42 | — | B-031. **Decision: no backend changes, no schema changes.** `location` is plain-text `text` column, returned verbatim (HTML stripped by sanitize middleware, not HTML-encoded). Documented in api-contracts.md (T-323). Handoffs logged to FE (T-324) + QA (T-325). |
+| T-323 | Backend Engineer: API contract review for activity location links. Confirm no backend changes needed — URL detection is frontend-only. | Feature | Backend Engineer | ✅ Done | P1 | S | 42 | — | B-031. **Decision: no backend changes, no schema changes.** `location` is plain-text `text` column, returned verbatim (HTML stripped by sanitize middleware, not HTML-encoded). Documented in api-contracts.md (T-323). **Manager review APPROVED (CR-42, 2026-05-30):** decision is correct — location is a plain-text field, sanitize.js strips HTML on write, no endpoint/schema change. Contract doc is accurate & cross-referenced to source files. Decision-only task, no QA gate needed → Done. Handoffs logged to FE (T-324) + QA (T-325). |
 
 ---
 
@@ -3516,7 +3516,7 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 
 | ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
 |----|------|------|-------------|--------|----------|------------|--------|------------|-------|
-| T-324 | Frontend Engineer: Implement activity location links. LinkifyText component, new tab links, print view handling, security (block javascript:/data: URLs), tests. | Feature | Frontend Engineer | In Review | P1 | M | 42 | T-322, T-323 | B-031. **Done.** Net-new per Spec §34.6: added `text-underline-offset: 2px`, `transition: color 150ms ease`, `:focus-visible` ring to `.locationLink` (TripDetailsPage.module.css). Verified `parseLocationWithLinks` (§34.3), `ActivityEntry` render (§34.4), and print.css (§34.7) already match spec — no change needed. Tests: +10 unit tests for `parseLocationWithLinks` (formatDate.test.js) + 2 render tests (multiple URLs, data: URI) in TripDetailsPage.test.jsx. Full suite: 536/536 pass. |
+| T-324 | Frontend Engineer: Implement activity location links. LinkifyText component, new tab links, print view handling, security (block javascript:/data: URLs), tests. | Feature | Frontend Engineer | Integration Check | P1 | M | 42 | T-322, T-323 | B-031. Net-new per Spec §34.6: added `text-underline-offset: 2px`, `transition: color 150ms ease`, `:focus-visible` ring to `.locationLink` (TripDetailsPage.module.css). Verified `parseLocationWithLinks` (§34.3), `ActivityEntry` render (§34.4), and print.css (§34.7) already match spec — no change needed. Tests: +10 unit tests for `parseLocationWithLinks` (formatDate.test.js) + 2 render tests (multiple URLs, data: URI) in TripDetailsPage.test.jsx. Full suite: 536/536 pass. **Manager review APPROVED (CR-42, 2026-05-30):** SECURITY ✓ regex linkifies only `https?://`; javascript:/data:/file:/vbscript: remain inert text (4 unit tests confirm). Render uses `href={segment.content}` (JSX auto-escapes) + `target="_blank" rel="noopener noreferrer"`; no `dangerouslySetInnerHTML`. Conventions ✓, a11y CSS matches Spec 34. Tests ✓ happy+error+security paths. → Integration Check, handed to QA (T-325). |
 
 ---
 
@@ -3528,6 +3528,27 @@ No new code was written this sprint. No code review is needed. Sprint 38 is a de
 | T-326 | Deploy Engineer: Staging deployment of Sprint 42 code (location links). | Infrastructure | Deploy Engineer | Backlog | P1 | S | 42 | T-325 | |
 | T-327 | Monitor Agent: Staging health check. Verify location links feature. Deploy Verified = Yes (Staging). | Infrastructure | Monitor Agent | Backlog | P1 | S | 42 | T-326 | |
 | T-328 | User Agent: Staging walkthrough. Test location links, production print feature, regression check, submit feedback. | Documentation | User Agent | Backlog | P1 | M | 42 | T-327 | |
+
+---
+
+### Sprint 42 — Manager Agent Code Review Pass (CR-42, 2026-05-30)
+
+**Review scope:** All tasks in "In Review" status at invocation: **T-320, T-323, T-324.**
+
+**Result: All 3 APPROVED.**
+
+- **T-324 (Frontend — activity location links, B-031) → Integration Check.** The security-critical task. Verified on disk:
+  - `parseLocationWithLinks` (frontend/src/utils/formatDate.js): `URL_REGEX = /(https?:\/\/[^\s]+)/g` linkifies **only** http/https. `javascript:`, `data:`, `file:`, `vbscript:` schemes never match and are emitted as `{type:'text'}` — confirmed by 4 dedicated security unit tests.
+  - Render (frontend/src/pages/TripDetailsPage.jsx): `<a href={segment.content} target="_blank" rel="noopener noreferrer">`. React JSX auto-escapes the href; **no `dangerouslySetInnerHTML`**. Plain segments render in `<span>`.
+  - CSS (TripDetailsPage.module.css `.locationLink`): a11y refinements per Spec §34.6 present — `text-underline-offset: 2px`, `transition: color 150ms ease`, `:focus-visible` outline ring. Matches Japandi design tokens (accent color, 150ms ease, 2px radius).
+  - Tests: happy path (place name, single/multiple/mixed URLs, trailing punctuation), error path (null/undefined/empty → `[]`), security path (4 inert-scheme tests). Full suite 536/536 pass — satisfies rules.md #10.
+  - Defense-in-depth confirmed: backend sanitize strips HTML on write (T-323), frontend only linkifies safe schemes. No XSS vector.
+- **T-323 (Backend — API contract review) → Done.** Decision documented in api-contracts.md is correct and source-cross-referenced: `location` is a nullable plain-text column, sanitize.js strips HTML tags on POST/PATCH, value returned verbatim (not HTML-encoded), no endpoint/schema change. Decision-only task — no QA/integration gate required.
+- **T-320 (Deploy — production deployment) → Done.** Deploy executed 2026-05-30: 1047/1047 tests, 0 pending migrations, PM2 prod online (be:3002 / fe:4174, 0 restarts), 4/4 smoke tests pass, logged in qa-build-log.md. **T-321 (Monitor production health check) is now UNBLOCKED.** Per rules.md #15, the deployment is not *complete* until Monitor verifies — T-321 is the enforcing gate.
+
+**Handoffs logged in handoff-log.md:** Manager → QA (T-324 ready for integration check / security checklist); Manager → Monitor (T-321 unblocked, production health check).
+
+**No tasks sent back for rework.** No convention, security, contract, or test-coverage issues found.
 
 ---
 

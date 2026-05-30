@@ -631,3 +631,36 @@ Plain text → no `<a>`; single URL → correct attrs; mixed text+URL; multiple 
 ### Blockers
 - T-324 also blocked by **T-323** (Backend confirms activity location is plain text, no backend change). Per the spec this is a frontend-only feature — expect T-323 to confirm "no backend changes needed."
 
+
+---
+
+## Handoff — Manager Agent → QA Engineer (CR-42, 2026-05-30)
+
+**Task:** T-324 (Frontend: activity location links, B-031) — **APPROVED in code review, moved to Integration Check.**
+
+**Context for QA (T-325):**
+- Code reviewed and approved. Full frontend suite 536/536 pass at review time.
+- **Security focus (per task + rules.md #13):** Confirm `javascript:`, `data:`, `vbscript:`, `file:` schemes in an activity `location` render as inert plain text (never as `<a>`). Unit tests already assert this in `frontend/src/__tests__/formatDate.test.js` (`parseLocationWithLinks`). Verify end-to-end in `TripDetailsPage` render.
+- Verify clickable `http(s)://` links render with `target="_blank" rel="noopener noreferrer"` and open in a new tab.
+- Verify print view shows URL text (readable on paper), not interactive styling (`frontend/src/styles/print.css`).
+- Defense-in-depth: backend `sanitize.js` strips HTML on write (T-323); confirm no stored-XSS regression on activity CRUD.
+- Run the security checklist (`.workflow/security-checklist.md`) before any Done transition.
+- Regression baseline: existing activity CRUD + trip details page.
+
+**Files in scope:** `frontend/src/utils/formatDate.js`, `frontend/src/pages/TripDetailsPage.jsx`, `frontend/src/pages/TripDetailsPage.module.css`, `frontend/src/styles/print.css`, tests.
+
+---
+
+## Handoff — Manager Agent → Monitor Agent (CR-42, 2026-05-30)
+
+**Task:** T-321 (Monitor: production health check) — **now UNBLOCKED.**
+
+**Context:** T-320 (production deployment of Sprint 41 print feature) passed Manager review and is Done — deploy executed cleanly (1047/1047 tests, 0 pending migrations, PM2 prod be:3002/fe:4174 online 0 restarts, 4/4 smoke tests). Per rules.md #15, the deployment is **not complete** until you verify production health.
+
+**Scope:** Full production health check protocol; confirm the print feature (PrintCalendarSummary, Spec 33) is accessible on production; record **Deploy Verified = Yes (Production)** in `.workflow/qa-build-log.md`.
+
+---
+
+## Handoff — Manager Agent → Backend Engineer (CR-42, 2026-05-30)
+
+**Task:** T-323 (API contract review, B-031) — **APPROVED, moved to Done.** No rework needed. The "no backend/schema change" decision in `api-contracts.md` is correct and accepted; no Manager schema approval required for Sprint 42.
