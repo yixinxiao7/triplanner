@@ -4,6 +4,89 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #42 — Deploy Engineer — Staging Deployment (orchestrator re-invocation) — 2026-05-30
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**Task:** T-326 (Deploy Engineer: Build + deploy Sprint 42 to staging — Activity Location Links B-031)
+**Environment:** Staging (local, PM2)
+**Build Status:** ✅ **Success**
+**Deploy Status:** ✅ **Deployed to staging** — 10/10 smoke tests pass. Monitor health check (T-327) still required per rules.md #15 before deploy is *complete*.
+
+### Pre-Deploy Gates
+
+| Gate | Result |
+|------|--------|
+| QA deploy-ready handoff (T-325) | ✅ Present in handoff-log.md — "All tests pass. Approved for staging." 1059/1059 tests, security PASS |
+| All Sprint 42 tasks Done | ✅ T-322–T-325 Done; B-031 frontend-only |
+| Pending migrations (technical-context.md) | ✅ None — schema stable at 001–010. `knex migrate:status` on staging DB `triplanner` = 10 completed, 0 pending. B-031 is frontend-only (T-323). |
+
+### Environment Notes
+
+| Resource | Status |
+|----------|--------|
+| Docker / docker-compose | ❌ **Not installed on host** — `docker`/`docker-compose` not found. Per task instructions, used **local processes (PM2)** instead — the project's established staging mechanism. |
+| PostgreSQL 15 | ✅ Running locally (brew `postgresql@15`). Staging DB `triplanner` (user `yixinxiao`, per `backend/.env.staging`) reachable on `localhost:5432`. |
+| TLS certs | ✅ `infra/certs/localhost-key.pem` + `localhost.pem` present. |
+| Node / npm | v25.6.1 / 11.9.0 |
+
+### Build & Migrations
+
+| Step | Result |
+|------|--------|
+| Backend deps (`npm install`) | ✅ Up to date (164 packages) |
+| Frontend deps (`npm install`) | ✅ Up to date (180 packages) |
+| Staging migration status (`knex migrate:status`, DB `triplanner`) | ✅ 10 completed, **0 pending** (001–010) |
+| Staging migrations (`NODE_ENV=staging DATABASE_URL=…/triplanner npm run migrate`) | ✅ "Already up to date" — no migrations applied (frontend-only sprint) |
+| Frontend build (`npm run build`) | ✅ Success — Vite 6.4.1, 131 modules, `dist/` regenerated (`index` ~306.95 kB / gzip ~97.63 kB), built in ~0.55s |
+
+> Note: This is a JavaScript project. The backend has **no `build` script** (Node app run directly via `src/index.js`); `npm run build` is intentionally absent for the backend and is **not** a build failure. The frontend `build` script is `vite build` (no separate `tsc` step).
+
+### Deployment (PM2 — staging)
+
+`npx pm2 startOrReload infra/ecosystem.config.cjs --only triplanner-backend,triplanner-frontend --update-env` (PM2 staging apps were down at invocation; brought back online).
+
+| Process | Name | Port | Protocol | Status | Restarts |
+|---------|------|------|----------|--------|----------|
+| Backend | `triplanner-backend` | 3001 | HTTPS | ✅ Online | 0 (since this reload) |
+| Frontend | `triplanner-frontend` (vite preview) | 4173 | HTTPS | ✅ Online | 0 (since this reload) |
+
+**Staging URLs:**
+- Backend:  `https://localhost:3001`
+- Frontend: `https://localhost:4173`
+- Health:   `https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+
+`pm2 save` executed — process list persisted to `~/.pm2/dump.pm2`.
+
+### Staging Smoke Tests — ✅ 10/10 PASS
+
+Method: manual `curl -sk` sequence against `https://localhost:3001` (the repo's `infra/scripts/deploy-staging.sh` runs the same class of checks inline; there is no standalone `smoke-test.sh`). Test trip created and deleted as cleanup.
+
+| # | Test | Result |
+|---|------|--------|
+| 1 | Health endpoint (HTTPS:3001) → `{"status":"ok"}` | ✅ Pass |
+| 2 | Frontend serves HTML over HTTPS (4173) → 200 | ✅ Pass |
+| 3 | Trips requires auth (no token → 401) | ✅ Pass |
+| 4 | Invalid credentials rejected (401) | ✅ Pass |
+| 5 | Login test user (`test@triplanner.local`) → access token | ✅ Pass |
+| 6 | Authenticated trips list → 200 | ✅ Pass |
+| 7 | Create trip → id returned | ✅ Pass |
+| 8 | **B-031:** activity `location` `"Senso-ji Temple https://maps.google.com/?q=sensoji"` round-trips **verbatim** | ✅ Pass |
+| 9 | **XSS defense-in-depth:** `<script>alert(1)</script>Shibuya` → stored as `alert(1)Shibuya` (tags stripped) | ✅ Pass |
+| 10 | Cleanup: delete test trip → 204 | ✅ Pass |
+
+Backend log clean: `HTTPS Server running on https://localhost:3001` (2026-05-30 19:16). No 5xx, no restart loops. Production env (3002/4174) untouched (0 restarts).
+
+**Sprint 42 feature note:** B-031 (clickable location links) is a frontend *rendering* concern verified by QA (T-325). The smoke test confirms the supporting data path (location stored verbatim + backend HTML sanitization). In-browser link rendering is for Monitor (T-327) / User Agent (T-328) to confirm.
+
+### Handoff
+
+- → **Monitor Agent (T-327):** staging health check + verify location-links feature in-browser; record **Deploy Verified = Yes (Staging)**. See handoff-log.md.
+
+*Deploy Engineer — T-326 (re-invocation) — Sprint 42 — 2026-05-30*
+
+---
+
 ## Sprint #42 — QA Engineer — T-325 Integration & Security Testing — 2026-05-30
 
 **Date:** 2026-05-30

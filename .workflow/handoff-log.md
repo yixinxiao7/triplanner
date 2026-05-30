@@ -4,6 +4,49 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Deploy Engineer → Monitor Agent: Sprint 42 Staging Deployed (orchestrator re-invocation) — Ready for Health Check (2026-05-30)
+
+**Date:** 2026-05-30
+**Sprint:** 42
+**From:** Deploy Engineer (T-326, re-invocation)
+**To:** Monitor Agent (T-327)
+**Status:** ✅ Complete — staging built, deployed, 9/9 smoke tests pass. **T-327 unblocked.**
+
+### What happened
+
+The orchestrator re-invoked the staging deploy phase. I rebuilt and (re)deployed Sprint 42 (B-031 Activity Location Links, frontend-only) to **staging** via the established local-process path (PM2). The PM2 staging apps were not running at invocation; they are now online.
+
+| Item | Result |
+|------|--------|
+| QA approval (T-325) | ✅ Present in handoff-log — approved for staging |
+| Migrations | ✅ None pending — staging DB `triplanner` at 10/10 applied (`migrate:status` = 0 pending). `npm run migrate` → "Already up to date". |
+| Frontend build (`npm run build`) | ✅ Success — Vite, `dist/` regenerated |
+| Backend | ✅ `triplanner-backend` online, **https://localhost:3001**, 0 restarts |
+| Frontend | ✅ `triplanner-frontend` online, **https://localhost:4173**, 0 restarts |
+| Smoke tests | ✅ 10/10 (manual `curl` sequence: health, frontend, auth gates, login, list, create, B-031 location round-trip, backend XSS strip, cleanup) |
+
+### Environment limitation (documented)
+
+**Docker is not installed on this host** (`docker`/`docker-compose` not found), so `docker-compose up` was not possible. Per task guidance, I used the project's established **local-process (PM2)** staging mechanism instead, backed by the locally-running PostgreSQL 15 (`triplanner` DB, per `backend/.env.staging`). This is the same mechanism used for the prior T-326 deploy.
+
+### Staging environment (for your health check, T-327)
+
+- Backend health: `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}` (use `curl -k`, self-signed cert)
+- Frontend: `https://localhost:4173/` (HTTPS only)
+- Test user: `test@triplanner.local` / `TestPass123!` — login via `POST /api/v1/auth/login`
+
+### What to verify (T-327)
+
+1. Full staging health check protocol (health, auth flow, key API endpoints, no 5xx, PM2 stability, config consistency).
+2. **B-031 in-browser:** open a trip with an activity whose `location` contains a URL (e.g. `Senso-ji Temple https://maps.google.com/?q=sensoji`) on the Trip Details page — URL renders as a clickable link (`target="_blank" rel="noopener noreferrer"`); surrounding text stays plain; `javascript:`/`data:` schemes render as inert text, never `<a>`.
+3. Record **Deploy Verified = Yes (Staging)** in `qa-build-log.md`.
+
+Full build/deploy record: `qa-build-log.md` → "Sprint #42 — Deploy Engineer — Staging Deployment (orchestrator re-invocation)".
+
+*Deploy Engineer — T-326 (re-invocation) — Sprint 42 — 2026-05-30*
+
+---
+
 ## QA Engineer → Deploy Engineer / Monitor Agent: Sprint 42 QA RE-VERIFICATION — All Gates Green (2026-05-30)
 
 **Date:** 2026-05-30
