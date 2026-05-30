@@ -13209,3 +13209,235 @@ The `:focus-visible` outline pattern (`2px solid var(--border-accent)`, `outline
 ---
 
 *Sprint #42 design spec complete. Published by Design Agent 2026-05-30.*
+
+---
+
+## Sprint 43 Specs
+
+---
+
+### Spec 35: Activity Notes Field (Sprint 43 — T-330 / B-036)
+
+**Sprint:** #43
+**Related Task:** T-330 (Design), implemented by T-332 (Frontend), backed by T-331 (Backend, migration 011 + API)
+**Status:** Approved (auto-approved per automated sprint cycle)
+
+**Extends:**
+- **Spec 6** (Activities Edit Page) — adds a `notes` textarea to each activity row.
+- **Spec 3 §3.9** (Trip Details — Activity Entry) and **Spec 34** (Activity Location Links) — adds a notes display block under each activity.
+- **Spec 17 §17.3.5** (Print — Activities Section) and **Spec 33** (PrintCalendarSummary) — adds notes to the printed activity card.
+
+---
+
+#### 35.1 Overview & Rationale
+
+**Description:** Detail-oriented travelers want to attach free-form context to an individual activity — a reservation number, a confirmation code, a dress code, an instruction like "bring passport," a phone number, or any short note. Today the `activities` table has no `notes` column, so a client-sent `notes` value is silently dropped. Backend task T-331 adds a nullable `notes` text column (max 2000 chars, HTML stripped on write). This spec defines how that field is **entered** (edit form), **displayed** (Trip Details), and **printed** (print view).
+
+**Who uses it:** Any user editing or viewing an activity. The field is **optional** in every surface — an activity with no notes must look exactly as it does today (no empty placeholder block, no leftover whitespace).
+
+**Scope boundary:**
+- Applies to **activities only** this sprint. Flights, stays, and land travel do not get a notes field here.
+- The notes field is **plain text**. It is NOT linkified (unlike the activity location field in Spec 34) and is NOT rendered as HTML. URLs inside a note render as inert plain text in Sprint 43.
+- Notes are rendered as **escaped text** — never `dangerouslySetInnerHTML`. This is defense-in-depth alongside the backend `sanitizeHtml` strip (T-331). The combination guarantees a stored HTML/script payload renders inert.
+
+**Data contract (from T-331, for reference):** `notes` is a nullable string, max length 2000, returned on every activity object from `GET`/`POST`/`PATCH`. The frontend must treat `null`, `undefined`, and `""` (empty/whitespace-only) identically as "no notes."
+
+---
+
+#### 35.2 Activity Edit Form — Notes Input (extends Spec 6 §6.5)
+
+The notes input is added to **each activity row** on the Activities Edit Page. Because notes is a multi-line field that does not fit the spreadsheet-style single-line column layout of §6.5, it renders as a **full-width textarea on its own line, beneath the existing column inputs**, within the same row container. This keeps the dense column layout intact for the common fields while giving notes room to breathe.
+
+**35.2.1 Desktop layout (≥768px)**
+
+The existing row (date / name / location / start / end / delete) is unchanged. Directly below that flex line, inside the same row container, add a second line:
+
+- **Container:** Full width of the row. Margin-top: 8px (`--space-2`) below the column inputs line. Padding-left: 0 so it aligns with the left edge of the row's input area.
+- **Label:** A small inline label `NOTES` — font-size 11px, font-weight 500, letter-spacing 0.08em, uppercase, color `--text-muted` (per the standard Form Pattern label). Margin-bottom: 4px (`--space-1`). The label is optional/secondary: it may be visually hidden but **must** remain present as an accessible label (see §35.6). Recommended: show it as a faint inline label to match the form's quiet aesthetic.
+- **Textarea:**
+  - Width: 100% of the row container.
+  - Background: `--surface-alt` (`#3F4045`).
+  - Border: `1px solid --border-subtle`. On focus: `1px solid --accent` (`#5D737E`). Border-radius: `--radius-sm` (2px).
+  - Text: `--text-primary` (`#FCFCFC`), IBM Plex Mono, font-size 13px, line-height 1.5.
+  - Placeholder: `--text-muted`. Placeholder copy: `"reservation #, confirmation code, dress code, things to bring…"` (lowercase, calm, instructive).
+  - Padding: 10px 14px.
+  - **Rows:** `rows={2}` default height (~2 lines). `resize: vertical` so the user can drag taller; do not allow horizontal resize (`resize: vertical` only). Min-height ~52px, max-height ~240px (after which it scrolls internally).
+  - `transition: border-color 150ms ease`.
+  - `maxLength={2000}` attribute on the textarea — the browser hard-stops input at 2000 characters, mirroring the backend limit. (This is a UX guardrail; the backend remains the source of truth.)
+  - `wrap="soft"` and `white-space: pre-wrap` behavior so line breaks the user types are preserved.
+
+**35.2.2 Character counter**
+
+A subtle live counter sits at the bottom-right beneath the textarea:
+- Format: `"{count} / 2000"` — font-size 10px, letter-spacing 0.04em, color `--text-muted`, text-align right, margin-top 4px.
+- The counter is **only shown once the user focuses the textarea or there is existing content** — to avoid adding visual noise to empty rows. When the row's notes is empty and unfocused, hide the counter.
+- **Approaching limit:** when `count >= 1900`, the counter color shifts to `rgba(220, 160, 80, 0.9)` (muted amber warning).
+- **At limit:** when `count === 2000`, counter color `rgba(220, 80, 80, 0.9)` (the standard error red) and append ` "— max reached"`. No error banner — the `maxLength` attribute already prevents exceeding it; this is just informative.
+
+**35.2.3 Empty / optional behavior**
+
+- The notes textarea is **always optional**. An empty notes value must never block "Save all" or trigger a validation error (contrast with `name`/`activity_date` which are required per §6.5).
+- On save, the frontend includes `notes` in the payload for new (`POST`) and edited (`PATCH`) rows. Send `notes` as the trimmed string, or `null`/`""` when empty (match whatever the backend contract from T-331 expects for "clear the field"; default to sending an empty string `""` which the backend treats as no-notes). Clearing a previously-set note (deleting all text and saving) must persist as cleared.
+- A row counts as "edited" (and thus triggers a `PATCH` per §6.9) if **only** its notes changed — wire `notes` into the existing change-detection so a notes-only edit is saved.
+
+**35.2.4 Mobile layout (<768px) (extends Spec 6 §6.8)**
+
+In the mobile card-style stacked row, insert the notes field as a new stacked row **after `location` (Row 3) and before the time row (Row 4)**, or at the end before the delete button — recommended placement: **after the time row (Row 4), as Row 5**, with the delete button moving to Row 6. Rationale: keeps the most-used fields (date, name, time) at the top; notes is supplementary.
+
+- Inline label `NOTES` above the textarea (10px muted, matching the other mobile inline labels).
+- Textarea: full width, `rows={3}` on mobile (slightly taller since vertical space is cheaper than horizontal), same styling as desktop. `resize: vertical`.
+- Character counter beneath, same rules as §35.2.2.
+
+**35.2.5 Edit-form states**
+
+| State | Behavior |
+|-------|----------|
+| Empty (no notes) | Placeholder shown, no counter, no error. Textarea at 2-row default height. |
+| Filled | Text shown wrapped, counter visible. Height grows up to max-height then scrolls. |
+| Focus | Border → `--accent`; counter appears if hidden. |
+| At/near limit | Counter color shifts (amber ≥1900, red at 2000); `maxLength` blocks further typing. |
+| Loading (page fetch) | The notes textarea is part of the row skeleton — no separate skeleton needed; the existing 3-row shimmer (§6.4) covers it. |
+| Save in progress | Textarea becomes `readOnly` (not `disabled`, to keep value in payload) and dims to opacity 0.6 along with the rest of the row while the save spinner runs (per §6.9). |
+| Save error | Row retains its values including notes (no data loss); standard row error treatment from §6.9 applies. |
+
+---
+
+#### 35.3 Trip Details Page — Notes Display (extends Spec 3 §3.9 + Spec 34)
+
+Notes display **under each activity entry** on the Trip Details page, **only when present** (non-null, non-empty after trim). When absent, the activity entry renders exactly as it does today — no empty block, no label, no extra margin.
+
+**35.3.1 Placement within the Activity Entry**
+
+Recall the Activity Entry layout (§3.9): a flex row with a fixed ~80px time column, a vertical divider, and a flex:1 details column (name, then optional location). The notes block is added **inside the details column, below the location row** (or below the name row if no location). It is the last element in the details column.
+
+**35.3.2 Notes block styling**
+
+- **Container:** Margin-top: 8px (`--space-2`) above it (separating it from the name/location). Width: 100% of the details column.
+- **Label (optional micro-label):** A tiny uppercase label `NOTES` — font-size 10px, font-weight 600, letter-spacing 0.1em, uppercase, color `rgba(252,252,252,0.35)` (dimmer than `--text-muted` to stay quiet). Margin-bottom: 3px. This label aids scannability when an activity has both a location and notes. *Implementation note: the label is recommended but may be omitted if it feels heavy in testing; the notes text itself is the required element.*
+- **Notes text:**
+  - Font-size 12px, font-weight 400, color `rgba(252,252,252,0.7)` (slightly muted relative to the activity name, so name stays primary), line-height 1.55.
+  - IBM Plex Mono.
+  - **Preserve line breaks:** apply `white-space: pre-wrap` so multi-line notes the user typed render on multiple lines. Combined with `overflow-wrap: anywhere` / `word-break: break-word` so a long unbroken token (e.g., a long confirmation code or URL) wraps within the card instead of overflowing horizontally.
+  - **Rendered as escaped text** — interpolate as a React text child (`{activity.notes}`), never `dangerouslySetInnerHTML`. Any HTML/script in the value renders as literal visible characters (and the backend will already have stripped tags).
+- **Left accent (optional, recommended):** To visually distinguish notes from the location line, render the notes block with a subtle left border: `border-left: 2px solid rgba(93,115,126,0.4)` (`--accent` at low opacity), `padding-left: 10px`. This gives a quiet "annotation" feel consistent with Japandi restraint (border, not background fill). No background tint, no shadow.
+
+**35.3.3 Long-text overflow handling**
+
+- There is **no truncation/clamp** in Sprint 43 — detail-oriented users want to read the full note. Long notes wrap and the activity card grows in height. This is acceptable and expected.
+- `overflow-wrap: anywhere` ensures no horizontal scroll on long unbroken strings.
+- (Future enhancement, out of scope: a "show more/less" clamp at e.g. 6 lines. Not built this sprint — note this in handoff as a deliberate deferral.)
+
+**35.3.4 Trip Details notes states**
+
+| State | Behavior |
+|-------|----------|
+| No notes (null/empty/whitespace) | Block not rendered at all. Activity entry unchanged from today. |
+| Short note (1 line) | Single wrapped line under location, with optional `NOTES` micro-label and left accent. |
+| Multi-line note | Renders line breaks via `pre-wrap`; card grows vertically. |
+| Very long note | Wraps fully; no truncation; card grows. No horizontal overflow. |
+| HTML/script payload in note | Renders inert as visible escaped text (defense-in-depth; backend also strips). |
+
+---
+
+#### 35.4 Print View — Notes Rendering (extends Spec 17 §17.3.5)
+
+The printed activity card (§17.3.5) gains a conditional notes line. Notes must be **readable plain text in black ink** consistent with the print scheme (black-on-white, raw hex values per the print.css conventions — no CSS custom properties).
+
+**Updated print activity card layout:**
+```
+┌─────────────────────────────────────────────────────────┐
+│  9:00 AM – 2:00 PM  ·  Fisherman's Wharf                 │
+│  Location: Fisherman's Wharf, San Francisco, CA          │
+│  Notes: Reservation #FW-22841. Bring printed ticket.     │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Field layout (print):**
+- **Line 1:** Time range + activity name (unchanged).
+- **Line 2 (conditional):** `"Location: [location]"` — 10pt `#555` (unchanged). Omit if empty.
+- **Line 3 (conditional):** `"Notes: [notes text]"` — 10pt, color `#333` (slightly darker than location so it's legible), `white-space: pre-wrap` to preserve line breaks, `page-break-inside: avoid` so a note doesn't split awkwardly across pages where possible. **Omit this line entirely if notes is null/empty/whitespace.**
+  - The `"Notes:"` prefix is bold/`font-weight: 600`; the note body is regular weight.
+  - Long notes wrap normally within the card width; the card grows. `overflow-wrap: anywhere` to avoid clipping long tokens.
+  - Rendered as plain escaped text (same React text-child rendering; the same DOM is used for screen and print per the `@media print` approach).
+
+**PrintCalendarSummary (Spec 33):** The day-by-day print summary table is a compact overview and should **NOT** include notes (it would bloat the table and break its at-a-glance purpose). Notes appear only in the detailed Activities section of the print view (§17.3.5 as amended above). Note this explicitly so the Frontend Engineer does not add notes to the summary table.
+
+---
+
+#### 35.5 Responsive Behavior Summary
+
+| Surface | Desktop (≥1024px) | Tablet (768–1023px) | Mobile (<768px) |
+|---------|-------------------|---------------------|-----------------|
+| Edit form notes | Full-width textarea on its own line beneath the row's column inputs; `rows={2}`, vertical resize; counter bottom-right. | Same as desktop. | Stacked card row: `NOTES` inline label + full-width textarea `rows={3}`; counter beneath. |
+| Trip Details notes | Under location in details column; left-accent annotation; wraps; no truncation. | Same. | Activity card stacks (time/divider/details vertical per §3.13); notes block sits at the bottom of the stacked details, full width, wraps with `overflow-wrap: anywhere`. |
+| Print notes | `Notes:` line in activity card; wraps; omitted if empty. | (Print is layout-independent of screen breakpoint.) | — |
+
+---
+
+#### 35.6 Accessibility
+
+- **Edit form textarea** must have an accessible name. Use a real `<label htmlFor={notesId}>NOTES</label>` associated with the textarea's `id`, or `aria-label="Notes for this activity"` (include the activity name when available, e.g. `aria-label="Notes for Fisherman's Wharf"`). If the visible `NOTES` label is omitted for aesthetics, the `aria-label` is **required**.
+- The character counter should be associated to the textarea via `aria-describedby={counterId}` so screen-reader users hear remaining length on focus. Mark the counter `aria-live="polite"` so the "max reached" state is announced, but throttle updates (the live region announces on focus/limit changes, not on every keystroke — implement by only setting the live text at the near-limit/at-limit thresholds to avoid chatter).
+- `maxLength` provides a non-JS hard cap; ensure the counter and `maxLength` agree at 2000.
+- **Trip Details notes block:** wrap in a semantic element within the activity `<article>` (§3.x a11y). Give the notes block `aria-label="Notes"` or precede it with the visually-rendered `NOTES` label so the relationship is clear. The note text is plain text in the accessibility tree (no interactive children).
+- **Contrast:** the Trip Details notes text color `rgba(252,252,252,0.7)` on `--surface` (`#30292F`) meets WCAG AA for body text. The optional dim micro-label `rgba(252,252,252,0.35)` is decorative/supplementary — do not rely on it alone to convey meaning (the note text stands on its own).
+- **Keyboard:** the textarea is in the natural tab order of the edit row, after the time inputs and before the delete button (desktop) — verify tab order is logical. Enter inserts a newline (default textarea behavior); it must NOT submit the form.
+- **No focus traps**; vertical resize handle is keyboard-irrelevant and fine to leave default.
+
+---
+
+#### 35.7 Edge Cases
+
+| Case | Expected handling |
+|------|-------------------|
+| Notes is `null` / `undefined` / `""` / whitespace-only | Treated as "no notes" everywhere. No display block on Trip Details; no print line; placeholder shown in edit form. Whitespace-only should be trimmed to empty on save. |
+| Notes exactly 2000 chars | Accepted; counter shows `2000 / 2000 — max reached` in red; saves fine. |
+| User pastes >2000 chars | `maxLength` truncates the paste to 2000 at the input layer; counter shows max-reached. (Backend would 400 on >2000, but the UI prevents reaching that.) |
+| Notes contains line breaks | Preserved via `pre-wrap` in edit (typed), Trip Details (display), and print. |
+| Notes contains `<script>`/HTML | Backend strips tags on write (T-331); frontend renders escaped text regardless → inert. No `dangerouslySetInnerHTML` anywhere. |
+| Notes contains a URL | Rendered as plain inert text in Sprint 43 (NOT linkified — unlike location, Spec 34). |
+| Notes-only edit (no other field changed) | Detected as a change → `PATCH` sent so the note persists. |
+| Clearing an existing note | Saving with empty notes persists the cleared value (sends `""`/`null` per backend contract). |
+| Very long single unbroken token | `overflow-wrap: anywhere` / `word-break: break-word` prevents horizontal overflow in all surfaces. |
+
+---
+
+#### 35.8 Implementation Summary — What the Frontend Engineer Must Build (T-332)
+
+| File | Change |
+|------|--------|
+| Activities Edit Page (`frontend/src/pages/ActivitiesEditPage.jsx` or equivalent) | Add a full-width `notes` textarea per row (§35.2): label/`aria-label`, placeholder, `maxLength={2000}`, `rows={2}` desktop / `rows={3}` mobile, vertical-only resize, live char counter. Wire `notes` into row state, change-detection, and the save payload (POST/PATCH). Empty notes must not block save. |
+| Activities Edit Page CSS module | Notes textarea styling (`--surface-alt` bg, 2px radius, focus border `--accent`), counter styling incl. amber (≥1900) / red (2000) states, mobile stacked placement. |
+| `TripDetailsPage.jsx` → `ActivityEntry` | Render the notes block in the details column below location, **only when notes is non-empty after trim** (§35.3). Plain escaped text (`{activity.notes}`), `white-space: pre-wrap`, `overflow-wrap: anywhere`. Optional `NOTES` micro-label + left-accent border. No `dangerouslySetInnerHTML`. |
+| `TripDetailsPage.module.css` | `.activityNotes` (and optional `.activityNotesLabel`) styles per §35.3.2; left-accent border, muted color, wrapping rules. |
+| `frontend/src/styles/print.css` | Inside the existing `@media print` block: a `Notes:` line style for the activity card (10pt, `#333`, `white-space: pre-wrap`, `page-break-inside: avoid`), conditional (component omits the element when empty so no print-specific hiding is needed). Do NOT add notes to the PrintCalendarSummary table. |
+| Tests | See below. |
+
+**Tests required (minimum):**
+1. Activity **with** notes → notes block renders on Trip Details with the correct text.
+2. Activity **without** notes (`null`/`""`/whitespace) → **no** notes block in the DOM (assert absence).
+3. Long notes → renders fully (no truncation), no layout assertion needed beyond presence.
+4. Notes containing HTML/`<script>` payload → renders as inert escaped text; assert no live element / no script execution (and no `dangerouslySetInnerHTML`).
+5. Edit form: typing in the notes textarea updates state; counter reflects length; `maxLength` caps at 2000.
+6. Save with a notes value includes `notes` in the request payload; clearing notes sends the cleared value.
+
+---
+
+#### 35.9 Design System Conventions
+
+No new tokens or conventions. Spec 35 reuses existing tokens only:
+- `--surface-alt` (`#3F4045`) — textarea background (standard Form Pattern).
+- `--accent` (`#5D737E`) — focus border + the low-opacity left-accent on the Trip Details notes block.
+- `--text-primary` / `--text-muted` — text and placeholder/counter.
+- 11px uppercase 0.08em label, 2px input radius, 13px IBM Plex Mono input text, `150ms ease` focus transition, 8px/4px spacing — all per the Design System Conventions table.
+- Print: raw hex (`#333`, `#555`, `#000`, `#fff`) per the established print.css rule (no CSS custom properties in `@media print`).
+
+The Design System Conventions table at the top of this document remains stable — no additions or modifications are proposed for Sprint 43.
+
+---
+
+*Spec 35 (Sprint 43 — Activity Notes Field, T-330, B-036) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-05-30.*
+
+---
+
+*Sprint #43 design spec complete. Published by Design Agent 2026-05-30.*
