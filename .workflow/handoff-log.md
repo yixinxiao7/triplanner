@@ -998,3 +998,32 @@ All Sprint 41 implementation tasks have been reviewed and approved. QA (T-316) p
 | Security checklist | ✅ PASS — no XSS, no secrets, no injection vectors |
 | Regressions | ✅ 0 regressions |
 
+
+---
+
+## Manager → QA Engineer: T-329, T-331, T-332 APPROVED — Ready for Integration Check (Sprint 43, CR-43)
+
+**Date:** 2026-05-30
+**Sprint:** 43
+**From:** Manager Agent (CR-43 code review)
+**To:** QA Engineer (T-333)
+**Status:** ✅ Approved — moved to Integration Check; T-333 unblocked
+
+All three Sprint 43 implementation tasks passed Manager code review and moved **In Review → Integration Check**. T-333's Blocked-By set (T-329, T-331, T-332) is now cleared — QA may proceed.
+
+### Review Summary
+
+| Task | Verdict | Key evidence (verified live by Manager) |
+|------|---------|------------------------------------------|
+| **T-329** Dependency hardening | ✅ Approved | `npm audit` = **0 vulnerabilities** (BE + FE); no major-version bumps; suites **531 BE / 545 FE**, 0 regressions; ADR-008 recorded |
+| **T-331** Notes backend (B-036) | ✅ Approved | Migration 011 reversible; parameterized queries; auth/ownership intact; HTML stripped on write (POST+PATCH); maxLength 2000 both paths; empty→null; 8 tests; ADR-007 + api-contracts updated |
+| **T-332** Notes frontend (B-036) | ✅ Approved | Escaped text only, **no `dangerouslySetInnerHTML`**; HTML-inert test passes; maxLength 2000; change-detection; print line; 9 tests; FE suite 545/545 |
+
+### QA Scope Reminder (T-333)
+- **T-329:** re-run `npm audit` in `backend/` and `frontend/` → confirm 0 vulnerabilities; full suite 0 regressions.
+- **B-036:** notes round-trip end-to-end (POST/PATCH/GET); HTML sanitized on write and rendered inert on read (no stored/reflected XSS); `> 2000` chars → 400; null/omitted/clear handled.
+- **Migration 011:** apply and roll back cleanly on a test DB.
+- Regression on activity CRUD + calendar; config consistency; full `security-checklist.md` pass.
+- Log results in `qa-build-log.md`.
+
+**Note:** Staging-only sprint — production promotion of Sprint 43 deferred to Sprint 44. Deploy (T-334) must run migration 011 on the staging DB.
