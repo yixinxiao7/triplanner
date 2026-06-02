@@ -4,6 +4,74 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #43 — Deploy Engineer — Staging Deployment (orchestrator re-invocation, T-334) — 2026-06-02
+
+**Date:** 2026-06-02
+**Sprint:** 43
+**Task:** T-334 (Deploy Engineer) — re-invoked by orchestrator
+**Environment:** **Staging** (production untouched — deferred to Sprint 44)
+**Build Status:** ✅ **Success**
+**Deploy Verified (Staging):** Pending — Monitor Agent (T-335) gate
+
+### Context
+Orchestrator re-invoked the staging-deploy phase. T-334 was already Done (deployed 2026-06-02). I performed a **clean rebuild + redeploy** to ensure the latest artifact is live and re-confirmed the full notes round-trip on staging. QA gate satisfied: T-333 Done with explicit QA→Deploy "all gates green" handoff (**1076/1076, 0 regressions, production-runtime `npm audit` 0 vulns**). Production was not touched.
+
+### Pre-Deploy Gate
+| Check | Result |
+|-------|--------|
+| QA confirmation in handoff-log (all tests pass) | ✅ T-333 Done — BE 531/531 + FE 545/545 = **1076/1076, 0 regressions** |
+| All Sprint 43 tasks Done (T-329/T-330/T-331/T-332/T-333) | ✅ Verified in dev-cycle-tracker |
+| Pending migration | ✅ Migration 011 (`activities.notes TEXT NULL`) — staging-only this sprint |
+
+### Build
+| Step | Command | Result |
+|------|---------|--------|
+| Backend deps | `cd backend && npm install --ignore-scripts` | ✅ installed |
+| Frontend deps | `cd frontend && npm install` | ✅ installed |
+| Frontend build | `cd frontend && npm run build` | ✅ Success — Vite, `dist/` regenerated, built in ~0.5s |
+| Build artifact | — | `dist/assets/index-CfcZnezY.js` (313 KB / gzip 99.68 KB) |
+
+### Migration (Staging only)
+| Check | Result |
+|-------|--------|
+| `NODE_ENV=staging npx knex migrate:status` | ✅ **11/11 Completed, 0 Pending** (011 `20260530_011_add_activity_notes.js` applied) |
+| `NODE_ENV=staging npm run migrate` | ✅ Idempotent — "Already up to date" |
+| Production migration | ⛔ NOT run — deferred to Sprint 44 (staging-only sprint) |
+
+### Deployment (PM2 — Docker unavailable on host)
+Deployed via `infra/scripts/deploy-staging.sh`. **Docker is not installed on this host** (`docker`/`docker-compose` not found) → used the project's established local-process (PM2) staging mechanism backed by local PostgreSQL, same as prior sprints.
+
+| Item | Value |
+|------|-------|
+| Backend | `triplanner-backend` (PM2 id 13), **https://localhost:3001**, online, 0 restarts |
+| Frontend | `triplanner-frontend` (PM2 id 14), **https://localhost:4173**, online, 0 restarts |
+| Production | `triplanner-prod-backend/frontend` (:3002/:4174) **untouched**, 2D uptime; prod health `{"status":"ok"}` post-deploy |
+
+### Smoke Tests
+| Test | Result |
+|------|--------|
+| Health endpoint `GET /api/v1/health` | ✅ `{"status":"ok"}` |
+| Frontend serves HTML over HTTPS | ✅ |
+| Auth endpoint (invalid creds → 401) | ✅ 401 |
+| Trips endpoint requires auth | ✅ 401 |
+| **Standard smoke** | ✅ **4/4 pass** |
+| Notes — create with HTML payload → stored stripped | ✅ `Conf #ABC123 <script>alert(1)</script> smart casual` → `Conf #ABC123 alert(1) smart casual` |
+| Notes — GET back persists | ✅ |
+| Notes — POST >2000 chars → 400 | ✅ 400 |
+| Notes — PATCH `notes:null` → cleared | ✅ `null` |
+| Notes — cleanup DELETE | ✅ 204 |
+| **Notes round-trip** | ✅ **5/5 pass** |
+
+### Infra/Config Changes
+None — no `infra/`, shared-config, or dependency files modified by this deploy. No ADR required (rules.md #4). Deploy used the existing `deploy-staging.sh` + `ecosystem.config.cjs` unchanged.
+
+### Outcome
+✅ Staging build + deploy **Success**. Migration 011 confirmed live (11/11). Both staging processes online, 0 restarts. Production untouched. Handoff logged to Monitor Agent (T-335) for the post-deploy health check.
+
+*Deploy Engineer — T-334 (re-invocation) — Sprint 43 — 2026-06-02*
+
+---
+
 ## Sprint #43 — QA Engineer — T-333 Full Re-Verification (orchestrator re-invocation) — 2026-06-02
 
 **Date:** 2026-06-02

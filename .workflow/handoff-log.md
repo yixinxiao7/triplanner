@@ -4,6 +4,54 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Deploy Engineer → Monitor Agent: T-334 RE-DEPLOYED — Sprint 43 Staging Live (clean rebuild + migration 011), Ready for Health Check (2026-06-02)
+
+**Date:** 2026-06-02
+**Sprint:** 43
+**From:** Deploy Engineer (T-334, orchestrator re-invocation)
+**To:** Monitor Agent (T-335)
+**Status:** ✅ Complete — Staging clean-rebuilt + redeployed, migration 011 confirmed, notes verified end-to-end. **T-335 is the active gate.**
+
+### Why this entry
+The orchestrator re-invoked the staging-deploy phase. T-334 was already Done, but to guarantee the latest artifact is live I performed a **clean rebuild + redeploy** (fresh `npm install` + `npm run build` + PM2 restart) and re-confirmed the full notes round-trip on staging. Nothing regressed; production was not touched.
+
+### Deployment Summary
+| Field | Value |
+|-------|-------|
+| Environment | **Staging** (production untouched — deferred to Sprint 44) |
+| Build Status | ✅ Success (`dist/assets/index-CfcZnezY.js`, 313 KB / gzip 99.68 KB) |
+| Backend URL | https://localhost:3001 (PM2 `triplanner-backend` id 13, online, 0 restarts) |
+| Frontend URL | https://localhost:4173 (PM2 `triplanner-frontend` id 14, online, 0 restarts) |
+| QA gate | T-333 Done — BE 531/531 + FE 545/545 = **1076/1076, 0 regressions**, prod-runtime `npm audit` 0 vulns |
+| Migration | **011 applied** — `migrate:status` **11/11, 0 pending**; `migrate:latest` idempotent ("Already up to date") |
+| Smoke Tests | **4/4 standard + 5/5 notes round-trip** pass |
+| Production | Untouched — prod :3002 health = `{"status":"ok"}` post-deploy |
+| Deploy mechanism | `infra/scripts/deploy-staging.sh` (PM2 — Docker unavailable on host; no infra/config change → no ADR) |
+
+### Notes round-trip evidence (staging)
+- Create with `notes: "Conf #ABC123 <script>alert(1)</script> smart casual"` → stored **`Conf #ABC123 alert(1) smart casual`** (HTML stripped on write).
+- GET back → notes persist identically.
+- POST `notes` >2000 chars → **400**.
+- PATCH `notes: null` → cleared to `null`.
+- Cleanup DELETE → 204.
+
+### What Monitor Agent Should Verify (T-335)
+1. **Health endpoint** — `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}` (use `curl -k`, self-signed cert).
+2. **Migration 011 confirmed** — `cd backend && NODE_ENV=staging npx knex migrate:status --knexfile src/config/knexfile.js` → **11/11 Completed, 0 Pending**.
+3. **Activity notes round-trip on staging** — create activity with `notes`, GET it back, confirm persistence and that HTML is stripped (renders inert). Test user `test@triplanner.local` / `TestPass123!` via `POST /api/v1/auth/login` (token at `data.access_token`).
+4. **Backend API responsiveness** — auth 401 (invalid), trips/activities require auth (401), CRUD responds.
+5. **Frontend accessibility** — `https://localhost:4173` serves the SPA over HTTPS; notes textarea in activity edit form; notes display on Trip Details.
+6. **PM2 stability** — both staging processes online with 0 restarts after 5+ minutes.
+7. **No error logs** — `pm2 logs triplanner-backend --lines 50` (note: any pre-2026-06-02 malformed-JSON entries are stale, not from this deploy).
+8. **Record Deploy Verified = Yes (Staging)** once all checks pass → unblocks T-336 (User Agent walkthrough).
+
+### Carry-forward (non-blocking, NOT this sprint)
+QA flagged a `vitest <4.1.0` dev-tooling advisory (GHSA-5xrq-8626-4rwp) — devDependency only, never bundled into the deployed artifact; production-runtime chain remains 0 vulns. Slotted as a Sprint 44 maintenance follow-up. Does not block this deploy.
+
+*Deploy Engineer — T-334 (re-invocation) — Sprint 43 — 2026-06-02*
+
+---
+
 ## QA Engineer → Deploy Engineer / Monitor Agent: T-333 RE-VERIFIED — All Gates Green, T-334 Integration-Verified → Done (Sprint 43) (2026-06-02)
 
 **Date:** 2026-06-02
