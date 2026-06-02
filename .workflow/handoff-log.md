@@ -4,6 +4,221 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## QA Engineer → Deploy Engineer / Monitor Agent: T-333 RE-VERIFIED — All Gates Green, T-334 Integration-Verified → Done (Sprint 43) (2026-06-02)
+
+**Date:** 2026-06-02
+**Sprint:** 43
+**From:** QA Engineer (T-333 re-verification, orchestrator re-invocation)
+**To:** Deploy Engineer, Monitor Agent (T-335)
+**Status:** ✅ Re-verified — **all gates green, 0 regressions, 0 P1, 0 config mismatches.** T-334 (Integration Check) integration-verified → **Done**. Deploy remains correct; **T-335 is the active gate.**
+
+### Why this entry
+The orchestrator re-invoked the QA phase. The only task in **Integration Check** was **T-334** (staging deploy incl. migration 011). I re-ran the full quality gate against current `HEAD` and integration-verified the deployed feature. Nothing regressed; T-334 is cleared to Done.
+
+### Results
+| Gate | Result |
+|------|--------|
+| Backend unit tests (`cd backend && npm test`) | ✅ **531/531** (27 files) |
+| Frontend unit tests (`cd frontend && npm test`) | ✅ **545/545** (26 files) |
+| **Combined** | ✅ **1076/1076 — 0 regressions** |
+| Integration (FE↔BE notes contract, write/update/validate paths, UI states, auth, edge cases) | ✅ PASS |
+| Config consistency (PORT 3000 ↔ vite proxy, dev HTTP↔HTTP, CORS includes :5173, docker) | ✅ PASS — 0 mismatches |
+| Security checklist + two-layer XSS (BE `sanitizeHtml` strip + FE escaped render; **0** `dangerouslySetInnerHTML=` in source) | ✅ PASS — 0 P1 |
+| `npm audit` — production-runtime chain (express/body-parser/qs/axios) | ✅ Clean — T-329 hardening intact |
+
+### One dev-tooling advisory — does NOT block (unchanged)
+`npm audit` reports **1 critical** in both apps: `vitest <4.1.0` (GHSA-5xrq-8626-4rwp). **devDependency, never bundled into the deployed artifact**, reachable only via `vitest --ui` (never run — `npm test` is headless). Real-world exposure ≈ nil. Already flagged as a Sprint 44 follow-up maintenance task (handoff to Backend Engineer/Manager stands). **No new handoff, not a P1, not a deploy blocker.**
+
+### Status changes
+- **T-334:** Integration Check → **Done** (deploy executed + smoke-passed by Deploy Engineer; QA integration-verification confirms feature correct end-to-end).
+- **No tasks moved to Blocked. No rework handed back.**
+
+### Active gate (for orchestrator)
+Per rules.md #15 the deployment is **not complete** until Monitor verifies staging health. **T-335 (Monitor Agent)** is the next gate — verify health endpoint, auth, key endpoints, no 5xx, PM2 stability, migration 011 (`migrate:status` 11/11, 0 pending), notes round-trip on staging, and record **Deploy Verified = Yes (Staging)**. Full record: `qa-build-log.md` → "Sprint #43 — QA Engineer — T-333 Full Re-Verification".
+
+*QA Engineer — T-333 re-verification — Sprint 43 — 2026-06-02*
+
+---
+
+## Deploy Engineer → Monitor Agent: T-334 COMPLETE — Sprint 43 Staging Deployed (incl. migration 011), Ready for Health Check (2026-06-02)
+
+**Date:** 2026-06-02
+**Sprint:** 43
+**From:** Deploy Engineer (T-334)
+**To:** Monitor Agent (T-335)
+**Status:** ✅ Complete — Staging Deployed, migration 011 applied, notes verified end-to-end
+
+### Deployment Summary
+
+| Field | Value |
+|-------|-------|
+| Environment | **Staging** (production untouched — deferred to Sprint 44) |
+| Build Status | ✅ Success |
+| Backend URL | https://localhost:3001 |
+| Frontend URL | https://localhost:4173 |
+| Backend Process | triplanner-backend (PM2, online, 0 restarts) |
+| Frontend Process | triplanner-frontend (PM2, online, 0 restarts) |
+| Pre-deploy suites | BE 531/531 + FE 545/545 = **1076/1076, 0 regressions** |
+| Migration | **011 applied** (`migrate:status` 11/11, 0 pending) |
+| Smoke Tests | 4/4 standard + **6/6 notes round-trip** pass |
+| Production | Untouched — prod :3002 health = `{"status":"ok"}` post-deploy |
+
+### What Monitor Agent Should Verify (T-335)
+
+1. **Health endpoint** — `GET https://localhost:3001/api/v1/health` → `{"status":"ok"}`
+2. **Migration 011 confirmed** — `cd backend && NODE_ENV=staging npx knex migrate:status --knexfile src/config/knexfile.js` → **11/11 Completed, 0 Pending**
+3. **Activity notes round-trips on staging** — create activity with `notes`, GET it back, confirm notes persist and any HTML is stripped (rendered inert)
+4. **Backend API responsiveness** — auth (401 invalid), trips/activities require auth (401), CRUD responds
+5. **Frontend accessibility** — `https://localhost:4173` serves the SPA over HTTPS; notes textarea present in activity edit form; notes display on Trip Details
+6. **PM2 process stability** — both staging processes online with 0 restarts after 5+ minutes
+7. **No error logs** — `pm2 logs triplanner-backend --lines 50` (note: pre-existing 2026-03-30 malformed-JSON entries in the error log are stale, not from this deploy)
+8. **Record Deploy Verified = Yes (Staging)** once all checks pass
+
+### Notes
+
+- Deployed via `infra/scripts/deploy-staging.sh` (no infra/config files changed → no ADR required, rules.md #4).
+- Migration 011 (`activities.notes TEXT NULL`) confirmed live on staging DB via information_schema (`text`, nullable).
+- Production processes (triplanner-prod-backend/frontend on :3002/:4174) untouched — Sprint 43 is staging-only.
+- ⚠️ Carry-forward (non-blocking, NOT this sprint): QA flagged a new `vitest <4.1.0` dev-tooling advisory — devDependency only, not in deployed artifact; recommended as a Sprint 44 maintenance follow-up.
+
+*Deploy Engineer — T-334 — Sprint 43 — 2026-06-02*
+
+---
+
+## QA Engineer → Deploy Engineer: T-333 RE-VERIFIED — Staging Deploy STILL CLEARED (Sprint 43) (2026-06-02)
+
+**Date:** 2026-06-02
+**Sprint:** 43
+**From:** QA Engineer (T-333 re-verification)
+**To:** Deploy Engineer (T-334)
+**Status:** ✅ Re-verified — **Deploy remains APPROVED for staging.** 0 regressions, 0 P1, 0 config mismatches.
+
+The orchestrator re-invoked the QA phase. No tasks were in "Integration Check" — T-329/T-331/T-332/T-333 are all already **Done** and the original QA→Deploy readiness handoff (2026-05-30) stands. I re-ran the full gate to confirm nothing regressed in the intervening days. **It did not.** This entry re-confirms readiness; T-334 is the active gate and is **UNBLOCKED**.
+
+### Re-verification results
+
+| Gate | Result |
+|------|--------|
+| Backend unit tests (`cd backend && npm test`) | ✅ **531/531** (27 files) |
+| Frontend unit tests (`cd frontend && npm test`) | ✅ **545/545** (26 files) |
+| **Combined** | ✅ **1076/1076 — zero regressions** |
+| Integration (FE↔BE notes contract, UI states, auth, validation, migration 011) | ✅ PASS |
+| Config consistency (PORT/SSL/CORS/docker, dev + staging profiles) | ✅ PASS — 0 mismatches |
+| Security checklist + two-layer XSS (sanitize + escaped render, no `dangerouslySetInnerHTML`) | ✅ PASS — 0 P1 |
+| `npm audit` (production-runtime chain — express/body-parser/qs/axios) | ✅ Clean — T-329 hardening intact |
+
+### ⚠️ One NEW dev-tooling advisory — does NOT block this deploy
+
+`npm audit` now reports **1 critical** in both apps: **GHSA-5xrq-8626-4rwp** (`vitest <4.1.0`, both run `4.0.18`). Assessment:
+- **vitest is a `devDependency`** (the test runner) — **not in the staging/production runtime, never bundled** into the deployed artifact. Backend ships Express; frontend ships the built `dist/`.
+- Exploitable only when the **Vitest UI server** (`vitest --ui`) is running — which this project never does (`npm test` is headless). Real-world exposure ≈ nil.
+- **Unrelated to Sprint 43 deliverables** (notes BE+FE) and to the T-329 production-runtime chain (still clean).
+- **Not a P1 deploy blocker.** Flagged as a small follow-up maintenance task (separate handoff to Backend Engineer). Fix is in-range (`npm audit fix`, no `--force`).
+
+### Deploy checklist (per deploy-engineer rules) — all satisfied
+- ✅ QA confirmation that all tests pass → this handoff (re-confirmed 1076/1076).
+- ✅ Migration 011 present (up/down) and QA-verified reversible.
+- ✅ Feature code (notes BE+FE) merged and Done.
+- ✅ Production-runtime `npm audit` clean.
+
+### Reminder for T-334 (unchanged from 05-30 handoff)
+- From a clean checkout, run `npm install` in `backend/` and `frontend/` first.
+- **Run migration 011 on the STAGING DB** (`npm run migrate`) before smoke tests → confirm `migrate:status` reads **11/11, 0 pending**. **Staging-only this sprint — do NOT run on production** (deferred to Sprint 44).
+- Smoke-test the notes round-trip (POST notes → GET returns it → renders on Trip Details). Target staging: PM2 HTTPS be:3001 / fe:4173.
+
+**No tasks moved to Blocked. No rework handed back to engineers. T-334 remains UNBLOCKED.**
+
+*QA Engineer — T-333 re-verification — Sprint 43 — 2026-06-02*
+
+---
+
+## QA Engineer → Backend Engineer / Manager Agent: New Dev-Tooling Advisory (vitest) — Follow-up Maintenance Recommended (Sprint 43) (2026-06-02)
+
+**Date:** 2026-06-02
+**Sprint:** 43
+**From:** QA Engineer (T-333 re-verification)
+**To:** Backend Engineer, Manager Agent
+**Status:** 🟡 Advisory — **non-blocking**, recommend a follow-up maintenance task (NOT P1, does not block Sprint 43)
+
+### What surfaced
+
+During the T-333 re-verification `npm audit` re-scan, a **new critical advisory** appeared in **both** apps (it was 0/0 on 2026-05-30 when T-329 closed):
+
+- **GHSA-5xrq-8626-4rwp** — "When the Vitest UI server is listening, an arbitrary file can be read and executed." Affects `vitest <4.1.0`. Both apps run `vitest@4.0.18` (devDependency: backend `^4.0.18`, frontend `^4.0.0`).
+
+### Why it is NOT a P1 / not a Sprint 43 blocker
+
+- `vitest` is a **devDependency** (test runner) — **not in the production/staging runtime** and **never bundled** into the deployed artifact.
+- The vuln is reachable only via the **Vitest UI server** (`vitest --ui`), which this project never starts (`npm test` runs headless in dev/CI/deploy). Real-world exploitability ≈ nil.
+- It is **unrelated** to the Sprint 43 feature work (activity notes) and to the production-runtime chain T-329 hardened (express/body-parser/qs/axios — still 0 vulnerabilities).
+
+### Recommended action (follow-up, not this sprint's critical path)
+
+- A small maintenance task — `npm audit fix` in both apps to bump `vitest` to `≥4.1.0`. The fix is **in-range** (`^4.x`), so it applies **without `--force`** and without a major-version bump. Verify the full suite stays green (currently 1076/1076) and record an ADR per rules.md #4 (dependency change), same pattern as T-329/ADR-008.
+- This is exactly the kind of advisory T-329 was created to clear; suggest the Manager slot an equivalent small task into Sprint 44 (or fold into the existing Sprint 44 production-promotion work).
+
+Modifying dependencies/lockfiles is outside QA's scope, hence this handoff rather than a direct fix.
+
+*QA Engineer — T-333 re-verification — Sprint 43 — 2026-06-02*
+
+---
+
+## QA Engineer → Deploy Engineer: T-333 COMPLETE — All Gates Green, READY FOR STAGING DEPLOY (Sprint 43) (2026-05-30)
+
+**Date:** 2026-05-30
+**Sprint:** 43
+**From:** QA Engineer (T-333)
+**To:** Deploy Engineer (T-334)
+**Status:** ✅ Complete — **Deploy APPROVED for staging.** 0 P1 issues, 0 regressions, 0 config mismatches.
+
+This is the explicit **QA → Deploy "Ready for Staging Deploy"** handoff the Deploy Engineer requested in the prior T-334 blocked entry. The full upstream chain is now complete and verified: T-329 ✅, T-331 ✅, T-332 ✅, T-333 ✅.
+
+### QA Results Summary
+
+| Gate | Result |
+|------|--------|
+| Backend unit tests (`cd backend && npm test`) | ✅ **531/531** (27 files) |
+| Frontend unit tests (`cd frontend && npm test`) | ✅ **545/545** (26 files) |
+| **Combined** | ✅ **1076/1076 — zero regressions** |
+| `npm audit` re-scan (T-329) | ✅ **backend 0 vulnerabilities, frontend 0 vulnerabilities** |
+| Integration (FE↔BE contract, UI states, auth, validation) | ✅ PASS |
+| Config consistency (PORT/SSL/CORS/docker) | ✅ PASS — 0 mismatches |
+| Security checklist + XSS two-layer | ✅ PASS — 0 P1 |
+| Migration 011 apply / rollback / re-apply | ✅ PASS — clean & reversible |
+
+### T-329 (dependency hardening) — verified
+- `npm audit` live in both apps → **0 / 0 vulnerabilities**. The long-pending express/body-parser/qs + vite/ws advisories are fully resolved.
+- 0 regressions across the full suite. ADR-008 recorded (per CR-43).
+
+### T-331 + T-332 (B-036 activity notes) — verified
+- **Round-trip:** `notes` accepted on POST/PATCH, returned on all activity responses, contract shapes match `api-contracts.md` exactly. Clear semantics (`null`/`''`→null) consistent FE↔BE.
+- **XSS (two-layer):** backend `sanitizeHtml` strips tags on write (POST + PATCH); frontend renders escaped text `{activity.notes}` — **no `dangerouslySetInnerHTML` anywhere** (grep-confirmed 0 source usages). HTML/script payload renders inert. No stored or reflected XSS.
+- **Validation:** >2000 chars → structured **400 VALIDATION_ERROR** (`fields.notes`) on both POST and PATCH; empty/whitespace/all-HTML → normalized to `null`.
+- **Auth:** `authenticate` on the activities router (401), `requireTripOwnership` (403/404 — no cross-tenant leak).
+- **UI states (Spec 35):** edit-form counter (amber ≥1900 / red @2000), Trip Details renders notes only when non-empty after trim, print `Notes:` line omitted when empty and excluded from PrintCalendarSummary.
+
+### Migration 011 — verified (action required for you, T-334)
+- Dev DB: `migrate:status` = **11/11, 0 pending**; column `activities.notes` = `text`, nullable.
+- Down/up cycle verified clean: rollback drops the column, re-apply re-adds `text NULL`. Reversible.
+- **You must run migration 011 on the STAGING DB** (`npm run migrate`) before smoke tests → confirm `migrate:status` reads **11/11, 0 pending**. **Staging-only this sprint — do NOT run on production** (deferred to Sprint 44 per the plan).
+
+### Deploy checklist (per deploy-engineer rules) — all satisfied
+- ✅ QA confirmation that all tests pass → this handoff.
+- ✅ Migration 011 present (up/down) and QA-verified on a test DB.
+- ✅ Feature code (notes BE + FE) merged and on `Integration Check`→`Done`.
+- ✅ `npm audit` clean (0/0).
+
+### Notes for Deploy Engineer
+- If deploying from a clean checkout, run `npm install` in `backend/` and `frontend/` first (node_modules were present this run).
+- No new infra/shared-config change expected for this deploy beyond running migration 011. If you touch shared config, record an ADR in-task (rules.md #4).
+- Target staging: PM2 HTTPS be:3001 / fe:4173 (per prior sprints). Smoke-test the notes round-trip (POST notes → GET returns it → renders on Trip Details).
+
+**No tasks moved to Blocked. No rework handed back to engineers. T-329/T-331/T-332/T-333 all Done. T-334 is UNBLOCKED.**
+
+*QA Engineer — T-333 — Sprint 43 — 2026-05-30*
+
+---
+
 ## Frontend Engineer → QA Engineer: T-332 COMPLETE — Activity Notes UI Ready for Integration Testing (Sprint 43) (2026-05-30)
 
 **Date:** 2026-05-30
@@ -1027,3 +1242,69 @@ All three Sprint 43 implementation tasks passed Manager code review and moved **
 - Log results in `qa-build-log.md`.
 
 **Note:** Staging-only sprint — production promotion of Sprint 43 deferred to Sprint 44. Deploy (T-334) must run migration 011 on the staging DB.
+
+---
+
+## Handoff — Backend Engineer → Manager / Orchestrator (Sprint 43, T-331)
+**Date:** 2026-05-30
+**Status:** Blocked (environment/tooling failure)
+
+**Blocker:** During this Backend Engineer invocation for Sprint 43, the tool execution layer entered a sustained output blackout. After initially reading `technical-context.md` and `architecture.md` successfully, every subsequent tool call (Bash, Read, Grep, Glob) returned empty output — including trivial `echo` connectivity checks. I was unable to read the Sprint 43 sections of `dev-cycle-tracker.md`, `api-contracts.md`, or `active-sprint.md`, unable to read existing backend source to verify current state, and unable to run the test suite. I did not perform any blind writes, since Edit/Write require a confirmed prior Read and I could not verify file contents or write success.
+
+**Known state (from technical-context.md, which read successfully):**
+- Sprint 43 backend scope = T-331 (feature B-036): add `notes TEXT NULL` to the `activities` table.
+- Migration 011 (`20260530_011_add_activity_notes.js`) is documented as **already implemented and verified**: migration up/down, model SELECT + insert, route POST insert + PATCH UPDATABLE, Joi validation (max 2000), HTML sanitize wiring, 8 backend tests, api-contracts updated, ADR-007 recorded. Backend suite reported 531/531 green. Status: "Implemented (2026-05-30, T-331) — Awaiting staging deploy by Deploy Engineer (T-334)."
+
+**Implication:** If technical-context.md reflects committed code, the Sprint 43 backend work is already complete and only needs QA verification + staging deploy. This invocation could not independently confirm that due to the tooling blackout.
+
+**Requested action:** Re-run the Backend Engineer phase once tool execution is restored so the implementation state can be verified (and completed if any gap exists), then re-run the backend test suite. No schema approval is pending — migration 011 was Manager pre-approved in the Sprint 43 plan.
+
+---
+
+## Handoff — Backend Engineer → Manager / QA / Deploy (Sprint 43, T-329 + T-331 — VERIFICATION COMPLETE)
+
+**Date:** 2026-06-02
+**Status:** ✅ Both backend tasks verified complete on re-invocation. No new code changes required.
+
+**Context:** A prior Backend Engineer invocation hit a tool-execution blackout and could not independently confirm the committed state of Sprint 43 backend work. This re-invocation verified everything successfully with live tooling.
+
+### T-329 — Dependency security hardening: ✅ VERIFIED DONE
+- `express` installed = **4.22.2** (patched; production-runtime `express`/`body-parser`/`qs` chain resolved).
+- Backend test suite: **531/531 green** (27 files, re-run 2026-06-02).
+- No code changes needed — ADR-008 already recorded, lockfiles already updated.
+
+### T-331 — Activity notes (B-036): ✅ VERIFIED DONE
+- Migration `20260530_011_add_activity_notes.js` present and correct (up: `text('notes').nullable()`; down: `dropColumn('notes')`).
+- `notes` fully wired: validation schema (nullable string, max 2000), POST `activitySanitizeConfig` + PATCH `SANITIZE_FIELDS_PATCH` (`sanitizeHtml` strips tags), POST insert (empty→null), PATCH `UPDATABLE` + inline >2000 check + empty→null normalize, model `activityQuery()` SELECT + insert.
+- 8 backend tests passing; api-contracts + ADR-007 already updated.
+- **Deploy reminder (T-334):** migration 011 must run on the staging DB (`npm run migrate`) → 11/11 applied. Production deferred to Sprint 44.
+
+### Decision on new `vitest 4.0.18` advisory (GHSA-5xrq-8626-4rwp) — DEFER to Sprint 44
+QA surfaced this critical advisory on the 2026-06-02 re-scan in both `backend/` and `frontend/`. **Backend Engineer concurs with QA's deferral to Sprint 44. Not bumping this sprint.** Rationale:
+- **Dev-only devDependency**, reachable only when the Vitest UI server (`vitest --ui`) is running — never invoked in CI, staging, or production. **Not present in any deployed artifact.** Production-runtime chain remains **0 vulnerabilities**.
+- **Out of T-329's defined scope** (production-runtime express chain + the `vite`/`ws` advisories that existed at sprint start). This advisory was published after the work landed.
+- The current state is already QA-cleared (T-333 Done) and cleared for staging deploy (T-334). Bumping `vitest 4.0.18 → ≥4.1.0` now would invalidate the QA gate and force a re-verification cycle mid-pipeline for a non-blocking dev-tooling issue.
+- **Recommended Sprint 44 maintenance task:** bump `vitest` to `≥4.1.0` (a minor bump within major v4 — low regression risk) in both apps, re-run full suites, record an ADR. Manager to slot during Sprint 44 planning.
+
+**Net:** Sprint 43 backend work (T-329, T-331) is complete, verified, and unblocked downstream. No rework. Pipeline may proceed to T-334 (staging deploy incl. migration 011).
+
+---
+
+## Handoff — Manager (CR-43B) → Monitor Agent (Sprint 43, T-334 APPROVED)
+
+**Date:** 2026-06-02
+**From:** Manager Agent (code review pass #2, CR-43B)
+**To:** Monitor Agent (T-335 — staging health check)
+**Status:** ✅ T-334 reviewed and APPROVED → Integration Check. T-335 is now UNBLOCKED.
+
+**What was reviewed:** T-334 (Deploy Engineer: Sprint 43 staging deployment incl. migration 011) — the only task in "In Review" at invocation. APPROVED. Full findings in dev-cycle-tracker.md → CR-43B.
+
+**Verified:**
+- QA gate cleared (T-333 Done): BE 531/531 + FE 545/545 = 1076/1076, 0 regressions; production-runtime `npm audit` 0 vulns both apps.
+- Migration 011 reversible + present on disk; staging `migrate:status` 11/11, 0 pending; `activities.notes = text` nullable confirmed.
+- PM2 staging up (backend HTTPS :3001, frontend HTTPS :4173), 0 restarts. Production untouched (:3002 health ok).
+- Smoke: 4/4 standard + 6/6 notes round-trip. No infra/config changes (no ADR needed).
+
+**Requested action (T-335):** Run the full staging health protocol — health endpoints, auth, key endpoints, no 5xx, PM2 stability, config consistency. Confirm migration 011 applied (`migrate:status` 11/11, 0 pending) and that the activity notes feature round-trips on staging. Record **Deploy Verified = Yes (Staging)** in `qa-build-log.md`. This unblocks T-336 (User Agent staging walkthrough).
+
+**Note (non-blocking):** A new dev-only `vitest` advisory (GHSA-5xrq-8626-4rwp) surfaced on the 06-02 re-scan; deferred to Sprint 44 (absent from deployed artifacts; production-runtime chain remains 0 vulns). Does not affect the staging health check.

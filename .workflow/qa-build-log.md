@@ -4,6 +4,247 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #43 — QA Engineer — T-333 Full Re-Verification (orchestrator re-invocation) — 2026-06-02
+
+**Date:** 2026-06-02
+**Sprint:** 43
+**Task:** T-333 (QA Engineer) — re-invoked by orchestrator
+**Verdict:** ✅ **ALL GATES PASS — 0 regressions, 0 P1, 0 config mismatches.** T-334 (in Integration Check) verified and cleared to Done. Deploy/Monitor remain unblocked.
+
+### Context
+Orchestrator re-invoked the QA phase. At invocation, the only task in **Integration Check** was **T-334** (Deploy Engineer: staging deploy incl. migration 011) — already deploy-verified (6/6 notes smoke). T-329/T-331/T-332/T-333 are Done. I re-ran the full quality gate against current `HEAD` to confirm nothing regressed and to integration-verify T-334. Nothing regressed.
+
+---
+
+### Test Type: Unit Test
+
+| Suite | Command | Result |
+|-------|---------|--------|
+| Backend | `cd backend && npm test` | ✅ **531/531 passed** (27 files) |
+| Frontend | `cd frontend && npm test` | ✅ **545/545 passed** (26 files) |
+| **Combined** | — | ✅ **1076/1076 — zero regressions** |
+
+- B-036 coverage confirmed present: backend 8 notes tests (round-trip, sanitize-strips-tags, >2000→400 POST+PATCH, null/omitted, PATCH update/clear/all-HTML→null); frontend 9 notes tests (3 edit-form: typing/counter/maxLength, create payload, clear→null; 6 display: present, null/empty/whitespace absent, long note, HTML payload inert). Happy-path + error-path both covered per endpoint/component.
+- Pre-existing non-failing noise only: one expected `[ErrorHandler] Error: DB failure` stderr line from `sprint25.test.js` (intentional 500-path test, passes); one React `act(...)` warning in `TripCalendar.test.jsx` (passes). Neither is a failure.
+
+### Test Type: Integration Test
+
+| Check | Result |
+|-------|--------|
+| FE↔BE notes contract (POST/PATCH request + list/get/create/update response shapes) | ✅ Matches `api-contracts.md` "Sprint 43 — Activity Notes Field" exactly |
+| Write path: `notes` in POST `sanitizeFields` (`name/location/notes`) + insert (empty→`null`) | ✅ `backend/src/routes/activities.js:149,166` |
+| Update path: `notes` in `UPDATABLE` + PATCH pre-validate `sanitizeHtml` strip + empty→`null` normalize | ✅ `activities.js:203,206,288` |
+| Max-length validation: >2000 → 400 `VALIDATION_ERROR` on **both** POST (schema) and PATCH (inline) | ✅ `activities.js:85,216-219` |
+| UI states (Spec 35): edit-form textarea + counter (amber ≥1900/red @2000), Trip Details renders only when non-empty after trim, print `Notes:` line omitted when empty | ✅ Verified in source + tests |
+| Auth enforcement (activities router `authenticate` → 401; `requireTripOwnership` → 403/404) | ✅ Verified via suite (auth/ownership tests green) |
+| Edge cases: null/`''`/whitespace → no display block, no print line; long/multiline wraps, no overflow | ✅ Covered by display tests |
+
+### Test Type: Config Consistency Check
+
+| Item | backend/.env | vite.config.js | docker-compose.yml | Result |
+|------|--------------|----------------|--------------------|--------|
+| Backend PORT ↔ vite proxy target | `PORT=3000` | proxy default `http://localhost:3000` (`BACKEND_PORT \|\| 3000`) | backend `PORT: 3000` | ✅ Match |
+| SSL ↔ proxy protocol | SSL commented out (dev HTTP) | `backendSSL=false` → `http://` | n/a (internal Docker net) | ✅ Consistent — dev HTTP↔HTTP |
+| CORS_ORIGIN includes FE dev origin | `CORS_ORIGIN=http://localhost:5173` | dev server `port: 5173` | `${CORS_ORIGIN:-http://localhost}` | ✅ Match |
+
+**0 config mismatches.** (Staging profile — be:3001 HTTPS / fe:4173 HTTPS / CORS https://localhost:4173 — switches on `BACKEND_SSL=true`/`BACKEND_PORT=3001`; verified consistent in prior T-333/T-334 runs and unchanged.)
+
+### Test Type: Security Scan
+
+| Checklist item | Result |
+|----------------|--------|
+| All API endpoints require auth | ✅ Activities router behind `authenticate` (401) + `requireTripOwnership` (403/404) |
+| Password hashing (bcrypt) + login rate-limit | ✅ Verified via suite (`auth.test.js`, `sprint26.test.js`) — bcrypt hash, 429 after throttle |
+| SQL injection — parameterized/query-builder only | ✅ knex query builder throughout; `notes` bound, never concatenated |
+| HTML output sanitized to prevent XSS | ✅ **Two-layer:** BE `sanitizeHtml` strips tags on write (POST + PATCH); FE renders escaped text `{activity.notes}` (`TripDetailsPage.jsx:240`). All-HTML → `null` |
+| No `dangerouslySetInnerHTML` on user content | ✅ **0 attribute usages** in non-test source (`dangerouslySetInnerHTML\s*=` → no matches); the 3 file hits are comments/utility docs stating it is NOT used |
+| Hardcoded secrets | ✅ None in source — credentials in env vars (`DATABASE_URL`/`JWT_SECRET` via `.env`). Dev `.env` carries a placeholder `JWT_SECRET` (dev-only; staging/prod inject real secrets) — informational, not a P1 |
+| Error responses don't leak internals | ✅ Structured `VALIDATION_ERROR` envelopes; central error handler, no stack traces to client |
+| CORS allow-list | ✅ Single configured origin |
+| HTTPS on staging/prod | ✅ Staging be:3001/fe:4173 HTTPS (per T-334) |
+| `npm audit` (dependencies) | ⚠️ See below — 1 critical **dev-tooling** advisory, non-blocking |
+
+**`npm audit` results:**
+- **backend:** 1 critical — `vitest <4.1.0` (GHSA-5xrq-8626-4rwp).
+- **frontend:** 1 critical — same `vitest <4.1.0` advisory.
+- **Production-runtime chain (express/body-parser/qs/axios) — still 0 vulnerabilities** (T-329 hardening intact).
+
+**Assessment — NOT a P1, does NOT block:** `vitest` is a `devDependency` (test runner), never bundled into the deployed artifact (backend ships Express; frontend ships built `dist/`). The vuln is reachable only when the Vitest **UI server** (`vitest --ui`) is listening — this project always runs headless `npm test`. Real-world exposure ≈ nil. Already flagged on 2026-06-02 as a Sprint 44 follow-up maintenance task (`npm audit fix`, in-range, no `--force`); handoff to Backend Engineer/Manager stands. **No new handoff needed.**
+
+### Outcome
+- **0 P1 security failures. 0 regressions. 0 config mismatches. No rework handed back to engineers.**
+- **T-334** (Integration Check) integration-verified → moved to **Done**.
+- Deploy (T-334) was already executed + smoke-passed; **T-335 (Monitor staging health check)** remains the active enforcing gate per rules.md #15.
+
+*QA Engineer — T-333 re-verification — Sprint 43 — 2026-06-02*
+
+---
+
+## Sprint #43 — Deploy Engineer — T-334 Staging Deployment (incl. migration 011) — 2026-06-02
+
+**Date:** 2026-06-02
+**Sprint:** 43
+**Task:** T-334 (Deploy Engineer: staging deployment incl. migration 011 for B-036 activity notes)
+**Environment:** **Staging** (production untouched — staging-only this sprint; production promotion deferred to Sprint 44)
+**Build Status:** ✅ **Success**
+**Deploy Verified (Deploy-side smoke):** ✅ Yes — 4/4 standard smoke + 6/6 notes round-trip checks pass. Monitor health check (T-335) still required per rules.md before the deploy is *complete*.
+
+### Pre-Deploy Gates
+
+| Gate | Status |
+|------|--------|
+| QA deploy-ready handoff (T-333) | ✅ Present — "READY FOR STAGING DEPLOY" (2026-05-30) + RE-VERIFIED 2026-06-02, 1076/1076, 0 regressions, security PASS |
+| Migration 011 present + reversible | ✅ `20260530_011_add_activity_notes.js` (up/down), QA-verified reversible |
+| Production-runtime `npm audit` | ✅ Clean (T-329 hardening intact); 1 vitest dev-tooling advisory = non-blocking (not in runtime artifact) |
+| Feature code merged (notes BE+FE) | ✅ T-331 + T-332 Done & approved (CR-43) |
+
+### Build & Test (pre-deploy)
+
+| Step | Result |
+|------|--------|
+| Backend unit suite (`cd backend && npm test`) | ✅ **531/531** (27 files) |
+| Frontend unit suite (`cd frontend && npm test`) | ✅ **545/545** (26 files) |
+| **Combined** | ✅ **1076/1076 — zero regressions** |
+| Frontend production build (`npm run build`) | ✅ Success (rebuilt `dist/`) |
+
+### Migration 011 (staging DB)
+
+| Check | Result |
+|-------|--------|
+| `NODE_ENV=staging npm run migrate` | ✅ "Already up to date" (idempotent) |
+| `migrate:status` | ✅ **11/11 Completed, 0 Pending** |
+| `activities.notes` column (information_schema) | ✅ `data_type=text`, `is_nullable=YES` |
+
+### Deployment (PM2 — staging)
+
+Deployed via `infra/scripts/deploy-staging.sh` (install → build → `pm2 delete` → `pm2 start infra/ecosystem.config.cjs` → `pm2 save` → smoke). No infra/config files were modified this deploy → **no ADR required** (rules.md #4).
+
+| Process | Status | Restarts |
+|---------|--------|----------|
+| triplanner-backend (HTTPS :3001) | ✅ online | 0 |
+| triplanner-frontend (HTTPS :4173) | ✅ online | 0 |
+| triplanner-prod-backend (:3002) | ✅ online (untouched) | 0 |
+| triplanner-prod-frontend (:4174) | ✅ online (untouched) | 0 |
+
+Production health re-probed post-deploy: `GET https://localhost:3002/api/v1/health` → `{"status":"ok"}` — **production unaffected**.
+
+### Smoke Tests
+
+**Standard (4/4):**
+- ✅ Health endpoint → `{"status":"ok"}`
+- ✅ Frontend serves HTML over HTTPS
+- ✅ Auth endpoint → 401 for invalid creds
+- ✅ Trips endpoint requires auth (401)
+
+**B-036 notes round-trip (6/6) — end-to-end on staging:**
+1. ✅ Register user + create trip
+2. ✅ POST activity with `notes` containing `<script>alert(1)</script>` → response notes = `Confirmation #ABC123 alert(1) dress: smart casual` (**HTML stripped on write**)
+3. ✅ GET activity → notes round-trips identically; **no `<script>` tag present (XSS-safe)**
+4. ✅ POST notes > 2000 chars → **HTTP 400** (max-length validation)
+5. ✅ PATCH `{"notes":""}` → notes cleared to **null** (empty → null)
+6. ✅ Cleanup (DELETE trip → 204)
+
+### Result: ✅ Build Status: Success (Staging)
+
+- Staging running Sprint 43 code; migration 011 applied (11/11); notes feature verified end-to-end.
+- Production untouched (Sprint 44 promotion).
+- → **Monitor Agent (T-335):** run full staging health protocol; confirm migration 011 (`migrate:status` 11/11, 0 pending); verify notes round-trip in-app; record **Deploy Verified = Yes (Staging)**. See handoff-log.md.
+
+*Deploy Engineer — T-334 — Sprint 43 — 2026-06-02*
+
+---
+
+## Sprint #43 — QA Engineer — T-333 RE-VERIFICATION (orchestrator re-invocation) — 2026-06-02
+
+**Date:** 2026-06-02
+**Sprint:** 43
+**Task:** T-333 (QA: integration + security checklist) — re-verification
+**Test Types:** Unit Test, Integration Test, Config Consistency, Security Scan
+**Result:** ✅ **PASS — 0 regressions, 0 P1.** Deploy remains cleared for staging. ⚠️ One **new, non-blocking dev-tooling** advisory surfaced since the 05-30 pass (see Security Scan).
+
+### Why this entry
+
+The orchestrator re-invoked the QA phase. At invocation, **no tasks were in "Integration Check"** — Sprint 43 implementation (T-329, T-331, T-332) and the original T-333 QA pass were already **Done** (2026-05-30), and staging deploy (T-334) is still Backlog (pending this QA→Deploy handoff). I re-ran the full quality gate to confirm nothing regressed in the intervening days. It did not. One new dev-dependency advisory appeared (vitest) — assessed below as non-blocking.
+
+### Unit Test — ✅ PASS
+
+| Suite | Command | Result |
+|-------|---------|--------|
+| Backend | `cd backend && npm test` | ✅ **531/531** (27 files) |
+| Frontend | `cd frontend && npm test` | ✅ **545/545** (26 files) |
+| **Combined** | | ✅ **1076/1076 — zero regressions** |
+
+Coverage spot-check (B-036 notes) — happy + error path present:
+- **Backend** `activities.test.js` → `describe('Activity notes (B-036 / T-331)')`: POST happy (persists+returns), POST sanitize-strips-HTML, POST null-when-omitted, POST >2000→**400**; PATCH update, PATCH clear→null, PATCH all-HTML→null, PATCH >2000→**400**. 8 tests.
+- **Frontend** `ActivitiesEditPage.test.jsx` (3: typing/counter/maxLength, notes in create payload, clear→null) + `TripDetailsPage.test.jsx` (6: present, null/empty/whitespace absent, long note, HTML payload inert). 9 tests.
+
+### Integration Test — ✅ PASS
+
+Verified FE↔BE contract for the activity `notes` field against `api-contracts.md` → "Sprint 43 — Activity Notes Field (B-036, T-331)". The activities supertest suite exercises the full round-trip end-to-end (route → validate → sanitize → model → DB → serialize).
+
+| Check | Source verified | Result |
+|-------|-----------------|--------|
+| `notes` accepted on POST | `routes/activities.js:166` (empty→null) | ✅ |
+| `notes` accepted on PATCH | `routes/activities.js:203` (UPDATABLE), `:288` (''→null) | ✅ |
+| `notes` returned on all activity responses | `models/activityModel.js:21` (SELECT), `:70` (insert) | ✅ Round-trip shape matches contract |
+| Validation maxLength 2000 → 400 | schema `:85-93` (POST) + inline `:216-218` (PATCH) | ✅ Structured `VALIDATION_ERROR`, `fields.notes` |
+| HTML stripped on write (sanitize) | `activitySanitizeConfig :149` (POST) + `SANITIZE_FIELDS_PATCH :206` | ✅ Stored XSS defense (layer 1) |
+| FE renders escaped text only | `TripDetailsPage.jsx:240` `{activity.notes}` | ✅ **No `dangerouslySetInnerHTML`** in any source file (grep: only a comment + a test assertion) |
+| Auth enforced (401) / ownership (403/404) | existing `authenticate` + `requireTripOwnership` on router | ✅ Covered by suite (cors/auth tests green) |
+| Clear semantics (`null`/`''`→null) | consistent FE↔BE | ✅ |
+| UI states (empty/loading/error/success) | Spec 35 — Trip Details renders only when non-empty; counter amber≥1900/red@2000; print `Notes:` omitted when empty, excluded from PrintCalendarSummary | ✅ Per FE tests |
+| Migration 011 reversible | `20260530_011_add_activity_notes.js` — up: `text('notes').nullable()`, down: `dropColumn` | ✅ Backward-compatible additive ALTER |
+
+### Config Consistency — ✅ PASS (0 mismatches)
+
+| Profile | Backend PORT | Backend SSL | Vite proxy target | CORS_ORIGIN | Verdict |
+|---------|-------------|-------------|-------------------|-------------|---------|
+| Local dev (`backend/.env`) | 3000 | off (commented) | `http://localhost:${BACKEND_PORT:-3000}` → `http://localhost:3000` | `http://localhost:5173` (= vite dev server origin) | ✅ Match |
+| Staging (`backend/.env.staging`) | 3001 | on (key/cert set, COOKIE_SECURE=true) | `https` when `BACKEND_SSL=true` → `https://localhost:3001` | `https://localhost:4173` (= vite preview origin) | ✅ Match |
+| Docker (`infra/docker-compose.yml`) | 3000 (internal) | nginx front (port 80) | n/a (nginx reverse-proxy) | `${CORS_ORIGIN:-http://localhost}` | ✅ Internally consistent |
+
+- Backend PORT matches the vite proxy target in both dev (3000) and staging (3001) profiles.
+- SSL↔protocol aligned: dev HTTP↔http proxy; staging HTTPS↔https proxy (`secure:false` for self-signed). No http-against-https mismatch.
+- CORS includes the correct frontend origin in each profile (dev `:5173`, staging `:4173`). **No mismatch → no Deploy/Frontend handoff needed.**
+
+### Security Scan
+
+| Item (security-checklist) | Result |
+|---------------------------|--------|
+| Hardcoded secrets | ✅ None — `notes` is data; no credentials in source |
+| SQL injection | ✅ Parameterized Knex queries; `notes` never string-concatenated |
+| XSS (stored/reflected) | ✅ **Two-layer:** backend `sanitizeHtml` strips tags on POST+PATCH; frontend renders escaped text, **no `dangerouslySetInnerHTML`** (grep-confirmed 0 source usages). HTML/script payload renders inert. |
+| Missing auth checks | ✅ `authenticate` + `requireTripOwnership` on the activities router (401/403/404) |
+| Information leakage in errors | ✅ Structured `{error:{message,code,fields}}` — no stack/internal leakage |
+| Input validation | ✅ maxLength 2000 → 400 on POST + PATCH; empty/whitespace/all-HTML → null |
+
+**`npm audit` re-scan:**
+
+| App | Result | Delta vs 05-30 |
+|-----|--------|----------------|
+| backend | **1 critical** — `vitest <4.1.0` (GHSA-5xrq-8626-4rwp) | NEW since 05-30 (was 0) |
+| frontend | **1 critical** — `vitest <4.1.0` (GHSA-5xrq-8626-4rwp) | NEW since 05-30 (was 0) |
+
+⚠️ **New advisory assessment — NON-BLOCKING (NOT a P1 deploy blocker):**
+- **GHSA-5xrq-8626-4rwp** — "When the Vitest UI server is listening, an arbitrary file can be read and executed." Affects `vitest <4.1.0`; both apps run `vitest@4.0.18`.
+- **vitest is a `devDependency` in both apps** (backend `^4.0.18`, frontend `^4.0.0`) — it is the test runner. It is **NOT in the production/staging runtime** and is **never bundled** into the deployed artifact (backend serves Express; frontend serves the built Vite `dist/`). 
+- The vulnerability is only reachable when the **Vitest UI server** is running (`vitest --ui`). This project runs tests headless via `npm test` — the UI server is never started in dev, CI, or deploy. **Real-world exploitability in this workflow ≈ nil.**
+- **Not introduced by Sprint 43 feature code** (notes BE+FE) and does **not** touch the production-runtime chain (express/body-parser/qs) that T-329 hardened — those remain clean.
+- **Fix is in-range** (`^4.x` → 4.1.0), resolvable via non-breaking `npm audit fix` (no `--force`, no major bump). Recommended as a small follow-up maintenance task (same pattern that produced T-329). Modifying dependencies/lockfiles is the Backend Engineer's scope, not QA's — handoff logged.
+- **The T-329 production-runtime hardening goal is intact:** the express/body-parser/qs/axios advisories remain resolved; this is a separate, newly-published dev-tooling advisory.
+
+**Verdict:** Consistent with prior-sprint precedent (Sprint 42 treated dev-tooling vitest/ws advisories as advisory-only, non-blocking). **This does NOT block the Sprint 43 staging deploy** (frontend notes + backend notes — no vitest in the artifact). Flagged for a follow-up maintenance task.
+
+### Task status outcome
+
+- **No tasks in "Integration Check"** at invocation — T-329/T-331/T-332/T-333 already correctly **Done**. None moved to Blocked; no rework handed back to engineers.
+- **0 P1 security issues.** The one new advisory is dev-tooling only and does not block deploy.
+- Active gate: **T-334 (Deploy: staging deploy + migration 011)** — UNBLOCKED. QA→Deploy readiness re-confirmed in handoff-log.md.
+
+*QA Engineer — T-333 re-verification — Sprint 43 — 2026-06-02*
+
+---
+
 ## Sprint #42 — Monitor Agent — Post-Deploy Health Check (Staging) — 2026-05-30
 
 **Date:** 2026-05-30 (23:28 UTC)
@@ -397,3 +638,89 @@ Production deployed with Sprint 41 print feature. Frontend and backend online. A
 | 11 | PM2 process stability | `pm2 list` | ✅ PASS | `triplanner-backend` online 6m, 0 restarts, 69.4mb. `triplanner-frontend` online 6m, 0 restarts, 46.4mb |
 | 12 | No 5xx errors in logs | `pm2 logs --lines 30` | ✅ PASS | No 5xx errors. Only pre-existing 400s from malformed JSON (body-parser SyntaxError from earlier agent curl tests — not production traffic) |
 
+
+---
+
+## Sprint #43 — QA Engineer — Integration + Security Verification (T-333) — 2026-05-30
+
+**Date:** 2026-05-30
+**Sprint:** 43
+**Task:** T-333 (QA: dependency-hardening regression + B-036 activity notes integration & security)
+**Scope under test:** T-329 (dependency security hardening), T-331 (notes schema/API), T-332 (notes UI) — all in **Integration Check** at invocation.
+**Result:** ✅ **ALL GATES PASS — cleared for staging deploy (T-334).** 0 P1 issues. 0 config mismatches.
+
+### Test Type: Unit Test — ✅ PASS
+
+| Suite | Command | Result |
+|-------|---------|--------|
+| Backend | `cd backend && npm test` | ✅ **531/531** (27 files) |
+| Frontend | `cd frontend && npm test` | ✅ **545/545** (26 files) |
+| **Combined** | — | ✅ **1076/1076 — zero regressions** (grown from 1059 baseline: +8 BE notes, +9 FE notes) |
+
+**Coverage review (rules.md #10 — happy + error path per endpoint/component):**
+- **Backend notes (8 tests, `activities.test.js`):** POST happy-path (persists+returns), POST sanitize strip (`<script>` removed), POST null-when-omitted, POST >2000→**400** (error path); PATCH happy-path (update), PATCH clear→null, PATCH all-HTML→null normalization, PATCH >2000→**400** (error path). ✅ Both paths covered for POST and PATCH.
+- **Frontend notes (9 tests):** edit-form — typing/counter/`maxLength` cap, notes in create payload, clear→`null` (`ActivitiesEditPage.test.jsx`); display — present, null absent, empty absent, whitespace absent, long note, **HTML/script payload renders inert** (`TripDetailsPage.test.jsx`). ✅ Happy + empty/error paths covered.
+
+### Test Type: Integration Test — ✅ PASS
+
+**FE↔BE contract conformance** (`api-contracts.md` → "Sprint 43 — Activity Notes Field"):
+- `notes` accepted on POST + PATCH body; returned on every activity object (list/get/create/update). ✅ Verified in model `activityQuery()` SELECT (incl. `notes`) and route insert/UPDATABLE.
+- Clear-field semantics: FE sends trimmed string or `null` (`ActivitiesEditPage.jsx:393` → `(row.notes||'').trim() || null`); backend normalizes `''`→`null` on POST (`req.body.notes ? ... : null`) and PATCH (`updates.notes === '' → null`). ✅ Contract match.
+- Max-length: FE `maxLength={2000}` mirror; backend authoritative — POST schema `maxLength:2000`, PATCH inline `> 2000 → 400 VALIDATION_ERROR` with `fields.notes`. ✅ Error shape matches contract example.
+- Backward compat: nullable column → pre-migration/no-note activities return `notes:null`. ✅
+
+**UI states (Spec 35):** edit-form empty (no counter, placeholder), filled (counter), focus, at/near limit (amber ≥1900 `notesCounterWarn` / red @2000 `notesCounterError` + "— max reached"); Trip Details renders notes block **only when non-empty after trim** (`activity.notes && activity.notes.trim()`); print `Notes:` section (§35.4, `print.css` §11b) — omitted when empty, **not** added to PrintCalendarSummary. ✅ All states implemented.
+
+**Auth / ownership / validation / edge cases:**
+- Auth: `router.use(authenticate)` on activities router → unauthenticated requests **401**. ✅
+- Ownership: `requireTripOwnership` → missing trip **404**, non-owner **403** (no cross-tenant leak). ✅
+- Input validation: name required, `notes` optional/nullable, >2000 → structured **400** (never 5xx). ✅
+- Edge: empty/whitespace/all-HTML notes → normalized to `null`; line breaks preserved (`pre-wrap`). ✅
+
+### Test Type: Config Consistency — ✅ PASS (local-dev profile)
+
+| Check | backend/.env | frontend/vite.config.js | Result |
+|-------|-------------|------------------------|--------|
+| Backend PORT ↔ vite proxy target | `PORT=3000` | proxy target `http://localhost:${BACKEND_PORT||3000}` → `:3000` | ✅ Match |
+| SSL ↔ proxy protocol | SSL paths commented out (HTTP) | `backendSSL=false` → `http://` | ✅ Match (no SSL → http proxy) |
+| CORS_ORIGIN ↔ FE dev origin | `CORS_ORIGIN=http://localhost:5173` | dev server `port:5173` | ✅ Includes `http://localhost:5173` |
+
+`infra/docker-compose.yml` (separate prod-container profile) internally consistent: backend `PORT:3000`, nginx frontend reverse-proxies, CORS from env. No mismatch. **No config handoff required.**
+
+### Test Type: Security Scan — ✅ PASS (0 P1)
+
+| Checklist item (`security-checklist.md`) | Result |
+|------|--------|
+| All endpoints require auth | ✅ `authenticate` on router; 401 enforced |
+| RBAC / ownership enforced | ✅ `requireTripOwnership` (403/404) |
+| Inputs validated client + server | ✅ `maxLength={2000}` (FE) + schema/inline (BE) |
+| SQL parameterized (no concatenation) | ✅ Knex query builder throughout (`activityModel.js`) |
+| HTML output sanitized (XSS) | ✅ **Two-layer:** BE `sanitizeHtml` strips tags on POST (`activitySanitizeConfig`) + PATCH (pre-validate strip); FE renders escaped text `{activity.notes}` — **no `dangerouslySetInnerHTML` anywhere** (grep confirms 0 usages in source) |
+| CORS restricted to expected origins | ✅ `CORS_ORIGIN` env, not wildcard |
+| Errors don't leak internals/stack traces | ✅ Structured `{error:{message,code}}`; no stack traces |
+| Secrets in env, not code | ✅ Grep of notes-feature files → no hardcoded secrets/keys/tokens |
+| Dependencies vuln-checked | ✅ `npm audit`: **backend 0 vulnerabilities, frontend 0 vulnerabilities** (T-329 advisories on express/body-parser/qs + vite/ws chain fully resolved) |
+
+**XSS verdict (B-036 primary security criterion):** stored-XSS blocked at write (`sanitizeHtml` strips `<script>`/tags — backend test confirms `Bring <script>alert(1)</script>passport` → stripped) AND reflected/DOM-XSS blocked at render (escaped text, no dangerous HTML — FE test confirms HTML payload produces no live element). No stored or reflected XSS. **No P1 security failures → no engineer handoff required.**
+
+### Migration 011 verification — ✅ PASS
+
+Verified against the dev DB (`development` env):
+- `migrate:status` (`knex migrate:status`): **11/11 completed, 0 pending** — `20260530_011_add_activity_notes.js` recognized (batch 3).
+- Column confirmed: `activities.notes` = `text`, `is_nullable=YES`.
+- **Down/up cycle:** `migrate:rollback` → notes column dropped (verified absent); `migrate:latest` → notes re-added as `text NULL` (verified). Clean, reversible. DB restored to 11/11.
+- **Deploy note (T-334):** migration 011 must run on the **staging** DB (`npm run migrate`); confirm `migrate:status` 11/11. Staging-only this sprint — production deferred to Sprint 44.
+
+### Summary
+
+| Gate | Result |
+|------|--------|
+| Unit tests (BE 531 + FE 545) | ✅ 1076/1076 |
+| Integration (contract, UI states, auth, validation) | ✅ PASS |
+| Config consistency | ✅ PASS — 0 mismatches |
+| Security checklist + `npm audit` (0/0) | ✅ PASS — 0 P1 |
+| Migration 011 apply/rollback | ✅ PASS |
+
+**All Sprint 43 in-scope tasks (T-329, T-331, T-332) verified → moved to Done. Cleared for staging deploy (T-334).**
+
+*QA Engineer — T-333 — Sprint 43 — 2026-05-30*
