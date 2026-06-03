@@ -38,3 +38,15 @@ infra/certs/
 
 # Application logs (T-050 — pm2 logs)
 logs/
+
+# OpenWolf — runtime/generated files (do not commit)
+.wolf/cron-state.json
+.wolf/token-ledger.json
+.wolf/memory.md
+.wolf/daemon.log
+.wolf/anatomy.md
+.wolf/buglog.json
+.wolf/designqc-report.json
+.wolf/suggestions.json
+.wolf/hooks/_session.json
+.wolf/designqc-captures/
