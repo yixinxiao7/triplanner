@@ -4,50 +4,65 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-## Sprint #43 — 2026-05-30
+## Sprint #44 — 2026-06-03
 
-**Sprint Goal:** Pay down long-pending security debt and ship a high-value feature for the core persona. Two tracks:
-1. **Dependency security hardening** — resolve the production-runtime npm audit advisories on the `express`/`body-parser`/`qs` chain (plus the `vite`/`ws` dev-tooling advisories). QA has flagged these for several sprints as needing a dedicated maintenance task.
-2. **Activity notes (B-036)** — add a `notes` field to activities so detail-oriented travelers can attach reservation numbers, confirmation codes, dress codes, and context to each activity. The field is currently silently dropped — there is no `notes` column on the `activities` table, so a client-sent `notes` value never persists or returns.
+**Sprint Goal:** **Promote Sprint 43 to production.** Sprint 43 delivered activity notes (B-036, migration 011) and dependency security hardening, verified clean on staging but held back from production because the work introduces a schema migration. Sprint 44's primary objective is to ship that value to users: run migration 011 on the production DB, deploy the Sprint 43 backend+frontend to production, and verify end-to-end. Bundled with the promotion are two small maintenance items flagged during Sprint 43: the `vitest` dev-tooling advisory bump and the FB-290 contract-copy alignment.
 
-**Context:** Sprint 42 closed cleanly — all 9 tasks Done, 1059/1059 tests, the print feature live on production, activity location links shipped and secured. Of 13 feedback entries (FB-263–FB-275), zero were Critical/Major bugs or feature gaps — all triaged to Acknowledged. With no critical feedback to address, Sprint 43 is driven by the two pieces of concrete technical debt above. Staging-only this sprint: Track 2 introduces a schema migration, so production promotion is deferred to Sprint 44 after staging verification.
+**Context:** Sprint 43 closed cleanly — all 8 tasks Done, 1076/1076 tests, two-layer XSS defense on the new notes field, production-runtime advisories cleared to 0. Of 15 User Agent feedback entries (FB-276–FB-290), **zero were Critical/Major bugs or feature gaps** — 11 Positive, 3 Security-confirming, 1 cosmetic Suggestion (FB-290). With no critical feedback, Sprint 44 is driven by the deferred production promotion plus two pieces of concrete tech debt.
 
-**Feedback Triage (Sprint 42 → Sprint 43):**
+**Manager schema approval (rules.md #4):** Migration 011 (`activities.notes TEXT NULL`, max 2000 chars) was created and ADR'd (ADR-007) in Sprint 43 and verified reversible + applied on staging (11/11). **Running migration 011 on the production DB is pre-approved in this plan.** No new schema changes this sprint.
 
-| Entry | Category | Severity | Disposition |
-|-------|----------|----------|-------------|
-| FB-263, FB-264, FB-268, FB-272, FB-273, FB-274 | Positive | — | **Acknowledged** — confirm correct B-031 implementation, validation, rate-limiting, a11y, print. |
-| FB-265, FB-266, FB-267, FB-269, FB-270, FB-271 | Security | — | **Acknowledged** — all confirm defenses hold. |
-| FB-275 | UX Issue | Suggestion | **Acknowledged** — trailing-punctuation-in-href; documented §34.2 tradeoff. Backlog for a future polish sprint. |
+**Feedback Triage (Sprint 43 → Sprint 44):**
 
-**No Critical or Major bugs or feature gaps from Sprint 42. Sprint 43 = security debt + B-036.**
+| Entry(ies) | Category | Severity | Disposition |
+|------------|----------|----------|-------------|
+| FB-276, FB-277, FB-278, FB-280, FB-281, FB-283, FB-284, FB-285, FB-287, FB-288, FB-289 | Positive | — | **Acknowledged** — confirm B-036 correctness, validation, unicode, Spec 35 conformance, print, regression-clean. |
+| FB-279, FB-282, FB-286 | Security | — | **Acknowledged** — HTML strip on write, SQLi inert, auth + no cross-tenant leak all confirmed. |
+| FB-290 | UX Issue | Suggestion | **Tasked (T-339)** — cosmetic doc-vs-impl 400-copy mismatch; trivial api-contracts.md alignment. |
 
-**Manager schema approval:** Migration 011 (add nullable `notes` text column, max 2000 chars, to `activities`) is **pre-approved** in this plan. Backend Engineer must record it as an ADR in-task (rules.md #4).
+**No Critical or Major bugs or feature gaps from Sprint 43.** Plus two carried tech-debt items from Sprint 43 CR notes: `vitest` advisory (T-340) and FB-290 copy fix (T-339).
 
 ---
 
 ## In Scope
 
-### Phase 1 — Dependency Security Hardening (independent track, start immediately)
+### Phase 1 — Maintenance Fixes (independent, start immediately in parallel)
 
-- [ ] **T-329** — Backend Engineer: Resolve production-runtime npm audit advisories
+- [ ] **T-339** — Backend Engineer: FB-290 — align notes over-limit error copy with the contract
 
-  **Context:** QA has flagged for several sprints that the `express`/`body-parser`/`qs` chain (production runtime) carries npm audit advisories (BE 6, FE 5 incl. `vite`/`ws` dev-tooling). This is the dedicated maintenance task to clear them.
+  **Context:** `api-contracts.md` documents the 400 body as `fields.notes: "Notes must be 2000 characters or fewer"`, but the live API returns `"Notes must not exceed 2000 characters"`. Cosmetic doc-vs-implementation drift; no user-facing impact.
 
   **Execute:**
-  1. Run `npm audit` in `backend/` and `frontend/`; document the current advisories.
-  2. Run `npm audit fix`; bump `express` (and its transitive `body-parser`/`qs`) to a patched version.
-  3. Run the full test suite — zero regressions required.
-  4. Verify the express bump does not break auth, CORS, rate-limiting, or error-handler middleware.
-  5. Record the dependency bump as an ADR in `architecture-decisions.md`.
+  1. Pick one canonical string (prefer the implemented `"Notes must not exceed 2000 characters"` to avoid touching validated code paths) and make `api-contracts.md` match it exactly.
+  2. If you instead change the implementation string, update the corresponding backend test assertion and re-run the suite.
+  3. Grep for any other notes-validation copy references and align them.
 
   **Acceptance criteria:**
-  - Production-runtime advisories resolved (or explicitly documented as unfixable without a breaking change).
-  - Full suite green (1059+ tests, 0 regressions).
-  - Express bump verified against auth/CORS/rate-limit/error middleware.
+  - `api-contracts.md` notes over-limit example matches the live API string exactly.
+  - No contradictory copy remains; if code changed, tests updated and green.
+
+  **Blocked By:** None
+
+  **Files:** `.workflow/api-contracts.md` (and, only if you change the string, `backend/src/routes/activities.js` or validation schema + tests)
+
+---
+
+- [ ] **T-340** — Backend Engineer: Bump `vitest` to ≥4.1.0 (GHSA-5xrq-8626-4rwp)
+
+  **Context:** A `vitest` dev-tooling advisory (GHSA-5xrq-8626-4rwp) surfaced on the 2026-06-02 QA re-scan in both `backend/` and `frontend/`. Non-blocking (dev-only devDependency, reachable only via `vitest --ui`, absent from deployed artifacts) but flagged for a Sprint 44 maintenance task.
+
+  **Execute:**
+  1. Bump `vitest` to `≥4.1.0` (a minor bump within major v4 — low regression risk) in both `backend/` and `frontend/`.
+  2. Run the full test suites in both apps — zero regressions required.
+  3. Re-run `npm audit` in both apps; confirm the advisory is cleared and production-runtime chain remains 0 vulns.
+  4. Record the bump as an ADR in `architecture-decisions.md`.
+
+  **Acceptance criteria:**
+  - `vitest` advisory cleared in both apps; production-runtime `npm audit` remains 0.
+  - Full suites green (1076+ tests), zero regressions.
   - ADR recorded.
 
-  **Do NOT** bump a major version that breaks the API surface without flagging to Manager first.
+  **Do NOT** bump a major version or any other dependency that touches the deployed artifact without flagging to Manager first.
 
   **Blocked By:** None
 
@@ -55,135 +70,71 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ---
 
-### Phase 2 — Design + Backend for Activity Notes (B-036, parallel with Phase 1)
+### Phase 2 — QA Gate (after Phase 1)
 
-- [ ] **T-330** — Design Agent: UI spec for activity notes field (B-036)
-
-  **Context:** Detail-oriented travelers want to attach context to activities (reservation #, confirmation code, dress code, "bring passport"). Design how a notes field appears in the activity edit form and on the Trip Details page + print view.
-
-  **Execute:**
-  1. Specify a multi-line notes textarea in the activity edit form (placeholder, max 2000 chars, optional char counter).
-  2. Specify notes display under each activity on the Trip Details page (only when present).
-  3. Specify print-view rendering (readable plain text).
-  4. Apply Japandi conventions: 11px uppercase label, 2px radius, muted accent, generous spacing.
-  5. Handle empty state and long-text overflow.
-
-  **Acceptance criteria:**
-  - UI spec published in `ui-spec.md`.
-  - Edit-form input, Trip Details display, print behavior, and styling defined.
-  - Empty + long-text handling specified.
-
-  **Blocked By:** None
-
-  **Files:** `.workflow/ui-spec.md`
-
----
-
-- [ ] **T-331** — Backend Engineer: Activity notes — schema + API + implementation (B-036)
-
-  **Context:** The `activities` table has no `notes` column; a client-sent `notes` value is silently dropped. Add the column and wire it through the API.
-
-  **Execute:**
-  1. Create migration 011 — add nullable `notes` text column (max 2000 chars) to `activities`, with up/down.
-  2. Add `notes` to `activityValidationSchema` (nullable string, maxLength 2000).
-  3. Add `notes` to `activitySanitizeConfig` and the PATCH sanitize fields (`sanitizeHtml` strips tags on write).
-  4. Add `notes` to the POST insert, the `UPDATABLE` array, and the returned activity shape.
-  5. Update `api-contracts.md` (T-006 activities section).
-  6. Record the schema change as an ADR (rules.md #4) — Manager pre-approved in the plan.
-  7. Add backend tests (round-trip, sanitize, max-length, null/omitted).
-
-  **Acceptance criteria:**
-  - `notes` round-trips through POST/PATCH/GET.
-  - HTML stripped on write; `> 2000` chars → 400; null/omitted handled gracefully.
-  - Migration 011 applies and rolls back cleanly.
-  - API contract + ADR updated; backend tests added and passing.
-
-  **Blocked By:** None
-
-  **Files:** `backend/src/migrations/`, `backend/src/routes/activities.js`, `backend/src/middleware/sanitize.js` (if needed), backend tests, `.workflow/api-contracts.md`, `.workflow/architecture-decisions.md`
-
----
-
-### Phase 3 — Frontend Implementation (after Phase 2)
-
-- [ ] **T-332** — Frontend Engineer: Implement activity notes UI (B-036) ← Blocked by T-330, T-331
-
-  **Execute:**
-  1. Add a notes textarea to the activity edit form; include `notes` in the save payload.
-  2. Render notes under each activity on the Trip Details page, only when non-empty.
-  3. Render notes in the print view as readable text.
-  4. Render notes as escaped text — no `dangerouslySetInnerHTML` (defense-in-depth alongside backend strip).
-  5. Add unit/render tests (notes present/absent, long text, HTML payload renders inert).
-
-  **Acceptance criteria:**
-  - Notes persist via the edit form and display correctly on Trip Details + print.
-  - HTML/script payload renders inert (no XSS).
-  - Full FE suite green.
-
-  **Blocked By:** T-330, T-331
-
-  **Files:** `frontend/src/`
-
----
-
-### Phase 4 — QA + Verify (sequential)
-
-- [ ] **T-333** — QA Engineer: Integration testing + security checklist ← Blocked by T-329, T-331, T-332
+- [ ] **T-341** — QA Engineer: Integration testing + security checklist for Sprint 44 ← Blocked by T-339, T-340
 
   **Scope:**
-  - T-329: confirm production-runtime advisories resolved; `npm audit` re-scan; 0 regressions.
-  - B-036: notes round-trip end-to-end; HTML-sanitized on write, rendered inert on read; `> 2000` chars → 400.
-  - Migration 011 applies and rolls back cleanly on a test DB.
-  - Full test suite (backend + frontend), config consistency, security checklist.
+  - Full test suite (backend + frontend) — confirm 1076+ green after the `vitest` bump, 0 regressions.
+  - `npm audit` re-scan both apps — confirm `vitest` advisory cleared and production-runtime chain still 0 vulns.
+  - Confirm FB-290 copy alignment (contract == live string); no contradictory copy.
+  - **Production-readiness pre-check of the Sprint 43 code** that is about to be promoted: re-confirm B-036 notes round-trip, two-layer XSS defense, max-length validation, and that migration 011 is reversible.
+  - Config consistency (PORT/SSL/CORS/docker) and security checklist.
   - Regression on activity CRUD + calendar.
 
-  **Acceptance criteria:** All tests pass; security checklist pass; notes verified; advisories cleared; no regressions.
+  **Acceptance criteria:** All tests pass; security checklist pass; advisory cleared; FB-290 verified; Sprint 43 code cleared for production promotion.
 
-  **Blocked By:** T-329, T-331, T-332
+  **Blocked By:** T-339, T-340
 
   **Files:** `.workflow/qa-build-log.md`
 
 ---
 
-- [ ] **T-334** — Deploy Engineer: Staging deployment incl. migration 011 ← Blocked by T-333
+### Phase 3 — Production Deployment (after QA)
+
+- [ ] **T-337** — Deploy Engineer: Production deployment of Sprint 43 (notes B-036 + dependency hardening) incl. migration 011 ← Blocked by T-341
+
+  **Context:** Sprint 43 was staging-only because of migration 011. This task promotes the verified Sprint 43 build to production.
 
   **Execute:**
   1. Rebuild frontend and backend; run full suite (0 regressions).
-  2. **Run migration 011 on the staging DB** (`npm run migrate`).
-  3. Deploy to staging via PM2 (HTTPS be:3001 / fe:4173).
-  4. Run smoke tests incl. notes round-trip.
+  2. **Run migration 011 on the PRODUCTION DB** (`npm run migrate`) — verify `migrate:status` 11/11, 0 pending; confirm `activities.notes = text` nullable via information_schema.
+  3. Deploy to production via PM2 (HTTPS be:3002 / fe:4174).
+  4. Run production smoke tests incl. notes round-trip (create/HTML-strip/>2000→400/PATCH clear→null) and a standard CRUD/auth pass.
+  5. Confirm staging remains healthy and that the deployed bundle hash matches the QA-verified artifact.
 
-  **Acceptance criteria:** Staging deployed with Sprint 43 code; migration 011 applied; all smoke tests pass; production untouched. Any infra/config change includes an ADR in-task.
+  **Acceptance criteria:** Production running Sprint 43 code; migration 011 applied on prod (11/11, 0 pending); all smoke tests pass; staging untouched/healthy. Any infra/config change must include an ADR in-task (rules.md #4).
 
-  **Blocked By:** T-333
-
-  **Files:** `.workflow/qa-build-log.md`
-
----
-
-- [ ] **T-335** — Monitor Agent: Staging health check ← Blocked by T-334
-
-  **Scope:** Full staging health protocol; confirm migration 011 applied (`migrate:status` 11/11, 0 pending); verify notes round-trips on staging; record **Deploy Verified = Yes (Staging)**.
-
-  **Acceptance criteria:** All health checks pass; migration confirmed; Deploy Verified = Yes (Staging).
-
-  **Blocked By:** T-334
+  **Blocked By:** T-341
 
   **Files:** `.workflow/qa-build-log.md`
 
 ---
 
-- [ ] **T-336** — User Agent: Staging walkthrough ← Blocked by T-335
+### Phase 4 — Verify (sequential)
+
+- [ ] **T-338** — Monitor Agent: Production health check ← Blocked by T-337
+
+  **Scope:** Full production health protocol (health, auth, key endpoints, no 5xx, PM2 stability, config consistency). Confirm migration 011 applied on production (`migrate:status` 11/11, 0 pending). Verify the activity notes feature round-trips on production. Record **Deploy Verified = Yes (Production)**.
+
+  **Acceptance criteria:** All health checks pass; migration 011 confirmed on prod; notes verified live; Deploy Verified = Yes (Production).
+
+  **Blocked By:** T-337
+
+  **Files:** `.workflow/qa-build-log.md`
+
+---
+
+- [ ] **T-342** — User Agent: Production walkthrough ← Blocked by T-338
 
   **Scope:**
-  - Test activity notes via the edit form (add/edit/clear), long notes, HTML/script payload (must render inert).
-  - Test print view shows notes correctly.
-  - Regression: activity CRUD, calendar, auth.
-  - Submit feedback to `feedback-log.md`.
+  - Test activity notes on production via the edit form (add/edit/clear), long notes, HTML/script payload (must render inert), print view shows notes.
+  - Regression: activity CRUD, calendar, flights, stays, land-travel, auth.
+  - Submit structured feedback to `feedback-log.md`.
 
-  **Acceptance criteria:** Notes feature verified on staging; no Critical or Major regressions; feedback submitted.
+  **Acceptance criteria:** Notes feature verified on production; no Critical or Major regressions; feedback submitted.
 
-  **Blocked By:** T-335
+  **Blocked By:** T-338
 
   **Files:** `.workflow/feedback-log.md`
 
@@ -191,8 +142,9 @@ The operational reference for the current development cycle. Refreshed at the st
 
 ## Out of Scope
 
-- **Production deployment of Sprint 43** — staging-only this sprint because Track 2 ships a schema migration; promote to production in Sprint 44 after staging verification.
-- **Notes on flights / stays** — activities only this sprint.
+- **New features** — Sprint 44 is a promotion + maintenance sprint; no net-new product features. The MVP (auth, trips, flights, stays, activities, calendar, print, location links, notes) is complete.
+- **New schema changes** — migration 011 is the only migration, already created in Sprint 43; no new migrations this sprint.
+- **FB-189/B-041 (STAY checkout time on calendar end-day pills)** — Minor UX, backlog for a future polish sprint.
 - **B-020 (Redis rate limiter)** — backlog; in-memory store sufficient for current scale.
 - **B-024 (per-account rate limiting)** — backlog; depends on B-020.
 - **B-033 (ILIKE wildcard escaping)** — backlog; P3, no security impact (user-scoped).
@@ -206,70 +158,67 @@ The operational reference for the current development cycle. Refreshed at the st
 
 | Agent | Focus Area This Sprint | Key Tasks |
 |-------|----------------------|-----------|
-| Backend Engineer | Dependency hardening + activity notes schema/API | T-329, T-331 |
-| Design Agent | Activity notes UI spec | T-330 |
-| Frontend Engineer | Activity notes UI | T-332 |
-| QA Engineer | Integration testing + security checklist | T-333 |
-| Deploy Engineer | Staging deployment (incl. migration 011) | T-334 |
-| Monitor Agent | Staging health check | T-335 |
-| User Agent | Staging walkthrough | T-336 |
-| Manager | Code review, schema/ADR approval, triage T-336 feedback, Sprint 44 plan | Reviews |
+| Backend Engineer | FB-290 doc fix + `vitest` advisory bump | T-339, T-340 |
+| QA Engineer | Integration + security; production-readiness pre-check | T-341 |
+| Deploy Engineer | Production deployment incl. migration 011 on prod DB | T-337 |
+| Monitor Agent | Production health check | T-338 |
+| User Agent | Production walkthrough | T-342 |
+| Design Agent | — (no UI work this sprint) | — |
+| Frontend Engineer | — (no FE changes; T-339 is doc-only, T-340 dev-only) | — |
+| Manager | Code review, ADR approval, triage T-342 feedback, Sprint 45 plan | Reviews |
 
 ---
 
 ## Dependency Chain (Critical Path)
 
 ```
-T-329 (Backend: dependency hardening) ──────────────────────────────────┐
-T-330 (Design: notes spec) ──┐                                          │
-T-331 (Backend: notes schema/API) ──┴─→ T-332 (Frontend: notes UI) ─────┴─→ T-333 (QA) → T-334 (Deploy: staging + migration 011) → T-335 (Monitor) → T-336 (User)
+T-339 (Backend: FB-290 doc fix) ──┐
+T-340 (Backend: vitest bump) ─────┴─→ T-341 (QA) → T-337 (Deploy: production + migration 011) → T-338 (Monitor) → T-342 (User)
 ```
 
-**Critical path:** (T-330 + T-331) → T-332 → T-333 → T-334 → T-335 → T-336
-**Parallel track:** T-329 runs independently and must complete before T-333 (QA verifies the advisory fix alongside B-036).
+**Critical path:** (T-339 + T-340) → T-341 → T-337 → T-338 → T-342
+**Both Phase 1 tasks run in parallel and must complete before the QA gate (T-341).**
 
 ---
 
 ## Definition of Done
 
-*How do we know Sprint #43 is complete?*
+*How do we know Sprint #44 is complete?*
 
-- [ ] T-329: Production-runtime npm audit advisories resolved (or documented), ADR recorded, 0 regressions
-- [ ] T-330: Activity notes spec published in `ui-spec.md`
-- [ ] T-331: Migration 011 created; notes wired through API; contract + ADR updated; backend tests pass
-- [ ] T-332: Notes UI implemented (edit form + Trip Details + print) with tests passing
-- [ ] T-333: QA integration check pass; security checklist pass; advisories verified cleared
-- [ ] T-334: Staging deployed; migration 011 applied; smoke tests pass
-- [ ] T-335: Monitor staging health check — Deploy Verified = Yes (Staging); migration confirmed
-- [ ] T-336: User Agent staging walkthrough — no Critical/Major regressions; feedback submitted
-- [ ] T-336 feedback triaged by Manager (all entries Acknowledged or Tasked)
-- [ ] Sprint 43 summary written in `.workflow/sprint-log.md`
-- [ ] Sprint 44 plan written in `.workflow/active-sprint.md`
+- [ ] T-339: api-contracts.md notes over-limit copy matches the live API string; tests green if code changed
+- [ ] T-340: `vitest` bumped ≥4.1.0 in both apps; advisory cleared; ADR recorded; 0 regressions
+- [ ] T-341: QA integration check pass; security checklist pass; advisory verified; Sprint 43 code cleared for prod
+- [ ] T-337: Production deployed with Sprint 43 code; migration 011 applied on prod (11/11, 0 pending); smoke tests pass; staging untouched
+- [ ] T-338: Monitor production health check — Deploy Verified = Yes (Production); migration confirmed
+- [ ] T-342: User Agent production walkthrough — no Critical/Major regressions; feedback submitted
+- [ ] T-342 feedback triaged by Manager (all entries Acknowledged or Tasked)
+- [ ] Sprint 44 summary written in `.workflow/sprint-log.md`
+- [ ] Sprint 45 plan written in `.workflow/active-sprint.md`
 
 ---
 
-## Success Criteria (Sprint #43)
+## Success Criteria (Sprint #44)
 
-By end of Sprint #43, the following must be verifiable:
+By end of Sprint #44, the following must be verifiable:
 
-- [ ] **Dependency advisories cleared** — production-runtime `express`/`body-parser`/`qs` advisories resolved; `npm audit` re-scan confirms
-- [ ] **Activity notes persist** — a note added in the edit form round-trips through POST/PATCH/GET and displays on Trip Details
-- [ ] **Notes are safe** — HTML/script in a note is stripped on write and rendered inert; no XSS
-- [ ] **Notes validation** — `> 2000` chars rejected with 400
-- [ ] **Migration 011 clean** — applies and rolls back without data loss
-- [ ] **Staging verified** — Deploy Verified = Yes (Staging) confirmed by Monitor Agent
-- [ ] **User Agent verified on staging** — no Critical or Major issues
-- [ ] **Test baseline maintained or grown** — zero regressions
+- [ ] **Activity notes live on production** — a note added in the edit form round-trips through POST/PATCH/GET and displays on Trip Details + print on production
+- [ ] **Migration 011 on production** — applied cleanly (11/11, 0 pending); `activities.notes = text` nullable confirmed
+- [ ] **Notes safe on production** — HTML/script stripped on write and rendered inert; >2000 chars → 400
+- [ ] **Dependency advisories clear** — production-runtime `npm audit` 0 vulns; `vitest` advisory cleared
+- [ ] **Contract copy aligned** — FB-290 resolved; no doc-vs-impl mismatch
+- [ ] **Production verified** — Deploy Verified = Yes (Production) confirmed by Monitor Agent
+- [ ] **User Agent verified on production** — no Critical or Major issues
+- [ ] **Test baseline maintained or grown** — zero regressions (1076+ tests)
 
 ---
 
 ## Blockers
 
-- **No blockers on T-329, T-330, T-331.** All can start immediately in parallel.
-- **T-332 blocked by T-330 + T-331.** Frontend needs both the notes spec and the API contract.
-- **T-333 blocked by T-329, T-331, T-332.** QA verifies the dependency fix and the full notes feature together.
-- **T-334–T-336 sequential** per the standard pipeline.
+- **No blockers on T-339, T-340.** Both can start immediately in parallel.
+- **T-341 blocked by T-339 + T-340.** QA verifies both maintenance fixes and re-confirms production-readiness together.
+- **T-337 blocked by T-341.** Production promotion must not proceed until QA clears the build.
+- **T-338, T-342 sequential** per the standard pipeline (rules.md #15: deploy not *complete* until Monitor verifies).
 
 ---
 
-*Sprint #42 archived to `.workflow/sprint-log.md` on 2026-05-30. Sprint #43 plan written by Manager Agent 2026-05-30.*
+*Sprint #43 archived to `.workflow/sprint-log.md` on 2026-06-03. Sprint #44 plan written by Manager Agent 2026-06-03.*

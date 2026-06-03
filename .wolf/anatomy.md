@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-03T15:12:39.662Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-03T15:17:34.348Z
 > Files: 511 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../../../tmp/
@@ -137,18 +137,18 @@
 
 ## .workflow/
 
-- `active-sprint.md` — Active Sprint (~3413 tok)
+- `active-sprint.md` — Active Sprint (~3164 tok)
 - `api-contracts.md` — API Contracts (~96898 tok)
 - `architecture-decisions.md` — Architecture Decisions (~5194 tok)
-- `dev-cycle-tracker.md` — Dev Cycle Tracker (~187387 tok)
-- `feedback-log.md` — Feedback Log (~168029 tok)
-- `handoff-log.md` — Agent Handoff Log (~24213 tok)
+- `dev-cycle-tracker.md` — Dev Cycle Tracker (~188533 tok)
+- `feedback-log.md` — Feedback Log (~170879 tok)
+- `handoff-log.md` — Agent Handoff Log (~24881 tok)
 - `hosting-research.md` — T-124 — Production Hosting Provider Research Spike (~5076 tok)
 - `project-brief.md` — Project Brief (~2456 tok)
 - `qa-build-log.md` — QA & Build Log (~14972 tok)
 - `rollback-playbook.md` — Rollback Playbook (~467 tok)
 - `security-checklist.md` — Security Checklist (~496 tok)
-- `sprint-log.md` — Sprint Log (~80121 tok)
+- `sprint-log.md` — Sprint Log (~81867 tok)
 - `technical-context.md` — Technical Context (~11727 tok)
 - `ui-spec.md` — UI Spec (~163310 tok)
 

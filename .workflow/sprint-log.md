@@ -4087,4 +4087,80 @@ None. All tasks completed.
 
 ---
 
+### Sprint #43 — 2026-05-30 to 2026-06-03
+
+**Goal:** Two parallel tracks — (1) **Dependency security hardening (T-329):** resolve the long-pending production-runtime npm audit advisories on the `express`/`body-parser`/`qs` chain (plus the `vite`/`ws` dev-tooling advisories), flagged repeatedly by QA. (2) **Activity notes (B-036):** add a nullable `notes` field to activities (max 2000 chars, HTML-stripped on write) so detail-oriented travelers can attach reservation numbers, confirmation codes, and context per activity. The field was previously silently dropped (no DB column). Staging-only sprint — production promotion deferred to Sprint 44 because Track 2 introduces a schema migration (011).
+
+**Goal Met:** ✅ YES — Both tracks delivered and verified on staging. Production-runtime advisories cleared to 0 (both apps). Activity notes round-trip end-to-end with two-layer XSS defense. Zero bugs, zero Critical/Major feedback, zero regressions.
+
+---
+
+**Tasks Completed (8/8):**
+
+| ID | Description | Status |
+|----|-------------|--------|
+| T-329 | Backend Engineer: Dependency security hardening — `npm audit fix` (no `--force`); express 4.22.1→4.22.2, body-parser→1.20.5, qs→6.15.2, axios→1.16.1, vite→6.4.2, ws→8.21.0. `npm audit` → 0 vulns both apps. ADR-008. | ✅ Done |
+| T-330 | Design Agent: UI spec for activity notes (Spec 35) — edit-form textarea, Trip Details display, print `Notes:` line, states/a11y/edge-cases | ✅ Done |
+| T-331 | Backend Engineer: Activity notes schema/API (B-036) — migration 011 (`activities.notes TEXT NULL`), validation, sanitize, INSERT/UPDATABLE/serialization, contract, ADR-007, 8 tests | ✅ Done |
+| T-332 | Frontend Engineer: Activity notes UI — edit-form textarea (maxLength/counter/aria), Trip Details escaped render, print line, 9 tests | ✅ Done |
+| T-333 | QA Engineer: Integration + security — BE 531/531 + FE 545/545 = 1076/1076, 0 regressions; `npm audit` re-scan 0 prod-runtime vulns; two-layer XSS; migration 011 11/11 reversible | ✅ Done |
+| T-334 | Deploy Engineer: Staging deployment incl. migration 011 (PM2 HTTPS be:3001/fe:4173, 11/11 migrations, 4/4 + 6/6 notes smoke, prod untouched) | ✅ Done |
+| T-335 | Monitor Agent: Staging health check — Deploy Verified = Yes (Staging); migration 011 confirmed; notes round-trip on staging | ✅ Done |
+| T-336 | User Agent: Staging walkthrough — 15 feedback entries (FB-276–FB-290), 0 Bugs, 0 Critical/Major | ✅ Done |
+
+**Tasks Carried Over:** None. All 8 Sprint 43 tasks completed and verified Done.
+
+**Key Decisions:**
+
+- **ADR-007** (Backend Engineer): Migration 011 adds a nullable `notes TEXT` column (max 2000 chars) to `activities` — additive, backward-compatible (existing rows → NULL, no rewrite), reversible (`down` drops the column). Manager pre-approved in the Sprint 43 plan.
+- **ADR-008** (Backend Engineer): In-range patch bumps to resolve production-runtime advisories; no `--force`, no major-version/API-surface changes. Auth/CORS/rate-limit/error middleware verified post-bump.
+- **`vitest` advisory (GHSA-5xrq-8626-4rwp) deferred to Sprint 44.** Surfaced on the 2026-06-02 QA re-scan in both apps. Non-blocking: dev-only devDependency, reachable only via `vitest --ui`, absent from every deployed artifact; production-runtime chain remains 0 vulns. Slotted as a Sprint 44 maintenance task rather than invalidating the QA gate mid-pipeline.
+
+**Feedback Summary (FB-276–FB-290, 15 entries):**
+
+| Entries | Category | Severity | Disposition |
+|---------|----------|----------|-------------|
+| FB-276, FB-277, FB-278, FB-280, FB-281, FB-283, FB-284, FB-285, FB-287, FB-288, FB-289 | Positive | — | Acknowledged — confirm B-036 round-trip, clear/omit/whitespace semantics, length/type validation, unicode, Spec 35 conformance, print, regression-clean. |
+| FB-279, FB-282, FB-286 | Security | — | Acknowledged — HTML/script stripped on write (stored-XSS defense), SQLi stored as literal text (table intact), auth guard + no cross-tenant leak. |
+| FB-290 | UX Issue | Suggestion | Acknowledged — over-limit notes 400 copy differs from the api-contracts.md example (cosmetic doc-vs-impl mismatch, no user impact). Slotted as a trivial doc-alignment task in Sprint 44 (T-339). |
+
+**All 15 'New' entries triaged → Acknowledged. Zero 'New' entries remaining.**
+
+---
+
+**What Went Well:**
+
+- **Clean, zero-rework sprint.** All 8 tasks completed, first-pass approval on both code-review passes (CR-43, CR-43B). No tasks bounced back.
+- **Acted on the Sprint 42 retro.** Bundled the long-pending dependency security debt (T-329) alongside the feature track, using the slack flagged last sprint.
+- **Strong two-layer security on the new field.** Backend `sanitizeHtml` strip on write + frontend escaped render (no `dangerouslySetInnerHTML`), independently verified by QA and User Agent against XSS, SQLi, type-confusion, and over-limit payloads.
+- **Test baseline grew.** 1059 → 1076 tests (BE 531 + FE 545), zero regressions.
+- **Disciplined migration handling.** Migration 011 verified reversible on disk and confirmed 11/11 applied on staging before sign-off.
+
+**What Could Improve:**
+
+- **Deploy re-verification churn.** A Backend Engineer tool-execution blackout and PM2 staging downtime forced re-invocations (T-334 re-deploy, T-329/T-331 re-verification). Outcomes were clean, but the pipeline spent extra cycles re-confirming already-committed state.
+- **Doc-vs-implementation copy drift (FB-290).** The api-contracts.md 400-message example diverged from the live string. Minor, but a reminder to update the contract example and the implementation string together.
+- **Production promotion deferred.** Correct call (schema migration warrants a staging-bake), but it leaves Sprint 43's value un-shipped to users until Sprint 44 — the primary Sprint 44 driver.
+
+**Technical Debt Noted:**
+
+*New this sprint:*
+- ⚠️ **`vitest` dev-tooling advisory (GHSA-5xrq-8626-4rwp)** in both `backend/` and `frontend/`. Non-blocking (dev-only, absent from deployed artifacts). **Tasked to Sprint 44 (T-340).**
+- ⚠️ **FB-290 contract copy mismatch** — api-contracts.md notes-over-limit 400 example reads "Notes must be 2000 characters or fewer" but the API returns "Notes must not exceed 2000 characters". **Tasked to Sprint 44 (T-339, trivial doc fix).**
+
+*Ongoing from prior sprints:*
+- ⚠️ B-020: Rate limiting uses in-memory MemoryStore — no Redis persistence.
+- ⚠️ B-024: Auth rate limit is IP-only — no per-account limiting (depends on B-020).
+- ⚠️ FB-189/B-041: STAY checkout time not shown on calendar end-day pills (Minor UX, Acknowledged — backlog).
+- ⚠️ FB-275: Trailing punctuation glued to a URL is included in the href (Suggestion — documented §34.2 tradeoff).
+- ⚠️ B-033: ILIKE wildcard escaping (P3 — no security impact, user-scoped).
+- ⚠️ FB-170: SPA has no SSR fallback for SEO/no-JS users (Suggestion — low priority).
+- ⚠️ FB-190: No dark/light mode toggle (Suggestion — requires theme system).
+
+---
+
+*Sprint #43 planned 2026-05-30, executed and closed 2026-06-03.*
+
+---
+
 *Add new sprint summaries above this line, newest first.*

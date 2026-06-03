@@ -8638,7 +8638,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `POST /api/v1/trips/:id/activities` with `notes:"Reservation #FW-22841. Dress code: smart casual. Bring passport."` → `201`, `notes` returned verbatim. `GET (list)` returns the same value. `PATCH` with `notes:"UPDATED: Confirmation ABC123"` → `200`, updated value returned. Core B-036 success criterion met end-to-end on staging. |
 | Related Task | T-336 |
 
@@ -8652,7 +8652,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | After setting a note, `PATCH {"notes":null}` → returned `notes: null`. Separately, `PATCH {"notes":""}` (empty string) → returned `notes: null`. Matches the contract's clear-field semantics (§Field spec: explicit `null` or `""` → stored null). Confirms the frontend's "clear and save" flow will persist correctly. |
 | Related Task | T-336 |
 
@@ -8666,7 +8666,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `POST` with no `notes` key → `201`, `notes: null`. Existing clients that never send notes are unaffected, and pre-migration activities read back as `notes: null`. Optional-everywhere behavior holds. |
 | Related Task | T-336 |
 
@@ -8680,7 +8680,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Security |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `POST notes:"Bring <script>alert(1)</script> passport <img src=x onerror=alert(2)> <b>bold</b>"` → stored/returned as `"Bring alert(1) passport  bold"` — all tags removed, no markup survives. PATCH path identical: `"safe <script>evil()</script> text"` → `"safe evil() text"`. Layer-1 of the two-layer defense (backend `sanitizeHtml`) confirmed live on staging. |
 | Related Task | T-336 |
 
@@ -8694,7 +8694,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `POST` with exactly 2000 chars → `201`, stored length 2000. `POST` with 2001 chars → `400 VALIDATION_ERROR`, `fields.notes`. PATCH with 2001 chars → `400`. No 5xx. Validation guard works on both write paths. |
 | Related Task | T-336 |
 
@@ -8708,7 +8708,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `POST notes:12345` → `400 VALIDATION_ERROR`, `fields.notes: "notes must be a string"`. `POST notes:{"a":1}` → same `400`. Type coercion is rejected cleanly with a structured error; no server error, no silent coercion. |
 | Related Task | T-336 |
 
@@ -8722,7 +8722,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Security |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `POST notes:"'; DROP TABLE activities;-- "` → `201`, stored as literal `"'; DROP TABLE activities;--"` (trailing whitespace trimmed). Subsequent `GET` of the activities list → `200` with the table fully intact. Parameterized queries hold for the new column. |
 | Related Task | T-336 |
 
@@ -8736,7 +8736,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `POST notes:"     "` (5 spaces) → `201`, `notes: null`. This is exactly what the frontend's empty-handling relies on (`null`/`""`/whitespace all treated as "no notes"), so no empty notes block will render on Trip Details. Trim-on-write confirmed. |
 | Related Task | T-336 |
 
@@ -8750,7 +8750,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Set `notes:"KEEP ME"`, then `PATCH {"name":"Renamed Only"}` (notes omitted) → `200`, name updated, `notes` still `"KEEP ME"`. Confirms omitted-field-unchanged semantics — the frontend's notes-only-edit change-detection and partial updates are both safe. PATCH also strips HTML and rejects >2000 chars (covered in FB-279/FB-280). |
 | Related Task | T-336 |
 
@@ -8764,7 +8764,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `POST notes:"Line1\nLine2\nコード: ABC-123 🎫 café"` → stored/returned with newlines and all characters intact. Pairs with the frontend `white-space: pre-wrap` so multi-line notes render correctly on Trip Details and in print. No mojibake, no newline collapsing. |
 | Related Task | T-336 |
 
@@ -8778,7 +8778,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Security |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `GET /trips` with no token → `401`; garbage token → `401`; malformed `Authorization: NotBearer xyz` header → `401`. `POST .../trips/<other-uuid>/activities` returns a `400 VALIDATION_ERROR` ("Invalid ID format") with no activity created and no data returned — no cross-tenant leak. Note: a syntactically-plausible UUID (`11111111-2222-3333-4444-555555555555`) returns `400 "Invalid ID format"` rather than `404` because the validator enforces strict RFC-4122 version/variant bits; both responses are safe (no leak), but the 400-vs-404 distinction is a pre-existing behavior worth awareness, not a Sprint 43 regression. |
 | Related Task | T-336 |
 
@@ -8792,7 +8792,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `TripDetailsPage.jsx:237-242` renders the notes block only when `activity.notes && activity.notes.trim()`, as escaped text (`{activity.notes}`) with a `NOTES` micro-label and `aria-label="Notes"` — no `dangerouslySetInnerHTML` anywhere in `src/` (Layer-2 of the XSS defense). `ActivitiesEditPage.jsx` implements `NOTES_MAX=2000` / `NOTES_WARN=1900`, `maxLength`, a focus/content-gated char counter with `aria-live` at thresholds, `aria-describedby` + `label htmlFor`, change-detection (`r.notes !== (orig.notes || '')`), and a save payload of `(row.notes||'').trim() || null`. The placeholder string ships in the deployed bundle (`ActivitiesEditPage-CXKRLcNl.js`). Deployed FE hash `index-CfcZnezY.js` matches Deploy/Monitor records. |
 | Related Task | T-336 |
 
@@ -8806,7 +8806,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | `print.css` (§35.4) restyles `activityNotesText` for print (10pt, `pre-wrap`, `overflow-wrap: anywhere`), hides the screen-only `NOTES` micro-label, and adds a bold `"Notes: "` prefix via `::before` (line 264). Because the component omits the element when notes is empty, no print-specific hiding is needed. `PrintCalendarSummary.jsx` contains no `notes` reference — correctly excluded per §35.4 to preserve the at-a-glance summary. |
 | Related Task | T-336 |
 
@@ -8820,7 +8820,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | Positive |
 | Severity | — |
-| Status | New |
+| Status | Acknowledged |
 | Details | Trip detail, `flights`, `stays`, `land-travel` list endpoints all `200` with auth. Activity `POST` → `201`, `DELETE` → `204`. The additive `notes` column did not disturb activity ordering or other fields. Test hygiene: 12 activities created during adversarial testing were all deleted (12×`204`); "Sprint 30 Test Trip" returned to its original 0-activity state. |
 | Related Task | T-336 |
 
@@ -8834,7 +8834,7 @@ button: "please wait…" [disabled]
 | Sprint | 43 |
 | Category | UX Issue |
 | Severity | Suggestion |
-| Status | New |
+| Status | Acknowledged |
 | Details | `api-contracts.md` documents the 400 body as `fields.notes: "Notes must be 2000 characters or fewer"`, but the live API returns `"Notes must not exceed 2000 characters"`. Functionally equivalent and clear to a user; purely a doc-vs-implementation copy mismatch. No user-facing impact (the FE `maxLength={2000}` prevents reaching the server limit in normal use). Suggestion: align the contract example to the implemented string (or vice-versa) for consistency. Not a blocker. |
 | Related Task | T-336 |
 

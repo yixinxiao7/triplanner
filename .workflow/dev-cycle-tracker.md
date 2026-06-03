@@ -3676,3 +3676,37 @@ Findings:
 
 ---
 
+## Sprint #44 — Production Promotion of Sprint 43 (Notes B-036 + Dependency Hardening) + Maintenance
+
+**Sprint Goal:** Promote the verified Sprint 43 build (activity notes B-036, migration 011) to **production**, plus two maintenance items flagged during Sprint 43: the `vitest` dev-tooling advisory bump (T-340) and the FB-290 contract-copy alignment (T-339). No net-new features; no new schema changes (migration 011 created/ADR'd in Sprint 43). Running migration 011 on the production DB is Manager-pre-approved in the Sprint 44 plan.
+
+### Phase 1 — Maintenance Fixes (independent, start immediately in parallel)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-339 | Backend Engineer: FB-290 — align the notes over-limit 400 error copy between api-contracts.md and the live API. Prefer the implemented string ("Notes must not exceed 2000 characters"); if changing code instead, update the test assertion. | Documentation | Backend Engineer | Backlog | P3 | S | 44 | — | FB-290 (Sprint 43). Cosmetic doc-vs-impl mismatch, no user impact. Doc-only preferred. Acceptance: contract example == live string, no contradictory copy, tests green if code touched. |
+| T-340 | Backend Engineer: Bump `vitest` to ≥4.1.0 in both backend/ and frontend/ (GHSA-5xrq-8626-4rwp), re-run full suites (0 regressions), re-run `npm audit` (advisory cleared, prod-runtime still 0), record ADR. | Refactor | Backend Engineer | Backlog | P2 | S | 44 | — | Sprint 43 CR-43B / QA T-333 follow-up. Dev-only devDependency, absent from deployed artifacts. Do NOT bump majors or any deployed-artifact dependency without flagging Manager. |
+
+### Phase 2 — QA Gate (after Phase 1)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-341 | QA Engineer: Integration testing + security checklist for Sprint 44. Full suite (1076+, 0 regressions) post vitest bump; `npm audit` re-scan (advisory cleared, prod-runtime 0); FB-290 copy verified; production-readiness pre-check of Sprint 43 code (B-036 round-trip, two-layer XSS, >2000→400, migration 011 reversible); config consistency; regression on activity CRUD + calendar. | Code Review | QA Engineer | Backlog | P1 | M | 44 | T-339, T-340 | Clears the Sprint 43 build for production promotion. |
+
+### Phase 3 — Production Deployment (after QA)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-337 | Deploy Engineer: Production deployment of Sprint 43 (notes B-036 + dependency hardening) incl. **migration 011 on the PRODUCTION DB**. Rebuild FE+BE, run full suite (0 regressions), run `npm run migrate` on prod (11/11, 0 pending; verify `activities.notes = text` nullable), deploy via PM2 (HTTPS be:3002/fe:4174), run prod smoke tests incl. notes round-trip. Staging untouched/healthy. Any infra/config change → ADR in-task (rules.md #4). | Infrastructure | Deploy Engineer | Backlog | P1 | M | 44 | T-341 | Migration 011 on prod is Manager-pre-approved in the Sprint 44 plan. Sprint 43 was staging-only; this is the promotion. |
+
+### Phase 4 — Verify (sequential)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-338 | Monitor Agent: Production health check. Full protocol (health, auth, key endpoints, no 5xx, PM2 stability, config consistency). Confirm migration 011 applied on prod (`migrate:status` 11/11, 0 pending). Verify notes round-trip on production. Record **Deploy Verified = Yes (Production)**. | Infrastructure | Monitor Agent | Backlog | P1 | S | 44 | T-337 | rules.md #15 — deploy not *complete* until Monitor verifies. |
+| T-342 | User Agent: Production walkthrough. Test activity notes on production (add/edit/clear, long, HTML/script inert, print), regression on activity CRUD + calendar + flights/stays/land-travel + auth, submit structured feedback to feedback-log.md. | Documentation | User Agent | Backlog | P2 | M | 44 | T-338 | Acceptance: notes verified on production, no Critical/Major regressions, feedback submitted → Manager triage → Sprint 45. |
+
+**Dependency chain:** `T-339 ‖ T-340` → `T-341` → `T-337` → `T-338` → `T-342`.
+
+---
+
