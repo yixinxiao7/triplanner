@@ -4,6 +4,84 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## Monitor Agent → User Agent: T-335 RE-VERIFIED — Staging Health Confirmed, Ready for Walkthrough (Sprint 43) (2026-06-03)
+
+**Date:** 2026-06-03
+**Sprint:** 43
+**From:** Monitor Agent (T-335, orchestrator re-invocation)
+**To:** User Agent (T-336)
+**Status:** ✅ Complete — **Deploy Verified = Yes (Staging).** T-336 unblocked. Nothing regressed since the 2026-06-02 check.
+
+### Health Check Summary — ALL PASS
+
+| Check | Result |
+|-------|--------|
+| Health endpoint (`GET https://localhost:3001/api/v1/health`) | ✅ **200** `{"status":"ok"}` |
+| Auth guard (no token → `/trips`) | ✅ **401** |
+| Auth login (`POST /api/v1/auth/login`, `test@triplanner.local`) | ✅ **200**, `data.access_token` acquired |
+| Trips / Activities / Flights / Stays / Land-travel | ✅ **200**, shapes match contract |
+| Database connectivity | ✅ authenticated reads return real rows (stays n=1) |
+| Migration 011 (`migrate:status`, staging) | ✅ **11/11, 0 pending** |
+| No 5xx in logs | ✅ `backend-error.log` clean |
+| PM2 stability | ✅ backend + frontend online, **0 restarts**, ~19.5h uptime |
+| Frontend SPA (`https://localhost:4173`) | ✅ **200** |
+| **Config consistency** (port/protocol/CORS/certs/docker) | ✅ 0 mismatches — staging: be 3001 HTTPS, fe 4173 HTTPS, CORS `https://localhost:4173`, certs present; dev profile + docker-compose also internally consistent |
+| **B-036 notes round-trip** (staging) | ✅ create→GET persists, HTML stripped on write, PATCH `null` clears, >2000 chars → 400, DELETE 204 |
+
+### What User Agent Should Verify (T-336)
+
+1. **B-036 in-browser (focus):** Open "Sprint 30 Test Trip" → Trip Details. Add/edit an activity, enter `notes` via the edit-form textarea — confirm it saves, persists on reload, and **displays under the activity** (and in print view).
+2. **Security:** a `<script>`/HTML payload in notes must render as **inert escaped text** (no script exec) — backend strips on write, FE renders escaped.
+3. **Edit-form UX:** char counter (amber ≥1900 / red @2000), `maxLength` 2000; clearing notes + save removes the display block.
+4. **Empty states:** activities with no notes look exactly as before.
+5. **Regression:** trip list/detail, activity CRUD, flights/stays/land-travel, calendar.
+6. **Credentials:** `test@triplanner.local` / `TestPass123!`. Staging frontend `https://localhost:4173` (HTTPS, self-signed cert — accept the warning).
+
+Full record: `qa-build-log.md` → "Sprint #43 — Monitor Agent — Post-Deploy Health Check (Staging, T-335 re-verification)".
+
+*Monitor Agent — T-335 (re-verification) — Sprint 43 — 2026-06-03*
+
+---
+
+## Monitor Agent → User Agent: T-335 COMPLETE — Staging Health Verified, Ready for Walkthrough (Sprint 43) (2026-06-02)
+
+**Date:** 2026-06-02
+**Sprint:** 43
+**From:** Monitor Agent (T-335)
+**To:** User Agent (T-336)
+**Status:** ✅ Complete — **Deploy Verified = Yes (Staging).** T-336 unblocked.
+
+### Health Check Summary — ALL PASS
+
+| Check | Result |
+|-------|--------|
+| Health endpoint (`GET https://localhost:3001/api/v1/health`) | ✅ **200** `{"status":"ok"}` |
+| Auth guard (no token / bad creds) | ✅ **401** both |
+| Auth login (`POST /api/v1/auth/login`, `test@triplanner.local`) | ✅ **200**, `data.access_token` acquired |
+| Trips / Activities / Flights / Stays / Land-travel | ✅ **200**, shapes match contract (`notes` present on activities) |
+| Database connectivity | ✅ authenticated reads return real rows |
+| Frontend SPA (`https://localhost:4173`) | ✅ **200** |
+| **Migration 011** | ✅ `migrate:status` (staging) = **11/11, 0 pending** |
+| No 5xx in logs | ✅ clean for 2026-06-02 |
+| PM2 stability | ✅ backend + frontend online, 0 restarts, 3.5+ min uptime |
+| **Config consistency** (port/protocol/CORS/certs/docker) | ✅ 0 mismatches — staging: be 3001 HTTPS, fe 4173 HTTPS, CORS `https://localhost:4173` |
+| **B-036 notes round-trip** (staging) | ✅ create→GET persists, HTML stripped on write, PATCH `null` clears, >2000 chars → 400, DELETE 204 |
+
+### What User Agent Should Verify (T-336)
+
+1. **B-036 in-browser (focus):** Open "Sprint 30 Test Trip" → Trip Details. Add/edit an activity and enter `notes` via the edit-form textarea — confirm it saves, persists on reload, and **displays under the activity** on Trip Details (and in print view).
+2. **Security:** A `<script>`/HTML payload in notes must render as **inert escaped text** (no script exec, no live element) — backend strips on write, FE renders escaped.
+3. **Edit-form UX:** char counter (amber ≥1900 / red @2000), `maxLength` 2000; clearing notes + save removes the display block.
+4. **Empty states:** activities with no notes look exactly as before — no leftover whitespace/label.
+5. **Regression:** trip list/detail, activity CRUD, flights/stays/land-travel, calendar all still work.
+6. **Credentials:** `test@triplanner.local` / `TestPass123!`. Staging frontend `https://localhost:4173` (HTTPS, self-signed cert — accept the warning).
+
+Full record: `qa-build-log.md` → "Sprint #43 — Monitor Agent — Post-Deploy Health Check (Staging, T-335)".
+
+*Monitor Agent — T-335 — Sprint 43 — 2026-06-02*
+
+---
+
 ## Deploy Engineer → Monitor Agent: T-334 RE-DEPLOYED — Sprint 43 Staging Live (clean rebuild + migration 011), Ready for Health Check (2026-06-02)
 
 **Date:** 2026-06-02

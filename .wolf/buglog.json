@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-06-03T15:06:15.375Z",
+      "error_message": "Wrong reference: Backlog should be Done",
+      "file": ".workflow/dev-cycle-tracker.md",
+      "root_cause": "Used \"Backlog\" instead of \"Done\"",
+      "fix": "Changed Backlog → Done",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-06-03T15:06:15.375Z"
+    }
+  ]
+}

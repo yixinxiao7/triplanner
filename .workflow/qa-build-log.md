@@ -4,6 +4,67 @@ Tracks test runs, build results, and post-deploy health checks per sprint. Maint
 
 ---
 
+## Sprint #43 — Monitor Agent — Post-Deploy Health Check (Staging, T-335) — 2026-06-02
+
+**Date:** 2026-06-02T19:30Z
+**Sprint:** 43
+**Task:** T-335 (Monitor Agent)
+**Environment:** **Staging** (PM2; production untouched — Sprint 44)
+**Test Type:** Post-Deploy Health Check + Config Consistency
+**Token:** acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT `/auth/register`, per T-226 rate-limit rule)
+**Deploy Verified (Staging):** ✅ **YES**
+
+### Config Consistency — ✅ PASS (0 mismatches)
+
+The deployed staging profile is driven by `backend/.env.staging` (NODE_ENV=staging); `backend/.env` is the local-dev profile. Both profiles validated and internally consistent.
+
+| Check | Local-dev (`backend/.env`) | Staging (`backend/.env.staging`) | Result |
+|-------|----------------------------|----------------------------------|--------|
+| Port match | PORT=3000 ↔ vite proxy default `3000` | PORT=3001 ↔ vite proxy `BACKEND_PORT=3001` → `localhost:3001` | ✅ |
+| Protocol match | No SSL set → HTTP ↔ vite proxy `http://` | `SSL_KEY_PATH`+`SSL_CERT_PATH` set → HTTPS ↔ vite proxy `BACKEND_SSL=true` → `https://` (secure:false for self-signed) | ✅ |
+| CORS match | `CORS_ORIGIN=http://localhost:5173` ↔ vite dev server port 5173 | `CORS_ORIGIN=https://localhost:4173` ↔ vite preview port 4173 | ✅ |
+| TLS certs exist | n/a | `infra/certs/localhost-key.pem` + `localhost.pem` present; backend serves HTTPS 200 → certs valid | ✅ |
+| Docker port match | docker-compose backend `PORT: 3000` ↔ healthcheck `http://localhost:3000` (internal); nginx frontend proxies `/api` | consistent | ✅ (Docker unused on host — PM2 path; mapping internally consistent) |
+
+### Health Checks — ✅ ALL PASS
+
+| Check | Result | Detail |
+|-------|--------|--------|
+| App responds | ✅ | `GET https://localhost:3001/api/v1/health` → **200** `{"status":"ok"}` |
+| Auth guard (no token) | ✅ | `GET /trips` (no auth) → **401** |
+| Auth guard (bad creds) | ✅ | `POST /auth/login` invalid → **401** |
+| Auth login (seeded user) | ✅ | `POST /auth/login` `test@triplanner.local` → **200**, `data.access_token` returned |
+| Database connectivity | ✅ | Authenticated reads return real rows (Sprint 30 Test Trip) → DB connected |
+| GET /trips | ✅ | **200**, shape `{data:[...],pagination:{...}}` matches contract |
+| GET /trips/:id/activities | ✅ | **200**, `notes` field present in resource shape (per Sprint 43 contract) |
+| GET /trips/:id/flights | ✅ | **200** |
+| GET /trips/:id/stays | ✅ | **200** |
+| GET /trips/:id/land-travel | ✅ | **200** |
+| Frontend SPA | ✅ | `https://localhost:4173` → **200** |
+| **Migration 011** | ✅ | `migrate:status` (staging) = **11/11 Completed, 0 Pending** (`20260530_011_add_activity_notes.js` live) |
+| No 5xx in logs | ✅ | No error/5xx entries dated 2026-06-02 in `pm2 logs triplanner-backend` (pre-existing stale entries ignored) |
+| PM2 stability | ✅ | `triplanner-backend` + `triplanner-frontend` both **online, 0 restarts**, uptime 3.5+ min |
+
+### Sprint 43 Feature Verification — Activity Notes (B-036) round-trip — ✅ PASS
+
+| Step | Result |
+|------|--------|
+| POST activity with `notes: "Conf #ABC123 <script>alert(1)</script> smart casual"` | **201** — stored as `"Conf #ABC123 alert(1) smart casual"` (HTML **stripped on write**) |
+| GET back | notes persist identically — `'Conf #ABC123 alert(1) smart casual'` |
+| PATCH `notes: null` | **200** → notes cleared to `null` |
+| POST `notes` >2000 chars | **400** (VALIDATION_ERROR) |
+| Cleanup DELETE | **204** — test activity removed, trip returned to 0 activities |
+
+### Result: **PASS** — Deploy Verified = **Yes (Staging)**
+
+All health, config-consistency, migration, and Sprint 43 feature checks pass. No 5xx, no config mismatches, PM2 stable. T-336 (User Agent staging walkthrough) is unblocked.
+
+**Notes:** Carry-forward `vitest <4.1.0` dev-tooling advisory (GHSA-5xrq-8626-4rwp) is a devDependency never in the deployed artifact — not a health/runtime concern; correctly slotted for Sprint 44.
+
+*Monitor Agent — T-335 — Sprint 43 — 2026-06-02*
+
+---
+
 ## Sprint #43 — Deploy Engineer — Staging Deployment (orchestrator re-invocation, T-334) — 2026-06-02
 
 **Date:** 2026-06-02
@@ -792,3 +853,61 @@ Verified against the dev DB (`development` env):
 **All Sprint 43 in-scope tasks (T-329, T-331, T-332) verified → moved to Done. Cleared for staging deploy (T-334).**
 
 *QA Engineer — T-333 — Sprint 43 — 2026-05-30*
+
+---
+
+## Sprint #43 — Monitor Agent — Post-Deploy Health Check (Staging, T-335 re-verification)
+
+**Test Type:** Post-Deploy Health Check + Config Consistency
+**Environment:** Staging (PM2 — Docker unavailable on host)
+**Timestamp:** 2026-06-03 (orchestrator re-invocation of T-335)
+**Token:** acquired via `POST /api/v1/auth/login` with `test@triplanner.local` (NOT /auth/register)
+**Backend:** https://localhost:3001  | **Frontend:** https://localhost:4173
+**Result:** ✅ **PASS — Deploy Verified = Yes (Staging)**
+
+### Config Consistency — ✅ PASS (0 mismatches)
+
+Validated both the **dev** profile (`backend/.env`) and the **deployed staging** profile (`backend/.env.staging`), plus `infra/docker-compose.yml`.
+
+| Check | Dev profile (`.env`) | Staging profile (`.env.staging` — deployed) | Result |
+|-------|----------------------|---------------------------------------------|--------|
+| **Port match** | `PORT=3000` ↔ Vite dev proxy default `localhost:3000` | `PORT=3001` ↔ Vite staging proxy (`BACKEND_PORT=3001`) `localhost:3001` | ✅ |
+| **Protocol match** | SSL paths commented → HTTP; Vite dev proxy `http://` | `SSL_KEY_PATH`/`SSL_CERT_PATH` set → HTTPS; Vite preview HTTPS + staging proxy `https://` (`BACKEND_SSL=true`) | ✅ |
+| **Cert files exist** | n/a (no SSL in dev) | `infra/certs/localhost.pem` + `localhost-key.pem` present (Mar 6) — backend serving HTTPS confirms valid | ✅ |
+| **CORS match** | `CORS_ORIGIN=http://localhost:5173` = Vite dev server `:5173` | `CORS_ORIGIN=https://localhost:4173` = Vite preview `:4173` | ✅ |
+| **Docker port match** | — | `docker-compose.yml`: backend `PORT: 3000` = healthcheck `localhost:3000` = nginx `proxy_pass http://backend:3000`; frontend exposes `80:80`. Internally consistent (not used this deploy — PM2 path). | ✅ |
+
+### Health Checks — ✅ ALL PASS
+
+| Check | Result |
+|-------|--------|
+| App responds — `GET https://localhost:3001/api/v1/health` | ✅ **200** `{"status":"ok"}` |
+| Auth guard — `GET /trips` without token | ✅ **401** |
+| Auth login — `POST /api/v1/auth/login` (`test@triplanner.local`) | ✅ **200**, `data.access_token` acquired |
+| `GET /trips` (auth) | ✅ **200**, `data` array |
+| `GET /trips/:id/activities` | ✅ **200**, list (n=0) |
+| `GET /trips/:id/flights` | ✅ **200**, list (n=0) |
+| `GET /trips/:id/stays` | ✅ **200**, list (n=1 — real DB row) |
+| `GET /trips/:id/land-travel` | ✅ **200**, list (n=0) |
+| Database connectivity | ✅ authenticated reads return real rows (stays n=1) |
+| Migration 011 — `migrate:status` (NODE_ENV=staging) | ✅ **11/11 Completed, 0 Pending** (`20260530_011_add_activity_notes.js`) |
+| No 5xx errors in logs | ✅ `backend-error.log` clean (no entries) |
+| PM2 stability | ✅ `triplanner-backend` + `triplanner-frontend` online, **0 restarts**, ~19.5h uptime |
+| Frontend SPA — `https://localhost:4173/` | ✅ **200** (657 B index) |
+| **B-036 notes round-trip** (staging) | ✅ see below |
+
+### B-036 Activity Notes — End-to-End Verification (staging)
+
+- **Create** `POST .../activities` with `notes:"Conf #XYZ789 <script>alert(1)</script> window seat"` → **201**; stored/returned `"Conf #XYZ789 alert(1) window seat"` (**HTML stripped on write**).
+- **GET-back** → notes persist identically.
+- **Oversize** PATCH `notes` >2000 chars → **400 VALIDATION_ERROR**.
+- **Clear** PATCH `notes:null` → **200**, notes = `null`.
+- **Cleanup** DELETE → **204**. (Validation guard also confirmed: POST with wrong field `date` instead of `activity_date` → correct **400** `activity_date is required`.)
+
+### Notes
+- Dev backend (`:3000`) is **not running** — expected; Sprint 43 is staging-only (production promotion deferred to Sprint 44). Production PM2 procs (`triplanner-prod-*`) untouched and online.
+- This is an orchestrator re-invocation of T-335; the prior 2026-06-02 health check (same result) stands. Nothing regressed.
+
+**Deploy Verified: Yes** → T-336 (User Agent staging walkthrough) unblocked.
+
+*Monitor Agent — T-335 (re-verification) — Sprint 43 — 2026-06-03*

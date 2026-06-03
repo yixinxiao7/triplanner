@@ -1,0 +1,20 @@
+{
+  "last_heartbeat": "2026-06-03T14:43:12.767Z",
+  "engine_status": "running",
+  "execution_log": [
+    {
+      "task_id": "anatomy-rescan",
+      "status": "success",
+      "timestamp": "2026-06-02T22:00:00.304Z",
+      "duration_ms": 166
+    },
+    {
+      "task_id": "memory-consolidation",
+      "status": "success",
+      "timestamp": "2026-06-03T06:00:00.777Z",
+      "duration_ms": 8
+    }
+  ],
+  "dead_letter_queue": [],
+  "upcoming": []
+}
