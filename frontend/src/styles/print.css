@@ -237,6 +237,34 @@
     text-decoration: underline !important;  /* keep underline to signal it was a link */
   }
 
+  /* ── 11b. Activity Notes (Spec 35 §35.4) ──
+     Same DOM as screen; restyle for black-ink print as a "Notes: ..." line.
+     Component omits the block entirely when notes is empty — no print-hiding needed. */
+  [class*="activityNotes_"] {
+    margin-top: 4pt !important;
+    border-left: none !important;
+    padding-left: 0 !important;
+    page-break-inside: avoid;
+  }
+
+  /* Hide the screen-only uppercase NOTES micro-label; print uses a "Notes:" prefix instead. */
+  [class*="activityNotesLabel"] {
+    display: none !important;
+  }
+
+  [class*="activityNotesText"] {
+    display: block !important;
+    color: #333 !important;
+    font-size: 10pt !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  [class*="activityNotesText"]::before {
+    content: "Notes: ";
+    font-weight: 600;
+  }
+
   /* ── 12. Timezone abbreviation badges ── */
   [class*="tzAbbr"] {
     color: #555 !important;

@@ -72,6 +72,7 @@ const mockActivity = {
   activity_date: '2026-08-08',
   start_time: '09:00:00',
   end_time: '14:00:00',
+  notes: null,
   created_at: '2026-02-24T12:00:00.000Z',
   updated_at: '2026-02-24T12:00:00.000Z',
 };
@@ -191,6 +192,144 @@ describe('POST /api/v1/trips/:tripId/activities', () => {
     }, AUTH);
 
     expect(res.status).toBe(403);
+  });
+});
+
+// ---- B-036 / T-331: Activity notes field (Sprint 43) ----
+describe('Activity notes (B-036 / T-331)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tripModel.findTripById.mockResolvedValue(mockTrip);
+  });
+
+  describe('POST notes', () => {
+    it('happy path: persists notes and returns them on the created activity', async () => {
+      activityModel.createActivity.mockImplementation(async (data) => ({
+        ...mockActivity,
+        notes: data.notes,
+      }));
+
+      const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/activities`, {
+        name: 'Dinner reservation',
+        activity_date: '2026-08-08',
+        notes: 'Confirmation #ABC123. Smart casual dress code.',
+      }, AUTH);
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.notes).toBe('Confirmation #ABC123. Smart casual dress code.');
+      expect(activityModel.createActivity).toHaveBeenCalledWith(
+        expect.objectContaining({ notes: 'Confirmation #ABC123. Smart casual dress code.' }),
+      );
+    });
+
+    it('strips HTML tags from notes on write (sanitize)', async () => {
+      activityModel.createActivity.mockImplementation(async (data) => ({
+        ...mockActivity,
+        notes: data.notes,
+      }));
+
+      const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/activities`, {
+        name: 'Museum',
+        activity_date: '2026-08-08',
+        notes: 'Bring <script>alert(1)</script>passport',
+      }, AUTH);
+
+      expect(res.status).toBe(201);
+      const passed = activityModel.createActivity.mock.calls[0][0].notes;
+      // sanitizeHtml strips the tags but preserves inner text content — the
+      // security property is that no executable HTML markup survives.
+      expect(passed).not.toMatch(/<\/?script/i);
+      expect(passed).not.toMatch(/[<>]/);
+      expect(passed).toBe('Bring alert(1)passport');
+    });
+
+    it('passes notes = null when omitted', async () => {
+      activityModel.createActivity.mockResolvedValue(mockActivity);
+
+      const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/activities`, {
+        name: 'Free day',
+        activity_date: '2026-08-08',
+      }, AUTH);
+
+      expect(res.status).toBe(201);
+      expect(activityModel.createActivity).toHaveBeenCalledWith(
+        expect.objectContaining({ notes: null }),
+      );
+    });
+
+    it('error path: returns 400 when notes exceeds 2000 chars', async () => {
+      const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/activities`, {
+        name: 'Long note',
+        activity_date: '2026-08-08',
+        notes: 'x'.repeat(2001),
+      }, AUTH);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.fields.notes).toMatch(/2000/);
+      expect(activityModel.createActivity).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('PATCH notes', () => {
+    beforeEach(() => {
+      activityModel.findActivityById.mockResolvedValue(mockActivity);
+    });
+
+    it('happy path: updates notes', async () => {
+      activityModel.updateActivity.mockImplementation(async (id, updates) => ({
+        ...mockActivity,
+        notes: updates.notes,
+      }));
+
+      const res = await request(buildApp(), 'PATCH', `/api/v1/trips/${TRIP_UUID}/activities/${ACTIVITY_UUID}`, {
+        notes: 'Updated: gate B12, boarding 8:40',
+      }, AUTH);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.notes).toBe('Updated: gate B12, boarding 8:40');
+      expect(activityModel.updateActivity).toHaveBeenCalledWith(
+        ACTIVITY_UUID,
+        expect.objectContaining({ notes: 'Updated: gate B12, boarding 8:40' }),
+      );
+    });
+
+    it('clears notes when set to null', async () => {
+      activityModel.updateActivity.mockResolvedValue({ ...mockActivity, notes: null });
+
+      const res = await request(buildApp(), 'PATCH', `/api/v1/trips/${TRIP_UUID}/activities/${ACTIVITY_UUID}`, {
+        notes: null,
+      }, AUTH);
+
+      expect(res.status).toBe(200);
+      expect(activityModel.updateActivity).toHaveBeenCalledWith(
+        ACTIVITY_UUID,
+        expect.objectContaining({ notes: null }),
+      );
+    });
+
+    it('normalizes all-HTML notes (stripped to empty) to null', async () => {
+      activityModel.updateActivity.mockResolvedValue({ ...mockActivity, notes: null });
+
+      const res = await request(buildApp(), 'PATCH', `/api/v1/trips/${TRIP_UUID}/activities/${ACTIVITY_UUID}`, {
+        notes: '<b></b>',
+      }, AUTH);
+
+      expect(res.status).toBe(200);
+      expect(activityModel.updateActivity).toHaveBeenCalledWith(
+        ACTIVITY_UUID,
+        expect.objectContaining({ notes: null }),
+      );
+    });
+
+    it('error path: returns 400 when notes exceeds 2000 chars', async () => {
+      const res = await request(buildApp(), 'PATCH', `/api/v1/trips/${TRIP_UUID}/activities/${ACTIVITY_UUID}`, {
+        notes: 'x'.repeat(2001),
+      }, AUTH);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.fields.notes).toMatch(/2000/);
+      expect(activityModel.updateActivity).not.toHaveBeenCalled();
+    });
   });
 });
 

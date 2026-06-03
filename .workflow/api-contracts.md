@@ -1059,6 +1059,7 @@ All sub-resource endpoints follow the same ownership rules:
       "activity_date": "2026-08-08",
       "start_time": "09:00:00",
       "end_time": "14:00:00",
+      "notes": "Reservation #ABC123. Smart casual dress code.",
       "created_at": "2026-02-24T12:00:00.000Z",
       "updated_at": "2026-02-24T12:00:00.000Z"
     }
@@ -1070,6 +1071,7 @@ All sub-resource endpoints follow the same ownership rules:
 - `location` is nullable — will be `null` if not provided.
 - `activity_date` is returned as an ISO 8601 date string (`YYYY-MM-DD`).
 - `start_time` and `end_time` are returned as 24-hour `HH:MM:SS` strings. Frontend formats these for display.
+- `notes` (Sprint 43, B-036/T-331) is nullable freeform text — `null` if not provided. HTML tags are stripped on write. See the Sprint 43 change-log entry below.
 - No timezone fields — activities are local-time entries per ADR-005.
 - The frontend groups activities by `activity_date` for display and sorts by `start_time` within each group.
 
@@ -1093,7 +1095,8 @@ All sub-resource endpoints follow the same ownership rules:
   "location": "string | null",
   "activity_date": "YYYY-MM-DD",
   "start_time": "HH:MM",
-  "end_time": "HH:MM"
+  "end_time": "HH:MM",
+  "notes": "string | null"
 }
 ```
 
@@ -1105,6 +1108,7 @@ All sub-resource endpoints follow the same ownership rules:
 | `activity_date` | Required. String in `YYYY-MM-DD` format. Must be a valid calendar date. |
 | `start_time` | Required. String in `HH:MM` or `HH:MM:SS` format (24-hour). |
 | `end_time` | Required. String in `HH:MM` or `HH:MM:SS` format (24-hour). Must be after `start_time`. |
+| `notes` | Optional (Sprint 43, B-036/T-331). String or null. Max 2000 chars. HTML tags stripped on write. Empty string normalized to `null`. |
 
 **Response (Success — 201 Created):**
 ```json
@@ -1117,6 +1121,7 @@ All sub-resource endpoints follow the same ownership rules:
     "activity_date": "2026-08-08",
     "start_time": "09:00:00",
     "end_time": "14:00:00",
+    "notes": "Reservation #ABC123. Smart casual dress code.",
     "created_at": "2026-02-24T12:00:00.000Z",
     "updated_at": "2026-02-24T12:00:00.000Z"
   }
@@ -1184,9 +1189,12 @@ All sub-resource endpoints follow the same ownership rules:
   "location": "string | null",
   "activity_date": "YYYY-MM-DD",
   "start_time": "HH:MM",
-  "end_time": "HH:MM"
+  "end_time": "HH:MM",
+  "notes": "string | null"
 }
 ```
+
+**Notes (Sprint 43, B-036/T-331):** `notes` follows the same rules as POST — max 2000 chars, HTML stripped on write. Send `null` (or an empty string, which is normalized to `null`) to clear it. Omit to leave unchanged. `> 2000` chars → 400.
 
 **Response (Success — 200 OK):** Full updated activity object.
 
@@ -1250,7 +1258,7 @@ All sub-resource endpoints follow the same ownership rules:
 | `trips` | UUID | user_id → users | name, destinations (TEXT[]), status |
 | `flights` | UUID | trip_id → trips | flight_number, airline, from_location, to_location, departure_at+tz, arrival_at+tz |
 | `stays` | UUID | trip_id → trips | category, name, address (nullable), check_in_at+tz, check_out_at+tz |
-| `activities` | UUID | trip_id → trips | name, location (nullable), activity_date (DATE), start_time (TIME), end_time (TIME) |
+| `activities` | UUID | trip_id → trips | name, location (nullable), activity_date (DATE), start_time (TIME), end_time (TIME), notes (TEXT, nullable — Sprint 43) |
 
 ### Foreign Key Cascade Rules
 
@@ -8389,9 +8397,65 @@ Since no new endpoint is needed, **T-314 should be marked N/A**. No backend code
 
 ---
 
-### Active Contracts Summary (Sprints 1–41)
+## Sprint 42 Contracts
 
-All previously published contracts remain current. No new endpoints or changes in Sprint 41:
+---
+
+## T-323 — Activity Location Links (B-031): API Contract Review
+
+| Field | Value |
+|-------|-------|
+| Sprint | 42 |
+| Task | T-323 |
+| Status | Agreed — **No backend changes required** |
+| Auth Required | N/A (no endpoint changes) |
+
+**Decision:** B-031 (clickable activity location links) is a **frontend-only** concern. URL detection and link rendering happen entirely in the client. **No new endpoints, no contract changes, and no schema changes are required for Sprint 42.**
+
+### Why no backend change is needed
+
+The activity `location` field is already stored and returned as **plain text**. URL detection (`parseLocationWithLinks`) and link rendering (`<a target="_blank" rel="noopener noreferrer">`) are implemented in the frontend per UI Spec 34 (T-322). The API contract for activities is unchanged.
+
+**Verified against the existing implementation:**
+
+| Concern | Finding | Source |
+|---------|---------|--------|
+| Storage type | `text` column, nullable — no length limit at DB level | `backend/src/migrations/20260224_006_create_activities.js` (`table.text('location').nullable()`) |
+| Validation | Optional, nullable, `type: 'string'`, `maxLength: 500` | `backend/src/routes/activities.js` (`activityValidationSchema.location`) |
+| Read/write | Stored verbatim (`location: data.location ?? null`); returned as-is in list/get | `backend/src/models/activityModel.js` |
+| Sanitization | HTML tags stripped via `sanitizeFields({ ..., location: 'string' })` on POST/PATCH; output is **plain text, NOT HTML-encoded** | `backend/src/middleware/sanitize.js`, `backend/src/routes/activities.js` |
+
+### Contract for the `location` field (unchanged — re-stated for FE/QA reference)
+
+- **Type:** `string | null`
+- **Format:** Plain UTF-8 text. May contain URLs (`http://`/`https://`), plain place names, addresses, or mixed content (e.g., `"Senso-ji Temple https://maps.google.com/?q=..."`).
+- **Max length:** 500 characters (validation), stored in an unbounded `text` column.
+- **Server-side sanitization:** HTML/XML tags are stripped before storage (defense-in-depth against stored XSS). The server does **not** HTML-encode the value, and does **not** return HTML — the value is always returned as plain text.
+- **What the server does NOT do:** It does not parse, validate, or alter URLs in any way. It does not detect, linkify, or strip `http(s)://`, `javascript:`, `data:`, `vbscript:`, or `file:` schemes — these pass through as plain text (HTML tags excepted). A bare `https://maps.google.com/...` is preserved intact because it contains no HTML tags.
+
+### Security note for QA (T-325)
+
+XSS prevention for B-031 is split across two layers:
+
+1. **Backend (existing):** `sanitizeHtml` strips HTML tags from `location` on write, so no `<script>`/`<img onerror=...>` payload is ever stored or returned.
+2. **Frontend (T-324, the new work):** Only `http://`/`https://` segments are turned into `<a>` elements; `javascript:`, `data:`, `vbscript:`, and `file:` strings remain inert plain text. Links use JSX `href={...}` (React auto-escapes) — **never** `dangerouslySetInnerHTML`.
+
+There is **no API-level test surface** for B-031 since no endpoint behavior changes. QA should treat the existing activity CRUD contract tests as the regression baseline and focus B-031 verification on frontend rendering.
+
+### Schema Changes
+
+**None.** No new tables, columns, or migrations. No `technical-context.md` migration-log entry and no Manager schema approval are required for Sprint 42.
+
+### Impact on downstream tasks
+
+- **T-324 (Frontend):** Proceed using the existing activities contract. The `location` field is plain text — apply `parseLocationWithLinks` client-side per Spec 34.
+- **T-326 (Deploy):** No new migration to run for Sprint 42. (T-320 production deploy carries Sprint 41 code only; no backend code change from this sprint.)
+
+---
+
+### Active Contracts Summary (Sprints 1–42)
+
+All previously published contracts remain current. No new endpoints or changes in Sprint 42 (B-031 is frontend-only — see T-323 above):
 - **Auth:** 4 endpoints (register, login, refresh, logout)
 - **Trips:** 5 endpoints (CRUD + list) — `notes` max length 5000 chars
 - **Flights:** 4 endpoints (CRUD scoped to trip)
@@ -8406,3 +8470,137 @@ All previously published contracts remain current. No new endpoints or changes i
 ---
 
 *Sprint 41 contracts published by Backend Engineer 2026-03-30. T-313: No new endpoint required — existing GET /trips/:id + sub-resource list endpoints provide all data needed for the print view feature (B-032). T-314 marked N/A. All 30 endpoints from Sprints 1–39 remain in force unchanged.*
+
+---
+
+## Sprint 43 — Activity Notes Field (B-036, T-331)
+
+**Status:** Agreed (contract published before implementation)
+**Task:** T-331 — Backend Engineer
+**Scope:** Add a `notes` field to the **activities** resource. No new endpoints — this extends the existing T-006 activities CRUD contract (POST / GET / GET:id / PATCH). The `activities` table gains a nullable `notes` column via **migration 011** (pre-approved by Manager in Sprint 43 plan; see `technical-context.md`).
+
+**T-329 (dependency hardening) note:** T-329 has **no API contract impact** — it bumps `express`/`body-parser`/`qs` (and dev-tooling `vite`/`ws`) patch versions only. No endpoint, request, or response shape changes. The existing contracts remain the regression baseline.
+
+### Summary of change
+
+A new optional `notes` field is added to the activity resource. It behaves like the existing trip `notes` field (Sprint 7, migration 010) but scoped to activities and capped at **2000 characters**:
+
+- Persisted as a nullable `TEXT` column on `activities` (migration 011).
+- Accepted on **POST** (create) and **PATCH** (update).
+- Returned on **all** activity responses (list, get-by-id, create, update).
+- HTML/XML tags are **stripped on write** by the existing `sanitizeHtml` middleware (stored-XSS defense). The value is stored and returned as plain text — the server never returns HTML and never HTML-encodes the value.
+- Frontend renders it as escaped text (no `dangerouslySetInnerHTML`) for defense-in-depth (T-332).
+
+### Field specification
+
+| Field | Type | Required | Rules |
+|-------|------|----------|-------|
+| `notes` | string \| null | No (optional) | Nullable string. Trimmed. Max **2000** chars (enforced at API validation layer; 400 `VALIDATION_ERROR` if exceeded). HTML tags stripped on write. Omitted → unchanged (PATCH) / stored as `null` (POST). Explicit `null` or `""` → stored as `null`/empty (clears the note). |
+
+### POST /api/v1/trips/:tripId/activities — Updated request/response (Sprint 43)
+
+**Request Body (notes added; all prior fields unchanged):**
+```json
+{
+  "name": "string",
+  "location": "string | null",
+  "activity_date": "YYYY-MM-DD",
+  "start_time": "HH:MM | null",
+  "end_time": "HH:MM | null",
+  "notes": "string | null"
+}
+```
+
+**Response (Success — 201 Created):**
+```json
+{
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440030",
+    "trip_id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Fisherman's Wharf",
+    "location": "Fisherman's Wharf, San Francisco, CA",
+    "activity_date": "2026-08-08",
+    "start_time": "09:00:00",
+    "end_time": "14:00:00",
+    "notes": "Reservation #FW-22841. Dress code: smart casual. Bring passport for ID.",
+    "created_at": "2026-02-24T12:00:00.000Z",
+    "updated_at": "2026-02-24T12:00:00.000Z"
+  }
+}
+```
+
+**Response (Error — 400 Bad Request — notes too long):**
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "code": "VALIDATION_ERROR",
+    "fields": {
+      "notes": "Notes must be 2000 characters or fewer"
+    }
+  }
+}
+```
+
+### PATCH /api/v1/trips/:tripId/activities/:id — Updated (Sprint 43)
+
+`notes` is added to the optional PATCH body and to the `UPDATABLE` set. Sending `notes` updates it; omitting it leaves the existing value unchanged; sending `null` or `""` clears it.
+
+```json
+{
+  "name": "string",
+  "location": "string | null",
+  "activity_date": "YYYY-MM-DD",
+  "start_time": "HH:MM | null",
+  "end_time": "HH:MM | null",
+  "notes": "string | null"
+}
+```
+
+**Response (Success — 200 OK):** Full updated activity object including `notes`.
+**Response (Error — 400 / 401 / 403 / 404):** Same shapes as the existing activities contract (400 example above for the `notes` length case).
+
+### GET (list) and GET (:id) — Updated response (Sprint 43)
+
+Both responses now include `notes` in every activity object. `notes` is `null` for activities created before migration 011 and for activities saved without a note.
+
+```json
+{
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440030",
+      "trip_id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Fisherman's Wharf",
+      "location": "Fisherman's Wharf, San Francisco, CA",
+      "activity_date": "2026-08-08",
+      "start_time": "09:00:00",
+      "end_time": "14:00:00",
+      "notes": null,
+      "created_at": "2026-02-24T12:00:00.000Z",
+      "updated_at": "2026-02-24T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+### Notes & edge cases (for Frontend T-332 and QA T-333)
+
+- **Optional everywhere:** existing clients that never send `notes` are unaffected — POST stores `null`, PATCH leaves it untouched.
+- **Backward compatibility:** pre-migration activities return `notes: null`. No client change required to read existing data.
+- **Sanitization on write:** `<script>`/`<img onerror=...>`/any HTML tags are stripped before storage by the existing `sanitizeHtml` middleware (same layer that protects `location`/trip `notes`). A note like `Bring <b>passport</b>` is stored as `Bring passport`.
+- **Length boundary:** exactly 2000 chars → accepted; 2001 chars → 400 `VALIDATION_ERROR` with `fields.notes`. Length is measured **after** trim/sanitize, consistent with other text fields.
+- **Clearing a note:** PATCH with `notes: null` or `notes: ""` stores `null` (note removed). Frontend should display the empty state when `notes` is null/empty.
+- **Ordering unchanged:** `notes` does not affect list ordering (still `activity_date` ASC, `start_time` ASC NULLS LAST, `name` ASC).
+- **No new endpoint, no new query param, no pagination change.**
+
+### Active Contracts Summary (Sprints 1–43)
+
+All previously published contracts remain current. Sprint 43 change:
+- **Activities:** 5 endpoints (CRUD + list scoped to trip) — now include an optional `notes` field (string, max 2000 chars, nullable, HTML-stripped on write). Migration 011 adds `activities.notes TEXT NULL`.
+- All other resources unchanged.
+
+---
+
+*Sprint 43 contracts published by Backend Engineer 2026-05-30. T-329 (dependency hardening): no contract impact — patch-version bumps only. T-331 (B-036): activity `notes` field added to the existing T-006 activities CRUD contract via migration 011 (Manager pre-approved). Contract is published ahead of implementation per rules.md — implementation lands in the T-331 implementation phase.*
+
+*Update 2026-05-30 — **T-331 IMPLEMENTED.** Migration 011 created and verified (applies + rolls back cleanly on dev DB); `notes` wired through POST insert, PATCH UPDATABLE, model SELECT/insert, validation (max 2000), and sanitize (POST sanitizeFields + PATCH pre-validate strip). 8 new backend tests added (round-trip, sanitize, max-length 400, null/omitted, PATCH clear). Backend suite 531/531 green. Inline T-006 activities contract above (GET/POST/PATCH) updated to match. The implemented behavior matches this published contract exactly.*

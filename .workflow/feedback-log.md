@@ -18,6 +18,196 @@ Structured feedback from the User Agent and Monitor Agent after each test cycle.
 
 ---
 
+## User Agent — Sprint #42 Staging Walkthrough (T-328) — 2026-05-30
+
+> **Scope:** Sprint 42 delivers activity location links (B-031, Spec 34) — URLs inside an activity `location` render as clickable links on the Trip Details page; dangerous schemes stay inert; print shows URL as readable black underlined text. Also promotes the Sprint 41 print feature to production (T-320/T-321). B-031 is frontend-only — no API surface change. Tested on staging backend `https://localhost:3001` + frontend `https://localhost:4173` (HTTPS, self-signed), production `https://localhost:3002`/`4174`. Monitor Agent confirmed Deploy Verified = Yes (Staging, T-327). Test account `test@triplanner.local`. Verification combined live API calls, deployed-bundle inspection, component/source review against Spec 34, and targeted DOM render tests (browser GUI not available in this environment).
+>
+> **Result: 13 entries (FB-263–FB-275). 0 Bugs, 0 Critical, 0 Major. 1 Suggestion (Minor). All else Positive.**
+
+---
+
+### FB-263 — Activity location URL round-trips cleanly through the API (happy path)
+
+| Field | Value |
+|-------|-------|
+| Feedback | POST activity with mixed text + Google Maps URL location is stored and returned verbatim |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `POST /api/v1/trips/:id/activities` with `location: "Senso-ji Temple https://maps.google.com/?q=sensoji"` → `201`, location returned byte-for-byte unchanged. Multiple-URL string `"https://a.com and https://b.com"` also preserved exactly. This is the input the frontend `parseLocationWithLinks` consumes — the data contract holds end-to-end. |
+| Related Task | T-328 |
+
+---
+
+### FB-264 — Frontend implementation matches Spec 34 exactly (utility + render)
+
+| Field | Value |
+|-------|-------|
+| Feedback | `parseLocationWithLinks` and `ActivityEntry` render match Spec 34 §34.3/§34.4 verbatim |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `frontend/src/utils/formatDate.js:170` uses regex `/(https?:\/\/[^\s]+)/g` plus a per-segment `^https?:\/\/` guard (defense-in-depth). `TripDetailsPage.jsx:217-231` renders `link` segments as `<a href={segment.content} target="_blank" rel="noopener noreferrer" className={styles.locationLink}>` and `text` segments as `<span>`, guarded by `activity.location &&`. No deviation from spec. |
+| Related Task | T-328 |
+
+---
+
+### FB-265 — Security: `javascript:`, `data:`, `vbscript:`, `file:` schemes never linkified
+
+| Field | Value |
+|-------|-------|
+| Feedback | Dangerous URL schemes render as inert plain text — no `<a>` element produced |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | Acknowledged |
+| Details | Sprint 42 primary security criterion. Verified at two levels: (1) the detection regex requires `http(s)://`, so `javascript:alert(1)`, `data:text/html,...`, `vbscript:`, `file:///etc/passwd` fall through to `{type:'text'}`; (2) targeted DOM render tests (`TripDetailsPage.test.jsx`) assert these strings produce a `<span>`, never an `<a>` and never a real `<h1>`. Confirmed in deployed bundle. Positive security finding — XSS-via-URL is blocked. |
+| Related Task | T-328 |
+
+---
+
+### FB-266 — Security: every generated link carries `rel="noopener noreferrer"` + `target="_blank"`
+
+| Field | Value |
+|-------|-------|
+| Feedback | Tab-napping and referrer-leak protection present on all location links |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | Acknowledged |
+| Details | Source (`TripDetailsPage.jsx:222-223`) and the **deployed** staging + production JS bundles both contain `noopener noreferrer`. `href` is set only via JSX `href={...}` (React auto-escapes); no `dangerouslySetInnerHTML` exists anywhere in `frontend/src/` (grep clean — only a comment noting its absence). |
+| Related Task | T-328 |
+
+---
+
+### FB-267 — Backend strips HTML tags from location (defense-in-depth, no regression)
+
+| Field | Value |
+|-------|-------|
+| Feedback | `sanitizeHtml` strips tags from `location` on write while preserving URLs |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `location: "<script>alert(1)</script><img src=x onerror=alert(2)> Cafe https://yelp.com/biz/x"` → stored as `"alert(1) Cafe https://yelp.com/biz/x"` (tags removed, text + URL kept). `data:text/html,<h1>hi</h1>` → stored as `data:text/html,hi`. No stored markup can reach the DOM; the URL still survives for client-side linkification. Existing two-layer defense intact. |
+| Related Task | T-328 |
+
+---
+
+### FB-268 — Input validation on activities is correct and returns 400 (not 500)
+
+| Field | Value |
+|-------|-------|
+| Feedback | Empty/missing name, over-length location, and wrong types all return structured 400s |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | Empty `name` → `400 {name:"Activity name is required"}`; missing `name` → `400`; `location` > 500 chars → `400 {location:"location must be at most 500 characters"}`; `location` as a number → `400 {location:"location must be a string"}`; bad date `08/02/2026` → `400` with format message. Empty-string location is accepted (nullable) and `201` — frontend `activity.location &&` guard prevents an empty render. No 5xx on any malformed input. |
+| Related Task | T-328 |
+
+---
+
+### FB-269 — SQL injection in location is stored as literal text (parameterized queries)
+
+| Field | Value |
+|-------|-------|
+| Feedback | `'; DROP TABLE activities;--` payload stored as inert text; table intact |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `location: "https://x.com/'; DROP TABLE activities;--"` → `201`, stored verbatim as text. Immediately re-listing activities succeeded (table not dropped). Parameterized queries confirmed effective. |
+| Related Task | T-328 |
+
+---
+
+### FB-270 — Auth guard and session handling reject all invalid tokens
+
+| Field | Value |
+|-------|-------|
+| Feedback | Garbage, tampered, and malformed-header tokens all rejected with 401 |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | Acknowledged |
+| Details | No token → `401 UNAUTHORIZED`; garbage token → `401 Invalid or expired token`; valid token + appended char (tampered signature) → `401`; `Authorization` header without `Bearer ` prefix → `401 Authentication required`. Clean, consistent rejection. |
+| Related Task | T-328 |
+
+---
+
+### FB-271 — Cross-tenant isolation: foreign trip ID returns 404, no data leak
+
+| Field | Value |
+|-------|-------|
+| Feedback | Requesting activities for a trip not owned by the user returns 404 Trip not found |
+| Sprint | 42 |
+| Category | Security |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `GET /trips/<random-valid-uuid>/activities` with a valid token → `404 NOT_FOUND` (no rows leaked). A malformed UUID (`0000…`) is rejected earlier with `400 Invalid ID format`. Ownership scoping is enforced. |
+| Related Task | T-328 |
+
+---
+
+### FB-272 — Auth login rate-limiting trips at the 6th rapid attempt (429)
+
+| Field | Value |
+|-------|-------|
+| Feedback | 15 rapid login calls → first 5 succeed (200), remainder throttled (429) |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | Brute-force protection on `POST /auth/login` is active: `200 200 200 200 200 429 429 …`. Meanwhile 20 rapid `GET /health` calls all returned `200` with no degradation — read path is stable under rapid fire. |
+| Related Task | T-328 |
+
+---
+
+### FB-273 — Accessibility refinements (§34.6) shipped: focus-visible ring + 150ms transition
+
+| Field | Value |
+|-------|-------|
+| Feedback | The net-new Sprint 42 work — `.locationLink` a11y/motion polish — is present and correct |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `TripDetailsPage.module.css:765-781`: `.locationLink` now has `text-underline-offset: 2px` and `transition: color 150ms ease`; `.locationLink:focus-visible` adds `outline: 2px solid var(--border-accent); outline-offset: 2px; border-radius: 2px`. This closes the prior gap where keyboard users had no visible focus indicator on location links. Matches Spec 34 §34.5–34.6 exactly and reuses existing design tokens (no new colors). |
+| Related Task | T-328 |
+
+---
+
+### FB-274 — Print view keeps location URLs as readable black underlined text
+
+| Field | Value |
+|-------|-------|
+| Feedback | `print.css` neutralizes link interactivity but preserves the URL string legibly |
+| Sprint | 42 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | In `@media print`, generic `a` → black, no underline; the exception `[class*="locationLink"]` → black + `text-decoration: underline !important`, so a reader holding the printout can read/type the URL. Matches Spec 34 §34.7 and is consistent with Spec 15/33 print rules — no conflict. |
+| Related Task | T-328 |
+
+---
+
+### FB-275 — Trailing punctuation glued to a URL stays inside the link (minor, by design)
+
+| Field | Value |
+|-------|-------|
+| Feedback | A URL immediately followed by punctuation (e.g. `https://yelp.com/biz/x,`) includes the comma in the href |
+| Sprint | 42 |
+| Category | UX Issue |
+| Severity | Suggestion |
+| Status | Acknowledged |
+| Details | Per Spec 34 §34.2 the `[^\s]+` match greedily consumes trailing punctuation, so `"Lunch at https://yelp.com/biz/x, 1pm"` linkifies `https://yelp.com/biz/x,` (comma included). This is an explicit, documented design decision — splitting on punctuation risks breaking valid URLs that legitimately contain `,`/`.`/`)`. Most target links (Google Maps share URLs) end in query strings without trailing prose, so real-world impact is low. **Suggestion only**, not a bug: if a future polish sprint wants it, a conservative trailing-punctuation trim (strip a single trailing `.,;:!?)` when not balanced) would tidy the rare mixed-prose case. Flagging so the team is aware of the tradeoff; no action required for Sprint 42. |
+| Related Task | T-328 |
+
+---
+
 ## User Agent — Sprint #41 Staging Walkthrough (T-319) — 2026-03-30
 
 > **Scope:** Sprint 41 delivers the PrintCalendarSummary component (Spec 33, B-032) — a day-by-day itinerary overview table visible only in print. No backend changes. Testing performed on staging at `https://localhost:3001` (backend) and `https://localhost:4173` (frontend). Monitor Agent confirmed Deploy Verified = Yes (T-318).
@@ -8427,5 +8617,225 @@ button: "please wait…" [disabled]
 | Related Task | — |
 
 **Description:** Add a toggle button in the navbar, positioned on the right side to the left of the user name. The button should switch between dark mode and light mode. Dark mode should be the default. The toggle should persist the user's preference (e.g., via `localStorage`) so it survives page reloads. This will require: (1) a theme context/provider that manages the current theme state and exposes a toggle function, (2) CSS variables or a class-based approach (e.g., `data-theme="light"` on `<html>`) to swap the color palette, (3) a light mode palette that complements the existing dark Japandi aesthetic — muted warm tones, keeping the same design principles (no gradients, no shadows, borders only), (4) the toggle button itself with an appropriate icon (e.g., sun/moon) styled consistently with the existing navbar elements. The current dark palette (`#02111B` bg, `#30292F` surface, `#3F4045` surface-alt, `#5D737E` accent, `#FCFCFC` text) should remain the default. The light palette should invert appropriately while maintaining the calm, minimal Japandi feel.
+
+---
+
+---
+
+## User Agent — Sprint #43 Staging Walkthrough (T-336) — 2026-06-03
+
+> **Scope:** Sprint 43 delivers (1) **activity notes (B-036, Spec 35)** — a nullable `notes` field on activities (max 2000 chars, HTML-stripped on write) entered via the edit form, displayed under each activity on Trip Details, and printed as a `Notes:` line; and (2) **dependency security hardening (T-329)** — patch bumps with no API surface change. Migration 011 adds `activities.notes TEXT NULL`. Staging-only this sprint. Tested on staging backend `https://localhost:3001` + frontend `https://localhost:4173` (HTTPS, self-signed). Monitor Agent confirmed Deploy Verified = Yes (Staging, T-335). Test account `test@triplanner.local`. Verification combined live API calls (happy path + adversarial), deployed-bundle inspection (`index-CfcZnezY.js`), and component/source review against Spec 35 + the api-contracts notes spec (browser GUI not available in this environment).
+>
+> **Result: 15 entries (FB-276–FB-290). 0 Bugs, 0 Critical, 0 Major. 1 Suggestion (Minor, cosmetic copy). All else Positive/Security.**
+
+---
+
+### FB-276 — Activity notes round-trip cleanly through POST / GET / PATCH (happy path)
+
+| Field | Value |
+|-------|-------|
+| Feedback | Notes persist on create, return on list/get, and update via PATCH |
+| Sprint | 43 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `POST /api/v1/trips/:id/activities` with `notes:"Reservation #FW-22841. Dress code: smart casual. Bring passport."` → `201`, `notes` returned verbatim. `GET (list)` returns the same value. `PATCH` with `notes:"UPDATED: Confirmation ABC123"` → `200`, updated value returned. Core B-036 success criterion met end-to-end on staging. |
+| Related Task | T-336 |
+
+---
+
+### FB-277 — Clear-note semantics correct: both `null` and `""` clear to null
+
+| Field | Value |
+|-------|-------|
+| Feedback | PATCH with `null` or empty string clears the note to `null` |
+| Sprint | 43 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | After setting a note, `PATCH {"notes":null}` → returned `notes: null`. Separately, `PATCH {"notes":""}` (empty string) → returned `notes: null`. Matches the contract's clear-field semantics (§Field spec: explicit `null` or `""` → stored null). Confirms the frontend's "clear and save" flow will persist correctly. |
+| Related Task | T-336 |
+
+---
+
+### FB-278 — POST without notes stores `null`; backward-compatible
+
+| Field | Value |
+|-------|-------|
+| Feedback | Omitting `notes` on create stores and returns `null` |
+| Sprint | 43 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `POST` with no `notes` key → `201`, `notes: null`. Existing clients that never send notes are unaffected, and pre-migration activities read back as `notes: null`. Optional-everywhere behavior holds. |
+| Related Task | T-336 |
+
+---
+
+### FB-279 — Security: HTML/script tags stripped on write (stored-XSS defense)
+
+| Field | Value |
+|-------|-------|
+| Feedback | `<script>`, `<img onerror>`, and other tags are stripped before storage |
+| Sprint | 43 |
+| Category | Security |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `POST notes:"Bring <script>alert(1)</script> passport <img src=x onerror=alert(2)> <b>bold</b>"` → stored/returned as `"Bring alert(1) passport  bold"` — all tags removed, no markup survives. PATCH path identical: `"safe <script>evil()</script> text"` → `"safe evil() text"`. Layer-1 of the two-layer defense (backend `sanitizeHtml`) confirmed live on staging. |
+| Related Task | T-336 |
+
+---
+
+### FB-280 — Notes length boundary enforced: 2000 accepted, 2001 → 400
+
+| Field | Value |
+|-------|-------|
+| Feedback | Max-length validation is exact at the 2000-char boundary |
+| Sprint | 43 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `POST` with exactly 2000 chars → `201`, stored length 2000. `POST` with 2001 chars → `400 VALIDATION_ERROR`, `fields.notes`. PATCH with 2001 chars → `400`. No 5xx. Validation guard works on both write paths. |
+| Related Task | T-336 |
+
+---
+
+### FB-281 — Type validation: non-string `notes` rejected with structured 400
+
+| Field | Value |
+|-------|-------|
+| Feedback | Number and object/array values for `notes` return 400, not 500 |
+| Sprint | 43 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `POST notes:12345` → `400 VALIDATION_ERROR`, `fields.notes: "notes must be a string"`. `POST notes:{"a":1}` → same `400`. Type coercion is rejected cleanly with a structured error; no server error, no silent coercion. |
+| Related Task | T-336 |
+
+---
+
+### FB-282 — Security: SQL injection payload stored as literal text, table intact
+
+| Field | Value |
+|-------|-------|
+| Feedback | `'; DROP TABLE activities;--` in notes is stored as a plain string |
+| Sprint | 43 |
+| Category | Security |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `POST notes:"'; DROP TABLE activities;-- "` → `201`, stored as literal `"'; DROP TABLE activities;--"` (trailing whitespace trimmed). Subsequent `GET` of the activities list → `200` with the table fully intact. Parameterized queries hold for the new column. |
+| Related Task | T-336 |
+
+---
+
+### FB-283 — Whitespace-only notes normalized to `null` (trim on save)
+
+| Field | Value |
+|-------|-------|
+| Feedback | A notes value of only spaces is stored as `null`, not as blank text |
+| Sprint | 43 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `POST notes:"     "` (5 spaces) → `201`, `notes: null`. This is exactly what the frontend's empty-handling relies on (`null`/`""`/whitespace all treated as "no notes"), so no empty notes block will render on Trip Details. Trim-on-write confirmed. |
+| Related Task | T-336 |
+
+---
+
+### FB-284 — PATCH correctness: omit leaves notes unchanged; XSS stripped; over-limit → 400
+
+| Field | Value |
+|-------|-------|
+| Feedback | PATCH of an unrelated field preserves an existing note |
+| Sprint | 43 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | Set `notes:"KEEP ME"`, then `PATCH {"name":"Renamed Only"}` (notes omitted) → `200`, name updated, `notes` still `"KEEP ME"`. Confirms omitted-field-unchanged semantics — the frontend's notes-only-edit change-detection and partial updates are both safe. PATCH also strips HTML and rejects >2000 chars (covered in FB-279/FB-280). |
+| Related Task | T-336 |
+
+---
+
+### FB-285 — Unicode, emoji, and multi-line notes preserved exactly
+
+| Field | Value |
+|-------|-------|
+| Feedback | Newlines, CJK, accented chars, and emoji round-trip byte-for-byte |
+| Sprint | 43 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `POST notes:"Line1\nLine2\nコード: ABC-123 🎫 café"` → stored/returned with newlines and all characters intact. Pairs with the frontend `white-space: pre-wrap` so multi-line notes render correctly on Trip Details and in print. No mojibake, no newline collapsing. |
+| Related Task | T-336 |
+
+---
+
+### FB-286 — Security: auth guard + cross-tenant/invalid trip IDs leak no data
+
+| Field | Value |
+|-------|-------|
+| Feedback | Unauth requests 401; non-owned/invalid trip IDs error without exposing data |
+| Sprint | 43 |
+| Category | Security |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `GET /trips` with no token → `401`; garbage token → `401`; malformed `Authorization: NotBearer xyz` header → `401`. `POST .../trips/<other-uuid>/activities` returns a `400 VALIDATION_ERROR` ("Invalid ID format") with no activity created and no data returned — no cross-tenant leak. Note: a syntactically-plausible UUID (`11111111-2222-3333-4444-555555555555`) returns `400 "Invalid ID format"` rather than `404` because the validator enforces strict RFC-4122 version/variant bits; both responses are safe (no leak), but the 400-vs-404 distinction is a pre-existing behavior worth awareness, not a Sprint 43 regression. |
+| Related Task | T-336 |
+
+---
+
+### FB-287 — Frontend matches Spec 35: escaped render, no `dangerouslySetInnerHTML`, full edit-form UX
+
+| Field | Value |
+|-------|-------|
+| Feedback | Display + edit-form implementation conform to Spec 35 §35.2/§35.3/§35.6 |
+| Sprint | 43 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `TripDetailsPage.jsx:237-242` renders the notes block only when `activity.notes && activity.notes.trim()`, as escaped text (`{activity.notes}`) with a `NOTES` micro-label and `aria-label="Notes"` — no `dangerouslySetInnerHTML` anywhere in `src/` (Layer-2 of the XSS defense). `ActivitiesEditPage.jsx` implements `NOTES_MAX=2000` / `NOTES_WARN=1900`, `maxLength`, a focus/content-gated char counter with `aria-live` at thresholds, `aria-describedby` + `label htmlFor`, change-detection (`r.notes !== (orig.notes || '')`), and a save payload of `(row.notes||'').trim() || null`. The placeholder string ships in the deployed bundle (`ActivitiesEditPage-CXKRLcNl.js`). Deployed FE hash `index-CfcZnezY.js` matches Deploy/Monitor records. |
+| Related Task | T-336 |
+
+---
+
+### FB-288 — Print view: `Notes:` line rendered, correctly excluded from PrintCalendarSummary
+
+| Field | Value |
+|-------|-------|
+| Feedback | Print activity card gains a conditional black-ink `Notes:` line; summary table unaffected |
+| Sprint | 43 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | `print.css` (§35.4) restyles `activityNotesText` for print (10pt, `pre-wrap`, `overflow-wrap: anywhere`), hides the screen-only `NOTES` micro-label, and adds a bold `"Notes: "` prefix via `::before` (line 264). Because the component omits the element when notes is empty, no print-specific hiding is needed. `PrintCalendarSummary.jsx` contains no `notes` reference — correctly excluded per §35.4 to preserve the at-a-glance summary. |
+| Related Task | T-336 |
+
+---
+
+### FB-289 — Regression clean: trips, flights, stays, land-travel, activity CRUD all healthy
+
+| Field | Value |
+|-------|-------|
+| Feedback | No regressions in existing resources or activity CRUD; test data cleaned up |
+| Sprint | 43 |
+| Category | Positive |
+| Severity | — |
+| Status | Acknowledged |
+| Details | Trip detail, `flights`, `stays`, `land-travel` list endpoints all `200` with auth. Activity `POST` → `201`, `DELETE` → `204`. The additive `notes` column did not disturb activity ordering or other fields. Test hygiene: 12 activities created during adversarial testing were all deleted (12×`204`); "Sprint 30 Test Trip" returned to its original 0-activity state. |
+| Related Task | T-336 |
+
+---
+
+### FB-290 — Validation error copy differs from published contract example (cosmetic)
+
+| Field | Value |
+|-------|-------|
+| Feedback | Over-limit notes error message wording differs from the api-contracts.md example |
+| Sprint | 43 |
+| Category | UX Issue |
+| Severity | Suggestion |
+| Status | Acknowledged |
+| Details | `api-contracts.md` documents the 400 body as `fields.notes: "Notes must be 2000 characters or fewer"`, but the live API returns `"Notes must not exceed 2000 characters"`. Functionally equivalent and clear to a user; purely a doc-vs-implementation copy mismatch. No user-facing impact (the FE `maxLength={2000}` prevents reaching the server limit in normal use). Suggestion: align the contract example to the implemented string (or vice-versa) for consistency. Not a blocker. |
+| Related Task | T-336 |
 
 ---

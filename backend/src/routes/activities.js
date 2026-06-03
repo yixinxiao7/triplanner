@@ -79,6 +79,18 @@ const activityValidationSchema = {
       return null;
     },
   },
+  // notes: optional freeform activity context (B-036, T-331 Sprint 43).
+  // Reservation #, confirmation code, dress code, etc. Max 2000 chars (enforced
+  // here; the TEXT column has no DB-level limit). Send null/'' to clear.
+  notes: {
+    required: false,
+    nullable: true,
+    type: 'string',
+    maxLength: 2000,
+    messages: {
+      maxLength: 'Notes must not exceed 2000 characters',
+    },
+  },
 };
 
 /**
@@ -134,7 +146,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // ---- POST /api/v1/trips/:tripId/activities ----
-const activitySanitizeConfig = { name: 'string', location: 'string' };
+const activitySanitizeConfig = { name: 'string', location: 'string', notes: 'string' };
 
 router.post('/', sanitizeFields(activitySanitizeConfig), validate(activityValidationSchema), validateLinkedTimes, async (req, res, next) => {
   try {
@@ -150,6 +162,8 @@ router.post('/', sanitizeFields(activitySanitizeConfig), validate(activityValida
       activity_date,
       start_time: start_time ?? null,
       end_time: end_time ?? null,
+      // notes: optional. empty string → null (consistent with trips.notes)
+      notes: req.body.notes ? req.body.notes : null,
     });
 
     return res.status(201).json({ data: activity });
@@ -186,10 +200,10 @@ router.patch('/:id', async (req, res, next) => {
       return res.status(404).json({ error: { message: 'Activity not found', code: 'NOT_FOUND' } });
     }
 
-    const UPDATABLE = ['name', 'location', 'activity_date', 'start_time', 'end_time'];
+    const UPDATABLE = ['name', 'location', 'activity_date', 'start_time', 'end_time', 'notes'];
 
     // T-278: Sanitize text fields BEFORE validation so all-HTML values become empty
-    const SANITIZE_FIELDS_PATCH = ['name', 'location'];
+    const SANITIZE_FIELDS_PATCH = ['name', 'location', 'notes'];
     for (const field of SANITIZE_FIELDS_PATCH) {
       if (req.body[field] !== undefined && typeof req.body[field] === 'string') {
         req.body[field] = sanitizeHtml(req.body[field]);
@@ -197,6 +211,13 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     const errors = {};
+
+    // notes: optional freeform field (B-036, T-331). Max 2000 chars; null clears it.
+    if (req.body.notes !== undefined && req.body.notes !== null && typeof req.body.notes === 'string') {
+      if (req.body.notes.length > 2000) {
+        errors.notes = 'Notes must not exceed 2000 characters';
+      }
+    }
 
     // T-278: Reject empty name after sanitization (required field, minLength 1)
     if (req.body.name !== undefined && typeof req.body.name === 'string') {
@@ -260,6 +281,12 @@ router.patch('/:id', async (req, res, next) => {
       if (req.body[field] !== undefined) {
         updates[field] = req.body[field];
       }
+    }
+
+    // Normalize empty-string notes to null (e.g. all-HTML stripped to '' on write,
+    // or a deliberate clear). Consistent with trips.notes behavior.
+    if (Object.prototype.hasOwnProperty.call(updates, 'notes') && updates.notes === '') {
+      updates.notes = null;
     }
 
     const updated = await updateActivity(req.params.id, updates);

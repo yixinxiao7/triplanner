@@ -12890,3 +12890,554 @@ All existing print behavior (button, hidden UI, color overrides, typography, pag
 ---
 
 *Sprint #41 design spec complete. Published by Design Agent 2026-03-30.*
+
+---
+
+## Sprint #42 Specs
+
+---
+
+### Spec 34: Activity Location Links — Clickable URL Detection (Sprint 42 — T-322 / B-031)
+
+**Status:** Approved (auto-approved per automated sprint cycle)
+**Task:** T-322
+**Sprint:** 42
+**Published:** 2026-05-30
+**Implemented by:** T-324 (Frontend Engineer)
+**Supersedes/extends:** Spec 14 Part B (Sprint 8, T-114). This spec is the **canonical, current source of truth** for activity location link behavior. It re-documents the established design, reconciles it with the print view added in Sprints 10/41 (Spec 15 + Spec 33), and specifies a small set of accessibility refinements (§34.6).
+
+---
+
+#### 34.0 Overview
+
+Detail-oriented travelers frequently paste a Google Maps link or a venue URL into an activity's **location** field (e.g., `"Senso-ji Temple https://maps.google.com/?q=..."`). Today that text is rendered, but this spec defines the complete, authoritative behavior for how URLs inside an activity location are:
+
+1. **Detected** — `http://` / `https://` URLs are recognized inside an otherwise-plain-text location string.
+2. **Rendered on screen** — each detected URL becomes a clickable `<a>` that opens in a new tab; surrounding text stays plain.
+3. **Rendered in print** — the URL is shown as readable text (underlined, black ink, **not** an interactive blue link) so a reader holding a printed itinerary can type it.
+4. **Secured** — only `http://`/`https://` are ever linkified; dangerous schemes (`javascript:`, `data:`, `vbscript:`, `file:`, etc.) remain inert plain text. No `dangerouslySetInnerHTML`.
+
+This is a **frontend-only** concern. Activity locations are stored and returned as plain text by the API — no backend changes are required (confirmed in T-323 / `api-contracts.md`).
+
+**Scope boundary:** This spec applies ONLY to the activity location field as rendered on the **Trip Details page** (`ActivityEntry` in `TripDetailsPage.jsx`) and its print view. It does NOT change the activity **edit** form (locations are still entered/edited as plain text), and it does NOT linkify any other field (trip notes, stay addresses, flight fields).
+
+---
+
+#### 34.1 Where This Appears
+
+| Surface | Component | Behavior |
+|---------|-----------|----------|
+| Trip Details page — Activities section | `ActivityEntry` → `.activityLocation` | URLs render as interactive links (new tab) |
+| Print view (browser print dialog) | Same DOM, `print.css` `@media print` | URLs render as underlined black text, not interactive |
+| Activity edit page | `ActivityEditPage` location input | **No change** — raw plain-text entry, no linkification |
+| Trip notes, stay address, flight fields | — | **No change** — not in scope |
+
+---
+
+#### 34.2 URL Detection Algorithm
+
+**Regex:** `/(https?:\/\/[^\s]+)/g`
+
+- Matches any token beginning with `http://` or `https://`, consuming characters up to the next whitespace.
+- The `g` flag finds every URL in the string.
+- The capturing group means `String.prototype.split` returns the matched URLs interleaved with the surrounding text segments.
+- Any non-`http(s)` content — including `javascript:`, `data:`, `vbscript:`, `file:`, bare addresses, and plain place names — does not match and is treated as plain text.
+
+**Trailing punctuation:** `[^\s]+` greedily includes trailing punctuation glued to a URL (e.g., a sentence-final period in `"...example.com."`). This is accepted, standard behavior and is NOT special-cased — splitting on punctuation risks breaking legitimate URLs that contain it.
+
+---
+
+#### 34.3 Utility Function — `parseLocationWithLinks`
+
+**Location:** `frontend/src/utils/formatDate.js` (already present — this is the established home for the utility).
+
+```js
+/**
+ * Parse a location string, detecting HTTP/HTTPS URLs and splitting the text
+ * into typed segments: 'text' (plain) or 'link' (URL).
+ *
+ * Only http:// and https:// schemes create links. All other content,
+ * including javascript:, data:, and vbscript: URIs, is returned as 'text'.
+ *
+ * @param {string|null|undefined} text - The location string to parse
+ * @returns {Array<{type: 'text'|'link', content: string}>}
+ */
+export function parseLocationWithLinks(text) {
+  if (!text) return [];
+  const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(URL_REGEX);
+  return parts
+    .filter((part) => part.length > 0)
+    .map((part) => ({
+      type: /^https?:\/\//.test(part) ? 'link' : 'text',
+      content: part,
+    }));
+}
+```
+
+- The secondary `.test(/^https?:\/\//)` on each segment is a defense-in-depth guard: only a segment that genuinely begins with `http://`/`https://` becomes a `'link'`.
+- Returns `[]` for `null`/`undefined`/empty — callers guard with `activity.location &&` so nothing renders.
+- No `eval`, no `new Function`, no dynamic property access — only `split`, `filter`, `map`, `RegExp.test`.
+
+---
+
+#### 34.4 Rendering — `ActivityEntry` (Trip Details page)
+
+**File:** `frontend/src/pages/TripDetailsPage.jsx` → `ActivityEntry`
+
+The location row renders the decorative pin icon followed by the parsed segments. Each `'link'` segment is an `<a>`; each `'text'` segment is a `<span>`:
+
+```jsx
+{activity.location && (
+  <div className={styles.activityLocation}>
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+      <path d="…" stroke="currentColor" strokeWidth="1" />
+      <circle cx="5" cy="3.75" r=".833" fill="currentColor" />
+    </svg>
+    {parseLocationWithLinks(activity.location).map((segment, idx) =>
+      segment.type === 'link' ? (
+        <a
+          key={idx}
+          href={segment.content}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.locationLink}
+        >
+          {segment.content}
+        </a>
+      ) : (
+        <span key={idx}>{segment.content}</span>
+      )
+    )}
+  </div>
+)}
+```
+
+**Hard requirements:**
+- Every generated link MUST carry `target="_blank"` **and** `rel="noopener noreferrer"` (prevents tab-napping + referrer leakage).
+- `href` is set via the JSX `href={segment.content}` attribute only. NEVER use `dangerouslySetInnerHTML`.
+- Link text is the URL itself, rendered as JSX children (React auto-escapes).
+- `key={idx}` is acceptable here: segments are deterministically derived from a stable string and never reorder.
+
+---
+
+#### 34.5 Visual Specification & Styling
+
+**On-screen link** — accent-colored, underlined, lightens on hover, with a visible keyboard-focus ring. Long URLs wrap inside the activity card rather than overflowing.
+
+**File:** `frontend/src/pages/TripDetailsPage.module.css`
+
+```css
+.locationLink {
+  color: var(--accent);                /* #5D737E — the established interactive color */
+  text-decoration: underline;
+  text-underline-offset: 2px;          /* refinement — breathing room under text */
+  word-break: break-all;               /* long query-string URLs never overflow */
+  transition: color 150ms ease;        /* refinement — matches the 150ms motion convention */
+}
+
+.locationLink:hover {
+  color: var(--text-primary);          /* #FCFCFC — quiet, confident hover */
+}
+
+.locationLink:focus-visible {          /* refinement — keyboard accessibility */
+  outline: 2px solid var(--border-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+```
+
+**Design rationale (Japandi alignment):**
+- `var(--accent)` (`#5D737E`) signals "interactive" using an existing token — no new color introduced.
+- Underline is the universal, colorblind-safe hyperlink cue (we don't rely on color alone).
+- Hover lightens to text-primary — understated feedback, no decoration.
+- `150ms ease` transition matches Design Principle #2 (quiet confidence, subtle transitions).
+- `word-break: break-all` upholds Principle #3 (structure over decoration) by keeping the card layout intact.
+
+---
+
+#### 34.6 Accessibility Refinements (delta vs. current implementation)
+
+The current `.locationLink` rule is missing three properties that this spec requires. These are the only *new* work items beyond what already ships:
+
+| Property | Current | Required | Why |
+|----------|---------|----------|-----|
+| `text-underline-offset: 2px` | absent | **add** | Legibility of underlined monospace URLs |
+| `transition: color 150ms ease` | absent | **add** | Consistency with the 150ms motion convention |
+| `:focus-visible` outline | absent | **add** | **Accessibility — keyboard users must see which link is focused.** Hard rule. |
+
+Additional accessibility notes:
+- The pin `<svg>` stays `aria-hidden="true"` (decorative).
+- Link text is the full URL, which screen readers announce verbatim — adequate context for "open link."
+- No change to the `ActivityEntry` `<article>` `aria-label` (location remains secondary metadata; name + time carry the label).
+
+---
+
+#### 34.7 Print View Behavior
+
+In print, the itinerary is read on paper — an interactive accent-blue link is meaningless, but the URL **text** is valuable (the reader may type it). The print stylesheet therefore neutralizes interactivity while preserving the readable, underlined URL string.
+
+**File:** `frontend/src/styles/print.css` (inside the existing `@media print` block)
+
+```css
+/* ── Links — show as text, not interactive ── */
+a {
+  color: #000 !important;
+  text-decoration: none !important;
+}
+
+/* Exception: activity location URLs — keep the URL legible & underlined so
+   a reader holding the printout can read/type the address. */
+[class*="locationLink"] {
+  color: #000 !important;
+  text-decoration: underline !important;  /* underline signals "this was a link" */
+}
+```
+
+**Print rules:**
+- All links collapse to black ink. Generic links lose their underline; the **activity location** link keeps its underline to communicate "this is a URL."
+- The link is non-interactive on paper by nature; no `href` removal needed.
+- This is consistent with Spec 15 (print color overrides) and Spec 33 (print calendar summary) — no conflict.
+
+---
+
+#### 34.8 Mixed Content Handling (text + URL)
+
+The core requirement from B-031. The parser splits a location into ordered segments, preserving the author's text exactly:
+
+| Input (`activity.location`) | Rendered segments (screen) |
+|-----------------------------|----------------------------|
+| `"Senso-ji Temple https://maps.google.com/?q=senso-ji"` | `<span>Senso-ji Temple </span>` + `<a>https://maps.google.com/?q=senso-ji</a>` |
+| `"https://maps.google.com — main gate"` | `<a>https://maps.google.com</a>` + `<span> — main gate</span>` |
+| `"Lunch at https://yelp.com/biz/xyz, 1pm"` | `<span>Lunch at </span>` + `<a>https://yelp.com/biz/xyz,</a>` + `<span> 1pm</span>` (trailing comma stays on the URL — accepted) |
+| `"https://a.com and https://b.com"` | `<a>https://a.com</a>` + `<span> and </span>` + `<a>https://b.com</a>` |
+
+Leading/trailing/interior whitespace between text and URL is preserved inside the `'text'` segments so spacing reads naturally.
+
+---
+
+#### 34.9 All States
+
+| State | Input example | Expected render |
+|-------|---------------|-----------------|
+| **No location** | `null` / `undefined` | Location `<div>` not rendered (`activity.location &&` guard) |
+| **Empty string** | `""` | `parseLocationWithLinks` → `[]`; guard prevents render |
+| **Plain text, no URL** | `"Golden Gate Park"` | Single `<span>Golden Gate Park</span>` — no `<a>` |
+| **URL only** | `"https://maps.google.com/place/XYZ"` | One `<a target="_blank" rel="noopener noreferrer">` |
+| **Text before URL** | `"Meet at https://maps.google.com"` | `<span>Meet at </span>` + `<a>` |
+| **URL before text** | `"https://maps.google.com main gate"` | `<a>` + `<span> main gate</span>` |
+| **Text + URL + text** | `"Lunch at https://yelp.com/biz/x done 2pm"` | `<span>` + `<a>` + `<span>` |
+| **Multiple URLs** | `"https://a.com and https://b.com"` | `<a>` + `<span> and </span>` + `<a>` |
+| **Dangerous — javascript:** | `"javascript:alert(1)"` | Plain `<span>` — NO `<a>` |
+| **Dangerous — data:** | `"data:text/html,<h1>hi</h1>"` | Plain, React-escaped `<span>` — NO `<a>` |
+| **Dangerous — file:/vbscript:** | `"file:///etc/passwd"` | Plain `<span>` — NO `<a>` |
+| **Print — any URL** | any of the above with a URL | URL shown as underlined black text, non-interactive |
+| **Loading** | — | Inherited from `TripDetailsPage` skeleton/spinner; `ActivityEntry` not rendered until data resolves |
+| **Error** | — | Inherited from `TripDetailsPage` error state; activities section not rendered |
+
+There is no link-specific empty/loading/error state — these are inherited from the parent Trip Details page lifecycle.
+
+---
+
+#### 34.10 Security Requirements
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Only `http://` / `https://` linkified | Regex `/(https?:\/\/[^\s]+)/g` + per-segment `.test(/^https?:\/\//)` guard |
+| `javascript:` → inert text | Does not match regex → `{type:'text'}` |
+| `data:` / `vbscript:` / `file:` → inert text | Do not match regex → `{type:'text'}` |
+| No HTML injection | No `dangerouslySetInnerHTML`; `href` + children set via JSX (React escapes) |
+| Tab-napping / referrer leak prevention | Every `<a target="_blank">` MUST have `rel="noopener noreferrer"` |
+| No code execution on user input | Utility uses only `split` / `filter` / `map` / `RegExp.test` |
+
+QA (T-325) must explicitly verify that `javascript:` and `data:` location strings render as plain text with no `<a>` element.
+
+---
+
+#### 34.11 Responsive Behavior
+
+| Breakpoint | Behavior |
+|-----------|----------|
+| **Desktop (≥ 1024px)** | Location wraps within the `activityDetails` panel; long URLs contained by `word-break: break-all`. |
+| **Tablet (640–1023px)** | Same; no breakpoint-specific link logic. |
+| **Mobile (< 640px)** | Activity card stacks (time / divider / details vertically). The location link wraps within the details column; `word-break: break-all` prevents horizontal overflow and keeps tap targets within the card. |
+
+The link inherits the font size of `.activityLocation`; no per-breakpoint sizing is required. Tap target on mobile is the full underlined URL run — adequate for touch.
+
+---
+
+#### 34.12 Implementation Summary — What the Frontend Engineer Must Build (T-324)
+
+The detection, on-screen rendering, security, and print handling **already ship** (Spec 14 Part B + Spec 15/33). The remaining work for Sprint 42 is to bring `.locationLink` fully in line with this spec and add coverage:
+
+| File | Change |
+|------|--------|
+| `frontend/src/utils/formatDate.js` | **No change** — `parseLocationWithLinks` already correct. Verify it remains as in §34.3. |
+| `frontend/src/pages/TripDetailsPage.jsx` → `ActivityEntry` | **No change** — render already matches §34.4. Verify `target`/`rel` present. |
+| `frontend/src/pages/TripDetailsPage.module.css` → `.locationLink` | **Modify** — add `text-underline-offset: 2px`, `transition: color 150ms ease`, and a `.locationLink:focus-visible` rule (§34.5–34.6). |
+| `frontend/src/styles/print.css` | **No change** — link print rules already match §34.7. Verify `[class*="locationLink"]` keeps underline + black ink. |
+| Tests | **Add/confirm** the cases below. |
+
+**Tests required (minimum 6):**
+1. Plain-text location (no URL) → no `<a>` in the document.
+2. Single URL → `<a>` with correct `href`, `target="_blank"`, `rel="noopener noreferrer"`, `className` includes `locationLink`.
+3. Mixed text + URL → text as `<span>`, URL as `<a>`, original order preserved.
+4. Multiple URLs in one string → two separate `<a>` elements with intervening `<span>`.
+5. `javascript:alert(1)` → renders entirely as plain text, NO `<a>`.
+6. `data:text/html,...` → renders as plain (escaped) text, NO `<a>`.
+
+---
+
+#### 34.13 Design System Conventions
+
+No new tokens or conventions. This spec reuses existing tokens only:
+- `var(--accent)` (`#5D737E`) — link color
+- `var(--text-primary)` (`#FCFCFC`) — hover color
+- `var(--border-accent)` — focus outline
+- `150ms ease` — transition timing (existing motion convention)
+
+The `:focus-visible` outline pattern (`2px solid var(--border-accent)`, `outline-offset: 2px`, `border-radius: 2px`) matches the focus treatment used elsewhere in the app and is hereby reaffirmed as the standard focus ring for inline text links.
+
+---
+
+*Spec 34 (Sprint 42 — Activity Location Links, T-322, B-031) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-05-30.*
+
+---
+
+**Design System Conventions:** Stable. No additions or modifications proposed; Spec 34 reuses existing tokens and reaffirms the standard inline-link focus ring. All conventions from the table at the top of this document remain in effect.
+
+---
+
+*Sprint #42 design spec complete. Published by Design Agent 2026-05-30.*
+
+---
+
+## Sprint 43 Specs
+
+---
+
+### Spec 35: Activity Notes Field (Sprint 43 — T-330 / B-036)
+
+**Sprint:** #43
+**Related Task:** T-330 (Design), implemented by T-332 (Frontend), backed by T-331 (Backend, migration 011 + API)
+**Status:** Approved (auto-approved per automated sprint cycle)
+
+**Extends:**
+- **Spec 6** (Activities Edit Page) — adds a `notes` textarea to each activity row.
+- **Spec 3 §3.9** (Trip Details — Activity Entry) and **Spec 34** (Activity Location Links) — adds a notes display block under each activity.
+- **Spec 17 §17.3.5** (Print — Activities Section) and **Spec 33** (PrintCalendarSummary) — adds notes to the printed activity card.
+
+---
+
+#### 35.1 Overview & Rationale
+
+**Description:** Detail-oriented travelers want to attach free-form context to an individual activity — a reservation number, a confirmation code, a dress code, an instruction like "bring passport," a phone number, or any short note. Today the `activities` table has no `notes` column, so a client-sent `notes` value is silently dropped. Backend task T-331 adds a nullable `notes` text column (max 2000 chars, HTML stripped on write). This spec defines how that field is **entered** (edit form), **displayed** (Trip Details), and **printed** (print view).
+
+**Who uses it:** Any user editing or viewing an activity. The field is **optional** in every surface — an activity with no notes must look exactly as it does today (no empty placeholder block, no leftover whitespace).
+
+**Scope boundary:**
+- Applies to **activities only** this sprint. Flights, stays, and land travel do not get a notes field here.
+- The notes field is **plain text**. It is NOT linkified (unlike the activity location field in Spec 34) and is NOT rendered as HTML. URLs inside a note render as inert plain text in Sprint 43.
+- Notes are rendered as **escaped text** — never `dangerouslySetInnerHTML`. This is defense-in-depth alongside the backend `sanitizeHtml` strip (T-331). The combination guarantees a stored HTML/script payload renders inert.
+
+**Data contract (from T-331, for reference):** `notes` is a nullable string, max length 2000, returned on every activity object from `GET`/`POST`/`PATCH`. The frontend must treat `null`, `undefined`, and `""` (empty/whitespace-only) identically as "no notes."
+
+---
+
+#### 35.2 Activity Edit Form — Notes Input (extends Spec 6 §6.5)
+
+The notes input is added to **each activity row** on the Activities Edit Page. Because notes is a multi-line field that does not fit the spreadsheet-style single-line column layout of §6.5, it renders as a **full-width textarea on its own line, beneath the existing column inputs**, within the same row container. This keeps the dense column layout intact for the common fields while giving notes room to breathe.
+
+**35.2.1 Desktop layout (≥768px)**
+
+The existing row (date / name / location / start / end / delete) is unchanged. Directly below that flex line, inside the same row container, add a second line:
+
+- **Container:** Full width of the row. Margin-top: 8px (`--space-2`) below the column inputs line. Padding-left: 0 so it aligns with the left edge of the row's input area.
+- **Label:** A small inline label `NOTES` — font-size 11px, font-weight 500, letter-spacing 0.08em, uppercase, color `--text-muted` (per the standard Form Pattern label). Margin-bottom: 4px (`--space-1`). The label is optional/secondary: it may be visually hidden but **must** remain present as an accessible label (see §35.6). Recommended: show it as a faint inline label to match the form's quiet aesthetic.
+- **Textarea:**
+  - Width: 100% of the row container.
+  - Background: `--surface-alt` (`#3F4045`).
+  - Border: `1px solid --border-subtle`. On focus: `1px solid --accent` (`#5D737E`). Border-radius: `--radius-sm` (2px).
+  - Text: `--text-primary` (`#FCFCFC`), IBM Plex Mono, font-size 13px, line-height 1.5.
+  - Placeholder: `--text-muted`. Placeholder copy: `"reservation #, confirmation code, dress code, things to bring…"` (lowercase, calm, instructive).
+  - Padding: 10px 14px.
+  - **Rows:** `rows={2}` default height (~2 lines). `resize: vertical` so the user can drag taller; do not allow horizontal resize (`resize: vertical` only). Min-height ~52px, max-height ~240px (after which it scrolls internally).
+  - `transition: border-color 150ms ease`.
+  - `maxLength={2000}` attribute on the textarea — the browser hard-stops input at 2000 characters, mirroring the backend limit. (This is a UX guardrail; the backend remains the source of truth.)
+  - `wrap="soft"` and `white-space: pre-wrap` behavior so line breaks the user types are preserved.
+
+**35.2.2 Character counter**
+
+A subtle live counter sits at the bottom-right beneath the textarea:
+- Format: `"{count} / 2000"` — font-size 10px, letter-spacing 0.04em, color `--text-muted`, text-align right, margin-top 4px.
+- The counter is **only shown once the user focuses the textarea or there is existing content** — to avoid adding visual noise to empty rows. When the row's notes is empty and unfocused, hide the counter.
+- **Approaching limit:** when `count >= 1900`, the counter color shifts to `rgba(220, 160, 80, 0.9)` (muted amber warning).
+- **At limit:** when `count === 2000`, counter color `rgba(220, 80, 80, 0.9)` (the standard error red) and append ` "— max reached"`. No error banner — the `maxLength` attribute already prevents exceeding it; this is just informative.
+
+**35.2.3 Empty / optional behavior**
+
+- The notes textarea is **always optional**. An empty notes value must never block "Save all" or trigger a validation error (contrast with `name`/`activity_date` which are required per §6.5).
+- On save, the frontend includes `notes` in the payload for new (`POST`) and edited (`PATCH`) rows. Send `notes` as the trimmed string, or `null`/`""` when empty (match whatever the backend contract from T-331 expects for "clear the field"; default to sending an empty string `""` which the backend treats as no-notes). Clearing a previously-set note (deleting all text and saving) must persist as cleared.
+- A row counts as "edited" (and thus triggers a `PATCH` per §6.9) if **only** its notes changed — wire `notes` into the existing change-detection so a notes-only edit is saved.
+
+**35.2.4 Mobile layout (<768px) (extends Spec 6 §6.8)**
+
+In the mobile card-style stacked row, insert the notes field as a new stacked row **after `location` (Row 3) and before the time row (Row 4)**, or at the end before the delete button — recommended placement: **after the time row (Row 4), as Row 5**, with the delete button moving to Row 6. Rationale: keeps the most-used fields (date, name, time) at the top; notes is supplementary.
+
+- Inline label `NOTES` above the textarea (10px muted, matching the other mobile inline labels).
+- Textarea: full width, `rows={3}` on mobile (slightly taller since vertical space is cheaper than horizontal), same styling as desktop. `resize: vertical`.
+- Character counter beneath, same rules as §35.2.2.
+
+**35.2.5 Edit-form states**
+
+| State | Behavior |
+|-------|----------|
+| Empty (no notes) | Placeholder shown, no counter, no error. Textarea at 2-row default height. |
+| Filled | Text shown wrapped, counter visible. Height grows up to max-height then scrolls. |
+| Focus | Border → `--accent`; counter appears if hidden. |
+| At/near limit | Counter color shifts (amber ≥1900, red at 2000); `maxLength` blocks further typing. |
+| Loading (page fetch) | The notes textarea is part of the row skeleton — no separate skeleton needed; the existing 3-row shimmer (§6.4) covers it. |
+| Save in progress | Textarea becomes `readOnly` (not `disabled`, to keep value in payload) and dims to opacity 0.6 along with the rest of the row while the save spinner runs (per §6.9). |
+| Save error | Row retains its values including notes (no data loss); standard row error treatment from §6.9 applies. |
+
+---
+
+#### 35.3 Trip Details Page — Notes Display (extends Spec 3 §3.9 + Spec 34)
+
+Notes display **under each activity entry** on the Trip Details page, **only when present** (non-null, non-empty after trim). When absent, the activity entry renders exactly as it does today — no empty block, no label, no extra margin.
+
+**35.3.1 Placement within the Activity Entry**
+
+Recall the Activity Entry layout (§3.9): a flex row with a fixed ~80px time column, a vertical divider, and a flex:1 details column (name, then optional location). The notes block is added **inside the details column, below the location row** (or below the name row if no location). It is the last element in the details column.
+
+**35.3.2 Notes block styling**
+
+- **Container:** Margin-top: 8px (`--space-2`) above it (separating it from the name/location). Width: 100% of the details column.
+- **Label (optional micro-label):** A tiny uppercase label `NOTES` — font-size 10px, font-weight 600, letter-spacing 0.1em, uppercase, color `rgba(252,252,252,0.35)` (dimmer than `--text-muted` to stay quiet). Margin-bottom: 3px. This label aids scannability when an activity has both a location and notes. *Implementation note: the label is recommended but may be omitted if it feels heavy in testing; the notes text itself is the required element.*
+- **Notes text:**
+  - Font-size 12px, font-weight 400, color `rgba(252,252,252,0.7)` (slightly muted relative to the activity name, so name stays primary), line-height 1.55.
+  - IBM Plex Mono.
+  - **Preserve line breaks:** apply `white-space: pre-wrap` so multi-line notes the user typed render on multiple lines. Combined with `overflow-wrap: anywhere` / `word-break: break-word` so a long unbroken token (e.g., a long confirmation code or URL) wraps within the card instead of overflowing horizontally.
+  - **Rendered as escaped text** — interpolate as a React text child (`{activity.notes}`), never `dangerouslySetInnerHTML`. Any HTML/script in the value renders as literal visible characters (and the backend will already have stripped tags).
+- **Left accent (optional, recommended):** To visually distinguish notes from the location line, render the notes block with a subtle left border: `border-left: 2px solid rgba(93,115,126,0.4)` (`--accent` at low opacity), `padding-left: 10px`. This gives a quiet "annotation" feel consistent with Japandi restraint (border, not background fill). No background tint, no shadow.
+
+**35.3.3 Long-text overflow handling**
+
+- There is **no truncation/clamp** in Sprint 43 — detail-oriented users want to read the full note. Long notes wrap and the activity card grows in height. This is acceptable and expected.
+- `overflow-wrap: anywhere` ensures no horizontal scroll on long unbroken strings.
+- (Future enhancement, out of scope: a "show more/less" clamp at e.g. 6 lines. Not built this sprint — note this in handoff as a deliberate deferral.)
+
+**35.3.4 Trip Details notes states**
+
+| State | Behavior |
+|-------|----------|
+| No notes (null/empty/whitespace) | Block not rendered at all. Activity entry unchanged from today. |
+| Short note (1 line) | Single wrapped line under location, with optional `NOTES` micro-label and left accent. |
+| Multi-line note | Renders line breaks via `pre-wrap`; card grows vertically. |
+| Very long note | Wraps fully; no truncation; card grows. No horizontal overflow. |
+| HTML/script payload in note | Renders inert as visible escaped text (defense-in-depth; backend also strips). |
+
+---
+
+#### 35.4 Print View — Notes Rendering (extends Spec 17 §17.3.5)
+
+The printed activity card (§17.3.5) gains a conditional notes line. Notes must be **readable plain text in black ink** consistent with the print scheme (black-on-white, raw hex values per the print.css conventions — no CSS custom properties).
+
+**Updated print activity card layout:**
+```
+┌─────────────────────────────────────────────────────────┐
+│  9:00 AM – 2:00 PM  ·  Fisherman's Wharf                 │
+│  Location: Fisherman's Wharf, San Francisco, CA          │
+│  Notes: Reservation #FW-22841. Bring printed ticket.     │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Field layout (print):**
+- **Line 1:** Time range + activity name (unchanged).
+- **Line 2 (conditional):** `"Location: [location]"` — 10pt `#555` (unchanged). Omit if empty.
+- **Line 3 (conditional):** `"Notes: [notes text]"` — 10pt, color `#333` (slightly darker than location so it's legible), `white-space: pre-wrap` to preserve line breaks, `page-break-inside: avoid` so a note doesn't split awkwardly across pages where possible. **Omit this line entirely if notes is null/empty/whitespace.**
+  - The `"Notes:"` prefix is bold/`font-weight: 600`; the note body is regular weight.
+  - Long notes wrap normally within the card width; the card grows. `overflow-wrap: anywhere` to avoid clipping long tokens.
+  - Rendered as plain escaped text (same React text-child rendering; the same DOM is used for screen and print per the `@media print` approach).
+
+**PrintCalendarSummary (Spec 33):** The day-by-day print summary table is a compact overview and should **NOT** include notes (it would bloat the table and break its at-a-glance purpose). Notes appear only in the detailed Activities section of the print view (§17.3.5 as amended above). Note this explicitly so the Frontend Engineer does not add notes to the summary table.
+
+---
+
+#### 35.5 Responsive Behavior Summary
+
+| Surface | Desktop (≥1024px) | Tablet (768–1023px) | Mobile (<768px) |
+|---------|-------------------|---------------------|-----------------|
+| Edit form notes | Full-width textarea on its own line beneath the row's column inputs; `rows={2}`, vertical resize; counter bottom-right. | Same as desktop. | Stacked card row: `NOTES` inline label + full-width textarea `rows={3}`; counter beneath. |
+| Trip Details notes | Under location in details column; left-accent annotation; wraps; no truncation. | Same. | Activity card stacks (time/divider/details vertical per §3.13); notes block sits at the bottom of the stacked details, full width, wraps with `overflow-wrap: anywhere`. |
+| Print notes | `Notes:` line in activity card; wraps; omitted if empty. | (Print is layout-independent of screen breakpoint.) | — |
+
+---
+
+#### 35.6 Accessibility
+
+- **Edit form textarea** must have an accessible name. Use a real `<label htmlFor={notesId}>NOTES</label>` associated with the textarea's `id`, or `aria-label="Notes for this activity"` (include the activity name when available, e.g. `aria-label="Notes for Fisherman's Wharf"`). If the visible `NOTES` label is omitted for aesthetics, the `aria-label` is **required**.
+- The character counter should be associated to the textarea via `aria-describedby={counterId}` so screen-reader users hear remaining length on focus. Mark the counter `aria-live="polite"` so the "max reached" state is announced, but throttle updates (the live region announces on focus/limit changes, not on every keystroke — implement by only setting the live text at the near-limit/at-limit thresholds to avoid chatter).
+- `maxLength` provides a non-JS hard cap; ensure the counter and `maxLength` agree at 2000.
+- **Trip Details notes block:** wrap in a semantic element within the activity `<article>` (§3.x a11y). Give the notes block `aria-label="Notes"` or precede it with the visually-rendered `NOTES` label so the relationship is clear. The note text is plain text in the accessibility tree (no interactive children).
+- **Contrast:** the Trip Details notes text color `rgba(252,252,252,0.7)` on `--surface` (`#30292F`) meets WCAG AA for body text. The optional dim micro-label `rgba(252,252,252,0.35)` is decorative/supplementary — do not rely on it alone to convey meaning (the note text stands on its own).
+- **Keyboard:** the textarea is in the natural tab order of the edit row, after the time inputs and before the delete button (desktop) — verify tab order is logical. Enter inserts a newline (default textarea behavior); it must NOT submit the form.
+- **No focus traps**; vertical resize handle is keyboard-irrelevant and fine to leave default.
+
+---
+
+#### 35.7 Edge Cases
+
+| Case | Expected handling |
+|------|-------------------|
+| Notes is `null` / `undefined` / `""` / whitespace-only | Treated as "no notes" everywhere. No display block on Trip Details; no print line; placeholder shown in edit form. Whitespace-only should be trimmed to empty on save. |
+| Notes exactly 2000 chars | Accepted; counter shows `2000 / 2000 — max reached` in red; saves fine. |
+| User pastes >2000 chars | `maxLength` truncates the paste to 2000 at the input layer; counter shows max-reached. (Backend would 400 on >2000, but the UI prevents reaching that.) |
+| Notes contains line breaks | Preserved via `pre-wrap` in edit (typed), Trip Details (display), and print. |
+| Notes contains `<script>`/HTML | Backend strips tags on write (T-331); frontend renders escaped text regardless → inert. No `dangerouslySetInnerHTML` anywhere. |
+| Notes contains a URL | Rendered as plain inert text in Sprint 43 (NOT linkified — unlike location, Spec 34). |
+| Notes-only edit (no other field changed) | Detected as a change → `PATCH` sent so the note persists. |
+| Clearing an existing note | Saving with empty notes persists the cleared value (sends `""`/`null` per backend contract). |
+| Very long single unbroken token | `overflow-wrap: anywhere` / `word-break: break-word` prevents horizontal overflow in all surfaces. |
+
+---
+
+#### 35.8 Implementation Summary — What the Frontend Engineer Must Build (T-332)
+
+| File | Change |
+|------|--------|
+| Activities Edit Page (`frontend/src/pages/ActivitiesEditPage.jsx` or equivalent) | Add a full-width `notes` textarea per row (§35.2): label/`aria-label`, placeholder, `maxLength={2000}`, `rows={2}` desktop / `rows={3}` mobile, vertical-only resize, live char counter. Wire `notes` into row state, change-detection, and the save payload (POST/PATCH). Empty notes must not block save. |
+| Activities Edit Page CSS module | Notes textarea styling (`--surface-alt` bg, 2px radius, focus border `--accent`), counter styling incl. amber (≥1900) / red (2000) states, mobile stacked placement. |
+| `TripDetailsPage.jsx` → `ActivityEntry` | Render the notes block in the details column below location, **only when notes is non-empty after trim** (§35.3). Plain escaped text (`{activity.notes}`), `white-space: pre-wrap`, `overflow-wrap: anywhere`. Optional `NOTES` micro-label + left-accent border. No `dangerouslySetInnerHTML`. |
+| `TripDetailsPage.module.css` | `.activityNotes` (and optional `.activityNotesLabel`) styles per §35.3.2; left-accent border, muted color, wrapping rules. |
+| `frontend/src/styles/print.css` | Inside the existing `@media print` block: a `Notes:` line style for the activity card (10pt, `#333`, `white-space: pre-wrap`, `page-break-inside: avoid`), conditional (component omits the element when empty so no print-specific hiding is needed). Do NOT add notes to the PrintCalendarSummary table. |
+| Tests | See below. |
+
+**Tests required (minimum):**
+1. Activity **with** notes → notes block renders on Trip Details with the correct text.
+2. Activity **without** notes (`null`/`""`/whitespace) → **no** notes block in the DOM (assert absence).
+3. Long notes → renders fully (no truncation), no layout assertion needed beyond presence.
+4. Notes containing HTML/`<script>` payload → renders as inert escaped text; assert no live element / no script execution (and no `dangerouslySetInnerHTML`).
+5. Edit form: typing in the notes textarea updates state; counter reflects length; `maxLength` caps at 2000.
+6. Save with a notes value includes `notes` in the request payload; clearing notes sends the cleared value.
+
+---
+
+#### 35.9 Design System Conventions
+
+No new tokens or conventions. Spec 35 reuses existing tokens only:
+- `--surface-alt` (`#3F4045`) — textarea background (standard Form Pattern).
+- `--accent` (`#5D737E`) — focus border + the low-opacity left-accent on the Trip Details notes block.
+- `--text-primary` / `--text-muted` — text and placeholder/counter.
+- 11px uppercase 0.08em label, 2px input radius, 13px IBM Plex Mono input text, `150ms ease` focus transition, 8px/4px spacing — all per the Design System Conventions table.
+- Print: raw hex (`#333`, `#555`, `#000`, `#fff`) per the established print.css rule (no CSS custom properties in `@media print`).
+
+The Design System Conventions table at the top of this document remains stable — no additions or modifications are proposed for Sprint 43.
+
+---
+
+*Spec 35 (Sprint 43 — Activity Notes Field, T-330, B-036) marked Approved (auto-approved per automated sprint cycle). Published by Design Agent 2026-05-30.*
+
+---
+
+*Sprint #43 design spec complete. Published by Design Agent 2026-05-30.*

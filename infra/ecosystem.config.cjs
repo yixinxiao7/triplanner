@@ -25,6 +25,12 @@ module.exports = {
         NODE_ENV: 'staging',
         PORT: 3001,
         CORS_ORIGIN: 'https://localhost:4173', // T-228 Fix A — prevents ESM dotenv hoisting fallback
+        // T-326 — explicit TLS env so a clean `pm2 start` reproduces the HTTPS
+        // backend staging contract (previously the running proc had SSL injected
+        // out-of-band; the config drifted to HTTP-only). Mirrors production config.
+        COOKIE_SECURE: 'true',
+        SSL_KEY_PATH: '../infra/certs/localhost-key.pem',
+        SSL_CERT_PATH: '../infra/certs/localhost.pem',
       },
       // Log configuration
       error_file: './logs/backend-error.log',
