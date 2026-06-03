@@ -1,7 +1,11 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-06-03T15:06:15.368Z
-> Files: 510 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-06-03T15:12:39.662Z
+> Files: 511 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../../../tmp/
+
+- `fb43.md` — User Agent — Sprint #43 Staging Walkthrough (T-336) — 2026-06-03 (~2817 tok)
 
 ## ./
 
@@ -136,9 +140,9 @@
 - `active-sprint.md` — Active Sprint (~3413 tok)
 - `api-contracts.md` — API Contracts (~96898 tok)
 - `architecture-decisions.md` — Architecture Decisions (~5194 tok)
-- `dev-cycle-tracker.md` — Dev Cycle Tracker (~187142 tok)
+- `dev-cycle-tracker.md` — Dev Cycle Tracker (~187387 tok)
 - `feedback-log.md` — Feedback Log (~168029 tok)
-- `handoff-log.md` — Agent Handoff Log (~23145 tok)
+- `handoff-log.md` — Agent Handoff Log (~24213 tok)
 - `hosting-research.md` — T-124 — Production Hosting Provider Research Spike (~5076 tok)
 - `project-brief.md` — Project Brief (~2456 tok)
 - `qa-build-log.md` — QA & Build Log (~14972 tok)

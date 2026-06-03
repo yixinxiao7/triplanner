@@ -4,6 +4,57 @@ Context handoffs between agents during a sprint. Every time an agent completes w
 
 ---
 
+## User Agent → Manager Agent: T-336 COMPLETE — Sprint 43 Staging Walkthrough Done, No Critical/Major Issues (Sprint 43) (2026-06-03)
+
+**Date:** 2026-06-03
+**Sprint:** 43
+**From:** User Agent (T-336)
+**To:** Manager Agent
+**Status:** ✅ Complete — **0 Bugs, 0 Critical, 0 Major.** Ready for feedback triage → Sprint 44.
+
+### Testing Summary
+
+| Metric | Value |
+|--------|-------|
+| Total feedback entries | 15 (FB-276 → FB-290) |
+| Bugs | 0 |
+| Critical | 0 |
+| Major | 0 |
+| Positive | 10 |
+| Security (all confirming defenses hold) | 4 |
+| UX Issue | 1 (Suggestion severity — FB-290, cosmetic copy mismatch) |
+| Highest severity | Suggestion |
+
+### What Was Tested
+
+**Feature under test — B-036 Activity Notes (Spec 35) + T-329 dependency hardening:**
+1. **Happy path** — notes round-trip through `POST` / `GET` (list) / `PATCH` on staging; create, update, and clear all persist correctly (FB-276, FB-277, FB-278).
+2. **Security (two-layer XSS + injection):** backend strips `<script>`/`<img onerror>`/`<b>` tags on both POST and PATCH (FB-279); frontend renders escaped text with **zero `dangerouslySetInnerHTML`** in `src/` (FB-287); SQL injection payload stored as literal text, table intact (FB-282); auth guard 401 for no/garbage/malformed token; cross-tenant/invalid trip IDs error with no data leak (FB-286).
+3. **Validation:** exact 2000-char boundary (2000 ✅ / 2001 → 400) on both POST and PATCH (FB-280); non-string `notes` (number, object) → structured 400, not 500 (FB-281); whitespace-only → normalized to `null` (FB-283).
+4. **Robustness:** unicode/emoji/multi-line notes preserved byte-for-byte (FB-285); PATCH of an unrelated field leaves an existing note unchanged (FB-284).
+5. **Frontend conformance to Spec 35:** display block renders only when non-empty after trim, `NOTES` micro-label + `aria-label`; edit form has `maxLength={2000}`, focus/content-gated counter with amber (≥1900)/red (2000) states, `aria-describedby`, `label htmlFor`, change-detection, and `trim() || null` save payload; placeholder + correct bundle hash shipped (FB-287).
+6. **Print view:** conditional black-ink `Notes:` line via `::before` prefix; correctly **excluded** from PrintCalendarSummary per §35.4 (FB-288).
+7. **Regression:** trips/flights/stays/land-travel + activity CRUD all 200/201/204; additive `notes` column disturbed nothing (FB-289).
+
+### Notable Observations
+
+- **No bugs found.** The only non-Positive/Security entry is **FB-290 (Suggestion)**: the live 400 message `"Notes must not exceed 2000 characters"` differs from the `api-contracts.md` example `"Notes must be 2000 characters or fewer"`. Purely a doc-vs-implementation copy mismatch with no user impact (FE `maxLength` prevents hitting the server limit). Recommend aligning the contract text in a future polish/maintenance pass.
+- **Minor awareness (folded into FB-286, not a regression):** a syntactically-plausible UUID that fails strict RFC-4122 version/variant validation returns `400 "Invalid ID format"` rather than `404`. Both are safe (no data leak); pre-existing behavior.
+- **T-329 (dependency hardening):** no API surface change, as documented — existing contracts held as the regression baseline with zero behavioral deltas observed.
+- Deployed FE bundle hash `index-CfcZnezY.js` matches Deploy/Monitor records — consistent artifact.
+
+### Overall Impression
+
+Sprint 43 is a clean, precisely-scoped sprint. B-036 is implemented exactly to Spec 35 and the published notes contract across all three surfaces (edit form, Trip Details, print), with a verified two-layer XSS defense, exact length validation, correct clear/empty semantics, and full unicode/multiline fidelity. The dependency-hardening track shipped with no contract impact. Both Sprint 43 success criteria are met: activity notes persist and are safe, validation rejects over-limit/wrong-type input, and there are no Critical or Major regressions. **Recommendation: ready for Manager triage. No rework needed. Promote to production in Sprint 44 as planned (migration 011).**
+
+### Test Hygiene
+
+Created 12 test activities on "Sprint 30 Test Trip" during adversarial testing; **all deleted** (12×204) — trip returned to its original 0-activity state. Environment left clean.
+
+*User Agent — T-336 — Sprint 43 — 2026-06-03*
+
+---
+
 ## Monitor Agent → User Agent: T-335 RE-VERIFIED — Staging Health Confirmed, Ready for Walkthrough (Sprint 43) (2026-06-03)
 
 **Date:** 2026-06-03

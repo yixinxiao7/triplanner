@@ -2,14 +2,14 @@
   "version": 1,
   "created_at": "2026-06-02T19:51:13.909Z",
   "lifetime": {
-    "total_tokens_estimated": 213138,
-    "total_reads": 7,
-    "total_writes": 2,
-    "total_sessions": 1,
-    "anatomy_hits": 6,
+    "total_tokens_estimated": 870384,
+    "total_reads": 14,
+    "total_writes": 5,
+    "total_sessions": 2,
+    "anatomy_hits": 13,
     "anatomy_misses": 1,
-    "repeated_reads_blocked": 1,
-    "estimated_savings_vs_bare_cli": 23705
+    "repeated_reads_blocked": 5,
+    "estimated_savings_vs_bare_cli": 476487
   },
   "sessions": [
     {
@@ -79,6 +79,80 @@
         "writes_count": 2,
         "repeated_reads_blocked": 1,
         "anatomy_lookups": 6
+      }
+    },
+    {
+      "id": "session-2026-06-03-1106",
+      "started": "2026-06-03T15:06:40.515Z",
+      "ended": "2026-06-03T15:12:56.401Z",
+      "reads": [
+        {
+          "file": "/Users/yixinxiao/PROJECTS/triplanner/.workflow/handoff-log.md",
+          "tokens_estimated": 23145,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/yixinxiao/PROJECTS/triplanner/.workflow/active-sprint.md",
+          "tokens_estimated": 3413,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/yixinxiao/PROJECTS/triplanner/.workflow/ui-spec.md",
+          "tokens_estimated": 163310,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/yixinxiao/PROJECTS/triplanner/.workflow/api-contracts.md",
+          "tokens_estimated": 96898,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/yixinxiao/PROJECTS/triplanner/frontend/src/pages/TripDetailsPage.jsx",
+          "tokens_estimated": 10412,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/yixinxiao/PROJECTS/triplanner/.workflow/feedback-log.md",
+          "tokens_estimated": 168029,
+          "was_repeated": true,
+          "anatomy_had_description": false
+        },
+        {
+          "file": "/Users/yixinxiao/PROJECTS/triplanner/.workflow/dev-cycle-tracker.md",
+          "tokens_estimated": 187142,
+          "was_repeated": false,
+          "anatomy_had_description": false
+        }
+      ],
+      "writes": [
+        {
+          "file": "/tmp/fb43.md",
+          "tokens_estimated": 3219,
+          "action": "create"
+        },
+        {
+          "file": "/Users/yixinxiao/PROJECTS/triplanner/.workflow/handoff-log.md",
+          "tokens_estimated": 1258,
+          "action": "edit"
+        },
+        {
+          "file": "/Users/yixinxiao/PROJECTS/triplanner/.workflow/dev-cycle-tracker.md",
+          "tokens_estimated": 420,
+          "action": "edit"
+        }
+      ],
+      "totals": {
+        "input_tokens_estimated": 652349,
+        "output_tokens_estimated": 4897,
+        "reads_count": 7,
+        "writes_count": 3,
+        "repeated_reads_blocked": 4,
+        "anatomy_lookups": 7
       }
     }
   ],
