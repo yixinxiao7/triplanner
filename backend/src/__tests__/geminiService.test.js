@@ -1,0 +1,167 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// ── Mock @google/generative-ai ───────────────────────────────────────────────
+// generateContent is a per-test programmable mock. getGenerativeModel records the
+// model name passed so we can assert the 429 fallback chain walks in order.
+const generateContent = vi.fn();
+const getGenerativeModel = vi.fn(() => ({ generateContent }));
+
+vi.mock('@google/generative-ai', () => ({
+  GoogleGenerativeAI: vi.fn(function () {
+    this.getGenerativeModel = getGenerativeModel;
+  }),
+  // The service references SchemaType for its responseSchema; provide a stub.
+  SchemaType: {
+    OBJECT: 'object',
+    ARRAY: 'array',
+    STRING: 'string',
+  },
+}));
+
+import GeminiService, {
+  MODEL_FALLBACK_CHAIN,
+  isRateLimitError,
+  parseItineraryResponse,
+} from '../services/geminiService.js';
+
+/** Build a fake Gemini SDK response whose .response.text() returns `text`. */
+function modelResponse(text) {
+  return { response: { text: () => text } };
+}
+
+const VALID_CONTRACT = JSON.stringify({
+  trip: {
+    name: 'Japan 2026',
+    destinations: ['Tokyo', 'Osaka'],
+    start_date: '2026-08-07',
+    end_date: '2026-08-14',
+    notes: null,
+  },
+  flights: [
+    {
+      flight_number: 'AA100',
+      airline: 'American',
+      from_location: 'JFK',
+      to_location: 'HND',
+      departure_at: '2026-08-07T06:50:00-04:00',
+      departure_tz: 'America/New_York',
+      arrival_at: '2026-08-08T11:00:00+09:00',
+      arrival_tz: 'Asia/Tokyo',
+    },
+  ],
+  stays: [],
+  activities: [],
+  land_travels: [],
+});
+
+const PDF_BUFFER = Buffer.from('%PDF-1.4 fake');
+
+describe('geminiService — isRateLimitError', () => {
+  it('detects err.status === 429', () => {
+    expect(isRateLimitError({ status: 429 })).toBe(true);
+  });
+  it('detects "429" in message', () => {
+    expect(isRateLimitError(new Error('Got 429 Too Many Requests'))).toBe(true);
+  });
+  it('returns false for other errors', () => {
+    expect(isRateLimitError(new Error('boom'))).toBe(false);
+    expect(isRateLimitError(null)).toBe(false);
+  });
+});
+
+describe('geminiService — parseItineraryResponse (defensive parser)', () => {
+  it('coerces missing arrays to [] and nulls missing optionals', () => {
+    const result = parseItineraryResponse(JSON.stringify({ trip: { name: 'T', destinations: ['X'] } }));
+    expect(result.flights).toEqual([]);
+    expect(result.stays).toEqual([]);
+    expect(result.activities).toEqual([]);
+    expect(result.land_travels).toEqual([]);
+    expect(result.trip.start_date).toBeNull();
+    expect(result.trip.notes).toBeNull();
+  });
+
+  it('extracts JSON wrapped in markdown fences / stray prose', () => {
+    const wrapped = 'Here you go:\n```json\n' + VALID_CONTRACT + '\n```';
+    const result = parseItineraryResponse(wrapped);
+    expect(result.trip.name).toBe('Japan 2026');
+    expect(result.flights).toHaveLength(1);
+  });
+
+  it('returns null when there is no trip object', () => {
+    expect(parseItineraryResponse(JSON.stringify({ flights: [] }))).toBeNull();
+  });
+
+  it('returns null for non-JSON garbage', () => {
+    expect(parseItineraryResponse('not json at all')).toBeNull();
+  });
+});
+
+describe('geminiService — parseItineraryFromPdf', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('valid output → returns the contract shape', async () => {
+    generateContent.mockResolvedValue(modelResponse(VALID_CONTRACT));
+
+    const svc = new GeminiService('fake-key');
+    const result = await svc.parseItineraryFromPdf(PDF_BUFFER, 'application/pdf');
+
+    expect(result.trip.name).toBe('Japan 2026');
+    expect(result.flights[0].flight_number).toBe('AA100');
+    expect(result.stays).toEqual([]);
+    // Sends the PDF as an inlineData base64 part.
+    const sentParts = generateContent.mock.calls[0][0];
+    expect(sentParts[1].inlineData.mimeType).toBe('application/pdf');
+    expect(sentParts[1].inlineData.data).toBe(PDF_BUFFER.toString('base64'));
+  });
+
+  it('429 fallback: walks the chain to the next model and succeeds', async () => {
+    // First model 429s, second succeeds.
+    generateContent
+      .mockRejectedValueOnce({ status: 429, message: '429 rate limited' })
+      .mockResolvedValueOnce(modelResponse(VALID_CONTRACT));
+
+    const svc = new GeminiService('fake-key');
+    const result = await svc.parseItineraryFromPdf(PDF_BUFFER, 'application/pdf');
+
+    expect(result.trip.name).toBe('Japan 2026');
+    // Two models were tried, in chain order.
+    expect(getGenerativeModel).toHaveBeenCalledTimes(2);
+    expect(getGenerativeModel.mock.calls[0][0].model).toBe(MODEL_FALLBACK_CHAIN[0]);
+    expect(getGenerativeModel.mock.calls[1][0].model).toBe(MODEL_FALLBACK_CHAIN[1]);
+  });
+
+  it('429 on every model → generic 502 error', async () => {
+    generateContent.mockRejectedValue({ status: 429, message: '429' });
+
+    const svc = new GeminiService('fake-key');
+    await expect(svc.parseItineraryFromPdf(PDF_BUFFER, 'application/pdf')).rejects.toMatchObject({
+      status: 502,
+      code: 'EXTERNAL_SERVICE_ERROR',
+    });
+    expect(getGenerativeModel).toHaveBeenCalledTimes(MODEL_FALLBACK_CHAIN.length);
+  });
+
+  it('non-429 error → throws immediately as generic 502 (no fallback)', async () => {
+    generateContent.mockRejectedValue(new Error('network down'));
+
+    const svc = new GeminiService('fake-key');
+    await expect(svc.parseItineraryFromPdf(PDF_BUFFER, 'application/pdf')).rejects.toMatchObject({
+      status: 502,
+      code: 'EXTERNAL_SERVICE_ERROR',
+    });
+    // Only the first model was attempted.
+    expect(getGenerativeModel).toHaveBeenCalledTimes(1);
+  });
+
+  it('malformed model output → generic 502 error', async () => {
+    generateContent.mockResolvedValue(modelResponse('totally not json'));
+
+    const svc = new GeminiService('fake-key');
+    await expect(svc.parseItineraryFromPdf(PDF_BUFFER, 'application/pdf')).rejects.toMatchObject({
+      status: 502,
+      code: 'EXTERNAL_SERVICE_ERROR',
+    });
+  });
+});

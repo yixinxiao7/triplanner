@@ -26,6 +26,33 @@
   color: var(--text-primary);
 }
 
+/* Header action buttons group (import + new trip) */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Import from PDF Button (secondary — border, not filled) */
+.importBtn {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--accent-muted);
+  border-radius: var(--radius-sm);
+  padding: 10px 24px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  font-family: var(--font-mono);
+}
+
+.importBtn:hover {
+  background: var(--hover-overlay);
+}
+
 /* New Trip Button (primary) */
 .newTripBtn {
   font-size: 12px;
@@ -196,7 +223,8 @@
   }
 
   /* WCAG 2.5.5 touch targets on mobile */
-  .newTripBtn {
+  .newTripBtn,
+  .importBtn {
     min-height: 44px;
     padding: 12px 24px;
   }

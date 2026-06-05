@@ -20,48 +20,61 @@
  *                              Supports: required, type, minLength, maxLength, minItems,
  *                                        maxItems, itemMinLength, itemMaxLength, enum
  */
-export function validate(schema) {
-  return (req, res, next) => {
-    const fieldErrors = {};
+/**
+ * Validate a plain object against a schema, returning a fieldErrors map
+ * ({} when valid). This is the shared core used by the validate() middleware
+ * AND by the PDF-import endpoint (which validates each array element against
+ * the same per-resource schemas — T-332).
+ *
+ * Mutates `body` in place the same way the middleware does (trims strings,
+ * splits comma-separated arrays, filters empty array items) so callers get
+ * the normalized values back.
+ *
+ * @param {Object} schema - the validation schema (same shape as validate())
+ * @param {Object} body   - the object to validate (mutated in place)
+ * @returns {Object} fieldErrors map (empty when the object is valid)
+ */
+export function validateFields(schema, body) {
+  const fieldErrors = {};
 
-    for (const [field, rules] of Object.entries(schema)) {
-      let value = req.body[field];
+  for (const [field, rules] of Object.entries(schema)) {
+    let value = body[field];
 
-      // Trim strings by default
-      if (typeof value === 'string' && rules.trim !== false) {
-        value = value.trim();
-        req.body[field] = value;
-      }
+    // Trim strings by default
+    if (typeof value === 'string' && rules.trim !== false) {
+      value = value.trim();
+      body[field] = value;
+    }
 
-      // Handle nullable fields — if explicitly null and nullable allowed, skip checks
-      if (value === null && rules.nullable) {
+    // Handle nullable fields — if explicitly null and nullable allowed, skip checks
+    if (value === null && rules.nullable) {
+      continue;
+    }
+
+    // Required check
+    if (rules.required) {
+      // For array type: a non-empty string is not "missing" — it will be split in the type check.
+      // Only flag as missing if: undefined, null, empty string, or an explicitly empty array.
+      const missing =
+        value === undefined ||
+        value === null ||
+        value === '' ||
+        (rules.type === 'array' && Array.isArray(value) && value.length === 0);
+      if (missing) {
+        fieldErrors[field] = rules.messages?.required || `${field} is required`;
         continue;
       }
+    }
 
-      // Required check
-      if (rules.required) {
-        // For array type: a non-empty string is not "missing" — it will be split in the type check.
-        // Only flag as missing if: undefined, null, empty string, or an explicitly empty array.
-        const missing =
-          value === undefined ||
-          value === null ||
-          value === '' ||
-          (rules.type === 'array' && Array.isArray(value) && value.length === 0);
-        if (missing) {
-          fieldErrors[field] = rules.messages?.required || `${field} is required`;
-          continue;
-        }
-      }
-
-      // Skip remaining checks if value is absent (optional field not provided).
-      // T-278: For empty strings, only skip if no minLength constraint — otherwise let
-      // minLength catch fields that became empty after sanitization.
-      if (value === undefined || value === null) {
-        continue;
-      }
-      if (value === '' && !(rules.minLength > 0)) {
-        continue;
-      }
+    // Skip remaining checks if value is absent (optional field not provided).
+    // T-278: For empty strings, only skip if no minLength constraint — otherwise let
+    // minLength catch fields that became empty after sanitization.
+    if (value === undefined || value === null) {
+      continue;
+    }
+    if (value === '' && !(rules.minLength > 0)) {
+      continue;
+    }
 
       // ---- Type checks ----
 
@@ -83,16 +96,16 @@ export function validate(schema) {
         if (!Array.isArray(value)) {
           // Accept comma-separated string — split, trim, filter empty
           if (typeof value === 'string') {
-            req.body[field] = value.split(',').map((s) => s.trim()).filter(Boolean);
-            value = req.body[field];
+            body[field] = value.split(',').map((s) => s.trim()).filter(Boolean);
+            value = body[field];
           } else {
             fieldErrors[field] = rules.messages?.type || `${field} must be an array`;
             continue;
           }
         } else {
           // Filter out empty/whitespace-only strings from arrays
-          req.body[field] = value.map((v) => (typeof v === 'string' ? v.trim() : v)).filter((v) => v !== '' && v !== null && v !== undefined);
-          value = req.body[field];
+          body[field] = value.map((v) => (typeof v === 'string' ? v.trim() : v)).filter((v) => v !== '' && v !== null && v !== undefined);
+          value = body[field];
         }
       }
 
@@ -190,13 +203,25 @@ export function validate(schema) {
 
       // ---- Custom validation ----
       if (rules.custom) {
-        const customError = rules.custom(value, req.body);
+        const customError = rules.custom(value, body);
         if (customError) {
           fieldErrors[field] = customError;
           // Do NOT continue — allow other fields to be checked
         }
       }
-    }
+  }
+
+  return fieldErrors;
+}
+
+/**
+ * Validation middleware factory.
+ * Returns a middleware that validates req.body fields and responds with
+ * field-level error messages matching the API contract shape.
+ */
+export function validate(schema) {
+  return (req, res, next) => {
+    const fieldErrors = validateFields(schema, req.body);
 
     if (Object.keys(fieldErrors).length > 0) {
       return res.status(400).json({

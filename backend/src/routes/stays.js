@@ -33,7 +33,7 @@ async function requireTripOwnership(req, res) {
   return trip;
 }
 
-const stayValidationSchema = {
+export const stayValidationSchema = {
   category: {
     required: true,
     type: 'string',

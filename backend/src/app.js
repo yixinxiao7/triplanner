@@ -11,6 +11,8 @@ import staysRoutes from './routes/stays.js';
 import activitiesRoutes from './routes/activities.js';
 import landTravelRoutes from './routes/landTravel.js';
 import calendarRoutes from './routes/calendar.js';
+import aiRoutes from './routes/ai.js';
+import importRoutes from './routes/import.js';
 
 const app = express();
 
@@ -40,6 +42,13 @@ app.param('tripId', uuidParamHandler);
 // ---- Routes ----
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/auth', authRoutes);
+
+// AI-assisted PDF itinerary import (T-332).
+app.use('/api/v1/ai', aiRoutes);
+// Atomic import commit — mounted BEFORE /api/v1/trips so "import" is not parsed
+// as a trip :id UUID by the trips router.
+app.use('/api/v1/trips/import', importRoutes);
+
 app.use('/api/v1/trips', tripsRoutes);
 
 // Sub-resources — nested under trips (mergeParams handles :tripId)

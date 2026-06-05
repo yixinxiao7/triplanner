@@ -39,7 +39,7 @@ async function requireTripOwnership(req, res) {
   return trip;
 }
 
-const flightValidationSchema = {
+export const flightValidationSchema = {
   flight_number: {
     required: true,
     type: 'string',

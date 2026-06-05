@@ -425,3 +425,230 @@ test.describe('Test 4: Rate limit lockout', () => {
     }
   });
 });
+
+// ── Test 5–8: PDF Itinerary Import (T-332) ────────────────────────
+//
+// Exercises the full import flow WITHOUT ever calling Gemini: the parse
+// endpoint (POST /ai/import/parse) is intercepted with page.route() and
+// answered with a canned contract payload. The commit endpoint
+// (POST /trips/import) is NOT mocked — it hits the real backend so the
+// "trip details shows the imported data" assertion is a true integration check.
+//
+// PREREQUISITES (same staging stack as the other tests, but it must run the
+// CURRENT code — the import feature was added 2026-06-03):
+//   1. Backend (:3001) running the latest code that mounts /api/v1/ai and
+//      /api/v1/trips/import. If the import routes 404, the staging backend is
+//      stale — restart it (e.g. `pm2 restart triplanner-backend`).
+//   2. Frontend (:4173) serving a FRESH build: `cd frontend && npm run build`
+//      (vite preview serves the static dist; a pre-feature dist has no import UI).
+//   3. Postgres reachable; the auth register limiter (5/60min/IP, in-memory) has
+//      headroom — a full suite run registers several users, so run on a freshly
+//      restarted backend to avoid 429s.
+//
+// EXECUTION STATUS (2026-06-04): EXECUTED GREEN — all 4 pass against the staging
+// stack. Note: discovering this required first refreshing a stale staging runtime
+// (the backend process predated the feature, so the import routes 404'd, and the
+// :4173 vite-preview dist predated the feature). After `cd frontend && npm run
+// build` + restarting the staging backend, the suite passes. Selectors come from
+// ImportPdfModal.jsx / ImportReviewPage.jsx / HomePage.jsx and the locked DOM
+// hooks (data-testid: import-review-page, import-save-btn, import-reject-btn,
+// import-api-error, row-flights-<i>, error-<path>). The backend logic is also
+// covered green by Vitest (aiImport / tripsImport / importModel / geminiService —
+// 29 tests). Re-run `npx playwright test -g "PDF import"` after any redeploy.
+//
+// NOTE on the register limiter (rateLimiter.js): 5 registrations / 60 min / IP,
+// in-memory. Each of these tests registers a fresh user, so a full critical-flows
+// run can exhaust the window and cause 429s on registration. If that happens,
+// restart the staging backend to reset the in-memory store before re-running.
+
+const path = require('path');
+
+const SAMPLE_PDF = path.join(__dirname, 'fixtures', 'sample-itinerary.pdf');
+
+/**
+ * Build a canned parsed-contract response for the parse endpoint.
+ * Timezones use values present in the review page's TZ dropdown
+ * (America/New_York, Asia/Tokyo) so the selects render pre-filled.
+ */
+function mockedContract(tripName) {
+  return {
+    data: {
+      trip: {
+        name: tripName,
+        destinations: ['Tokyo', 'Osaka'],
+        start_date: '2026-08-07',
+        end_date: '2026-08-14',
+        notes: null,
+      },
+      flights: [
+        {
+          flight_number: 'AA100',
+          airline: 'American Airlines',
+          from_location: 'JFK',
+          to_location: 'HND',
+          departure_at: '2026-08-07T06:50:00-04:00',
+          departure_tz: 'America/New_York',
+          arrival_at: '2026-08-08T11:00:00+09:00',
+          arrival_tz: 'Asia/Tokyo',
+        },
+      ],
+      stays: [],
+      activities: [],
+      land_travels: [],
+    },
+  };
+}
+
+/**
+ * Intercept the parse endpoint and return `contract` (a { data: ... } object)
+ * so the test never reaches the real Gemini-backed endpoint.
+ */
+async function mockParseEndpoint(page, contract) {
+  await page.route('**/api/v1/ai/import/parse', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(contract),
+    });
+  });
+}
+
+/**
+ * From the home page: open the import modal, attach the sample PDF, submit,
+ * and land on the review page. Assumes mockParseEndpoint() is already armed.
+ */
+async function uploadAndReachReview(page) {
+  await page.getByRole('button', { name: /import from pdf/i }).click();
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible({ timeout: 5000 });
+
+  // The hidden file input lives behind the dropzone; set it directly.
+  await page.locator('#import-pdf-file').setInputFiles(SAMPLE_PDF);
+
+  // Submit ("parse itinerary"). The mocked parse responds, then the app
+  // navigates to the review page with the parsed payload in router state.
+  await dialog.getByRole('button', { name: /parse itinerary/i }).click();
+
+  await page.waitForURL(/\/trips\/import\/review/, { timeout: 15000 });
+  await expect(page.getByTestId('import-review-page')).toBeVisible({ timeout: 10000 });
+}
+
+test.describe('Test 5: PDF import — review, edit, save', () => {
+  test('upload (mocked parse) → review → edit name → save → trip details', async ({ page }) => {
+    await registerNewUser(page);
+
+    const parsedName = `Imported Japan ${Date.now()}`;
+    const editedName = `${parsedName} (edited)`;
+    await mockParseEndpoint(page, mockedContract(parsedName));
+
+    await uploadAndReachReview(page);
+
+    // The parsed payload is pre-filled into the review form.
+    // Review-page inputs are not label-associated, so target by placeholder /
+    // scoped row locators rather than by accessible name.
+    const nameInput = page.getByPlaceholder(/japan 2026/i);
+    await expect(nameInput).toHaveValue(parsedName, { timeout: 10000 });
+    // The parsed flight row is present and pre-filled (flight_number is the
+    // first input in the row's field grid).
+    const flightRow = page.getByTestId('row-flights-0');
+    await expect(flightRow).toBeVisible();
+    await expect(flightRow.locator('input').first()).toHaveValue('AA100');
+
+    // Edit a field — change the trip name before saving.
+    await nameInput.fill(editedName);
+
+    // Save → commits via the REAL /trips/import → navigates to /trips/:id.
+    await page.getByTestId('import-save-btn').click();
+    await page.waitForURL(/\/trips\/[0-9a-f-]+$/, { timeout: 15000 });
+
+    // Trip details shows the edited name and the imported flight.
+    await expect(page.getByRole('heading', { name: editedName })).toBeVisible({ timeout: 10000 });
+    // The flight number renders in several places (calendar summary, pills, card);
+    // assert at least one occurrence is visible rather than a strict single match.
+    await expect(page.getByText('AA100', { exact: true }).first()).toBeVisible({ timeout: 10000 });
+
+    // And it persists in the trip list.
+    await page.getByRole('link', { name: /my trips/i }).click();
+    await page.waitForURL('/', { timeout: 10000 });
+    await expect(page.getByText(editedName)).toBeVisible({ timeout: 10000 });
+  });
+});
+
+test.describe('Test 6: PDF import — reject discards', () => {
+  test('upload (mocked parse) → review → reject → nothing saved', async ({ page }) => {
+    await registerNewUser(page);
+
+    const parsedName = `Rejected Trip ${Date.now()}`;
+    await mockParseEndpoint(page, mockedContract(parsedName));
+
+    await uploadAndReachReview(page);
+
+    // Reject triggers window.confirm — accept it to proceed with discarding.
+    page.once('dialog', (d) => d.accept());
+    await page.getByTestId('import-reject-btn').click();
+
+    // Lands back on the home page; nothing was committed.
+    await page.waitForURL('/', { timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /my trips/i })).toBeVisible({ timeout: 10000 });
+    // The rejected trip never appears in the list.
+    await expect(page.getByText(parsedName)).toBeHidden({ timeout: 5000 });
+  });
+});
+
+test.describe('Test 7: PDF import — empty itinerary (trip meta only)', () => {
+  test('mocked empty parse → review usable → save trip with no children', async ({ page }) => {
+    await registerNewUser(page);
+
+    const parsedName = `Empty Import ${Date.now()}`;
+    // Garbage/empty PDF: model returns empty child arrays.
+    const emptyContract = {
+      data: {
+        trip: { name: parsedName, destinations: ['Kyoto'], start_date: null, end_date: null, notes: null },
+        flights: [],
+        stays: [],
+        activities: [],
+        land_travels: [],
+      },
+    };
+    await mockParseEndpoint(page, emptyContract);
+
+    await uploadAndReachReview(page);
+
+    // Review page is usable with only trip meta; no flight rows rendered.
+    await expect(page.getByPlaceholder(/japan 2026/i)).toHaveValue(parsedName);
+    await expect(page.getByTestId('row-flights-0')).toHaveCount(0);
+
+    // Save with just trip meta works → trip details.
+    await page.getByTestId('import-save-btn').click();
+    await page.waitForURL(/\/trips\/[0-9a-f-]+$/, { timeout: 15000 });
+    await expect(page.getByRole('heading', { name: parsedName })).toBeVisible({ timeout: 10000 });
+  });
+});
+
+test.describe('Test 8: PDF import — non-PDF rejected client-side', () => {
+  test('selecting a non-PDF file shows an error and never calls parse', async ({ page }) => {
+    await registerNewUser(page);
+
+    // Arm a route that FAILS the test if the parse endpoint is ever hit —
+    // the client-side guard must reject the non-PDF before any request.
+    let parseCalled = false;
+    await page.route('**/api/v1/ai/import/parse', async (route) => {
+      parseCalled = true;
+      await route.abort();
+    });
+
+    await page.getByRole('button', { name: /import from pdf/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+
+    // Attach a non-PDF file (this very spec file).
+    await page.locator('#import-pdf-file').setInputFiles(__filename);
+
+    // The modal surfaces a client-side error and the submit stays disabled.
+    await expect(dialog.getByText(/choose a pdf file/i)).toBeVisible({ timeout: 5000 });
+    await expect(dialog.getByRole('button', { name: /parse itinerary/i })).toBeDisabled();
+
+    expect(parseCalled).toBe(false);
+  });
+});

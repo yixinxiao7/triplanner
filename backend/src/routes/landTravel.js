@@ -39,7 +39,7 @@ async function requireTripOwnership(req, res) {
 }
 
 /** Validation schema used for POST (create). All required fields present. */
-const createLandTravelSchema = {
+export const createLandTravelSchema = {
   mode: {
     required: true,
     type: 'string',

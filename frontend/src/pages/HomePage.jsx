@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import TripCard, { TripCardSkeleton } from '../components/TripCard';
 import CreateTripModal from '../components/CreateTripModal';
+import ImportPdfModal from '../components/ImportPdfModal';
+import { api } from '../utils/api';
 import FilterToolbar from '../components/FilterToolbar';
 import StatusFilterTabs from '../components/StatusFilterTabs';
 import EmptySearchResults from '../components/EmptySearchResults';
@@ -49,8 +51,10 @@ export default function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { trips, isLoading, error, totalCount, fetchTrips, createTrip, deleteTrip } = useTrips();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const createTripBtnRef = useRef(null);
+  const importBtnRef = useRef(null);
 
   // ── Status Filter Tabs (Spec 21 — client-side, no new API call) ────────────
   const [activeFilter, setActiveFilter] = useState('ALL');
@@ -158,10 +162,31 @@ export default function HomePage() {
     setIsModalOpen(false);
   }
 
+  function openImportModal() {
+    setIsImportModalOpen(true);
+  }
+
+  function closeImportModal() {
+    setIsImportModalOpen(false);
+  }
+
   async function handleCreateTrip(formData) {
     const newTrip = await createTrip(formData);
     // Navigate directly to the new trip's detail page
     navigate(`/trips/${newTrip.id}`);
+  }
+
+  /**
+   * Upload the chosen PDF to the parse endpoint, then hand the parsed contract
+   * to the review page via router state. Throws on failure so the modal can
+   * surface a generic error (and stay open).
+   */
+  async function handleImportPdf(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.ai.importParse(formData);
+    const parsed = res.data?.data;
+    navigate('/trips/import/review', { state: { parsed } });
   }
 
   async function handleDeleteTrip(tripId) {
@@ -197,13 +222,22 @@ export default function HomePage() {
           {/* Page Header */}
           <div className={styles.pageHeader}>
             <h1 className={styles.pageTitle}>my trips</h1>
-            <button
-              ref={createTripBtnRef}
-              className={styles.newTripBtn}
-              onClick={openModal}
-            >
-              + new trip
-            </button>
+            <div className={styles.headerActions}>
+              <button
+                ref={importBtnRef}
+                className={styles.importBtn}
+                onClick={openImportModal}
+              >
+                import from PDF
+              </button>
+              <button
+                ref={createTripBtnRef}
+                className={styles.newTripBtn}
+                onClick={openModal}
+              >
+                + new trip
+              </button>
+            </div>
           </div>
 
           {/* Status Filter Tabs (Spec 21 — Sprint 24, client-side, always visible after load) */}
@@ -353,6 +387,14 @@ export default function HomePage() {
         onClose={closeModal}
         onSubmit={handleCreateTrip}
         triggerRef={createTripBtnRef}
+      />
+
+      {/* Import from PDF Modal */}
+      <ImportPdfModal
+        isOpen={isImportModalOpen}
+        onClose={closeImportModal}
+        onSubmit={handleImportPdf}
+        triggerRef={importBtnRef}
       />
 
       {/* Toast notification */}

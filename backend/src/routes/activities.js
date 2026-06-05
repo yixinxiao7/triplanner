@@ -33,7 +33,7 @@ async function requireTripOwnership(req, res) {
   return trip;
 }
 
-const activityValidationSchema = {
+export const activityValidationSchema = {
   name: {
     required: true,
     type: 'string',
