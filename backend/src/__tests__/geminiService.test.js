@@ -22,6 +22,7 @@ import GeminiService, {
   MODEL_FALLBACK_CHAIN,
   isRateLimitError,
   parseItineraryResponse,
+  consolidateStays,
   PROMPT,
 } from '../services/geminiService.js';
 
@@ -81,6 +82,60 @@ describe('geminiService — PROMPT', () => {
   it('instructs the model to consolidate continuous multi-day ground transport', () => {
     expect(PROMPT).toMatch(/rental car/i);
     expect(PROMPT).toMatch(/not one\s+entry per day/i);
+  });
+});
+
+describe('geminiService — consolidateStays (bug-024 safety net)', () => {
+  const stay = (over) => ({
+    category: 'HOTEL', name: 'Hotel Nikko', address: null,
+    check_in_at: '', check_in_tz: 'Asia/Tokyo',
+    check_out_at: '', check_out_tz: 'Asia/Tokyo', ...over,
+  });
+
+  it('merges a per-night split of the same hotel into one spanning stay', () => {
+    // The reported case: 6/3–6/5 emitted as 3 single-day entries.
+    const split = [
+      stay({ check_in_at: '2026-06-03T15:00:00+09:00', check_out_at: '2026-06-04T11:00:00+09:00' }),
+      stay({ check_in_at: '2026-06-04T15:00:00+09:00', check_out_at: '2026-06-05T11:00:00+09:00' }),
+      stay({ check_in_at: '2026-06-05T15:00:00+09:00', check_out_at: '2026-06-06T11:00:00+09:00' }),
+    ];
+    const result = consolidateStays(split);
+    expect(result).toHaveLength(1);
+    expect(result[0].check_in_at).toBe('2026-06-03T15:00:00+09:00');
+    expect(result[0].check_out_at).toBe('2026-06-06T11:00:00+09:00');
+  });
+
+  it('merges single-day-per-night entries (check_in == check_out per day)', () => {
+    const split = [
+      stay({ check_in_at: '2026-06-03T00:00:00+09:00', check_out_at: '2026-06-03T00:00:00+09:00' }),
+      stay({ check_in_at: '2026-06-04T00:00:00+09:00', check_out_at: '2026-06-04T00:00:00+09:00' }),
+      stay({ check_in_at: '2026-06-05T00:00:00+09:00', check_out_at: '2026-06-05T00:00:00+09:00' }),
+    ];
+    const result = consolidateStays(split);
+    expect(result).toHaveLength(1);
+    expect(result[0].check_out_at).toBe('2026-06-05T00:00:00+09:00');
+  });
+
+  it('does NOT merge two different hotels', () => {
+    const result = consolidateStays([
+      stay({ name: 'Hotel A', check_in_at: '2026-06-03T15:00:00+09:00', check_out_at: '2026-06-04T11:00:00+09:00' }),
+      stay({ name: 'Hotel B', check_in_at: '2026-06-04T15:00:00+09:00', check_out_at: '2026-06-05T11:00:00+09:00' }),
+    ]);
+    expect(result).toHaveLength(2);
+  });
+
+  it('does NOT merge same hotel with a multi-day gap (separate bookings)', () => {
+    const result = consolidateStays([
+      stay({ check_in_at: '2026-06-03T15:00:00+09:00', check_out_at: '2026-06-04T11:00:00+09:00' }),
+      stay({ check_in_at: '2026-06-10T15:00:00+09:00', check_out_at: '2026-06-12T11:00:00+09:00' }),
+    ]);
+    expect(result).toHaveLength(2);
+  });
+
+  it('passes through 0/1-entry lists unchanged', () => {
+    expect(consolidateStays([])).toEqual([]);
+    const one = [stay({ check_in_at: '2026-06-03T15:00:00+09:00', check_out_at: '2026-06-05T11:00:00+09:00' })];
+    expect(consolidateStays(one)).toHaveLength(1);
   });
 });
 

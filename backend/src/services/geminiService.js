@@ -202,6 +202,88 @@ Respond ONLY with the JSON object — no prose, no markdown code fences.`;
  *   - optional fields default to null
  * Returns null if the object is fundamentally unusable (no parseable trip).
  */
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Deterministic safety net for bug-024: day-structured itinerary PDFs repeat the
+ * same lodging under each day, so the model can emit one stays[] entry per night
+ * even with the prompt's consolidation rule. This merges entries that are clearly
+ * one continuous booking back into a single stay — independent of model behaviour.
+ *
+ * Merge criteria (conservative, to avoid collapsing genuinely separate bookings):
+ *   - same lodging identity (case-insensitive name + category), AND
+ *   - chronologically adjacent: the next check-in is on/before the current
+ *     check-out, or within one day of it (covers single-day-per-night splits).
+ * A real check-out and later re-check-in (multi-day gap) is NOT merged.
+ *
+ * The merged entry spans the earliest check-in to the latest check-out, keeping
+ * the check-in tz from the first segment and check-out tz from the last.
+ *
+ * @param {Array} stays - normalized stays from parseItineraryResponse
+ * @returns {Array} consolidated stays
+ */
+export function consolidateStays(stays) {
+  if (!Array.isArray(stays) || stays.length < 2) return stays;
+
+  const identity = (s) => `${(s.name || '').trim().toLowerCase()}|${(s.category || '').toUpperCase()}`;
+  const ms = (v) => {
+    const t = Date.parse(v);
+    return Number.isNaN(t) ? null : t;
+  };
+
+  // Group by lodging identity, preserving first-seen order.
+  const order = [];
+  const groups = new Map();
+  for (const s of stays) {
+    const key = identity(s);
+    if (!groups.has(key)) {
+      groups.set(key, []);
+      order.push(key);
+    }
+    groups.get(key).push(s);
+  }
+
+  const merged = [];
+  for (const key of order) {
+    const group = groups.get(key);
+    // Sort by check-in; unparseable check-ins sort last and never merge.
+    group.sort((a, b) => (ms(a.check_in_at) ?? Infinity) - (ms(b.check_in_at) ?? Infinity));
+
+    let cur = null;
+    for (const s of group) {
+      if (!cur) {
+        cur = { ...s };
+        continue;
+      }
+      const curOut = ms(cur.check_out_at);
+      const nextIn = ms(s.check_in_at);
+      const adjacent = curOut !== null && nextIn !== null && nextIn - curOut <= ONE_DAY_MS;
+
+      if (adjacent) {
+        // Extend the window to the later check-out.
+        const curOutVal = curOut ?? -Infinity;
+        const sOut = ms(s.check_out_at);
+        if (sOut !== null && sOut > curOutVal) {
+          cur.check_out_at = s.check_out_at;
+          cur.check_out_tz = s.check_out_tz || cur.check_out_tz;
+        }
+        if (!cur.address && s.address) cur.address = s.address;
+      } else {
+        merged.push(cur);
+        cur = { ...s };
+      }
+    }
+    if (cur) merged.push(cur);
+  }
+
+  // Return in chronological order (stable for equal/unparseable check-ins).
+  return merged
+    .map((s, i) => ({ s, i }))
+    .sort((a, b) => ((ms(a.s.check_in_at) ?? Infinity) - (ms(b.s.check_in_at) ?? Infinity)) || (a.i - b.i))
+    .map(({ s }) => s);
+}
+
 export function parseItineraryResponse(text) {
   try {
     // Extract the JSON object even if wrapped in stray text / code fences.
@@ -268,7 +350,7 @@ export function parseItineraryResponse(text) {
       notes: str(l?.notes),
     }));
 
-    return { trip, flights, stays, activities, land_travels };
+    return { trip, flights, stays: consolidateStays(stays), activities, land_travels };
   } catch {
     return null;
   }
