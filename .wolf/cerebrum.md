@@ -26,3 +26,10 @@
 ## Decision Log
 
 <!-- Significant technical decisions with rationale. Why X was chosen over Y. -->
+
+- [2026-06-05] PDF-import Gemini prompt (geminiService.js): keep extraction guidance as
+  general RULES with multi-region examples (Tokyo/New York/Delhi), not examples copied from
+  one vendor's PDF. A guard test asserts multiple IANA zones appear, to prevent locale
+  overfitting (the prompt briefly drifted India-specific while fixing prose-flight extraction
+  for india_trip.pdf). Stay de-duplication is enforced deterministically in code
+  (consolidateStays) rather than trusting the prompt, since model output is non-deterministic.

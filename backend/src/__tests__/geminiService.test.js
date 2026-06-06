@@ -87,10 +87,18 @@ describe('geminiService — PROMPT', () => {
   // Regression for bug-025: prose flights with no flight number / tz were dropped
   // because required fields couldn't be satisfied under the "don't invent" rule.
   it('instructs the model to capture prose flights and not drop them for missing fields', () => {
-    expect(PROMPT).toMatch(/written in prose/i);
+    expect(PROMPT).toMatch(/narrative\/prose/i);
     expect(PROMPT).toMatch(/Do NOT drop a flight/i);
     expect(PROMPT).toMatch(/set it to "TBD"/i);
     expect(PROMPT).toMatch(/date from the day\/section heading/i);
+  });
+
+  // Guards against region overfitting: the city->timezone guidance must show
+  // multiple regions (not India-only) so the model reads it as a general rule.
+  it('uses multi-region timezone examples, not a single locale', () => {
+    expect(PROMPT).toMatch(/Asia\/Tokyo/);
+    expect(PROMPT).toMatch(/America\/New_York/);
+    expect(PROMPT).toMatch(/Asia\/Kolkata/);
   });
 });
 

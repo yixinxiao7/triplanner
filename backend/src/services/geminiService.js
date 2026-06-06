@@ -185,21 +185,25 @@ Field rules:
 - trip.destinations: an array of one or more place names (cities/regions), each <=100 chars.
 - trip.start_date / trip.end_date: "YYYY-MM-DD" or null.
 - trip.notes: optional free text or null.
-- flights[]: capture EVERY flight the document mentions, INCLUDING ones written in prose
-  inside a day's narrative — e.g. "You have a Flight from Delhi - Hyderabad :: IndiGo ::
-  Dep 10:45 Hrs - Arr 12:55 Hrs", or a "Flight Home :: Dep 06:15 Hrs". Do NOT drop a flight
-  just because some details are missing; fill best-effort values:
-  • flight_number: the stated code (e.g. "6E-123"); if NONE is given, set it to "TBD"
-    (this is the one allowed placeholder — never omit the flight for a missing number).
-  • airline: the stated carrier (e.g. "IndiGo"); "TBD" if truly absent.
+- flights[]: capture EVERY flight the document mentions, INCLUDING ones that appear only in
+  a day's narrative/prose rather than in a structured table (e.g. a line such as "Flight from
+  <city A> to <city B>, <carrier>, departs HH:MM – arrives HH:MM", or a bare "Flight home,
+  departs HH:MM"). Do NOT drop a flight just because some details are missing; fill
+  best-effort values:
+  • flight_number: the stated code (e.g. "AA100"); if NONE is given, set it to "TBD"
+    (this is the one allowed placeholder — never omit a flight for a missing number).
+  • airline: the named carrier; "TBD" if truly absent.
   • from_location / to_location: the route endpoints (city or airport).
   • departure_at / arrival_at: take the date from the day/section heading the flight appears
     under, combine it with the stated local times, and apply the timezone offset of the
-    departure/arrival CITY. Deriving the offset from a known city is NOT inventing data —
-    e.g. Indian cities are Asia/Kolkata (+05:30), so the day "06-Jul-2026" + "Dep 10:45 Hrs"
-    in Delhi → "2026-07-06T10:45:00+05:30". If an arrival time lacks its own date and is
-    earlier than departure, assume it lands the next day.
-  • departure_tz / arrival_tz: the IANA zone for those cities (e.g. "Asia/Kolkata").
+    departure/arrival CITY (deriving the offset from a known city is NOT inventing data). The
+    city → zone mapping is general, e.g. a Tokyo flight uses Asia/Tokyo (+09:00), a New York
+    flight America/New_York (e.g. -04:00 in summer), a Delhi flight Asia/Kolkata (+05:30) — so
+    a day heading of "2026-07-06" plus "departs 10:45" in Delhi becomes
+    "2026-07-06T10:45:00+05:30". If an arrival time lacks its own date and is earlier than the
+    departure time, assume it lands the next day.
+  • departure_tz / arrival_tz: the IANA zone for those cities (e.g. "Asia/Tokyo",
+    "America/New_York", "Asia/Kolkata").
 - stays[].category: one of "HOTEL", "AIRBNB", or "VRBO" (default to "HOTEL" if it is clearly
   a hotel but the brand is unclear). One entry per continuous stay spanning check-in to
   check-out (see the consolidation rule above) — do NOT create one stay per night.
