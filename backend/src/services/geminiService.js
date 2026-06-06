@@ -152,7 +152,7 @@ const RESPONSE_SCHEMA = {
  * for flights/stays (the highest-error-rate fields), and about emitting empty
  * arrays / nulls rather than guessing.
  */
-const PROMPT = `You are a travel-itinerary parser. The attached PDF is a travel itinerary
+export const PROMPT = `You are a travel-itinerary parser. The attached PDF is a travel itinerary
 (it may contain flights, hotel/lodging stays, activities, and ground transportation).
 Extract everything you can into the JSON structure described below. Do NOT invent data:
 if a section has no entries, return an empty array for it. If an optional field is
@@ -168,6 +168,17 @@ CRITICAL — datetimes and timezones:
 - Departure/check-in offsets reflect the origin location; arrival/check-out offsets reflect
   the destination location.
 
+CRITICAL — one entry per real-world booking (do NOT split by day):
+- A multi-night stay at the same lodging is ONE stays[] entry: set check_in_at to the
+  arrival date/time and check_out_at to the departure date/time, spanning the entire range.
+  Many itineraries repeat the hotel under each day in a day-by-day layout — even so, emit a
+  SINGLE stay for the continuous booking. NEVER create one stay entry per night.
+- Likewise, a continuous multi-day booking of the same ground transport (e.g. a rental car
+  held across several days) is ONE land_travels[] entry spanning pickup to drop-off — not one
+  entry per day.
+- Only create separate entries for genuinely distinct bookings: a different lodging, a
+  check-out and later re-check-in, or a different vehicle/rental.
+
 Field rules:
 - trip.name: a concise trip title (1-255 chars). If none is stated, synthesize one from the
   primary destination(s).
@@ -176,7 +187,8 @@ Field rules:
 - trip.notes: optional free text or null.
 - flights[].* : all fields required; datetimes offset-aware as described above.
 - stays[].category: one of "HOTEL", "AIRBNB", or "VRBO" (default to "HOTEL" if it is clearly
-  a hotel but the brand is unclear).
+  a hotel but the brand is unclear). One entry per continuous stay spanning check-in to
+  check-out (see the consolidation rule above) — do NOT create one stay per night.
 - activities[].activity_date: "YYYY-MM-DD". start_time/end_time: "HH:MM" (24-hour) or null.
 - land_travels[].mode: one of "RENTAL_CAR", "BUS", "TRAIN", "RIDESHARE", "FERRY", "OTHER".
   departure_date/arrival_date: "YYYY-MM-DD" (arrival_date may be null).

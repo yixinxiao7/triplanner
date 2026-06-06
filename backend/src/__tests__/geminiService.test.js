@@ -22,6 +22,7 @@ import GeminiService, {
   MODEL_FALLBACK_CHAIN,
   isRateLimitError,
   parseItineraryResponse,
+  PROMPT,
 } from '../services/geminiService.js';
 
 /** Build a fake Gemini SDK response whose .response.text() returns `text`. */
@@ -66,6 +67,20 @@ describe('geminiService — isRateLimitError', () => {
   it('returns false for other errors', () => {
     expect(isRateLimitError(new Error('boom'))).toBe(false);
     expect(isRateLimitError(null)).toBe(false);
+  });
+});
+
+describe('geminiService — PROMPT', () => {
+  // Regression for bug-024: a 6/3–6/5 hotel stay was parsed into 3 per-day entries
+  // because the prompt never told the model to consolidate continuous bookings.
+  it('instructs the model to consolidate multi-day stays into one entry', () => {
+    expect(PROMPT).toMatch(/do NOT split by day/i);
+    expect(PROMPT).toMatch(/NEVER create one stay entry per night/i);
+  });
+
+  it('instructs the model to consolidate continuous multi-day ground transport', () => {
+    expect(PROMPT).toMatch(/rental car/i);
+    expect(PROMPT).toMatch(/not one\s+entry per day/i);
   });
 });
 
