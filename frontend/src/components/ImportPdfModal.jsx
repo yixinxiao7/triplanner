@@ -206,13 +206,16 @@ export default function ImportPdfModal({ isOpen, onClose, onSubmit, triggerRef }
               ITINERARY PDF
             </label>
 
-            {/* Drop zone — clicking it opens the native picker via the hidden input */}
+            {/* Drop zone. The file input is an opacity:0 overlay (inset:0) that covers the
+                whole dropzone, so clicking anywhere here opens the native picker directly.
+                We deliberately do NOT add an onClick that calls fileInput.click(): the click
+                would hit the overlay input AND bubble to this div, opening the picker twice
+                (bug-026 — "had to import the PDF twice"). Drag-and-drop is handled here. */}
             <div
               className={`${styles.dropzone} ${isDragging ? styles.dropzoneActive : ''} ${error ? styles.dropzoneError : ''}`}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
-              onClick={() => fileInputRef.current?.click()}
             >
               <input
                 ref={fileInputRef}

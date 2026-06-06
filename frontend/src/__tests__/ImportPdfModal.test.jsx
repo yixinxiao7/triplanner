@@ -60,6 +60,16 @@ describe('ImportPdfModal', () => {
     expect(screen.getByRole('button', { name: /parse itinerary/i }).disabled).toBe(false);
   });
 
+  it('does not programmatically re-open the file picker when the dropzone is clicked (bug-026)', () => {
+    // The opacity:0 input overlays the dropzone and opens the picker natively on click.
+    // A div onClick calling fileInput.click() would double-open it ("import twice"); guard that.
+    const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click');
+    renderModal();
+    fireEvent.click(screen.getByText(/drag a PDF here/i).parentElement);
+    expect(clickSpy).not.toHaveBeenCalled();
+    clickSpy.mockRestore();
+  });
+
   it('rejects a non-PDF file with an error and keeps submit disabled', () => {
     renderModal();
     const input = screen.getByLabelText(/ITINERARY PDF/i);
