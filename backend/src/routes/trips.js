@@ -16,6 +16,64 @@ import {
 
 const router = Router();
 
+/**
+ * Reusable trip-create validation schema (T-332).
+ * Used by POST /trips and by the PDF-import endpoint (POST /trips/import) so the
+ * trip-meta rules stay in one place. Cross-field end_date >= start_date is checked
+ * by the end_date.custom rule.
+ */
+export const tripCreateSchema = {
+  name: {
+    required: true,
+    type: 'string',
+    minLength: 1,
+    maxLength: 255,
+    messages: { required: 'Trip name is required' },
+  },
+  destinations: {
+    required: true,
+    type: 'array',
+    minItems: 1,
+    maxItems: 50,
+    itemMaxLength: 100,
+    messages: {
+      required: 'At least one destination is required',
+      itemMaxLength: 'Each destination must be at most 100 characters',
+    },
+  },
+  start_date: {
+    required: false,
+    nullable: true,
+    type: 'dateString',
+    messages: {
+      type: 'Start date must be a valid date in YYYY-MM-DD format',
+    },
+  },
+  end_date: {
+    required: false,
+    nullable: true,
+    type: 'dateString',
+    messages: {
+      type: 'End date must be a valid date in YYYY-MM-DD format',
+    },
+    custom: (value, body) => {
+      if (value && body.start_date && value < body.start_date) {
+        return 'End date must be on or after start date';
+      }
+      return null;
+    },
+  },
+  notes: {
+    required: false,
+    nullable: true,
+    type: 'string',
+    maxLength: 5000,
+    messages: {
+      maxLength: 'Notes must not exceed 5000 characters',
+    },
+  },
+};
+
 // All routes require authentication
 router.use(authenticate);
 
@@ -87,62 +145,7 @@ router.get('/', async (req, res, next) => {
 router.post(
   '/',
   sanitizeFields({ name: 'string', destinations: 'array', notes: 'string' }),
-  validate({
-    name: {
-      required: true,
-      type: 'string',
-      minLength: 1,
-      maxLength: 255,
-      messages: { required: 'Trip name is required' },
-    },
-    destinations: {
-      required: true,
-      type: 'array',
-      minItems: 1,
-      maxItems: 50,
-      itemMaxLength: 100,
-      messages: {
-        required: 'At least one destination is required',
-        itemMaxLength: 'Each destination must be at most 100 characters',
-      },
-    },
-    // start_date and end_date are optional; validated as dateString when provided (T-029)
-    start_date: {
-      required: false,
-      nullable: true,
-      type: 'dateString',
-      messages: {
-        type: 'Start date must be a valid date in YYYY-MM-DD format',
-      },
-    },
-    end_date: {
-      required: false,
-      nullable: true,
-      type: 'dateString',
-      messages: {
-        type: 'End date must be a valid date in YYYY-MM-DD format',
-      },
-      custom: (value, body) => {
-        // Cross-field: if both start_date and end_date are non-null, end_date >= start_date
-        if (value && body.start_date && value < body.start_date) {
-          return 'End date must be on or after start date';
-        }
-        return null;
-      },
-    },
-    // notes: optional freeform trip description/notes (T-103, T-298 Sprint 39).
-    // Max 5000 chars (enforced here; TEXT column has no DB-level limit).
-    // Send null to explicitly clear. Empty string is normalized to null.
-    notes: {
-      required: false,
-      nullable: true,
-      type: 'string',
-      maxLength: 5000,
-      messages: {
-        maxLength: 'Notes must not exceed 5000 characters',
-      },
-    },
-  }),
+  validate(tripCreateSchema),
   async (req, res, next) => {
     try {
       const { name, destinations, start_date, end_date } = req.body;

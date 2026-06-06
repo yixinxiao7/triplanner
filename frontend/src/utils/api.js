@@ -126,6 +126,15 @@ export const api = {
     get: (id) => apiClient.get(`/trips/${id}`),
     update: (id, body) => apiClient.patch(`/trips/${id}`, body),
     delete: (id) => apiClient.delete(`/trips/${id}`),
+    // Atomically commit a parsed itinerary (trip + all sub-resources) in one call.
+    import: (body) => apiClient.post('/trips/import', body),
+  },
+  ai: {
+    // Send a PDF (multipart) to Gemini for parsing into the import contract shape.
+    importParse: (formData) =>
+      apiClient.post('/ai/import/parse', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }),
   },
   flights: {
     list: (tripId) => apiClient.get(`/trips/${tripId}/flights`),

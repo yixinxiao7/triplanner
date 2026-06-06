@@ -14,6 +14,7 @@ const FlightsEditPage = lazy(() => import('./pages/FlightsEditPage'));
 const StaysEditPage = lazy(() => import('./pages/StaysEditPage'));
 const ActivitiesEditPage = lazy(() => import('./pages/ActivitiesEditPage'));
 const LandTravelEditPage = lazy(() => import('./pages/LandTravelEditPage'));
+const ImportReviewPage = lazy(() => import('./pages/ImportReviewPage'));
 
 /**
  * AppRoutes — separated from App so it can use React Router hooks (useNavigate).
@@ -49,6 +50,16 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <HomePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trips/import/review"
+        element={
+          <ProtectedRoute>
+            <Suspense fallback={null}>
+              <ImportReviewPage />
+            </Suspense>
           </ProtectedRoute>
         }
       />
