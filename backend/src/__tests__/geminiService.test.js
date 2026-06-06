@@ -83,6 +83,15 @@ describe('geminiService — PROMPT', () => {
     expect(PROMPT).toMatch(/rental car/i);
     expect(PROMPT).toMatch(/not one\s+entry per day/i);
   });
+
+  // Regression for bug-025: prose flights with no flight number / tz were dropped
+  // because required fields couldn't be satisfied under the "don't invent" rule.
+  it('instructs the model to capture prose flights and not drop them for missing fields', () => {
+    expect(PROMPT).toMatch(/written in prose/i);
+    expect(PROMPT).toMatch(/Do NOT drop a flight/i);
+    expect(PROMPT).toMatch(/set it to "TBD"/i);
+    expect(PROMPT).toMatch(/date from the day\/section heading/i);
+  });
 });
 
 describe('geminiService — consolidateStays (bug-024 safety net)', () => {

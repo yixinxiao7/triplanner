@@ -185,7 +185,21 @@ Field rules:
 - trip.destinations: an array of one or more place names (cities/regions), each <=100 chars.
 - trip.start_date / trip.end_date: "YYYY-MM-DD" or null.
 - trip.notes: optional free text or null.
-- flights[].* : all fields required; datetimes offset-aware as described above.
+- flights[]: capture EVERY flight the document mentions, INCLUDING ones written in prose
+  inside a day's narrative — e.g. "You have a Flight from Delhi - Hyderabad :: IndiGo ::
+  Dep 10:45 Hrs - Arr 12:55 Hrs", or a "Flight Home :: Dep 06:15 Hrs". Do NOT drop a flight
+  just because some details are missing; fill best-effort values:
+  • flight_number: the stated code (e.g. "6E-123"); if NONE is given, set it to "TBD"
+    (this is the one allowed placeholder — never omit the flight for a missing number).
+  • airline: the stated carrier (e.g. "IndiGo"); "TBD" if truly absent.
+  • from_location / to_location: the route endpoints (city or airport).
+  • departure_at / arrival_at: take the date from the day/section heading the flight appears
+    under, combine it with the stated local times, and apply the timezone offset of the
+    departure/arrival CITY. Deriving the offset from a known city is NOT inventing data —
+    e.g. Indian cities are Asia/Kolkata (+05:30), so the day "06-Jul-2026" + "Dep 10:45 Hrs"
+    in Delhi → "2026-07-06T10:45:00+05:30". If an arrival time lacks its own date and is
+    earlier than departure, assume it lands the next day.
+  • departure_tz / arrival_tz: the IANA zone for those cities (e.g. "Asia/Kolkata").
 - stays[].category: one of "HOTEL", "AIRBNB", or "VRBO" (default to "HOTEL" if it is clearly
   a hotel but the brand is unclear). One entry per continuous stay spanning check-in to
   check-out (see the consolidation rule above) — do NOT create one stay per night.
