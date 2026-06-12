@@ -342,3 +342,27 @@ export async function updateTrip(id, updates) {
 export async function deleteTrip(id) {
   return db('trips').where({ id }).delete();
 }
+
+/**
+ * Get the Google calendar ID previously created for this trip (T-343).
+ * Kept out of TRIP_COLUMNS so the public trip API contract is unchanged.
+ * @param {string} id - trip UUID
+ * @returns {Promise<string|null>}
+ */
+export async function getGoogleCalendarId(id) {
+  const row = await db('trips').where({ id }).select('google_calendar_id').first();
+  return row ? row.google_calendar_id : null;
+}
+
+/**
+ * Record the Google calendar created for this trip (T-343), enabling
+ * wipe-and-recreate on re-export.
+ * @param {string} id - trip UUID
+ * @param {string|null} calendarId
+ * @returns {Promise<number>} - rows affected
+ */
+export async function setGoogleCalendarId(id, calendarId) {
+  return db('trips')
+    .where({ id })
+    .update({ google_calendar_id: calendarId, updated_at: new Date() });
+}

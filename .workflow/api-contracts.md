@@ -8604,3 +8604,24 @@ All previously published contracts remain current. Sprint 43 change:
 *Sprint 43 contracts published by Backend Engineer 2026-05-30. T-329 (dependency hardening): no contract impact — patch-version bumps only. T-331 (B-036): activity `notes` field added to the existing T-006 activities CRUD contract via migration 011 (Manager pre-approved). Contract is published ahead of implementation per rules.md — implementation lands in the T-331 implementation phase.*
 
 *Update 2026-05-30 — **T-331 IMPLEMENTED.** Migration 011 created and verified (applies + rolls back cleanly on dev DB); `notes` wired through POST insert, PATCH UPDATABLE, model SELECT/insert, validation (max 2000), and sanitize (POST sanitizeFields + PATCH pre-validate strip). 8 new backend tests added (round-trip, sanitize, max-length 400, null/omitted, PATCH clear). Backend suite 531/531 green. Inline T-006 activities contract above (GET/POST/PATCH) updated to match. The implemented behavior matches this published contract exactly.*
+
+---
+
+## Google Calendar Export (T-343)
+
+### POST /api/v1/trips/:tripId/export/google-calendar
+Auth: Bearer. Exports the trip's flights, stays, activities, and land travels to a dedicated Google calendar named after the trip. Re-export deletes the previously created calendar and recreates it.
+- 200: `{ "data": { "calendar_id": string, "calendar_name": string, "events_created": number } }`
+- 409 `GOOGLE_CALENDAR_AUTH_REQUIRED`: calendar scope not granted (or grant revoked — stored tokens are cleared). Client should call the URL endpoint below and redirect the browser.
+- 503 `GOOGLE_CALENDAR_UNAVAILABLE`: export not configured (env vars absent).
+- 400 / 401 / 403 / 404: standard UUID/auth/ownership/not-found guards.
+
+### GET /api/v1/auth/google/calendar/url?trip_id=<uuid>
+Auth: Bearer. Returns the Google consent URL (calendar scope, `access_type=offline`, `prompt=consent`). `trip_id` (optional, validated UUID) is embedded in a 10-minute signed-JWT `state` so the callback can return the user to the trip page.
+- 200: `{ "data": { "url": string } }`
+- 503 `GOOGLE_CALENDAR_UNAVAILABLE` when not configured.
+
+### GET /api/v1/auth/google/calendar/callback
+Browser redirect target (no Bearer). Verifies the `state` JWT, exchanges the code, persists tokens, then 302-redirects to `FRONTEND_URL/trips/:tripId?gcal=connected` (or `?gcal=denied` on user cancel, `?gcal=error` on failure). The frontend auto-retries the export on `gcal=connected`.
+
+**Event mapping:** flights → timed events on exact UTC instants with per-leg IANA timezones; stays → all-day spanning events (check-out end date exclusive, +1 day) with check-in/out times in the description; activities/land travel → timed events in a derived trip timezone (first stay's check-in tz → first flight's arrival tz → UTC), 1-hour fallback duration, all-day when no time is set.

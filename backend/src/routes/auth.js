@@ -16,7 +16,13 @@ import {
   findUserByEmail,
   findUserById,
   createUser,
+  saveGoogleCalendarTokens,
 } from '../models/userModel.js';
+import {
+  isGoogleCalendarConfigured,
+  buildAuthUrl as buildGoogleCalendarAuthUrl,
+  exchangeCodeForTokens,
+} from '../services/googleCalendarService.js';
 import {
   generateRawToken,
   hashToken,
@@ -346,6 +352,86 @@ router.get('/google/callback', generalAuthLimiter, (req, res, next) => {
       return res.redirect(`${FRONTEND_URL}/login?error=oauth_failed`);
     }
   })(req, res, next);
+});
+
+// ---- Google Calendar incremental consent (T-343) ----
+//
+// Separate from sign-in: the calendar scope is requested only when the user
+// clicks "Export to Google Calendar". The initiation endpoint is an
+// authenticated XHR returning the consent URL (browser redirects can't carry
+// the Bearer token), with a short-lived signed JWT as the OAuth `state` so the
+// callback can identify the user without a session.
+
+const UUID_V4_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Frontend redirect target after the calendar consent callback. */
+function calendarRedirect(tripId, result) {
+  const path = tripId ? `/trips/${tripId}` : '/';
+  return `${FRONTEND_URL}${path}?gcal=${result}`;
+}
+
+// ---- GET /api/v1/auth/google/calendar/url ----
+// Returns the Google consent URL for the calendar scope. `trip_id` (optional)
+// is round-tripped through the OAuth state so the callback can land the user
+// back on the trip they were exporting.
+router.get('/google/calendar/url', generalAuthLimiter, authenticate, (req, res) => {
+  if (!isGoogleCalendarConfigured()) {
+    return res.status(503).json({
+      error: {
+        message: 'Google Calendar export is not available.',
+        code: 'GOOGLE_CALENDAR_UNAVAILABLE',
+      },
+    });
+  }
+
+  const tripId =
+    typeof req.query.trip_id === 'string' && UUID_V4_RE.test(req.query.trip_id)
+      ? req.query.trip_id
+      : null;
+
+  const state = jwt.sign(
+    { uid: req.user.id, trip_id: tripId, purpose: 'gcal_connect' },
+    process.env.JWT_SECRET,
+    { expiresIn: '10m' },
+  );
+
+  return res.status(200).json({ data: { url: buildGoogleCalendarAuthUrl(state) } });
+});
+
+// ---- GET /api/v1/auth/google/calendar/callback ----
+// Google redirects here after consent. Verifies the signed state, exchanges
+// the code for tokens, persists them, and bounces the browser back to the
+// trip page (?gcal=connected|denied|error).
+router.get('/google/calendar/callback', generalAuthLimiter, async (req, res) => {
+  if (!isGoogleCalendarConfigured()) {
+    return res.redirect(calendarRedirect(null, 'error'));
+  }
+
+  // Verify state FIRST — it identifies the user and the return trip.
+  let state;
+  try {
+    state = jwt.verify(String(req.query.state || ''), process.env.JWT_SECRET);
+    if (state.purpose !== 'gcal_connect') throw new Error('wrong purpose');
+  } catch {
+    return res.redirect(calendarRedirect(null, 'error'));
+  }
+
+  // tripId comes from a JWT we signed — safe to embed in the redirect path.
+  const tripId = state.trip_id || null;
+
+  // User cancelled on Google's consent screen.
+  if (req.query.error === 'access_denied') {
+    return res.redirect(calendarRedirect(tripId, 'denied'));
+  }
+
+  try {
+    const tokens = await exchangeCodeForTokens(String(req.query.code || ''));
+    await saveGoogleCalendarTokens(state.uid, tokens);
+    return res.redirect(calendarRedirect(tripId, 'connected'));
+  } catch {
+    return res.redirect(calendarRedirect(tripId, 'error'));
+  }
 });
 
 export default router;

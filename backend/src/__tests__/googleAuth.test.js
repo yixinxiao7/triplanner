@@ -18,6 +18,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock model modules — short-circuits the config/database.js import.
 vi.mock('../models/userModel.js', () => ({
+  saveGoogleCalendarTokens: vi.fn(),
+  getGoogleCalendarTokens: vi.fn(),
+  clearGoogleCalendarTokens: vi.fn(),
   findUserByEmail: vi.fn(),
   findUserById: vi.fn(),
   createUser: vi.fn(),

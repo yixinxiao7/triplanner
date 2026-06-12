@@ -81,6 +81,9 @@ describe('T-220 — knexfile.js production config', () => {
 
 // Mock model dependencies used by auth routes
 vi.mock('../models/userModel.js', () => ({
+  saveGoogleCalendarTokens: vi.fn(),
+  getGoogleCalendarTokens: vi.fn(),
+  clearGoogleCalendarTokens: vi.fn(),
   findUserByEmail: vi.fn(),
   findUserById: vi.fn(),
   createUser: vi.fn(),

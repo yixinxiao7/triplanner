@@ -40,6 +40,15 @@
   flex-wrap: nowrap;
 }
 
+/* Right group: export + print buttons (T-343) */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
 /* Left group: <h1> trip name + TripStatusSelector (T-196, Sprint 22) */
 .tripNameGroup {
   display: flex;

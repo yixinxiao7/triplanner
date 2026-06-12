@@ -3710,3 +3710,9 @@ Findings:
 
 ---
 
+
+## User-Directed Feature — Google Calendar Export (2026-06-11)
+
+| ID | Task | Type | Assigned To | Status | Priority | Complexity | Sprint | Blocked By | Notes |
+|----|------|------|-------------|--------|----------|------------|--------|------------|-------|
+| T-343 | Google Calendar export: "Export to Google Calendar" button on TripDetailsPage exports flights, stays, activities, and land travel to a dedicated Google calendar named after the trip (re-export deletes + recreates — no duplicates). Incremental OAuth: calendar scope requested only on export via `GET /auth/google/calendar/url` (signed-JWT state) + `/callback`; tokens stored on users (migration 013). New `POST /trips/:tripId/export/google-calendar` (409 `GOOGLE_CALENDAR_AUTH_REQUIRED` drives the consent redirect; revoked grants clear tokens). New dep: `googleapis`. New env: `GOOGLE_CALENDAR_CALLBACK_URL`. Backend 618/618, frontend 573/573 pass. | Feature | Claude (user-directed) | Done | P1 | L | — | — | Built directly per user request on branch `feature/google-calendar-export`. Requires the calendar redirect URI to be authorized in Google Cloud Console (and Google app verification for non-test users in prod). |
