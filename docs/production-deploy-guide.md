@@ -136,6 +136,7 @@ Set on the **backend** service:
 | `GOOGLE_CALLBACK_URL` | `https://triplanner-backend-sp61.onrender.com/api/v1/auth/google/callback` | Sign-In redirect |
 | `GOOGLE_CALENDAR_CALLBACK_URL` | `https://triplanner-backend-sp61.onrender.com/api/v1/auth/google/calendar/callback` | Calendar-consent redirect |
 | `FRONTEND_URL` | `https://triplanner.yixinx.com` | Browser redirect target after OAuth callbacks (falls back to `CORS_ORIGIN`) |
+| `GEMINI_API_KEY` | *(from https://aistudio.google.com/apikey)* | AI PDF itinerary import (T-332). If unset, `/ai/import/parse` fails with 502 `EXTERNAL_SERVICE_ERROR` (bug-045) |
 
 Google Cloud Console prerequisites (same project as the OAuth client):
 1. **Authorized redirect URIs** — add BOTH callback URLs above to the OAuth client

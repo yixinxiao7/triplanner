@@ -80,6 +80,12 @@ services:
       - key: FRONTEND_URL
         sync: false
 
+      # ─── Gemini — AI PDF itinerary import (T-332) ───
+      # Get a key at https://aistudio.google.com/apikey. If unset, PDF import
+      # fails with 502 EXTERNAL_SERVICE_ERROR (bug-045); rest of the app works.
+      - key: GEMINI_API_KEY
+        sync: false
+
 
   # ─────────────────────────────────────────────
   # Frontend — React SPA (Static Site)
