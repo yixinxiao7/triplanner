@@ -33,6 +33,8 @@ import {
   isGoogleCalendarConfigured,
   exportTripToCalendar,
   isAuthRevokedError,
+  isInsufficientScopeError,
+  isApiNotEnabledError,
 } from '../services/googleCalendarService.js';
 
 // mergeParams so we can access :tripId from the parent router
@@ -98,8 +100,9 @@ router.post('/google-calendar', async (req, res, next) => {
           saveGoogleCalendarTokens(req.user.id, refreshed),
       });
     } catch (err) {
-      if (isAuthRevokedError(err)) {
-        // Grant revoked on Google's side — clear stale tokens so the frontend
+      if (isAuthRevokedError(err) || isInsufficientScopeError(err)) {
+        // Grant revoked, or the calendar permission was unchecked on Google's
+        // granular consent screen — clear stale tokens so the frontend
         // restarts the consent flow.
         await clearGoogleCalendarTokens(req.user.id);
         return res.status(409).json({
@@ -109,6 +112,34 @@ router.post('/google-calendar', async (req, res, next) => {
           },
         });
       }
+
+      // App-configuration problem (bug-044): the Calendar API is disabled in
+      // the OAuth client's Google Cloud project. Surface an actionable message.
+      if (isApiNotEnabledError(err)) {
+        console.error('[GoogleCalendarExport] Calendar API disabled:', err.message);
+        return res.status(502).json({
+          error: {
+            message:
+              'The Google Calendar API is disabled in this app’s Google Cloud project. Enable it in Google Cloud Console, wait a few minutes, and try again.',
+            code: 'GOOGLE_CALENDAR_API_DISABLED',
+          },
+        });
+      }
+
+      // Any other Google-side failure: googleapis errors carry their own
+      // `status`, which errorHandler would otherwise pass through verbatim
+      // (a Google 403 masquerading as OUR FORBIDDEN — bug-044). Map to 502.
+      const googleStatus = err?.status ?? err?.code;
+      if (typeof googleStatus === 'number') {
+        console.error('[GoogleCalendarExport] Google API error:', err.message);
+        return res.status(502).json({
+          error: {
+            message: 'Google Calendar rejected the export. Please try again.',
+            code: 'GOOGLE_CALENDAR_API_ERROR',
+          },
+        });
+      }
+
       throw err;
     }
 

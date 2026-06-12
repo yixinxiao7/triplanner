@@ -60,6 +60,8 @@ vi.mock('../services/googleCalendarService.js', () => ({
   exchangeCodeForTokens: vi.fn(),
   exportTripToCalendar: vi.fn(),
   isAuthRevokedError: vi.fn(() => false),
+  isInsufficientScopeError: vi.fn(() => false),
+  isApiNotEnabledError: vi.fn(() => false),
 }));
 
 // ---- Mock JWT (auth middleware + state signing) ----
@@ -150,6 +152,8 @@ describe('POST /api/v1/trips/:tripId/export/google-calendar', () => {
     vi.clearAllMocks();
     gcalService.isGoogleCalendarConfigured.mockReturnValue(true);
     gcalService.isAuthRevokedError.mockReturnValue(false);
+    gcalService.isInsufficientScopeError.mockReturnValue(false);
+    gcalService.isApiNotEnabledError.mockReturnValue(false);
     tripModel.findTripById.mockResolvedValue(mockTrip);
     tripModel.getGoogleCalendarId.mockResolvedValue(null);
     tripModel.setGoogleCalendarId.mockResolvedValue(1);
@@ -226,8 +230,50 @@ describe('POST /api/v1/trips/:tripId/export/google-calendar', () => {
     expect(tripModel.setGoogleCalendarId).not.toHaveBeenCalled();
   });
 
-  it('500 when the export fails for a non-auth reason', async () => {
-    gcalService.exportTripToCalendar.mockRejectedValue(new Error('Google 500'));
+  it('409 + clears tokens when the token lacks the calendar scope', async () => {
+    gcalService.exportTripToCalendar.mockRejectedValue(new Error('insufficient permissions'));
+    gcalService.isInsufficientScopeError.mockReturnValue(true);
+
+    const res = await request(
+      buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/export/google-calendar`, null, AUTH,
+    );
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('GOOGLE_CALENDAR_AUTH_REQUIRED');
+    expect(userModel.clearGoogleCalendarTokens).toHaveBeenCalledWith('user-1');
+  });
+
+  it('502 GOOGLE_CALENDAR_API_DISABLED when the Calendar API is not enabled (bug-044)', async () => {
+    const err = new Error('Google Calendar API has not been used in project 123 before');
+    err.status = 403;
+    gcalService.exportTripToCalendar.mockRejectedValue(err);
+    gcalService.isApiNotEnabledError.mockReturnValue(true);
+
+    const res = await request(
+      buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/export/google-calendar`, null, AUTH,
+    );
+
+    expect(res.status).toBe(502);
+    expect(res.body.error.code).toBe('GOOGLE_CALENDAR_API_DISABLED');
+    expect(res.body.error.message).toMatch(/Google Cloud/);
+    expect(userModel.clearGoogleCalendarTokens).not.toHaveBeenCalled();
+  });
+
+  it('502 GOOGLE_CALENDAR_API_ERROR for other Google-side errors — status does NOT leak (bug-044)', async () => {
+    const err = new Error('Rate limit exceeded');
+    err.status = 403; // would previously surface as OUR 403 FORBIDDEN via errorHandler
+    gcalService.exportTripToCalendar.mockRejectedValue(err);
+
+    const res = await request(
+      buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/export/google-calendar`, null, AUTH,
+    );
+
+    expect(res.status).toBe(502);
+    expect(res.body.error.code).toBe('GOOGLE_CALENDAR_API_ERROR');
+  });
+
+  it('500 when the export fails for a non-Google, non-auth reason', async () => {
+    gcalService.exportTripToCalendar.mockRejectedValue(new Error('DB connection lost'));
 
     const res = await request(
       buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/export/google-calendar`, null, AUTH,

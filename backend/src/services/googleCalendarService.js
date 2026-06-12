@@ -276,13 +276,47 @@ export function buildTripEvents({ flights = [], stays = [], activities = [], lan
 
 /** Extract an HTTP status from a googleapis error (shape varies by version). */
 function googleErrorStatus(err) {
-  return err?.code ?? err?.response?.status ?? null;
+  return err?.status ?? err?.code ?? err?.response?.status ?? null;
+}
+
+/** Extract the structured error reason from a googleapis error, if present. */
+function googleErrorReason(err) {
+  return (
+    err?.errors?.[0]?.reason ??
+    err?.response?.data?.error?.errors?.[0]?.reason ??
+    null
+  );
 }
 
 /** Whether a googleapis error means the stored grant is dead (re-consent needed). */
 export function isAuthRevokedError(err) {
   const status = googleErrorStatus(err);
   return status === 401 || Boolean(err?.message?.includes('invalid_grant'));
+}
+
+/**
+ * Whether the token lacks the calendar scope (e.g. the user unchecked the
+ * calendar permission on Google's granular consent screen). Fixed by
+ * re-running the consent flow, so callers treat it like a revoked grant.
+ */
+export function isInsufficientScopeError(err) {
+  if (googleErrorReason(err) === 'insufficientPermissions') return true;
+  return (
+    googleErrorStatus(err) === 403 &&
+    Boolean(err?.message?.toLowerCase().includes('insufficient'))
+  );
+}
+
+/**
+ * Whether the Google Calendar API is disabled in the OAuth client's Google
+ * Cloud project (reason `accessNotConfigured`) — an app-configuration problem,
+ * not a user problem (bug-044).
+ */
+export function isApiNotEnabledError(err) {
+  return (
+    googleErrorReason(err) === 'accessNotConfigured' ||
+    Boolean(err?.message?.includes('has not been used in project'))
+  );
 }
 
 /**

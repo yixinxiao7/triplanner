@@ -14,6 +14,8 @@ import {
   landTravelToGoogleEvent,
   buildTripEvents,
   isAuthRevokedError,
+  isInsufficientScopeError,
+  isApiNotEnabledError,
 } from '../services/googleCalendarService.js';
 
 describe('addDays', () => {
@@ -286,5 +288,35 @@ describe('isAuthRevokedError', () => {
   it('does not flag unrelated errors', () => {
     expect(isAuthRevokedError({ code: 500 })).toBe(false);
     expect(isAuthRevokedError(new Error('network down'))).toBe(false);
+  });
+});
+
+describe('isInsufficientScopeError', () => {
+  it('recognizes insufficientPermissions reason and 403 + "insufficient" message', () => {
+    expect(isInsufficientScopeError({ errors: [{ reason: 'insufficientPermissions' }] })).toBe(true);
+    const err = new Error('Request had insufficient authentication scopes.');
+    err.status = 403;
+    expect(isInsufficientScopeError(err)).toBe(true);
+  });
+
+  it('does not flag unrelated 403s', () => {
+    const err = new Error('Rate limit exceeded');
+    err.status = 403;
+    expect(isInsufficientScopeError(err)).toBe(false);
+  });
+});
+
+describe('isApiNotEnabledError (bug-044)', () => {
+  it('recognizes accessNotConfigured reason and the "has not been used in project" message', () => {
+    expect(isApiNotEnabledError({ errors: [{ reason: 'accessNotConfigured' }] })).toBe(true);
+    expect(
+      isApiNotEnabledError(
+        new Error('Google Calendar API has not been used in project 123 before or it is disabled.'),
+      ),
+    ).toBe(true);
+  });
+
+  it('does not flag unrelated errors', () => {
+    expect(isApiNotEnabledError(new Error('invalid_grant'))).toBe(false);
   });
 });

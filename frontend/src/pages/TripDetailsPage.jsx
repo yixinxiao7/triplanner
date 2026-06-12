@@ -445,6 +445,12 @@ export default function TripDetailsPage() {
         }
       } else if (code === 'GOOGLE_CALENDAR_UNAVAILABLE') {
         setToast('google calendar export is not available.');
+      } else if (code === 'GOOGLE_CALENDAR_API_DISABLED' || code === 'GOOGLE_CALENDAR_API_ERROR') {
+        // Server provides an actionable, safe-to-show message for these.
+        setToast(
+          (err.response?.data?.error?.message ||
+            'export to google calendar failed. please try again.').toLowerCase()
+        );
       } else {
         setToast('export to google calendar failed. please try again.');
       }
