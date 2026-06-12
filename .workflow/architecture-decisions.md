@@ -293,3 +293,11 @@ RefreshToken
 ---
 
 *Add new ADRs above this line, newest first.*
+
+## ADR — Google Calendar Export via googleapis + incremental OAuth (T-343, 2026-06-11)
+
+**Decision:** Export trips to Google Calendar through the official `googleapis` Node client (new backend dependency), using incremental authorization: the `https://www.googleapis.com/auth/calendar` scope is requested only when the user clicks Export — never during sign-in. Tokens are stored on `users` (access/refresh/expiry, migration 013); `trips.google_calendar_id` tracks the dedicated per-trip calendar so re-exports wipe-and-recreate instead of duplicating events.
+
+**Alternatives considered:** (a) .ics file download — no OAuth/verification burden but a 2-step UX; user explicitly chose API export. (b) Inserting into the user's primary calendar with per-event dedup bookkeeping — rejected in favor of a dedicated calendar per trip (clean re-export, single delete to remove a trip).
+
+**Consequences:** Same Google OAuth client as Sign-In, new redirect URI (`GOOGLE_CALENDAR_CALLBACK_URL`) must be authorized in Google Cloud Console; production use beyond test users requires Google app verification for the calendar scope. Endpoints degrade to 503 `GOOGLE_CALENDAR_UNAVAILABLE` when unconfigured (mirrors the Sign-In pattern). OAuth `state` is a 10-minute signed JWT (`purpose: 'gcal_connect'`) because the initiation must be an authenticated XHR while the callback arrives as an unauthenticated browser redirect.
