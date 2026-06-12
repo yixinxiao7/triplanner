@@ -13,6 +13,7 @@ import staysRoutes from './routes/stays.js';
 import activitiesRoutes from './routes/activities.js';
 import landTravelRoutes from './routes/landTravel.js';
 import calendarRoutes from './routes/calendar.js';
+import calendarExportRoutes from './routes/calendarExport.js';
 import aiRoutes from './routes/ai.js';
 import importRoutes from './routes/import.js';
 
@@ -62,6 +63,8 @@ app.use('/api/v1/trips/:tripId/stays', staysRoutes);
 app.use('/api/v1/trips/:tripId/activities', activitiesRoutes);
 app.use('/api/v1/trips/:tripId/land-travel', landTravelRoutes);
 app.use('/api/v1/trips/:tripId/calendar', calendarRoutes);
+// Google Calendar export (T-343)
+app.use('/api/v1/trips/:tripId/export', calendarExportRoutes);
 
 // ---- Error handling (must be last) ----
 app.use(errorHandler);

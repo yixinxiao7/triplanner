@@ -37,6 +37,9 @@ import express from 'express';
 // ============================================================================
 
 vi.mock('../models/userModel.js', () => ({
+  saveGoogleCalendarTokens: vi.fn(),
+  getGoogleCalendarTokens: vi.fn(),
+  clearGoogleCalendarTokens: vi.fn(),
   findUserByEmail: vi.fn(),
   findUserById: vi.fn(),
   createUser: vi.fn(),

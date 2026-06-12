@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock database models
 vi.mock('../models/userModel.js', () => ({
+  saveGoogleCalendarTokens: vi.fn(),
+  getGoogleCalendarTokens: vi.fn(),
+  clearGoogleCalendarTokens: vi.fn(),
   findUserByEmail: vi.fn(),
   findUserById: vi.fn(),
   createUser: vi.fn(),
