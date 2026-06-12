@@ -33,3 +33,41 @@ export async function createUser(data) {
     .returning(['id', 'name', 'email', 'created_at']);
   return user;
 }
+
+/**
+ * Find a user by their Google account ID (`profile.id`).
+ * @param {string} googleId
+ * @returns {Promise<Object|undefined>}
+ */
+export async function findUserByGoogleId(googleId) {
+  return db('users').where({ google_id: googleId }).first();
+}
+
+/**
+ * Create a new Google-only user (no password).
+ * @param {Object} data - { name, email, google_id }
+ * @returns {Promise<Object>} - The created user (without password_hash)
+ */
+export async function createGoogleUser(data) {
+  const [user] = await db('users')
+    .insert({
+      name: data.name,
+      email: data.email.toLowerCase(),
+      google_id: data.google_id,
+      password_hash: null,
+    })
+    .returning(['id', 'name', 'email', 'created_at']);
+  return user;
+}
+
+/**
+ * Link a Google account ID to an existing user (account-linking).
+ * @param {string} userId - UUID
+ * @param {string} googleId
+ * @returns {Promise<number>} - number of rows affected
+ */
+export async function linkGoogleId(userId, googleId) {
+  return db('users')
+    .where({ id: userId })
+    .update({ google_id: googleId, updated_at: db.fn.now() });
+}

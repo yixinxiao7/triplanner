@@ -86,6 +86,15 @@ export default function HomePage() {
   const [status, setStatus] = useState(initialFilters.status);
   const [sort, setSort] = useState(initialFilters.sort);
 
+  // OAuth "account linked" banner — the Google callback redirects a linked
+  // user to `/?linked=true`. Capture it during the first render (before the
+  // URL-sync effect below rebuilds params and drops `linked`), then show a
+  // dismissible success banner. The existing sync effect strips `linked`
+  // from the URL while preserving search/status/sort.
+  const [showLinkedBanner, setShowLinkedBanner] = useState(
+    () => searchParams.get('linked') === 'true'
+  );
+
   // Determine if any filter is non-default
   const hasActiveFilters = search !== '' || status !== '' || sort !== DEFAULT_SORT;
 
@@ -219,6 +228,23 @@ export default function HomePage() {
 
       <main className={styles.main}>
         <div className={styles.container}>
+          {/* OAuth Linked Success Banner — shown after Google account auto-link */}
+          {showLinkedBanner && (
+            <div className={styles.successBanner} role="status" aria-live="polite">
+              <span>your google account was linked.</span>
+              <button
+                type="button"
+                className={styles.successBannerDismiss}
+                aria-label="Dismiss"
+                onClick={() => setShowLinkedBanner(false)}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          )}
+
           {/* Page Header */}
           <div className={styles.pageHeader}>
             <h1 className={styles.pageTitle}>my trips</h1>
