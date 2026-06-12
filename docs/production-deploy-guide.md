@@ -124,6 +124,35 @@ The frontend URL is `https://triplanner.yixinx.com` (custom domain). Set this to
 3. Set value to `https://triplanner-backend-sp61.onrender.com/api/v1`
 4. Click **Save Changes**
 
+### Google OAuth — Sign-In + Calendar export (T-343)
+
+Optional but required for "Sign in with Google" and "Export to Google Calendar".
+Set on the **backend** service:
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `GOOGLE_CLIENT_ID` | *(from Google Cloud Console)* | OAuth 2.0 Client (Web application) |
+| `GOOGLE_CLIENT_SECRET` | *(from Google Cloud Console)* | Same client |
+| `GOOGLE_CALLBACK_URL` | `https://triplanner-backend-sp61.onrender.com/api/v1/auth/google/callback` | Sign-In redirect |
+| `GOOGLE_CALENDAR_CALLBACK_URL` | `https://triplanner-backend-sp61.onrender.com/api/v1/auth/google/calendar/callback` | Calendar-consent redirect |
+| `FRONTEND_URL` | `https://triplanner.yixinx.com` | Browser redirect target after OAuth callbacks (falls back to `CORS_ORIGIN`) |
+| `GEMINI_API_KEY` | *(from https://aistudio.google.com/apikey)* | AI PDF itinerary import (T-332). If unset, `/ai/import/parse` fails with 502 `EXTERNAL_SERVICE_ERROR` (bug-045) |
+
+Google Cloud Console prerequisites (same project as the OAuth client):
+1. **Authorized redirect URIs** — add BOTH callback URLs above to the OAuth client
+   (APIs & Services → Credentials → the client → Authorized redirect URIs).
+2. **Enable the Google Calendar API** (APIs & Services → Library) — otherwise
+   exports fail with 502 `GOOGLE_CALENDAR_API_DISABLED` (bug-044).
+3. **Publishing status** (APIs & Services → OAuth consent screen): in *Testing*
+   mode only listed Test users can sign in / export, and their refresh tokens
+   expire after 7 days (the app auto-restarts consent — bug-043). Publishing to
+   production requires Google verification because the calendar scope is
+   sensitive.
+
+If these vars are absent the backend degrades gracefully: Sign-In redirects
+with `?error=oauth_unavailable`, Calendar export returns 503
+`GOOGLE_CALENDAR_UNAVAILABLE`, and everything else works normally.
+
 ---
 
 ## Step 4 — Database Migrations
@@ -256,6 +285,38 @@ Custom domain configured: `triplanner.yixinx.com` → frontend static site.
 - SSL provisioned via Let's Encrypt
 - `CORS_ORIGIN` set to `https://triplanner.yixinx.com`
 - Backend remains on `triplanner-backend-sp61.onrender.com` (no custom domain)
+
+---
+
+## Step 8 — Backend Custom Domain (REQUIRED for iOS / Safari)
+
+**Why:** The refresh-token cookie is issued by the backend. When the backend
+lives on `onrender.com` and the frontend on `yixinx.com`, every auth call is
+**cross-site**, and WebKit (all iOS browsers, desktop Safari) blocks
+third-party cookies — so login never persists and Google sign-in appears to
+silently fail on those browsers (bug-046). Desktop Chrome happens to still
+allow third-party cookies, masking the problem.
+
+**Fix:** serve the backend from a subdomain of the frontend's site so both are
+same-site (`yixinx.com`):
+
+1. Render → `triplanner-backend` → Settings → Custom Domains → add
+   `api.triplanner.yixinx.com`.
+2. DNS for `yixinx.com`: CNAME `api.triplanner` →
+   `triplanner-backend-sp61.onrender.com`. Wait for Render to verify + issue
+   the certificate.
+3. Google Cloud Console → OAuth client → add redirect URIs:
+   - `https://api.triplanner.yixinx.com/api/v1/auth/google/callback`
+   - `https://api.triplanner.yixinx.com/api/v1/auth/google/calendar/callback`
+4. Backend env: point `GOOGLE_CALLBACK_URL` / `GOOGLE_CALENDAR_CALLBACK_URL`
+   at the new domain (`CORS_ORIGIN` / `FRONTEND_URL` unchanged).
+5. Frontend env: `VITE_API_URL=https://api.triplanner.yixinx.com/api/v1`,
+   then redeploy the frontend (build-time variable).
+
+Notes:
+- Existing sessions are logged out once (cookies live on the old domain).
+- The onrender.com URL keeps working for the API itself; only cookie-based
+  auth requires the same-site domain. Do not point `VITE_API_URL` back at it.
 
 ---
 
