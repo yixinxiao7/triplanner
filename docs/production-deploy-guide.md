@@ -124,6 +124,34 @@ The frontend URL is `https://triplanner.yixinx.com` (custom domain). Set this to
 3. Set value to `https://triplanner-backend-sp61.onrender.com/api/v1`
 4. Click **Save Changes**
 
+### Google OAuth — Sign-In + Calendar export (T-343)
+
+Optional but required for "Sign in with Google" and "Export to Google Calendar".
+Set on the **backend** service:
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `GOOGLE_CLIENT_ID` | *(from Google Cloud Console)* | OAuth 2.0 Client (Web application) |
+| `GOOGLE_CLIENT_SECRET` | *(from Google Cloud Console)* | Same client |
+| `GOOGLE_CALLBACK_URL` | `https://triplanner-backend-sp61.onrender.com/api/v1/auth/google/callback` | Sign-In redirect |
+| `GOOGLE_CALENDAR_CALLBACK_URL` | `https://triplanner-backend-sp61.onrender.com/api/v1/auth/google/calendar/callback` | Calendar-consent redirect |
+| `FRONTEND_URL` | `https://triplanner.yixinx.com` | Browser redirect target after OAuth callbacks (falls back to `CORS_ORIGIN`) |
+
+Google Cloud Console prerequisites (same project as the OAuth client):
+1. **Authorized redirect URIs** — add BOTH callback URLs above to the OAuth client
+   (APIs & Services → Credentials → the client → Authorized redirect URIs).
+2. **Enable the Google Calendar API** (APIs & Services → Library) — otherwise
+   exports fail with 502 `GOOGLE_CALENDAR_API_DISABLED` (bug-044).
+3. **Publishing status** (APIs & Services → OAuth consent screen): in *Testing*
+   mode only listed Test users can sign in / export, and their refresh tokens
+   expire after 7 days (the app auto-restarts consent — bug-043). Publishing to
+   production requires Google verification because the calendar scope is
+   sensitive.
+
+If these vars are absent the backend degrades gracefully: Sign-In redirects
+with `?error=oauth_unavailable`, Calendar export returns 503
+`GOOGLE_CALENDAR_UNAVAILABLE`, and everything else works normally.
+
 ---
 
 ## Step 4 — Database Migrations

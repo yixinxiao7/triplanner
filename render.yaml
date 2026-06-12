@@ -59,6 +59,27 @@ services:
       - key: PORT
         value: '10000'
 
+      # ─── Google OAuth: Sign-In + Calendar export (T-343) ───
+      # From the OAuth 2.0 Client (Web application) in Google Cloud Console.
+      # BOTH callback URLs must be added as Authorized redirect URIs on that
+      # client, and the Google Calendar API must be enabled in the project.
+      # If unset, Sign-In degrades to ?error=oauth_unavailable and Calendar
+      # export returns 503 GOOGLE_CALENDAR_UNAVAILABLE (rest of the app works).
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # Production value: https://triplanner-backend-sp61.onrender.com/api/v1/auth/google/callback
+      - key: GOOGLE_CALLBACK_URL
+        sync: false
+      # Production value: https://triplanner-backend-sp61.onrender.com/api/v1/auth/google/calendar/callback
+      - key: GOOGLE_CALENDAR_CALLBACK_URL
+        sync: false
+      # Browser redirect target after OAuth callbacks (falls back to CORS_ORIGIN).
+      # Production value: https://triplanner.yixinx.com
+      - key: FRONTEND_URL
+        sync: false
+
 
   # ─────────────────────────────────────────────
   # Frontend — React SPA (Static Site)
