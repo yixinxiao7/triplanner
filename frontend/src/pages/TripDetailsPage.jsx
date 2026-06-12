@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
+import Toast from '../components/Toast';
 import Navbar from '../components/Navbar';
 import DestinationChipInput from '../components/DestinationChipInput';
 import { useTripDetails } from '../hooks/useTripDetails';
@@ -417,6 +418,58 @@ export default function TripDetailsPage() {
     setLocalTripStatus(newStatus);
   }
 
+  // ── Google Calendar Export State (T-343) ──────────────────
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [exporting, setExporting] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  async function handleExportToGoogleCalendar() {
+    setExporting(true);
+    try {
+      const res = await api.calendar.exportToGoogle(tripId);
+      const { events_created } = res.data.data;
+      setToast(
+        `exported ${events_created} event${events_created === 1 ? '' : 's'} to google calendar`
+      );
+    } catch (err) {
+      const code = err.response?.data?.error?.code;
+      if (code === 'GOOGLE_CALENDAR_AUTH_REQUIRED') {
+        // Calendar scope not granted yet — send the browser to Google's
+        // consent screen; the OAuth callback redirects back here with ?gcal=…
+        try {
+          const urlRes = await api.auth.googleCalendarAuthUrl(tripId);
+          window.location.assign(urlRes.data.data.url);
+          return; // navigating away — keep the button in its busy state
+        } catch {
+          setToast('could not connect to google calendar. please try again.');
+        }
+      } else if (code === 'GOOGLE_CALENDAR_UNAVAILABLE') {
+        setToast('google calendar export is not available.');
+      } else {
+        setToast('export to google calendar failed. please try again.');
+      }
+    }
+    setExporting(false);
+  }
+
+  // Handle the return from Google's consent screen (?gcal=connected|denied|error).
+  useEffect(() => {
+    const gcal = searchParams.get('gcal');
+    if (!gcal) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('gcal');
+    setSearchParams(next, { replace: true });
+    if (gcal === 'connected') {
+      // Consent granted — finish what the user started.
+      handleExportToGoogleCalendar();
+    } else if (gcal === 'denied') {
+      setToast('google calendar access was declined.');
+    } else {
+      setToast('could not connect google calendar. please try again.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
 
   useEffect(() => {
     fetchAll();
@@ -611,6 +664,35 @@ export default function TripDetailsPage() {
                     />
                   </div>
 
+                  <div className={styles.headerActions}>
+                  <button
+                    className={styles.printBtn}
+                    onClick={handleExportToGoogleCalendar}
+                    disabled={exporting}
+                    aria-label="Export to Google Calendar"
+                  >
+                    {/* Calendar-with-arrow SVG icon */}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      {/* Calendar body */}
+                      <rect x="1" y="2.5" width="12" height="10.5" rx="1" />
+                      {/* Header line + binding rings */}
+                      <path d="M1 5.5h12M4 1v3M10 1v3" />
+                      {/* Export arrow */}
+                      <path d="M5 9.5h4M7.5 8l1.5 1.5L7.5 11" />
+                    </svg>
+                    {exporting ? 'Exporting…' : 'Export to Google Calendar'}
+                  </button>
+
                   <button
                     className={styles.printBtn}
                     onClick={() => window.print()}
@@ -637,6 +719,7 @@ export default function TripDetailsPage() {
                     </svg>
                     Print itinerary
                   </button>
+                  </div>
                 </div>
 
                 {/* ── Destinations (editable chips — Sprint 3 T-046) ── */}
@@ -923,6 +1006,9 @@ export default function TripDetailsPage() {
 
         </div>
       </main>
+
+      {/* ── Toast (Google Calendar export feedback — T-343) ── */}
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </>
   );
 }

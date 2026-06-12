@@ -119,6 +119,11 @@ export const api = {
     login: (body) => apiClient.post('/auth/login', body),
     refresh: () => apiClient.post('/auth/refresh'),
     logout: () => apiClient.post('/auth/logout'),
+    // Google Calendar incremental consent (T-343): returns the Google consent
+    // URL to redirect the browser to; trip_id is round-tripped so the OAuth
+    // callback lands the user back on the trip they were exporting.
+    googleCalendarAuthUrl: (tripId) =>
+      apiClient.get('/auth/google/calendar/url', { params: { trip_id: tripId } }),
   },
   trips: {
     list: (params = {}) => apiClient.get('/trips', { params }),
@@ -166,6 +171,9 @@ export const api = {
   },
   calendar: {
     get: (tripId) => apiClient.get(`/trips/${tripId}/calendar`),
+    // Export the trip to a dedicated Google calendar (T-343).
+    exportToGoogle: (tripId) =>
+      apiClient.post(`/trips/${tripId}/export/google-calendar`),
   },
 };
 
