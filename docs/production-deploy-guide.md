@@ -288,6 +288,38 @@ Custom domain configured: `triplanner.yixinx.com` → frontend static site.
 
 ---
 
+## Step 8 — Backend Custom Domain (REQUIRED for iOS / Safari)
+
+**Why:** The refresh-token cookie is issued by the backend. When the backend
+lives on `onrender.com` and the frontend on `yixinx.com`, every auth call is
+**cross-site**, and WebKit (all iOS browsers, desktop Safari) blocks
+third-party cookies — so login never persists and Google sign-in appears to
+silently fail on those browsers (bug-046). Desktop Chrome happens to still
+allow third-party cookies, masking the problem.
+
+**Fix:** serve the backend from a subdomain of the frontend's site so both are
+same-site (`yixinx.com`):
+
+1. Render → `triplanner-backend` → Settings → Custom Domains → add
+   `api.triplanner.yixinx.com`.
+2. DNS for `yixinx.com`: CNAME `api.triplanner` →
+   `triplanner-backend-sp61.onrender.com`. Wait for Render to verify + issue
+   the certificate.
+3. Google Cloud Console → OAuth client → add redirect URIs:
+   - `https://api.triplanner.yixinx.com/api/v1/auth/google/callback`
+   - `https://api.triplanner.yixinx.com/api/v1/auth/google/calendar/callback`
+4. Backend env: point `GOOGLE_CALLBACK_URL` / `GOOGLE_CALENDAR_CALLBACK_URL`
+   at the new domain (`CORS_ORIGIN` / `FRONTEND_URL` unchanged).
+5. Frontend env: `VITE_API_URL=https://api.triplanner.yixinx.com/api/v1`,
+   then redeploy the frontend (build-time variable).
+
+Notes:
+- Existing sessions are logged out once (cookies live on the old domain).
+- The onrender.com URL keeps working for the API itself; only cookie-based
+  auth requires the same-site domain. Do not point `VITE_API_URL` back at it.
+
+---
+
 ## Rollback Procedure
 
 If production breaks after deploy:

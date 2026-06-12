@@ -102,6 +102,14 @@ services:
         destination: /index.html
     envVars:
       # Backend API base URL — baked into the Vite bundle at build time.
-      # Note: VITE_ prefix is required for Vite to expose this to client-side code
+      # Note: VITE_ prefix is required for Vite to expose this to client-side code.
+      #
+      # MUST be the backend's same-site custom domain, NOT the onrender.com URL:
+      #   https://api.triplanner.yixinx.com/api/v1
+      # The frontend (triplanner.yixinx.com) and backend must share the
+      # yixinx.com site or iOS/Safari (WebKit ITP) blocks the cross-site
+      # refresh-token cookie and login does not persist on those browsers
+      # (bug-046). Set manually in the dashboard; sync:false so a Blueprint
+      # sync can never revert it to a cross-site URL.
       - key: VITE_API_URL
-        value: https://triplanner-backend-sp61.onrender.com/api/v1
+        sync: false
