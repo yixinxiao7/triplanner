@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import passport from 'passport';
 import { parse as parseCookies } from 'cookie';
+import { isGoogleOAuthConfigured } from '../config/passport.js';
 import { validate } from '../middleware/validate.js';
 import { sanitizeFields } from '../middleware/sanitize.js';
 import { authenticate } from '../middleware/auth.js';
@@ -30,6 +32,12 @@ const DUMMY_HASH = '$2a$12$KIXRypNYJWQXQVVjbmLiOuHm1Wm5H8F4c2G.x3kPZ9RZ1O8qb5Xm'
 
 /** 7 days in seconds */
 const REFRESH_TOKEN_SECONDS = 7 * 24 * 60 * 60;
+
+// Redirect target after the Google OAuth callback. Explicit fallback chain so it
+// never resolves to `undefined`. In prod, FRONTEND_URL must share an origin with
+// CORS_ORIGIN.
+const FRONTEND_URL =
+  process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
 
 // ---- Helpers ----
 
@@ -290,6 +298,54 @@ router.post('/logout', generalAuthLimiter, authenticate, async (req, res, next) 
   } catch (err) {
     next(err);
   }
+});
+
+// ---- GET /api/v1/auth/google ----
+// Initiates the Google OAuth redirect. Graceful degradation when unconfigured.
+router.get('/google', generalAuthLimiter, (req, res, next) => {
+  if (!isGoogleOAuthConfigured()) {
+    return res.redirect(`${FRONTEND_URL}/login?error=oauth_unavailable`);
+  }
+  passport.authenticate('google', {
+    session: false,
+    scope: ['profile', 'email'],
+  })(req, res, next);
+});
+
+// ---- GET /api/v1/auth/google/callback ----
+// Handles the OAuth callback. Issues a refresh-token cookie (no access token in
+// the URL) and redirects the browser back to the frontend, where the existing
+// silent-refresh picks up the session. Maps Google/passport failures to error
+// redirects on /login.
+router.get('/google/callback', generalAuthLimiter, (req, res, next) => {
+  if (!isGoogleOAuthConfigured()) {
+    return res.redirect(`${FRONTEND_URL}/login?error=oauth_unavailable`);
+  }
+
+  // User cancelled on Google's consent screen.
+  if (req.query.error === 'access_denied') {
+    return res.redirect(`${FRONTEND_URL}/login?error=access_denied`);
+  }
+
+  passport.authenticate('google', { session: false }, async (err, user) => {
+    try {
+      if (err || !user) {
+        return res.redirect(`${FRONTEND_URL}/login?error=oauth_failed`);
+      }
+
+      // Issue a refresh token (mirrors the password login/register flow).
+      const rawRefreshToken = generateRawToken();
+      const tokenHash = hashToken(rawRefreshToken);
+      const expiresAt = new Date(Date.now() + REFRESH_TOKEN_SECONDS * 1000);
+      await createRefreshToken(user.id, tokenHash, expiresAt);
+
+      setRefreshCookie(res, rawRefreshToken);
+
+      return res.redirect(FRONTEND_URL + (user._linked ? '/?linked=true' : '/'));
+    } catch (e) {
+      return res.redirect(`${FRONTEND_URL}/login?error=oauth_failed`);
+    }
+  })(req, res, next);
 });
 
 export default router;

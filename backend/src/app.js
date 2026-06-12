@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import passport from 'passport';
+import './config/passport.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { uuidParamHandler } from './middleware/validateUUID.js';
 import healthRoutes from './routes/health.js';
@@ -32,6 +34,9 @@ app.use(
 
 // ---- Body parsing ----
 app.use(express.json());
+
+// ---- Passport (stateless — session: false, no express-session) ----
+app.use(passport.initialize());
 
 // ---- Global UUID validation for :tripId param (T-027 / B-009) ----
 // :tripId appears in the app-level route paths for sub-resource mounts.
