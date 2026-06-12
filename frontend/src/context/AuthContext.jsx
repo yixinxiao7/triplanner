@@ -13,6 +13,14 @@ import { createContext, useContext, useState, useCallback, useRef } from 'react'
 // Export AuthContext so tests can use it directly with Context.Provider
 export const AuthContext = createContext(null);
 
+// In-flight dedup guard for the silent refresh. React 18 StrictMode
+// double-invokes the []-dep effect in dev, firing two concurrent
+// POST /auth/refresh calls; with server-side refresh-token rotation the
+// second races on the just-revoked token and can bounce the user to /login
+// right after Google sign-in. Sharing a single promise collapses the two
+// calls into one. Module-level so it survives the remount StrictMode does.
+let inflightRefresh = null;
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   // Access token stored in a ref so it's always the latest without re-renders
@@ -57,7 +65,14 @@ export function AuthProvider({ children }) {
    */
   const initializeAuth = useCallback(async (apiInstance) => {
     try {
-      const response = await apiInstance.post('/auth/refresh');
+      // Dedup concurrent silent-refresh calls (StrictMode double-invoke).
+      // The first caller starts the request; subsequent callers await the
+      // same in-flight promise instead of issuing a second POST that would
+      // race on the just-rotated refresh token.
+      if (!inflightRefresh) {
+        inflightRefresh = apiInstance.post('/auth/refresh');
+      }
+      const response = await inflightRefresh;
       const { access_token } = response.data.data;
       // We don't have user data from refresh endpoint — fetch it separately
       // For Sprint 1 simplicity: decode the JWT payload to get basic user info
@@ -80,6 +95,8 @@ export function AuthProvider({ children }) {
       // No valid refresh token — user needs to log in
       clearAuth();
     } finally {
+      // Clear the guard so a later refresh (e.g. after re-login) can run.
+      inflightRefresh = null;
       setIsAuthLoading(false);
     }
   }, [clearAuth]);

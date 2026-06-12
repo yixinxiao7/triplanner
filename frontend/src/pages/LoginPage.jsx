@@ -1,9 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
 import { parseRetryAfterMinutes } from '../utils/rateLimitUtils';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 import styles from './AuthPage.module.css';
+
+// Map an OAuth `?error=` query value to a user-facing banner message.
+function oauthErrorMessage(code) {
+  switch (code) {
+    case 'access_denied':
+      return 'google sign-in was cancelled.';
+    case 'oauth_failed':
+    case 'oauth_unavailable':
+      return "couldn't sign in with google. try again.";
+    default:
+      return null;
+  }
+}
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -12,6 +26,23 @@ function isValidEmail(email) {
 export default function LoginPage() {
   const { isAuthenticated, handleAuthSuccess } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // OAuth error read from the URL once on mount, then stripped from the URL.
+  // (`?linked=true` is handled on HomePage — linked users are authenticated and
+  // redirected away from this page, so they never receive it here.)
+  const [oauthError, setOauthError] = useState('');
+
+  useEffect(() => {
+    const errorCode = searchParams.get('error');
+    const message = oauthErrorMessage(errorCode);
+    if (message) setOauthError(message);
+    // Strip the query param so a refresh/back doesn't re-show the banner.
+    if (errorCode) {
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Redirect authenticated users to home
   useEffect(() => {
@@ -149,6 +180,21 @@ export default function LoginPage() {
             register &rarr;
           </Link>
         </p>
+
+        {/* OAuth Error Banner */}
+        {oauthError && (
+          <div className={styles.errorBanner} role="alert" aria-live="polite">
+            {oauthError}
+          </div>
+        )}
+
+        {/* Google Sign-In */}
+        <div className={styles.googleSection}>
+          <GoogleSignInButton disabled={isLoading} />
+        </div>
+
+        {/* Divider */}
+        <div className={styles.authDivider}>or</div>
 
         {/* Rate Limit Banner (429) */}
         {rateLimitMessage && (

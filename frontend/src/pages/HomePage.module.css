@@ -10,6 +10,39 @@
   padding: 0 var(--content-padding);
 }
 
+/* Success Banner — e.g. Google account linked after OAuth redirect.
+   Mirrors AuthPage.module.css .successBanner (borders only, Japandi). */
+.successBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.successBannerDismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 150ms ease;
+}
+
+.successBannerDismiss:hover {
+  color: var(--text-primary);
+}
+
 /* Page Header */
 .pageHeader {
   display: flex;
