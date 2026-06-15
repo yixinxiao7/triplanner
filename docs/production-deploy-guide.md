@@ -133,8 +133,8 @@ Set on the **backend** service:
 |----------|-------|-------|
 | `GOOGLE_CLIENT_ID` | *(from Google Cloud Console)* | OAuth 2.0 Client (Web application) |
 | `GOOGLE_CLIENT_SECRET` | *(from Google Cloud Console)* | Same client |
-| `GOOGLE_CALLBACK_URL` | `https://triplanner-backend-sp61.onrender.com/api/v1/auth/google/callback` | Sign-In redirect |
-| `GOOGLE_CALENDAR_CALLBACK_URL` | `https://triplanner-backend-sp61.onrender.com/api/v1/auth/google/calendar/callback` | Calendar-consent redirect |
+| `GOOGLE_CALLBACK_URL` | `https://triplanner.yixinx.com/api/v1/auth/google/callback` | Sign-In redirect (same-origin — see Step 8) |
+| `GOOGLE_CALENDAR_CALLBACK_URL` | `https://triplanner.yixinx.com/api/v1/auth/google/calendar/callback` | Calendar-consent redirect (same-origin) |
 | `FRONTEND_URL` | `https://triplanner.yixinx.com` | Browser redirect target after OAuth callbacks (falls back to `CORS_ORIGIN`) |
 | `GEMINI_API_KEY` | *(from https://aistudio.google.com/apikey)* | AI PDF itinerary import (T-332). If unset, `/ai/import/parse` fails with 502 `EXTERNAL_SERVICE_ERROR` (bug-045) |
 
@@ -288,7 +288,7 @@ Custom domain configured: `triplanner.yixinx.com` → frontend static site.
 
 ---
 
-## Step 8 — Backend Custom Domain (REQUIRED for iOS / Safari)
+## Step 8 — Same-Origin API via Cloudflare (REQUIRED for iOS / Safari)
 
 **Why:** The refresh-token cookie is issued by the backend. When the backend
 lives on `onrender.com` and the frontend on `yixinx.com`, every auth call is
@@ -297,26 +297,56 @@ third-party cookies — so login never persists and Google sign-in appears to
 silently fail on those browsers (bug-046). Desktop Chrome happens to still
 allow third-party cookies, masking the problem.
 
-**Fix:** serve the backend from a subdomain of the frontend's site so both are
-same-site (`yixinx.com`):
+**Fix:** serve the API from the frontend's own origin so the cookie is
+first-party. `yixinx.com` is already on Cloudflare with `triplanner.yixinx.com`
+proxied, so a Cloudflare Worker can route `/api/*` to the Render backend at the
+edge. This needs **no custom domain on the backend** (sidesteps Render's
+2-domain limit) and gives same-*origin* cookies — stronger than a same-site
+subdomain, and it hides the onrender.com backend.
 
-1. Render → `triplanner-backend` → Settings → Custom Domains → add
-   `api.triplanner.yixinx.com`.
-2. DNS for `yixinx.com`: CNAME `api.triplanner` →
-   `triplanner-backend-sp61.onrender.com`. Wait for Render to verify + issue
-   the certificate.
-3. Google Cloud Console → OAuth client → add redirect URIs:
-   - `https://api.triplanner.yixinx.com/api/v1/auth/google/callback`
-   - `https://api.triplanner.yixinx.com/api/v1/auth/google/calendar/callback`
-4. Backend env: point `GOOGLE_CALLBACK_URL` / `GOOGLE_CALENDAR_CALLBACK_URL`
-   at the new domain (`CORS_ORIGIN` / `FRONTEND_URL` unchanged).
-5. Frontend env: `VITE_API_URL=https://api.triplanner.yixinx.com/api/v1`,
-   then redeploy the frontend (build-time variable).
+> **Alternative (same-site subdomain):** if you'd rather not use a Worker, give
+> the backend a custom domain `api.triplanner.yixinx.com` (CNAME →
+> `triplanner-backend-sp61.onrender.com`) and use that host in the callback /
+> `VITE_API_URL` values below. Same-site is enough for WebKit; this just costs a
+> Render custom-domain slot.
+
+### Cloudflare Worker setup
+
+1. **Cloudflare → Workers & Pages → Create Worker.** Replace the code with:
+   ```js
+   const BACKEND = 'https://triplanner-backend-sp61.onrender.com';
+   export default {
+     async fetch(request) {
+       const url = new URL(request.url);
+       return fetch(new Request(BACKEND + url.pathname + url.search, request));
+     },
+   };
+   ```
+   The backend sets its auth cookie with no `Domain` attribute, so the browser
+   scopes it to `triplanner.yixinx.com` automatically — no backend code change.
+   `fetch()` sends `Host: …onrender.com` to the origin, which is how Render
+   routes the request (no backend custom domain required).
+2. **Worker → Settings → Triggers → Routes → Add route:**
+   `triplanner.yixinx.com/api/*` (zone `yixinx.com`). Non-`/api` paths bypass
+   the Worker and continue to the frontend static site as normal.
+
+### Env + Google changes (same for either approach)
+
+3. Google Cloud Console → OAuth client → add redirect URIs (same-origin form):
+   - `https://triplanner.yixinx.com/api/v1/auth/google/callback`
+   - `https://triplanner.yixinx.com/api/v1/auth/google/calendar/callback`
+4. Backend env: set `GOOGLE_CALLBACK_URL` / `GOOGLE_CALENDAR_CALLBACK_URL` to
+   the two URLs above (`CORS_ORIGIN` / `FRONTEND_URL` unchanged).
+5. Frontend env: `VITE_API_URL=/api/v1` (relative — same origin), then redeploy
+   the frontend (build-time variable).
 
 Notes:
-- Existing sessions are logged out once (cookies live on the old domain).
-- The onrender.com URL keeps working for the API itself; only cookie-based
-  auth requires the same-site domain. Do not point `VITE_API_URL` back at it.
+- Existing sessions are logged out once (old cookies were on the onrender.com
+  domain).
+- CORS is now same-origin, so `CORS_ORIGIN` is effectively unused but harmless
+  to keep.
+- Verify on an actual iPhone (Safari + Chrome), not just desktop Chrome, since
+  desktop Chrome masked the original bug.
 
 ---
 
