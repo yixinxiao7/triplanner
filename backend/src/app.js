@@ -16,6 +16,7 @@ import calendarRoutes from './routes/calendar.js';
 import calendarExportRoutes from './routes/calendarExport.js';
 import aiRoutes from './routes/ai.js';
 import importRoutes from './routes/import.js';
+import tripImportRoutes from './routes/tripImport.js';
 
 const app = express();
 
@@ -56,6 +57,11 @@ app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/trips/import', importRoutes);
 
 app.use('/api/v1/trips', tripsRoutes);
+
+// Append parsed itinerary into an EXISTING trip (import PDF into existing trip).
+// Mounted AFTER /api/v1/trips/import (create-new-trip) so the literal "import"
+// path is not shadowed; :tripId is UUID-validated by the app.param above.
+app.use('/api/v1/trips/:tripId/import', tripImportRoutes);
 
 // Sub-resources — nested under trips (mergeParams handles :tripId)
 app.use('/api/v1/trips/:tripId/flights', flightsRoutes);

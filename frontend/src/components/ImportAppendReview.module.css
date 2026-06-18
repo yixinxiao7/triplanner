@@ -1,0 +1,107 @@
+/* ============================================================
+   Import Append Review
+   On-page panel for reviewing parsed itinerary items before
+   appending them to an existing trip. Reuses the import-review
+   visual language (cards/fields/buttons come from
+   ImportReviewPage.module.css); this file only handles the
+   modal shell + scrolling.
+   ============================================================ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 17, 27, 0.85);
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+}
+
+.panel {
+  width: 760px;
+  max-width: calc(100vw - 32px);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin: 0;
+  outline: none;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.intro {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  max-width: 560px;
+}
+
+/* ── Body (sections live here) ── */
+.body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Footer ── */
+.footer {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .overlay {
+    padding: 16px 8px;
+  }
+
+  .panel {
+    padding: 20px;
+  }
+
+  .header {
+    flex-wrap: wrap;
+  }
+}
