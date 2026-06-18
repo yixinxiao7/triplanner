@@ -133,6 +133,9 @@ export const api = {
     delete: (id) => apiClient.delete(`/trips/${id}`),
     // Atomically commit a parsed itinerary (trip + all sub-resources) in one call.
     import: (body) => apiClient.post('/trips/import', body),
+    // Append parsed sub-resources (flights/stays/activities/land_travels) to an
+    // existing trip — no trip meta, atomic on the backend.
+    importAppend: (id, body) => apiClient.post(`/trips/${id}/import`, body),
   },
   ai: {
     // Send a PDF (multipart) to Gemini for parsing into the import contract shape.

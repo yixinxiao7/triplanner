@@ -36,7 +36,23 @@ vi.mock('../config/database.js', () => {
   return { default: dbFn };
 });
 
-import { importTrip } from '../models/importModel.js';
+// ── Mock the per-resource find helpers used to re-query created rows ──────────
+// appendImportToTrip re-queries each inserted id OUTSIDE the transaction via
+// these; stub them so the unit test needs no real DB.
+// findTripById delegates to the same hoisted `findFirst` the db mock uses, so the
+// existing importTrip tests (which drive findFirst) keep working after this module
+// is mocked. deduplicateDestinations is passthrough.
+vi.mock('../models/tripModel.js', () => ({
+  deduplicateDestinations: (d) => d,
+  findTripById: vi.fn((...args) => findFirst(...args)),
+}));
+vi.mock('../models/flightModel.js', () => ({ findFlightById: vi.fn((id) => Promise.resolve({ id, kind: 'flight' })) }));
+vi.mock('../models/stayModel.js', () => ({ findStayById: vi.fn((id) => Promise.resolve({ id, kind: 'stay' })) }));
+vi.mock('../models/activityModel.js', () => ({ findActivityById: vi.fn((id) => Promise.resolve({ id, kind: 'activity' })) }));
+vi.mock('../models/landTravelModel.js', () => ({ findLandTravelById: vi.fn((id) => Promise.resolve({ id, kind: 'land' })) }));
+
+import { importTrip, appendImportToTrip } from '../models/importModel.js';
+import { findFlightById } from '../models/flightModel.js';
 
 const basePayload = {
   trip: { name: 'Japan', destinations: ['Tokyo'], start_date: null, end_date: null, notes: null },
@@ -103,5 +119,63 @@ describe('importModel.importTrip', () => {
     // Only the trips table was inserted into.
     const tables = trxInsert.mock.calls.map((c) => c[0]);
     expect(tables).toEqual(['trips']);
+  });
+});
+
+describe('importModel.appendImportToTrip', () => {
+  const TRIP_ID = 'trip-existing';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const fullChildren = {
+    flights: [{ flight_number: 'AA1', airline: 'AA', from_location: 'A', to_location: 'B', departure_at: 'x', departure_tz: 'tz', arrival_at: 'y', arrival_tz: 'tz' }],
+    stays: [{ category: 'HOTEL', name: 'H', check_in_at: 'x', check_in_tz: 'tz', check_out_at: 'y', check_out_tz: 'tz' }],
+    activities: [{ name: 'Act', activity_date: '2026-08-09' }],
+    land_travels: [{ mode: 'TRAIN', from_location: 'A', to_location: 'B', departure_date: '2026-08-10' }],
+  };
+
+  it('inserts every child onto the existing trip_id in one transaction and never touches trips', async () => {
+    trxInsert.mockImplementation(() => Promise.resolve([{ id: 'new-id' }]));
+
+    const result = await appendImportToTrip(TRIP_ID, fullChildren);
+
+    expect(transaction).toHaveBeenCalledOnce();
+    const tables = trxInsert.mock.calls.map((c) => c[0]);
+    // The trip row is NEVER inserted/updated on append.
+    expect(tables).not.toContain('trips');
+    expect(tables.sort()).toEqual(['activities', 'flights', 'land_travels', 'stays']);
+    // Every child carries the existing trip_id.
+    trxInsert.mock.calls.forEach(([, rows]) => {
+      expect(rows[0].trip_id).toBe(TRIP_ID);
+    });
+    // Returns the re-queried rows for each collection.
+    expect(result.flights).toHaveLength(1);
+    expect(result.stays).toHaveLength(1);
+    expect(result.activities).toHaveLength(1);
+    expect(result.land_travels).toHaveLength(1);
+  });
+
+  it('rollback: a failing child insert rejects the whole transaction (no re-query)', async () => {
+    trxInsert.mockImplementation((table) => {
+      if (table === 'activities') return Promise.reject(new Error('insert failed: bad row'));
+      return Promise.resolve([{ id: 'new-id' }]);
+    });
+
+    await expect(appendImportToTrip(TRIP_ID, fullChildren)).rejects.toThrow(/insert failed/);
+    // Post-commit re-queries never ran.
+    expect(findFlightById).not.toHaveBeenCalled();
+  });
+
+  it('skips inserts for empty collections (only the populated ones are written)', async () => {
+    trxInsert.mockImplementation(() => Promise.resolve([{ id: 'new-id' }]));
+
+    await appendImportToTrip(TRIP_ID, {
+      flights: [], stays: [], activities: [{ name: 'Solo', activity_date: '2026-08-09' }], land_travels: [],
+    });
+
+    const tables = trxInsert.mock.calls.map((c) => c[0]);
+    expect(tables).toEqual(['activities']);
   });
 });

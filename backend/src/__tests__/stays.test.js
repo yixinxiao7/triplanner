@@ -203,6 +203,37 @@ describe('POST /api/v1/trips/:tripId/stays', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.fields.check_out_at).toMatch(/after check-in/);
   });
+
+  // M2 — stay datetimes must carry an explicit UTC offset (consistent with flights)
+  it('error path: naive check_in_at (no offset) → 400', async () => {
+    const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/stays`, {
+      category: 'HOTEL',
+      name: 'Test Hotel',
+      check_in_at: '2026-08-07T20:00:00', // no Z / offset
+      check_in_tz: 'America/Los_Angeles',
+      check_out_at: '2026-08-09T15:00:00+00:00',
+      check_out_tz: 'America/Los_Angeles',
+    }, AUTH);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.fields.check_in_at).toMatch(/offset/);
+    expect(stayModel.createStay).not.toHaveBeenCalled();
+  });
+
+  it('error path: naive check_out_at (no offset) → 400', async () => {
+    const res = await request(buildApp(), 'POST', `/api/v1/trips/${TRIP_UUID}/stays`, {
+      category: 'HOTEL',
+      name: 'Test Hotel',
+      check_in_at: '2026-08-07T20:00:00Z',
+      check_in_tz: 'America/Los_Angeles',
+      check_out_at: '2026-08-09T15:00:00', // no Z / offset
+      check_out_tz: 'America/Los_Angeles',
+    }, AUTH);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.fields.check_out_at).toMatch(/offset/);
+    expect(stayModel.createStay).not.toHaveBeenCalled();
+  });
 });
 
 // T-258 — PATCH category case normalization
@@ -235,6 +266,17 @@ describe('PATCH /api/v1/trips/:tripId/stays/:id — category normalization (T-25
 
     expect(res.status).toBe(400);
     expect(res.body.error.fields.category).toMatch(/HOTEL.*AIRBNB.*VRBO/);
+  });
+
+  // M2 — PATCH datetimes must also carry an explicit UTC offset
+  it('error path: PATCH with naive check_in_at (no offset) → 400', async () => {
+    const res = await request(buildApp(), 'PATCH', `/api/v1/trips/${TRIP_UUID}/stays/${STAY_UUID}`, {
+      check_in_at: '2026-08-07T20:00:00',
+    }, AUTH);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.fields.check_in_at).toMatch(/offset/);
+    expect(stayModel.updateStay).not.toHaveBeenCalled();
   });
 });
 

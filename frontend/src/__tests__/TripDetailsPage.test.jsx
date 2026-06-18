@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import TripDetailsPage from '../pages/TripDetailsPage';
 import { formatTimezoneAbbr } from '../utils/formatDate';
+import { api } from '../utils/api';
 
 // ── Mock TripCalendar (avoid full calendar render in unit tests) ───────────
 vi.mock('../components/TripCalendar', () => ({
@@ -24,6 +25,10 @@ vi.mock('../utils/api', () => ({
     trips: {
       get: vi.fn(),
       update: vi.fn().mockResolvedValue({ data: { data: { id: 'trip-001', start_date: '2026-08-07', end_date: '2026-08-14' } } }),
+      importAppend: vi.fn().mockResolvedValue({ data: { data: {} } }),
+    },
+    ai: {
+      importParse: vi.fn(),
     },
     flights: { list: vi.fn() },
     stays: { list: vi.fn() },
@@ -1466,6 +1471,475 @@ describe('TripDetailsPage', () => {
       expect(notesBlock).not.toBeNull();
       expect(notesBlock.querySelector('script')).toBeNull();
       expect(notesBlock.querySelector('img')).toBeNull();
+    });
+  });
+
+  // ── Editable Trip Title ─────────────────────────────────────────────────────
+  describe('editable trip title', () => {
+    it('shows the trip name with an edit trigger in display mode', () => {
+      renderTripDetailsPage();
+      expect(screen.getByRole('heading', { name: 'Japan 2026' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Edit trip name' })).toBeDefined();
+    });
+
+    it('enters edit mode pre-filled with the current name and saves a new name', async () => {
+      renderTripDetailsPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit trip name' }));
+
+      const input = screen.getByRole('textbox', { name: 'Trip name' });
+      expect(input.value).toBe('Japan 2026');
+
+      fireEvent.change(input, { target: { value: '  Japan Spring 2027  ' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save trip name' }));
+
+      await waitFor(() => {
+        // Trimmed before send.
+        expect(api.trips.update).toHaveBeenCalledWith('trip-001', { name: 'Japan Spring 2027' });
+      });
+      // Optimistic local update returns to display mode with the new name.
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: 'Japan Spring 2027' })).toBeDefined();
+      });
+    });
+
+    it('Enter saves and Escape cancels', async () => {
+      renderTripDetailsPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit trip name' }));
+
+      let input = screen.getByRole('textbox', { name: 'Trip name' });
+      fireEvent.change(input, { target: { value: 'Renamed' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      await waitFor(() => {
+        expect(api.trips.update).toHaveBeenCalledWith('trip-001', { name: 'Renamed' });
+      });
+
+      // Escape from a fresh edit discards changes without an API call.
+      api.trips.update.mockClear();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit trip name' }));
+      input = screen.getByRole('textbox', { name: 'Trip name' });
+      fireEvent.change(input, { target: { value: 'Should not save' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(api.trips.update).not.toHaveBeenCalled();
+      expect(screen.getByRole('heading', { name: 'Renamed' })).toBeDefined();
+    });
+
+    it('rejects an empty name and does not call the API', () => {
+      renderTripDetailsPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit trip name' }));
+      const input = screen.getByRole('textbox', { name: 'Trip name' });
+      fireEvent.change(input, { target: { value: '   ' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save trip name' }));
+      expect(screen.getByText('trip name is required')).toBeDefined();
+      expect(api.trips.update).not.toHaveBeenCalled();
+    });
+
+    it('skips the API call when the name is unchanged', () => {
+      renderTripDetailsPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit trip name' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Save trip name' }));
+      expect(api.trips.update).not.toHaveBeenCalled();
+      expect(screen.getByRole('heading', { name: 'Japan 2026' })).toBeDefined();
+    });
+
+    it('the name input enforces a maxLength of 255', () => {
+      renderTripDetailsPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit trip name' }));
+      const input = screen.getByRole('textbox', { name: 'Trip name' });
+      expect(input.maxLength).toBe(255);
+    });
+
+    it('rejects a name longer than 255 chars and does not call the API', () => {
+      renderTripDetailsPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit trip name' }));
+      const input = screen.getByRole('textbox', { name: 'Trip name' });
+      // jsdom does not enforce maxLength on programmatic change, so this drives the
+      // client-side guard in handleSaveName directly.
+      fireEvent.change(input, { target: { value: 'x'.repeat(256) } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save trip name' }));
+      expect(screen.getByText('trip name must be 255 characters or fewer')).toBeDefined();
+      expect(api.trips.update).not.toHaveBeenCalled();
+      // Still in edit mode.
+      expect(screen.getByRole('textbox', { name: 'Trip name' })).toBeDefined();
+    });
+
+    it('accepts a name of exactly 255 chars (boundary)', async () => {
+      const name255 = 'y'.repeat(255);
+      renderTripDetailsPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit trip name' }));
+      const input = screen.getByRole('textbox', { name: 'Trip name' });
+      fireEvent.change(input, { target: { value: name255 } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save trip name' }));
+      await waitFor(() => {
+        expect(api.trips.update).toHaveBeenCalledWith('trip-001', { name: name255 });
+      });
+    });
+
+    it('surfaces an error and stays in edit mode when the save fails', async () => {
+      api.trips.update.mockRejectedValueOnce(new Error('network down'));
+      renderTripDetailsPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit trip name' }));
+      const input = screen.getByRole('textbox', { name: 'Trip name' });
+      fireEvent.change(input, { target: { value: 'New Name' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save trip name' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('could not save trip name. please try again.')).toBeDefined();
+      });
+      // The input is still present (edit mode preserved) with the attempted value.
+      const stillEditing = screen.getByRole('textbox', { name: 'Trip name' });
+      expect(stillEditing.value).toBe('New Name');
+      // The heading (display mode) is NOT shown.
+      expect(screen.queryByRole('heading', { name: 'New Name' })).toBeNull();
+    });
+
+    it('optimistic name survives a refetch (display reads savedName, not stale trip.name)', async () => {
+      // After an optimistic save, the hook re-renders with the OLD trip object
+      // (e.g. a background refetch that has not resolved with the new name yet).
+      // The display heading must keep showing the optimistic name, not revert.
+      const hook = { ...defaultHookValue };
+      useTripDetails.mockReturnValue(hook);
+      const { rerender } = renderTripDetailsPage();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Edit trip name' }));
+      fireEvent.change(screen.getByRole('textbox', { name: 'Trip name' }), {
+        target: { value: 'Optimistic Name' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Save trip name' }));
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: 'Optimistic Name' })).toBeDefined();
+      });
+
+      // Simulate a refetch that still returns the stale name.
+      rerender(
+        <MemoryRouter initialEntries={['/trips/trip-001']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <AuthContext.Provider value={mockAuthContext}>
+            <Routes>
+              <Route path="/trips/:id" element={<TripDetailsPage />} />
+            </Routes>
+          </AuthContext.Provider>
+        </MemoryRouter>
+      );
+      // Optimistic name persists.
+      expect(screen.getByRole('heading', { name: 'Optimistic Name' })).toBeDefined();
+    });
+  });
+
+  // ── Import PDF → Append to this trip ─────────────────────────────────────────
+  describe('import from PDF (append to trip)', () => {
+    const parsed = {
+      trip: { name: 'IGNORED META', destinations: ['nope'] },
+      flights: [{
+        flight_number: 'NH7', airline: 'ANA', from_location: 'SFO', to_location: 'HND',
+        departure_at: '2026-09-01T11:00:00+09:00', departure_tz: 'Asia/Tokyo',
+        arrival_at: '2026-09-02T15:00:00+09:00', arrival_tz: 'Asia/Tokyo',
+      }],
+      stays: [], activities: [], land_travels: [],
+    };
+
+    it('renders the import button in the header', () => {
+      renderTripDetailsPage();
+      expect(
+        screen.getByRole('button', { name: 'Import from PDF and add to this trip' })
+      ).toBeDefined();
+    });
+
+    it('opens the review panel after a successful parse (ignoring parsed trip meta)', async () => {
+      api.ai.importParse.mockResolvedValue({ data: { data: parsed } });
+      renderTripDetailsPage();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Import from PDF and add to this trip' }));
+
+      // The ImportPdfModal renders a file input; pick a PDF and submit.
+      const fileInput = document.getElementById('import-pdf-file');
+      const file = new File(['%PDF-1.4'], 'trip.pdf', { type: 'application/pdf' });
+      fireEvent.change(fileInput, { target: { files: [file] } });
+      fireEvent.click(screen.getByRole('button', { name: /parse itinerary/i }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('import-append-review')).toBeDefined();
+      });
+      // Parsed trip meta is NOT shown (append mode) — only the parsed flight row.
+      expect(screen.queryByText('IGNORED META')).toBeNull();
+      expect(screen.getByTestId('row-flights-0')).toBeDefined();
+    });
+
+    it('accepts the import: sends only sub-resources and refetches', async () => {
+      api.ai.importParse.mockResolvedValue({ data: { data: parsed } });
+      const hook = { ...defaultHookValue };
+      useTripDetails.mockReturnValue(hook);
+      renderTripDetailsPage();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Import from PDF and add to this trip' }));
+      const fileInput = document.getElementById('import-pdf-file');
+      fireEvent.change(fileInput, {
+        target: { files: [new File(['%PDF-1.4'], 'trip.pdf', { type: 'application/pdf' })] },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /parse itinerary/i }));
+
+      await screen.findByTestId('import-append-review');
+      fireEvent.click(screen.getByTestId('import-append-accept-btn'));
+
+      await waitFor(() => {
+        expect(api.trips.importAppend).toHaveBeenCalledTimes(1);
+      });
+      const [id, body] = api.trips.importAppend.mock.calls[0];
+      expect(id).toBe('trip-001');
+      // Only the four sub-resource arrays — no trip meta.
+      expect(Object.keys(body).sort()).toEqual(['activities', 'flights', 'land_travels', 'stays']);
+      expect(body.flights).toHaveLength(1);
+      expect(body.flights[0].flight_number).toBe('NH7');
+
+      // Panel closes and resources are refetched.
+      await waitFor(() => expect(screen.queryByTestId('import-append-review')).toBeNull());
+      expect(hook.refetchFlights).toHaveBeenCalled();
+      expect(hook.refetchStays).toHaveBeenCalled();
+      expect(hook.refetchActivities).toHaveBeenCalled();
+      expect(hook.refetchLandTravels).toHaveBeenCalled();
+    });
+
+    it('cancel discards everything without an API call', async () => {
+      api.ai.importParse.mockResolvedValue({ data: { data: parsed } });
+      renderTripDetailsPage();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Import from PDF and add to this trip' }));
+      const fileInput = document.getElementById('import-pdf-file');
+      fireEvent.change(fileInput, {
+        target: { files: [new File(['%PDF-1.4'], 'trip.pdf', { type: 'application/pdf' })] },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /parse itinerary/i }));
+
+      await screen.findByTestId('import-append-review');
+      fireEvent.click(screen.getByTestId('import-append-cancel-btn'));
+
+      await waitFor(() => expect(screen.queryByTestId('import-append-review')).toBeNull());
+      expect(api.trips.importAppend).not.toHaveBeenCalled();
+    });
+
+    it('maps a backend VALIDATION_ERROR onto the offending row', async () => {
+      api.ai.importParse.mockResolvedValue({ data: { data: parsed } });
+      api.trips.importAppend.mockRejectedValueOnce({
+        response: { data: { error: {
+          code: 'VALIDATION_ERROR',
+          message: 'some fields need fixing.',
+          fields: { 'flights[0].departure_tz': 'invalid timezone' },
+        } } },
+      });
+      renderTripDetailsPage();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Import from PDF and add to this trip' }));
+      const fileInput = document.getElementById('import-pdf-file');
+      fireEvent.change(fileInput, {
+        target: { files: [new File(['%PDF-1.4'], 'trip.pdf', { type: 'application/pdf' })] },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /parse itinerary/i }));
+
+      await screen.findByTestId('import-append-review');
+      fireEvent.click(screen.getByTestId('import-append-accept-btn'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('error-flights[0].departure_tz')).toBeDefined();
+      });
+      // Panel stays open so the user can fix it.
+      expect(screen.getByTestId('import-append-review')).toBeDefined();
+    });
+
+    // ── Added coverage (QA) ───────────────────────────────────────
+
+    // Reach the review panel with the given parsed contract.
+    async function openReview(parsedContract = parsed) {
+      api.ai.importParse.mockResolvedValue({ data: { data: parsedContract } });
+      renderTripDetailsPage();
+      fireEvent.click(screen.getByRole('button', { name: 'Import from PDF and add to this trip' }));
+      const fileInput = document.getElementById('import-pdf-file');
+      fireEvent.change(fileInput, {
+        target: { files: [new File(['%PDF-1.4'], 'trip.pdf', { type: 'application/pdf' })] },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /parse itinerary/i }));
+      await screen.findByTestId('import-append-review');
+    }
+
+    // A contract with two flights so per-row removal can be asserted.
+    const twoFlightParsed = {
+      trip: { name: 'META', destinations: [] },
+      flights: [
+        {
+          flight_number: 'NH7', airline: 'ANA', from_location: 'SFO', to_location: 'HND',
+          departure_at: '2026-09-01T11:00:00+09:00', departure_tz: 'Asia/Tokyo',
+          arrival_at: '2026-09-02T15:00:00+09:00', arrival_tz: 'Asia/Tokyo',
+        },
+        {
+          flight_number: 'NH8', airline: 'ANA', from_location: 'HND', to_location: 'SFO',
+          departure_at: '2026-09-10T11:00:00+09:00', departure_tz: 'Asia/Tokyo',
+          arrival_at: '2026-09-10T07:00:00-07:00', arrival_tz: 'America/Los_Angeles',
+        },
+      ],
+      stays: [], activities: [], land_travels: [],
+    };
+
+    it('removing a row drops only that row (the other survives)', async () => {
+      await openReview(twoFlightParsed);
+
+      expect(screen.getByTestId('row-flights-0')).toBeDefined();
+      expect(screen.getByTestId('row-flights-1')).toBeDefined();
+
+      // Remove the first flight. After removal the list re-indexes: one row left.
+      const removeButtons = screen.getAllByRole('button', { name: 'Remove flight' });
+      fireEvent.click(removeButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('row-flights-1')).toBeNull();
+      });
+      expect(screen.getByTestId('row-flights-0')).toBeDefined();
+
+      // The remaining row is the SECOND flight (NH8), confirming we removed the right one.
+      const flightNumberInput = screen.getByTestId('row-flights-0').querySelector('input');
+      expect(flightNumberInput.value).toBe('NH8');
+    });
+
+    // ── M1 regression: server errors map by _tempId, not array index ──
+    it('after removing a row, a VALIDATION_ERROR maps to the right surviving row (by _tempId)', async () => {
+      // Backend will report an error on flights[0] (the only row we send after removal).
+      api.trips.importAppend.mockRejectedValueOnce({
+        response: { data: { error: {
+          code: 'VALIDATION_ERROR',
+          message: 'some fields need fixing.',
+          fields: { 'flights[0].departure_tz': 'invalid timezone' },
+        } } },
+      });
+      await openReview(twoFlightParsed);
+
+      // Remove the FIRST flight (NH7); the surviving row is NH8, now at index 0.
+      fireEvent.click(screen.getAllByRole('button', { name: 'Remove flight' })[0]);
+      await waitFor(() => expect(screen.queryByTestId('row-flights-1')).toBeNull());
+
+      fireEvent.click(screen.getByTestId('import-append-accept-btn'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('error-flights[0].departure_tz')).toBeDefined();
+      });
+      // The error sits on the surviving NH8 row — proof it mapped by _tempId, not a
+      // stale index. (Pre-fix this still happened to be index 0; the captured-order
+      // _tempId translation is what guarantees correctness when removals shift indices.)
+      const row = screen.getByTestId('row-flights-0');
+      expect(row.querySelector('input').value).toBe('NH8');
+      expect(row.contains(screen.getByTestId('error-flights[0].departure_tz'))).toBe(true);
+    });
+
+    it('on a 201 success it shows a success toast with the item count', async () => {
+      await openReview();
+      fireEvent.click(screen.getByTestId('import-append-accept-btn'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('import-append-review')).toBeNull();
+      });
+      // One flight imported → singular "item".
+      expect(screen.getByText('added 1 item to this trip')).toBeDefined();
+    });
+
+    it('Escape on the review panel cancels without an API call', async () => {
+      await openReview();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByTestId('import-append-review')).toBeNull());
+      expect(api.trips.importAppend).not.toHaveBeenCalled();
+    });
+
+    it('backdrop click cancels without an API call', async () => {
+      await openReview();
+      // Clicking the overlay (the dialog's parent) cancels.
+      const overlay = screen.getByTestId('import-append-review').parentElement;
+      fireEvent.click(overlay);
+      await waitFor(() => expect(screen.queryByTestId('import-append-review')).toBeNull());
+      expect(api.trips.importAppend).not.toHaveBeenCalled();
+    });
+
+    it('EMPTY_IMPORT 400 shows a safe message and keeps the panel open', async () => {
+      api.trips.importAppend.mockRejectedValueOnce({
+        response: { data: { error: {
+          code: 'EMPTY_IMPORT',
+          message: 'nothing to add. parse a PDF with at least one item.',
+        } } },
+      });
+      await openReview();
+      fireEvent.click(screen.getByTestId('import-append-accept-btn'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('import-append-api-error')).toBeDefined();
+      });
+      expect(screen.getByText('nothing to add. parse a PDF with at least one item.')).toBeDefined();
+      // Panel stays open.
+      expect(screen.getByTestId('import-append-review')).toBeDefined();
+    });
+
+    it('a generic 500 shows a safe fallback message and keeps the panel open', async () => {
+      api.trips.importAppend.mockRejectedValueOnce({
+        response: { status: 500, data: { error: { code: 'INTERNAL', message: 'boom' } } },
+      });
+      await openReview();
+      fireEvent.click(screen.getByTestId('import-append-accept-btn'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('import-append-api-error')).toBeDefined();
+      });
+      // The component shows the server message when present, else a safe fallback.
+      // Either way the panel stays open and no refetch fires.
+      expect(screen.getByTestId('import-append-review')).toBeDefined();
+    });
+
+    it('a bare error (no response body) shows the generic fallback message', async () => {
+      api.trips.importAppend.mockRejectedValueOnce(new Error('network down'));
+      await openReview();
+      fireEvent.click(screen.getByTestId('import-append-accept-btn'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('could not add items to the trip. please try again.')
+        ).toBeDefined();
+      });
+      expect(screen.getByTestId('import-append-review')).toBeDefined();
+    });
+
+    it('a 404 (trip gone / not owned) keeps the panel open with a safe message', async () => {
+      api.trips.importAppend.mockRejectedValueOnce({
+        response: { status: 404, data: { error: { code: 'NOT_FOUND', message: 'trip not found' } } },
+      });
+      const hook = { ...defaultHookValue };
+      useTripDetails.mockReturnValue(hook);
+      await openReview();
+      fireEvent.click(screen.getByTestId('import-append-accept-btn'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('import-append-api-error')).toBeDefined();
+      });
+      expect(screen.getByTestId('import-append-review')).toBeDefined();
+      // No optimistic refetch on failure.
+      expect(hook.refetchFlights).not.toHaveBeenCalled();
+    });
+
+    it('accept posts a payload whose sub-resource shapes match the contract (orNull applied)', async () => {
+      const richParsed = {
+        trip: { name: 'META' },
+        flights: [],
+        stays: [],
+        activities: [{
+          name: 'Museum', location: '', activity_date: '2026-09-03',
+          start_time: '', end_time: '', notes: '',
+        }],
+        land_travels: [],
+      };
+      await openReview(richParsed);
+      fireEvent.click(screen.getByTestId('import-append-accept-btn'));
+
+      await waitFor(() => expect(api.trips.importAppend).toHaveBeenCalledTimes(1));
+      const [, body] = api.trips.importAppend.mock.calls[0];
+      expect(body.activities).toHaveLength(1);
+      const act = body.activities[0];
+      expect(act.name).toBe('Museum');
+      expect(act.activity_date).toBe('2026-09-03');
+      // Empty optional strings are normalized to null, not "".
+      expect(act.location).toBeNull();
+      expect(act.start_time).toBeNull();
+      expect(act.end_time).toBeNull();
+      expect(act.notes).toBeNull();
     });
   });
 });

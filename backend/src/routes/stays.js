@@ -58,10 +58,11 @@ export const stayValidationSchema = {
   },
   check_in_at: {
     required: true,
-    type: 'isoDate',
+    type: 'isoDateWithOffset',
     messages: {
       required: 'Check-in time is required',
-      type: 'Check-in time must be a valid ISO 8601 datetime',
+      type: 'Check-in time must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-08T15:00:00+09:00)',
+      offset: 'Check-in time must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-08T15:00:00+09:00)',
     },
   },
   check_in_tz: {
@@ -73,10 +74,11 @@ export const stayValidationSchema = {
   },
   check_out_at: {
     required: true,
-    type: 'isoDate',
+    type: 'isoDateWithOffset',
     messages: {
       required: 'Check-out time is required',
-      type: 'Check-out time must be a valid ISO 8601 datetime',
+      type: 'Check-out time must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-10T11:00:00+09:00)',
+      offset: 'Check-out time must be an ISO 8601 datetime string with timezone offset (e.g., 2026-08-10T11:00:00+09:00)',
     },
     custom: (value, body) => {
       if (body.check_in_at && value) {
@@ -199,6 +201,20 @@ router.patch('/:id', async (req, res, next) => {
 
     if (req.body.category !== undefined && !['HOTEL', 'AIRBNB', 'VRBO'].includes(req.body.category)) {
       errors.category = 'Category must be one of: HOTEL, AIRBNB, VRBO';
+    }
+
+    // M2: check_in_at / check_out_at must be ISO 8601 with an explicit UTC offset
+    // (consistent with the POST schema and with flight datetimes). A naive datetime
+    // would be stored as the wrong instant. Mirrors the flight PATCH inline check.
+    for (const field of ['check_in_at', 'check_out_at']) {
+      const value = req.body[field];
+      if (value === undefined) continue;
+      const example = field === 'check_in_at' ? '2026-08-08T15:00:00+09:00' : '2026-08-10T11:00:00+09:00';
+      if (typeof value !== 'string' || isNaN(Date.parse(value))) {
+        errors[field] = `${field === 'check_in_at' ? 'Check-in' : 'Check-out'} time must be an ISO 8601 datetime string with timezone offset (e.g., ${example})`;
+      } else if (!/(Z|[+-]\d{2}:\d{2})$/.test(value)) {
+        errors[field] = `${field === 'check_in_at' ? 'Check-in' : 'Check-out'} time must be an ISO 8601 datetime string with timezone offset (e.g., ${example})`;
+      }
     }
 
     // Validate check_out > check_in using merged values

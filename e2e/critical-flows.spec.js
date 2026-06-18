@@ -652,3 +652,70 @@ test.describe('Test 8: PDF import — non-PDF rejected client-side', () => {
     expect(parseCalled).toBe(false);
   });
 });
+
+// ── Test 9: Trip-page inline title edit ───────────────────────────
+//
+// The two flows below live on the EXISTING trip details page (route /trips/:id):
+// editing the trip title inline, and importing a PDF whose parsed items are
+// appended to THIS trip. Both reach the real backend (PATCH /trips/:id and
+// POST /trips/:id/import respectively); only the Gemini parse is mocked.
+
+test.describe('Test 9: Trip page — inline edit title', () => {
+  test('edit the trip title on the details page and see it persist', async ({ page }) => {
+    await registerNewUser(page);
+
+    const original = `Edit Title ${Date.now()}`;
+    const renamed = `${original} (renamed)`;
+    await createTrip(page, original, ['Tokyo']);
+
+    // On the trip details page, the title shows with an "edit" trigger.
+    await expect(page.getByRole('heading', { name: original })).toBeVisible({ timeout: 10000 });
+    await page.getByRole('button', { name: /edit trip name/i }).click();
+
+    const nameInput = page.getByRole('textbox', { name: /trip name/i });
+    await expect(nameInput).toHaveValue(original);
+    await nameInput.fill(renamed);
+    await page.getByRole('button', { name: /save trip name/i }).click();
+
+    // Optimistic display update → heading shows the new name.
+    await expect(page.getByRole('heading', { name: renamed })).toBeVisible({ timeout: 10000 });
+
+    // Reload to confirm the PATCH persisted server-side.
+    await page.reload();
+    await expect(page.getByRole('heading', { name: renamed })).toBeVisible({ timeout: 10000 });
+  });
+});
+
+// ── Test 10: Trip-page PDF import → append ────────────────────────
+
+test.describe('Test 10: Trip page — import PDF and append items', () => {
+  test('upload (mocked parse) → review → accept → appended items appear on the trip', async ({ page }) => {
+    await registerNewUser(page);
+
+    const tripName = `Append Target ${Date.now()}`;
+    await createTrip(page, tripName, ['Tokyo']);
+    await expect(page.getByRole('heading', { name: tripName })).toBeVisible({ timeout: 10000 });
+
+    // Mock the Gemini parse to return one flight (no trip meta needed for append).
+    await mockParseEndpoint(page, mockedContract('IGNORED ON APPEND'));
+
+    // Open the trip-page import modal and submit the sample PDF.
+    await page.getByRole('button', { name: /import from pdf and add to this trip/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await page.locator('#import-pdf-file').setInputFiles(SAMPLE_PDF);
+    await dialog.getByRole('button', { name: /parse itinerary/i }).click();
+
+    // The on-page append-review panel opens with the parsed flight row.
+    const reviewPanel = page.getByTestId('import-append-review');
+    await expect(reviewPanel).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('row-flights-0')).toBeVisible();
+
+    // Accept → commits via the REAL POST /trips/:id/import, then refetches.
+    await page.getByTestId('import-append-accept-btn').click();
+
+    // Panel closes and the appended flight shows on the trip's flights section.
+    await expect(page.getByTestId('import-append-review')).toBeHidden({ timeout: 15000 });
+    await expect(page.getByText('AA100', { exact: true }).first()).toBeVisible({ timeout: 10000 });
+  });
+});

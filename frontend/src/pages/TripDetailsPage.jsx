@@ -1,8 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import Toast from '../components/Toast';
 import Navbar from '../components/Navbar';
 import DestinationChipInput from '../components/DestinationChipInput';
+import ImportPdfModal from '../components/ImportPdfModal';
+import ImportAppendReview from '../components/ImportAppendReview';
 import { useTripDetails } from '../hooks/useTripDetails';
 import { formatDateTime, formatTimezoneAbbr, formatActivityDate, formatTime, formatDateRange, parseLocationWithLinks } from '../utils/formatDate';
 import TripCalendar from '../components/TripCalendar';
@@ -409,6 +411,19 @@ export default function TripDetailsPage() {
   const [destError, setDestError] = useState('');
   const [savedDestinations, setSavedDestinations] = useState([]);
 
+  // ── Editable Trip Name State ──────────────────────────────
+  const [nameMode, setNameMode] = useState('display'); // 'display' | 'edit'
+  const [editName, setEditName] = useState('');
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const [savedName, setSavedName] = useState(null);
+  const nameInputRef = useRef(null);
+
+  // ── PDF Import → Append State ──────────────────────────────
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [parsedImport, setParsedImport] = useState(null); // shows the review panel when set
+  const importBtnRef = useRef(null);
+
   // ── Trip Status Local State (Sprint 22 T-196) ─────────────
   // Tracks the status shown in TripStatusSelector after user-driven updates.
   // Initialized from trip.status on first load; updated via onStatusChange callback.
@@ -510,6 +525,22 @@ export default function TripDetailsPage() {
     }
   }, [trip, tripLoading]);
 
+  // Initialize the trip name from trip data (display mode reads savedName so an
+  // optimistic save survives a refetch).
+  useEffect(() => {
+    if (!tripLoading && trip) {
+      setSavedName(trip.name ?? '');
+    }
+  }, [trip, tripLoading]);
+
+  // Focus the name input when entering edit mode.
+  useEffect(() => {
+    if (nameMode === 'edit') {
+      nameInputRef.current?.focus();
+      nameInputRef.current?.select();
+    }
+  }, [nameMode]);
+
 
   // ── Date range handlers ───────────────────────────────────
   async function handleSaveDates() {
@@ -597,6 +628,114 @@ export default function TripDetailsPage() {
   }
 
 
+  // ── Trip name edit handlers ───────────────────────────────
+  function handleEditName() {
+    setEditName(savedName ?? '');
+    setNameError('');
+    setNameMode('edit');
+  }
+
+  function handleCancelNameEdit() {
+    setNameMode('display');
+    setNameError('');
+  }
+
+  async function handleSaveName() {
+    setNameError('');
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setNameError('trip name is required');
+      return;
+    }
+    if (trimmed.length > 255) {
+      setNameError('trip name must be 255 characters or fewer');
+      return;
+    }
+    // Skip the API call if nothing changed.
+    if (trimmed === (savedName ?? '')) {
+      setNameMode('display');
+      return;
+    }
+    setNameSaving(true);
+    try {
+      await api.trips.update(tripId, { name: trimmed });
+      setSavedName(trimmed);
+      setNameMode('display');
+    } catch {
+      setNameError('could not save trip name. please try again.');
+    } finally {
+      setNameSaving(false);
+    }
+  }
+
+  function handleNameKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveName();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancelNameEdit();
+    }
+  }
+
+  // ── PDF import → append handlers ───────────────────────────
+  function openImportModal() {
+    setIsImportModalOpen(true);
+  }
+
+  function closeImportModal() {
+    setIsImportModalOpen(false);
+  }
+
+  /**
+   * Parse the chosen PDF, then open the on-page review panel with the parsed
+   * sub-resources. We deliberately ignore the parsed `trip` meta — we are
+   * appending to THIS trip, not creating one. Throws on failure so the modal
+   * surfaces a generic error and stays open.
+   */
+  async function handleImportPdf(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.ai.importParse(formData);
+    const parsed = res.data?.data || {};
+    setIsImportModalOpen(false);
+    setParsedImport({
+      flights: parsed.flights || [],
+      stays: parsed.stays || [],
+      activities: parsed.activities || [],
+      land_travels: parsed.land_travels || [],
+    });
+  }
+
+  /**
+   * Commit the reviewed items to this trip. Throws on failure so the review
+   * panel can map VALIDATION_ERROR fields onto rows / show a generic error.
+   */
+  async function handleAcceptImport(body) {
+    await api.trips.importAppend(tripId, body);
+    setParsedImport(null);
+    // Refetch the trip's resources so the appended items appear, and wait for them
+    // before the toast so it doesn't announce success over stale sections. A refetch
+    // hiccup must NOT mask the successful commit, so swallow individual errors
+    // (Promise.allSettled never rejects).
+    await Promise.allSettled([
+      Promise.resolve().then(refetchFlights),
+      Promise.resolve().then(refetchStays),
+      Promise.resolve().then(refetchActivities),
+      Promise.resolve().then(refetchLandTravels),
+    ]);
+    const total =
+      (body.flights?.length || 0) +
+      (body.stays?.length || 0) +
+      (body.activities?.length || 0) +
+      (body.land_travels?.length || 0);
+    setToast(`added ${total} item${total === 1 ? '' : 's'} to this trip`);
+  }
+
+  function handleCancelImport() {
+    setParsedImport(null);
+  }
+
   // Group activities by date (memoized to avoid expensive reduce on every render)
   const { activitiesByDate, sortedDates } = useMemo(() => {
     const byDate = activities.reduce((acc, activity) => {
@@ -660,9 +799,62 @@ export default function TripDetailsPage() {
               <>
                 {/* ── Trip Name Row (T-122: trip name + status selector + print button) ── */}
                 <div className={styles.tripNameRow}>
-                  {/* Left group: trip name + interactive status selector (T-196) */}
+                  {/* Left group: trip name (editable) + interactive status selector (T-196) */}
                   <div className={styles.tripNameGroup}>
-                    <h1 className={styles.tripName}>{trip?.name}</h1>
+                    {nameMode === 'display' ? (
+                      <>
+                        <h1 className={styles.tripName}>{savedName ?? trip?.name}</h1>
+                        <button
+                          className={styles.editNameLink}
+                          onClick={handleEditName}
+                          aria-label="Edit trip name"
+                        >
+                          edit
+                        </button>
+                      </>
+                    ) : (
+                      <div
+                        className={styles.titleEditContainer}
+                        role="region"
+                        aria-label="Edit trip name"
+                      >
+                        <div className={styles.titleEditRow}>
+                          <input
+                            ref={nameInputRef}
+                            type="text"
+                            className={`${styles.titleInput} ${nameError ? styles.titleInputError : ''}`}
+                            value={editName}
+                            onChange={(e) => { setEditName(e.target.value); setNameError(''); }}
+                            onKeyDown={handleNameKeyDown}
+                            disabled={nameSaving}
+                            maxLength={255}
+                            aria-label="Trip name"
+                            aria-describedby={nameError ? 'trip-name-error' : undefined}
+                          />
+                          <button
+                            className={styles.saveDatesBtn}
+                            onClick={handleSaveName}
+                            disabled={nameSaving}
+                            aria-label="Save trip name"
+                          >
+                            {nameSaving ? <span className="spinner" /> : 'Save'}
+                          </button>
+                          <button
+                            className={styles.cancelDatesLink}
+                            onClick={handleCancelNameEdit}
+                            disabled={nameSaving}
+                            aria-label="Cancel editing trip name"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        {nameError && (
+                          <span id="trip-name-error" className={styles.dateError} role="alert">
+                            {nameError}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <TripStatusSelector
                       tripId={tripId}
                       initialStatus={localTripStatus || trip?.status || 'PLANNING'}
@@ -671,6 +863,34 @@ export default function TripDetailsPage() {
                   </div>
 
                   <div className={styles.headerActions}>
+                  <button
+                    ref={importBtnRef}
+                    className={styles.printBtn}
+                    onClick={openImportModal}
+                    aria-label="Import from PDF and add to this trip"
+                  >
+                    {/* Document-with-plus SVG icon */}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      {/* Document body */}
+                      <path d="M8 1H3.5A1 1 0 002.5 2v10a1 1 0 001 1h7a1 1 0 001-1V5z" />
+                      {/* Folded corner */}
+                      <path d="M8 1v4h3.5" />
+                      {/* Plus */}
+                      <path d="M7 7.5v3M5.5 9h3" />
+                    </svg>
+                    import from PDF
+                  </button>
+
                   <button
                     className={styles.printBtn}
                     onClick={handleExportToGoogleCalendar}
@@ -1012,6 +1232,21 @@ export default function TripDetailsPage() {
 
         </div>
       </main>
+
+      {/* ── Import from PDF (append to this trip) ── */}
+      <ImportPdfModal
+        isOpen={isImportModalOpen}
+        onClose={closeImportModal}
+        onSubmit={handleImportPdf}
+        triggerRef={importBtnRef}
+      />
+      {parsedImport && (
+        <ImportAppendReview
+          parsed={parsedImport}
+          onAccept={handleAcceptImport}
+          onCancel={handleCancelImport}
+        />
+      )}
 
       {/* ── Toast (Google Calendar export feedback — T-343) ── */}
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
