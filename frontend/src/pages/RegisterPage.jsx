@@ -203,7 +203,7 @@ export default function RegisterPage() {
     : null;
 
   return (
-    <div className={styles.authPageWrapper}>
+    <div className={styles.authPageWrapper} id="main" tabIndex={-1}>
       <div className={styles.authCard}>
         {/* Brand */}
         <div className={styles.brand}>TRIPLANNER</div>

@@ -187,7 +187,7 @@ function ActivityRow({ row, onChange, onDelete, rowIndex, showErrors }) {
       <div className={styles.colDelete}>
         <button
           type="button"
-          className={styles.deleteRowBtn}
+          className={`${styles.deleteRowBtn} hit-target-44`}
           onClick={() => onDelete(key)}
           aria-label={row.name ? `Remove activity ${row.name}` : 'Remove empty activity row'}
           title="Remove row"
@@ -426,7 +426,7 @@ export default function ActivitiesEditPage() {
     return (
       <>
         <Navbar />
-        <main className={styles.main}>
+        <main className={styles.main} id="main" tabIndex={-1}>
           <div className={styles.container}>
             <div className={styles.pageHeader}>
               <div className={styles.pageHeaderLeft}>
@@ -451,7 +451,7 @@ export default function ActivitiesEditPage() {
     return (
       <>
         <Navbar />
-        <main className={styles.main}>
+        <main className={styles.main} id="main" tabIndex={-1}>
           <div className={styles.container}>
             <div className={styles.pageHeader}>
               <div className={styles.pageHeaderLeft}>
@@ -472,7 +472,7 @@ export default function ActivitiesEditPage() {
   return (
     <>
       <Navbar />
-      <main className={styles.main}>
+      <main className={styles.main} id="main" tabIndex={-1}>
         <div className={styles.container}>
 
           {/* ── Page Header ── */}

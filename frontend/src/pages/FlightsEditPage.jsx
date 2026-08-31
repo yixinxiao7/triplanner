@@ -206,7 +206,7 @@ function FlightListCard({ flight, onEdit, onDelete, isEditing }) {
 
           <div className={styles.cardActions}>
             <button
-              className={styles.iconBtn}
+              className={`${styles.iconBtn} hit-target-44`}
               onClick={() => onEdit(flight)}
               aria-label={`Edit flight ${flight.flight_number}`}
               title="Edit flight"
@@ -223,7 +223,7 @@ function FlightListCard({ flight, onEdit, onDelete, isEditing }) {
               </svg>
             </button>
             <button
-              className={`${styles.iconBtn} ${styles.iconBtnDelete}`}
+              className={`${styles.iconBtn} ${styles.iconBtnDelete} hit-target-44`}
               onClick={() => setConfirmDelete(true)}
               aria-label={`Delete flight ${flight.flight_number}`}
               title="Delete flight"
@@ -624,7 +624,7 @@ export default function FlightsEditPage() {
   return (
     <>
       <Navbar />
-      <main className={styles.main}>
+      <main className={styles.main} id="main" tabIndex={-1}>
         <div className={styles.container}>
 
           {/* ── Page Header ── */}

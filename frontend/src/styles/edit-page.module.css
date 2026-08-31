@@ -115,11 +115,11 @@
 }
 
 .iconBtn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .iconBtn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -151,7 +151,7 @@
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
-  border: 1px solid var(--border-faint);
+  border: 1px solid var(--accent-subtle); /* was undefined --border-faint (H-05); matches the .deleteDangerBtn convention in TripCard, StaysEditPage, FlightsEditPage */
   border-radius: var(--radius-sm);
   padding: 5px 12px;
   cursor: pointer;
@@ -227,7 +227,7 @@
 
 .retryLink {
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   background: none;
   border: none;
   cursor: pointer;
@@ -283,7 +283,7 @@
 
 .cancelEditLink {
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   background: none;
   border: none;
   cursor: pointer;
@@ -351,7 +351,7 @@
 
 .input:focus {
   border-color: var(--accent);
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

@@ -438,7 +438,7 @@ export default function LandTravelEditPage() {
   return (
     <>
       <Navbar />
-      <main className={styles.main}>
+      <main className={styles.main} id="main" tabIndex={-1}>
         <div className={styles.container}>
           {/* Page Header */}
           <div className={styles.pageHeader}>

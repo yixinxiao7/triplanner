@@ -221,7 +221,7 @@
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 400;
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: underline;
   cursor: pointer;
   background: none;

@@ -226,7 +226,7 @@ export default function HomePage() {
     <>
       <Navbar />
 
-      <main className={styles.main}>
+      <main className={styles.main} id="main" tabIndex={-1}>
         <div className={styles.container}>
           {/* OAuth Linked Success Banner — shown after Google account auto-link */}
           {showLinkedBanner && (
