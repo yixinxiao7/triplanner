@@ -231,7 +231,7 @@ function StayListCard({ stay, onEdit, onDelete, isEditing }) {
 
           <div className={styles.cardActions}>
             <button
-              className={styles.iconBtn}
+              className={`${styles.iconBtn} hit-target-44`}
               onClick={() => onEdit(stay)}
               aria-label={`Edit stay ${stay.name}`}
               title="Edit stay"
@@ -247,7 +247,7 @@ function StayListCard({ stay, onEdit, onDelete, isEditing }) {
               </svg>
             </button>
             <button
-              className={`${styles.iconBtn} ${styles.iconBtnDelete}`}
+              className={`${styles.iconBtn} ${styles.iconBtnDelete} hit-target-44`}
               onClick={() => setConfirmDelete(true)}
               aria-label={`Delete stay ${stay.name}`}
               title="Delete stay"
@@ -618,7 +618,7 @@ export default function StaysEditPage() {
   return (
     <>
       <Navbar />
-      <main className={styles.main}>
+      <main className={styles.main} id="main" tabIndex={-1}>
         <div className={styles.container}>
 
           {/* ── Page Header ── */}

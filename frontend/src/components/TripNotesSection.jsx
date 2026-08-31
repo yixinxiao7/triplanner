@@ -156,7 +156,7 @@ export default function TripNotesSection({ tripId, initialNotes, onSaveSuccess, 
         <hr className={styles.headerLine} aria-hidden="true" />
         <button
           ref={pencilBtnRef}
-          className={`${styles.pencilBtn} ${isEditing ? styles.pencilBtnActive : ''}`}
+          className={`${styles.pencilBtn} hit-target-44 ${isEditing ? styles.pencilBtnActive : ''}`}
           onClick={isEditing ? undefined : enterEdit}
           aria-label="Edit trip notes"
           title="Edit trip notes"

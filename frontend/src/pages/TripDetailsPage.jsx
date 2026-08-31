@@ -752,7 +752,7 @@ export default function TripDetailsPage() {
     return (
       <>
         <Navbar />
-        <main className={styles.main}>
+        <main className={styles.main} id="main" tabIndex={-1}>
           <div className={styles.container}>
             <div className={styles.tripErrorState}>
               <h1 className={styles.tripErrorTitle}>
@@ -778,7 +778,7 @@ export default function TripDetailsPage() {
   return (
     <>
       <Navbar />
-      <main className={styles.main}>
+      <main className={styles.main} id="main" tabIndex={-1}>
         <div className={styles.container}>
 
           {/* ── Page Header ── */}

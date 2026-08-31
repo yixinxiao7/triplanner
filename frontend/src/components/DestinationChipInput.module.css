@@ -55,6 +55,7 @@
 }
 
 .chipRemove {
+  position: relative; /* positioning context for the hit-area overlay below */
   font-size: 14px;
   font-weight: 400;
   color: var(--text-muted);
@@ -67,12 +68,30 @@
   transition: color 150ms ease;
 }
 
+/* Bespoke hit-area expansion (audit H-06, design D6 §3) — NOT the shared
+   .hit-target-44 utility. Chips wrap in a flex list with only 8px between
+   rows/columns (.container gap) and 6px between the chip's own text and
+   this button (.chip gap), so a full 44px overlay would overlap the
+   neighbouring chip or this chip's own label. Expanding by half of each
+   adjacent gap keeps the enlarged target from ever touching a neighbour:
+   the resulting target clears the 24px WCAG 2.5.8 floor with margin but
+   deliberately does not reach 44px, per the spec's separation-over-size
+   precedence. */
+.chipRemove::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  right: -4px;
+  left: -3px;
+}
+
 .chipRemove:hover {
   color: var(--color-danger-hover);
 }
 
 .chipRemove:focus {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -138,7 +157,7 @@
 }
 
 .addBtn:focus {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

@@ -110,7 +110,7 @@
 }
 
 .navArrow:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -160,7 +160,7 @@
 }
 
 .dayCell:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
   z-index: 1;
 }
@@ -223,7 +223,7 @@
 }
 
 .eventPill:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -301,7 +301,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
-  color: var(--accent);
+  color: var(--accent-text);
   padding: 2px 4px;
   background: transparent;
   border: none;
@@ -315,7 +315,7 @@
 }
 
 .overflowTrigger:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -468,7 +468,7 @@
 }
 
 .retryBtn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -518,7 +518,7 @@
 }
 
 .mobileEventRow:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

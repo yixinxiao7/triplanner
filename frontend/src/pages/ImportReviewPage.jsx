@@ -143,7 +143,7 @@ export default function ImportReviewPage() {
   return (
     <>
       <Navbar />
-      <main className={styles.main} data-testid="import-review-page">
+      <main className={styles.main} id="main" tabIndex={-1} data-testid="import-review-page">
         <div className={styles.container}>
           {/* ── Header ── */}
           <div className={styles.pageHeader}>

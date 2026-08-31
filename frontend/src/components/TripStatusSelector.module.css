@@ -37,7 +37,7 @@
 }
 
 .badge:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -130,7 +130,7 @@
 
 /* Checkmark for the currently-selected option */
 .checkmark {
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 12px;
   line-height: 1;
   margin-left: auto;

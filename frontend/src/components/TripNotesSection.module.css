@@ -52,7 +52,7 @@
 }
 
 .pencilBtn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .pencilBtn:focus-visible {
@@ -61,7 +61,7 @@
 }
 
 .pencilBtnActive {
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: default;
 }
 

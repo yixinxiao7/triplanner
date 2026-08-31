@@ -13,7 +13,7 @@
 }
 
 .icon {
-  color: var(--accent);
+  color: var(--accent-text);
   opacity: 0.3;
 }
 

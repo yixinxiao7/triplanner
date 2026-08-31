@@ -126,7 +126,7 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   background: var(--accent-faint);
-  color: var(--accent);
+  color: var(--accent-text);
   white-space: nowrap;
 }
 
@@ -176,7 +176,11 @@
 .cardActions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  /* 20px (was 12px) — with two 24px .iconBtn targets expanded to 44px
+     via .hit-target-44, this is the minimum gap that keeps their
+     hit-area overlays from touching: 24 + 20 = 44px center-to-center
+     (audit H-06, design D6). */
+  gap: 20px;
   flex-shrink: 0;
 }
 
@@ -195,7 +199,7 @@
 }
 
 .iconBtn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .iconBtnDelete:hover {
@@ -301,7 +305,7 @@
 
 .retryLink {
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   background: none;
   border: none;
   cursor: pointer;
@@ -338,7 +342,7 @@
 
 .cancelEditLink {
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
   background: none;
   border: none;
   cursor: pointer;
@@ -406,7 +410,7 @@
 
 .input:focus {
   border-color: var(--accent);
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

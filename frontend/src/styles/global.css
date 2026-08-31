@@ -9,6 +9,8 @@
   --surface: #30292F;
   --surface-alt: #3F4045;
   --accent: #5D737E;
+  --accent-text: #97B1BC; /* text-role accent — 4.5:1+ on all three surfaces; --accent itself stays border/background-only (audit H-04) */
+  --focus-ring: #9DB4BF; /* clears 3:1 on all three surfaces; --accent alone does not (audit H-01) */
   --text-primary: #FCFCFC;
   --text-muted: rgba(252, 252, 252, 0.5);
   --border-subtle: rgba(93, 115, 126, 0.3);
@@ -57,7 +59,7 @@
   --color-land-travel-border: rgba(123, 107, 142, 0.3);
 
   /* Semantic — danger (destructive actions, errors) */
-  --color-danger: rgba(220, 80, 80, 0.9);
+  --color-danger: rgb(230, 110, 110); /* was rgba(220,80,80,.9), 3.85:1 — raised for audit H-02 */
   --color-danger-bg: rgba(220, 80, 80, 0.1);
   --color-danger-border: rgba(220, 80, 80, 0.3);
   --color-danger-border-strong: rgba(220, 80, 80, 0.7);
@@ -66,7 +68,7 @@
   --color-danger-hover-border: rgba(220, 50, 50, 0.5);
 
   /* Semantic — warning (rate limits, cautions) */
-  --color-warning: rgba(196, 122, 46, 0.8);
+  --color-warning: rgb(216, 150, 80); /* was rgba(196,122,46,.8), 3.71:1 — raised for audit H-07 */
   --color-warning-bg: rgba(196, 122, 46, 0.1);
   --color-warning-border: rgba(196, 122, 46, 0.3);
 
@@ -76,7 +78,7 @@
 
   /* Status badges */
   --status-planning-bg: rgba(93, 115, 126, 0.2);
-  --status-planning-text: #5D737E;
+  --status-planning-text: var(--accent-text); /* was #5D737E, 3.17:1 — raised for audit H-07 */
   --status-ongoing-bg: rgba(100, 180, 100, 0.15);
   --status-ongoing-text: rgba(100, 200, 100, 0.9);
   --status-completed-bg: rgba(252, 252, 252, 0.1);
@@ -90,7 +92,7 @@
 
   /* Text variants */
   --text-secondary: rgba(252, 252, 252, 0.7);
-  --text-faint: rgba(252, 252, 252, 0.3);
+  --text-faint: rgba(252, 252, 252, 0.62); /* was rgba(...,0.3), 2.60:1 — raised for audit H-03 */
 
   /* Interaction */
   --hover-overlay: rgba(252, 252, 252, 0.05);
@@ -102,7 +104,7 @@
   /* Sprint 30 — T-243: LAND_TRAVEL calendar event tokens */
   --event-land-travel-bg:     rgba(123, 107, 142, 0.2);
   --event-land-travel-border: #7B6B8E;
-  --event-land-travel-text:   #7B6B8E;
+  --event-land-travel-text:   #A895C0; /* was #7B6B8E (the border color, copied by mistake), 3.26:1 — corrected for audit H-07 */
   --event-land-travel-hover:  rgba(123, 107, 142, 0.3);
 }
 
@@ -161,8 +163,81 @@ select {
    Focus Ring — Accessibility
    ============================================================ */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
+}
+
+/* ============================================================
+   Visually Hidden — Accessibility (audit C-01/C-02)
+   Clips an element from the visual viewport without removing it
+   from the accessibility tree. Used for the skip link's rest
+   state and for live-region announcements.
+   ============================================================ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================
+   Skip Link — Accessibility (audit C-01)
+   Off-screen until focused; the first focusable element on
+   every route so keyboard users can bypass the navbar.
+   ============================================================ */
+.skip-link {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2000;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-decoration: none;
+  transform: translateY(-150%);
+  transition: transform 150ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Hit-Area Expansion — Accessibility (audit H-06)
+   Expands an icon-only control's pointer/touch target to at
+   least 44x44 CSS px via a transparent, absolutely-positioned
+   overlay, without changing the control's rendered icon size or
+   its footprint in layout. Establishes position:relative on the
+   control itself so the overlay has something to position
+   against — no other change to the control's own rule is needed.
+   Where two such controls sit close enough that a full 44px
+   overlay on each would overlap, size a bespoke ::after locally
+   instead of using this utility (see DestinationChipInput's
+   .chipRemove for that case).
+   ============================================================ */
+.hit-target-44 {
+  position: relative;
+}
+
+.hit-target-44::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 
 /* ============================================================

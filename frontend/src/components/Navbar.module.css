@@ -28,7 +28,7 @@
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: none;
   transition: opacity 150ms ease;
   flex-shrink: 0;

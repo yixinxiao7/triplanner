@@ -140,7 +140,7 @@
 }
 
 .clearFiltersBtn:hover {
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: underline;
 }
 
