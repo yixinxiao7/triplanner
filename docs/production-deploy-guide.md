@@ -2,7 +2,14 @@
 
 **Target environment:** Render (frontend + backend) + AWS RDS PostgreSQL 15
 **Written:** 2026-03-11 (Sprint #26, T-222)
+**Last updated:** 2026-08-31 — corrected stale migration count, documented that
+migrations are manual and that Render (not CI) deploys.
 **Prerequisites:** Complete T-220 (knexfile SSL config) and T-221 (cookie SameSite fix) before deploying.
+
+> **This is the guide for the live production stack.** `infra/DEPLOY.md`
+> describes a different, unused topology (PM2 / Docker Compose on a self-managed
+> host) and does not apply to the Render deployment. Use this file for anything
+> touching production.
 
 ---
 
@@ -157,7 +164,24 @@ with `?error=oauth_unavailable`, Calendar export returns 503
 
 ## Step 4 — Database Migrations
 
+> ### ⚠️ Migrations are NOT automatic
+>
+> Nothing in the deploy pipeline runs them. `render.yaml` uses
+> `buildCommand: npm install` and `startCommand: node src/index.js`, and
+> `backend/src/index.js` does not run migrations on boot. Render auto-deploys
+> on push to `main`, so **code can reach production against an unmigrated
+> database** unless you run migrations yourself.
+>
+> Any deploy that includes a new file in `backend/src/migrations/` needs a
+> manual `knex migrate:latest` — see Option B for the fastest path. Deploys
+> with no new migration files (dependency bumps, UI changes) need nothing here.
+
 Run `knex migrate:latest` against the production RDS instance **before** the backend handles any traffic.
+
+**Current count: 13 migrations (001–013).** Do not hardcode this number into your
+process — check `backend/src/migrations/` and compare against
+`migrate:status` output, which is the only reliable source of truth for what
+production has actually applied.
 
 ### Option A: Local migration (recommended for first deploy)
 
@@ -171,14 +195,18 @@ export NODE_ENV=production
 cd backend
 npm install
 
-# Run all 10 migrations (001–010)
+# Check what production has actually applied FIRST
+npx knex migrate:status --knexfile src/config/knexfile.js
+
+# Apply anything outstanding
 npx knex migrate:latest --knexfile src/config/knexfile.js
 
-# Verify migration status
+# Confirm
 npx knex migrate:status --knexfile src/config/knexfile.js
 ```
 
-Expected output: All 10 migration files listed as "Ran".
+Expected output: every file in `backend/src/migrations/` listed as "Ran", with
+nothing "Pending".
 
 ### Option B: Render shell (after deploy)
 
@@ -189,11 +217,38 @@ If the backend service is deployed, use the Render shell:
    npx knex migrate:latest --knexfile src/config/knexfile.js
    ```
 
-> **Important:** Only 10 migrations need to run (001–010). Sprint 26 has no new schema changes. Do not run `knex seed:run` in production — seeds are for staging only.
+> **Important:** Do not run `knex seed:run` in production — seeds are for staging only.
+
+> **History:** This guide originally said "only 10 migrations need to run
+> (001–010). Sprint 26 has no new schema changes." That went stale — three
+> migrations were added afterwards (`011_add_activity_notes` on 2026-05-30,
+> `012_add_google_id_to_users` on 2026-06-06, `013_add_google_calendar_export`
+> on 2026-06-11, shipping activity notes, Google sign-in, and calendar export).
+> Anyone following the old text literally would have skipped all three. Trust
+> `migrate:status` over any count written in a doc.
 
 ---
 
 ## Step 5 — Trigger Deployment
+
+### 5.0 What actually triggers a deploy
+
+**Merging to `main` deploys to production.** `render.yaml` sets no `autoDeploy`
+key, so Render's default (`true`) applies and it deploys on push to the
+connected branch. There is no deploy command to run.
+
+Two things worth knowing:
+
+- **The Render dashboard setting overrides `render.yaml`.** If auto-deploy was
+  turned off there, pushes do nothing and you must deploy manually (5.1/5.2).
+  The dashboard is the source of truth.
+- **GitHub Actions does not deploy.** The `Deploy to Staging` job in
+  `.github/workflows/ci.yml` only runs `echo` statements. Render watches the
+  repo directly and deploys **independently of CI** — so a red CI badge does
+  not block a production deploy, and a green one does not cause one. Check CI
+  status yourself before merging; nothing enforces it.
+
+The backend and frontend are separate Render services and deploy separately.
 
 ### 5.1 Deploy the backend
 1. Go to `triplanner-backend` → **Deploys**
@@ -370,5 +425,7 @@ If production breaks after deploy:
 | RDS Instance | `db.t3.micro`, PostgreSQL 15 |
 | Render Region | Ohio (`ohio`) |
 | Render Plan | Free |
-| Migrations applied | 10 (001–010) |
+| Migrations in repo | 13 (001–013) — verify with `migrate:status`, not this table |
+| Migrations run automatically? | **No** — manual `knex migrate:latest`, see Step 4 |
+| Deploy trigger | Push/merge to `main` (Render auto-deploy; CI does not deploy) |
 | Required pre-reqs | T-220 (knexfile SSL) + T-221 (cookie SameSite) merged before deploy |
