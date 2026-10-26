@@ -21,18 +21,20 @@ Triplanner is a travel planning hub where users can organize all the details of 
 graph LR
     User(["🌐 User<br/>(Browser)"])
     UR["👁️ UptimeRobot<br/>HTTP Monitor<br/>(every 5 min)"]
+    CF["🔀 Cloudflare Worker<br/>triplanner.yixinx.com/api/*"]
 
     subgraph Render ["☁️ Render"]
         FE["📦 Frontend<br/>React 18 + Vite<br/>Static Site"]
         BE["⚙️ Backend<br/>Node.js + Express<br/>Web Service"]
     end
 
-    subgraph AWS ["☁️ AWS"]
-        DB[("🗄️ PostgreSQL 15<br/>AWS RDS")]
+    subgraph Supabase ["☁️ Supabase"]
+        DB[("🗄️ PostgreSQL<br/>Session pooler")]
     end
 
     User -->|"HTTPS"| FE
-    FE -->|"REST API /api/v1<br/>JWT auth"| BE
+    User -->|"REST API /api/v1<br/>JWT auth · same-origin"| CF
+    CF -->|"proxy /api/*"| BE
     BE -->|"Knex.js · SSL"| DB
     UR -->|"GET /api/v1/health"| BE
     UR -.->|"⚠️ email alert on down"| User
@@ -42,10 +44,11 @@ graph LR
 |-----------|-----------|---------|
 | Frontend | React 18 + Vite (SPA) | Render — Static Site |
 | Backend | Node.js + Express REST API | Render — Web Service |
-| Database | PostgreSQL 15 | AWS RDS |
+| API proxy | Cloudflare Worker (`/api/*`) | Cloudflare |
+| Database | PostgreSQL | Supabase (free, `us-east-1`, session pooler) |
 | Monitoring | UptimeRobot HTTP monitor | Cloud (uptimerobot.com) |
 
-**Request flow:** The browser loads the React SPA from Render's static CDN. All API calls go from the frontend to the Express backend (also on Render) via HTTPS, authenticated with short-lived JWT access tokens (15 min) and rotating refresh tokens (7 days). The backend connects to AWS RDS over an SSL-encrypted connection using Knex.js. UptimeRobot pings `/api/v1/health` every 5 minutes and sends an email alert if the backend goes down.
+**Request flow:** The browser loads the React SPA from Render's static CDN at `triplanner.yixinx.com`. API calls go to the same origin (`/api/v1`), where a Cloudflare Worker proxies `/api/*` to the Express backend on Render, so the refresh-token cookie stays first-party (required for iOS / Safari). Requests are authenticated with short-lived JWT access tokens (15 min) and rotating refresh tokens (7 days). The backend connects to Supabase Postgres through the session pooler over SSL using Knex.js; migrations run in the Render build. UptimeRobot pings `/api/v1/health` every 5 minutes and sends an email alert if the backend goes down, and a GitHub Actions keepalive hits the same endpoint (which runs `SELECT 1`) every 2 days so the free Supabase project never pauses.
 
 ## How the Multi-Agent Framework Works
 

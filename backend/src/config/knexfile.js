@@ -11,11 +11,12 @@ const migrationsDir = join(__dirname, '../migrations');
 const seedsDir = join(__dirname, '../seeds');
 
 // Build a pg connection config that always disables certificate verification for
-// remote hosts (e.g. AWS RDS).  We deliberately avoid passing `connectionString`
+// remote hosts (e.g. the Supabase session pooler).  We deliberately avoid passing `connectionString`
 // alongside `ssl` because pg-connection-string treats `sslmode=require` (and
 // `prefer`/`verify-ca`) as `verify-full`, which overrides any explicit
 // `rejectUnauthorized: false` we pass.  Decomposing the URL into individual
-// fields bypasses that parsing and lets our ssl option take full effect.
+// fields bypasses that parsing and lets our ssl option take full effect.  It also
+// keeps the pooler's dotted username (`postgres.<project-ref>`) intact.
 function buildConnectionConfig(url) {
   if (!url) return url;
   try {

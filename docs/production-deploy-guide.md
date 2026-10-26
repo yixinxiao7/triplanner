@@ -1,6 +1,6 @@
 # TripPlanner — Production Deploy Guide
 
-**Target environment:** Render (frontend + backend) + AWS RDS PostgreSQL 15
+**Target environment:** Render (frontend + backend) + Supabase Postgres (free)
 **Written:** 2026-03-11 (Sprint #26, T-222)
 **Prerequisites:** Complete T-220 (knexfile SSL config) and T-221 (cookie SameSite fix) before deploying.
 
@@ -11,59 +11,44 @@
 The production stack consists of:
 - **Backend**: Render free-tier web service (Node.js, Ohio region) — `triplanner-backend-sp61.onrender.com`
 - **Frontend**: Render free-tier static site (React SPA, Ohio region) — `triplanner.yixinx.com` (custom domain)
-- **Database**: AWS RDS PostgreSQL 15, `db.t3.micro`, `us-east-1` (free tier)
+- **Database**: Supabase Postgres, free project `triplanner`, `us-east-1`, reached through the session pooler (port 5432)
 
 All services communicate over HTTPS. Render provides HTTPS automatically. The frontend and backend are cross-origin; the `SameSite=None; Secure` cookie fix (T-221) is required for refresh token auth to work.
 
 ---
 
-## Step 1 — AWS RDS: Create the Database
+## Step 1 — Supabase: Create the Database
 
-### 1.1 Sign in to AWS Console
-Go to https://console.aws.amazon.com and navigate to **RDS**.
+### 1.1 Create the project
+1. Go to https://supabase.com/dashboard and sign in.
+2. Click **New project** in the existing organization.
+3. Name: `triplanner` — Region: **East US (North Virginia)** (`us-east-1`, one region over from Render Ohio).
+4. Database password: generate a strong password and save it securely.
+5. Plan: **Free**. Click **Create new project**.
 
-### 1.2 Create a PostgreSQL 15 instance
-1. Click **Create database**
-2. Select **Standard Create**
-3. Engine: **PostgreSQL** — Version: **PostgreSQL 15.x** (latest 15.x patch)
-4. Template: **Free tier**
-5. Settings:
-   - DB instance identifier: `triplanner-production`
-   - Master username: `triplanner`
-   - Master password: Generate a strong password and save it securely
-6. DB instance class: `db.t3.micro` (free tier eligible)
-7. Storage: `20 GiB gp2` (free tier default — do not enable autoscaling for free tier)
-8. Connectivity:
-   - VPC: default VPC
-   - **Public access: Yes** (required so Render's egress IPs can connect)
-   - VPC security group: Create a new security group named `triplanner-rds-sg`
-9. Database name (initial): `triplanner`
-10. Click **Create database**
+### 1.2 Lock down the Data API
+Knex creates tables in `public` with no row-level security, and Supabase exposes
+`public` through its REST API with the anon key by default. The backend only
+talks to Postgres directly, so turn that off:
 
-### 1.3 Configure the Security Group
-After the instance is created:
-1. Go to the RDS instance → **Connectivity & security** → click the security group link
-2. Edit **Inbound rules** → Add rule:
-   - Type: PostgreSQL
-   - Port: 5432
-   - Source: **0.0.0.0/0** (Render uses dynamic IPs — open to all, rely on DB credentials for security)
-   - Description: `Render egress`
-3. Save rules
+**Project Settings → API → Exposed schemas** → remove `public` → **Save**.
 
-> **Security note:** Restricting to specific CIDRs is preferable but Render free-tier uses dynamic egress IPs. For stricter security, consider Render's paid tier with static IPs, or use Render's managed PostgreSQL instead.
-
-### 1.4 Note the connection details
-From the RDS console, note:
-- **Endpoint**: e.g., `triplanner-production.xxxxxxxxxxxx.us-east-1.rds.amazonaws.com`
-- **Port**: `5432`
-- **Database name**: `triplanner`
-- **Username**: `triplanner`
-- **Password**: (saved in Step 1.2)
-
-Build the `DATABASE_URL`:
+### 1.3 Copy the session-pooler URI
+Click **Connect** (top bar) → **Session pooler**. Copy the URI:
 ```
-postgres://triplanner:PASSWORD@ENDPOINT:5432/triplanner
+postgresql://postgres.<project-ref>:PASSWORD@aws-0-us-east-1.pooler.supabase.com:5432/postgres
 ```
+
+> **Use the session pooler, not the direct connection.** The direct connection
+> (`db.<project-ref>.supabase.co`) is IPv6-only on the free plan, and Render's
+> egress is IPv4. Session mode (port 5432) supports everything Knex and its
+> migrations use; transaction mode (port 6543) does not.
+
+> **Inactivity pause:** free projects pause after 7 days without database
+> activity. `.github/workflows/keepalive.yml` hits `/api/v1/health` (which runs
+> `SELECT 1`) every 2 days to prevent this. Supabase emails a warning about a
+> week before pausing — if one arrives, check that the workflow is still enabled
+> (GitHub disables scheduled workflows after 60 days with no repo activity).
 
 ---
 
@@ -96,7 +81,7 @@ Set these variables in the Render dashboard for each service. Go to each service
 | Variable | Value | Notes |
 |----------|-------|-------|
 | `NODE_ENV` | `production` | Auto-set by render.yaml |
-| `DATABASE_URL` | `postgres://triplanner:PASSWORD@ENDPOINT:5432/triplanner` | From Step 1.4 |
+| `DATABASE_URL` | `postgresql://postgres.<project-ref>:PASSWORD@aws-0-us-east-1.pooler.supabase.com:5432/postgres` | Session pooler, from Step 1.3 |
 | `JWT_SECRET` | *(auto-generated by Render)* | Render generates on first deploy |
 | `JWT_EXPIRES_IN` | `15m` | Auto-set by render.yaml |
 | `JWT_REFRESH_EXPIRES_IN` | `7d` | Auto-set by render.yaml |
@@ -106,7 +91,7 @@ Set these variables in the Render dashboard for each service. Go to each service
 **Setting `DATABASE_URL`:**
 1. Go to `triplanner-backend` → Environment
 2. Find `DATABASE_URL` (marked as "Sync: Off — Set manually")
-3. Paste the connection string from Step 1.4
+3. Paste the session-pooler URI from Step 1.3
 4. Click **Save Changes**
 
 **Setting `CORS_ORIGIN`:**
@@ -157,39 +142,23 @@ with `?error=oauth_unavailable`, Calendar export returns 503
 
 ## Step 4 — Database Migrations
 
-Run `knex migrate:latest` against the production RDS instance **before** the backend handles any traffic.
+Migrations run in the Render build: the backend `buildCommand` in `render.yaml`
+is `npm install && npm run migrate`, so every deploy applies any pending Knex
+migrations (13 as of `20260611_013`) to Supabase before the new version starts. On a
+fresh project the first deploy creates the whole schema.
 
-### Option A: Local migration (recommended for first deploy)
+If the service is not Blueprint-linked, set the build command manually:
+`triplanner-backend` → **Settings → Build Command** → `npm install && npm run migrate`.
 
-From your local machine with the `backend/` directory:
-
+To check status from your machine:
 ```bash
-# Set DATABASE_URL to point to RDS (temporarily)
-export DATABASE_URL="postgres://triplanner:PASSWORD@ENDPOINT:5432/triplanner"
-export NODE_ENV=production
-
 cd backend
-npm install
-
-# Run all 10 migrations (001–010)
-npx knex migrate:latest --knexfile src/config/knexfile.js
-
-# Verify migration status
-npx knex migrate:status --knexfile src/config/knexfile.js
+DATABASE_URL="<session-pooler URI>" NODE_ENV=production \
+  npx knex migrate:status --knexfile src/config/knexfile.js
 ```
 
-Expected output: All 10 migration files listed as "Ran".
-
-### Option B: Render shell (after deploy)
-
-If the backend service is deployed, use the Render shell:
-1. Go to `triplanner-backend` → **Shell**
-2. Run:
-   ```bash
-   npx knex migrate:latest --knexfile src/config/knexfile.js
-   ```
-
-> **Important:** Only 10 migrations need to run (001–010). Sprint 26 has no new schema changes. Do not run `knex seed:run` in production — seeds are for staging only.
+> A failed migration fails the build, so Render keeps serving the previous
+> deploy. Do not run `knex seed:run` in production — seeds are for staging only.
 
 ---
 
@@ -356,7 +325,16 @@ If production breaks after deploy:
 1. In Render → service → **Deploys** → find the last successful deploy
 2. Click **Rollback to this deploy**
 3. Render redeploys from that commit within ~2 minutes
-4. If DB migration caused issues: restore from RDS automated backup (enabled by default on RDS)
+4. If a DB migration caused issues: roll it back with `npm run migrate:rollback`
+   (with `DATABASE_URL` pointing at the session pooler), or restore from a manual dump.
+
+> **Supabase free has no automatic backups.** Before a risky migration, take a
+> manual dump over the session pooler:
+> ```bash
+> pg_dump "<session-pooler URI>" --no-owner --no-privileges -Fc -f triplanner-$(date +%F).dump
+> # restore: pg_restore --no-owner --no-privileges --clean -d "<session-pooler URI>" triplanner-YYYY-MM-DD.dump
+> ```
+> Use a `pg_dump` at least as new as the server's Postgres major version.
 
 ---
 
@@ -366,9 +344,10 @@ If production breaks after deploy:
 |-----------|-------|
 | Backend URL | `https://triplanner-backend-sp61.onrender.com` |
 | Frontend URL | `https://triplanner.yixinx.com` (custom domain) |
-| AWS Region | `us-east-1` |
-| RDS Instance | `db.t3.micro`, PostgreSQL 15 |
+| Database | Supabase free project `triplanner`, `us-east-1` |
+| DB connection | Session pooler, port 5432 (`DATABASE_URL`) |
+| Keepalive | GitHub Actions `keepalive.yml`, every 2 days |
 | Render Region | Ohio (`ohio`) |
 | Render Plan | Free |
-| Migrations applied | 10 (001–010) |
+| Migrations applied | 13 (001–013), run in the Render build |
 | Required pre-reqs | T-220 (knexfile SSL) + T-221 (cookie SameSite) merged before deploy |

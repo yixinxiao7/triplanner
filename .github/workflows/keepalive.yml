@@ -1,0 +1,28 @@
+# Keepalive — pings the production health endpoint every 2 days.
+#
+# The health endpoint runs `SELECT 1`, so each ping counts as database
+# activity and keeps the free Supabase project from pausing (it pauses after
+# 7 days idle). --max-time 120 plus two retries rides out the Render free-tier
+# cold start (30-60s).
+#
+# Note: GitHub disables scheduled workflows after 60 days with no repo
+# activity. Re-enable from the Actions tab if a Supabase pause warning arrives.
+
+name: Keepalive
+
+on:
+  schedule:
+    - cron: '0 12 */2 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping backend health
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET /api/v1/health
+        run: |
+          curl --fail --silent --show-error \
+            --max-time 120 \
+            --retry 2 --retry-delay 30 --retry-all-errors \
+            https://triplanner-backend-sp61.onrender.com/api/v1/health
