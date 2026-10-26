@@ -4,7 +4,8 @@
 #   1. triplanner-backend  — Node.js web service
 #   2. triplanner-frontend — React static site
 #
-# Database: AWS RDS PostgreSQL 15 (external — configured via DATABASE_URL env var)
+# Database: Supabase Postgres (free project, us-east-1) — external, configured via
+#           DATABASE_URL (session pooler, port 5432). Migrations run in the build.
 #
 # Usage:
 #   1. Push this file to the repo root.
@@ -27,7 +28,7 @@ services:
     region: ohio
     plan: free
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm install && npm run migrate
     startCommand: node src/index.js
     healthCheckPath: /api/v1/health
     envVars:
@@ -35,8 +36,10 @@ services:
       - key: NODE_ENV
         value: production
 
-      # AWS RDS connection string — set manually in Render dashboard after RDS is provisioned
-      # Format: postgres://USERNAME:PASSWORD@RDS_ENDPOINT:5432/DATABASE_NAME?sslmode=require
+      # Supabase session-pooler URI — set manually in Render dashboard.
+      # Copy from Supabase → Connect → Session pooler (IPv4; the direct
+      # connection is IPv6-only on the free plan and unreachable from Render).
+      # Format: postgresql://postgres.<project-ref>:PASSWORD@aws-0-us-east-1.pooler.supabase.com:5432/postgres
       - key: DATABASE_URL
         sync: false
 

@@ -12,8 +12,8 @@ This document describes the high-level architecture of the application. All agen
 | Backend | Node.js + Express | REST API with JWT authentication |
 | Database | PostgreSQL | Relational database with Knex.js for query building and migrations |
 | Auth | JWT (jsonwebtoken) | Access tokens (15 min) + refresh tokens (7 days) |
-| Hosting | TBD | Frontend: static hosting, Backend: container hosting |
-| CI/CD | TBD | GitHub Actions or similar |
+| Hosting | Render + Supabase + Cloudflare | Frontend: Render static site, Backend: Render free web service (Ohio), Database: Supabase free Postgres (`us-east-1`, session pooler), `/api/*` proxied same-origin by a Cloudflare Worker |
+| CI/CD | GitHub Actions + Render auto-deploy | `ci.yml` runs tests/build on PRs and `main`; Render deploys `main` and runs Knex migrations in the backend build; `keepalive.yml` pings `/api/v1/health` every 2 days |
 
 ## Tech Stack (Mobile — when PLATFORM=mobile)
 
@@ -55,8 +55,8 @@ multi-agent-dev-workspace/
 | Environment | Frontend URL | Backend URL | Purpose |
 |------------|-------------|-------------|---------|
 | Local | http://localhost:5173 | http://localhost:3000 | Development |
-| Staging | TBD | TBD | Pre-release testing |
-| Production | TBD | TBD | Live app |
+| Staging | https://localhost:4173 | https://localhost:3001 | Pre-release testing (local, see `infra/`) |
+| Production | https://triplanner.yixinx.com | https://triplanner.yixinx.com/api/v1 (Worker → https://triplanner-backend-sp61.onrender.com) | Live app |
 
 ## API Design Conventions
 
